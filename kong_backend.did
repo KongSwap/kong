@@ -1,0 +1,356 @@
+type BlockIdReply = record {
+    is_send : bool;
+    symbol : text;
+    principal_id : text;
+    block_id : nat;
+};
+
+type UserReply = record {
+    user_id : nat32;
+    principal_id : text;
+    user_name : text;
+    my_referral_code : text;
+    referred_by : opt text;
+    referred_by_expires_at : opt nat64;
+    fee_level : nat8;
+    fee_level_expires_at : opt nat64;
+    campaign1_flags : vec bool;
+};
+type UserResult = variant { Ok : UserReply; Err : text };
+
+type UserBalancesReply = variant {
+	LP : BalancesReply;
+	IC : BalancesReply;
+};
+type BalancesReply = record {
+    name : text;
+	symbol : text;
+	balance : float64;
+	usd_balance : float64;
+	ts : nat64;
+};
+type UserBalancesResult = variant { Ok : vec UserBalancesReply; Err : text };
+
+type TokensReply = variant {
+	LP : LPTokensReply;
+	IC : ICTokensReply;
+};
+type LPTokensReply = record {
+	token_id : nat32;
+    pool_symbol : text;
+    name : text;
+    chain : text;
+	symbol : text;
+    address : text;
+	decimals : nat8;
+    fee : nat;
+    total_supply : nat;
+};
+type ICTokensReply = record {
+	token_id : nat32;
+	pool_symbol : text;
+    name : text;
+    chain : text;
+	symbol : text;
+	address : text;
+	decimals : nat8;	
+	fee : nat;
+    icrc1 : bool;
+    icrc2 : bool;
+    icrc3 : bool;
+};
+type TokensResult = variant { Ok : vec TokensReply; Err : text };
+
+type PoolsReply = record {
+    pool_id : nat32;
+    name : text;
+    symbol : text;
+    balance : nat;
+    chain0 : text;
+    symbol0 : text;
+    address0 : text;
+    balance0 : nat;
+    lp_fee0 : nat;
+    chain1 : text;
+    symbol1 : text;
+    address1 : text;
+    balance1 : nat;
+    lp_fee1 : nat;
+    price : float64;
+    lp_fee_bps : nat8;
+    rolling_24h_volume : nat;
+    rolling_24h_lp_fee : nat;
+    rolling_24h_num_swaps : nat;
+    rolling_24h_apy : float64;
+    lp_token_symbol : text;
+    lp_token_supply : nat;
+    total_volume : nat;
+    total_lp_fee : nat;
+};
+type PoolsResult = variant { Ok : vec PoolsReply; Err : text };
+
+type TxsReply = variant {
+    AddPool : AddPoolReply;
+    AddLiquidity : AddLiquidityReply;
+    RemoveLiquidity : RemoveLiquidityReply;
+    Swap : SwapReply;
+};
+type TxsResult = variant { Ok : vec TxsReply; Err : text };
+
+type RequestRequest = variant {
+    AddPool : AddPoolArgs;
+    AddLiquidity : AddLiquidityArgs;
+    RemoveLiquidity : RemoveLiquidityArgs;
+    Swap : SwapArgs;
+};
+
+type RequestReply = variant {
+    Pending;
+    AddPool : AddPoolReply;
+    AddLiquidity : AddLiquidityReply;
+    RemoveLiquidity : RemoveLiquidityReply;
+    Swap : SwapReply;
+};
+
+type RequestsReply = record {
+    request_id : nat64;
+    statuses : vec text;
+    request : RequestRequest;
+    reply : RequestReply;
+    ts : nat64;
+};
+type RequestsResult = variant { Ok : vec RequestsReply; Err : text };
+
+type AddPoolArgs = record {
+    token0 : text;
+    amount0 : nat;
+    block_id0 : opt nat;
+    token1 : text;
+    amount1 : nat;
+    block_id1 : opt nat;
+    lp_fee_bps : opt nat8;
+};
+type AddPoolReply = record {
+    tx_id : nat64;
+    symbol : text;
+    request_id : nat64;
+    status : text;
+    balance : nat;
+    chain0 : text;
+    symbol0 : text;
+    amount0 : nat;
+    chain1 : text;
+    symbol1 : text;
+    amount1 : nat;
+    add_lp_token_amount : nat;
+    lp_fee_bps : nat8;
+    lp_token_symbol : text;
+    lp_token_supply : nat;
+    block_ids : vec BlockIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+type AddPoolResult = variant { Ok : AddPoolReply; Err : text };
+
+type AddLiquidityAmountsReply = record {
+    symbol : text;
+    chain0 : text;
+    symbol0 : text;
+    amount0 : nat;
+    fee0 : nat;
+    chain1 : text;
+    symbol1 : text;
+    amount1 : nat;
+    fee1 : nat;
+    add_lp_token_amount : nat;
+};
+type AddLiquiditAmountsResult = variant { Ok : AddLiquidityAmountsReply; Err : text };
+
+type AddLiquidityArgs = record {
+    token0 : text;
+    amount0 : nat;
+    block_id0 : opt nat;
+    token1 : text;
+    amount1 : nat;
+    block_id1 : opt nat;
+};
+type AddLiquidityReply = record {
+    tx_id : nat64;
+    symbol : text;
+    request_id : nat64;
+    status : text;
+    chain0 : text;
+    symbol0 : text;
+    amount0 : nat;
+    chain1 : text;
+    symbol1 : text;
+    amount1 : nat;
+    add_lp_token_amount : nat;
+    block_ids : vec BlockIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+type AddLiquidityResult = variant { Ok : AddLiquidityReply; Err : text };
+type AddLiquidityAsyncResult = variant { Ok : nat64; Err : text };
+
+type RemoveLiquidityAmountsReply = record {
+    symbol : text;
+    chain0 : text;
+    symbol0 : text;
+    amount0 : nat;
+    lp_fee0 : nat;
+    chain1 : text;
+    symbol1 : text;
+    amount1 : nat;
+    lp_fee1 : nat;
+    remove_lp_token_amount : nat;
+};
+type RemoveLiquidityAmountsResult = variant { Ok : RemoveLiquidityAmountsReply; Err : text };
+
+type RemoveLiquidityArgs = record {
+    token0 : text;
+    token1 : text;
+    remove_lp_token_amount : nat;
+};
+type RemoveLiquidityReply = record {
+    tx_id : nat64;
+    symbol : text;
+    request_id : nat64;
+    status : text;
+    chain0 : text;
+    symbol0 : text;
+    amount0 : nat;
+    lp_fee0 : nat;
+    chain1 : text;
+    symbol1 : text;
+    amount1 : nat;
+    lp_fee1 : nat;
+    remove_lp_token_amount : nat;
+    block_ids : vec BlockIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+type RemoveLiquidityResult = variant { Ok : RemoveLiquidityReply; Err : text };
+type RemoveLiquidityAsyncResult = variant { Ok : nat64; Err : text };
+
+type SwapAmountsTxReply = record {
+    pool_symbol : text;
+    pay_chain : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    price : float64;
+    lp_fee : nat;
+    gas_fee : nat;
+};
+type SwapAmountsReply = record {
+    pay_chain : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    mid_price : float64;    
+    price : float64;
+    slippage : float64;
+    txs : vec SwapAmountsTxReply;    
+};
+type SwapAmountsResult = variant { Ok : SwapAmountsReply; Err : text };
+
+type SwapArgs = record {
+    pay_token : text;
+    pay_amount : nat;
+    pay_block_id : opt nat;
+    receive_token : text;
+    receive_amount : opt nat;
+    receive_address : opt text;
+    max_slippage : opt float32;
+    referred_by : opt text;
+};
+type SwapTxReply = record {
+    pool_symbol : text;
+    pay_chain : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    price : float64;
+    lp_fee : nat;
+    gas_fee : nat;
+    ts : nat64;
+};
+type SwapReply = record {
+    tx_id : nat64;
+    request_id : nat64;
+    status : text;
+    pay_chain : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    mid_price : float64;
+    price : float64;
+    slippage : float64;    
+    txs : vec SwapTxReply;
+    block_ids : vec BlockIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+type SwapResult = variant { Ok : SwapReply; Err : text };
+type SwapAsyncResult = variant { Ok : nat64; Err : text };
+
+type ClaimsReply = record {
+    claim_id : nat64;
+    status : text;
+    chain : text;
+    symbol : text;
+    amount : nat;
+    to_address : text;
+    request_id : opt nat64;
+    attempts_request_id : vec nat64;
+    block_ids : vec BlockIdReply;
+    ts : nat64;
+};
+type ClaimsResult = variant { Ok : vec ClaimsReply; Err : text };
+
+type ClaimReply = record {
+    claim_id : nat64;
+    status : text;
+    chain : text;
+    symbol : text;
+    amount : nat;
+    fee : nat;
+    to_address : text;
+    block_ids: vec BlockIdReply;
+    ts : nat64;
+};
+type ClaimResult = variant { Ok : ClaimReply; Err : text };
+
+service : {
+    icrc1_name : () -> (text) query;
+    version : () -> (text) query;
+    whoami : () -> (text) query;
+    get_user : () -> (UserResult) query;
+    create_user : (opt text) -> (UserResult);
+	user_balances : (opt text) -> (UserBalancesResult);
+    tokens : (opt text) -> (TokensResult) query;
+    pools : (opt text) -> (PoolsResult) query;
+    txs : (opt bool) -> (TxsResult) query;
+    requests : (opt nat64) -> (RequestsResult) query;
+    add_pool : (AddPoolArgs) -> (AddPoolResult);
+    add_liquidity : (AddLiquidityArgs) -> (AddLiquidityResult);
+    add_liquidity_async : (AddLiquidityArgs) -> (AddLiquidityAsyncResult);
+    add_liquidity_amounts : (text, nat, text) -> (AddLiquiditAmountsResult) query;
+    remove_liquidity : (RemoveLiquidityArgs) -> (RemoveLiquidityResult);
+    remove_liquidity_async : (RemoveLiquidityArgs) -> (RemoveLiquidityAsyncResult);
+    remove_liquidity_amounts : (text, text, nat) -> (RemoveLiquidityAmountsResult) query;
+    swap_amounts : (text, nat, text) -> (SwapAmountsResult) query;
+    swap : (SwapArgs) -> (SwapResult);
+    swap_async : (SwapArgs) -> (SwapAsyncResult);
+    claims : (opt nat64) -> (ClaimsResult) query;
+    claim : (nat64) -> (ClaimResult);
+}
