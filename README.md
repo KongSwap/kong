@@ -2,5 +2,5 @@
 
 Directory structure:
 
-rsKong - rust sdk with example bot
-script - dfx scripts for all the api interface
+rsKong - rust sdk with example bot<br />
+scripts - dfx scripts for all the api interface
