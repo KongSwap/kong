@@ -8,6 +8,7 @@ TOKEN_CHAIN="IC"
 TOKEN_CANISTER_ID="ryjl3-tyaaa-aaaaa-aaaba-cai" # canister id of TOKEN
 TOKEN_CKUSDT_PRICE=7.50         # price of TOKEN against 1 ckUSDT
 TOKEN_AMOUNT=500_000_000_000    # amount of TOKEN to add to pool
+LP_FEE_BPS=30                   # liquidity provider fee in basis points 30=0.3%
 
 # ckUSDT
 CKUSDT_SYMBOL="ckUSDT"
@@ -52,4 +53,5 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool "(record {
     amount0 = ${TOKEN_AMOUNT};
     token1 = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
     amount1 = ${CKUSDT_AMOUNT};
+    lp_fee_bps = ${LP_FEE_BPS};
 })"
