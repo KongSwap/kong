@@ -1,0 +1,18 @@
+[package]
+name = "kong_sdk"
+version = "0.0.8"
+edition = "2021"
+description = "Kong Swap SDK"
+
+[dependencies]
+anyhow = "1.0.89"
+candid = "0.10.10"
+ic-agent = "0.38.1"
+icrc-ledger-types = "0.1.6"
+ring = "0.17.8"
+tokio = { version = "1.40.0", features = ["full"] }
+serde = "1.0.210"
+serde_json = "1.0.128"
+num = "0.4.3"
+num-traits = "0.2.19"
+rand = "0.8.5"

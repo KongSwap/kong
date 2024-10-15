@@ -1,0 +1,20 @@
+[package]
+name = "kong_faucet"
+version = "0.0.8"
+edition = "2021"
+description = "Kong Swap faucet canister"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+candid = "0.10.10"
+futures = "0.3.30"
+ic-cdk = "0.16.0"
+ic-stable-structures = "0.6.5"
+ic-ledger-types = "0.13.0"
+icrc-ledger-types = "0.1.6"
+serde = "1.0.210"
+serde_json = "1.0.128"

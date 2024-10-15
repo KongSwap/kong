@@ -1,0 +1,128 @@
+use candid::{CandidType, Nat};
+use serde::{Deserialize, Serialize};
+
+use crate::helpers::nat_helpers::{nat_add, nat_zero};
+use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_pool::stable_pool::StablePool;
+use crate::stable_token::token::Token;
+use crate::stable_token::token_map;
+
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
+pub struct PoolsReply {
+    pub pools: Vec<PoolReply>,
+    pub total_tvl: Nat,
+    pub total_24h_volume: Nat,
+    pub total_24h_lp_fee: Nat,
+    pub total_24h_num_swaps: Nat,
+}
+
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
+pub struct PoolReply {
+    pub pool_id: u32,
+    pub name: String,
+    pub symbol: String,
+    pub balance: Nat,
+    pub chain_0: String,
+    pub symbol_0: String,
+    pub address_0: String,
+    pub balance_0: Nat,
+    pub lp_fee_0: Nat,
+    pub chain_1: String,
+    pub symbol_1: String,
+    pub address_1: String,
+    pub balance_1: Nat,
+    pub lp_fee_1: Nat,
+    pub price: f64,
+    pub lp_fee_bps: u8,
+    pub on_kong: bool,
+    pub rolling_24h_volume: Nat,
+    pub rolling_24h_lp_fee: Nat,
+    pub rolling_24h_num_swaps: Nat,
+    pub rolling_24h_apy: f64,
+    pub total_volume: Nat,
+    pub total_lp_fee: Nat,
+    pub lp_token_symbol: String,
+    pub lp_token_supply: Nat,
+}
+
+pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
+    let token_0 = token_map::get_by_token_id(pool.token_id_0);
+    let token_1 = token_map::get_by_token_id(pool.token_id_1);
+    let lp_token = pool.lp_token();
+    let lp_token_symbol = lp_token.symbol().to_string();
+    let lp_token_id = lp_token.token_id();
+    let lp_token_supply = lp_token_ledger::get_total_supply(lp_token_id);
+
+    PoolReply {
+        pool_id: pool.pool_id,
+        name: pool.name(),
+        symbol: pool.symbol(),
+        balance: pool.get_balance(),
+        chain_0: match &token_0 {
+            Some(token) => token.chain().to_string(),
+            None => "Chain_0 not found".to_string(),
+        },
+        symbol_0: match &token_0 {
+            Some(token) => token.symbol().to_string(),
+            None => "Symbol_0 not found".to_string(),
+        },
+        address_0: match &token_0 {
+            Some(token) => token.address().to_string(),
+            None => "Address_0 not found".to_string(),
+        },
+        balance_0: pool.balance_0.clone(),
+        lp_fee_0: pool.lp_fee_0.clone(),
+        chain_1: match &token_1 {
+            Some(token) => token.chain().to_string(),
+            None => "Chain_1 not found".to_string(),
+        },
+        symbol_1: match &token_1 {
+            Some(token) => token.symbol().to_string(),
+            None => "Symbol_1 not found".to_string(),
+        },
+        address_1: match &token_1 {
+            Some(token) => token.address().to_string(),
+            None => "Address_1 not found".to_string(),
+        },
+        balance_1: pool.balance_1.clone(),
+        lp_fee_1: pool.lp_fee_1.clone(),
+        price: pool.get_price_as_f64().unwrap_or(0_f64),
+        lp_fee_bps: pool.lp_fee_bps,
+        /*
+        rolling_24h_volume: nat_zero(),
+        rolling_24h_lp_fee: nat_zero(),
+        rolling_24h_num_swaps: nat_zero(),
+        rolling_24h_apy: 0_f64,
+        */
+        rolling_24h_volume: pool.rolling_24h_volume.clone(),
+        rolling_24h_lp_fee: pool.rolling_24h_lp_fee.clone(),
+        rolling_24h_num_swaps: pool.rolling_24h_num_swaps.clone(),
+        rolling_24h_apy: pool.rolling_24h_apy,
+        lp_token_symbol,
+        lp_token_supply,
+        total_volume: pool.total_volume.clone(),
+        total_lp_fee: pool.total_lp_fee.clone(),
+        on_kong: pool.on_kong,
+    }
+}
+
+pub fn to_pools_reply(pools: Vec<PoolReply>) -> PoolsReply {
+    let (total_tvl, total_24h_volume, total_24h_lp_fee, total_24h_num_swaps) = pools.iter().fold(
+        (nat_zero(), nat_zero(), nat_zero(), nat_zero()),
+        |acc, pool| -> (Nat, Nat, Nat, Nat) {
+            (
+                nat_add(&acc.0, &pool.balance),
+                nat_add(&acc.1, &pool.rolling_24h_volume),
+                nat_add(&acc.2, &pool.rolling_24h_lp_fee),
+                nat_add(&acc.3, &pool.rolling_24h_num_swaps),
+            )
+        },
+    );
+    PoolsReply {
+        pools,
+        total_tvl,
+        total_24h_volume,
+        total_24h_lp_fee,
+        total_24h_num_swaps,
+    }
+}

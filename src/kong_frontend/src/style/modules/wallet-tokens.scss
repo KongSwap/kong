@@ -1,0 +1,159 @@
+.tokenwallet-filter-wrapper {
+    margin-top: pxrm(16);
+    display: flex;
+}
+.tokenwallet-filter {
+    display: flex;
+    gap: pxrm(4);
+    color: var(--c-black);
+    cursor: pointer;
+    &:hover {
+        color: var(--c-white);
+    }
+}
+.tokenwallet-filter-checkbox {
+    width: pxrm(24);
+    height: pxrm(16);
+    border-radius: pxrm(16);
+    border: pxrm(2) solid var(--c-black);
+    position: relative;
+    &:before {
+        display: block;
+        content: '';
+        width: pxrm(12);
+        height: pxrm(12);
+        background-color: var(--c-black);
+        border-radius: 50%;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+}
+.tokenwallet-filter.active {
+    .tokenwallet-filter-checkbox {
+        background-color: var(--c-second-1);
+        border-color: var(--c-white);
+        &:before {
+            background-color: var(--c-white);
+            position: absolute;
+            top: 0;
+            left: unset;
+            right: 0;
+        }
+    }
+}
+
+.tokenwallet-table-head {
+    display: flex;
+    align-items: center;
+    font-size: pxrm(20);
+    font-style: normal;
+    border-bottom: pxrm(1) solid var(--c-second-2);
+    background: var(--c-second-3);
+    height: pxrm(36);
+    margin: pxrm(16) pxrm(-14) 0;
+    padding: 0 pxrm(14);
+    flex-shrink: 0;
+    &__itemtokens {
+        flex-basis: 25%;
+    }
+    &__itemprice {
+        flex-basis: 30%;
+        text-align: right;
+    }
+    &__itemamount {
+        margin-left: auto;
+    }
+}
+
+
+
+.tokenwallet-table-container {
+    margin: 0 pxrm(-14);
+    min-height: 0;
+    overflow: auto;
+    color: #FFF;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: pxrm(3);
+}
+
+.tokenwallet-table-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.tokenwallet-table-item {
+    display: flex;
+    align-items: center;
+    padding: 0 pxrm(14);
+    height: pxrm(60);
+    border-bottom:  pxrm(0.1) solid var(--c-second-2);
+    &:hover {
+        background-color: var(--c-second-2);
+        cursor: pointer;
+    }
+}
+
+.tokenwallet-token-container {
+    display: flex;
+    align-items: center;
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    flex-basis: 25%; /* Adjust as necessary */
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(20);
+        line-height: pxrm(20);
+    }
+}
+
+.tokenwallet-token-logo {
+    width: pxrm(24);
+    height: auto;
+}
+
+.tokenwallet-token-name {
+    margin-left: pxrm(8);
+}
+
+.tokenwallet-token-price-container {
+    text-align: right;
+    flex-basis: 30%; /* Adjust as necessary */
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(20);
+        line-height: pxrm(20);
+    }
+}
+.tokenwallet-token-price {
+}
+.tokenwallet-token-amount {
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    word-break: break-all;
+    color: #fff;
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(20);
+        line-height: pxrm(20);
+    }
+}
+
+.tokenwallet-token-value {
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    text-align: right;
+    color: #368d00; /* Optional: to distinguish the USD value */
+}
+
+.tokenwallet-token-amount-container {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    margin-left: auto;
+    white-space: nowrap; /* Prevent line break */
+}

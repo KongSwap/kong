@@ -1,0 +1,69 @@
+
+
+
+.slip-fieldset {
+    width: 100%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: pxrm(11) pxrm(12); 
+    position: relative;
+    z-index: 1;
+    margin-top: pxrm(16);
+}
+.slip-tabs {
+    width: 63%;
+    display: flex;
+    gap: pxvw(6);
+}
+
+.slip-container-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--c-white);
+    opacity: .7;
+    border: none; /* Removes the default border */
+    font-size: pxrm(42);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(42);
+    outline: none;
+    z-index: -1;
+    padding-top: pxrm(11);
+    padding-bottom: pxrm(11);
+    padding-left: calc(45% + pxrm(12));
+    padding-right: pxrm(45);
+    background-color: var(--c-second-1);
+    border-radius: pxrm(10);
+    text-align: right;
+    &.active {
+        opacity: 1;
+    }
+}
+
+.slip-container-input:focus {
+    opacity: 1;
+}
+.slip-container-input-um {
+    position: absolute;
+    top: 0;
+    right: pxrm(20);
+    height: 100%;
+    color: var(--c-white);
+    border: none; /* Removes the default border */
+    font-size: pxrm(42);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(42);
+    padding-top: pxrm(11);
+    padding-bottom: pxrm(11);
+    font-style: italic;
+}
+.slip-description {
+    display: block;
+    margin-top: pxrm(16);
+    font-size: pxrm(20px);
+}

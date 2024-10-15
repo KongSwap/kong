@@ -1,0 +1,80 @@
+
+.panel-s-green-main {
+    position: relative;
+    padding: pxrm(14);
+    color: var(--c-black);
+    font-size: pxrm(16);
+    &__content {
+        position: relative;
+        background-color: var(--c-second-2);
+        color: var(--c-black);
+        border-left: pxrm(2) solid black;
+        border-right: pxrm(2) solid black;
+        min-height: pxrm(14);
+        width: calc(100% + pxrm(14) + pxrm(14));
+        margin: pxrm(-1) pxrm(-14);
+        padding: pxrm(1) pxrm(14);
+    }
+    &__tl {
+        width: pxrm(30);
+        height: pxrm(14);
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-image: url('../../assets/pxcomponents/panel-s-green-tl.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__tr {
+        width: pxrm(30);
+        height: pxrm(14);
+        position: absolute;
+        top: 0;
+        right: 0;
+        background-image: url('../../assets/pxcomponents/panel-s-green-tr.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__tm {
+        width: calc(100% - pxrm(28) - pxrm(28));
+        height: pxrm(14);
+        position: absolute;
+        top: 0;
+        left: pxrm(28);
+        background-image: url('../../assets/pxcomponents/panel-s-green-tm.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+
+    &__bl {
+        width: pxrm(30);
+        height: pxrm(14);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        background-image: url('../../assets/pxcomponents/panel-s-green-bl.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__br {
+        width: pxrm(30);
+        height: pxrm(14);
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background-image: url('../../assets/pxcomponents/panel-s-green-br.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__bm {
+        width: calc(100% - pxrm(28) - pxrm(28));
+        height: pxrm(14);
+        position: absolute;
+        bottom: 0;
+        left: pxrm(28);
+        background-image: url('../../assets/pxcomponents/panel-s-green-bm.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+
+}

@@ -1,0 +1,381 @@
+
+
+
+.swap-outter-tabs {
+    display: flex;
+    gap: pxvw(14);
+}
+.tab-settings {
+    display: flex;
+    opacity: 1;
+    margin-left: auto;
+    cursor: pointer;
+    .tab-set-icon {
+        width: pxrm(40);
+        height: auto;
+        fill: var(--c-second-2);
+    }
+    &:hover {
+        .tab-set-icon {
+            fill: var(--c-second-3);
+        }
+    }
+}
+
+.SwapInterface {
+    width: 100%;
+    position: relative;
+}
+
+.swap-interface-undertabs {
+    margin-top: pxrm(10);
+}
+
+.panel-green-main--swapinput {
+    
+}
+
+.swap-container {
+    margin: pxrm(-20);
+    width: calc(100% + pxrm(20) + pxrm(20));
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: pxrm(20) pxrm(22) pxrm(10);
+    position: relative;
+    z-index: 1;
+    min-height: pxrm(186);
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        padding-left: pxvw(22);
+        padding-right: pxvw(22);
+    }
+}
+
+.swap-container--you-receive {
+    
+}
+
+.swap-container--address {
+    margin-top: pxrm(3);
+}
+
+.swap-container-label {
+    font-size: pxrm(32);
+    font-style: normal;
+    font-weight: 700;
+    line-height: pxrm(20); /* 166.667% */
+    flex: none; /* Prevents label from growing */
+    pointer-events: none;
+    margin-top: pxrm(8);
+    margin-bottom: pxrm(8);
+    color: var(--c-white);
+}
+.swap-container-items {
+    display: flex;
+    pointer-events: none;
+}
+.swap-container-left {
+    width: 57%;
+    display: flex;
+    flex-direction: column;
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        width: 63%;
+    }
+}
+.swap-container-inputholder {
+    display: block;
+    width: 100%;
+    height: pxrm(63);
+}
+.swap-container-inputholder-value {
+    font-size: pxrm(20);
+    margin-top: pxrm(10);
+    font-style: normal;
+    flex: none; /* Prevents label from growing */
+}
+.swap-container-right {
+    width: 43%;
+    display: flex;
+    flex-direction: column;
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        width: 37%;
+    }
+}
+
+.swap-under-select {
+    font-size: pxrm(20);
+    margin-top: pxrm(10);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    pointer-events: auto;
+}
+.swap-container-selectedtoken-value {
+    text-align: right;
+}
+.swap-container-max {
+    color: var(--c-yellow-3);
+    padding: pxrm(6) 0;
+    cursor: pointer;
+    &:hover {
+        color: var(--c-white);
+    }
+}
+
+/* You might want to add focus and hover styles for better user experience */
+.currency-select:focus {
+    outline: none; /* Customize focus outline or border as needed */
+}
+
+.currency-select:hover {
+    /* Optional hover styles */
+}
+.swap-under-select {
+    display: flex;
+}
+.swap-container-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--c-white);
+    opacity: .7;
+    background-color: transparent;
+    border: none;
+    font-size: pxrm(54);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(48);
+    outline: none;
+    z-index: -1;
+    padding-top: pxrm(50);
+    padding-bottom: pxrm(50);
+    padding-right: calc(37% + pxrm(2));
+    padding-left: pxrm(22);
+    @media (min-aspect-ratio: 8 / 7) {
+        padding-right: calc(37% + pxvw(22));
+        padding-left: pxvw(22);
+    }
+    &.active {
+        opacity: 1;
+    }
+}
+
+.swap-container-input-skeleton {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--c-white);
+    opacity: .7;
+    background-color: transparent;
+    border: none;
+    font-size: pxrm(54);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(48);
+    outline: none;
+    z-index: -1;
+    padding-top: pxrm(50);
+    padding-bottom: pxrm(50);
+    padding-right: calc(37% + pxrm(2));
+    padding-left: pxrm(22);
+    @media (min-aspect-ratio: 8 / 7) {
+        padding-right: calc(37% + pxvw(22));
+        padding-left: pxvw(22);
+    }
+    &.active {
+        opacity: 1;
+    }
+}
+
+.swap-container--you-pay .swap-container-input {
+    padding-bottom: pxrm(66);
+}
+.swap-container-input:focus {
+    opacity: 1;
+}
+
+
+
+.swap-container-input--address {
+    padding-right: pxrm(25);
+}
+
+
+.icon-container {
+    width: 100%;
+    margin-top: pxrm(-25);
+    margin-bottom: pxrm(-25);
+    z-index: 2;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.swap-icon-separator {
+    display: flex;
+    width: pxrm(55);
+    height: auto;
+    pointer-events: auto;
+    cursor: pointer;
+    fill: var(--c-second-2);
+    &:hover {
+        fill: var(--c-second-3);
+    }
+}
+
+/* For Webkit-based browsers */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* For Firefox */
+input[type='number'] {
+    -moz-appearance: textfield;
+}
+
+/* For all browsers (future-proofing) */
+input[type='number'] {
+    appearance: textfield;
+}
+
+.swap-button-container {
+    margin-top: pxrm(4);
+    width: 100%;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: pxrm(10);
+}
+
+// .swap-button {
+//     width: pxrm(418);
+//     height: pxrm(50);
+//     background: #B67B65; /* Assuming you want the same background color as the input fields */
+//     border-radius: pxrm(8);
+//     color: #FFF;
+//     font-family: "astounder-squared-bb", sans-serif;
+//     font-size: pxrm(42); /* Adjusted to fit the button height, original pxrm(48) seems too large */
+//     font-style: normal;
+//     font-weight: 400;
+//     line-height: pxrm(50); /* Match the button height for vertical centering */
+//     border: none; /* Remove button border */
+//     cursor: pointer; /* Change cursor to pointer on hover */
+//     outline: none; /* Remove outline to keep the design clean */
+//     text-align: center; /* Ensure text is centered */
+//     -webkit-appearance: none; /* Remove default styles in Webkit browsers */
+//     appearance: none; /* Remove default styles */
+//     text-shadow: 0 pxrm(4) pxrm(4) rgba(0, 0, 0, 0.25);
+// }
+
+.buttonbig-yellow--swap {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Optional: Style for hover state */
+.swap-button:hover {
+    background-color: #d09d7b; /* Darker shade for hover, adjust as needed */
+}
+
+/* Optional: Style for focus state */
+.swap-button:focus {
+    border: pxrm(2) solid #FFF; /* Add focus border, adjust as needed */
+}
+
+
+.new-action-container {
+    display: flex;
+    margin-top: pxrm(10);
+}
+.new-action-button {
+    cursor: pointer;
+    color: #E3C6AD;
+    text-shadow: pxrm(-1) pxrm(-1) 0 #135E46 pxrm(1) pxrm(-1) 0 #135E46,pxrm(-1) pxrm(1) 0 #135E46 pxrm(1) pxrm(1) 0 #135E46;
+    font-size: pxrm(12);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(20); /* 166.667% */
+}
+
+.ss-address-container {
+    margin-top: pxrm(5);
+    padding: pxrm(8) pxrm(26);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: pxrm(7);
+    background: #73A788;
+}
+.ss-label {
+    width: pxrm(60);
+    color: #E3C6AD;
+    text-shadow: 0 pxrm(4) pxrm(4) rgba(0, 0, 0, 0.25);
+    font-size: pxrm(16);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(18); /* 112.5% */
+}
+.ss-address {
+    color: #FFF;
+    text-align: center;
+    text-shadow: 0 pxrm(4) pxrm(4) rgba(0, 0, 0, 0.25);
+    font-size: pxrm(24);
+    font-style: normal;
+    font-weight: 400;
+    line-height: pxrm(20);
+}
+
+.buttonmed-yellow--customselect2 {
+    pointer-events: auto;
+    font-size: pxrm(20);
+    margin-top: pxrm(12); // 1/2 * 78 - 53
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(20);
+    }
+    .buttonmed-yellow__icon {
+        width: 1em;
+        height: 1em;
+        font-size: pxrm(18);
+        margin-left: pxrm(-2);
+        margin-right: pxrm(6);
+        @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+            font-size: pxrm(24);
+        }
+    }
+}
+.button-yellow--customselect2 {
+    pointer-events: auto;
+    font-size: pxrm(18);
+    margin-top: pxrm(12.5); // 1/2 * 78 - 53
+    .button-yellow__icon {
+        width: 1em;
+        height: 1em;
+        font-size: pxrm(24);
+        margin-left: pxrm(-6);
+        margin-right: pxrm(6);
+    }
+}
+.custom-select-2-arrow {
+    display: block;
+    width: 1em;
+    height: 1em;
+    font-size: pxrm(18);
+    fill: currentColor;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+
+.pixelated-text {
+    font-family: "lores-12-narrow", sans-serif;
+    font-size: pxrm(18);
+    color: red;
+  }

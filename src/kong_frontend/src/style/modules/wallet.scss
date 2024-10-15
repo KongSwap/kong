@@ -1,0 +1,263 @@
+.panel-green-second--forwallet {
+    .panel-green-second__content {
+        @media (min-aspect-ratio: 2/3) {
+            display: flex;
+            flex-direction: column;
+            max-height: pxvh(600);
+            // overflow: auto;
+        }
+    }
+}
+
+.wallet {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: pxrm(370);
+}
+.wallet-head {
+    display: flex;
+    align-items: center;
+    background-color: var(--c-second-3);
+    @media (min-aspect-ratio: 2/3) {
+        // position: sticky;
+        // top: pxrm(-24);
+        // padding-top: pxrm(20);
+        // margin-top: pxrm(-20);
+        z-index: 1;
+    }
+
+}
+.wallet-headlabel {
+    margin-right: pxrm(8);
+    font-size: pxrm(20);
+    font-style: normal;
+    line-height: pxrm(22);
+}
+.wallet-address-wrapper {
+    position: relative;
+    min-width: 0;
+    flex-grow: 1;
+}
+.wallet-address-input {
+    border-radius: pxrm(8);
+    background: var(--c-second-2);
+    line-height: pxrm(36);
+    color: var(--c-white);
+    font-size: pxrm(16);
+    font-style: normal;
+    border: none;
+    outline: none;
+    padding: 0 pxrm(42) 0 pxrm(16);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.copy-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: pxrm(42);
+    height: pxrm(36);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    svg {
+        width: pxrm(16);
+        height: auto;
+    }
+}
+.wallet-tabs {
+    display: flex;
+    gap: pxvw(14);
+    margin-top: pxrm(16);
+}
+
+.wallet-table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: pxrm(20);
+    font-style: normal;
+    border-bottom: pxrm(1) solid var(--c-second-2);
+    height: pxrm(42);
+    margin: pxrm(16) pxrm(-14) 0;
+    padding: 0 pxrm(14);
+    // position: sticky;
+    // top: pxrm(30);
+}
+
+.wallet-table-head span {
+    flex-basis: 20%; /* Match the flex-basis of token-name */
+}
+
+.wallet-table-head span:nth-child(2) {
+    flex-basis: 0%; /* Match the flex-basis of token-price */
+}
+
+.wallet-table-head span:nth-child(3) {
+    flex-basis: 0%; /* Match the flex-basis of token-amount-container */
+}
+
+.wallet-table-container {
+    margin: 0 pxrm(-14);
+    min-height: 0;
+    overflow: auto;
+    color: #FFF;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: pxrm(3);
+}
+
+.wallet-table-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.wallet-table-item {
+    display: flex;
+    align-items: center;
+    padding: 0 pxrm(14);
+    height: pxrm(60);
+    border-bottom:  pxrm(0.1) solid var(--c-second-2);
+    &:hover {
+        background-color: var(--c-second-2);
+        cursor: pointer;
+    }
+}
+
+.no-pools {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: var(--c-white);
+    font-size: pxrm(24);
+    font-style: normal;
+    line-height: pxrm(36);
+    margin-top: pxrm(20);
+}
+
+.wallet-token-logo {
+    width: pxrm(24);
+    height: auto;
+}
+
+.wallet-token-name {
+    margin-left: pxrm(8);
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    flex-basis: 20%; /* Adjust as necessary */
+}
+
+.wallet-token-price {
+    margin-left: auto;
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    text-align: right;
+    flex-basis: 25%; /* Adjust as necessary */
+}
+.wallet-token-amount {
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    word-break: break-all;
+    color: #fff;
+}
+
+.wallet-token-value {
+    font-size: pxrm(16);
+    font-style: normal;
+    line-height: pxrm(20);
+    text-align: right;
+    color: #368d00; /* Optional: to distinguish the USD value */
+}
+
+.wallet-token-logo-primary {
+    position: relative;
+    z-index: 1;
+}
+
+.wallet-token-logo-secondary {
+    margin-left: pxrm(-12);
+}
+
+
+.wallet-token-controls-for-pools {
+    display: flex;
+    // flex-grow: 1;
+    flex-direction: column;
+    align-items: end;
+    margin-left: pxrm(2);
+}
+
+.wallet-token-control {
+    display: flex;
+    align-items: center;
+    font-size: pxrm(12);
+    min-height: pxrm(22);
+    text-align: end;
+    color: var(--c-white);
+    cursor: pointer;
+    border-radius: pxrm(10);
+    padding: 0 pxrm(6);
+    &:hover {
+        background-color: var(--c-second-1);
+    }
+    svg {
+        width: pxrm(12);
+        height: auto;
+    }
+}
+
+
+
+.wallet-token-name-for-pools {
+    margin-left: pxrm(6);
+    font-size: pxrm(16);
+    line-height: pxrm(16);
+    white-space: nowrap; /* Prevent wrapping */
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(20);
+        line-height: pxrm(20);
+    }
+}
+
+.wallet-token-amount-container {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    margin-left: auto;
+    white-space: nowrap; /* Prevent line break */
+}
+
+.wallet-token-amount-small {
+    font-size: pxrm(14); /* Smaller font size */
+    color: var(--c-white);
+    opacity: 0.8; /* Optional: To make it look distinct */
+    line-height: pxrm(16);
+    white-space: nowrap; /* Prevent wrapping */
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(16);
+        line-height: pxrm(16);
+    }
+}
+
+.wallet-token-amount-highlight {
+    font-size: pxrm(16);
+    color: var(--highlight-color); /* Apply a highlighted color */
+    white-space: nowrap; /* Prevent wrapping */
+    @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
+        font-size: pxrm(20);
+        line-height: pxrm(20);
+    }
+}
+
+.wallet-token-logos-2 {
+    display: flex;
+    align-items: center;
+    margin-bottom: pxrm(4); /* Adjust spacing between LP name and tokens */
+}

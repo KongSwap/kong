@@ -1,0 +1,32 @@
+[package]
+name = "kong_backend"
+version = "0.0.8"
+edition = "2021"
+description = "Kong Swap backend canister"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+prod = []
+
+[dependencies]
+candid = "0.10.10"
+futures = "0.3.30"
+getrandom = { version = "0.2.15", features = ["custom"] }
+ic-cdk = "0.16.0"
+ic-cdk-timers = "0.10.0"
+ic-ledger-types = "0.13.0"
+ic-stable-structures = "0.6.5"
+icrc-ledger-types = "0.1.6"
+num = "0.4.3"
+num-bigint = "0.4.4"
+num-traits = "0.2.19"
+rand = "0.8.5"
+regex = "1.10.6"
+serde = "1.0.210"
+serde_bytes = "0.11.15"
+serde_json = "1.0.128"
+wildmatch = "2.4.0"
