@@ -1,12 +1,12 @@
-# KongSwap
+# 🦍 KongSwap
 
 Welcome to the KongSwap project. This document will guide you through setting up and running the project locally.
 
-## Project Directory Structure
+## 📁 Project Directory Structure
 
 To get started, explore the project directory structure to familiarize yourself with the components and scripts available.
 
-## Requirements
+## ✅ Requirements
 
 Ensure you have the following installed on your development environment:
 
@@ -16,7 +16,7 @@ Ensure you have the following installed on your development environment:
 4. **Dfinity CDK (dfx)**: Version 0.24.0
 5. **jq**: Command-line JSON processor
 
-## Running the Project Locally
+## 🚀 Running the Project Locally
 
 Follow these steps to set up and run the project:
 
@@ -67,7 +67,7 @@ The system is initially empty. You need to add tokens and liquidity pools. Modif
 ./deploy_tokens_pools.sh
 ```
 
-## Accessing the Frontend
+## 🔗 Accessing the Frontend
 
 Once everything is deployed and running, access the frontend at:
 
@@ -75,11 +75,11 @@ Once everything is deployed and running, access the frontend at:
 http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943/
 ```
 
-## Conclusion
+## 🎉 Conclusion
 
 After completing these steps, KongSwap should be fully operational. For further customization or troubleshooting, refer to the scripts and documentation within the project directory.
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Resetting the Project
 
@@ -107,6 +107,6 @@ If you encounter issues or need to reset the project, follow these steps:
    ./deploy_kong.sh
    ```
 
-### Error: Couldn't load Cargo.lock
+### ❌ Couldn't load Cargo.lock
 
 Run `cargo uninstall cargo-audit` and try again.
