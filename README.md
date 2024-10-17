@@ -2,6 +2,23 @@
 
 Welcome to the KongSwap project. This document will guide you through setting up and running the project locally.
 
+## 📚 Table of Contents
+
+- [🦍 KongSwap](#-kongswap)
+  - [📚 Table of Contents](#-table-of-contents)
+  - [📁 Project Directory Structure](#-project-directory-structure)
+  - [✅ Requirements](#-requirements)
+  - [🚀 Running the Project Locally](#-running-the-project-locally)
+    - [1. Start the Replica](#1-start-the-replica)
+    - [2. Create User Identities](#2-create-user-identities)
+    - [3. Deploy Canisters](#3-deploy-canisters)
+    - [4. Add Tokens and Liquidity Pools](#4-add-tokens-and-liquidity-pools)
+  - [🔗 Accessing the Frontend](#-accessing-the-frontend)
+  - [🎉 Conclusion](#-conclusion)
+  - [🐛 Troubleshooting](#-troubleshooting)
+    - [Resetting the Project](#resetting-the-project)
+    - [❌ Couldn't load Cargo.lock](#-couldnt-load-cargolock)
+
 ## 📁 Project Directory Structure
 
 To get started, explore the project directory structure to familiarize yourself with the components and scripts available.
