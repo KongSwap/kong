@@ -156,7 +156,7 @@
     @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
         display: flex;
         align-self: end;
-        margin-bottom: pxvw(90);
+        margin-bottom: pxvw(190);
         position: relative;
         width: pxvw(500);
         height: pxrm(550);
@@ -166,25 +166,31 @@
         margin-left: pxvw(24);
     }
 }
+
 .swap-page-kong-image {
     width: 100%;
     object-fit: contain;
     object-position: bottom right;
     transform: translateY(0);
-    animation: float 3s 10 alternate;
+    animation: jump 8s infinite;
 }
-@keyframes float {
-    0% {
+
+@keyframes jump {
+    0%, 4%, 12%, 20%, 100% {
         transform: translateY(0);
     }
-    100% {
-        transform: translateY(pxrm(20));
+    6%, 14%, 22% {
+        transform: translateY(pxrm(-40));
+    }
+    28%, 94% {
+        transform: translateY(0);
     }
 }
+
 .bubble--swappage-kong {
     position: absolute;
     right: pxvw(-50);
-    bottom: pxrm(460);
+    bottom: pxrm(420);
     @media (min-aspect-ratio: 16/9) and (min-width: 1800px) {
         bottom: pxrm(460);
     }
