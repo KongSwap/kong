@@ -1,6 +1,6 @@
-# Kong Swap
+# KongSwap
 
-Welcome to the Kong Swap project. This document will guide you through setting up and running the project locally.
+Welcome to the KongSwap project. This document will guide you through setting up and running the project locally.
 
 ## Project Directory Structure
 
@@ -77,7 +77,7 @@ http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943/
 
 ## Conclusion
 
-After completing these steps, Kong Swap should be fully operational. For further customization or troubleshooting, refer to the scripts and documentation within the project directory.
+After completing these steps, KongSwap should be fully operational. For further customization or troubleshooting, refer to the scripts and documentation within the project directory.
 
 ## Troubleshooting
 
