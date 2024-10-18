@@ -221,7 +221,7 @@
 }
 .stats-table-head-tvl {
     width: 20%;
-    text-align: right;
+    text-align: left;
 }
 .stats-table-head-totalvol {
     width: 18%;
@@ -229,14 +229,15 @@
 }
 .stats-table-head-apr {
     width: 15%;
-    text-align: right;
+    text-align: left;
 }
 .stats-table-head-price {
-    width: 15%;
-    text-align: right;
+    width: 18%;
+    text-align: left;
 }
 .stats-table-head-controls {
     width: 22%;
+    content: '';
 }
 
 .stats-table-body {
@@ -340,7 +341,7 @@
 .stats-table-cell-price {
     padding: 0 pxrm(5);
     @media (min-aspect-ratio: 2/3) { 
-        width: 15%;
+        width: 18%;
         padding: 0;
         text-align: right;
         justify-content: end;

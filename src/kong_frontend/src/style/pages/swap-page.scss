@@ -156,7 +156,7 @@
     @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
         display: flex;
         align-self: end;
-        margin-bottom: pxvw(174);
+        margin-bottom: 8.5rem;
         position: relative;
         width: pxvw(500);
         height: pxrm(550);
@@ -190,8 +190,8 @@
 .bubble--swappage-kong {
     position: absolute;
     right: pxvw(-50);
-    bottom: pxrm(420);
-    @media (min-aspect-ratio: 16/9) and (min-width: 1800px) {
+    bottom: pxrm(430);
+    @media (min-aspect-ratio: 16/9) and (min-width: 1200px) {
         bottom: pxrm(460);
     }
 }

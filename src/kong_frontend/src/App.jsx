@@ -28,7 +28,7 @@ import ReceiveComponent from "./components/ReceiveComponent";
 import Tippy from "@tippyjs/react";
 import FooterSocials from "./components/FooterSocials";
 import { defaultStateUser } from "./constants/defaultState";
-import GorilaText from "./components/GorilaText";
+import GorillaText from "./components/GorillaText";
 import { isEqual } from "lodash";
 import { tokenBalancesSelector } from "./constants/tokensConstants";
 import { tokenImages } from "./utils/tokenImageUtils";
@@ -661,6 +661,7 @@ const App = () => {
             smallerPrincipal={smallerPrincipal}
             changeDrawerContent={changeDrawerContent}
             tokenDetails={tokenDetails}
+            poolInfo={poolsInfo}
             sortedTokens={sortedTokens}
             tokenPrices={tokenPrices}
             tokenImages={tokenImages}
@@ -696,6 +697,7 @@ function MainPage({
   smallerPrincipal,
   changeDrawerContent,
   tokenDetails,
+  poolInfo,
   sortedTokens,
   tokenPrices,
   tokenImages,
@@ -1173,7 +1175,7 @@ function MainPage({
               </div>
             </div>
           </div>
-        <GorilaText />
+        <GorillaText tokenDetails={tokenDetails} poolInfo={poolInfo} />
           {/* <img src={kongImage} className="swap-page-kong-image-container" alt="" /> */}
         </section>
         {isSlippageModalOpen && (
