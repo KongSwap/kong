@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js';
 
-export function priceRoundedPool(poolPrice, amount) {
+export function priceRoundedPool(poolPrice: any, amount: any) {
   if (!amount) return amount; // Return the original amount if undefined or 0
 
   // Parse pool price to determine the number of decimals
@@ -28,7 +28,7 @@ export function priceRoundedPool(poolPrice, amount) {
   return formattedAmount;
 }
 
-export function priceRoundedAmount(poolPrice, amount) {
+export function priceRoundedAmount(poolPrice: any, amount: any) {
   if (!amount) return amount; // If amount is undefined or 0, return it directly
 
   let decimals = 0; // Default to 0 decimals if pool price isn't defined

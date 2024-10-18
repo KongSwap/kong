@@ -2,87 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import {
-  priceRoundedPool,
   priceRoundedAmount,
-} from "./utils/priceDecimalConvertor";
+} from "./utils/numberUtils";
 import bananaButtonShow from "../../assets/bananas-show.png";
 import bananaButtonHide from "../../assets/bananas-hide.png";
-import kongImage from "../../assets/kong.png";
-import tokenAdaImage from "../../assets/tokens/ADA.svg";
-import tokenArbImage from "../../assets/tokens/ARB.svg";
-import tokenAlpacalbImage from "../../assets/tokens/alpacalb.png";
-import tokenAvaxImage from "../../assets/tokens/AVAX.svg";
-import tokenBitsImage from "../../assets/tokens/bits.svg";
-import tokenBnbImage from "../../assets/tokens/BNB.svg";
-import tokenBobImage from "../../assets/tokens/bob.svg";
-import tokenBtcImage from "../../assets/tokens/BTC.svg";
-import tokenBurnImage from "../../assets/tokens/burn.png";
-import tokenCatImage from "../../assets/tokens/CAT.svg";
-import tokenChatImage from "../../assets/tokens/CHAT.svg";
-import tokenCkbtcImage from "../../assets/tokens/ckBTC.svg";
-import tokenCkethImage from "../../assets/tokens/ckETH.svg";
-import tokenCkusdcImage from "../../assets/tokens/ckUSDC.svg";
-import tokenCkusdtImage from "../../assets/tokens/ckUSDT.svg";
-import tokenClownImage from "../../assets/tokens/clown.svg";
-import tokenCsprImage from "../../assets/tokens/CSPR.svg";
-import tokenCtzImage from "../../assets/tokens/ctz.png";
-import tokenDamonicImage from "../../assets/tokens/damonic.svg";
-import tokenDecideAiImage from "../../assets/tokens/decideai.png";
-import tokenDittoImage from "../../assets/tokens/ditto.png";
-import tokenDkpImage from "../../assets/tokens/DKP.svg";
-import tokenDotImage from "../../assets/tokens/DOT.svg";
-import tokenDogmiImage from "../../assets/tokens/dogmi.png";
-import tokenDolrImage from "../../assets/tokens/dolr.png";
-import tokenElnaImage from "../../assets/tokens/elna.png";
-import tokenEstImage from "../../assets/tokens/est.png";
-import tokenEthImage from "../../assets/tokens/ETH.svg";
-import tokenExeImage from "../../assets/tokens/EXE.svg";
-import tokenFplImage from "../../assets/tokens/fpl.png";
-import tokenGhostImage from "../../assets/tokens/GHOST.svg";
-import tokenGlazeImage from "../../assets/tokens/glaze.png";
-import tokenGoldDaoImage from "../../assets/tokens/golddao.png";
-import tokenGrtImage from "../../assets/tokens/GRT.svg";
-import tokenHmfeeImage from "../../assets/tokens/hmfee.svg";
-import tokenHtcethImage from "../../assets/tokens/htcketh.svg";
-import tokenHtdnaImage from "../../assets/tokens/htDNA.svg";
-import tokenHtsns1Image from "../../assets/tokens/htSNS1.svg";
-import tokenIcpImage from "../../assets/tokens/ICP.svg";
-import tokenIcPumperImage from "../../assets/tokens/icpumper.png";
-import tokenIcvcImage from "../../assets/tokens/icvc.png";
-import tokenIdogeImage from "../../assets/tokens/idoge.png";
-import tokenKinicImage from "../../assets/tokens/kinic.png";
-import tokenKongImage from "../../assets/tokens/KONG.svg";
-import tokenLinkImage from "../../assets/tokens/LINK.svg";
-import tokenLtcImage from "../../assets/tokens/LTC.svg";
-import tokenMaticImage from "../../assets/tokens/MATIC.svg";
-import tokenMcsImage from "../../assets/tokens/mcs.svg";
-import tokenNanasImage from "../../assets/tokens/nanas.svg";
-import tokenNd64Image from "../../assets/tokens/nd64.svg";
-import tokenNicpImage from "../../assets/tokens/nicp.svg";
-import tokenNtnImage from "../../assets/tokens/ntn.png";
-import tokenOrigynImage from "../../assets/tokens/origyn.png";
-import tokenOwlImage from "../../assets/tokens/owl.png";
-import tokenPandaImage from "../../assets/tokens/panda.png";
-import tokenPartyImage from "../../assets/tokens/party.svg";
-import tokenPepeImage from "../../assets/tokens/PEPE.svg";
-import tokenShibImage from "../../assets/tokens/SHIB.svg";
-import tokenSneedImage from "../../assets/tokens/sneed.svg";
-import tokenSolImage from "../../assets/tokens/SOL.svg";
-import tokenTaggrImage from "../../assets/tokens/taggr.png";
-import tokenTendiesImage from "../../assets/tokens/tendies.png";
-import tokenTotalHoldingsImage from "../../assets/tokens/total-holdings.svg";
-import tokenTraxImage from "../../assets/tokens/trax.png";
-import tokenUniImage from "../../assets/tokens/UNI.svg";
-import tokenUsdcImage from "../../assets/tokens/USDC.svg";
-import tokenUsdtImage from "../../assets/tokens/USDT.svg";
-import tokenWbtcImage from "../../assets/tokens/WBTC.svg";
-import tokenWtnImage from "../../assets/tokens/wtn.svg";
-import tokenWumboImage from "../../assets/tokens/wumbo.svg";
-import tokenYugeImage from "../../assets/tokens/yuge.svg";
+
 import SwapComponent from "./components/SwapComponent";
 import { ToastContainer, toast } from "react-toastify";
 import Navigation, {
-  formatPoolName,
   extractParts,
 } from "./components/Navigation";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -94,7 +21,6 @@ import Modal from "./components/Modal";
 import { formatBalances, formatNumber } from "./utils/formatBalances";
 import {
   getActor as kong_backend,
-  getAuthActor as kong_backend_auth,
 } from "./lib/kong_backend";
 import useIdentity from "./components/useIdentity";
 import { FRONTEND_URL } from "./constants/config";
@@ -102,121 +28,14 @@ import ReceiveComponent from "./components/ReceiveComponent";
 import Tippy from "@tippyjs/react";
 import FooterSocials from "./components/FooterSocials";
 import { defaultStateUser } from "./constants/defaultState";
-import GorilaText from "./components/GorilaText";
+import GorillaText from "./components/GorillaText";
 import { isEqual } from "lodash";
-
-const tokenImages = {
-  ADA: tokenAdaImage,
-  ARB: tokenArbImage,
-  ALPACALB: tokenAlpacalbImage,
-  AVAX: tokenAvaxImage,
-  Bits: tokenBitsImage,
-  BNB: tokenBnbImage,
-  BOB: tokenBobImage,
-  BTC: tokenBtcImage,
-  BURN: tokenBurnImage,
-  CAT: tokenCatImage,
-  CHAT: tokenChatImage,
-  ckBTC: tokenCkbtcImage,
-  ckETH: tokenCkethImage,
-  ckUSDC: tokenCkusdcImage,
-  ckUSDT: tokenCkusdtImage,
-  CLOWN: tokenClownImage,
-  CSPR: tokenCsprImage,
-  CTZ: tokenCtzImage,
-  DAMONIC: tokenDamonicImage,
-  DCD: tokenDecideAiImage,
-  DITTO: tokenDittoImage,
-  DKP: tokenDkpImage,
-  DOT: tokenDotImage,
-  DOGMI: tokenDogmiImage,
-  DOLR: tokenDolrImage,
-  ELNA: tokenElnaImage,
-  EST: tokenEstImage,
-  ETH: tokenEthImage,
-  EXE: tokenExeImage,
-  FPL: tokenFplImage,
-  GHOST: tokenGhostImage,
-  GLAZE: tokenGlazeImage,
-  GLDGov: tokenGoldDaoImage,
-  GRT: tokenGrtImage,
-  HMFEE: tokenHmfeeImage,
-  HTCETH: tokenHtcethImage,
-  HTDNA: tokenHtdnaImage,
-  HTSNS1: tokenHtsns1Image,
-  ICP: tokenIcpImage,
-  ICPUMPER: tokenIcPumperImage,
-  ICVC: tokenIcvcImage,
-  IDOGE: tokenIdogeImage,
-  Kinic: tokenKinicImage,
-  KONG: tokenKongImage,
-  LINK: tokenLinkImage,
-  LTC: tokenLtcImage,
-  MATIC: tokenMaticImage,
-  MCS: tokenMcsImage,
-  nanas: tokenNanasImage,
-  ND64: tokenNd64Image,
-  nICP: tokenNicpImage,
-  NTN: tokenNtnImage,
-  OGY: tokenOrigynImage,
-  OWL: tokenOwlImage,
-  PANDA: tokenPandaImage,
-  PARTY: tokenPartyImage,
-  PEPE: tokenPepeImage,
-  SHIB: tokenShibImage,
-  SNEED: tokenSneedImage,
-  SOL: tokenSolImage,
-  TAGGR: tokenTaggrImage,
-  TENDIES: tokenTendiesImage,
-  TOTALHOLDINGS: tokenTotalHoldingsImage,
-  TRAX: tokenTraxImage,
-  UNI: tokenUniImage,
-  USDC: tokenUsdcImage,
-  USDT: tokenUsdtImage,
-  WBTC: tokenWbtcImage,
-  WTN: tokenWtnImage,
-  WUMBO: tokenWumboImage,
-  YUGE: tokenYugeImage,
-};
+import { tokenBalancesSelector } from "./constants/tokensConstants";
+import { tokenImages } from "./utils/tokenImageUtils";
+import { getSortedTokens } from "./utils/sortedTokens";
 
 const allowedViewTabs = ["swap", "pools", "send", "receive", "remove"];
-
-export const tokenBalancesSelector = {
-  ICP: "icpBalance",
-  ckBTC: "ckbtcBalance",
-  ckETH: "ckethBalance",
-  ckUSDC: "ckusdcBalance",
-  ckUSDT: "ckusdtBalance",
-  DKP: "dkpBalance",
-  Bits: "bitsBalance",
-  CHAT: "chatBalance",
-  nanas: "nanasBalance",
-  ND64: "nd64Balance",
-  WTN: "wtnBalance", // Include new tokens in balances selector
-  YUGE: "yugeBalance",
-  nICP: "nicpBalance",
-  ALPACALB: "alpacalbBalance",
-  PARTY: "partyBalance",
-  SNEED: "sneedBalance",
-  CLOWN: "clownBalance",
-  DAMONIC: "damonicBalance",
-  EXE: "exeBalance",
-  WUMBO: "wumboBalance",
-  MCS: "mcsBalance",
-  BOB: "bobBalance",
-  BURN: "burnBalance",
-  NTN: "ntnBalance",
-  DCD: "dcdBalance",
-  GLDGov: "gldgovBalance",
-  OWL: "owlBalance",
-  OGY: "ogyBalance",
-  FPL: "fplBalance",
-  DITTO: "dittoBalance",
-  ICVC: "icvcBalance",
-};
-
 const validTokens = Object.keys(tokenBalancesSelector);
-
 const defaultSlippage = 2;
 
 const App = () => {
@@ -294,7 +113,6 @@ const App = () => {
   });
   const [accountId, setAccountId] = useState(null);
   const previousPoolBalances = useRef([]);
-
   const smallerPrincipal = useMemo(() => {
     if (principal) {
       return extractParts(principal);
@@ -311,6 +129,7 @@ const App = () => {
     });
     return priceMap;
   }, [poolsInfo]);
+  const sortedTokens = useMemo(() => getSortedTokens(shownBalances, tokenPrices), [shownBalances, tokenPrices]);
 
   useEffect(() => {
     // validate route
@@ -747,432 +566,6 @@ const App = () => {
     }
   }, []);
 
-  const sortedTokens = useMemo(() => {
-    // Helper function to parse balance and return a BigNumber instance
-    const parseBalance = (balance) => {
-      if (!balance) return new BigNumber(0); // Return a BigNumber with value 0 if balance is invalid
-      try {
-        return new BigNumber(balance.toString().replace(/,/g, "")); // Remove commas and parse the balance
-      } catch (error) {
-        console.error("Error parsing balance:", balance, error);
-        return new BigNumber(0); // Return 0 in case of any parsing error
-      }
-    };
-
-    // Helper function to parse price and return a BigNumber instance
-    const parsePrice = (price) => {
-      if (!price) return new BigNumber(0); // Return a BigNumber with value 0 if price is invalid
-      try {
-        return new BigNumber(price); // Convert the price to BigNumber
-      } catch (error) {
-        console.error("Error parsing price:", price, error);
-        return new BigNumber(0); // Return 0 in case of any parsing error
-      }
-    };
-
-    return [
-      {
-        symbol: "ICP",
-        balance: shownBalances.icpBalance,
-        usdBalance: parseBalance(shownBalances.icpBalance)
-          .multipliedBy(parsePrice(tokenPrices["ICP_ckUSDT"]))
-          .toFixed(2), // Calculate USD balance with fixed 2 decimal places
-        image: tokenImages["ICP"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ICP_ckUSDT"],
-            tokenPrices["ICP_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ckBTC",
-        balance: shownBalances.ckbtcBalance,
-        usdBalance: parseBalance(shownBalances.ckbtcBalance)
-          .multipliedBy(parsePrice(tokenPrices["ckBTC_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["ckBTC"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ckBTC_ckUSDT"],
-            tokenPrices["ckBTC_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ckETH",
-        balance: shownBalances.ckethBalance,
-        usdBalance: parseBalance(shownBalances.ckethBalance)
-          .multipliedBy(parsePrice(tokenPrices["ckETH_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["ckETH"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ckETH_ckUSDT"],
-            tokenPrices["ckETH_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ckUSDC",
-        balance: shownBalances.ckusdcBalance,
-        usdBalance: parseBalance(shownBalances.ckusdcBalance)
-          .multipliedBy(parsePrice(tokenPrices["ckUSDC_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["ckUSDC"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ckUSDC_ckUSDT"],
-            tokenPrices["ckUSDC_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ckUSDT",
-        balance: shownBalances.ckusdtBalance,
-        usdBalance: parseBalance(shownBalances.ckusdtBalance)
-          .multipliedBy(1) // Assuming ckUSDT is always priced at 1 USD
-          .toFixed(2),
-        image: tokenImages["ckUSDT"],
-        price: "1.00",
-      },
-      {
-        symbol: "DKP",
-        balance: shownBalances.dkpBalance,
-        usdBalance: parseBalance(shownBalances.dkpBalance)
-          .multipliedBy(parsePrice(tokenPrices["DKP_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["DKP"],
-        price:
-          priceRoundedPool(
-            tokenPrices["DKP_ckUSDT"],
-            tokenPrices["DKP_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "Bits",
-        balance: shownBalances.bitsBalance,
-        usdBalance: parseBalance(shownBalances.bitsBalance)
-          .multipliedBy(parsePrice(tokenPrices["Bits_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["Bits"],
-        price:
-          priceRoundedPool(
-            tokenPrices["Bits_ckUSDT"],
-            tokenPrices["Bits_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "CHAT",
-        balance: shownBalances.chatBalance,
-        usdBalance: parseBalance(shownBalances.chatBalance)
-          .multipliedBy(parsePrice(tokenPrices["CHAT_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["CHAT"],
-        price:
-          priceRoundedPool(
-            tokenPrices["CHAT_ckUSDT"],
-            tokenPrices["CHAT_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "nanas",
-        balance: shownBalances.nanasBalance,
-        usdBalance: parseBalance(shownBalances.nanasBalance)
-          .multipliedBy(parsePrice(tokenPrices["nanas_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["nanas"],
-        price:
-          priceRoundedPool(
-            tokenPrices["nanas_ckUSDT"],
-            tokenPrices["nanas_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ND64",
-        balance: shownBalances.nd64Balance,
-        usdBalance: parseBalance(shownBalances.nd64Balance)
-          .multipliedBy(parsePrice(tokenPrices["ND64_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["ND64"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ND64_ckUSDT"],
-            tokenPrices["ND64_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "WTN",
-        balance: shownBalances.wtnBalance,
-        usdBalance: parseBalance(shownBalances.wtnBalance)
-          .multipliedBy(parsePrice(tokenPrices["WTN_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["WTN"],
-        price:
-          priceRoundedPool(
-            tokenPrices["WTN_ckUSDT"],
-            tokenPrices["WTN_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "YUGE",
-        balance: shownBalances.yugeBalance,
-        usdBalance: parseBalance(shownBalances.yugeBalance)
-          .multipliedBy(parsePrice(tokenPrices["YUGE_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["YUGE"],
-        price:
-          priceRoundedPool(
-            tokenPrices["YUGE_ckUSDT"],
-            tokenPrices["YUGE_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "nICP",
-        balance: shownBalances.nicpBalance,
-        usdBalance: parseBalance(shownBalances.nicpBalance)
-          .multipliedBy(parsePrice(tokenPrices["nICP_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["nICP"],
-        price:
-          priceRoundedPool(
-            tokenPrices["nICP_ckUSDT"],
-            tokenPrices["nICP_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ALPACALB",
-        balance: shownBalances.alpacalbBalance,
-        usdBalance: parseBalance(shownBalances.alpacalbBalance)
-          .multipliedBy(parsePrice(tokenPrices["ALPACALB_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["ALPACALB"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ALPACALB_ckUSDT"],
-            tokenPrices["ALPACALB_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "PARTY",
-        balance: shownBalances.partyBalance,
-        usdBalance: parseBalance(shownBalances.partyBalance)
-          .multipliedBy(parsePrice(tokenPrices["PARTY_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["PARTY"],
-        price:
-          priceRoundedPool(
-            tokenPrices["PARTY_ckUSDT"],
-            tokenPrices["PARTY_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "SNEED",
-        balance: shownBalances.sneedBalance,
-        usdBalance: parseBalance(shownBalances.sneedBalance)
-          .multipliedBy(parsePrice(tokenPrices["SNEED_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["SNEED"],
-        price:
-          priceRoundedPool(
-            tokenPrices["SNEED_ckUSDT"],
-            tokenPrices["SNEED_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "CLOWN",
-        balance: shownBalances.clownBalance,
-        usdBalance: parseBalance(shownBalances.clownBalance)
-          .multipliedBy(parsePrice(tokenPrices["CLOWN_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["CLOWN"],
-        price:
-          priceRoundedPool(
-            tokenPrices["CLOWN_ckUSDT"],
-            tokenPrices["CLOWN_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "DAMONIC",
-        balance: shownBalances.damonicBalance,
-        usdBalance: parseBalance(shownBalances.damonicBalance)
-          .multipliedBy(parsePrice(tokenPrices["DAMONIC_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["DAMONIC"],
-        price:
-          priceRoundedPool(
-            tokenPrices["DAMONIC_ckUSDT"],
-            tokenPrices["DAMONIC_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "EXE",
-        balance: shownBalances.exeBalance,
-        usdBalance: parseBalance(shownBalances.exeBalance)
-          .multipliedBy(parsePrice(tokenPrices["EXE_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["EXE"],
-        price:
-          priceRoundedPool(
-            tokenPrices["EXE_ckUSDT"],
-            tokenPrices["EXE_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "WUMBO",
-        balance: shownBalances.wumboBalance,
-        usdBalance: parseBalance(shownBalances.wumboBalance)
-          .multipliedBy(parsePrice(tokenPrices["WUMBO_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["WUMBO"],
-        price:
-          priceRoundedPool(
-            tokenPrices["WUMBO_ckUSDT"],
-            tokenPrices["WUMBO_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "MCS",
-        balance: shownBalances.mcsBalance,
-        usdBalance: parseBalance(shownBalances.mcsBalance)
-          .multipliedBy(parsePrice(tokenPrices["MCS_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["MCS"],
-        price:
-          priceRoundedPool(
-            tokenPrices["MCS_ckUSDT"],
-            tokenPrices["MCS_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "BOB",
-        balance: shownBalances.bobBalance,
-        usdBalance: parseBalance(shownBalances.bobBalance)
-          .multipliedBy(parsePrice(tokenPrices["BOB_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["BOB"],
-        price:
-          priceRoundedPool(
-            tokenPrices["BOB_ckUSDT"],
-            tokenPrices["BOB_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "BURN",
-        balance: shownBalances.burnBalance,
-        usdBalance: parseBalance(shownBalances.burnBalance)
-          .multipliedBy(parsePrice(tokenPrices["BURN_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["BURN"],
-        price:
-          priceRoundedPool(
-            tokenPrices["BURN_ckUSDT"],
-            tokenPrices["BURN_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "NTN",
-        balance: shownBalances.ntnBalance,
-        usdBalance: parseBalance(shownBalances.ntnBalance)
-          .multipliedBy(parsePrice(tokenPrices["NTN_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["NTN"],
-        price:
-          priceRoundedPool(
-            tokenPrices["NTN_ckUSDT"],
-            tokenPrices["NTN_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "DCD",
-        balance: shownBalances.dcdBalance,
-        usdBalance: parseBalance(shownBalances.dcdBalance)
-          .multipliedBy(parsePrice(tokenPrices["DCD_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["DCD"],
-        price:
-          priceRoundedPool(
-            tokenPrices["DCD_ckUSDT"],
-            tokenPrices["DCD_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "GLDGov",
-        balance: shownBalances.gldgovBalance,
-        usdBalance: parseBalance(shownBalances.gldgovBalance)
-          .multipliedBy(parsePrice(tokenPrices["GLDGov_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["GLDGov"],
-        price:
-          priceRoundedPool(
-            tokenPrices["GLDGov_ckUSDT"],
-            tokenPrices["GLDGov_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "OWL",
-        balance: shownBalances.owlBalance,
-        usdBalance: parseBalance(shownBalances.owlBalance)
-          .multipliedBy(parsePrice(tokenPrices["OWL_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["OWL"],
-        price:
-          priceRoundedPool(
-            tokenPrices["OWL_ckUSDT"],
-            tokenPrices["OWL_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "OGY",
-        balance: shownBalances.ogyBalance,
-        usdBalance: parseBalance(shownBalances.ogyBalance)
-          .multipliedBy(parsePrice(tokenPrices["OGY_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["OGY"],
-        price:
-          priceRoundedPool(
-            tokenPrices["OGY_ckUSDT"],
-            tokenPrices["OGY_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "FPL",
-        balance: shownBalances.fplBalance,
-        usdBalance: parseBalance(shownBalances.fplBalance)
-          .multipliedBy(parsePrice(tokenPrices["FPL_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["FPL"],
-        price:
-          priceRoundedPool(
-            tokenPrices["FPL_ckUSDT"],
-            tokenPrices["FPL_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "DITTO",
-        balance: shownBalances.dittoBalance,
-        usdBalance: parseBalance(shownBalances.dittoBalance)
-          .multipliedBy(parsePrice(tokenPrices["DITTO_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["DITTO"],
-        price:
-          priceRoundedPool(
-            tokenPrices["DITTO_ckUSDT"],
-            tokenPrices["DITTO_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "ICVC",
-        balance: shownBalances.icvcBalance,
-        usdBalance: parseBalance(shownBalances.icvcBalance)
-          .multipliedBy(parsePrice(tokenPrices["ICVC_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["ICVC"],
-        price:
-          priceRoundedPool(
-            tokenPrices["ICVC_ckUSDT"],
-            tokenPrices["ICVC_ckUSDT"]
-          ) || 0,
-      },
-    ].sort((a, b) => parseFloat(b.usdBalance) - parseFloat(a.usdBalance));
-  }, [shownBalances, tokenPrices]);
-
   useEffect(() => {
     // call it once to get the initial pool balances
     updatePoolBalances();
@@ -1268,6 +661,7 @@ const App = () => {
             smallerPrincipal={smallerPrincipal}
             changeDrawerContent={changeDrawerContent}
             tokenDetails={tokenDetails}
+            poolInfo={poolsInfo}
             sortedTokens={sortedTokens}
             tokenPrices={tokenPrices}
             tokenImages={tokenImages}
@@ -1303,6 +697,7 @@ function MainPage({
   smallerPrincipal,
   changeDrawerContent,
   tokenDetails,
+  poolInfo,
   sortedTokens,
   tokenPrices,
   tokenImages,
@@ -1335,12 +730,13 @@ function MainPage({
 
                 <div className="panel-green-second__content">
                   <div className="wallet">
-                    <div class="wallet-head">
-                      <span class="wallet-headlabel">Address</span>
-                      <span class="wallet-address-wrapper">
+                    <div className="wallet-head">
+                      <span className="wallet-headlabel">Address</span>
+                      <span className="wallet-address-wrapper">
                         <input
                           type="text"
-                          class="wallet-address-input"
+                          className="wallet-address-input"
+                          readOnly
                           value={
                             smallerPrincipal ? smallerPrincipal : "no address"
                           }
@@ -1352,7 +748,7 @@ function MainPage({
                           >
                             {!isCopied ? (
                               <svg
-                                class="copy-icon"
+                                className="copy-icon"
                                 width="16"
                                 height="16"
                                 viewBox="0 0 16 16"
@@ -1373,8 +769,8 @@ function MainPage({
                                 xmlns="http://www.w3.org/2000/svg"
                               >
                                 <path
-                                  fill-rule="evenodd"
-                                  clip-rule="evenodd"
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
                                   d="M4.80005 0H15.04C15.2947 0 15.5388 0.101562 15.7188 0.28125C15.8989 0.460938 16 0.705078 16 0.959961V11.2002C16 11.4551 15.8989 11.6992 15.7188 11.8789C15.5388 12.0586 15.2947 12.1602 15.04 12.1602H12.1599V15.04C12.1599 15.2949 12.0588 15.5391 11.8789 15.7188C11.6987 15.8984 11.4546 16 11.2 16H0.959961C0.705322 16 0.461182 15.8984 0.28125 15.7188C0.101074 15.5391 0 15.2949 0 15.04V4.7998C0 4.54492 0.101074 4.30078 0.28125 4.12109C0.461182 3.94141 0.705322 3.83984 0.959961 3.83984H3.84009V0.959961C3.84009 0.705078 3.94116 0.460938 4.12109 0.28125C4.30127 0.101562 4.54541 0 4.80005 0ZM12.1599 10.2402H14.0801V1.91992H5.76001V3.83984H11.2C11.4546 3.83984 11.6987 3.94141 11.8789 4.12109C12.0588 4.30078 12.1599 4.54492 12.1599 4.7998V10.2402ZM9.90015 6.56348C9.83276 6.4248 9.73218 6.29883 9.6001 6.2002C9.1582 5.86914 8.53149 5.95801 8.19995 6.40039L5.125 10.5L3.6897 9.13281C3.45947 8.91406 3.1521 8.82617 2.86011 8.86719C2.64478 8.89746 2.4375 8.99805 2.27588 9.16797C1.89502 9.56738 1.9104 10.2002 2.3103 10.5811L5.375 13.5L9.80005 7.59961C10.0322 7.29004 10.0576 6.88965 9.90015 6.56348Z"
                                   fill="white"
                                 />
@@ -1437,18 +833,18 @@ function MainPage({
                     </div>
                     {walletContentView === "tokens-table" ? (
                       <>
-                        <div class="tokenwallet-table-head">
-                          <span class="tokenwallet-table-head__itemtokens">
+                        <div className="tokenwallet-table-head">
+                          <span className="tokenwallet-table-head__itemtokens">
                             Tokens
                           </span>
-                          <span class="tokenwallet-table-head__itemprice">
+                          <span className="tokenwallet-table-head__itemprice">
                             Price
                           </span>
-                          <span class="tokenwallet-table-head__itemamount">
+                          <span className="tokenwallet-table-head__itemamount">
                             Amount
                           </span>
                         </div>
-                        <div class="tokenwallet-table-container">
+                        <div className="tokenwallet-table-container">
                           <ul className="tokenwallet-table-list">
                             {sortedTokens.map((token) => (
                               <li
@@ -1490,41 +886,41 @@ function MainPage({
                       </>
                     ) : (
                       <>
-                        <div class="wallet-table-head">
+                        <div className="wallet-table-head">
                           <span>Pools</span>
                           <span>Liquidity</span>
                         </div>
-                        <div class="wallet-table-container">
-                          <ul class="wallet-table-list">
+                        <div className="wallet-table-container">
+                          <ul className="wallet-table-list">
                             {poolBalances.length > 0 ? (
                               poolBalances.map((pool) => (
-                                <li class="wallet-table-item" key={pool.name}>
-                                  <span class="wallet-token-logos-2">
+                                <li className="wallet-table-item" key={pool.name}>
+                                  <span className="wallet-token-logos-2">
                                     <img
                                       src={tokenImages[pool.name.split("/")[0]]}
-                                      class="wallet-token-logo wallet-token-logo-primary"
+                                      className="wallet-token-logo wallet-token-logo-primary"
                                     />
                                     <img
                                       src={tokenImages[pool.name.split("/")[1]]}
-                                      class="wallet-token-logo wallet-token-logo-secondary"
+                                      className="wallet-token-logo wallet-token-logo-secondary"
                                     />
                                   </span>
 
-                                  <span class="wallet-token-name-for-pools">
+                                  <span className="wallet-token-name-for-pools">
                                     {pool.name} LP
                                   </span>
 
-                                  <div class="wallet-token-amount-container">
-                                    <span class="wallet-token-amount-highlight">
+                                  <div className="wallet-token-amount-container">
+                                    <span className="wallet-token-amount-highlight">
                                       {pool.balance} LP
                                     </span>
-                                    <span class="wallet-token-amount-small">
+                                    <span className="wallet-token-amount-small">
                                       {pool.amount_0} {pool.symbol_0} /{" "}
                                       {pool.amount_1} {pool.symbol_1}
                                     </span>
                                   </div>
 
-                                  <div class="wallet-token-controls-for-pools">
+                                  <div className="wallet-token-controls-for-pools">
                                     <span
                                       onClick={() =>
                                         onTabClick("pools", pool.name)
@@ -1540,8 +936,8 @@ function MainPage({
                                         xmlns="http://www.w3.org/2000/svg"
                                       >
                                         <path
-                                          fill-rule="evenodd"
-                                          clip-rule="evenodd"
+                                          fillRule="evenodd"
+                                          clipRule="evenodd"
                                           d="M12 42V40H8V38H6V36H4V34H2V30H0V12H2V8H4V6H6V4H8V2H12V0H30V2H34V4H36V6H38V8H40V12H42V30H40V34H38V36H36V38H34V40H30V42H12ZM19 35V23H7V19H19V7H23V19H35V23H23V35H19Z"
                                           fill="white"
                                         />
@@ -1562,8 +958,8 @@ function MainPage({
                                         xmlns="http://www.w3.org/2000/svg"
                                       >
                                         <path
-                                          fill-rule="evenodd"
-                                          clip-rule="evenodd"
+                                          fillRule="evenodd"
+                                          clipRule="evenodd"
                                           d="M12 42V40H8V38H6V36H4V34H2V30H0V12H2V8H4V6H6V4H8V2H12V0H30V2H34V4H36V6H38V8H40V12H42V30H40V34H38V36H36V38H34V40H30V42H12ZM35 19H7V23H35V19Z"
                                           fill="white"
                                         />
@@ -1573,7 +969,7 @@ function MainPage({
                                 </li>
                               ))
                             ) : (
-                              <span class="no-pools">No pools found</span>
+                              <span className="no-pools">No pools found</span>
                             )}
                           </ul>
                         </div>
@@ -1716,7 +1112,7 @@ function MainPage({
                     <path
                       d="M20.5 9.5V8.5H19.5V6.5H20.5V4.5H19.5V3.5H18.5V2.5H16.5V3.5H14.5V2.5H13.5V0.5H9.5V2.5H8.5V3.5H6.5V2.5H4.5V3.5H3.5V4.5H2.5V6.5H3.5V8.5H2.5V9.5H0.5V13.5H2.5V14.5H3.5V16.5H2.5V18.5H3.5V19.5H4.5V20.5H6.5V19.5H8.5V20.5H9.5V22.5H13.5V20.5H14.5V19.5H16.5V20.5H18.5V19.5H19.5V18.5H20.5V16.5H19.5V14.5H20.5V13.5H22.5V9.5H20.5ZM9.5 9.5V8.5H13.5V9.5H14.5V13.5H13.5V14.5H9.5V13.5H8.5V9.5H9.5Z"
                       stroke="black"
-                      stroke-miterlimit="10"
+                      strokeMiterlimit="10"
                     />
                   </svg>
                 </span>
@@ -1779,7 +1175,7 @@ function MainPage({
               </div>
             </div>
           </div>
-        <GorilaText />
+        <GorillaText tokenDetails={tokenDetails} poolInfo={poolInfo} />
           {/* <img src={kongImage} className="swap-page-kong-image-container" alt="" /> */}
         </section>
         {isSlippageModalOpen && (
@@ -1788,9 +1184,9 @@ function MainPage({
             onClose={() => toggleSlippageModal()}
             headTitle={"Max Slippage"}
             customHead={
-              <div class="modal-head">
-                <div class="modal-head-title">Max Slippage</div>
-                <div onClick={() => toggleSlippageModal()} class="modal-close">
+              <div className="modal-head">
+                <div className="modal-head-title">Max Slippage</div>
+                <div onClick={() => toggleSlippageModal()} className="modal-close">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"

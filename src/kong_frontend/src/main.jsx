@@ -36,7 +36,7 @@ import ICVCActor from "./Actors/ICVCActor";
 import NTNActor from "./Actors/NTNActor";
 import OGYActor from "./Actors/OGYActor";
 import OWLActor from "./Actors/OWLActor";
-import { PlugWalletProvider } from "./components/PlugWalletContext";
+import { PlugWalletProvider } from "./contexts/PlugWalletContext";
 import { FRONTEND_URL } from "./constants/config";
 import {
   CkbtcActorProviderPlug,

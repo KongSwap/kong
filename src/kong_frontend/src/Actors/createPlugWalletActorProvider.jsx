@@ -1,6 +1,6 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { Actor } from '@dfinity/agent';
-import { usePlugWallet } from '../components/PlugWalletContext';
+import { usePlugWallet } from '../contexts/PlugWalletContext';
 import { FRONTEND_URL } from '../constants/config';
 import { useInternetIdentity } from 'ic-use-internet-identity';
 

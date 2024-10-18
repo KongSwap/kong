@@ -61,7 +61,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
       const updatedPools = poolInfo.map((pool) => {
         const balance = Number(pool.balance || 0);
         const decimals1 = getTokenDecimals(pool.symbol_1);
-
+        const price = formatNumberCustom(Number(pool.price || 0), 2);
         const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
         const roll24hVolume = formatNumberCustom(Number(pool.rolling_24h_volume || 0) / 10 ** decimals1, 0);
         const tvl = formatNumberCustom(balance / 10 ** decimals1, 0);
@@ -70,6 +70,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
           ...pool,
           apy,
           roll24hVolume,
+          price,
           tvl,
         };
       });
@@ -123,6 +124,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
           <div className="stats-table-head">    
             <div className="stats-table-head__content">
               <div className="stats-table-head-pool">POOL</div>
+              <div className="stats-table-head-price">Price</div>
               <div className="stats-table-head-tvl">TVL</div>
               <div className="stats-table-head-totalvol">24H VOLUME</div>
               <div className="stats-table-head-apr">APY</div>
@@ -148,6 +150,11 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                     </div>
                     <span className="stats-table-tokenname">{pool.symbol_0} / {pool.symbol_1}</span>
                   </div>
+                  <div className="stats-table-cell stats-table-cell-price">
+                    <span className="stats-table-cell-label">Price:</span>
+                    <span className="stats-table-cell-value">${pool.price}</span>
+                  </div>
+
                   <div className="stats-table-cell stats-table-cell-tvl">
                     <span className="stats-table-cell-label">TVL:</span>
                     <span className="stats-table-cell-value">${pool.tvl}</span>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useInternetIdentity } from 'ic-use-internet-identity';
 import { 
   useKingKongBackendPlug,
@@ -49,7 +49,7 @@ import { useNANASBackend } from '../Actors/NANASActor';
 import { useND64Backend } from '../Actors/ND64Actor';
 import { useWTNBackend } from '../Actors/WTNActor';
 import { useYUGEBackend } from '../Actors/YUGEActor';
-import { usePlugWallet } from './PlugWalletContext';
+import { usePlugWallet } from '../contexts/PlugWalletContext';
 import { useNICPBackend } from '../Actors/NICPActor';
 import { useEXEBackend } from '../Actors/EXEActor';
 import { useALPACALBBackend } from '../Actors/ALPACALBActor';
