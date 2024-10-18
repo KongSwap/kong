@@ -139,7 +139,7 @@ const GorillaText = ({ tokenDetails, poolInfo }) => {
     const intervalId = setInterval(() => {
       messageIndex = (messageIndex + 1) % interleavedMessages.length;
       setCurrentMessage(interleavedMessages[messageIndex]);
-    }, 10000); // Display each message for 10 seconds
+    }, 8000); // Display each message for 10 seconds
 
     return () => clearInterval(intervalId);
   }, [topTokens]);

@@ -1,4 +1,3 @@
-
 .SwapSecondBody {
     width: 100%;
     height: 100%;
@@ -175,14 +174,33 @@
     animation: jump 8s infinite;
 }
 
+@keyframes zoomInOut {
+  0%, 100% { 
+    transform: scale(0.1) rotate(0deg); 
+    opacity: 0; 
+  }
+  10% { 
+    transform: scale(1) rotate(720deg); 
+    opacity: 1; 
+  }
+  90% {
+    transform: scale(1) rotate(720deg);
+    opacity: 1;
+  }
+  100% { 
+    transform: scale(0) rotate(0deg); 
+    opacity: 1; 
+  }
+}
+
 @keyframes jump {
-    0%, 4%, 12%, 20%, 100% {
+    0%, 1%, 5%, 10%, 100% {
         transform: translateY(0);
     }
-    6%, 14%, 22% {
+    3%, 7%, 11% {
         transform: translateY(pxrm(-40));
     }
-    28%, 94% {
+    14%, 94% {
         transform: translateY(0);
     }
 }
@@ -191,6 +209,8 @@
     position: absolute;
     right: pxvw(-50);
     bottom: pxrm(430);
+    animation: zoomInOut 8s infinite;
+    transition: transform 0.3s ease-in-out;
     @media (min-aspect-ratio: 16/9) and (min-width: 1200px) {
         bottom: pxrm(460);
     }
