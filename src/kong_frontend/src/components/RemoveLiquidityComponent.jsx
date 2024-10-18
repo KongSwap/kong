@@ -9,7 +9,7 @@ import { Link, useLocation } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
 import removeLiquiditySound from "../../../assets/Remove-Liquidity-succesfull.mp3";
 import failedImageSwap from "../../../assets/kong-failed.png";
-import { priceRoundedAmount } from "../utils/priceDecimalConvertor";
+import { priceRoundedAmount } from "../utils/numberUtils";
 
 export const KONG_FRONTEND =
   "http://" + process.env.CANISTER_ID_KONG_FRONTEND + ".localhost:4943";

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { FiExternalLink } from "react-icons/fi"; // External Link
 import Pagination from "@mui/material/Pagination"; // MUI Pagination Component
 import Stack from "@mui/material/Stack"; // MUI Stack for pagination positioning
-import { priceRoundedAmount } from "../utils/priceDecimalConvertor"; // Helper function to round the price
+import { priceRoundedAmount } from "../utils/numberUtils"; // Helper function to round the price
 import BigNumber from "bignumber.js"; // BigNumber library for handling large numbers
 import { getExplorerLinks } from "../utils/getExplorerLink"; // Helper function to generate explorer links
 

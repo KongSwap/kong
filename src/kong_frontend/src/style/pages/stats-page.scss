@@ -220,14 +220,18 @@
     padding-left: pxrm(5);
 }
 .stats-table-head-tvl {
-    width: 17%;
+    width: 20%;
     text-align: right;
 }
 .stats-table-head-totalvol {
-    width: 17%;
+    width: 18%;
     text-align: right;
 }
 .stats-table-head-apr {
+    width: 15%;
+    text-align: right;
+}
+.stats-table-head-price {
     width: 15%;
     text-align: right;
 }
@@ -309,7 +313,7 @@
 .stats-table-cell-tvl {
     padding: 0 pxrm(5);
     @media (min-aspect-ratio: 2/3) { 
-        width: 17%;
+        width: 20%;
         padding: 0;
         text-align: right;
         justify-content: end;
@@ -318,13 +322,22 @@
 .stats-table-cell-totalvol {
     padding: 0 pxrm(5);
     @media (min-aspect-ratio: 2/3) { 
-        width: 17%;
+        width: 18%;
         padding: 0;
         text-align: right;
         justify-content: end;
     }
 }
 .stats-table-cell-apr {
+    padding: 0 pxrm(5);
+    @media (min-aspect-ratio: 2/3) { 
+        width: 15%;
+        padding: 0;
+        text-align: right;
+        justify-content: end;
+    }
+}
+.stats-table-cell-price {
     padding: 0 pxrm(5);
     @media (min-aspect-ratio: 2/3) { 
         width: 15%;

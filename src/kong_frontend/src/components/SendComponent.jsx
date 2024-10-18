@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { tokenBalancesSelector } from "../App";
+import { tokenBalancesSelector } from "../constants/tokensConstants";
 import confirmationImageSend from "../../../assets/kong-approves-3.png";
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
@@ -8,7 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Modal from "./Modal";
 import useIdentity from "./useIdentity";
 import DOMPurify from "dompurify";
-import { priceRoundedAmount } from "../utils/priceDecimalConvertor";
+import { priceRoundedAmount } from "../utils/numberUtils";
 import { useNavigate } from "react-router-dom";
 
 function is_principal_id(principal_id) {

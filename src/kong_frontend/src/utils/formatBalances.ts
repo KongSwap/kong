@@ -1,7 +1,7 @@
 import BigNumber from "bignumber.js";
-import { priceRoundedAmount } from "./priceDecimalConvertor";
+import { priceRoundedAmount } from "./numberUtils";
 
-export function formatBalances(userDetails, tokenPrices) {
+export function formatBalances(userDetails: any, tokenPrices: any) {
   return {
     ckbtcBalance: priceRoundedAmount(
       tokenPrices["ckBTC_ckUSDT"], // Assuming the pool symbol is "ckBTC_ckUSDT"
@@ -130,10 +130,10 @@ export function formatBalances(userDetails, tokenPrices) {
   };
 }
 
-export const formatNumber = (number, decimals) => {
-  const bigNumberValue = new BigNumber(number);
+export const formatNumber = (number: BigInt, decimals: number) => {
+  const bigNumberValue = new BigNumber(number.toString());
   const integerPart = bigNumberValue.integerValue();
-  const decimalPart = bigNumberValue.decimalPlaces();
+  const decimalPart = bigNumberValue.decimalPlaces() || 0;
 
   // If the number is an integer or has fewer decimals than required, return as is
   if (decimalPart <= decimals || integerPart.toNumber() !== 0) {

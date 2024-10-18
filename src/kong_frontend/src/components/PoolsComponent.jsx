@@ -10,10 +10,10 @@ import TransactionProgressComponent from "./TransactionProgressComponent";
 import DOMPurify from "dompurify";
 import addLiquiditySound from "../../../assets/Add-Liquidity-succesful.mp3";
 import failedImageSwap from "../../../assets/kong-failed.png";
-import { priceRoundedAmount } from "../utils/priceDecimalConvertor";
+import { priceRoundedAmount } from "../utils/numberUtils";
 import debounce from "lodash/debounce";
 import { formatNumber } from "../utils/formatBalances";
-import { tokenBalancesSelector } from "../App";
+import { tokenBalancesSelector } from "../constants/tokensConstants";
 import { icrc1Tokens } from "../utils/getIcrc1Tokens";
 import { Skeleton } from "@mui/material";
 
