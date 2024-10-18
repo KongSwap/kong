@@ -1,7 +1,7 @@
-export const getExplorerLinks = (transferArray) => {
+export const getExplorerLinks = (transferArray: any) => {
     if (!transferArray || transferArray.length === 0) return [];
   
-    return transferArray.reduce((acc, transfer) => {
+    return transferArray.reduce((acc: any, transfer: any) => {
       const symbol = transfer.transfer?.IC?.symbol || "";
       const blockIndex = transfer.transfer?.IC?.block_index || "";
       const canisterId = transfer.transfer?.IC?.canister_id || "";
