@@ -1246,8 +1246,8 @@ const PoolsComponent = ({
           onClose={closeFailedModal}
           headTitle={"Failed Add liq"}
           customHead={
-            <div class="modal-head">
-              <div onClick={closeFailedModal} class="modal-close">
+            <div className="modal-head">
+              <div onClick={closeFailedModal} className="modal-close">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -1260,10 +1260,10 @@ const PoolsComponent = ({
             </div>
           }
         >
-          <div class="modal-image-status">
-            <img src={failedImageSwap} class="modal-top-pic" />
+          <div className="modal-image-status">
+            <img src={failedImageSwap} className="modal-top-pic" />
           </div>
-          <div class="modal-title-status">Oops, something went wrong</div>
+          <div className="modal-title-status">Oops, something went wrong</div>
           <div className="modal-view-on-explorer">
             <div className="view-on-explorer-button">
               {hasClaimed ? (
@@ -1280,20 +1280,20 @@ const PoolsComponent = ({
               ) : null}
             </div>
           </div>
-          <div class="modal-confirmation-summary">
-            {/* <div class="summary-row">
-            <div class="summary-value">
-              <span class="summary-value-number">
+          <div className="modal-confirmation-summary">
+            {/* <div className="summary-row">
+            <div className="summary-value">
+              <span className="summary-value-number">
                   Failed to add liquidity {youPayToken}/{youReceiveToken} LP
                 </span>
             </div>
           </div> */}
-            <div class="summary-row">
-              <div class="summary-value">
-                {/* <span class="summary-value-number">{youPay}</span>
-              <span class="summary-value-small">{youPayToken}</span> */}
+            <div className="summary-row">
+              <div className="summary-value">
+                {/* <span className="summary-value-number">{youPay}</span>
+              <span className="summary-value-small">{youPayToken}</span> */}
                 {transactionStateObject && transactionStateObject.Ok ? (
-                  <span class="summary-value-number">
+                  <span className="summary-value-number">
                     {
                       transactionStateObject.Ok[0].statuses[
                         transactionStateObject.Ok[0].statuses.length - 2

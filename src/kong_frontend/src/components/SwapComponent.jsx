@@ -1220,21 +1220,21 @@ const SwapComponent = memo(({
                   </span>
                   <img
                     src={tokenImages[youPayToken]}
-                    class="buttonmed-yellow__icon"
+                    className="buttonmed-yellow__icon"
                   />
                   <span className="buttonmed-yellow__text">{youPayToken}</span>
                   <svg
-                    class="custom-select-2-arrow"
+                    className="custom-select-2-arrow"
                     width="18"
                     height="18"
                     viewBox="0 0 18 18"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
                   >
-                    <g clip-path="url(#clip0_75_306)">
+                    <g clipPath="url(#clip0_75_306)">
                       <path
-                        fill-rule="evenodd"
-                        clip-rule="evenodd"
+                        fillRule="evenodd"
+                        clipRule="evenodd"
                         d="M9.795 12.045C9.58406 12.2557 9.29813 12.374 9 12.374C8.70188 12.374 8.41594 12.2557 8.205 12.045L3.9615 7.80304C3.75056 7.59199 3.63209 7.30579 3.63216 7.0074C3.63223 6.709 3.75083 6.42286 3.96188 6.21191C4.17292 6.00097 4.45912 5.8825 4.75752 5.88257C5.05591 5.88264 5.34205 6.00124 5.553 6.21229L9 9.65929L12.447 6.21229C12.6591 6.00726 12.9432 5.89373 13.2382 5.89615C13.5332 5.89858 13.8154 6.01676 14.0241 6.22524C14.2327 6.43373 14.3512 6.71584 14.3539 7.01081C14.3566 7.30578 14.2433 7.59002 14.0385 7.80229L9.79575 12.0458L9.795 12.045Z"
                       />
                     </g>
@@ -1344,23 +1344,23 @@ const SwapComponent = memo(({
                   </span>
                   <img
                     src={tokenImages[youReceiveToken]}
-                    class="buttonmed-yellow__icon"
+                    className="buttonmed-yellow__icon"
                   />
                   <span className="buttonmed-yellow__text">
                     {youReceiveToken}
                   </span>
                   <svg
-                    class="custom-select-2-arrow"
+                    className="custom-select-2-arrow"
                     width="18"
                     height="18"
                     viewBox="0 0 18 18"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
                   >
-                    <g clip-path="url(#clip0_75_306)">
+                    <g clipPath="url(#clip0_75_306)">
                       <path
-                        fill-rule="evenodd"
-                        clip-rule="evenodd"
+                        fillRule="evenodd"
+                        clipRule="evenodd"
                         d="M9.795 12.045C9.58406 12.2557 9.29813 12.374 9 12.374C8.70188 12.374 8.41594 12.2557 8.205 12.045L3.9615 7.80304C3.75056 7.59199 3.63209 7.30579 3.63216 7.0074C3.63223 6.709 3.75083 6.42286 3.96188 6.21191C4.17292 6.00097 4.45912 5.8825 4.75752 5.88257C5.05591 5.88264 5.34205 6.00124 5.553 6.21229L9 9.65929L12.447 6.21229C12.6591 6.00726 12.9432 5.89373 13.2382 5.89615C13.5332 5.89858 13.8154 6.01676 14.0241 6.22524C14.2327 6.43373 14.3512 6.71584 14.3539 7.01081C14.3566 7.30578 14.2433 7.59002 14.0385 7.80229L9.79575 12.0458L9.795 12.045Z"
                       />
                     </g>
@@ -1634,7 +1634,7 @@ const SwapComponent = memo(({
 
           <span
             onClick={onSwap}
-            class="buttonbig-yellow buttonbig-yellow--confirmation"
+            className="buttonbig-yellow buttonbig-yellow--confirmation"
           >
             <span className="buttonbig-yellow__pressed">
               <span className="buttonbig-yellow__pressed__l"></span>
@@ -1660,8 +1660,8 @@ const SwapComponent = memo(({
           onClose={closeSuccessfullModal}
           headTitle={"Review Swap"}
           customHead={
-            <div class="modal-head">
-              <div onClick={closeSuccessfullModal} class="modal-close">
+            <div className="modal-head">
+              <div onClick={closeSuccessfullModal} className="modal-close">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -1674,10 +1674,10 @@ const SwapComponent = memo(({
             </div>
           }
         >
-          <div class="modal-image-status">
-            <img src={confirmationImageSwap} class="modal-top-pic" />
+          <div className="modal-image-status">
+            <img src={confirmationImageSwap} className="modal-top-pic" />
           </div>
-          <div class="modal-title-status">Swap Successful</div>
+          <div className="modal-title-status">Swap Successful</div>
           <div className="modal-view-on-explorer">
             {hasClaimed ? (
               <div className="view-on-explorer-button">
@@ -1713,19 +1713,19 @@ const SwapComponent = memo(({
               })
             )}
           </div>
-          <div class="modal-confirmation-summary">
-            <div class="summary-row">
-              <div class="summary-label">You traded</div>
-              <div class="summary-value">
-                <span class="summary-value-number">{youPay}</span>
-                <span class="summary-value-small">{youPayToken}</span>
+          <div className="modal-confirmation-summary">
+            <div className="summary-row">
+              <div className="summary-label">You traded</div>
+              <div className="summary-value">
+                <span className="summary-value-number">{youPay}</span>
+                <span className="summary-value-small">{youPayToken}</span>
               </div>
             </div>
-            <div class="summary-row">
-              <div class="summary-label">For a Total Of:</div>
-              <div class="summary-value">
-                <span class="summary-value-number">{displayYouReceive}</span>
-                <span class="summary-value-small">{youReceiveToken}</span>
+            <div className="summary-row">
+              <div className="summary-label">For a Total Of:</div>
+              <div className="summary-value">
+                <span className="summary-value-number">{displayYouReceive}</span>
+                <span className="summary-value-small">{youReceiveToken}</span>
               </div>
             </div>
           </div>
@@ -1817,7 +1817,7 @@ const SwapComponent = memo(({
 
           <span
             onClick={onSwap}
-            class="buttonbig-yellow buttonbig-yellow--confirmation"
+            className="buttonbig-yellow buttonbig-yellow--confirmation"
           >
             <span className="buttonbig-yellow__pressed">
               <span className="buttonbig-yellow__pressed__l"></span>
@@ -1843,8 +1843,8 @@ const SwapComponent = memo(({
           onClose={closeSuccessfullModal}
           headTitle={"Review Swap & Send"}
           customHead={
-            <div class="modal-head">
-              <div onClick={closeSuccessfullModal} class="modal-close">
+            <div className="modal-head">
+              <div onClick={closeSuccessfullModal} className="modal-close">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -1857,14 +1857,14 @@ const SwapComponent = memo(({
             </div>
           }
         >
-          <div class="modal-image-status">
-            <img src={confirmationImageSwap} class="modal-top-pic" />
+          <div className="modal-image-status">
+            <img src={confirmationImageSwap} className="modal-top-pic" />
           </div>
-          <div class="modal-title-status">Swap & Send Successful</div>
-          <div class="modal-view-on-explorer">
-            <div class="view-on-explorer-button">
-              <span class="view-on-explorer-text">View on Explorer </span>
-              <span class="view-on-explorer-icon">
+          <div className="modal-title-status">Swap & Send Successful</div>
+          <div className="modal-view-on-explorer">
+            <div className="view-on-explorer-button">
+              <span className="view-on-explorer-text">View on Explorer </span>
+              <span className="view-on-explorer-icon">
                 <svg
                   width="10"
                   height="10"
@@ -1882,25 +1882,25 @@ const SwapComponent = memo(({
               </span>
             </div>
           </div>
-          <div class="modal-confirmation-summary">
-            <div class="summary-row">
-              <div class="summary-label">You traded</div>
-              <div class="summary-value">
-                <span class="summary-value-number">{youPay}</span>
-                <span class="summary-value-small">{youPayToken}</span>
+          <div className="modal-confirmation-summary">
+            <div className="summary-row">
+              <div className="summary-label">You traded</div>
+              <div className="summary-value">
+                <span className="summary-value-number">{youPay}</span>
+                <span className="summary-value-small">{youPayToken}</span>
               </div>
             </div>
-            <div class="summary-row">
-              <div class="summary-label">For a Total Of:</div>
-              <div class="summary-value">
-                <span class="summary-value-number">{displayYouReceive}</span>
-                <span class="summary-value-small">{youReceiveToken}</span>
+            <div className="summary-row">
+              <div className="summary-label">For a Total Of:</div>
+              <div className="summary-value">
+                <span className="summary-value-number">{displayYouReceive}</span>
+                <span className="summary-value-small">{youReceiveToken}</span>
               </div>
             </div>
-            <div class="summary-row">
-              <div class="summary-label">To Address:</div>
-              <div class="summary-value">
-                <span class="summary-value-number">{sendTo}</span>
+            <div className="summary-row">
+              <div className="summary-label">To Address:</div>
+              <div className="summary-value">
+                <span className="summary-value-number">{sendTo}</span>
               </div>
             </div>
           </div>
@@ -1911,8 +1911,8 @@ const SwapComponent = memo(({
           onClose={closeFailedModal}
           headTitle={"Failed Swap"}
           customHead={
-            <div class="modal-head">
-              <div onClick={closeFailedModal} class="modal-close">
+            <div className="modal-head">
+              <div onClick={closeFailedModal} className="modal-close">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -1925,14 +1925,14 @@ const SwapComponent = memo(({
             </div>
           }
         >
-          <div class="modal-image-status">
-            <img src={failedImageSwap} class="modal-top-pic" />
+          <div className="modal-image-status">
+            <img src={failedImageSwap} className="modal-top-pic" />
           </div>
-          <div class="modal-title-status">Oops, something went wrong</div>
-          <div class="modal-view-on-explorer">
-            <div class="view-on-explorer-button">
+          <div className="modal-title-status">Oops, something went wrong</div>
+          <div className="modal-view-on-explorer">
+            <div className="view-on-explorer-button">
               {hasClaimed ? (
-                <span onClick={closeFailedModal} class="view-on-explorer-text">
+                <span onClick={closeFailedModal} className="view-on-explorer-text">
                   Swap done, but an issue occurred on the final step. Please
                   claim your tokens here.
                 </span>
@@ -1942,7 +1942,7 @@ const SwapComponent = memo(({
                   (block_id, idx) => (
                     <span
                       key={idx}
-                      class="view-on-explorer-text"
+                      className="view-on-explorer-text"
                       style={{
                         cursor: "pointer",
                         display: "flex",
@@ -1964,20 +1964,20 @@ const SwapComponent = memo(({
               )}
             </div>
           </div>
-          <div class="modal-confirmation-summary">
-            {/* <div class="summary-row">
-            <div class="summary-value">
-                <span class="summary-value-number">
+          <div className="modal-confirmation-summary">
+            {/* <div className="summary-row">
+            <div className="summary-value">
+                <span className="summary-value-number">
                   Failed Swapping {youPay} {youPayToken} for {youReceive} {youReceiveToken}
                 </span>
             </div>
           </div> */}
-            <div class="summary-row">
-              <div class="summary-value">
-                {/* <span class="summary-value-number">{youPay}</span>
-              <span class="summary-value-small">{youPayToken}</span> */}
+            <div className="summary-row">
+              <div className="summary-value">
+                {/* <span className="summary-value-number">{youPay}</span>
+              <span className="summary-value-small">{youPayToken}</span> */}
                 {transactionStateObject && transactionStateObject.Ok ? (
-                  <span class="summary-value-number">
+                  <span className="summary-value-number">
                     {
                       transactionStateObject.Ok[0].statuses[
                         transactionStateObject.Ok[0].statuses.length - 2

@@ -728,12 +728,13 @@ function MainPage({
 
                 <div className="panel-green-second__content">
                   <div className="wallet">
-                    <div class="wallet-head">
-                      <span class="wallet-headlabel">Address</span>
-                      <span class="wallet-address-wrapper">
+                    <div className="wallet-head">
+                      <span className="wallet-headlabel">Address</span>
+                      <span className="wallet-address-wrapper">
                         <input
                           type="text"
-                          class="wallet-address-input"
+                          className="wallet-address-input"
+                          readOnly
                           value={
                             smallerPrincipal ? smallerPrincipal : "no address"
                           }
@@ -745,7 +746,7 @@ function MainPage({
                           >
                             {!isCopied ? (
                               <svg
-                                class="copy-icon"
+                                className="copy-icon"
                                 width="16"
                                 height="16"
                                 viewBox="0 0 16 16"
@@ -766,8 +767,8 @@ function MainPage({
                                 xmlns="http://www.w3.org/2000/svg"
                               >
                                 <path
-                                  fill-rule="evenodd"
-                                  clip-rule="evenodd"
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
                                   d="M4.80005 0H15.04C15.2947 0 15.5388 0.101562 15.7188 0.28125C15.8989 0.460938 16 0.705078 16 0.959961V11.2002C16 11.4551 15.8989 11.6992 15.7188 11.8789C15.5388 12.0586 15.2947 12.1602 15.04 12.1602H12.1599V15.04C12.1599 15.2949 12.0588 15.5391 11.8789 15.7188C11.6987 15.8984 11.4546 16 11.2 16H0.959961C0.705322 16 0.461182 15.8984 0.28125 15.7188C0.101074 15.5391 0 15.2949 0 15.04V4.7998C0 4.54492 0.101074 4.30078 0.28125 4.12109C0.461182 3.94141 0.705322 3.83984 0.959961 3.83984H3.84009V0.959961C3.84009 0.705078 3.94116 0.460938 4.12109 0.28125C4.30127 0.101562 4.54541 0 4.80005 0ZM12.1599 10.2402H14.0801V1.91992H5.76001V3.83984H11.2C11.4546 3.83984 11.6987 3.94141 11.8789 4.12109C12.0588 4.30078 12.1599 4.54492 12.1599 4.7998V10.2402ZM9.90015 6.56348C9.83276 6.4248 9.73218 6.29883 9.6001 6.2002C9.1582 5.86914 8.53149 5.95801 8.19995 6.40039L5.125 10.5L3.6897 9.13281C3.45947 8.91406 3.1521 8.82617 2.86011 8.86719C2.64478 8.89746 2.4375 8.99805 2.27588 9.16797C1.89502 9.56738 1.9104 10.2002 2.3103 10.5811L5.375 13.5L9.80005 7.59961C10.0322 7.29004 10.0576 6.88965 9.90015 6.56348Z"
                                   fill="white"
                                 />
@@ -830,18 +831,18 @@ function MainPage({
                     </div>
                     {walletContentView === "tokens-table" ? (
                       <>
-                        <div class="tokenwallet-table-head">
-                          <span class="tokenwallet-table-head__itemtokens">
+                        <div className="tokenwallet-table-head">
+                          <span className="tokenwallet-table-head__itemtokens">
                             Tokens
                           </span>
-                          <span class="tokenwallet-table-head__itemprice">
+                          <span className="tokenwallet-table-head__itemprice">
                             Price
                           </span>
-                          <span class="tokenwallet-table-head__itemamount">
+                          <span className="tokenwallet-table-head__itemamount">
                             Amount
                           </span>
                         </div>
-                        <div class="tokenwallet-table-container">
+                        <div className="tokenwallet-table-container">
                           <ul className="tokenwallet-table-list">
                             {sortedTokens.map((token) => (
                               <li
@@ -883,41 +884,41 @@ function MainPage({
                       </>
                     ) : (
                       <>
-                        <div class="wallet-table-head">
+                        <div className="wallet-table-head">
                           <span>Pools</span>
                           <span>Liquidity</span>
                         </div>
-                        <div class="wallet-table-container">
-                          <ul class="wallet-table-list">
+                        <div className="wallet-table-container">
+                          <ul className="wallet-table-list">
                             {poolBalances.length > 0 ? (
                               poolBalances.map((pool) => (
-                                <li class="wallet-table-item" key={pool.name}>
-                                  <span class="wallet-token-logos-2">
+                                <li className="wallet-table-item" key={pool.name}>
+                                  <span className="wallet-token-logos-2">
                                     <img
                                       src={tokenImages[pool.name.split("/")[0]]}
-                                      class="wallet-token-logo wallet-token-logo-primary"
+                                      className="wallet-token-logo wallet-token-logo-primary"
                                     />
                                     <img
                                       src={tokenImages[pool.name.split("/")[1]]}
-                                      class="wallet-token-logo wallet-token-logo-secondary"
+                                      className="wallet-token-logo wallet-token-logo-secondary"
                                     />
                                   </span>
 
-                                  <span class="wallet-token-name-for-pools">
+                                  <span className="wallet-token-name-for-pools">
                                     {pool.name} LP
                                   </span>
 
-                                  <div class="wallet-token-amount-container">
-                                    <span class="wallet-token-amount-highlight">
+                                  <div className="wallet-token-amount-container">
+                                    <span className="wallet-token-amount-highlight">
                                       {pool.balance} LP
                                     </span>
-                                    <span class="wallet-token-amount-small">
+                                    <span className="wallet-token-amount-small">
                                       {pool.amount_0} {pool.symbol_0} /{" "}
                                       {pool.amount_1} {pool.symbol_1}
                                     </span>
                                   </div>
 
-                                  <div class="wallet-token-controls-for-pools">
+                                  <div className="wallet-token-controls-for-pools">
                                     <span
                                       onClick={() =>
                                         onTabClick("pools", pool.name)
@@ -933,8 +934,8 @@ function MainPage({
                                         xmlns="http://www.w3.org/2000/svg"
                                       >
                                         <path
-                                          fill-rule="evenodd"
-                                          clip-rule="evenodd"
+                                          fillRule="evenodd"
+                                          clipRule="evenodd"
                                           d="M12 42V40H8V38H6V36H4V34H2V30H0V12H2V8H4V6H6V4H8V2H12V0H30V2H34V4H36V6H38V8H40V12H42V30H40V34H38V36H36V38H34V40H30V42H12ZM19 35V23H7V19H19V7H23V19H35V23H23V35H19Z"
                                           fill="white"
                                         />
@@ -955,8 +956,8 @@ function MainPage({
                                         xmlns="http://www.w3.org/2000/svg"
                                       >
                                         <path
-                                          fill-rule="evenodd"
-                                          clip-rule="evenodd"
+                                          fillRule="evenodd"
+                                          clipRule="evenodd"
                                           d="M12 42V40H8V38H6V36H4V34H2V30H0V12H2V8H4V6H6V4H8V2H12V0H30V2H34V4H36V6H38V8H40V12H42V30H40V34H38V36H36V38H34V40H30V42H12ZM35 19H7V23H35V19Z"
                                           fill="white"
                                         />
@@ -966,7 +967,7 @@ function MainPage({
                                 </li>
                               ))
                             ) : (
-                              <span class="no-pools">No pools found</span>
+                              <span className="no-pools">No pools found</span>
                             )}
                           </ul>
                         </div>
@@ -1109,7 +1110,7 @@ function MainPage({
                     <path
                       d="M20.5 9.5V8.5H19.5V6.5H20.5V4.5H19.5V3.5H18.5V2.5H16.5V3.5H14.5V2.5H13.5V0.5H9.5V2.5H8.5V3.5H6.5V2.5H4.5V3.5H3.5V4.5H2.5V6.5H3.5V8.5H2.5V9.5H0.5V13.5H2.5V14.5H3.5V16.5H2.5V18.5H3.5V19.5H4.5V20.5H6.5V19.5H8.5V20.5H9.5V22.5H13.5V20.5H14.5V19.5H16.5V20.5H18.5V19.5H19.5V18.5H20.5V16.5H19.5V14.5H20.5V13.5H22.5V9.5H20.5ZM9.5 9.5V8.5H13.5V9.5H14.5V13.5H13.5V14.5H9.5V13.5H8.5V9.5H9.5Z"
                       stroke="black"
-                      stroke-miterlimit="10"
+                      strokeMiterlimit="10"
                     />
                   </svg>
                 </span>
@@ -1181,9 +1182,9 @@ function MainPage({
             onClose={() => toggleSlippageModal()}
             headTitle={"Max Slippage"}
             customHead={
-              <div class="modal-head">
-                <div class="modal-head-title">Max Slippage</div>
-                <div onClick={() => toggleSlippageModal()} class="modal-close">
+              <div className="modal-head">
+                <div className="modal-head-title">Max Slippage</div>
+                <div onClick={() => toggleSlippageModal()} className="modal-close">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
