@@ -122,8 +122,16 @@ article, aside, details, figcaption, figure,
 footer, header, hgroup, menu, nav, section {
 	display: block;
 }
+img {
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+  }
 body {
 	line-height: 1;
+    background-color: #000;
 }
 ol, ul {
 	list-style: none;
