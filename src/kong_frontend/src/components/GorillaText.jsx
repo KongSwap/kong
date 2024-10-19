@@ -7,6 +7,8 @@ const GorillaText = ({ tokenDetails, poolInfo }) => {
   const [currentMessage, setCurrentMessage] = useState('');
   const [allMessages, setAllMessages] = useState([]);
   const [topTokens, setTopTokens] = useState([]);
+  const [isBubbleVisible, setIsBubbleVisible] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(true); // Start with animation enabled
 
   useEffect(() => {
     // Function to fetch or compute the top tokens by volume
@@ -106,7 +108,7 @@ const GorillaText = ({ tokenDetails, poolInfo }) => {
       "Ape in style, trade with a smile!",
       "In the crypto jungle, King Kong rules the trees and the trades!",
       "Gorilla strength isn’t just physical; it’s mental for HODLing!",
-      "King Kong’s crypto motto: swing high, never shy!",
+      "King Kongs crypto motto: swing high, never shy!",
       "King Kong’s secret to success: patience and big roars!",
       "From bananas to Bitcoin, it’s all about the stash!",
       "Gorillas don’t sweat the dips; they swing through them!",
@@ -137,9 +139,14 @@ const GorillaText = ({ tokenDetails, poolInfo }) => {
     // Message rotation logic
     let messageIndex = 0;
     const intervalId = setInterval(() => {
-      messageIndex = (messageIndex + 1) % interleavedMessages.length;
-      setCurrentMessage(interleavedMessages[messageIndex]);
-    }, 8000); // Display each message for 10 seconds
+      setTimeout(() => {
+        messageIndex = (messageIndex + 1) % interleavedMessages.length;
+        setCurrentMessage(interleavedMessages[messageIndex]);
+        setIsBubbleVisible(true); // Show the bubble after the message has changed
+        setIsAnimating(true); // Start animation
+        setTimeout(() => setIsAnimating(false), 7000); // Stop animation after 7 seconds
+      }, 300); // Adjust the delay as needed
+    }, 8000); // Ensure this matches the animation duration
 
     return () => clearInterval(intervalId);
   }, [topTokens]);
@@ -147,8 +154,8 @@ const GorillaText = ({ tokenDetails, poolInfo }) => {
   return (
     <div className="swap-page-kong-image-container">
       <img src={kongImage} className="swap-page-kong-image" alt="" />
-      {currentMessage.length > 0 && (
-        <span className="bubble bubble--swappage-kong bubble--text1">
+      {currentMessage.length > 0 && isBubbleVisible && (
+        <span className={`bubble bubble--swappage-kong bubble--text1 ${isAnimating ? 'animate' : ''}`}>
           <span className="bubble__top"></span>
           <span className="bubble__mid"></span>
           <span className="bubble__bottom"></span>

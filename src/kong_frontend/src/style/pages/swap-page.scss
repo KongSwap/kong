@@ -200,7 +200,7 @@
     3%, 7%, 11% {
         transform: translateY(pxrm(-40));
     }
-    14%, 94% {
+    14%, 100% {
         transform: translateY(0);
     }
 }
@@ -209,11 +209,14 @@
     position: absolute;
     right: pxvw(-50);
     bottom: pxrm(430);
-    animation: zoomInOut 8s infinite;
     transition: transform 0.3s ease-in-out;
     @media (min-aspect-ratio: 16/9) and (min-width: 1200px) {
         bottom: pxrm(460);
     }
+}
+
+.bubble--swappage-kong.animate {
+    animation: zoomInOut 8.3s infinite; // Match this with the JavaScript timing
 }
 
 .toast-container {
