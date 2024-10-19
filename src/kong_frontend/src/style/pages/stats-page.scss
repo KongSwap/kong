@@ -221,7 +221,7 @@
 }
 .stats-table-head-tvl {
     width: 20%;
-    text-align: left;
+    text-align: right;
 }
 .stats-table-head-totalvol {
     width: 18%;
@@ -229,15 +229,14 @@
 }
 .stats-table-head-apr {
     width: 15%;
-    text-align: left;
+    text-align: right;
 }
 .stats-table-head-price {
     width: 18%;
-    text-align: left;
+    text-align: right;
 }
 .stats-table-head-controls {
     width: 22%;
-    content: '';
 }
 
 .stats-table-body {
