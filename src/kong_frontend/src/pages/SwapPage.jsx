@@ -12,11 +12,7 @@ import ReceiveComponent from "../components/ReceiveComponent";
 import Tippy from "@tippyjs/react";
 import FooterSocials from "../components/FooterSocials";
 import GorillaText from "../components/GorillaText";
-import { tokenBalancesSelector } from "../constants/tokensConstants";
 
-
-const allowedViewTabs = ["swap", "pools", "send", "receive", "remove"];
-const validTokens = Object.keys(tokenBalancesSelector);
 const defaultSlippage = 2;
 
 function SwapPage({
