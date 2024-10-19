@@ -4,7 +4,7 @@ import BigNumber from "bignumber.js";
 import Modal from "./Modal";
 import { toast } from "react-toastify";
 import { Principal } from "@dfinity/principal";
-import useIdentity from "./useIdentity";
+import useIdentity from "../utils/useIdentity";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
 import DOMPurify from "dompurify";

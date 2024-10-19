@@ -10,7 +10,7 @@ import { Principal } from "@dfinity/principal";
 import { ThreeDots } from "react-loader-spinner";
 import SideDrawer from "./SideDrawer";
 import iconPlugImage from "../../../assets/icons/plug.png";
-import useIdentity from "./useIdentity";
+import useIdentity from "../utils/useIdentity";
 import { toast } from "react-toastify";
 import TransactionList from "./TransactionList";
 import { FRONTEND_URL } from "../constants/config"; 

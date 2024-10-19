@@ -6,7 +6,7 @@ import BigNumber from "bignumber.js";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Modal from "./Modal";
-import useIdentity from "./useIdentity";
+import useIdentity from "../utils/useIdentity";
 import DOMPurify from "dompurify";
 import { priceRoundedAmount } from "../utils/numberUtils";
 import { useNavigate } from "react-router-dom";

@@ -8,7 +8,7 @@ import Modal from "./Modal";
 import swapIconSeparator from "../../../assets/pxicons/arrow.svg";
 import confirmationImageSwap from "../../../assets/kong-approves.png";
 import failedImageSwap from "../../../assets/kong-failed.png";
-import useIdentity from "./useIdentity";
+import useIdentity from "../utils/useIdentity";
 import { useNavigate } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
 import DOMPurify from "dompurify";

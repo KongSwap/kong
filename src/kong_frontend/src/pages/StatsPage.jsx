@@ -5,7 +5,7 @@ import cloud1 from "../../../assets/cloud-1.png";
 import cloud2 from "../../../assets/cloud-2.png";
 import panelGroundBg from "../../../assets/panel-ground-bg.png";
 import panelGroundBgMobile from "../../../assets/panel-ground-bg-mobile.png";
-import FooterSocials from "./FooterSocials";
+import FooterSocials from "../components/FooterSocials";
 
 
 function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {

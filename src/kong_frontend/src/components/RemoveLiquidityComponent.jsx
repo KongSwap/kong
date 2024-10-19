@@ -3,7 +3,7 @@ import BigNumber from "bignumber.js";
 import { toast } from "react-toastify";
 import Modal from "./Modal";
 import { Principal } from "@dfinity/principal";
-import useIdentity from "./useIdentity";
+import useIdentity from "../utils/useIdentity";
 import confirmationImageRemoveLq from "../../../assets/kong-approves-remove-lq.png";
 import { Link, useLocation } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
