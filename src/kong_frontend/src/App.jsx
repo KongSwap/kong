@@ -72,9 +72,7 @@ const App = () => {
     },
     isInitialized,
   } = useIdentity();
-
   const [userDetails, setUserDetails] = useState(defaultStateUser);
-
   const [shownBalances, setShownBalances] = useState({});
   const [poolBalances, setPoolBalances] = useState([]);
   const [poolsInfo, setPoolsInfo] = useState([]);

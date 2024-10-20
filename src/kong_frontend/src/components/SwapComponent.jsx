@@ -5,7 +5,6 @@ import BigNumber from "bignumber.js";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Modal from "./Modal";
-import swapIconSeparator from "../../../assets/pxicons/arrow.svg";
 import confirmationImageSwap from "../../../assets/kong-approves.png";
 import failedImageSwap from "../../../assets/kong-failed.png";
 import useIdentity from "../utils/useIdentity";
