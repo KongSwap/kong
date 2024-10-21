@@ -101,6 +101,19 @@ export const getSortedTokens = (shownBalances: any, tokenPrices: any) => {
         ) || 0,
     },
     {
+      symbol: "EXE",
+      balance: shownBalances.exeBalance,
+      usdBalance: parseBalance(shownBalances.exeBalance)
+        .multipliedBy(parsePrice(tokenPrices["EXE_ckUSDT"]))
+        .toFixed(2),
+      image: tokenImages["EXE"],
+      price:
+        priceRoundedPool(
+          tokenPrices["EXE_ckUSDT"],
+          tokenPrices["EXE_ckUSDT"]
+        ) || 0,
+    },
+    {
       symbol: "Bits",
       balance: shownBalances.bitsBalance,
       usdBalance: parseBalance(shownBalances.bitsBalance)
@@ -254,19 +267,6 @@ export const getSortedTokens = (shownBalances: any, tokenPrices: any) => {
         priceRoundedPool(
           tokenPrices["DAMONIC_ckUSDT"],
           tokenPrices["DAMONIC_ckUSDT"]
-        ) || 0,
-    },
-    {
-      symbol: "EXE",
-      balance: shownBalances.exeBalance,
-      usdBalance: parseBalance(shownBalances.exeBalance)
-        .multipliedBy(parsePrice(tokenPrices["EXE_ckUSDT"]))
-        .toFixed(2),
-      image: tokenImages["EXE"],
-      price:
-        priceRoundedPool(
-          tokenPrices["EXE_ckUSDT"],
-          tokenPrices["EXE_ckUSDT"]
         ) || 0,
     },
     {

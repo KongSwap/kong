@@ -59,7 +59,11 @@ export const createPlugWalletActorProvider = (idlFactory, canisterId) => {
   };
 
   const usePlugWalletActor = () => {
-    return useContext(PlugWalletActorContext);
+    const context = useContext(PlugWalletActorContext);
+    if (!context) {
+      throw new Error('usePlugWalletActor must be used within a PlugWalletActorProvider');
+    }
+    return context;
   };
 
   return { PlugWalletActorProvider, usePlugWalletActor };

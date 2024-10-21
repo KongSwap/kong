@@ -22,7 +22,8 @@ export const KONG_BACKEND_PRINCIPAL = Principal.fromText(
 );
 
 export function extractParts(str) {
-  const parts = str.split("-");
+  if (!str || str === "" || str === null) return "";
+  const parts = str.toString().split("-");
   const firstPart = `${parts[0]}-${parts[1].slice(0, 3)}`; // First segment + first 3 chars of second segment
   const lastPart = `${parts[parts.length - 2].slice(-3)}-${parts[parts.length - 1]}`; // Last 3 chars of second to last + last segment
   const newString = `${firstPart}...${lastPart}`;

@@ -16,7 +16,6 @@
     "src/kong_frontend"
   ],
   "dependencies": {
-    "@dfinity/ledger-icp": "^2.2.1",
-    "kong_frontend": "^0.0.1"
+    "@dfinity/ledger-icp": "^2.2.1"
   }
 }
