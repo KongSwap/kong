@@ -1,0 +1,4 @@
+type ClaimResult = variant { Ok : text; Err : text };
+service : {
+    claim : () -> (ClaimResult);
+}
