@@ -493,6 +493,18 @@
       padding-left: pxrm(5);
     }
   }
+
+  .statspage-tokenstable-logos {
+    display: flex;
+  }
+  .statspage-tokenstable-token {
+      width: pxrm(24);
+      height: auto;
+      @media (min-aspect-ratio: 2/3) { 
+          width: pxrm(30);
+      }
+  }
+
   .statspage-tokenstable-cell-symbol {
     padding: 0 pxrm(5);
     @media (min-aspect-ratio: 2/3) {
