@@ -196,7 +196,6 @@
       inset 0 0 0 pxrm(7) var(--c-blue-1), inset 0 0 0 pxrm(9) var(--c-white);
     @media (min-aspect-ratio: 1/1) and (min-width: 1000px) {
       margin-top: 0;
-      align-self: center;
       width: pxvw(1220);
       height: pxvh(700);
       padding: pxrm(12) pxrm(24);
