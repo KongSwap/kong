@@ -1,3 +1,5 @@
+type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+
 type TxId = variant {
     BlockIndex : nat;
     TransactionId : text;
@@ -402,8 +404,9 @@ type SendReply = record {
 type SendResult = variant { OK : SendReply; Err : text };
 
 service : {
-    // canister information
+    // icrc1 standards
     icrc1_name : () -> (text) query;
+    icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
     
     // tokens(wildcard) - returns all tokens or wildcard search
     tokens : (opt text) -> (TokensResult) query;
