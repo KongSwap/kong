@@ -6,10 +6,12 @@ import cloud2 from "../../../assets/cloud-2.png";
 import panelGroundBg from "../../../assets/panel-ground-bg.png";
 import panelGroundBgMobile from "../../../assets/panel-ground-bg-mobile.png";
 import FooterSocials from "./FooterSocials";
+import tokenFullNames from "../constants/tokenFullNames";
 
 
 function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
   const [pools, setPools] = useState([]);
+  const [viewTab, setViewTab] = useState("stats");
   const queryParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
 
@@ -100,20 +102,67 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
         </div>
         
         {/* Desktop Total Stats */}
-        <div className="stats-page-kong-panel-container">
-          <img src={panelGroundBg} className="stats-page-kong-panel-ground-bg" alt="" />
-          
-          <svg className="stats-page-kong-panel-ground-text" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px"
-            viewBox="0 0 320 375" style={{ enableBackground: "new 0 0 320 375" }}>
-            <text x="10%" y="65" dominant-baseline="left" text-anchor="start">TOTAL TVL</text> 
-            <text x="90%" y="65" dominant-baseline="right" text-anchor="end">${formatNumberCustom(poolsTotals.totalTvl, 0)}</text> 
-            <text x="10%" y="107" dominant-baseline="left" text-anchor="start">24H VOLUME</text> 
-            <text x="90%" y="107" dominant-baseline="right" text-anchor="end">${formatNumberCustom(poolsTotals.totalVolume, 0)}</text> 
-            <text x="10%" y="150" dominant-baseline="left" text-anchor="start">24H FEES</text> 
-            <text x="90%" y="150" dominant-baseline="right" text-anchor="end">${formatNumberCustom(poolsTotals.totalFees, 0)}</text> 
-          </svg>
+        <div className="stats-page-leftcolumn">
+          <div className="stats-page-tabs">
+            <span
+              className={`stats-page-tab button-blue button-blue--stats ${viewTab === "stats" ? "button-blue--selected" : ""}`}
+              onClick={() => setViewTab("stats")}
+            >
+              <span className="button-blue__pressed">
+                <span className="button-blue__pressed__l"></span>
+                <span className="button-blue__pressed__mid"></span>
+                <span className="button-blue__pressed__r"></span>
+              </span>
+              <span className="button-blue__selected">
+                <span className="button-blue__selected__l"></span>
+                <span className="button-blue__selected__mid"></span>
+                <span className="button-blue__selected__r"></span>
+              </span>
+              <span className="button-blue__default">
+                <span className="button-blue__default__l"></span>
+                <span className="button-blue__default__mid"></span>
+                <span className="button-blue__default__r"></span>
+              </span>
+              <span className="button-blue__text">STATS</span>
+            </span>
+            <span
+              className={`stats-page-tab button-blue button-blue--tokens ${viewTab === "tokens" ? "button-blue--selected" : ""}`}
+              onClick={() => setViewTab("tokens")}
+            >
+              <span className="button-blue__pressed">
+                <span className="button-blue__pressed__l"></span>
+                <span className="button-blue__pressed__mid"></span>
+                <span className="button-blue__pressed__r"></span>
+              </span>
+              <span className="button-blue__selected">
+                <span className="button-blue__selected__l"></span>
+                <span className="button-blue__selected__mid"></span>
+                <span className="button-blue__selected__r"></span>
+              </span>
+              <span className="button-blue__default">
+                <span className="button-blue__default__l"></span>
+                <span className="button-blue__default__mid"></span>
+                <span className="button-blue__default__r"></span>
+              </span>
+              <span className="button-blue__text">TOKENS</span>
+            </span>
+          </div>
+          <div className="stats-page-kong-panel-container">
+            <img src={panelGroundBg} className="stats-page-kong-panel-ground-bg" alt="" />
+
+            <svg className="stats-page-kong-panel-ground-text" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px"
+              viewBox="0 0 320 375" style={{ enableBackground: "new 0 0 320 375" }}>
+              <text x="10%" y="65" dominant-baseline="left" text-anchor="start">TOTAL TVL</text> 
+              <text x="90%" y="65" dominant-baseline="right" text-anchor="end">${formatNumberCustom(poolsTotals.totalTvl, 0)}</text> 
+              <text x="10%" y="107" dominant-baseline="left" text-anchor="start">24H VOLUME</text> 
+              <text x="90%" y="107" dominant-baseline="right" text-anchor="end">${formatNumberCustom(poolsTotals.totalVolume, 0)}</text> 
+              <text x="10%" y="150" dominant-baseline="left" text-anchor="start">24H FEES</text> 
+              <text x="90%" y="150" dominant-baseline="right" text-anchor="end">${formatNumberCustom(poolsTotals.totalFees, 0)}</text> 
+            </svg>
+          </div>
         </div>
 
+        {viewTab === "stats" ? (
         <div className="stats-table">
           <div className="stats-table-twrap">
             <span>*** </span>
@@ -216,6 +265,50 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
             </div>
           </div>
         </div>
+        ) : viewTab === "tokens" ? (
+          <div className="stats-table">
+          <div className="stats-table-twrap">
+            <span>*** </span>
+            <h2>Canister Contracts</h2>
+            <span> ***</span>
+          </div>
+          <div className="statspage-tokenstable-head">    
+            <div className="statspage-tokenstable-head__content">
+              <div className="stats-table-head-token">TOKEN</div>
+              <div className="stats-table-head-symbol">SYMBOL</div>
+              <div className="stats-table-head-address">CANISTER ADDRESS</div>
+            </div>
+          </div>
+
+          <div className="statspage-tokenstable-body">
+                {poolInfo.map((pool, index) => {
+                  const tokenName = tokenFullNames[pool.symbol_0] || pool.symbol_0; // Default to symbol if full name not found
+                  return (
+                    <div className="statspage-tokenstable-row" key={index}>
+                      <div className="statspage-tokenstable-cell statspage-tokenstable-cell-token">
+                        <div className="statspage-tokenstable-logo">
+                          <img
+                            src={tokenImages[pool.symbol_0]}
+                            className="statspage-tokenstable-token"
+                            alt={pool.symbol_0}
+                          />
+                        </div>
+                        <span className="statspage-tokenstable-tokenname">{tokenName}</span>
+                      </div>
+
+                      <div className="statspage-tokenstable-cell statspage-tokenstable-cell-symbol">
+                        <span className="statspage-tokenstable-cell-value">{pool.symbol_0}</span>
+                      </div>
+
+                      <div className="statspage-tokenstable-cell statspage-tokenstable-cell-address">
+                        <span className="statspage-tokenstable-cell-value">{pool.address_0}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+        </div>
+        ) : null}
         <img src={kongImage} className="stats-page-kong-image-container" alt="" />
       </section>
       <FooterSocials />
