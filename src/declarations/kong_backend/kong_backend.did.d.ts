@@ -132,6 +132,9 @@ export interface ICTransferReply {
   'amount' : bigint,
   'symbol' : string,
 }
+export interface Icrc28TrustedOriginsResponse {
+  'trusted_origins' : Array<string>,
+}
 export interface LPTokenReply {
   'fee' : bigint,
   'decimals' : number,
@@ -405,6 +408,7 @@ export interface _SERVICE {
   'get_txs' : ActorMethod<[[] | [bigint], [] | [number]], TxsResult>,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc1_name' : ActorMethod<[], string>,
+  'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
   'messages' : ActorMethod<[[] | [bigint]], MessagesResult>,
   'pools' : ActorMethod<[[] | [string]], PoolsResult>,
   'remove_liquidity' : ActorMethod<
