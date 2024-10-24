@@ -1243,7 +1243,7 @@ const App = () => {
 
   // console.log('principal', principal);
   // console.log('accounts', accounts);
-  // console.log('kingkoing', kingKongActor);
+  console.log('kingkoing', kingKongActor);
   // console.log('icpActor', icpLedgerActor);
 
   return (
