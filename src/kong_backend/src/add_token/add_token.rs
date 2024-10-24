@@ -2,10 +2,11 @@ use candid::Principal;
 use ic_cdk::update;
 
 use super::add_token_args::AddTokenArgs;
-use super::add_token_reply::{to_add_token_reply, AddTokenReply};
+use super::add_token_reply::AddTokenReply;
+use super::add_token_reply_impl::to_add_token_reply;
 
-use crate::canister::guards::caller_is_kingkong;
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::ic::guards::caller_is_kingkong;
 use crate::stable_token::ic_token::ICToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token_map;

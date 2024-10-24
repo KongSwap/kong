@@ -5,7 +5,7 @@ use super::swap_reply::SwapReply;
 use super::swap_transfer::{swap_transfer, swap_transfer_async};
 use super::swap_transfer_from::{swap_transfer_from, swap_transfer_from_async};
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 
 /// Pay and Receive are from the user's perspective
 

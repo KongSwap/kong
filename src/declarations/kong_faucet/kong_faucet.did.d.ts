@@ -4,6 +4,9 @@ import type { IDL } from '@dfinity/candid';
 
 export type ClaimResult = { 'Ok' : string } |
   { 'Err' : string };
-export interface _SERVICE { 'claim' : ActorMethod<[], ClaimResult> }
+export interface _SERVICE {
+  'claim' : ActorMethod<[], ClaimResult>,
+  'icrc1_name' : ActorMethod<[], string>,
+}
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

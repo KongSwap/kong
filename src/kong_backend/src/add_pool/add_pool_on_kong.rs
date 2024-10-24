@@ -1,6 +1,6 @@
 use ic_cdk::update;
 
-use crate::canister::guards::caller_is_kingkong;
+use crate::ic::guards::caller_is_kingkong;
 use crate::stable_pool::pool_map;
 
 /// Changes an existing pool on the system to appear on or not on Kong

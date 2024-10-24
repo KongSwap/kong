@@ -5,11 +5,11 @@ use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_transfer_from::transfer_from_token;
 
-use crate::canister::{
-    address::Address, id::caller_id, logging::error_log, management::get_time, transfer::icrc1_transfer, verify::verify_transfer,
-};
 use crate::helpers::nat_helpers::{
     nat_add, nat_divide, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
+};
+use crate::ic::{
+    address::Address, get_time::get_time, id::caller_id, logging::error_log, transfer::icrc1_transfer, verify::verify_transfer,
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_lp_token_ledger::{lp_token_ledger, stable_lp_token_ledger::StableLPTokenLedger};
@@ -421,9 +421,7 @@ async fn verify_transfer_token(
     };
 
     // verify the transfer
-    let ts_now = get_time();
-    let ts_start = ts_now - 3_600_000_000_000; // must be within 1 hour
-    match verify_transfer(token, tx_id, amount, ts_start).await {
+    match verify_transfer(token, tx_id, amount).await {
         Ok(_) => {
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {

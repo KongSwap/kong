@@ -5,7 +5,7 @@ use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_transfer::{add_liquidity_transfer, add_liquidity_transfer_async};
 use super::add_liquidity_transfer_from::{add_liquidity_transfer_from, add_liquidity_transfer_from_async};
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 
 pub enum TokenIndex {
     Token0,

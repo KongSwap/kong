@@ -4,8 +4,8 @@ use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
 
-use crate::kong_settings;
-use crate::REQUEST_MAP;
+use crate::stable_kong_settings::kong_settings;
+use crate::stable_memory::REQUEST_MAP;
 
 /// get a request by request_id of the caller
 pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Option<StableRequest> {
@@ -52,7 +52,6 @@ pub fn get_by_user_id(user_id: Option<u32>, max_requests: Option<usize>) -> Vec<
 pub fn insert(request: &StableRequest) -> u64 {
     REQUEST_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        // increment request_id
         let request_id = kong_settings::inc_request_map_idx();
         let insert_request = StableRequest {
             request_id,

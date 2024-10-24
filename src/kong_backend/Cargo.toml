@@ -4,9 +4,8 @@ version = "0.0.8"
 edition = "2021"
 description = "Kong Swap backend canister"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
+name = "kong_backend"
 crate-type = ["cdylib"]
 
 [features]

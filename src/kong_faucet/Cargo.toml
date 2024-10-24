@@ -4,12 +4,11 @@ version = "0.0.8"
 edition = "2021"
 description = "Kong Swap faucet canister"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
+kong_lib = { path = "../kong_lib" }
 candid = "0.10.10"
 futures = "0.3.30"
 ic-cdk = "0.16.0"

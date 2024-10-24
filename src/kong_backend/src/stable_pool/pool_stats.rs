@@ -3,20 +3,25 @@ use candid::Nat;
 use super::pool_map;
 use super::stable_pool::StablePoolId;
 
-use crate::canister::guards::not_in_maintenance_mode;
-use crate::canister::management::get_time;
 use crate::helpers::math_helpers::{price_rounded, round_f64};
 use crate::helpers::nat_helpers::{nat_add, nat_divide_as_f64, nat_multiply_f64, nat_to_decimal_precision, nat_zero};
+use crate::ic::guards::not_in_maintenance_mode;
+use crate::ic::logging::info_log;
+use crate::ic::get_time::get_time;
+use crate::stable_memory::{POOL_MAP, TX_24H_MAP};
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_token::token::Token;
 use crate::stable_tx::stable_tx::StableTx;
-use crate::{POOL_MAP, TX_MAP};
 
 pub fn update_pool_stats() {
     if not_in_maintenance_mode().is_err() {
         return;
     }
 
+    info_log("Updating 24h stats...");
+
+    let ts = get_time();
+    let ts_start = ts - 86_400_000_000_000; // 24 hours
     let pools = pool_map::get_on_kong();
     pools.iter().for_each(|pool| {
         // Pool
@@ -25,10 +30,8 @@ pub fn update_pool_stats() {
         let token_0 = pool.token_0();
         // Token 1
         let token_1 = pool.token_1();
-        let ts = get_time();
-        let ts_start = ts - 86_400_000_000_000; // 24 hours
 
-        let swaps = TX_MAP.with(|m| {
+        let swaps = TX_24H_MAP.with(|m| {
             // get all the swaps of the pool for the last 24 hours
             m.borrow()
                 .iter()
@@ -78,6 +81,7 @@ pub fn update_pool_stats() {
             let pool_new = StablePool {
                 rolling_24h_volume,
                 rolling_24h_lp_fee,
+                rolling_24h_num_swaps: Nat::from(swaps.len() as u128),
                 rolling_24h_apy,
                 ..pool.clone()
             };
