@@ -1,5 +1,5 @@
-use crate::canister::guards::not_in_maintenance_mode;
-use crate::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
+use crate::ic::guards::not_in_maintenance_mode;
+use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 
 pub fn archive_request_map() {
     if not_in_maintenance_mode().is_err() {

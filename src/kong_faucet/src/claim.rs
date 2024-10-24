@@ -1,15 +1,14 @@
-use crate::canister::constants::{
-    CKBTC, CKBTC_LEDGER, CKETH, CKETH_LEDGER, CKUSDC, CKUSDC_LEDGER, CKUSDT, CKUSDT_LEDGER, ICP, ICP_LEDGER,
-};
-use crate::canister::id::caller_id;
-use crate::canister::logging::error_log;
-use crate::canister::management::get_time;
-use crate::canister::transfer::icrc1_transfer;
-use crate::stable_user::user_map::{get_user, update_user_token_claim};
 use candid::{Nat, Principal};
 use futures::join;
 use ic_cdk::update;
 use icrc_ledger_types::icrc1::account::Account;
+use kong_lib::ic::get_time::get_time;
+use kong_lib::ic::id::caller_id;
+use kong_lib::ic::logging::error_log;
+
+use crate::ic::constants::{CKBTC, CKBTC_LEDGER, CKETH, CKETH_LEDGER, CKUSDC, CKUSDC_LEDGER, CKUSDT, CKUSDT_LEDGER, ICP, ICP_LEDGER};
+use crate::ic::transfer::icrc1_transfer;
+use crate::stable_user::user_map::{get_user, update_user_token_claim};
 
 const ICP_CLAIM_AMOUNT: u128 = 1_000_000_000; // 10 ICP
 const CKUSDT_CLAIM_AMOUNT: u128 = 100_000_000; // 100 ckUSDT

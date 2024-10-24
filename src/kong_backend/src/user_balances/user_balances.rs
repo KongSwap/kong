@@ -4,9 +4,9 @@ use super::lp_reply::LPReply;
 use super::usd_balance::USDBalance;
 use super::user_balances_reply::UserBalancesReply;
 
-use crate::canister::{guards::not_in_maintenance_mode_and_caller_is_not_anonymous, management::get_time};
 use crate::helpers::math_helpers::round_f64;
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
+use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode_and_caller_is_not_anonymous};
 use crate::stable_lp_token_ledger::lp_token_ledger;
 use crate::stable_lp_token_ledger::lp_token_ledger::LP_DECIMALS;
 use crate::stable_pool::pool_map;
@@ -38,11 +38,7 @@ pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesRep
         IC(_) => (),
     });
     // order by usd_balance in reverse order
-    user_balances.sort_by(|a, b| {
-        b.usd_balance()
-            .partial_cmp(&a.usd_balance())
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    user_balances.sort_by(|a, b| b.usd_balance().partial_cmp(&a.usd_balance()).unwrap_or(std::cmp::Ordering::Equal));
     Ok(user_balances)
 }
 
@@ -56,10 +52,7 @@ fn user_balance_lp_token_reply(token: &LPToken, ts: u64) -> Option<UserBalancesR
     let pool = token.pool_of()?;
 
     // convert balance to real number
-    let balance = round_f64(
-        nat_to_decimals_f64(token.decimals, &user_lp_token_balance)?,
-        LP_DECIMALS,
-    );
+    let balance = round_f64(nat_to_decimals_f64(token.decimals, &user_lp_token_balance)?, LP_DECIMALS);
 
     // user_amount_0 = reserve0 * user_lp_token_balance / lp_token_total_supply
     let token_0 = pool.token_0();

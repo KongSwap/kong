@@ -5,28 +5,26 @@ use super::add_pool_args::AddPoolArgs;
 use super::add_pool_reply::AddPoolReply;
 
 use crate::add_token::add_token::add_ic_token;
-use crate::canister::{
+use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero};
+use crate::ic::{
     address::Address,
+    get_time::get_time,
     guards::not_in_maintenance_mode,
     id::{caller_id, is_caller_controller},
     logging::{error_log, info_log},
-    management::get_time,
     transfer::{icrc1_transfer, icrc2_transfer_from},
     verify::verify_transfer,
 };
-use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
-use crate::helpers::nat_helpers::{
-    nat_add, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
-};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings;
+use crate::stable_lp_token_ledger::lp_token_ledger;
 use crate::stable_lp_token_ledger::lp_token_ledger::LP_DECIMALS;
-use crate::stable_lp_token_ledger::{lp_token_ledger, stable_lp_token_ledger::StableLPTokenLedger};
+use crate::stable_lp_token_ledger::stable_lp_token_ledger::StableLPTokenLedger;
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
-use crate::stable_request::{
-    reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode,
-};
-use crate::stable_token::{lp_token, lp_token::LPToken, stable_token::StableToken, token::Token, token_map};
+use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use crate::stable_token::lp_token_impl::{address, symbol};
+use crate::stable_token::{lp_token::LPToken, stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{add_pool_tx::AddPoolTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
@@ -48,19 +46,8 @@ enum TokenIndex {
 /// * `Err(String)` - An error message if the operation fails.
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
-    let (
-        user_id,
-        token_0,
-        add_amount_0,
-        tx_id_0,
-        token_1,
-        add_amount_1,
-        tx_id_1,
-        lp_fee_bps,
-        kong_fee_bps,
-        add_lp_token_amount,
-        on_kong,
-    ) = check_arguments(&args).await?;
+    let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
+        check_arguments(&args).await?;
 
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args.clone()), ts));
@@ -107,22 +94,7 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
 /// * `Err(String)` - An error message if the operation fails.
 async fn check_arguments(
     args: &AddPoolArgs,
-) -> Result<
-    (
-        u32,
-        StableToken,
-        Nat,
-        Option<Nat>,
-        StableToken,
-        Nat,
-        Option<Nat>,
-        u8,
-        u8,
-        Nat,
-        bool,
-    ),
-    String,
-> {
+) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat, bool), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
         return Err("Invalid zero amounts".to_string());
     }
@@ -189,12 +161,9 @@ async fn check_arguments(
     };
 
     // make sure LP token does not already exist
-    let lp_token_address = lp_token::address(&token_0, &token_1);
+    let lp_token_address = address(&token_0, &token_1);
     if token_map::exists(&lp_token_address) {
-        return Err(format!(
-            "LP token {} already exists",
-            lp_token::symbol(&token_0, &token_1)
-        ));
+        return Err(format!("LP token {} already exists", symbol(&token_0, &token_1)));
     }
 
     // make sure pool does not already exist
@@ -202,8 +171,7 @@ async fn check_arguments(
         return Err(format!("Pool {} already exists", pool_map::symbol(&token_0, &token_1)));
     }
 
-    let (add_amount_0, add_amount_1, add_lp_token_amount) =
-        calculate_amounts(&token_0, &args.amount_0, &token_1, &args.amount_1)?;
+    let (add_amount_0, add_amount_1, add_lp_token_amount) = calculate_amounts(&token_0, &args.amount_0, &token_1, &args.amount_1)?;
 
     // make sure user is registered, if not create a new user
     let user_id = user_map::insert(None)?;
@@ -223,21 +191,13 @@ async fn check_arguments(
     ))
 }
 
-pub fn calculate_amounts(
-    token_0: &StableToken,
-    amount_0: &Nat,
-    token_1: &StableToken,
-    amount_1: &Nat,
-) -> Result<(Nat, Nat, Nat), String> {
+pub fn calculate_amounts(token_0: &StableToken, amount_0: &Nat, token_1: &StableToken, amount_1: &Nat) -> Result<(Nat, Nat, Nat), String> {
     // new pool as there are no balances - take user amounts as initial ratio
     // initialize LP tokens as sqrt(amount_0 * amount_1)
     // convert the amounts to the same decimal precision as the LP token
     let amount_0_in_lp_token_decimals = nat_to_decimal_precision(amount_0, token_0.decimals(), LP_DECIMALS);
     let amount_1_in_lp_token_decimals = nat_to_decimal_precision(amount_1, token_1.decimals(), LP_DECIMALS);
-    let add_lp_token_amount = nat_sqrt(&nat_multiply(
-        &amount_0_in_lp_token_decimals,
-        &amount_1_in_lp_token_decimals,
-    ));
+    let add_lp_token_amount = nat_sqrt(&nat_multiply(&amount_0_in_lp_token_decimals, &amount_1_in_lp_token_decimals));
 
     Ok((amount_0.clone(), amount_1.clone(), add_lp_token_amount))
 }
@@ -263,58 +223,18 @@ async fn process_add_pool(
     request_map::update_status(request_id, StatusCode::Start, None);
 
     let mut transfer_token_0 = match tx_id_0 {
-        Some(block_id) => {
-            verify_transfer_token(
-                request_id,
-                &TokenIndex::Token0,
-                token_0,
-                block_id,
-                amount_0,
-                &mut transfer_ids,
-                ts,
-            )
-            .await
-        }
-        None => {
-            transfer_from_token(
-                request_id,
-                &TokenIndex::Token0,
-                token_0,
-                amount_0,
-                &mut transfer_ids,
-                ts,
-            )
-            .await
-        }
+        Some(block_id) => verify_transfer_token(request_id, &TokenIndex::Token0, token_0, block_id, amount_0, &mut transfer_ids, ts).await,
+        None => transfer_from_token(request_id, &TokenIndex::Token0, token_0, amount_0, &mut transfer_ids, ts).await,
     };
 
     let mut transfer_token_1 = match tx_id_1 {
-        Some(block_id) => {
-            verify_transfer_token(
-                request_id,
-                &TokenIndex::Token1,
-                token_1,
-                block_id,
-                amount_1,
-                &mut transfer_ids,
-                ts,
-            )
-            .await
-        }
+        Some(block_id) => verify_transfer_token(request_id, &TokenIndex::Token1, token_1, block_id, amount_1, &mut transfer_ids, ts).await,
         None => {
             //  if transfer_token_0 failed, no need to icrc2_transfer_from token_1
             if transfer_token_0.is_err() {
                 Err("Token_0 transfer failed".to_string())
             } else {
-                transfer_from_token(
-                    request_id,
-                    &TokenIndex::Token1,
-                    token_1,
-                    amount_1,
-                    &mut transfer_ids,
-                    ts,
-                )
-                .await
+                transfer_from_token(request_id, &TokenIndex::Token1, token_1, amount_1, &mut transfer_ids, ts).await
             }
         }
     };
@@ -345,15 +265,7 @@ async fn process_add_pool(
                         request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
 
                         // update pool with new balances
-                        match update_liquidity_pool(
-                            request_id,
-                            user_id,
-                            pool_id,
-                            amount_0,
-                            amount_1,
-                            add_lp_token_amount,
-                            ts,
-                        ) {
+                        match update_liquidity_pool(request_id, user_id, pool_id, amount_0, amount_1, add_lp_token_amount, ts) {
                             Ok(_) => {
                                 return Ok(check_balances(
                                     request_id,
@@ -439,9 +351,7 @@ async fn verify_transfer_token(
     };
 
     // verify the transfer
-    let ts_now = get_time();
-    let ts_start = ts_now - 3_600_000_000_000; // must be within 1 hour
-    match verify_transfer(token, tx_id, amount, ts_start).await {
+    match verify_transfer(token, tx_id, amount).await {
         Ok(_) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
@@ -452,12 +362,8 @@ async fn verify_transfer_token(
                 );
                 info_log(&info);
                 match token_index {
-                    TokenIndex::Token0 => {
-                        request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(message.clone()))
-                    }
-                    TokenIndex::Token1 => {
-                        request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(message.clone()))
-                    }
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(message.clone())),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(message.clone())),
                 };
                 return Err(message);
             }
@@ -478,18 +384,11 @@ async fn verify_transfer_token(
             Ok(())
         }
         Err(e) => {
-            let info = format!(
-                "AddPool Req #{}: Failed to verify tx {} {}: {}",
-                request_id, amount, symbol, e
-            );
+            let info = format!("AddPool Req #{}: Failed to verify tx {} {}: {}", request_id, amount, symbol, e);
             info_log(&info);
             match token_index {
-                TokenIndex::Token0 => {
-                    request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(e.clone()))
-                }
-                TokenIndex::Token1 => {
-                    request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(e.clone()))
-                }
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(e.clone())),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(e.clone())),
             };
             Err(e)
         }
@@ -542,12 +441,8 @@ async fn transfer_from_token(
             );
             info_log(&info);
             match token_index {
-                TokenIndex::Token0 => {
-                    request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(e.clone()))
-                }
-                TokenIndex::Token1 => {
-                    request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(e.clone()))
-                }
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(e.clone())),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(e.clone())),
             };
             Err(e)
         }
@@ -591,13 +486,7 @@ fn update_liquidity_pool(
     }
 }
 
-fn update_lp_token(
-    request_id: u64,
-    user_id: u32,
-    lp_token_id: u32,
-    add_lp_token_amount: &Nat,
-    ts: u64,
-) -> Result<(), String> {
+fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token_amount: &Nat, ts: u64) -> Result<(), String> {
     request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmount, None);
 
     // refresh with the latest state if the entry exists

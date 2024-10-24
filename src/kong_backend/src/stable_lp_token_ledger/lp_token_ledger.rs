@@ -2,9 +2,10 @@ use candid::Nat;
 
 use super::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
 
-use crate::canister::management::get_time;
 use crate::helpers::nat_helpers::{nat_add, nat_subtract, nat_zero};
-use crate::{stable_user::user_map, LP_TOKEN_LEDGER};
+use crate::ic::get_time::get_time;
+use crate::stable_memory::LP_TOKEN_LEDGER;
+use crate::stable_user::user_map;
 
 pub const LP_DECIMALS: u8 = 8; // LP token decimal
 
@@ -70,10 +71,7 @@ pub fn insert(lp_token: &StableLPTokenLedger) -> u64 {
 }
 
 pub fn update(lp_token: &StableLPTokenLedger) -> Option<StableLPTokenLedger> {
-    LP_TOKEN_LEDGER.with(|m| {
-        m.borrow_mut()
-            .insert(StableLPTokenLedgerId(lp_token.lp_token_id), lp_token.clone())
-    })
+    LP_TOKEN_LEDGER.with(|m| m.borrow_mut().insert(StableLPTokenLedgerId(lp_token.lp_token_id), lp_token.clone()))
 }
 
 pub fn remove(lp_token_id: u32) -> Result<(), String> {
@@ -109,8 +107,7 @@ pub fn transfer(token_id: u32, to_user_id: u32, amount: &Nat) -> Result<StableLP
             if from_user_lp_token.amount < *amount {
                 return Err("Not enough LP token".to_string());
             }
-            let amount =
-                nat_subtract(&from_user_lp_token.amount, amount).ok_or("Error calculating new user balance")?;
+            let amount = nat_subtract(&from_user_lp_token.amount, amount).ok_or("Error calculating new user balance")?;
             StableLPTokenLedger {
                 amount,
                 ts,

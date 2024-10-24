@@ -2,8 +2,9 @@ use std::cmp::Reverse;
 
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
+use crate::stable_kong_settings::kong_settings;
+use crate::stable_memory::CLAIM_MAP;
 use crate::stable_user::user_map;
-use crate::CLAIM_MAP;
 
 #[allow(dead_code)]
 pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
@@ -22,12 +23,7 @@ pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
 
 /// get the number of unclaimed claims
 pub fn get_num_unclaimed_claims() -> u64 {
-    CLAIM_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .filter(|(_, v)| v.status == ClaimStatus::Unclaimed)
-            .count() as u64
-    })
+    CLAIM_MAP.with(|m| m.borrow().iter().filter(|(_, v)| v.status == ClaimStatus::Unclaimed).count() as u64)
 }
 
 /// get all the unclaimed claims of the caller
@@ -58,16 +54,8 @@ pub fn get() -> Vec<StableClaim> {
 pub fn insert(claim: &StableClaim) -> u64 {
     CLAIM_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        // with lock, increase claim id key
-        let claim_id = map.iter()
-            .map(|(k, _)| k.0)
-            .max()
-            .unwrap_or(0) // only if empty and first claim
-            + 1;
-        let insert_claim = StableClaim {
-            claim_id,
-            ..claim.clone()
-        };
+        let claim_id = kong_settings::inc_claim_map_idx();
+        let insert_claim = StableClaim { claim_id, ..claim.clone() };
         map.insert(StableClaimId(claim_id), insert_claim);
         claim_id
     })

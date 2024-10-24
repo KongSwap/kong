@@ -3,24 +3,11 @@ use rand::rngs::StdRng;
 
 use super::stable_user::{StableUser, StableUserId};
 
-use crate::canister::id::{caller_principal_id, principal_id_is_not_anonymous};
-use crate::canister::management::{get_pseudo_seed, get_time};
+use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
+use crate::ic::{get_time::get_time, management::get_pseudo_seed};
+use crate::stable_kong_settings::kong_settings;
+use crate::stable_memory::USER_MAP;
 use crate::user::user_name::generate_user_name;
-use crate::USER_MAP;
-
-// reserved user ids
-// 0: all users - users for stable_messages to broadcast to all users
-// 1: system - system user
-// 2: claims timer - user id to identify claim was made by system timer
-// 3-99: reserved for future use
-// 100-: user ids
-pub const ANONYMOUS_USER_ID: u32 = 0;
-#[allow(dead_code)]
-pub const ALL_USERS_USER_ID: u32 = 1;
-#[allow(dead_code)]
-pub const SYSTEM_USER_ID: u32 = 2;
-pub const CLAIMS_TIMER_USER_ID: u32 = 3;
-const LAST_SYSTEM_USER_ID: u32 = 99;
 
 // default referral interval is 180 days
 // 180 days = 24 * 60 * 60 * 1_000_000_000
@@ -84,13 +71,9 @@ pub fn get_by_caller() -> Result<Option<StableUser>, String> {
 /// * `None` if user with referral code does not exist
 pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
     USER_MAP.with(|m| {
-        m.borrow().iter().find_map(|(_, v)| {
-            if v.my_referral_code == referral_code {
-                Some(v)
-            } else {
-                None
-            }
-        })
+        m.borrow()
+            .iter()
+            .find_map(|(_, v)| if v.my_referral_code == referral_code { Some(v) } else { None })
     })
 }
 
@@ -141,7 +124,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
     USER_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let user_id = if user.user_id == 0 {
-            let user_id = map.iter().map(|(_, v)| v.user_id).max().unwrap_or(LAST_SYSTEM_USER_ID) + 1;
+            let user_id = kong_settings::inc_user_map_idx();
             user = StableUser { user_id, ..user };
             user_id
         } else {

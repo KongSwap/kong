@@ -1,8 +1,9 @@
 use ic_cdk::query;
 
-use super::request_reply::{to_request_reply, RequestReply};
+use super::request_reply::RequestReply;
+use super::request_reply_impl::to_request_reply;
 
-use crate::canister::guards::not_in_maintenance_mode_and_caller_is_not_anonymous;
+use crate::ic::guards::not_in_maintenance_mode_and_caller_is_not_anonymous;
 use crate::stable_request::request_map;
 use crate::stable_user::user_map;
 

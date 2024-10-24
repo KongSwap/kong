@@ -1,14 +1,14 @@
 use candid::{CandidType, Int, Nat};
 use serde::{Deserialize, Serialize};
 
-use crate::canister::ledger::get_backend_canister_balance;
 use crate::helpers::nat_helpers::nat_add;
 use crate::helpers::nat_helpers::nat_zero;
+use crate::ic::ledger::get_backend_canister_balance;
 use crate::stable_claim::stable_claim::ClaimStatus;
+use crate::stable_memory::CLAIM_MAP;
+use crate::stable_memory::POOL_MAP;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
-use crate::CLAIM_MAP;
-use crate::POOL_MAP;
 
 #[derive(CandidType, Clone, Deserialize, Serialize)]
 pub struct PoolExpectedBalance {

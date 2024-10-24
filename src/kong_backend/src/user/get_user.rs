@@ -1,8 +1,9 @@
 use ic_cdk::query;
 
-use super::user_reply::{to_user_reply, UserReply};
+use super::user_reply::UserReply;
+use super::user_reply_impl::to_user_reply;
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_user::user_map;
 
 #[query(guard = "not_in_maintenance_mode")]

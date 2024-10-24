@@ -3,14 +3,25 @@ use num::{BigRational, Zero};
 use num_traits::ToPrimitive;
 
 use super::swap_args::SwapArgs;
+use super::swap_calc::SwapCalc;
+use super::swap_calc_impl::{get_slippage, swap_amount_0, swap_amount_1};
 use super::swap_reply::SwapReply;
 
+use crate::helpers::nat_helpers::nat_divide_as_f64;
 use crate::helpers::{
     math_helpers::{price_rounded, round_f64},
     nat_helpers::{
         nat_add, nat_divide, nat_is_zero, nat_multiply, nat_multiply_f64, nat_subtract, nat_to_decimal_precision, nat_to_decimals_f64,
         nat_zero,
     },
+};
+use crate::ic::{
+    address::Address,
+    address_impl::get_address,
+    get_time::get_time,
+    id::caller_id,
+    logging::error_log,
+    transfer::{icp_transfer, icrc1_transfer, icrc2_transfer_from},
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings;
@@ -20,17 +31,6 @@ use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{stable_tx::StableTx, swap_tx::SwapTx, tx_map};
 use crate::stable_user::user_map;
-use crate::swap::swap_calc::{get_slippage, swap_amount_0, swap_amount_1, SwapCalc};
-use crate::{
-    canister::{
-        address::{get_address, Address},
-        id::caller_id,
-        logging::error_log,
-        management::get_time,
-        transfer::{icp_transfer, icrc1_transfer, icrc2_transfer_from},
-    },
-    helpers::nat_helpers::nat_divide_as_f64,
-};
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args)?;
@@ -340,7 +340,6 @@ async fn transfer_from_token(request_id: u64, token: &StableToken, amount: &Nat,
         }
         Err(e) => {
             let error = format!("Swap #{} failed transfer_from user {} {}: {}", request_id, amount, symbol, e,);
-            error_log(&error);
             request_map::update_status(request_id, StatusCode::SendPayTokenFailed, Some(e));
             Err(error)
         }
@@ -428,6 +427,7 @@ fn update_liquidity_pool(
                     pool.rolling_24h_lp_fee = nat_add(&pool.rolling_24h_lp_fee, &lp_fee_0_in_token_1_decimals);
                 }
 
+                pool.rolling_24h_num_swaps = nat_add(&pool.rolling_24h_num_swaps, &Nat::from(1_u128));
                 // APY = (total_fees / total_liquidity) * 365 * 100
                 pool.rolling_24h_apy = round_f64(
                     nat_divide_as_f64(&pool.rolling_24h_lp_fee, &pool.get_balance()).unwrap_or(0_f64) * 365_f64 * 100_f64,

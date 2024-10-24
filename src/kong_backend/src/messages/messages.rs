@@ -2,7 +2,7 @@ use ic_cdk::query;
 
 use super::message_reply::{to_messages_reply, MessagesReply};
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_message::message_map;
 
 const MAX_MESSAGES: usize = 10;

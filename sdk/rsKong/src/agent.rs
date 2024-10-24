@@ -1,5 +1,7 @@
 use anyhow::Result;
+use ed25519_consensus::SigningKey;
 use ic_agent::{Agent, Identity};
+use rand::thread_rng;
 
 pub async fn create_agent(url: &str, identity: impl 'static + Identity, is_mainnet: bool) -> Result<Agent> {
     let agent = Agent::builder().with_url(url).with_identity(identity).build()?;
@@ -10,12 +12,8 @@ pub async fn create_agent(url: &str, identity: impl 'static + Identity, is_mainn
 }
 
 pub fn create_random_identity() -> impl Identity {
-    let rng = ring::rand::SystemRandom::new();
-    let key_pair = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng).expect("Could not generate key pair.");
-
-    ic_agent::identity::BasicIdentity::from_key_pair(
-        ring::signature::Ed25519KeyPair::from_pkcs8(key_pair.as_ref()).expect("Could not create identity."),
-    )
+    let signing_key = SigningKey::new(thread_rng());
+    ic_agent::identity::BasicIdentity::from_signing_key(signing_key)
 }
 
 /// Secp256k1Identity is the format output by the `dfx identity export user` command.

@@ -1,7 +1,7 @@
 use rand::rngs::StdRng;
 use rand::Rng;
 
-use crate::USER_MAP;
+use crate::stable_memory::USER_MAP;
 
 const NUM_WORDS: u16 = 184;
 const WORDS: [&str; NUM_WORDS as usize] = [
@@ -521,11 +521,10 @@ pub fn generate_user_name(rng: &mut StdRng) -> [u16; 3] {
         }
         user_name = [index1, index2, index3];
         user_name_exists = USER_MAP.with(|m| {
-            m.borrow().iter().map(|(_, v)| v).any(|user| {
-                user.user_name[0] == user_name[0]
-                    && user.user_name[1] == user_name[1]
-                    && user.user_name[2] == user_name[2]
-            })
+            m.borrow()
+                .iter()
+                .map(|(_, v)| v)
+                .any(|user| user.user_name[0] == user_name[0] && user.user_name[1] == user_name[1] && user.user_name[2] == user_name[2])
         });
     }
     user_name

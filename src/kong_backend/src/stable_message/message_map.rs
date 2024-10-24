@@ -1,7 +1,11 @@
-use super::stable_message::{StableMessage, StableMessageId};
-use crate::stable_user::user_map::ALL_USERS_USER_ID;
-use crate::{stable_user::user_map, MESSAGE_MAP};
 use std::cmp::Reverse;
+
+use super::stable_message::{StableMessage, StableMessageId};
+
+use crate::stable_kong_settings::kong_settings;
+use crate::stable_memory::MESSAGE_MAP;
+use crate::stable_user::stable_user::ALL_USERS_USER_ID;
+use crate::stable_user::user_map;
 
 pub fn get_by_message_id(message_id: u64) -> Option<StableMessage> {
     let user_id = user_map::get_by_caller().ok().flatten()?.user_id;
@@ -46,13 +50,7 @@ pub fn get(max_messages: Option<usize>) -> Vec<StableMessage> {
 pub fn insert(message: &StableMessage) -> u64 {
     MESSAGE_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        // with lock, increase message id key
-        let message_id = map
-            .iter()
-            .map(|(k, _)| k.0)
-            .max()
-            .unwrap_or(0) // only if empty and first message
-            + 1;
+        let message_id = kong_settings::inc_message_map_idx();
         let insert_message = StableMessage {
             message_id,
             ..message.clone()
