@@ -180,13 +180,13 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
     let trusted_origins = vec![
         #[cfg(not(feature = "prod"))]
         String::from("https://oaq4p-2iaaa-aaaar-qahqa-cai.icp0.io"),
-        String::from("https://oaq4p-2iaaa-aaaar-qahqa-cai.icp0.io.icp0.io"),
+        #[cfg(not(feature = "prod"))]
         String::from("http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943"),
         #[cfg(feature = "prod")]
         String::from("https://3ldz4-aiaaa-aaaar-qaina-cai.icp0.io"),
-        String::from("https://www.kingkongswap.com"),
-        String::from("https://kingkongswap.com"),
+        #[cfg(feature = "prod")]
         String::from("https://www.kongswap.io"),
+        #[cfg(feature = "prod")]
         String::from("https://kongswap.io"),
     ];
 
