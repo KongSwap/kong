@@ -6,7 +6,41 @@ import BigNumber from "bignumber.js";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Modal from "./Modal";
-import useIdentity from "./useIdentity";
+import {
+  useCkbtcActor,
+  useCkethActor,
+  useCkusdcActor,
+  useIcpActor,
+  useKingKongActor,
+  useKingKongFaucetActor,
+  useCkusdtActor,
+  useNICPActor,
+  useWtnActor,
+  useYugeActor,
+  useChatActor,
+  useDkpActor,
+  useNanasActor,
+  useNd64Actor,
+  useBitsActor,
+  useAlpacalbActor,
+  usePartyActor,
+  useSneedActor,
+  useClownActor,
+  useExeActor,
+  useWumboActor,
+  useMcsActor,
+  useDamonicActor,
+  useBobActor,
+  useBurnActor,
+  useDcdActor,
+  useDittoActor,
+  useFplActor,
+  useGldgovActor,
+  useIcvcActor,
+  useNtnActor,
+  useOgyActor,
+  useOwlActor
+} from "../Actors/identityKitActorInitiation";
 import DOMPurify from "dompurify";
 import { priceRoundedAmount } from "../utils/priceDecimalConvertor";
 import { useNavigate } from "react-router-dom";
@@ -42,42 +76,39 @@ const SendComponent = ({
   userDetails,
   tokenPrices,
 }) => {
-  const {
-    actors: {
-      icp_ledger_backend,
-      ckbtc_ledger_backend,
-      cketh_ledger_backend,
-      ckusdc_ledger_backend,
-      ckusdt_ledger_backend,
-      dkp_ledger_backend,
-      bits_ledger_backend,
-      chat_ledger_backend,
-      nanas_ledger_backend,
-      nd64_ledger_backend,
-      wtn_ledger_backend,
-      yuge_ledger_backend,
-      NICP_ledger_backend,
-      alpacalb_backend,
-      party_backend,
-      sneed_backend,
-      clown_backend,
-      exe_backend,
-      wumbo_backend,
-      mcs_backend,
-      damonic_backend,
-      bob_backend,
-      // BURN NTN DCD GLDGov OWL OGY FPL DITTO ICVC
-      burn_backend,
-      ntn_backend,
-      dcd_backend,
-      gldgov_backend,
-      owl_backend,
-      ogy_backend,
-      fpl_backend,
-      ditto_backend,
-      icvc_backend,
-    },
-  } = useIdentity();
+  const kingKongActor = useKingKongActor();
+  const icpLedgerActor = useIcpActor();
+  const ckbtcLedgerActor = useCkbtcActor();
+  const ckethLedgerActor = useCkethActor();
+  const ckusdcLedgerActor = useCkusdcActor();
+  const ckusdtLedgerActor = useCkusdtActor();
+  const NICPLedgerActor = useNICPActor();
+  const wtnLedgerActor = useWtnActor();
+  const yugeLedgerActor = useYugeActor();
+  const chatLedgerActor = useChatActor();
+  const dkpLedgerActor = useDkpActor();
+  const nanasLedgerActor = useNanasActor();
+  const nd64LedgerActor = useNd64Actor();
+  const bitsLedgerActor = useBitsActor();
+  const alpacalbLedgerActor = useAlpacalbActor();
+  const partyLedgerActor = usePartyActor();
+  const sneedLedgerActor = useSneedActor();
+  const clownLedgerActor = useClownActor();
+  const exeLedgerActor = useExeActor();
+  const wumboLedgerActor = useWumboActor();
+  const mcsLedgerActor = useMcsActor();
+  const damonicLedgerActor = useDamonicActor();
+  const bobLedgerActor = useBobActor();
+  const burnLedgerActor = useBurnActor();
+  const ntnLedgerActor = useNtnActor();
+  const dcdLedgerActor = useDcdActor();
+  const gldgovLedgerActor = useGldgovActor();
+  const owlLedgerActor = useOwlActor();
+  const ogyLedgerActor = useOgyActor();
+  const fplLedgerActor = useFplActor();
+  const dittoLedgerActor = useDittoActor();
+  const icvcLedgerActor = useIcvcActor();
+  const kingKongFaucetActor = useKingKongFaucetActor();
   const navigate = useNavigate();
   const [youPay, setYouPay] = useState("0");
   const [receivingAddress, setReceivingAddress] = useState("");
@@ -197,103 +228,103 @@ const SendComponent = ({
     (token) => {
       switch (token) {
         case "ICP":
-          return icp_ledger_backend;
+          return icpLedgerActor;
         case "ckBTC":
-          return ckbtc_ledger_backend;
+          return ckbtcLedgerActor;
         case "ckETH":
-          return cketh_ledger_backend;
+          return ckethLedgerActor;
         case "ckUSDC":
-          return ckusdc_ledger_backend;
+          return ckusdcLedgerActor;
         case "ckUSDT":
-          return ckusdt_ledger_backend;
+          return ckusdtLedgerActor;
         case "DKP":
-          return dkp_ledger_backend;
+          return dkpLedgerActor;
         case "Bits":
-          return bits_ledger_backend;
+          return bitsLedgerActor;
         case "CHAT":
-          return chat_ledger_backend;
+          return chatLedgerActor;
         case "nanas":
-          return nanas_ledger_backend;
+          return nanasLedgerActor;
         case "ND64":
-          return nd64_ledger_backend;
+          return nd64LedgerActor;
         case "WTN":
-          return wtn_ledger_backend;
+          return wtnLedgerActor;
         case "YUGE":
-          return yuge_ledger_backend;
+          return yugeLedgerActor;
         case "nICP":
-          return NICP_ledger_backend;
+          return NICPLedgerActor;
         case "ALPACALB":
-          return alpacalb_backend;
+          return alpacalbLedgerActor;
         case "PARTY":
-          return party_backend;
+          return partyLedgerActor;
         case "SNEED":
-          return sneed_backend;
+          return sneedLedgerActor;
         case "CLOWN":
-          return clown_backend;
-        case "EXE":
-          return exe_backend;
-        case "WUMBO":
-          return wumbo_backend;
-        case "MCS":
-          return mcs_backend;
+          return clownLedgerActor;
         case "DAMONIC":
-          return damonic_backend;
+          return damonicLedgerActor;
+        case "EXE":
+          return exeLedgerActor;
+        case "WUMBO":
+          return wumboLedgerActor;
+        case "MCS":
+          return mcsLedgerActor;
         case "BOB":
-          return bob_backend;
+          return bobLedgerActor;
         case "BURN":
-          return burn_backend;
+          return burnLedgerActor;
         case "NTN":
-          return ntn_backend;
+          return ntnLedgerActor;
         case "DCD":
-          return dcd_backend;
+          return dcdLedgerActor;
         case "GLDGov":
-          return gldgov_backend;
+          return gldgovLedgerActor;
         case "OWL":
-          return owl_backend;
+          return owlLedgerActor;
         case "OGY":
-          return ogy_backend;
+          return ogyLedgerActor;
         case "FPL":
-          return fpl_backend;
+          return fplLedgerActor;
         case "DITTO":
-          return ditto_backend;
+          return dittoLedgerActor;
         case "ICVC":
-          return icvc_backend;
+          return icvcLedgerActor;
         default:
           return null;
       }
     },
     [
-      icp_ledger_backend,
-      ckbtc_ledger_backend,
-      cketh_ledger_backend,
-      ckusdc_ledger_backend,
-      ckusdt_ledger_backend,
-      dkp_ledger_backend,
-      bits_ledger_backend,
-      chat_ledger_backend,
-      nanas_ledger_backend,
-      nd64_ledger_backend,
-      wtn_ledger_backend,
-      yuge_ledger_backend,
-      NICP_ledger_backend,
-      alpacalb_backend,
-      party_backend,
-      sneed_backend,
-      clown_backend,
-      exe_backend,
-      wumbo_backend,
-      mcs_backend,
-      damonic_backend,
-      bob_backend,
-      burn_backend,
-      ntn_backend,
-      dcd_backend,
-      gldgov_backend,
-      owl_backend,
-      ogy_backend,
-      fpl_backend,
-      ditto_backend,
-      icvc_backend,
+      icpLedgerActor,
+      ckbtcLedgerActor,
+      ckethLedgerActor,
+      ckusdcLedgerActor,
+      ckusdtLedgerActor,
+      dkpLedgerActor,
+      bitsLedgerActor,
+      chatLedgerActor,
+      nanasLedgerActor,
+      nd64LedgerActor,
+      wtnLedgerActor,
+      yugeLedgerActor,
+      NICPLedgerActor,
+      alpacalbLedgerActor,
+      partyLedgerActor,
+      sneedLedgerActor,
+      clownLedgerActor,
+      exeLedgerActor,
+      wumboLedgerActor,
+      mcsLedgerActor,
+      damonicLedgerActor,
+      bobLedgerActor,
+      burnLedgerActor,
+      ntnLedgerActor,
+      dcdLedgerActor,
+      gldgovLedgerActor,
+      owlLedgerActor,
+      ogyLedgerActor,
+      fplLedgerActor,
+      dittoLedgerActor,
+      icvcLedgerActor,
     ]
   );
 

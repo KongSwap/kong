@@ -8,7 +8,6 @@ import Modal from "./Modal";
 import swapIconSeparator from "../../../assets/pxicons/arrow.svg";
 import confirmationImageSwap from "../../../assets/kong-approves.png";
 import failedImageSwap from "../../../assets/kong-failed.png";
-import useIdentity from "./useIdentity";
 import { useNavigate } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
 import DOMPurify from "dompurify";
@@ -20,6 +19,41 @@ import { icrc1Tokens } from "../utils/getIcrc1Tokens";
 import { getExplorerLinks } from "../utils/getExplorerLink";
 import { FiExternalLink } from "react-icons/fi";
 import { Skeleton } from "@mui/material";
+import {
+  useCkbtcActor,
+  useCkethActor,
+  useCkusdcActor,
+  useIcpActor,
+  useKingKongActor,
+  useKingKongFaucetActor,
+  useCkusdtActor,
+  useNICPActor,
+  useWtnActor,
+  useYugeActor,
+  useChatActor,
+  useDkpActor,
+  useNanasActor,
+  useNd64Actor,
+  useBitsActor,
+  useAlpacalbActor,
+  usePartyActor,
+  useSneedActor,
+  useClownActor,
+  useExeActor,
+  useWumboActor,
+  useMcsActor,
+  useDamonicActor,
+  useBobActor,
+  useBurnActor,
+  useDcdActor,
+  useDittoActor,
+  useFplActor,
+  useGldgovActor,
+  useIcvcActor,
+  useNtnActor,
+  useOgyActor,
+  useOwlActor
+} from "../Actors/identityKitActorInitiation";
 
 export const KONG_FRONTEND =
   "http://" + process.env.CANISTER_ID_KONG_FRONTEND + ".localhost:4943";
@@ -48,43 +82,39 @@ const SwapComponent = memo(({
   principal,
   tokenImages,
 }) => {
-  const {
-    actors: {
-      backendKingKong,
-      icp_ledger_backend,
-      ckbtc_ledger_backend,
-      cketh_ledger_backend,
-      // kong_ledger_backend,
-      ckusdc_ledger_backend,
-      ckusdt_ledger_backend,
-      dkp_ledger_backend,
-      bits_ledger_backend,
-      chat_ledger_backend,
-      nanas_ledger_backend,
-      nd64_ledger_backend,
-      wtn_ledger_backend,
-      yuge_ledger_backend,
-      NICP_ledger_backend,
-      alpacalb_backend,
-      party_backend,
-      sneed_backend,
-      clown_backend,
-      exe_backend,
-      wumbo_backend,
-      mcs_backend,
-      damonic_backend,
-      bob_backend,
-      burn_backend,
-      ntn_backend,
-      dcd_backend,
-      gldgov_backend,
-      owl_backend,
-      ogy_backend,
-      fpl_backend,
-      ditto_backend,
-      icvc_backend,
-    },
-  } = useIdentity();
+  const backendKingKong = useKingKongActor();
+  const icpLedgerActor = useIcpActor();
+  const ckbtcLedgerActor = useCkbtcActor();
+  const ckethLedgerActor = useCkethActor();
+  const ckusdcLedgerActor = useCkusdcActor();
+  const ckusdtLedgerActor = useCkusdtActor();
+  const NICPLedgerActor = useNICPActor();
+  const wtnLedgerActor = useWtnActor();
+  const yugeLedgerActor = useYugeActor();
+  const chatLedgerActor = useChatActor();
+  const dkpLedgerActor = useDkpActor();
+  const nanasLedgerActor = useNanasActor();
+  const nd64LedgerActor = useNd64Actor();
+  const bitsLedgerActor = useBitsActor();
+  const alpacalbLedgerActor = useAlpacalbActor();
+  const partyLedgerActor = usePartyActor();
+  const sneedLedgerActor = useSneedActor();
+  const clownLedgerActor = useClownActor();
+  const exeLedgerActor = useExeActor();
+  const wumboLedgerActor = useWumboActor();
+  const mcsLedgerActor = useMcsActor();
+  const damonicLedgerActor = useDamonicActor();
+  const bobLedgerActor = useBobActor();
+  const burnLedgerActor = useBurnActor();
+  const ntnLedgerActor = useNtnActor();
+  const dcdLedgerActor = useDcdActor();
+  const gldgovLedgerActor = useGldgovActor();
+  const owlLedgerActor = useOwlActor();
+  const ogyLedgerActor = useOgyActor();
+  const fplLedgerActor = useFplActor();
+  const dittoLedgerActor = useDittoActor();
+  const icvcLedgerActor = useIcvcActor();
+  const kingKongFaucetActor = useKingKongFaucetActor();
 
   const initialYouPayToken = initialPool ? initialPool.split("_")[0] : null;
   const initialYouReceiveToken = initialPool ? initialPool.split("_")[1] : null;
@@ -581,74 +611,74 @@ const SwapComponent = memo(({
       .multipliedBy(new BigNumber(10).pow(youReceiveDecimals))
       .toNumber();
 
-    const selectBackend = (token) => {
-      switch (token) {
-        case "ICP":
-          return icp_ledger_backend;
-        case "ckBTC":
-          return ckbtc_ledger_backend;
-        case "ckETH":
-          return cketh_ledger_backend;
-        case "ckUSDC":
-          return ckusdc_ledger_backend;
-        case "ckUSDT":
-          return ckusdt_ledger_backend;
-        case "DKP":
-          return dkp_ledger_backend;
-        case "Bits":
-          return bits_ledger_backend;
-        case "CHAT":
-          return chat_ledger_backend;
-        case "nanas":
-          return nanas_ledger_backend;
-        case "ND64":
-          return nd64_ledger_backend;
-        case "WTN":
-          return wtn_ledger_backend;
-        case "YUGE":
-          return yuge_ledger_backend;
-        case "nICP":
-          return NICP_ledger_backend;
-        case "ALPACALB":
-          return alpacalb_backend;
-        case "PARTY":
-          return party_backend;
-        case "SNEED":
-          return sneed_backend;
-        case "CLOWN":
-          return clown_backend;
-        case "DAMONIC":
-          return damonic_backend;
-        case "EXE":
-          return exe_backend;
-        case "WUMBO":
-          return wumbo_backend;
-        case "MCS":
-          return mcs_backend;
-        case "BOB":
-          return bob_backend;
-        case "BURN":
-          return burn_backend;
-        case "NTN":
-          return ntn_backend;
-        case "DCD":
-          return dcd_backend;
-        case "GLDGov":
-          return gldgov_backend;
-        case "OWL":
-          return owl_backend;
-        case "OGY":
-          return ogy_backend;
-        case "FPL":
-          return fpl_backend;
-        case "DITTO":
-          return ditto_backend;
-        case "ICVC":
-          return icvc_backend;
-        default:
-          return null;
-      }
-    };
+      const selectBackend = (token) => {
+        switch (token) {
+          case "ICP":
+            return icpLedgerActor;
+          case "ckBTC":
+            return ckbtcLedgerActor;
+          case "ckETH":
+            return ckethLedgerActor;
+          case "ckUSDC":
+            return ckusdcLedgerActor;
+          case "ckUSDT":
+            return ckusdtLedgerActor;
+          case "DKP":
+            return dkpLedgerActor;
+          case "Bits":
+            return bitsLedgerActor;
+          case "CHAT":
+            return chatLedgerActor;
+          case "nanas":
+            return nanasLedgerActor;
+          case "ND64":
+            return nd64LedgerActor;
+          case "WTN":
+            return wtnLedgerActor;
+          case "YUGE":
+            return yugeLedgerActor;
+          case "nICP":
+            return NICPLedgerActor;
+          case "ALPACALB":
+            return alpacalbLedgerActor;
+          case "PARTY":
+            return partyLedgerActor;
+          case "SNEED":
+            return sneedLedgerActor;
+          case "CLOWN":
+            return clownLedgerActor;
+          case "DAMONIC":
+            return damonicLedgerActor;
+          case "EXE":
+            return exeLedgerActor;
+          case "WUMBO":
+            return wumboLedgerActor;
+          case "MCS":
+            return mcsLedgerActor;
+          case "BOB":
+            return bobLedgerActor;
+          case "BURN":
+            return burnLedgerActor;
+          case "NTN":
+            return ntnLedgerActor;
+          case "DCD":
+            return dcdLedgerActor;
+          case "GLDGov":
+            return gldgovLedgerActor;
+          case "OWL":
+            return owlLedgerActor;
+          case "OGY":
+            return ogyLedgerActor;
+          case "FPL":
+            return fplLedgerActor;
+          case "DITTO":
+            return dittoLedgerActor;
+          case "ICVC":
+            return icvcLedgerActor;
+          default:
+            return null;
+        }
+      };
 
     let approve_block_id = null;
     let transfer_block_id = null;
@@ -694,41 +724,40 @@ const SwapComponent = memo(({
     receiveAddress,
     getSwapPrice,
     approvePayToken,
-    ckusdc_ledger_backend,
-    ckbtc_ledger_backend,
-    cketh_ledger_backend,
-    icp_ledger_backend,
-    // kong_ledger_backend,
-    ckusdt_ledger_backend,
     backendKingKong,
     sendTo,
     getTokenDecimals,
-    dkp_ledger_backend,
-    bits_ledger_backend,
-    chat_ledger_backend,
-    nanas_ledger_backend,
-    nd64_ledger_backend,
-    wtn_ledger_backend,
-    yuge_ledger_backend,
-    NICP_ledger_backend,
-    alpacalb_backend,
-    party_backend,
-    sneed_backend,
-    clown_backend,
-    exe_backend,
-    wumbo_backend,
-    mcs_backend,
-    damonic_backend,
-    bob_backend,
-    burn_backend,
-    ntn_backend,
-    dcd_backend,
-    gldgov_backend,
-    owl_backend,
-    ogy_backend,
-    fpl_backend,
-    ditto_backend,
-    icvc_backend,
+    icpLedgerActor,
+    ckbtcLedgerActor,
+    ckethLedgerActor,
+    ckusdcLedgerActor,
+    ckusdtLedgerActor,
+    dkpLedgerActor,
+    bitsLedgerActor,
+    chatLedgerActor,
+    nanasLedgerActor,
+    nd64LedgerActor,
+    wtnLedgerActor,
+    yugeLedgerActor,
+    NICPLedgerActor,
+    alpacalbLedgerActor,
+    partyLedgerActor,
+    sneedLedgerActor,
+    clownLedgerActor,
+    exeLedgerActor,
+    wumboLedgerActor,
+    mcsLedgerActor,
+    damonicLedgerActor,
+    bobLedgerActor,
+    burnLedgerActor,
+    ntnLedgerActor,
+    dcdLedgerActor,
+    gldgovLedgerActor,
+    owlLedgerActor,
+    ogyLedgerActor,
+    fplLedgerActor,
+    dittoLedgerActor,
+    icvcLedgerActor,
   ]);
 
   const sanitizeInput = useCallback((input) => {

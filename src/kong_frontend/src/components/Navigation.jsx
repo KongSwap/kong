@@ -10,10 +10,11 @@ import { Principal } from "@dfinity/principal";
 import { ThreeDots } from "react-loader-spinner";
 import SideDrawer from "./SideDrawer";
 import iconPlugImage from "../../../assets/icons/plug.png";
-import useIdentity from "./useIdentity";
 import { toast } from "react-toastify";
 import TransactionList from "./TransactionList";
 import { FRONTEND_URL } from "../constants/config"; 
+import { useIdentityKit } from "@nfid/identitykit/react";
+import { useKingKongActor } from "../Actors/identityKitActorInitiation";
 
 export const KONG_FRONTEND =
   "http://" + process.env.CANISTER_ID_KONG_FRONTEND + ".localhost:4943";
@@ -22,6 +23,7 @@ export const KONG_BACKEND_PRINCIPAL = Principal.fromText(
 );
 
 export function extractParts(str) {
+  console.log('extract parts', str)
   const parts = str.split("-");
   const firstPart = `${parts[0]}-${parts[1].slice(0, 3)}`; // First segment + first 3 chars of second segment
   const lastPart = `${parts[parts.length - 2].slice(-3)}-${parts[parts.length - 1]}`; // Last 3 chars of second to last + last segment
@@ -36,7 +38,6 @@ export function formatPoolName(name) {
 const Navigation = React.memo(
   ({
     getTokens,
-    getUserProfile,
     updatePoolBalances,
     updateUserBalances,
     principal,
@@ -55,16 +56,19 @@ const Navigation = React.memo(
     tokenImages,
   }) => {
     const location = useLocation();
-    const {
-      login,
-      clear,
-      identityType,
-      connectPlugWallet,
-      activeIdentity,
-      disconnectPlugWallet,
-      actors: { backendKingKong },
-      isInitialized
-    } = useIdentity();
+    const { connect, disconnect, delegationType } = useIdentityKit();
+
+    // const {
+    //   login,
+    //   clear,
+    //   identityType,
+    //   connectPlugWallet,
+    //   activeIdentity,
+    //   disconnectPlugWallet,
+    //   actors: { backendKingKong },
+    //   isInitialized
+    // } = useIdentity();
+    const backendKingKong = useKingKongActor();
     const initializationRef = useRef(false);
     const previousPrincipalRef = useRef();
     const [transactions, setTransactions] = useState([]);
@@ -78,7 +82,7 @@ const Navigation = React.memo(
     }, [principal]);
 
     const fetchAndSetTransactions = useCallback(async () => {
-      if (!activeIdentity) return;
+      if (!principal) return;
       try {
         const result = await backendKingKong.txs([true]);
         if (result.Ok) {
@@ -89,17 +93,17 @@ const Navigation = React.memo(
       } catch (error) {
         toast("Error fetching transactions");
       }
-    }, [backendKingKong, activeIdentity]);
+    }, [backendKingKong, principal]);
 
-    const loginWithPlugWallet = useCallback(async () => {
-      await connectPlugWallet();
+    const loginWithPlugWallet = useCallback(() => {
+      connect("Plug");
       setIsDrawerOpen(false);
-    }, [connectPlugWallet, setIsDrawerOpen]);
+    }, [connect, setIsDrawerOpen]);
 
     const loginWithInternetIdentity = useCallback(() => {
-      login();
+      connect("InternetIdentity");
       setIsDrawerOpen(false);
-    }, [login, setIsDrawerOpen]);
+    }, [connect, setIsDrawerOpen]);
 
     const toggleDrawer = useCallback(
       (specificState) => {
@@ -107,15 +111,6 @@ const Navigation = React.memo(
       },
       [setIsDrawerOpen, isDrawerOpen]
     );
-
-    const handleDisconnect = useCallback(async () => {
-      if (identityType === "ii") {
-        clear();
-        window.location.reload();
-      } else {
-        await disconnectPlugWallet();
-      }
-    }, [identityType, clear, disconnectPlugWallet]);
 
     const copyToClipboard = useCallback(async (text) => {
       try {
@@ -128,17 +123,51 @@ const Navigation = React.memo(
       }
     }, []);
 
+    const handleDisconnect = useCallback(async () => {
+      await disconnect();
+    }, [disconnect]);
+
+    // useEffect(() => {
+    //   if (principal && isInitialized) {
+    //     if (principal !== previousPrincipalRef.current) {
+    //       // Principal has changed, reinitialize
+    //       previousPrincipalRef.current = principal;
+    //       const initialize = async () => {
+    //         await getUserProfile();
+    //         await updatePoolBalances();
+    //         await updateUserBalances();
+    //       };
+    //       initialize();
+    //     }
+    //   } else if (!principal) {
+    //     // Principal is null, reset the ref
+    //     previousPrincipalRef.current = null;
+    //   }
+    // }, [
+    //   principal,
+    //   getUserProfile,
+    //   updateUserBalances,
+    //   updatePoolBalances,
+    //   isInitialized,
+    // ]);
+
     useEffect(() => {
-      if (principal && isInitialized) {
+      console.log('navigation', delegationType)
+      if (principal && delegationType) {
         if (principal !== previousPrincipalRef.current) {
           // Principal has changed, reinitialize
           previousPrincipalRef.current = principal;
+          // add 3 seconds before initializing
+          setTimeout(() => {
           const initialize = async () => {
-            await getUserProfile();
+            // await getUserProfile();
             await updatePoolBalances();
             await updateUserBalances();
           };
+
           initialize();
+
+          }, 3000)
         }
       } else if (!principal) {
         // Principal is null, reset the ref
@@ -146,10 +175,10 @@ const Navigation = React.memo(
       }
     }, [
       principal,
-      getUserProfile,
+      // getUserProfile,
       updateUserBalances,
       updatePoolBalances,
-      isInitialized,
+      delegationType
     ]);
 
     useEffect(() => {
@@ -339,7 +368,7 @@ const Navigation = React.memo(
                     </svg>
                   )}
                 </button>
-                <span onClick={() => handleDisconnect()} className="disconnect">
+                <span onClick={handleDisconnect} className="disconnect">
                   <span className="disconnect-icon">
                     <svg
                       width="30"
@@ -492,6 +521,12 @@ const Navigation = React.memo(
                     <img src={iconPlugImage} className="wallet-button-logo" />
                   </span>
                   <span className="wallet-button-text">Plug Wallet</span>
+                </span>
+                <span className="wallet-button" onClick={() => connect("NFIDW")}>
+                  <span className="wallet-button-thumb">
+                    <img src={iconPlugImage} className="wallet-button-logo" />
+                  </span>
+                  <span className="wallet-button-text">NFID Wallet</span>
                 </span>
               </div>
               <div className="side-drawer-terms">

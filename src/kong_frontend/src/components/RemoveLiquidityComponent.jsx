@@ -3,13 +3,13 @@ import BigNumber from "bignumber.js";
 import { toast } from "react-toastify";
 import Modal from "./Modal";
 import { Principal } from "@dfinity/principal";
-import useIdentity from "./useIdentity";
 import confirmationImageRemoveLq from "../../../assets/kong-approves-remove-lq.png";
 import { Link, useLocation } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
 import removeLiquiditySound from "../../../assets/Remove-Liquidity-succesfull.mp3";
 import failedImageSwap from "../../../assets/kong-failed.png";
 import { priceRoundedAmount } from "../utils/priceDecimalConvertor";
+import { useKingKongActor } from "../Actors/identityKitActorInitiation";
 
 export const KONG_FRONTEND =
   "http://" + process.env.CANISTER_ID_KONG_FRONTEND + ".localhost:4943";
@@ -27,9 +27,7 @@ const RemoveLiquidityComponent = ({
   tokenPrices,
   tokenImages
 }) => {
-  const {
-    actors: { backendKingKong },
-  } = useIdentity();
+  const backendKingKong = useKingKongActor();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const initialPool = queryParams.get("pool")

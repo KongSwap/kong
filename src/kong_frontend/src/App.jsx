@@ -79,7 +79,7 @@ import tokenWbtcImage from "../../assets/tokens/WBTC.svg";
 import tokenWtnImage from "../../assets/tokens/wtn.svg";
 import tokenWumboImage from "../../assets/tokens/wumbo.svg";
 import tokenYugeImage from "../../assets/tokens/yuge.svg";
-import SwapComponent from "./components/SwapComponent";
+// import SwapComponent from "./components/SwapComponent";
 import { ToastContainer, toast } from "react-toastify";
 import Navigation, {
   formatPoolName,
@@ -87,23 +87,58 @@ import Navigation, {
 } from "./components/Navigation";
 import { useLocation, useNavigate } from "react-router-dom";
 import StatsPage from "./components/StatsPage";
-import PoolsComponent from "./components/PoolsComponent";
-import RemoveLiquidityComponent from "./components/RemoveLiquidityComponent";
-import SendComponent from "./components/SendComponent";
+// import PoolsComponent from "./components/PoolsComponent";
+// import RemoveLiquidityComponent from "./components/RemoveLiquidityComponent";
+// import SendComponent from "./components/SendComponent";
 import Modal from "./components/Modal";
 import { formatBalances, formatNumber } from "./utils/formatBalances";
 import {
   getActor as kong_backend,
   getAuthActor as kong_backend_auth,
 } from "./lib/kong_backend";
-import useIdentity from "./components/useIdentity";
 import { FRONTEND_URL } from "./constants/config";
-import ReceiveComponent from "./components/ReceiveComponent";
+// import ReceiveComponent from "./components/ReceiveComponent";
 import Tippy from "@tippyjs/react";
 import FooterSocials from "./components/FooterSocials";
 import { defaultStateUser } from "./constants/defaultState";
 import GorilaText from "./components/GorilaText";
 import { isEqual } from "lodash";
+import { useIdentityKit } from "@nfid/identitykit/react";
+import {
+  useCkbtcActor,
+  useCkethActor,
+  useCkusdcActor,
+  useIcpActor,
+  useKingKongActor,
+  useKingKongFaucetActor,
+  useCkusdtActor,
+  useNICPActor,
+  useWtnActor,
+  useYugeActor,
+  useChatActor,
+  useDkpActor,
+  useNanasActor,
+  useNd64Actor,
+  useBitsActor,
+  useAlpacalbActor,
+  usePartyActor,
+  useSneedActor,
+  useClownActor,
+  useExeActor,
+  useWumboActor,
+  useMcsActor,
+  useDamonicActor,
+  useBobActor,
+  useBurnActor,
+  useDcdActor,
+  useDittoActor,
+  useFplActor,
+  useGldgovActor,
+  useIcvcActor,
+  useNtnActor,
+  useOgyActor,
+  useOwlActor
+} from "./Actors/identityKitActorInitiation";
 
 const tokenImages = {
   ADA: tokenAdaImage,
@@ -221,59 +256,92 @@ const defaultSlippage = 2;
 
 const App = () => {
   const location = useLocation();
-  const {
-    activeIdentity,
-    plugPrincipal,
-    isAuthenticated,
-    expiredSession,
-    identityType,
-    clear,
-    actors: {
-      backendKingKong,
-      backendKingKongFaucet,
-      icp_ledger_backend,
-      ckbtc_ledger_backend,
-      cketh_ledger_backend,
-      ckusdc_ledger_backend,
-      ckusdt_ledger_backend,
-      dkp_ledger_backend,
-      bits_ledger_backend,
-      chat_ledger_backend,
-      nanas_ledger_backend,
-      nd64_ledger_backend,
-      wtn_ledger_backend,
-      yuge_ledger_backend,
-      NICP_ledger_backend,
-      alpacalb_backend,
-      party_backend,
-      sneed_backend,
-      clown_backend,
-      damonic_backend,
-      exe_backend,
-      wumbo_backend,
-      mcs_backend,
-      bob_backend,
-      burn_backend,
-      ntn_backend,
-      dcd_backend,
-      gldgov_backend,
-      owl_backend,
-      ogy_backend,
-      fpl_backend,
-      ditto_backend,
-      icvc_backend,
-    },
-    isInitialized,
-  } = useIdentity();
 
+  // const {
+  //   activeIdentity,
+  //   plugPrincipal,
+  //   isAuthenticated,
+  //   expiredSession,
+  //   identityType,
+  //   clear,
+  //   actors: {
+  //     backendKingKong,
+  //     backendKingKongFaucet,
+  //     icp_ledger_backend,
+  //     ckbtc_ledger_backend,
+  //     cketh_ledger_backend,
+  //     ckusdc_ledger_backend,
+  //     ckusdt_ledger_backend,
+  //     dkp_ledger_backend,
+  //     bits_ledger_backend,
+  //     chat_ledger_backend,
+  //     nanas_ledger_backend,
+  //     nd64_ledger_backend,
+  //     wtn_ledger_backend,
+  //     yuge_ledger_backend,
+  //     NICP_ledger_backend,
+  //     alpacalb_backend,
+  //     party_backend,
+  //     sneed_backend,
+  //     clown_backend,
+  //     damonic_backend,
+  //     exe_backend,
+  //     wumbo_backend,
+  //     mcs_backend,
+  //     bob_backend,
+  //     burn_backend,
+  //     ntn_backend,
+  //     dcd_backend,
+  //     gldgov_backend,
+  //     owl_backend,
+  //     ogy_backend,
+  //     fpl_backend,
+  //     ditto_backend,
+  //     icvc_backend,
+  //   },
+  //   isInitialized,
+  // } = useIdentity();
+  const { identity, accounts, delegationType, isInitializing } = useIdentityKit();
+  const kingKongActor = useKingKongActor();
+  const icpLedgerActor = useIcpActor();
+  const ckbtcLedgerActor = useCkbtcActor();
+  const ckethLedgerActor = useCkethActor();
+  const ckusdcLedgerActor = useCkusdcActor();
+  const ckusdtLedgerActor = useCkusdtActor();
+  const NICPLedgerActor = useNICPActor();
+  const wtnLedgerActor = useWtnActor();
+  const yugeLedgerActor = useYugeActor();
+  const chatLedgerActor = useChatActor();
+  const dkpLedgerActor = useDkpActor();
+  const nanasLedgerActor = useNanasActor();
+  const nd64LedgerActor = useNd64Actor();
+  const bitsLedgerActor = useBitsActor();
+  const alpacalbLedgerActor = useAlpacalbActor();
+  const partyLedgerActor = usePartyActor();
+  const sneedLedgerActor = useSneedActor();
+  const clownLedgerActor = useClownActor();
+  const exeLedgerActor = useExeActor();
+  const wumboLedgerActor = useWumboActor();
+  const mcsLedgerActor = useMcsActor();
+  const damonicLedgerActor = useDamonicActor();
+  const bobLedgerActor = useBobActor();
+  const burnLedgerActor = useBurnActor();
+  const ntnLedgerActor = useNtnActor();
+  const dcdLedgerActor = useDcdActor();
+  const gldgovLedgerActor = useGldgovActor();
+  const owlLedgerActor = useOwlActor();
+  const ogyLedgerActor = useOgyActor();
+  const fplLedgerActor = useFplActor();
+  const dittoLedgerActor = useDittoActor();
+  const icvcLedgerActor = useIcvcActor();
+  const kingKongFaucetActor = useKingKongFaucetActor();
   const [userDetails, setUserDetails] = useState(defaultStateUser);
-
+  const [principal, setPrincipal] = useState(null);
   const [shownBalances, setShownBalances] = useState({});
   const [poolBalances, setPoolBalances] = useState([]);
   const [poolsInfo, setPoolsInfo] = useState([]);
   const [isCopied, setIsCopied] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
-  const [principal, setPrincipal] = useState(null);
   const [fetchingTokens, setFetchingTokens] = useState(false);
   const queryParams = new URLSearchParams(location.search);
   const viewTab = queryParams.get("viewtab");
@@ -295,12 +363,19 @@ const App = () => {
   const [accountId, setAccountId] = useState(null);
   const previousPoolBalances = useRef([]);
 
-  const smallerPrincipal = useMemo(() => {
-    if (principal) {
-      return extractParts(principal);
+  useEffect(() => {
+    if (identity) {
+      // console.log("WTF", identity.getPrincipal().toText());
+      setPrincipal(identity.getPrincipal().toText());
     }
-    return "";
-  }, [principal]);
+  }, [identity]);
+
+  // const smallerPrincipal = useMemo(() => {
+  //   if (identity) {
+  //     return extractParts(identity);
+  //   }
+  //   return "";
+  // }, [identity]);
 
   const tokenPrices = useMemo(() => {
     if (!poolsInfo.length) return {};
@@ -335,10 +410,10 @@ const App = () => {
   }, [pool, navigate]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (principal) {
       setShownBalances(formatBalances(userDetails, tokenPrices));
     }
-  }, [userDetails, tokenPrices, isInitialized]);
+  }, [userDetails, tokenPrices, principal]);
 
   useEffect(() => {
     const getTokenDetails = async () => {
@@ -348,55 +423,55 @@ const App = () => {
     getTokenDetails();
   }, []);
 
-  useEffect(() => {
-    if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
-      setPrincipal(null);
-      initializeUserData();
-      setIsDrawerOpen(false);
-    } else if (plugPrincipal && !principal) {
-      setPrincipal(plugPrincipal);
-    } else if (
-      !principal &&
-      backendKingKong &&
-      activeIdentity &&
-      activeIdentity.getPrincipal()
-    ) {
-      setPrincipal(
-        Principal.fromUint8Array(activeIdentity.getPrincipal()._arr).toText()
-      );
-    }
-  }, [
-    activeIdentity,
-    backendKingKong,
-    plugPrincipal,
-    principal,
-    isAuthenticated,
-  ]);
+  // useEffect(() => {
+  //   if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
+  //     setPrincipal(null);
+  //     initializeUserData();
+  //     setIsDrawerOpen(false);
+  //   } else if (plugPrincipal && !principal) {
+  //     setPrincipal(plugPrincipal);
+  //   } else if (
+  //     !principal &&
+  //     backendKingKong &&
+  //     activeIdentity &&
+  //     activeIdentity.getPrincipal()
+  //   ) {
+  //     setPrincipal(
+  //       Principal.fromUint8Array(activeIdentity.getPrincipal()._arr).toText()
+  //     );
+  //   }
+  // }, [
+  //   activeIdentity,
+  //   backendKingKong,
+  //   plugPrincipal,
+  //   principal,
+  //   isAuthenticated,
+  // ]);
 
-  useEffect(() => {
-    if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
-      setPrincipal(null);
-      initializeUserData();
-    }
-  }, [activeIdentity, plugPrincipal]);
+  // useEffect(() => {
+  //   if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
+  //     setPrincipal(null);
+  //     initializeUserData();
+  //   }
+  // }, [activeIdentity, plugPrincipal]);
 
-  useEffect(() => {
-    if (expiredSession) {
-      toast.info("Session expired. Reloading in 5 seconds...", {
-        position: "bottom-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+  // useEffect(() => {
+  //   if (expiredSession) {
+  //     toast.info("Session expired. Reloading in 5 seconds...", {
+  //       position: "bottom-right",
+  //       autoClose: 5000,
+  //       hideProgressBar: false,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //     });
 
-      setTimeout(async () => {
-        await clear(); // Clear identity (logout)
-        window.location.reload(); // Refresh the page
-      }, 5000);
-    }
-  }, [expiredSession, clear]);
+  //     setTimeout(async () => {
+  //       await clear(); // Clear identity (logout)
+  //       window.location.reload(); // Refresh the page
+  //     }, 5000);
+  //   }
+  // }, [expiredSession, clear]);
 
   const initializeUserData = useCallback(() => {
     setUserDetails(defaultStateUser);
@@ -431,34 +506,6 @@ const App = () => {
     [tokenDetails]
   );
 
-  const getUserProfile = useCallback(
-    async (retryCount = 0, maxRetries = 5) => {
-      if (!principal || !isInitialized) {
-        return;
-      }
-
-      try {
-        const result = await backendKingKong.get_user();
-        const accountId = result.Ok ? result.Ok.account_id : "";
-        setAccountId(accountId);
-      } catch (error) {
-        console.error(`Attempt ${retryCount + 1} failed:`, error);
-
-        if (retryCount < maxRetries) {
-          const retryDelay = 1000 * (retryCount + 1); // Exponential backoff
-          console.log(`Retrying in ${retryDelay / 1000} seconds...`);
-
-          setTimeout(() => {
-            getUserProfile(retryCount + 1, maxRetries);
-          }, retryDelay);
-        } else {
-          toast.error("Failed to fetch user profile after multiple attempts.");
-        }
-      }
-    },
-    [isInitialized, principal, backendKingKong]
-  );
-
   const updateUserBalances = useCallback(async () => {
     if (!principal || !tokenDetails) {
       initializeUserData();
@@ -466,7 +513,7 @@ const App = () => {
     }
     const principalBalance = principal
       ? Principal.fromText(principal)
-      : activeIdentity.getPrincipal();
+      : identity.getPrincipal();
 
     const balanceUpdates = new Map(); // Use a Map to store balances immutably
 
@@ -500,37 +547,37 @@ const App = () => {
 
     // Fetch all balances in parallel and wait for all promises to resolve
     await Promise.allSettled([
-      updateBalance(icp_ledger_backend, "ICP"),
-      updateBalance(ckbtc_ledger_backend, "ckBTC"),
-      updateBalance(cketh_ledger_backend, "ckETH"),
-      updateBalance(ckusdc_ledger_backend, "ckUSDC"),
-      updateBalance(ckusdt_ledger_backend, "ckUSDT"),
-      updateBalance(dkp_ledger_backend, "DKP"),
-      updateBalance(bits_ledger_backend, "Bits"),
-      updateBalance(chat_ledger_backend, "CHAT"),
-      updateBalance(nanas_ledger_backend, "nanas"),
-      updateBalance(nd64_ledger_backend, "ND64"),
-      updateBalance(wtn_ledger_backend, "WTN"),
-      updateBalance(yuge_ledger_backend, "YUGE"),
-      updateBalance(NICP_ledger_backend, "nICP"),
-      updateBalance(alpacalb_backend, "ALPACALB"),
-      updateBalance(party_backend, "PARTY"),
-      updateBalance(sneed_backend, "SNEED"),
-      updateBalance(clown_backend, "CLOWN"),
-      updateBalance(exe_backend, "EXE"),
-      updateBalance(wumbo_backend, "WUMBO"),
-      updateBalance(mcs_backend, "MCS"),
-      updateBalance(damonic_backend, "DAMONIC"),
-      updateBalance(bob_backend, "BOB"),
-      updateBalance(burn_backend, "BURN"),
-      updateBalance(ntn_backend, "NTN"),
-      updateBalance(dcd_backend, "DCD"),
-      updateBalance(gldgov_backend, "GLDGov"),
-      updateBalance(owl_backend, "OWL"),
-      updateBalance(ogy_backend, "OGY"),
-      updateBalance(fpl_backend, "FPL"),
-      updateBalance(ditto_backend, "DITTO"),
-      updateBalance(icvc_backend, "ICVC"),
+      updateBalance(icpLedgerActor, "ICP"),
+      updateBalance(ckbtcLedgerActor, "ckBTC"),
+      updateBalance(ckethLedgerActor, "ckETH"),
+      updateBalance(ckusdcLedgerActor, "ckUSDC"),
+      updateBalance(ckusdtLedgerActor, "ckUSDT"),
+      updateBalance(dkpLedgerActor, "DKP"),
+      updateBalance(bitsLedgerActor, "Bits"),
+      updateBalance(chatLedgerActor, "CHAT"),
+      updateBalance(nanasLedgerActor, "nanas"),
+      updateBalance(nd64LedgerActor, "ND64"),
+      updateBalance(wtnLedgerActor, "WTN"),
+      updateBalance(yugeLedgerActor, "YUGE"),
+      updateBalance(NICPLedgerActor, "nICP"),
+      updateBalance(alpacalbLedgerActor, "ALPACALB"),
+      updateBalance(partyLedgerActor, "PARTY"),
+      updateBalance(sneedLedgerActor, "SNEED"),
+      updateBalance(clownLedgerActor, "CLOWN"),
+      updateBalance(exeLedgerActor, "EXE"),
+      updateBalance(wumboLedgerActor, "WUMBO"),
+      updateBalance(mcsLedgerActor, "MCS"),
+      updateBalance(damonicLedgerActor, "DAMONIC"),
+      updateBalance(bobLedgerActor, "BOB"),
+      updateBalance(burnLedgerActor, "BURN"),
+      updateBalance(ntnLedgerActor, "NTN"),
+      updateBalance(dcdLedgerActor, "DCD"),
+      updateBalance(gldgovLedgerActor, "GLDGov"),
+      updateBalance(owlLedgerActor, "OWL"),
+      updateBalance(ogyLedgerActor, "OGY"),
+      updateBalance(fplLedgerActor, "FPL"),
+      updateBalance(dittoLedgerActor, "DITTO"),
+      updateBalance(icvcLedgerActor, "ICVC"),
     ]);
 
     // Convert the Map to an object
@@ -547,51 +594,51 @@ const App = () => {
       setUserDetails(updatedUserDetails);
     }
   }, [
-    icp_ledger_backend,
-    ckbtc_ledger_backend,
-    cketh_ledger_backend,
-    ckusdc_ledger_backend,
-    ckusdt_ledger_backend,
-    dkp_ledger_backend,
-    bits_ledger_backend,
-    chat_ledger_backend,
-    nanas_ledger_backend,
-    nd64_ledger_backend,
-    wtn_ledger_backend,
-    yuge_ledger_backend,
-    NICP_ledger_backend,
-    alpacalb_backend,
-    party_backend,
-    sneed_backend,
-    clown_backend,
-    exe_backend,
-    wumbo_backend,
-    mcs_backend,
-    damonic_backend,
-    bob_backend,
-    principal,
+    icpLedgerActor,
+    ckbtcLedgerActor,
+    ckethLedgerActor,
+    ckusdcLedgerActor,
+    ckusdtLedgerActor,
+    dkpLedgerActor,
+    bitsLedgerActor,
+    chatLedgerActor,
+    nanasLedgerActor,
+    nd64LedgerActor,
+    wtnLedgerActor,
+    yugeLedgerActor,
+    NICPLedgerActor,
+    alpacalbLedgerActor,
+    partyLedgerActor,
+    sneedLedgerActor,
+    clownLedgerActor,
+    exeLedgerActor,
+    wumboLedgerActor,
+    mcsLedgerActor,
+    damonicLedgerActor,
+    bobLedgerActor,
+    identity,
     initializeUserData,
     tokenDetails,
     getTokenDecimals,
-    burn_backend,
-    ntn_backend,
-    dcd_backend,
-    gldgov_backend,
-    owl_backend,
-    ogy_backend,
-    fpl_backend,
-    ditto_backend,
-    icvc_backend,
+    burnLedgerActor,
+    ntnLedgerActor,
+    dcdLedgerActor,
+    gldgovLedgerActor,
+    owlLedgerActor,
+    ogyLedgerActor,
+    fplLedgerActor,
+    dittoLedgerActor,
+    icvcLedgerActor,
     userDetails,
   ]);
 
   const updateUserPools = useCallback(async () => {
-    if (!principal || !backendKingKong) {
+    if (!principal || !kingKongActor) {
       return;
     }
-
+    console.log('identity stuff1', isInitializing, delegationType);
     try {
-      const userBalances = await backendKingKong.user_balances([]);
+      const userBalances = await kingKongActor.user_balances([]);
       const balances = userBalances.Ok || [];
       // Format the pool balances, including amount_0 and amount_1
       const updatedPoolBalances = balances
@@ -626,7 +673,7 @@ const App = () => {
     } catch (error) {
       console.error("Error fetching pool balances:", error);
     }
-  }, [backendKingKong, principal, tokenPrices]);
+  }, [kingKongActor, principal, tokenPrices, delegationType, isInitializing]);
 
   const onTabClick = useCallback(
     (tab, pool = "ICP_ckUSDT") => {
@@ -680,11 +727,11 @@ const App = () => {
   }, []);
 
   const getTokens = useCallback(async () => {
-    if (!principal || !backendKingKongFaucet) return;
+    if (!principal || !kingKongFaucetActor) return;
     setFetchingTokens(true);
 
     try {
-      const result = await backendKingKongFaucet.claim();
+      const result = await kingKongFaucetActor.claim();
       updateUserBalances();
       setFetchingTokens(false);
 
@@ -697,7 +744,7 @@ const App = () => {
       setFetchingTokens(false);
       toast("Error claiming tokens:", error);
     }
-  }, [principal, backendKingKongFaucet, updateUserBalances]);
+  }, [principal, kingKongFaucetActor, updateUserBalances]);
 
   const updatePoolBalances = useCallback(async () => {
     try {
@@ -742,6 +789,7 @@ const App = () => {
         console.error(liquidity_pool_balances_response.Err);
       }
     } catch (error) {
+      console.log('hereeeee')
       console.error("Error fetching pool balances, retrying...", error);
       setTimeout(updatePoolBalances, 2000);
     }
@@ -1185,20 +1233,25 @@ const App = () => {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      if (principal && isInitialized) {
+      if (principal) {
         updateUserBalances();
       }
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [principal, isInitialized, updateUserBalances]);
+  }, [principal, updateUserBalances]);
+
+  // console.log('principal', principal);
+  // console.log('accounts', accounts);
+  // console.log('kingkoing', kingKongActor);
+  // console.log('icpActor', icpLedgerActor);
 
   return (
     <>
       {isStatsPage ? (
         <div className="StatsSecondBody">
           <Navigation
-            getUserProfile={getUserProfile}
+            // getUserProfile={getUserProfile}
             updatePoolBalances={updateUserPools}
             updateUserBalances={updateUserBalances}
             getTokens={getTokens}
@@ -1227,7 +1280,7 @@ const App = () => {
       ) : (
         <div className="SwapSecondBody">
           <Navigation
-            getUserProfile={getUserProfile}
+            // getUserProfile={getUserProfile}
             updatePoolBalances={updateUserPools}
             updateUserBalances={updateUserBalances}
             getTokens={getTokens}
@@ -1265,7 +1318,7 @@ const App = () => {
             updateSlippage={updateSlippage}
             handleSlippageBlur={handleSlippageBlur}
             copyToClipboard={copyToClipboard}
-            smallerPrincipal={smallerPrincipal}
+            smallerPrincipal={principal}
             changeDrawerContent={changeDrawerContent}
             tokenDetails={tokenDetails}
             sortedTokens={sortedTokens}
@@ -1722,7 +1775,7 @@ function MainPage({
                 </span>
               </div>
 
-              <div className="swap-interface-undertabs">
+              {/* <div className="swap-interface-undertabs">
                 {viewTab === "swap" ? (
                   <SwapComponent
                     receiveAddress={principal ? principal : "no address"}
@@ -1776,7 +1829,7 @@ function MainPage({
                     accountId={accountId}
                   />
                 ) : null}
-              </div>
+              </div> */}
             </div>
           </div>
         <GorilaText />
