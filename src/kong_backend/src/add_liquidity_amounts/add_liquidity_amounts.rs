@@ -3,7 +3,7 @@ use ic_cdk::query;
 
 use super::add_liquidity_amounts_reply::AddLiquidityAmountsReply;
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_to_decimal_precision};
 use crate::stable_lp_token_ledger::lp_token_ledger;
 use crate::stable_pool::pool_map;

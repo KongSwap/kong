@@ -5,11 +5,11 @@ use super::lp_token::LPToken;
 use super::token::Token;
 use super::token_map;
 
-use crate::canister::address::is_principal_id;
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
+use crate::ic::address_impl::is_principal_id;
 use crate::stable_kong_settings::kong_settings;
+use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
-use crate::TOKEN_MAP;
 
 /// return Chain.Symbol naming convention for token
 /// if symbol is on multiple chains, user must specify Chain.Symbol explicitly and it returns the same
@@ -34,10 +34,7 @@ pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
             .first()
             .ok_or_else(|| format!("Token {} not found", symbol))?
             .symbol_with_chain()),
-        _ => Err(format!(
-            "Symbol {} is on multiple chains, specify chain or address",
-            symbol
-        )),
+        _ => Err(format!("Symbol {} is on multiple chains, specify chain or address", symbol)),
     }
 }
 
@@ -51,13 +48,7 @@ pub fn address_with_chain(address: &str) -> Result<String, String> {
     let tokens = TOKEN_MAP.with(|m| {
         m.borrow()
             .iter()
-            .filter_map(|(_, v)| {
-                if v.address_with_chain() == address {
-                    Some(v)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(_, v)| if v.address_with_chain() == address { Some(v) } else { None })
             .collect::<Vec<StableToken>>()
     });
     match tokens.len() {
@@ -107,9 +98,7 @@ pub fn get_by_token_wildcard(token: &str) -> Vec<StableToken> {
         m.borrow()
             .iter()
             .filter_map(|(_, v)| {
-                if search_token.matches(v.symbol_with_chain().as_str())
-                    || search_token.matches(v.address_with_chain().as_str())
-                {
+                if search_token.matches(v.symbol_with_chain().as_str()) || search_token.matches(v.address_with_chain().as_str()) {
                     Some(v)
                 } else {
                     None
@@ -127,10 +116,7 @@ pub fn get_by_token(token: &str) -> Result<StableToken, String> {
     if let Ok(token) = get_by_address(token) {
         return Ok(token);
     }
-    Err(format!(
-        "Token {} not found or duplicate symbols/addresses exist",
-        token
-    ))
+    Err(format!("Token {} not found or duplicate symbols/addresses exist", token))
 }
 
 // symbol can be in the format of Symbol or Chain.Symbol
@@ -200,11 +186,7 @@ pub fn get() -> Vec<StableToken> {
 
 // token's address is the unique identifier
 pub fn exists(address_with_chain: &str) -> bool {
-    TOKEN_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .any(|(_, v)| v.address_with_chain() == address_with_chain)
-    })
+    TOKEN_MAP.with(|m| m.borrow().iter().any(|(_, v)| v.address_with_chain() == address_with_chain))
 }
 
 pub fn insert(token: &StableToken) -> Result<u32, String> {
@@ -213,21 +195,10 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
     }
     TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let token_id = map.iter()
-            .map(|(k, _)| k.0)
-            .max()
-            .unwrap_or(0) // only if empty and first token
-            + 1;
-        // update token_id
+        let token_id = kong_settings::inc_token_map_idx();
         let insert_token = match token {
-            StableToken::LP(token) => StableToken::LP(LPToken {
-                token_id,
-                ..token.clone()
-            }),
-            StableToken::IC(token) => StableToken::IC(ICToken {
-                token_id,
-                ..token.clone()
-            }),
+            StableToken::LP(token) => StableToken::LP(LPToken { token_id, ..token.clone() }),
+            StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
         };
         map.insert(StableTokenId(token_id), insert_token);
         Ok(token_id)

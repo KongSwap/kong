@@ -1,6 +1,8 @@
 [workspace]
 members = [
+    "src/kong_lib",
     "src/kong_backend",
+    "src/kong_data",
     "src/kong_faucet",
     "sdk/rsKong",
 ]

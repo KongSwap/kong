@@ -1,7 +1,10 @@
-use crate::canister::id::{caller_principal_id, is_caller_anonymous};
-use crate::canister::management::get_time;
-use crate::USER_MAP;
-use crate::{StableUser, StableUserId};
+use kong_lib::ic::get_time::get_time;
+use kong_lib::ic::id::caller_principal_id;
+
+use super::stable_user::{StableUser, StableUserId};
+
+use crate::ic::id::is_caller_anonymous;
+use crate::stable_memory::USER_MAP;
 
 fn get() -> Option<StableUser> {
     if is_caller_anonymous() {

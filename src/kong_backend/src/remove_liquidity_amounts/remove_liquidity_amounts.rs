@@ -3,7 +3,7 @@ use ic_cdk::query;
 
 use super::remove_liquidity_amounts_reply::RemoveLiquidityAmountsReply;
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::remove_liquidity::remove_liquidity::calculate_amounts;
 use crate::stable_pool::pool_map;
 use crate::stable_token::token::Token;

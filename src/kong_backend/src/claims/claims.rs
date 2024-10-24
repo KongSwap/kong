@@ -2,27 +2,25 @@ use candid::Nat;
 
 use super::claim_reply::ClaimReply;
 
-use crate::canister::{
+use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
+use crate::ic::{
     address::Address::{self, AccountId, PrincipalId},
+    get_time::get_time,
     guards::not_in_maintenance_mode,
     logging::{error_log, info_log},
-    management::get_time,
     transfer::{icp_transfer, icrc1_transfer},
 };
-use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::stable_claim::claim_map;
 use crate::stable_claim::{
     claim_map::{insert_attempt_request_id, update_claimed_status, update_claiming_status, update_unclaimed_status},
     stable_claim::{ClaimStatus, StableClaim},
 };
-use crate::stable_request::{
-    reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode,
-};
+use crate::stable_memory::CLAIM_MAP;
+use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
-use crate::stable_user::user_map::CLAIMS_TIMER_USER_ID;
-use crate::transfers::transfer_reply::to_transfer_ids;
-use crate::CLAIM_MAP;
+use crate::stable_user::stable_user::CLAIMS_TIMER_USER_ID;
+use crate::transfers::transfer_reply_impl::to_transfer_ids;
 
 /// send out outstanding claims
 pub async fn process_claims() {
@@ -42,13 +40,7 @@ pub async fn process_claims() {
     let mut claims: Vec<StableClaim> = CLAIM_MAP.with(|m| {
         m.borrow()
             .iter()
-            .filter_map(|(_, v)| {
-                if v.status == ClaimStatus::Unclaimed {
-                    Some(v)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(_, v)| if v.status == ClaimStatus::Unclaimed { Some(v) } else { None })
             .collect()
     });
     // order by timestamp
@@ -64,11 +56,7 @@ pub async fn process_claims() {
                 };
 
                 // create new request with CLAIMS_TIMER_USER_ID as user_id
-                let request_id = request_map::insert(&StableRequest::new(
-                    CLAIMS_TIMER_USER_ID,
-                    &Request::Claim(claim.claim_id),
-                    ts,
-                ));
+                let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
 
                 match process_claim(request_id, claim.claim_id, &token, &claim.amount, to_address, ts).await {
                     Ok(_) => {
@@ -185,10 +173,7 @@ async fn send_claim(
         Err(e) => {
             // claim failed. add attempt_request_id to claim
             insert_attempt_request_id(claim_id, request_id);
-            let error = format!(
-                "Claim Req #{}: Kong failed to send {} {}: {}",
-                request_id, amount, symbol, e
-            );
+            let error = format!("Claim Req #{}: Kong failed to send {} {}: {}", request_id, amount, symbol, e);
             error_log(&error);
 
             // revert claim status to unclaimed

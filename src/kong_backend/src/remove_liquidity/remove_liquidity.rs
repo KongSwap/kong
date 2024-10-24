@@ -4,17 +4,14 @@ use ic_cdk::update;
 use super::remove_liquidity_args::RemoveLiquidityArgs;
 use super::remove_liquidity_reply::RemoveLiquidityReply;
 
-use crate::canister::{
-    address::Address, guards::not_in_maintenance_mode, id::caller_id, logging::error_log, management::get_time,
-    transfer::icrc1_transfer,
-};
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
+use crate::ic::{
+    address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, logging::error_log, transfer::icrc1_transfer,
+};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_lp_token_ledger::{lp_token_ledger, stable_lp_token_ledger::StableLPTokenLedger};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
-use crate::stable_request::{
-    reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode,
-};
+use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
@@ -42,11 +39,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
 
     // initialize a new remove liquidity request with request_id
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(
-        user_id,
-        &Request::RemoveLiquidity(args.clone()),
-        ts,
-    ));
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
 
     // the heavy lifting
     process_remove_liquidity(
@@ -69,11 +62,7 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
         check_arguments(&args)?;
 
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(
-        user_id,
-        &Request::RemoveLiquidity(args.clone()),
-        ts,
-    ));
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
 
     // spawn a task to process the remove liquidity
     ic_cdk::spawn(async move {
@@ -113,8 +102,7 @@ fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, 
     }
 
     // Check the user has enough LP tokens.
-    let user_lp_token_amount =
-        lp_token_ledger::get_by_token_id(lp_token_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
+    let user_lp_token_amount = lp_token_ledger::get_by_token_id(lp_token_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
     let remove_lp_token_amount = if args.remove_lp_token_amount > user_lp_token_amount {
         return Err("Insufficient LP tokens".to_string());
     } else {
@@ -122,8 +110,7 @@ fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, 
     };
 
     // calculate the payout amounts.
-    let (payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
-        calculate_amounts(&pool, &args.remove_lp_token_amount)?;
+    let (payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) = calculate_amounts(&pool, &args.remove_lp_token_amount)?;
 
     // make sure user is registered, if not create a new user
     let user_id = user_map::insert(None)?;
@@ -239,12 +226,7 @@ async fn process_remove_liquidity(
     .await)
 }
 
-fn remove_lp_token(
-    request_id: u64,
-    lp_token: &StableToken,
-    remove_lp_token_amount: &Nat,
-    ts: u64,
-) -> Result<(), String> {
+fn remove_lp_token(request_id: u64, lp_token: &StableToken, remove_lp_token_amount: &Nat, ts: u64) -> Result<(), String> {
     // LP token
     let lp_token_id = lp_token.token_id();
 
@@ -260,11 +242,7 @@ fn remove_lp_token(
                         "Insufficient LP tokens. {} available, {} required",
                         lp_token.amount, remove_lp_token_amount
                     );
-                    request_map::update_status(
-                        request_id,
-                        StatusCode::UpdateUserLPTokenAmountFailed,
-                        Some(message.clone()),
-                    );
+                    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(message.clone()));
                     Err(message)?
                 }
             };
@@ -278,15 +256,8 @@ fn remove_lp_token(
             Ok(())
         }
         None => {
-            let message = format!(
-                "Insufficient LP tokens. 0 available, {} required",
-                remove_lp_token_amount
-            );
-            request_map::update_status(
-                request_id,
-                StatusCode::UpdateUserLPTokenAmountFailed,
-                Some(message.clone()),
-            );
+            let message = format!("Insufficient LP tokens. 0 available, {} required", remove_lp_token_amount);
+            request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(message.clone()));
             Err(message)?
         }
     }

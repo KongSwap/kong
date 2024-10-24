@@ -3,8 +3,8 @@ use ic_cdk::update;
 use super::send_args::SendArgs;
 use super::send_reply::SendReply;
 
-use crate::canister::{guards::not_in_maintenance_mode, management::get_time};
 use crate::chains::chains::LP_CHAIN;
+use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
 use crate::stable_lp_token_ledger::lp_token_ledger;
 use crate::stable_request::request_map;
 use crate::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};

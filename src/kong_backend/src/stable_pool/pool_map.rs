@@ -1,11 +1,12 @@
 use wildmatch::WildMatch;
 
+use crate::stable_kong_settings::kong_settings;
 use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
-use crate::POOL_MAP;
 
 pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     let mut symbols = symbol.split('_');
@@ -125,8 +126,7 @@ pub fn get_by_token_ids(token_id_0: u32, token_id_1: u32) -> Option<StablePool> 
 pub fn get_by_tokens(token_0: &str, token_1: &str) -> Result<StablePool, String> {
     let token_0: StableToken = token_map::get_by_token(token_0)?;
     let token_1 = token_map::get_by_token(token_1)?;
-    get_by_token_ids(token_0.token_id(), token_1.token_id())
-        .ok_or_else(|| format!("Pool {} not found", symbol(&token_0, &token_1)))
+    get_by_token_ids(token_0.token_id(), token_1.token_id()).ok_or_else(|| format!("Pool {} not found", symbol(&token_0, &token_1)))
 }
 
 /// Get pool by LP token's id.
@@ -168,16 +168,8 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
     }
     POOL_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let pool_id = map.iter()
-            .map(|(k, _)| k.0)
-            .max()
-            .unwrap_or(0) // only if empty and first token
-            + 1;
-        // update pool_id
-        let insert_pool = StablePool {
-            pool_id,
-            ..pool.clone()
-        };
+        let pool_id = kong_settings::inc_pool_map_idx();
+        let insert_pool = StablePool { pool_id, ..pool.clone() };
         map.insert(StablePoolId(pool_id), insert_pool);
         Ok(pool_id)
     })

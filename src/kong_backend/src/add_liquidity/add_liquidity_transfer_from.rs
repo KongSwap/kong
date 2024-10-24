@@ -4,15 +4,15 @@ use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
 
-use crate::canister::{
-    address::Address,
-    id::caller_id,
-    logging::error_log,
-    management::get_time,
-    transfer::{icrc1_transfer, icrc2_transfer_from},
-};
 use crate::helpers::nat_helpers::{
     nat_add, nat_divide, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
+};
+use crate::ic::{
+    address::Address,
+    get_time::get_time,
+    id::caller_id,
+    logging::error_log,
+    transfer::{icrc1_transfer, icrc2_transfer_from},
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings;
@@ -214,7 +214,6 @@ async fn process_add_liquidity(
             )
             .await;
             let error = format!("AddLiq #{} failed: {}", request_id, e);
-            error_log(&error);
             return Err(error);
         }
     };
@@ -288,12 +287,11 @@ pub async fn transfer_from_token(
         }
         Err(e) => {
             let error = format!("AddLiq #{} failed transfer_from user {} {}: {}", request_id, amount, symbol, e,);
-            error_log(&error);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(e.clone())),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(e.clone())),
             };
-            Err(e)
+            Err(error)
         }
     }
 }

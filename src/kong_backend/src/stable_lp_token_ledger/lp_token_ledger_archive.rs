@@ -1,5 +1,5 @@
-use crate::canister::guards::not_in_maintenance_mode;
-use crate::{LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_ARCHIVE};
+use crate::ic::guards::not_in_maintenance_mode;
+use crate::stable_memory::{LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_ARCHIVE};
 
 pub fn archive_lp_token_ledger() {
     if not_in_maintenance_mode().is_err() {

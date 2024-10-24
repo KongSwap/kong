@@ -1,16 +1,27 @@
-use candid::{CandidType, Decode, Deserialize, Encode};
+use crate::ic::id::caller_principal_id;
+use crate::ic::get_time::get_time;
+use candid::{CandidType, Decode, Encode};
 use ic_stable_structures::{storable::Bound, Storable};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-use super::user_map::ANONYMOUS_USER_ID;
-
-use crate::canister::id::caller_principal_id;
-use crate::canister::management::get_time;
+// reserved user ids
+// 0: all users - users for stable_messages to broadcast to all users
+// 1: system - system user
+// 2: claims timer - user id to identify claim was made by system timer
+// 3-99: reserved for future use
+// 100-: user ids
+pub const ANONYMOUS_USER_ID: u32 = 0;
+#[allow(dead_code)]
+pub const ALL_USERS_USER_ID: u32 = 1;
+#[allow(dead_code)]
+pub const SYSTEM_USER_ID: u32 = 2;
+#[allow(dead_code)]
+pub const CLAIMS_TIMER_USER_ID: u32 = 3;
 
 const USER_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug, Serialize, Deserialize)]
+#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableUserId(pub u32);
 
 impl Storable for StableUserId {

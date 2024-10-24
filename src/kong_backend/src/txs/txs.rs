@@ -1,8 +1,9 @@
 use ic_cdk::query;
 
-use super::txs_reply::{to_txs_reply, TxsReply};
+use super::txs_reply::TxsReply;
+use super::txs_reply_impl::to_txs_reply;
 
-use crate::canister::guards::not_in_maintenance_mode;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_tx::tx_map;
 use crate::stable_user::user_map;
 
