@@ -12,7 +12,6 @@ export const PlugWalletProvider = ({ children }) => {
   const [principal, setPrincipal] = useState(null);
   const [enablePlug, setEnablePlug] = useState(false);
   const { identity: iiIdentity, isInitializing } = useInternetIdentity();
-
   const verifyConnection = async () => {
     if (window.ic && window.ic.plug) {
     const connected = await window.ic.plug.isConnected();
@@ -34,7 +33,7 @@ export const PlugWalletProvider = ({ children }) => {
   }, [iiIdentity, isInitializing]);
 
   const connectPlugWallet = async () => {
-    console.log('connecting...');
+    // console.log('connecting...');
     if (window.ic && window.ic.plug) {
       try {
         const result = await window.ic.plug.requestConnect({
