@@ -71,7 +71,7 @@
 
 <style lang="postcss" scoped>
   .dropdown-button {
-    @apply relative cursor-default text-left shadow-sm focus:outline-none sm:text-sm sm:leading-6;
+    @apply relative cursor-default text-left font-alumni shadow-sm focus:outline-none sm:text-sm sm:leading-6;
     @apply rounded-md bg-green-600 text-white py-1.5 pl-3 pr-10;
     @apply ring-inset ring-green-500 focus:ring-2 focus:ring-green-700;
   }

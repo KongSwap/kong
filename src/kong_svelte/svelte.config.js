@@ -1,18 +1,38 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from "@sveltejs/adapter-static";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   kit: {
-    // adapter-auto only supports some environments, see https://kit.svelte.dev/docs/adapter-auto for a list.
-    // If your environment is not supported or you settled on a specific environment, switch out the adapter.
-    // See https://kit.svelte.dev/docs/adapters for more information about adapters.
     adapter: adapter({
-      pages: 'dist',
-      assets: 'dist',
+      pages: "dist",
+      assets: "dist",
       fallback: undefined,
-      precompress: false,
+      precompress: true,
       strict: true,
     }),
+    files: {
+      assets: "static",
+    },
+  },
+  preprocess: vitePreprocess({
+    typescript: true,
+    postcss: {
+      plugins: [
+        tailwindcss(),
+        autoprefixer(),
+      ],
+    },
+  }),
+  onwarn: (warning, handler) => {
+    // suppress warnings on `vite dev` and `vite build`
+    if (warning.code === "a11y-click-events-have-key-events") return;
+    if (warning.code === "a11y-no-static-element-interactions") return;
+    if (warning.code === "a11y-missing-attribute") return;
+
+    handler(warning);
   },
 };
 
