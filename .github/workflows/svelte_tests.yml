@@ -1,4 +1,4 @@
-name: Run Svelte Tests
+name: Run kong_svelte tests
 
 on:
   push:
@@ -11,7 +11,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -21,8 +20,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install && npm -w kong_svelte install
+      - name: Install kong_svelte dependencies
+        run: npm -w kong_svelte install
 
-      - name: Run tests
+      - name: Run kong_svelte tests
         run: npm -w kong_svelte run test
