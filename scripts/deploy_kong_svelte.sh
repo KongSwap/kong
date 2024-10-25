@@ -10,6 +10,6 @@ if [ -z "$1" ]
 fi
 IDENTITY="--identity kong"
 
-npm -w kong_frontend i
+npm -w kong_svelte i
 
-dfx deploy ${NETWORK} ${IDENTITY} ${SAME_SUBNET} kong_frontend
+dfx deploy ${NETWORK} ${IDENTITY} ${SAME_SUBNET} kong_svelte
