@@ -2,8 +2,6 @@
 	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
 	import { onMount } from 'svelte';
 	import '../app.css';
-	import { browser } from '$app/environment';
-	import { localeStore } from '$lib/stores/localeStore';
 
 	let mode: string | null = null;
 
