@@ -1,0 +1,42 @@
+{
+  "name": "kong_svelte",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "setup": "npm i && dfx canister create kong_backend && dfx generate kong_backend && dfx deploy",
+    "start": "vite --port 3000",
+    "prebuild": "npx svelte-kit sync && dfx generate",
+    "build": "tsc && vite build",
+    "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss}\""
+  },
+  "dependencies": {
+    "@dfinity/agent": "2.1.3",
+    "@dfinity/candid": "2.1.3",
+    "@dfinity/principal": "2.1.3",
+    "sveltekit-i18n": "^2.4.2"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.4",
+    "@sveltejs/kit": "^2.5.26",
+    "@sveltejs/vite-plugin-svelte": "4.0.0",
+    "@tailwindcss/forms": "^0.5.9",
+    "@tailwindcss/typography": "^0.5.15",
+    "@typescript-eslint/parser": "^5.62.0",
+    "autoprefixer": "^10.4.20",
+    "dotenv": "^16.3.1",
+    "eslint": "^8.57.1",
+    "eslint-plugin-svelte": "^2.46.0",
+    "postcss": "^8.4.47",
+    "prettier": "^3.3.3",
+    "prettier-eslint": "^16.3.0",
+    "sass": "^1.63.6",
+    "svelte": "5.1.1",
+    "svelte-check": "^4.0.1",
+    "svelte-flags": "^1.0.3",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^4.9.5",
+    "vite": "^5.4.3",
+    "vite-plugin-environment": "^1.1.3"
+  }
+}

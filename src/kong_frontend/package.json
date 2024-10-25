@@ -26,7 +26,6 @@
     "ic-use-actor": "^0.0.10",
     "ic-use-internet-identity": "^0.0.11",
     "install": "^0.13.0",
-    "kong_frontend": "^0.0.1",
     "lodash": "^4.17.21",
     "qrcode.react": "^4.0.1",
     "react": "^18.2.0",

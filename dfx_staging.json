@@ -45,6 +45,21 @@
 				}
 			]
     },
+    "kong_svelte": {
+      "dependencies": [
+        "kong_backend"
+      ],
+      "source": [
+        "src/kong_svelte/dist"
+      ],
+      "type": "assets",
+      "workspace": "kong_svelte",
+			"metadata": [
+				{
+					"name": "candid:service"
+				}
+			]
+    },
     "kong_faucet": {
       "candid": "src/kong_faucet/kong_faucet.did",
       "declarations": {
@@ -135,7 +150,7 @@
   },
   "networks": {
     "local": {
-      "bind": "localhost:4943",
+      "bind": "127.0.0.1:4943",
       "type": "ephemeral",
       "replica": {
         "subnet_type": "system"
