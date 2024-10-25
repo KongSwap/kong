@@ -2,3 +2,4 @@
 * @global-kongzilla-ks @global-prim8bits
 /src/kong_backend @code-kongzilla-ks @code-prim8bits
 /src/kong_frontend @pgsergiu01
+/src/kong_svelte @usern3 @CanerKocak
