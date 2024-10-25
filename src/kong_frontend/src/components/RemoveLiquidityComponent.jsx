@@ -27,7 +27,7 @@ const RemoveLiquidityComponent = ({
   tokenPrices,
   tokenImages
 }) => {
-  const backendKingKong = useKingKongActor();
+  const { authenticated: backendKingKong } = useKingKongActor();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const initialPool = queryParams.get("pool")

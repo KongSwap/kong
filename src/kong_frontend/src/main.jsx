@@ -42,17 +42,13 @@ import {
   OwlActorProvider,
 } from "./Actors/identityKitActorInitiation";
 import "@nfid/identitykit/react/styles.css";
-import {
-  IdentityKitProvider,
-  IdentityKitTheme,
-  ConnectWalletButton,
-} from "@nfid/identitykit/react";
+import { IdentityKitProvider, IdentityKitTheme } from "@nfid/identitykit/react";
 import {
   NFIDW,
   Plug,
   InternetIdentity,
   Stoic,
-  IdentityKitAuthType
+  IdentityKitAuthType,
 } from "@nfid/identitykit";
 
 const router = createBrowserRouter([
@@ -77,7 +73,75 @@ const router = createBrowserRouter([
   },
 ]);
 
-console.log('derivationOrigin local', process.env.DFX_NETWORK === "local")
+const AuthenticatedActorProviders = ({ children }) => (
+  <CkbtcActorProvider>
+    <CkethActorProvider>
+      <CkusdcActorProvider>
+        <IcpActorProvider>
+          <KingKongActorProvider>
+            <KingKongFaucetActorProvider>
+              <CkusdtActorProvider>
+                <NICPActorProvider>
+                  <WtnActorProvider>
+                    <YugeActorProvider>
+                      <ChatActorProvider>
+                        <DkpActorProvider>
+                          <NanasActorProvider>
+                            <Nd64ActorProvider>
+                              <BitsActorProvider>
+                                <AlpacalbActorProvider>
+                                  <PartyActorProvider>
+                                    <SneedActorProvider>
+                                      <ClownActorProvider>
+                                        <ExeActorProvider>
+                                          <WumboActorProvider>
+                                            <McsActorProvider>
+                                              <DamonicActorProvider>
+                                                <BobActorProvider>
+                                                  <BurnActorProvider>
+                                                    <DcdActorProvider>
+                                                      <DittoActorProvider>
+                                                        <FplActorProvider>
+                                                          <GldgovActorProvider>
+                                                            <IcvcActorProvider>
+                                                              <NtnActorProvider>
+                                                                <OgyActorProvider>
+                                                                  <OwlActorProvider>
+                                                                    {children}
+                                                                  </OwlActorProvider>
+                                                                </OgyActorProvider>
+                                                              </NtnActorProvider>
+                                                            </IcvcActorProvider>
+                                                          </GldgovActorProvider>
+                                                        </FplActorProvider>
+                                                      </DittoActorProvider>
+                                                    </DcdActorProvider>
+                                                  </BurnActorProvider>
+                                                </BobActorProvider>
+                                              </DamonicActorProvider>
+                                            </McsActorProvider>
+                                          </WumboActorProvider>
+                                        </ExeActorProvider>
+                                      </ClownActorProvider>
+                                    </SneedActorProvider>
+                                  </PartyActorProvider>
+                                </AlpacalbActorProvider>
+                              </BitsActorProvider>
+                            </Nd64ActorProvider>
+                          </NanasActorProvider>
+                        </DkpActorProvider>
+                      </ChatActorProvider>
+                    </YugeActorProvider>
+                  </WtnActorProvider>
+                </NICPActorProvider>
+              </CkusdtActorProvider>
+            </KingKongFaucetActorProvider>
+          </KingKongActorProvider>
+        </IcpActorProvider>
+      </CkusdcActorProvider>
+    </CkethActorProvider>
+  </CkbtcActorProvider>
+);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -88,7 +152,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           process.env.DFX_NETWORK === "local"
             ? "http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943"
             : "https://" + FRONTEND_URL + ".icp0.io",
-        targets: ['l4lgk-raaaa-aaaar-qahpq-cai'],
+        targets: ["l4lgk-raaaa-aaaar-qahpq-cai"],
       }}
       authType={IdentityKitAuthType.DELEGATION}
       signers={[NFIDW, Plug, InternetIdentity, Stoic]}
@@ -100,80 +164,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       }}
       onDisconnect={(e) => {
         console.log("Disconnect", e);
-        window.location.reload()
+        window.location.reload();
       }}
     >
-      <CkbtcActorProvider>
-        <CkethActorProvider>
-          <CkusdcActorProvider>
-            <IcpActorProvider>
-              <KingKongActorProvider>
-                <KingKongFaucetActorProvider>
-                  <CkusdtActorProvider>
-                    <NICPActorProvider>
-                      <WtnActorProvider>
-                        <YugeActorProvider>
-                          <ChatActorProvider>
-                            <DkpActorProvider>
-                              <NanasActorProvider>
-                                <Nd64ActorProvider>
-                                  <BitsActorProvider>
-                                    <AlpacalbActorProvider>
-                                      <PartyActorProvider>
-                                        <SneedActorProvider>
-                                          <ClownActorProvider>
-                                            <ExeActorProvider>
-                                              <WumboActorProvider>
-                                                <McsActorProvider>
-                                                  <DamonicActorProvider>
-                                                    <BobActorProvider>
-                                                      <BurnActorProvider>
-                                                        <DcdActorProvider>
-                                                          <DittoActorProvider>
-                                                            <FplActorProvider>
-                                                              <GldgovActorProvider>
-                                                                <IcvcActorProvider>
-                                                                  <NtnActorProvider>
-                                                                    <OgyActorProvider>
-                                                                      <OwlActorProvider>
-                                                                        <RouterProvider
-                                                                          router={
-                                                                            router
-                                                                          }
-                                                                        ></RouterProvider>
-                                                                      </OwlActorProvider>
-                                                                    </OgyActorProvider>
-                                                                  </NtnActorProvider>
-                                                                </IcvcActorProvider>
-                                                              </GldgovActorProvider>
-                                                            </FplActorProvider>
-                                                          </DittoActorProvider>
-                                                        </DcdActorProvider>
-                                                      </BurnActorProvider>
-                                                    </BobActorProvider>
-                                                  </DamonicActorProvider>
-                                                </McsActorProvider>
-                                              </WumboActorProvider>
-                                            </ExeActorProvider>
-                                          </ClownActorProvider>
-                                        </SneedActorProvider>
-                                      </PartyActorProvider>
-                                    </AlpacalbActorProvider>
-                                  </BitsActorProvider>
-                                </Nd64ActorProvider>
-                              </NanasActorProvider>
-                            </DkpActorProvider>
-                          </ChatActorProvider>
-                        </YugeActorProvider>
-                      </WtnActorProvider>
-                    </NICPActorProvider>
-                  </CkusdtActorProvider>
-                </KingKongFaucetActorProvider>
-              </KingKongActorProvider>
-            </IcpActorProvider>
-          </CkusdcActorProvider>
-        </CkethActorProvider>
-      </CkbtcActorProvider>
+      <AuthenticatedActorProviders>
+          <RouterProvider router={router} />
+      </AuthenticatedActorProviders>
     </IdentityKitProvider>
   </React.StrictMode>
 );

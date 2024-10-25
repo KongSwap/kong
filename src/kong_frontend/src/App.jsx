@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import {
@@ -79,7 +85,7 @@ import tokenWbtcImage from "../../assets/tokens/WBTC.svg";
 import tokenWtnImage from "../../assets/tokens/wtn.svg";
 import tokenWumboImage from "../../assets/tokens/wumbo.svg";
 import tokenYugeImage from "../../assets/tokens/yuge.svg";
-// import SwapComponent from "./components/SwapComponent";
+import SwapComponent from "./components/SwapComponent";
 import { ToastContainer, toast } from "react-toastify";
 import Navigation, {
   formatPoolName,
@@ -87,9 +93,9 @@ import Navigation, {
 } from "./components/Navigation";
 import { useLocation, useNavigate } from "react-router-dom";
 import StatsPage from "./components/StatsPage";
-// import PoolsComponent from "./components/PoolsComponent";
-// import RemoveLiquidityComponent from "./components/RemoveLiquidityComponent";
-// import SendComponent from "./components/SendComponent";
+import PoolsComponent from "./components/PoolsComponent";
+import RemoveLiquidityComponent from "./components/RemoveLiquidityComponent";
+import SendComponent from "./components/SendComponent";
 import Modal from "./components/Modal";
 import { formatBalances, formatNumber } from "./utils/formatBalances";
 import {
@@ -97,7 +103,7 @@ import {
   getAuthActor as kong_backend_auth,
 } from "./lib/kong_backend";
 import { FRONTEND_URL } from "./constants/config";
-// import ReceiveComponent from "./components/ReceiveComponent";
+import ReceiveComponent from "./components/ReceiveComponent";
 import Tippy from "@tippyjs/react";
 import FooterSocials from "./components/FooterSocials";
 import { defaultStateUser } from "./constants/defaultState";
@@ -137,7 +143,7 @@ import {
   useIcvcActor,
   useNtnActor,
   useOgyActor,
-  useOwlActor
+  useOwlActor,
 } from "./Actors/identityKitActorInitiation";
 
 const tokenImages = {
@@ -256,85 +262,43 @@ const defaultSlippage = 2;
 
 const App = () => {
   const location = useLocation();
+  const { identity, accounts, delegationType, isInitializing } =
+    useIdentityKit();
+  const { authenticated: kingKongActor } = useKingKongActor();
+  const { authenticated: kingKongFaucetActor } = useKingKongFaucetActor();
 
-  // const {
-  //   activeIdentity,
-  //   plugPrincipal,
-  //   isAuthenticated,
-  //   expiredSession,
-  //   identityType,
-  //   clear,
-  //   actors: {
-  //     backendKingKong,
-  //     backendKingKongFaucet,
-  //     icp_ledger_backend,
-  //     ckbtc_ledger_backend,
-  //     cketh_ledger_backend,
-  //     ckusdc_ledger_backend,
-  //     ckusdt_ledger_backend,
-  //     dkp_ledger_backend,
-  //     bits_ledger_backend,
-  //     chat_ledger_backend,
-  //     nanas_ledger_backend,
-  //     nd64_ledger_backend,
-  //     wtn_ledger_backend,
-  //     yuge_ledger_backend,
-  //     NICP_ledger_backend,
-  //     alpacalb_backend,
-  //     party_backend,
-  //     sneed_backend,
-  //     clown_backend,
-  //     damonic_backend,
-  //     exe_backend,
-  //     wumbo_backend,
-  //     mcs_backend,
-  //     bob_backend,
-  //     burn_backend,
-  //     ntn_backend,
-  //     dcd_backend,
-  //     gldgov_backend,
-  //     owl_backend,
-  //     ogy_backend,
-  //     fpl_backend,
-  //     ditto_backend,
-  //     icvc_backend,
-  //   },
-  //   isInitialized,
-  // } = useIdentity();
-  const { identity, accounts, delegationType, isInitializing } = useIdentityKit();
-  const kingKongActor = useKingKongActor();
-  const icpLedgerActor = useIcpActor();
-  const ckbtcLedgerActor = useCkbtcActor();
-  const ckethLedgerActor = useCkethActor();
-  const ckusdcLedgerActor = useCkusdcActor();
-  const ckusdtLedgerActor = useCkusdtActor();
-  const NICPLedgerActor = useNICPActor();
-  const wtnLedgerActor = useWtnActor();
-  const yugeLedgerActor = useYugeActor();
-  const chatLedgerActor = useChatActor();
-  const dkpLedgerActor = useDkpActor();
-  const nanasLedgerActor = useNanasActor();
-  const nd64LedgerActor = useNd64Actor();
-  const bitsLedgerActor = useBitsActor();
-  const alpacalbLedgerActor = useAlpacalbActor();
-  const partyLedgerActor = usePartyActor();
-  const sneedLedgerActor = useSneedActor();
-  const clownLedgerActor = useClownActor();
-  const exeLedgerActor = useExeActor();
-  const wumboLedgerActor = useWumboActor();
-  const mcsLedgerActor = useMcsActor();
-  const damonicLedgerActor = useDamonicActor();
-  const bobLedgerActor = useBobActor();
-  const burnLedgerActor = useBurnActor();
-  const ntnLedgerActor = useNtnActor();
-  const dcdLedgerActor = useDcdActor();
-  const gldgovLedgerActor = useGldgovActor();
-  const owlLedgerActor = useOwlActor();
-  const ogyLedgerActor = useOgyActor();
-  const fplLedgerActor = useFplActor();
-  const dittoLedgerActor = useDittoActor();
-  const icvcLedgerActor = useIcvcActor();
-  const kingKongFaucetActor = useKingKongFaucetActor();
+  const { anonymous: icpAnonActor } = useIcpActor();
+  const { anonymous: ckbtcAnonActor } = useCkbtcActor();
+  const { anonymous: ckethAnonActor } = useCkethActor();
+  const { anonymous: ckusdcAnonActor } = useCkusdcActor();
+  const { anonymous: ckusdtAnonActor } = useCkusdtActor();
+  const { anonymous: NICPAnonActor } = useNICPActor();
+  const { anonymous: wtnAnonActor } = useWtnActor();
+  const { anonymous: yugeAnonActor } = useYugeActor();
+  const { anonymous: chatAnonActor } = useChatActor();
+  const { anonymous: dkpAnonActor } = useDkpActor();
+  const { anonymous: nanasAnonActor } = useNanasActor();
+  const { anonymous: nd64AnonActor } = useNd64Actor();
+  const { anonymous: bitsAnonActor } = useBitsActor();
+  const { anonymous: alpacalbAnonActor } = useAlpacalbActor();
+  const { anonymous: partyAnonActor } = usePartyActor();
+  const { anonymous: sneedAnonActor } = useSneedActor();
+  const { anonymous: clownAnonActor } = useClownActor();
+  const { anonymous: exeAnonActor } = useExeActor();
+  const { anonymous: wumboAnonActor } = useWumboActor();
+  const { anonymous: mcsAnonActor } = useMcsActor();
+  const { anonymous: damonicAnonActor } = useDamonicActor();
+  const { anonymous: bobAnonActor } = useBobActor();
+  const { anonymous: burnAnonActor } = useBurnActor();
+  const { anonymous: ntnAnonActor } = useNtnActor();
+  const { anonymous: dcdAnonActor } = useDcdActor();
+  const { anonymous: gldgovAnonActor } = useGldgovActor();
+  const { anonymous: owlAnonActor } = useOwlActor();
+  const { anonymous: ogyAnonActor } = useOgyActor();
+  const { anonymous: fplAnonActor } = useFplActor();
+  const { anonymous: dittoAnonActor } = useDittoActor();
+  const { anonymous: icvcAnonActor } = useIcvcActor();
+
   const [userDetails, setUserDetails] = useState(defaultStateUser);
   const [principal, setPrincipal] = useState(null);
   const [shownBalances, setShownBalances] = useState({});
@@ -362,20 +326,21 @@ const App = () => {
   });
   const [accountId, setAccountId] = useState(null);
   const previousPoolBalances = useRef([]);
+  const initializationRef = useRef(false);
+  const previousPrincipalRef = useRef();
 
   useEffect(() => {
     if (identity) {
-      // console.log("WTF", identity.getPrincipal().toText());
       setPrincipal(identity.getPrincipal().toText());
     }
   }, [identity]);
 
-  // const smallerPrincipal = useMemo(() => {
-  //   if (identity) {
-  //     return extractParts(identity);
-  //   }
-  //   return "";
-  // }, [identity]);
+  const smallerPrincipal = useMemo(() => {
+    if (principal) {
+      return extractParts(principal);
+    }
+    return "";
+  }, [principal]);
 
   const tokenPrices = useMemo(() => {
     if (!poolsInfo.length) return {};
@@ -404,7 +369,7 @@ const App = () => {
           return;
         }
       }
-    } 
+    }
 
     navigate("/?viewtab=swap&pool=ICP_ckUSDT", { replace: true });
   }, [pool, navigate]);
@@ -422,56 +387,6 @@ const App = () => {
     };
     getTokenDetails();
   }, []);
-
-  // useEffect(() => {
-  //   if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
-  //     setPrincipal(null);
-  //     initializeUserData();
-  //     setIsDrawerOpen(false);
-  //   } else if (plugPrincipal && !principal) {
-  //     setPrincipal(plugPrincipal);
-  //   } else if (
-  //     !principal &&
-  //     backendKingKong &&
-  //     activeIdentity &&
-  //     activeIdentity.getPrincipal()
-  //   ) {
-  //     setPrincipal(
-  //       Principal.fromUint8Array(activeIdentity.getPrincipal()._arr).toText()
-  //     );
-  //   }
-  // }, [
-  //   activeIdentity,
-  //   backendKingKong,
-  //   plugPrincipal,
-  //   principal,
-  //   isAuthenticated,
-  // ]);
-
-  // useEffect(() => {
-  //   if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
-  //     setPrincipal(null);
-  //     initializeUserData();
-  //   }
-  // }, [activeIdentity, plugPrincipal]);
-
-  // useEffect(() => {
-  //   if (expiredSession) {
-  //     toast.info("Session expired. Reloading in 5 seconds...", {
-  //       position: "bottom-right",
-  //       autoClose: 5000,
-  //       hideProgressBar: false,
-  //       closeOnClick: true,
-  //       pauseOnHover: true,
-  //       draggable: true,
-  //     });
-
-  //     setTimeout(async () => {
-  //       await clear(); // Clear identity (logout)
-  //       window.location.reload(); // Refresh the page
-  //     }, 5000);
-  //   }
-  // }, [expiredSession, clear]);
 
   const initializeUserData = useCallback(() => {
     setUserDetails(defaultStateUser);
@@ -506,8 +421,35 @@ const App = () => {
     [tokenDetails]
   );
 
+  const getUserProfile = useCallback(
+    async (retryCount = 0, maxRetries = 5) => {
+      if (!principal || !kingKongActor) {
+        return;
+      }
+      try {
+        const result = await kingKongActor.get_user();
+        const accountId = result.Ok ? result.Ok.account_id : "";
+        setAccountId(accountId);
+      } catch (error) {
+        console.error(`Attempt ${retryCount + 1} failed:`, error);
+
+        if (retryCount < maxRetries) {
+          const retryDelay = 1000 * (retryCount + 1); // Exponential backoff
+          console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+
+          setTimeout(() => {
+            getUserProfile(retryCount + 1, maxRetries);
+          }, retryDelay);
+        } else {
+          toast.error("Failed to fetch user profile after multiple attempts.");
+        }
+      }
+    },
+    [principal, kingKongActor]
+  );
+
   const updateUserBalances = useCallback(async () => {
-    if (!principal || !tokenDetails) {
+    if (!principal || !tokenDetails || !icpAnonActor) {
       initializeUserData();
       return;
     }
@@ -547,39 +489,38 @@ const App = () => {
 
     // Fetch all balances in parallel and wait for all promises to resolve
     await Promise.allSettled([
-      updateBalance(icpLedgerActor, "ICP"),
-      updateBalance(ckbtcLedgerActor, "ckBTC"),
-      updateBalance(ckethLedgerActor, "ckETH"),
-      updateBalance(ckusdcLedgerActor, "ckUSDC"),
-      updateBalance(ckusdtLedgerActor, "ckUSDT"),
-      updateBalance(dkpLedgerActor, "DKP"),
-      updateBalance(bitsLedgerActor, "Bits"),
-      updateBalance(chatLedgerActor, "CHAT"),
-      updateBalance(nanasLedgerActor, "nanas"),
-      updateBalance(nd64LedgerActor, "ND64"),
-      updateBalance(wtnLedgerActor, "WTN"),
-      updateBalance(yugeLedgerActor, "YUGE"),
-      updateBalance(NICPLedgerActor, "nICP"),
-      updateBalance(alpacalbLedgerActor, "ALPACALB"),
-      updateBalance(partyLedgerActor, "PARTY"),
-      updateBalance(sneedLedgerActor, "SNEED"),
-      updateBalance(clownLedgerActor, "CLOWN"),
-      updateBalance(exeLedgerActor, "EXE"),
-      updateBalance(wumboLedgerActor, "WUMBO"),
-      updateBalance(mcsLedgerActor, "MCS"),
-      updateBalance(damonicLedgerActor, "DAMONIC"),
-      updateBalance(bobLedgerActor, "BOB"),
-      updateBalance(burnLedgerActor, "BURN"),
-      updateBalance(ntnLedgerActor, "NTN"),
-      updateBalance(dcdLedgerActor, "DCD"),
-      updateBalance(gldgovLedgerActor, "GLDGov"),
-      updateBalance(owlLedgerActor, "OWL"),
-      updateBalance(ogyLedgerActor, "OGY"),
-      updateBalance(fplLedgerActor, "FPL"),
-      updateBalance(dittoLedgerActor, "DITTO"),
-      updateBalance(icvcLedgerActor, "ICVC"),
+      updateBalance(icpAnonActor, "ICP"),
+      updateBalance(ckbtcAnonActor, "ckBTC"),
+      updateBalance(ckethAnonActor, "ckETH"),
+      updateBalance(ckusdcAnonActor, "ckUSDC"),
+      updateBalance(ckusdtAnonActor, "ckUSDT"),
+      updateBalance(dkpAnonActor, "DKP"),
+      updateBalance(bitsAnonActor, "Bits"),
+      updateBalance(chatAnonActor, "CHAT"),
+      updateBalance(nanasAnonActor, "nanas"),
+      updateBalance(nd64AnonActor, "ND64"),
+      updateBalance(wtnAnonActor, "WTN"),
+      updateBalance(yugeAnonActor, "YUGE"),
+      updateBalance(NICPAnonActor, "nICP"),
+      updateBalance(alpacalbAnonActor, "ALPACALB"),
+      updateBalance(partyAnonActor, "PARTY"),
+      updateBalance(sneedAnonActor, "SNEED"),
+      updateBalance(clownAnonActor, "CLOWN"),
+      updateBalance(exeAnonActor, "EXE"),
+      updateBalance(wumboAnonActor, "WUMBO"),
+      updateBalance(mcsAnonActor, "MCS"),
+      updateBalance(damonicAnonActor, "DAMONIC"),
+      updateBalance(bobAnonActor, "BOB"),
+      updateBalance(burnAnonActor, "BURN"),
+      updateBalance(ntnAnonActor, "NTN"),
+      updateBalance(dcdAnonActor, "DCD"),
+      updateBalance(gldgovAnonActor, "GLDGov"),
+      updateBalance(owlAnonActor, "OWL"),
+      updateBalance(ogyAnonActor, "OGY"),
+      updateBalance(fplAnonActor, "FPL"),
+      updateBalance(dittoAnonActor, "DITTO"),
+      updateBalance(icvcAnonActor, "ICVC"),
     ]);
-
     // Convert the Map to an object
     const balanceUpdatesObject = Object.fromEntries(balanceUpdates);
 
@@ -594,49 +535,49 @@ const App = () => {
       setUserDetails(updatedUserDetails);
     }
   }, [
-    icpLedgerActor,
-    ckbtcLedgerActor,
-    ckethLedgerActor,
-    ckusdcLedgerActor,
-    ckusdtLedgerActor,
-    dkpLedgerActor,
-    bitsLedgerActor,
-    chatLedgerActor,
-    nanasLedgerActor,
-    nd64LedgerActor,
-    wtnLedgerActor,
-    yugeLedgerActor,
-    NICPLedgerActor,
-    alpacalbLedgerActor,
-    partyLedgerActor,
-    sneedLedgerActor,
-    clownLedgerActor,
-    exeLedgerActor,
-    wumboLedgerActor,
-    mcsLedgerActor,
-    damonicLedgerActor,
-    bobLedgerActor,
+    icpAnonActor,
+    ckbtcAnonActor,
+    ckethAnonActor,
+    ckusdcAnonActor,
+    ckusdtAnonActor,
+    dkpAnonActor,
+    bitsAnonActor,
+    chatAnonActor,
+    nanasAnonActor,
+    nd64AnonActor,
+    wtnAnonActor,
+    yugeAnonActor,
+    NICPAnonActor,
+    alpacalbAnonActor,
+    partyAnonActor,
+    sneedAnonActor,
+    clownAnonActor,
+    exeAnonActor,
+    wumboAnonActor,
+    mcsAnonActor,
+    damonicAnonActor,
+    bobAnonActor,
     identity,
     initializeUserData,
     tokenDetails,
     getTokenDecimals,
-    burnLedgerActor,
-    ntnLedgerActor,
-    dcdLedgerActor,
-    gldgovLedgerActor,
-    owlLedgerActor,
-    ogyLedgerActor,
-    fplLedgerActor,
-    dittoLedgerActor,
-    icvcLedgerActor,
+    burnAnonActor,
+    ntnAnonActor,
+    dcdAnonActor,
+    gldgovAnonActor,
+    owlAnonActor,
+    ogyAnonActor,
+    fplAnonActor,
+    dittoAnonActor,
+    icvcAnonActor,
     userDetails,
+    principal,
   ]);
 
   const updateUserPools = useCallback(async () => {
     if (!principal || !kingKongActor) {
       return;
     }
-    console.log('identity stuff1', isInitializing, delegationType);
     try {
       const userBalances = await kingKongActor.user_balances([]);
       const balances = userBalances.Ok || [];
@@ -753,16 +694,16 @@ const App = () => {
         (liquidity_pool_balances_response.Ok &&
           liquidity_pool_balances_response.Ok.pools) ||
         [];
-  
+
       // Check for equality between previous and current balances
       if (!isEqual(previousPoolBalances.current, liquidity_pool_balances)) {
         // Only update if pool balances have changed
         setPoolsInfo(liquidity_pool_balances); // Update pool info
         previousPoolBalances.current = liquidity_pool_balances; // Update the reference
-  
+
         // Fetch the decimals for proper conversion (using the first pool's token as reference)
         const decimals = 6;
-  
+
         const formatBigInt = (value) => {
           if (typeof value === "bigint") {
             const dividedValue = Number(value) / 10 ** decimals;
@@ -770,7 +711,7 @@ const App = () => {
           }
           return value;
         };
-  
+
         // Update totals if pool balances changed
         setPoolsTotals({
           totalTvl: formatBigInt(
@@ -784,12 +725,11 @@ const App = () => {
           ),
         });
       }
-  
+
       if (liquidity_pool_balances_response.hasOwnProperty("Err")) {
         console.error(liquidity_pool_balances_response.Err);
       }
     } catch (error) {
-      console.log('hereeeee')
       console.error("Error fetching pool balances, retrying...", error);
       setTimeout(updatePoolBalances, 2000);
     }
@@ -1241,17 +1181,42 @@ const App = () => {
     return () => clearInterval(intervalId);
   }, [principal, updateUserBalances]);
 
-  // console.log('principal', principal);
-  // console.log('accounts', accounts);
-  console.log('kingkoing', kingKongActor);
-  // console.log('icpActor', icpLedgerActor);
+  useEffect(() => {
+    if (isInitializing || !kingKongActor || !icpAnonActor) return;
+    if (principal && delegationType) {
+      if (principal !== previousPrincipalRef.current) {
+        // Principal has changed, reinitialize
+        previousPrincipalRef.current = principal;
+        // add 3 seconds before initializing
+        const initialize = async () => {
+          await getUserProfile();
+          await updatePoolBalances();
+          await updateUserBalances();
+        };
+
+        initialize();
+      }
+    } else if (!principal) {
+      // Principal is null, reset the ref
+      previousPrincipalRef.current = null;
+    }
+  }, [
+    principal,
+    getUserProfile,
+    updateUserBalances,
+    updatePoolBalances,
+    delegationType,
+    isInitializing,
+    kingKongActor,
+    icpAnonActor,
+  ]);
 
   return (
     <>
       {isStatsPage ? (
         <div className="StatsSecondBody">
           <Navigation
-            // getUserProfile={getUserProfile}
+            getUserProfile={getUserProfile}
             updatePoolBalances={updateUserPools}
             updateUserBalances={updateUserBalances}
             getTokens={getTokens}
@@ -1280,7 +1245,7 @@ const App = () => {
       ) : (
         <div className="SwapSecondBody">
           <Navigation
-            // getUserProfile={getUserProfile}
+            getUserProfile={getUserProfile}
             updatePoolBalances={updateUserPools}
             updateUserBalances={updateUserBalances}
             getTokens={getTokens}
@@ -1318,7 +1283,7 @@ const App = () => {
             updateSlippage={updateSlippage}
             handleSlippageBlur={handleSlippageBlur}
             copyToClipboard={copyToClipboard}
-            smallerPrincipal={principal}
+            smallerPrincipal={smallerPrincipal}
             changeDrawerContent={changeDrawerContent}
             tokenDetails={tokenDetails}
             sortedTokens={sortedTokens}
@@ -1328,7 +1293,6 @@ const App = () => {
           />
         </div>
       )}
-      {/* <Outlet /> */}
     </>
   );
 };
@@ -1775,7 +1739,7 @@ function MainPage({
                 </span>
               </div>
 
-              {/* <div className="swap-interface-undertabs">
+              <div className="swap-interface-undertabs">
                 {viewTab === "swap" ? (
                   <SwapComponent
                     receiveAddress={principal ? principal : "no address"}
@@ -1829,10 +1793,10 @@ function MainPage({
                     accountId={accountId}
                   />
                 ) : null}
-              </div> */}
+              </div>
             </div>
           </div>
-        <GorilaText />
+          <GorilaText />
           {/* <img src={kongImage} className="swap-page-kong-image-container" alt="" /> */}
         </section>
         {isSlippageModalOpen && (

@@ -25,7 +25,6 @@ import {
   useCkusdcActor,
   useIcpActor,
   useKingKongActor,
-  useKingKongFaucetActor,
   useCkusdtActor,
   useNICPActor,
   useWtnActor,
@@ -82,39 +81,38 @@ const SwapComponent = memo(({
   principal,
   tokenImages,
 }) => {
-  const backendKingKong = useKingKongActor();
-  const icpLedgerActor = useIcpActor();
-  const ckbtcLedgerActor = useCkbtcActor();
-  const ckethLedgerActor = useCkethActor();
-  const ckusdcLedgerActor = useCkusdcActor();
-  const ckusdtLedgerActor = useCkusdtActor();
-  const NICPLedgerActor = useNICPActor();
-  const wtnLedgerActor = useWtnActor();
-  const yugeLedgerActor = useYugeActor();
-  const chatLedgerActor = useChatActor();
-  const dkpLedgerActor = useDkpActor();
-  const nanasLedgerActor = useNanasActor();
-  const nd64LedgerActor = useNd64Actor();
-  const bitsLedgerActor = useBitsActor();
-  const alpacalbLedgerActor = useAlpacalbActor();
-  const partyLedgerActor = usePartyActor();
-  const sneedLedgerActor = useSneedActor();
-  const clownLedgerActor = useClownActor();
-  const exeLedgerActor = useExeActor();
-  const wumboLedgerActor = useWumboActor();
-  const mcsLedgerActor = useMcsActor();
-  const damonicLedgerActor = useDamonicActor();
-  const bobLedgerActor = useBobActor();
-  const burnLedgerActor = useBurnActor();
-  const ntnLedgerActor = useNtnActor();
-  const dcdLedgerActor = useDcdActor();
-  const gldgovLedgerActor = useGldgovActor();
-  const owlLedgerActor = useOwlActor();
-  const ogyLedgerActor = useOgyActor();
-  const fplLedgerActor = useFplActor();
-  const dittoLedgerActor = useDittoActor();
-  const icvcLedgerActor = useIcvcActor();
-  const kingKongFaucetActor = useKingKongFaucetActor();
+  const { authenticated: backendKingKong } = useKingKongActor();
+  const { authenticated: icpLedgerActor } = useIcpActor();
+  const { authenticated: ckbtcLedgerActor } = useCkbtcActor();
+  const { authenticated: ckethLedgerActor } = useCkethActor();
+  const { authenticated: ckusdcLedgerActor } = useCkusdcActor();
+  const { authenticated: ckusdtLedgerActor } = useCkusdtActor();
+  const { authenticated: NICPLedgerActor } = useNICPActor();
+  const { authenticated: wtnLedgerActor } = useWtnActor();
+  const { authenticated: yugeLedgerActor } = useYugeActor();
+  const { authenticated: chatLedgerActor } = useChatActor();
+  const { authenticated: dkpLedgerActor } = useDkpActor();
+  const { authenticated: nanasLedgerActor } = useNanasActor();
+  const { authenticated: nd64LedgerActor } = useNd64Actor();
+  const { authenticated: bitsLedgerActor } = useBitsActor();
+  const { authenticated: alpacalbLedgerActor } = useAlpacalbActor();
+  const { authenticated: partyLedgerActor } = usePartyActor();
+  const { authenticated: sneedLedgerActor } = useSneedActor();
+  const { authenticated: clownLedgerActor } = useClownActor();
+  const { authenticated: exeLedgerActor } = useExeActor();
+  const { authenticated: wumboLedgerActor } = useWumboActor();
+  const { authenticated: mcsLedgerActor } = useMcsActor();
+  const { authenticated: damonicLedgerActor } = useDamonicActor();
+  const { authenticated: bobLedgerActor } = useBobActor();
+  const { authenticated: burnLedgerActor } = useBurnActor();
+  const { authenticated: ntnLedgerActor } = useNtnActor();
+  const { authenticated: dcdLedgerActor } = useDcdActor();
+  const { authenticated: gldgovLedgerActor } = useGldgovActor();
+  const { authenticated: owlLedgerActor } = useOwlActor();
+  const { authenticated: ogyLedgerActor } = useOgyActor();
+  const { authenticated: fplLedgerActor } = useFplActor();
+  const { authenticated: dittoLedgerActor } = useDittoActor();
+  const { authenticated: icvcLedgerActor } = useIcvcActor();
 
   const initialYouPayToken = initialPool ? initialPool.split("_")[0] : null;
   const initialYouReceiveToken = initialPool ? initialPool.split("_")[1] : null;

@@ -35,165 +35,165 @@ import { idlFactory as owlIdlFactory, canisterId as owlCanisterId } from '../../
 
 export const {
   ActorProvider: CkbtcActorProvider,
-  useActor: useCkbtcActor
+  useActors: useCkbtcActor
 } = createActorProvider(ckbtcIdlFactory, ckbtcCanisterId);
 
 export const {
   ActorProvider: CkethActorProvider,
-  useActor: useCkethActor
+  useActors: useCkethActor
 } = createActorProvider(ckethIdlFactory, ckethCanisterId);
 
 export const {
   ActorProvider: CkusdcActorProvider,
-  useActor: useCkusdcActor
+  useActors: useCkusdcActor
 } = createActorProvider(ckusdcIdlFactory, ckusdcCanisterId);
 
 export const {
   ActorProvider: IcpActorProvider,
-  useActor: useIcpActor
+  useActors: useIcpActor
 } = createActorProvider(icpIdlFactory, icpCanisterId);
 
 export const {
   ActorProvider: KingKongActorProvider,
-  useActor: useKingKongActor
+  useActors: useKingKongActor
 } = createActorProvider(kingKongIdlFactory, kingKongCanisterId);
 
 export const {
   ActorProvider: KingKongFaucetActorProvider,
-  useActor: useKingKongFaucetActor
+  useActors: useKingKongFaucetActor
 } = createActorProvider(kingKongFaucetIdlFactory, kingKongFaucetCanisterId);
 
 export const {
   ActorProvider: CkusdtActorProvider,
-  useActor: useCkusdtActor
+  useActors: useCkusdtActor
 } = createActorProvider(ckusdtIdlFactory, ckusdtCanisterId);
 
 export const {
   ActorProvider: NICPActorProvider,
-  useActor: useNICPActor
+  useActors: useNICPActor
 } = createActorProvider(NICPIdlFactory, NICPCanisterId);
 
 export const {
   ActorProvider: WtnActorProvider,
-  useActor: useWtnActor
+  useActors: useWtnActor
 } = createActorProvider(wtnIdlFactory, wtnCanisterId);
 
 export const {
   ActorProvider: YugeActorProvider,
-  useActor: useYugeActor
+  useActors: useYugeActor
 } = createActorProvider(yugeIdlFactory, yugeCanisterId);
 
 export const {
   ActorProvider: ChatActorProvider,
-  useActor: useChatActor
+  useActors: useChatActor
 } = createActorProvider(chatIdlFactory, chatCanisterId);
 
 export const {
   ActorProvider: DkpActorProvider,
-  useActor: useDkpActor
+  useActors: useDkpActor
 } = createActorProvider(dkpIdlFactory, dkpCanisterId);
 
 export const {
   ActorProvider: NanasActorProvider,
-  useActor: useNanasActor
+  useActors: useNanasActor
 } = createActorProvider(nanasIdlFactory, nanasCanisterId);
 
 export const {
   ActorProvider: Nd64ActorProvider,
-  useActor: useNd64Actor
+  useActors: useNd64Actor
 } = createActorProvider(nd64IdlFactory, nd64CanisterId);
 
 export const {
   ActorProvider: BitsActorProvider,
-  useActor: useBitsActor
+  useActors: useBitsActor
 } = createActorProvider(bitsIdlFactory, bitsCanisterId);
 
 export const {
   ActorProvider: AlpacalbActorProvider,
-  useActor: useAlpacalbActor
+  useActors: useAlpacalbActor
 } = createActorProvider(alpacalbIdlFactory, alpacalbCanisterId);
 
 export const {
   ActorProvider: PartyActorProvider,
-  useActor: usePartyActor
+  useActors: usePartyActor
 } = createActorProvider(partyIdlFactory, partyCanisterId);
 
 export const {
   ActorProvider: SneedActorProvider,
-  useActor: useSneedActor
+  useActors: useSneedActor
 } = createActorProvider(sneedIdlFactory, sneedCanisterId);
 
 export const {
   ActorProvider: ClownActorProvider,
-  useActor: useClownActor
+  useActors: useClownActor
 } = createActorProvider(clownIdlFactory, clownCanisterId);
 
 export const {
   ActorProvider: ExeActorProvider,
-  useActor: useExeActor
+  useActors: useExeActor
 } = createActorProvider(exeIdlFactory, exeCanisterId);
 
 export const {
   ActorProvider: WumboActorProvider,
-  useActor: useWumboActor
+  useActors: useWumboActor
 } = createActorProvider(wumboIdlFactory, wumboCanisterId);
 
 export const {
   ActorProvider: McsActorProvider,
-  useActor: useMcsActor
+  useActors: useMcsActor
 } = createActorProvider(mcsIdlFactory, mcsCanisterId);
 
 export const {
   ActorProvider: DamonicActorProvider,
-  useActor: useDamonicActor,
+  useActors: useDamonicActor,
 } = createActorProvider(damonicIdlFactory, damonicCanisterId);
 
 export const {
   ActorProvider: BobActorProvider,
-  useActor: useBobActor,
+  useActors: useBobActor,
 } = createActorProvider(bobIdlFactory, bobCanisterId);
 
 export const {
   ActorProvider: BurnActorProvider,
-  useActor: useBurnActor,
+  useActors: useBurnActor,
 } = createActorProvider(burnIdlFactory, burnCanisterId);
 
 export const {
   ActorProvider: DcdActorProvider,
-  useActor: useDcdActor,
+  useActors: useDcdActor,
 } = createActorProvider(dcdIdlFactory, dcdCanisterId);
 
 export const {
   ActorProvider: DittoActorProvider,
-  useActor: useDittoActor,
+  useActors: useDittoActor,
 } = createActorProvider(dittoIdlFactory, dittoCanisterId);
 
 export const {
   ActorProvider: FplActorProvider,
-  useActor: useFplActor,
+  useActors: useFplActor,
 } = createActorProvider(fplIdlFactory, fplCanisterId);
 
 export const {
   ActorProvider: GldgovActorProvider,
-  useActor: useGldgovActor,
+  useActors: useGldgovActor,
 } = createActorProvider(gldgovIdlFactory, gldgovCanisterId);
 
 export const {
   ActorProvider: IcvcActorProvider,
-  useActor: useIcvcActor,
+  useActors: useIcvcActor,
 } = createActorProvider(icvcIdlFactory, icvcCanisterId);
 
 export const {
   ActorProvider: NtnActorProvider,
-  useActor: useNtnActor,
+  useActors: useNtnActor,
 } = createActorProvider(ntnIdlFactory, ntnCanisterId);
 
 export const {
   ActorProvider: OgyActorProvider,
-  useActor: useOgyActor,
+  useActors: useOgyActor,
 } = createActorProvider(ogyIdlFactory, ogyCanisterId);
 
 export const {
   ActorProvider: OwlActorProvider,
-  useActor: useOwlActor,
+  useActors: useOwlActor,
 } = createActorProvider(owlIdlFactory, owlCanisterId);

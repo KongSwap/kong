@@ -23,7 +23,6 @@ export const KONG_BACKEND_PRINCIPAL = Principal.fromText(
 );
 
 export function extractParts(str) {
-  console.log('extract parts', str)
   const parts = str.split("-");
   const firstPart = `${parts[0]}-${parts[1].slice(0, 3)}`; // First segment + first 3 chars of second segment
   const lastPart = `${parts[parts.length - 2].slice(-3)}-${parts[parts.length - 1]}`; // Last 3 chars of second to last + last segment
@@ -54,23 +53,13 @@ const Navigation = React.memo(
     sortedTokens,
     tokenPrices,
     tokenImages,
+    getUserProfile,
   }) => {
     const location = useLocation();
-    const { connect, disconnect, delegationType } = useIdentityKit();
+    const { connect, disconnect, delegationType, isInitializing } = useIdentityKit();
 
-    // const {
-    //   login,
-    //   clear,
-    //   identityType,
-    //   connectPlugWallet,
-    //   activeIdentity,
-    //   disconnectPlugWallet,
-    //   actors: { backendKingKong },
-    //   isInitialized
-    // } = useIdentity();
-    const backendKingKong = useKingKongActor();
-    const initializationRef = useRef(false);
-    const previousPrincipalRef = useRef();
+    const { authenticated: backendKingKong } = useKingKongActor();
+
     const [transactions, setTransactions] = useState([]);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -151,35 +140,38 @@ const Navigation = React.memo(
     //   isInitialized,
     // ]);
 
-    useEffect(() => {
-      console.log('navigation', delegationType)
-      if (principal && delegationType) {
-        if (principal !== previousPrincipalRef.current) {
-          // Principal has changed, reinitialize
-          previousPrincipalRef.current = principal;
-          // add 3 seconds before initializing
-          setTimeout(() => {
-          const initialize = async () => {
-            // await getUserProfile();
-            await updatePoolBalances();
-            await updateUserBalances();
-          };
+    // useEffect(() => {
+    //   if (isInitializing) return;
+    //   console.log('STARTING APP', principal, delegationType)
+    //   if (principal && delegationType) {
+    //     if (principal !== previousPrincipalRef.current) {
+    //       // Principal has changed, reinitialize
+    //       previousPrincipalRef.current = principal;
+    //       // add 3 seconds before initializing
+    //       setTimeout(() => {
+    //       const initialize = async () => {
+    //         console.log('getUserProfile')
+    //         await getUserProfile();
+    //         await updatePoolBalances();
+    //         await updateUserBalances();
+    //       };
 
-          initialize();
+    //       initialize();
 
-          }, 3000)
-        }
-      } else if (!principal) {
-        // Principal is null, reset the ref
-        previousPrincipalRef.current = null;
-      }
-    }, [
-      principal,
-      // getUserProfile,
-      updateUserBalances,
-      updatePoolBalances,
-      delegationType
-    ]);
+    //       }, 3000)
+    //     }
+    //   } else if (!principal) {
+    //     // Principal is null, reset the ref
+    //     previousPrincipalRef.current = null;
+    //   }
+    // }, [
+    //   principal,
+    //   getUserProfile,
+    //   updateUserBalances,
+    //   updatePoolBalances,
+    //   delegationType,
+    //   isInitializing
+    // ]);
 
     useEffect(() => {
       if (principal && isDrawerOpen) fetchAndSetTransactions();
