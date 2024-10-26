@@ -1,4 +1,4 @@
-use std::cmp::Reverse;
+use std::collections::BTreeMap;
 
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
@@ -10,13 +10,12 @@ use crate::stable_user::user_map;
 pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
     let user_id = user_map::get_by_caller().ok().flatten()?.user_id;
     CLAIM_MAP.with(|m| {
-        m.borrow().iter().find_map(|(k, v)| {
+        m.borrow().get(&StableClaimId(claim_id)).and_then(|v| {
             // only unclaimed claims of caller
-            if k.0 == claim_id && (user_id == v.user_id) && (v.status == ClaimStatus::Unclaimed) {
-                Some(v)
-            } else {
-                None
+            if user_id == v.user_id && (v.status == ClaimStatus::Unclaimed) {
+                return Some(v);
             }
+            None
         })
     })
 }
@@ -33,22 +32,21 @@ pub fn get() -> Vec<StableClaim> {
         Ok(Some(caller)) => caller.user_id,
         Ok(None) | Err(_) => return Vec::new(),
     };
-    let mut claims: Vec<StableClaim> = CLAIM_MAP.with(|m| {
+    CLAIM_MAP.with(|m| {
         m.borrow()
             .iter()
+            .collect::<BTreeMap<_, _>>()
+            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 // only unclaimed claims of caller
                 if user_id == v.user_id && (v.status == ClaimStatus::Unclaimed) {
-                    Some(v)
-                } else {
-                    None
+                    return Some(v.clone());
                 }
+                None
             })
             .collect()
-    });
-    // order by timestamp in reverse order
-    claims.sort_by_key(|claim| Reverse(claim.ts));
-    claims
+    })
 }
 
 pub fn insert(claim: &StableClaim) -> u64 {

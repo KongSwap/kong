@@ -12,19 +12,19 @@ const MAX_REQUESTS: usize = 100;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
-    let num_requests = num_requests.map_or(1, |n| n as usize);
     match request_id {
         // return a single request
-        Some(request_id) if num_requests == 1 => REQUEST_MAP.with(|m| {
+        Some(request_id) if num_requests.is_none() => REQUEST_MAP.with(|m| {
             let key = StableRequestId(request_id);
             serde_json::to_string(&m.borrow().get(&key).map_or_else(
                 || Err(format!("Request #{} not found", request_id)),
                 |v| Ok(BTreeMap::new().insert(key, v)),
-            ))
+            )?)
             .map_err(|e| format!("Failed to serialize requests: {}", e))
         }),
         // return a range of requests in reverse order
         Some(request_id) => REQUEST_MAP.with(|m| {
+            let num_requests = num_requests.map_or(MAX_REQUESTS, |n| n as usize);
             let start_key = StableRequestId(request_id);
             serde_json::to_string(
                 &m.borrow()
@@ -41,6 +41,7 @@ fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result
         }),
         // return the latest requests
         None => REQUEST_MAP.with(|m| {
+            let num_requests = num_requests.map_or(MAX_REQUESTS, |n| n as usize);
             serde_json::to_string(
                 &m.borrow()
                     .iter()
