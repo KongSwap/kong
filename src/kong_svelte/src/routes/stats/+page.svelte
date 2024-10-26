@@ -6,7 +6,7 @@
   import { isEqual } from 'lodash-es';
 
   let tokens: any = null;
-  let clouds = []
+  let clouds = [];
   let poolsInfo = []; // To store pools information
   let poolsTotals = {
     totalTvl: 0,
@@ -23,20 +23,22 @@
       console.error('Error fetching tokens:', error);
     }
 
+    // Updated cloud spawning logic with more speed variation
     clouds = Array.from({ length: 20 }, (_, i) => ({
       src: `/backgrounds/cloud${(i % 4) + 1}.webp`, // Cycle through 4 cloud images
       top: `${Math.random() * 85}%`, // Random vertical position
-      left: `${Math.random() * 100}%`, // Random horizontal position
-      animationDuration: `${70 + Math.random() * 60}s`, // Random duration between 60s and 120s
-      delay: `-${Math.random() * 60}s`, // Random negative delay up to 60s
+      left: Math.random() > 0.5 ? '-20%' : '120%', // Start completely off-screen to the left or right
+      animationDuration: `${200 + Math.random() * 1200}s`, // Random duration between 200s and 2000s
+      delay: `-${Math.random() * 1000}s`, // Random negative delay up to 1000s
       direction: Math.random() > 0.5 ? 1 : -1, // Random direction: 1 for right, -1 for left
-      size: 0.9 + Math.random() * 1 // Random size between 0.5 and 1.5
+      size: 0.7 + Math.random() * 1.3, // Random size between 0.7 and 2
     }));
   });
 
   async function updatePoolBalances() {
     try {
       const liquidity_pool_balances_response = await backendService.getPools();
+
       const liquidity_pool_balances =
         (liquidity_pool_balances_response.Ok &&
           liquidity_pool_balances_response.Ok.pools) ||
@@ -125,6 +127,7 @@
         animation-duration: {cloud.animationDuration}; 
         animation-delay: {cloud.delay}; 
         animation-direction: {cloud.direction === 1 ? 'normal' : 'reverse'};
+        transform: scale({cloud.size});
       "
     />
   {/each}
@@ -226,11 +229,10 @@
 
   @keyframes float {
     from {
-      transform: translateX(-50%);
-    
+      transform: translateX(-200vw);
     }
     to {
-      transform: translateX(200%);
+      transform: translateX(200vw);
     }
   }
 </style>
