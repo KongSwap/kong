@@ -1,14 +1,19 @@
 <script lang="ts">
   import { t } from '$lib/locales/translations';
   import { backendService } from '$lib/services/backendService';
-  import WalletConnection from '$lib/components/WalletConnection.svelte';
   import { onMount } from 'svelte';
   import { isEqual } from 'lodash-es';
+
+  type PoolsTotals = {
+    totalTvl: number | string;
+    totalVolume: number | string;
+    totalFees: number | string;
+  };
 
   let tokens: any = null;
   let clouds = [];
   let poolsInfo = [];
-  let poolsTotals = {
+  let poolsTotals: PoolsTotals = {
     totalTvl: 0,
     totalVolume: 0,
     totalFees: 0,
@@ -43,7 +48,6 @@
   async function updatePoolBalances() {
     try {
       const liquidity_pool_balances_response = await backendService.getPools();
-
       const liquidity_pool_balances =
         (liquidity_pool_balances_response.Ok &&
           liquidity_pool_balances_response.Ok.pools) ||
@@ -52,7 +56,6 @@
       if (!isEqual(previousPoolBalances, liquidity_pool_balances)) {
         poolsInfo = liquidity_pool_balances;
         previousPoolBalances = liquidity_pool_balances;
-
         const decimals = 6;
 
         const formatBigInt = (value: bigint | number) => {
@@ -63,17 +66,9 @@
           return value;
         };
 
-        poolsTotals = {
-          totalTvl: formatBigInt(
-            liquidity_pool_balances_response.Ok.total_tvl || 0
-          ),
-          totalVolume: formatBigInt(
-            liquidity_pool_balances_response.Ok.total_24h_volume || 0
-          ),
-          totalFees: formatBigInt(
-            liquidity_pool_balances_response.Ok.total_24h_lp_fee || 0
-          ),
-        };
+        poolsTotals.totalTvl = formatBigInt(liquidity_pool_balances_response.Ok.total_tvl || 0);
+        poolsTotals.totalVolume = formatBigInt(liquidity_pool_balances_response.Ok.total_24h_volume || 0);
+        poolsTotals.totalFees = formatBigInt(liquidity_pool_balances_response.Ok.total_24h_lp_fee || 0);
       }
 
       if (liquidity_pool_balances_response.hasOwnProperty('Err')) {
@@ -139,7 +134,7 @@
 </div>
 
 <main class="flex flex-col min-h-screen bg-sky-100 relative pt-28">
-  <div class="flex-grow z-10 mb-32"> <!-- Added bottom margin here -->
+  <div class="flex-grow z-10 mb-32">
     <!-- Pool Overview Section -->
     <div class="bg-k-light-blue bg-opacity-40 border-[5px] border-black p-0.5 w-11/12 max-w-5xl mx-auto mt-6">
       <div class="inner-border p-4 w-full h-full">
@@ -176,24 +171,7 @@
                   </td>
                 </tr>
               {/each}
-               {#each poolsInfo as pool}
-                <tr class="border-b-2 border-black">
-                  <td class="p-2 uppercase font-bold">{pool.symbol_0}/{pool.symbol_1}</td>
-                  <td class="p-2 text-right">${pool.tvl}</td>
-                  <td class="p-2 text-right">${pool.roll24hVolume}</td>
-                  <td class="p-2 text-right">{pool.apy}%</td>
-                  <td class="p-2">
-                    <div class="flex justify-center gap-2">
-                      <button class="bg-green-500 hover:bg-green-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
-                        {$t('stats.swap')}
-                      </button>
-                      <button class="bg-yellow-500 hover:bg-yellow-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
-                        {$t('stats.addLiquidity')}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
+              
             </tbody>
           </table>
         </div>
