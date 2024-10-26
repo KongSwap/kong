@@ -135,3 +135,4 @@ dfx.json
 secrets*
 package-lock.json
 *.lock
+backup/

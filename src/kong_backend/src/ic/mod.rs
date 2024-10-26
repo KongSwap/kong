@@ -1,5 +1,6 @@
 pub mod address;
 pub mod address_impl;
+pub mod canister_address;
 pub mod get_time;
 pub mod guards;
 pub mod id;

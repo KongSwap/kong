@@ -1,0 +1,21 @@
+CREATE TABLE pools (
+    pool_id INT PRIMARY KEY,
+    token_id_0 INT NOT NULL,
+    balance_0 FLOAT8 NOT NULL,
+    lp_fee_0 FLOAT8 NOT NULL,
+    kong_fee_0 FLOAT8 NOT NULL,
+    token_id_1 INT NOT NULL,
+    balance_1 FLOAT8 NOT NULL,
+    lp_fee_1 FLOAT8 NOT NULL,
+    kong_fee_1 FLOAT8 NOT NULL,
+    lp_fee_bps SMALLINT NOT NULL,
+    kong_fee_bps SMALLINT NOT NULL,
+    lp_token_id INT NOT NULL,
+    on_kong BOOLEAN NOT NULL,
+    rolling_24h_volume FLOAT8 NOT NULL,
+    rolling_24h_lp_fee FLOAT8 NOT NULL,
+    rolling_24h_num_swaps INT NOT NULL,
+    rolling_24h_apy FLOAT8 NOT NULL,
+    total_volume FLOAT8 NOT NULL,
+    total_lp_fee FLOAT8 NOT NULL
+);

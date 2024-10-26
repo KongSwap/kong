@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 const LP_TOKEN_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
 
-#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableLPTokenLedgerId(pub u64);
 
 impl Storable for StableLPTokenLedgerId {
