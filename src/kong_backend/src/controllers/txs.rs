@@ -25,30 +25,12 @@ fn backup_txs(tx_id: Option<u64>, num_txs: Option<u16>) -> Result<String, String
         }),
         Some(tx_id) => TX_MAP.with(|m| {
             let start_key = StableTxId(tx_id);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
-                    .range(start_key..)
-                    .take(num_txs)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize txs: {}", e))
+            serde_json::to_string(&m.borrow().range(start_key..).take(num_txs).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize txs: {}", e))
         }),
         None => TX_MAP.with(|m| {
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_txs)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize txs: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_txs).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize txs: {}", e))
         }),
     }
 }

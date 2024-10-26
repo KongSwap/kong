@@ -21,31 +21,13 @@ fn backup_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<Strin
         Some(claim_id) => CLAIM_MAP.with(|m| {
             let num_claims = num_claims.map_or(MAX_CLAIMS, |n| n as usize);
             let start_key = StableClaimId(claim_id);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
-                    .range(start_key..)
-                    .take(num_claims)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize claims: {}", e))
+            serde_json::to_string(&m.borrow().range(start_key..).take(num_claims).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize claims: {}", e))
         }),
         None => CLAIM_MAP.with(|m| {
             let num_claims = num_claims.map_or(MAX_CLAIMS, |n| n as usize);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_claims)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize claims: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_claims).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize claims: {}", e))
         }),
     }
 }

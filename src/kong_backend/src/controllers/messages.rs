@@ -25,31 +25,13 @@ fn backup_messages(message_id: Option<u64>, num_messages: Option<u16>) -> Result
         Some(message_id) => MESSAGE_MAP.with(|m| {
             let num_messages = num_messages.map_or(MAX_MESSAGE, |n| n as usize);
             let start_key = StableMessageId(message_id);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
-                    .range(start_key..)
-                    .take(num_messages)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize messages: {}", e))
+            serde_json::to_string(&m.borrow().range(start_key..).take(num_messages).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize messages: {}", e))
         }),
         None => MESSAGE_MAP.with(|m| {
             let num_messages = num_messages.map_or(MAX_MESSAGE, |n| n as usize);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_messages)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize messages: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_messages).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize messages: {}", e))
         }),
     }
 }

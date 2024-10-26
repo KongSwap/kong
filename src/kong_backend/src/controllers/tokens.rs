@@ -21,31 +21,13 @@ fn backup_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Result<Strin
         Some(token_id) => TOKEN_MAP.with(|m| {
             let num_tokens = num_tokens.map_or(MAX_TOKENS, |n| n as usize);
             let start_key = StableTokenId(token_id);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
-                    .range(start_key..)
-                    .take(num_tokens)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize tokens: {}", e))
+            serde_json::to_string(&m.borrow().range(start_key..).take(num_tokens).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize tokens: {}", e))
         }),
         None => TOKEN_MAP.with(|m| {
             let num_tokens = num_tokens.map_or(MAX_TOKENS, |n| n as usize);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_tokens)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize tokens: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_tokens).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize tokens: {}", e))
         }),
     }
 }

@@ -25,11 +25,6 @@ fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Resu
         Some(transfer_id) => TRANSFER_MAP.with(|m| {
             serde_json::to_string(
                 &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
                     .range(StableTransferId(transfer_id)..)
                     .take(num_requests)
                     .collect::<BTreeMap<_, _>>(),
@@ -37,16 +32,8 @@ fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Resu
             .map_err(|e| format!("Failed to serialize transfers: {}", e))
         }),
         None => TRANSFER_MAP.with(|m| {
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_requests)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize transfers: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_requests).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize transfers: {}", e))
         }),
     }
 }

@@ -26,32 +26,14 @@ fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result
         Some(request_id) => REQUEST_MAP.with(|m| {
             let num_requests = num_requests.map_or(MAX_REQUESTS, |n| n as usize);
             let start_key = StableRequestId(request_id);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
-                    .range(start_key..)
-                    .take(num_requests)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize requests: {}", e))
+            serde_json::to_string(&m.borrow().range(start_key..).take(num_requests).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize requests: {}", e))
         }),
         // return the latest requests
         None => REQUEST_MAP.with(|m| {
             let num_requests = num_requests.map_or(MAX_REQUESTS, |n| n as usize);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_requests)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize requests: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_requests).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize requests: {}", e))
         }),
     }
 }

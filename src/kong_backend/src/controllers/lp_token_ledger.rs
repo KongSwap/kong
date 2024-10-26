@@ -21,31 +21,13 @@ fn backup_lp_token_ledger(lp_token_id: Option<u64>, num_lp_token_ledger: Option<
         Some(lp_token_id) => LP_TOKEN_LEDGER.with(|m| {
             let num_lp_token_ledger = num_lp_token_ledger.map_or(MAX_LP_TOKEN_LEDGER, |n| n as usize);
             let start_key = StableLPTokenLedgerId(lp_token_id);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .collect::<BTreeMap<_, _>>()
-                    .range(start_key..)
-                    .take(num_lp_token_ledger)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize lp_tokens: {}", e))
+            serde_json::to_string(&m.borrow().range(start_key..).take(num_lp_token_ledger).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize lp_tokens: {}", e))
         }),
         None => LP_TOKEN_LEDGER.with(|m| {
             let num_lp_token_ledger = num_lp_token_ledger.map_or(MAX_LP_TOKEN_LEDGER, |n| n as usize);
-            serde_json::to_string(
-                &m.borrow()
-                    .iter()
-                    .collect::<BTreeMap<_, _>>()
-                    .iter()
-                    .rev()
-                    .take(num_lp_token_ledger)
-                    .collect::<BTreeMap<_, _>>(),
-            )
-            .map_err(|e| format!("Failed to serialize lp_tokens: {}", e))
+            serde_json::to_string(&m.borrow().iter().take(num_lp_token_ledger).collect::<BTreeMap<_, _>>())
+                .map_err(|e| format!("Failed to serialize lp_tokens: {}", e))
         }),
     }
 }
