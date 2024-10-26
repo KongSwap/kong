@@ -37,6 +37,17 @@ class BackendService {
       throw error;
     }
   }
+
+  // Add the getPools method
+  public async getPools(): Promise<any> {
+    try {
+      const actor = await getActor();
+      return await actor.pools([]);
+    } catch (error) {
+      console.error('Error calling pools method:', error);
+      throw error;
+    }
+  }
 }
 
 export const backendService = BackendService.getInstance();

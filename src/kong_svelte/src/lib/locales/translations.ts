@@ -9,9 +9,19 @@ const config = {
       loader: async () => (await import('./en/common.json')).default,
     },
     {
+      locale: 'en',
+      key: 'stats',
+      loader: async () => (await import('./en/stats.json')).default,
+    },
+    {
       locale: 'es',
       key: 'common',
       loader: async () => (await import('./es/common.json')).default,
+    },
+    {
+      locale: 'es',
+      key: 'stats',
+      loader: async () => (await import('./es/stats.json')).default,
     },
   ],
 };

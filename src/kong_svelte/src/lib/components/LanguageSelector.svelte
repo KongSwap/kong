@@ -70,6 +70,10 @@
 </div>
 
 <style lang="postcss" scoped>
+  .dropdown-container {
+    @apply absolute bottom-2 left-2 mb-2;
+  }
+
   .dropdown-button {
     @apply relative cursor-default text-left font-alumni shadow-sm focus:outline-none sm:text-sm sm:leading-6;
     @apply rounded-md bg-green-600 text-white py-1.5 pl-3 pr-10;
@@ -77,9 +81,11 @@
   }
 
   .dropdown-list {
-    @apply absolute z-10 mt-1 max-h-56 overflow-auto focus:outline-none;
+    @apply absolute z-10 mb-1 max-h-56 overflow-auto focus:outline-none;
     @apply rounded-md bg-green-600 text-white py-1 text-lg shadow-lg;
     @apply sm:text-lg;
+    bottom: 100%; /* Position the dropdown above the button */
+    right: 0; /* Align the dropdown with the button */
   }
 
   .dropdown-item {
@@ -89,10 +95,6 @@
 
   .icon {
     @apply h-5 w-5 text-white;
-  }
-
-  .dropdown-container {
-    @apply relative mt-2;
   }
 
   .dropdown-button-content {
