@@ -4,6 +4,7 @@
 	import { t } from '$lib/locales/translations';
 	import { restoreWalletConnection } from '$lib/stores/walletStore';
 	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
+	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import { currentEnvMode } from '$lib/utils/envUtils';
 
 	onMount(async () => {
