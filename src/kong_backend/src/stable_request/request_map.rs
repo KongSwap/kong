@@ -1,4 +1,4 @@
-use std::cmp::Reverse;
+use std::collections::BTreeMap;
 
 use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
@@ -10,26 +10,25 @@ use crate::stable_memory::REQUEST_MAP;
 /// get a request by request_id of the caller
 pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Option<StableRequest> {
     REQUEST_MAP.with(|m| {
-        m.borrow().iter().find_map(|(k, v)| {
+        m.borrow().get(&StableRequestId(request_id)).and_then(|v| {
             if let Some(user_id) = user_id {
                 if v.user_id != user_id {
                     return None;
                 }
             }
-            if k.0 == request_id {
-                Some(v)
-            } else {
-                None
-            }
+            Some(v)
         })
     })
 }
 
 /// get requests by user_id
-pub fn get_by_user_id(user_id: Option<u32>, max_requests: Option<usize>) -> Vec<StableRequest> {
-    let mut requests: Vec<StableRequest> = REQUEST_MAP.with(|m| {
+pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRequest> {
+    REQUEST_MAP.with(|m| {
         m.borrow()
             .iter()
+            .collect::<BTreeMap<_, _>>()
+            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 if let Some(user_id) = user_id {
                     if v.user_id != user_id {
@@ -37,16 +36,11 @@ pub fn get_by_user_id(user_id: Option<u32>, max_requests: Option<usize>) -> Vec<
                     }
                 }
                 // no user_id specified, return all
-                Some(v)
+                Some(v.clone())
             })
-            .collect()
-    });
-    // order by timestamp in reverse order
-    requests.sort_by_key(|request| Reverse(request.ts));
-    if let Some(max_requests) = max_requests {
-        requests.truncate(max_requests);
-    }
-    requests
+            .take(num_requests)
+            .collect::<Vec<StableRequest>>()
+    })
 }
 
 pub fn insert(request: &StableRequest) -> u64 {
