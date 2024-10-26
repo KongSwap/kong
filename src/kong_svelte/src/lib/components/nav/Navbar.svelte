@@ -2,6 +2,7 @@
   import Button from './Button.svelte';
   import Sidebar from './Sidebar.svelte';
   import { onMount } from 'svelte';
+  import LanguageSelector from '../LanguageSelector.svelte';
   
   let activeTab: 'swap' | 'stats' = 'swap';
   let sidebarOpen = false;
@@ -82,6 +83,9 @@
           />
         {/if}
       </div>
+      <div class="title-container">
+        <img src="/titles/stats_title.webp" alt="Stats" class="title-image w-11/12 md:w-1/2" />
+      </div>
       <div class="right-buttons">
         <Button
           text="CONNECT"
@@ -130,6 +134,17 @@
   .right-buttons {
     display: flex;
     align-items: center;
+  }
+
+  .title-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  .title-image {
+    max-width: 100%;
+    height: auto;
   }
 
   @media (max-width: 768px) {

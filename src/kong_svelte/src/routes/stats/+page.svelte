@@ -7,13 +7,15 @@
 
   let tokens: any = null;
   let clouds = [];
-  let poolsInfo = []; // To store pools information
+  let poolsInfo = [];
   let poolsTotals = {
     totalTvl: 0,
     totalVolume: 0,
     totalFees: 0,
   };
   let previousPoolBalances = null;
+
+  let wobbleClass = 'wobble';
 
   onMount(async () => {
     try {
@@ -23,16 +25,19 @@
       console.error('Error fetching tokens:', error);
     }
 
-    // Updated cloud spawning logic with more speed variation
     clouds = Array.from({ length: 20 }, (_, i) => ({
-      src: `/backgrounds/cloud${(i % 4) + 1}.webp`, // Cycle through 4 cloud images
-      top: `${Math.random() * 85}%`, // Random vertical position
-      left: Math.random() > 0.5 ? '-20%' : '120%', // Start completely off-screen to the left or right
-      animationDuration: `${200 + Math.random() * 1200}s`, // Random duration between 200s and 2000s
-      delay: `-${Math.random() * 1000}s`, // Random negative delay up to 1000s
-      direction: Math.random() > 0.5 ? 1 : -1, // Random direction: 1 for right, -1 for left
-      size: 0.7 + Math.random() * 1.3, // Random size between 0.7 and 2
+      src: `/backgrounds/cloud${(i % 4) + 1}.webp`,
+      top: `${Math.random() * 85}%`,
+      left: Math.random() > 0.5 ? '-20%' : '120%',
+      animationDuration: `${200 + Math.random() * 1200}s`,
+      delay: `-${Math.random() * 1000}s`,
+      direction: Math.random() > 0.5 ? 1 : -1,
+      size: 0.7 + Math.random() * 1.3,
     }));
+
+    setTimeout(() => {
+      wobbleClass = '';
+    }, 400);
   });
 
   async function updatePoolBalances() {
@@ -115,7 +120,7 @@
   }
 </script>
 
-<div class="floating-clouds w-screen h-screen overflow-hidden">
+<div class="floating-clouds w-screen h-screen overflow-hidden z-[1]">
   {#each clouds as cloud}
     <img
       src={cloud.src}
@@ -133,65 +138,82 @@
   {/each}
 </div>
 
-<main class="flex flex-col items-center bg-sky-100 min-h-screen p-4">
-  <!-- Page Title -->
-  <h1 class="text-6xl font-bold font-alumni text-yellow-500 mt-8 mb-4 z-10">
-    Kong {$t('stats.stats')}
-  </h1>
-
-  <!-- Pool Overview Section -->
-  <div class="bg-k-light-blue border-[5px] border-black p-0.5 w-11/12 max-w-5xl mt-6 z-10">
-    <div class="inner-border p-10 w-full">
-      <h2 class="text-center text-2xl font-bold text-white mb-4 text-outline-2">
-        ** {$t('stats.overviewOfKongPools')} **
-      </h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-black">
-          <thead>
-            <tr class="border-b-4 border-black">
-              <th class="p-2 uppercase text-left">{$t('stats.poolName')}</th>
-              <th class="p-2 text-right">{$t('stats.tvl')}</th>
-              <th class="p-2 text-right">{$t('stats.24hVolume')}</th>
-              <th class="p-2 text-right">{$t('stats.apy')}</th>
-              <th class="p-2">{$t('stats.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each poolsInfo as pool}
-              <tr class="border-b-2 border-black">
-                <td class="p-2 uppercase font-bold">{pool.symbol_0}/{pool.symbol_1}</td>
-                <td class="p-2 text-right">${pool.tvl}</td>
-                <td class="p-2 text-right">${pool.roll24hVolume}</td>
-                <td class="p-2 text-right">{pool.apy}%</td>
-                <td class="p-2">
-                  <div class="flex justify-center gap-2">
-                    <button class="bg-green-500 hover:bg-green-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
-                      {$t('stats.swap')}
-                    </button>
-                    <button class="bg-yellow-500 hover:bg-yellow-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
-                      {$t('stats.addLiquidity')}
-                    </button>
-                  </div>
-                </td>
+<main class="flex flex-col min-h-screen bg-sky-100 relative pt-28">
+  <div class="flex-grow z-10 mb-32"> <!-- Added bottom margin here -->
+    <!-- Pool Overview Section -->
+    <div class="bg-k-light-blue bg-opacity-40 border-[5px] border-black p-0.5 w-11/12 max-w-5xl mx-auto mt-6">
+      <div class="inner-border p-4 w-full h-full">
+        <h2 class="text-center text-xl font-black text-white mb-4 text-outline-2">
+          ** {$t('stats.overviewOfKongPools')} **
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-black">
+            <thead>
+              <tr class="border-b-4 border-black">
+                <th class="p-2 uppercase text-left">{$t('stats.poolName')}</th>
+                <th class="p-2 text-right">{$t('stats.tvl')}</th>
+                <th class="p-2 text-right">{$t('stats.24hVolume')}</th>
+                <th class="p-2 text-right">{$t('stats.apy')}</th>
+                <th class="p-2">{$t('stats.actions')}</th>
               </tr>
-            {/each}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {#each poolsInfo as pool}
+                <tr class="border-b-2 border-black">
+                  <td class="p-2 uppercase font-bold">{pool.symbol_0}/{pool.symbol_1}</td>
+                  <td class="p-2 text-right">${pool.tvl}</td>
+                  <td class="p-2 text-right">${pool.roll24hVolume}</td>
+                  <td class="p-2 text-right">{pool.apy}%</td>
+                  <td class="p-2">
+                    <div class="flex justify-center gap-2">
+                      <button class="bg-green-500 hover:bg-green-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
+                        {$t('stats.swap')}
+                      </button>
+                      <button class="bg-yellow-500 hover:bg-yellow-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
+                        {$t('stats.addLiquidity')}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+               {#each poolsInfo as pool}
+                <tr class="border-b-2 border-black">
+                  <td class="p-2 uppercase font-bold">{pool.symbol_0}/{pool.symbol_1}</td>
+                  <td class="p-2 text-right">${pool.tvl}</td>
+                  <td class="p-2 text-right">${pool.roll24hVolume}</td>
+                  <td class="p-2 text-right">{pool.apy}%</td>
+                  <td class="p-2">
+                    <div class="flex justify-center gap-2">
+                      <button class="bg-green-500 hover:bg-green-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
+                        {$t('stats.swap')}
+                      </button>
+                      <button class="bg-yellow-500 hover:bg-yellow-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black">
+                        {$t('stats.addLiquidity')}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Total Summary -->
-  <div class="bg-white border-4 border-black rounded-lg p-4 w-56 mt-6 z-10">
-    <h3 class="text-center text-xl font-bold text-black mb-2">{$t('stats.totalStats')}</h3>
-    <p>{$t('stats.totalTvl')}: ${formatNumberCustom(poolsTotals.totalTvl, 2)}</p>
-    <p>{$t('stats.24hVolume')}: ${formatNumberCustom(poolsTotals.totalVolume, 2)}</p>
-    <p>{$t('stats.24hFees')}: ${formatNumberCustom(poolsTotals.totalFees, 2)}</p>
-  </div>
-
-  <!-- Kong Character Image -->
-  <div class="absolute bottom-0 right-0 z-10">
-    <img src="/backgrounds/grass.png" alt="Kong Character" class="w-full">
+  <div class="w-full font-alumni z-[2]">
+    <div class="absolute bottom-[15.2rem] left-[3rem] rounded-lg p-4 w-56 mx-auto mt-6 z-20 text-2xl {wobbleClass} hidden md:block">
+      <h3 class="text-center text-3xl font-semibold text-black uppercase">{$t('stats.totalStats')}</h3>
+      <ul class="text-left">
+        <li>{$t('stats.totalTvl')}: ${formatNumberCustom(poolsTotals.totalTvl, 2)}</li>
+        <li>{$t('stats.24hVolume')}: ${formatNumberCustom(poolsTotals.totalVolume, 2)}</li>
+        <li>{$t('stats.24hFees')}: ${formatNumberCustom(poolsTotals.totalFees, 2)}</li>
+      </ul>
+    </div>
+    <img src="/backgrounds/grass_post.webp" alt="Sign Post" class="absolute bottom-[3.5rem] left-0 z-10 {wobbleClass} hidden md:block">
+    <div style="background-image:url('/backgrounds/grass.webp'); background-repeat: repeat-x; background-size: 100% 100%;" class="w-full min-h-[80px] max-h-[80px]">
+    </div>
   </div>
 </main>
 
@@ -217,7 +239,7 @@
     width: 100%;
     height: 100%;
     z-index: 1;
-    pointer-events: none; /* Ensure clouds don't interfere with user interactions */
+    pointer-events: none;
   }
 
   .cloud {
@@ -234,5 +256,19 @@
     to {
       transform: translateX(200vw);
     }
+  }
+
+  @keyframes wobble {
+    0% { transform: translateX(0%); }
+    15% { transform:rotate(-1deg); }
+    30% { transform: rotate(1deg); }
+    45% { transform: rotate(-1deg); }
+    60% { transform: rotate(1deg); }
+    75% { transform: rotate(-1deg); }
+    100% { transform: translateX(0%); }
+  }
+
+  .wobble {
+    animation: wobble 0.8s ease-in-out;
   }
 </style>

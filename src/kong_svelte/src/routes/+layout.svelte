@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import { t } from '$lib/locales/translations';
 	import { restoreWalletConnection } from '$lib/stores/walletStore';
-	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import { currentEnvMode } from '$lib/utils/envUtils';
 
@@ -20,7 +19,6 @@
 	<title>{currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t('common.browserSubtitle')}</title>
 </svelte:head>
 
-<LanguageSelector />
 
 <!-- Slot for page content -->
 <slot />
