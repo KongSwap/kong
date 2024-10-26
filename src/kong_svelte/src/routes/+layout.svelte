@@ -1,31 +1,25 @@
 <script lang="ts">
-	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
-	import { onMount } from 'svelte';
 	import '../app.css';
-
-	let mode: string | null = null;
+	import { onMount } from 'svelte';
+	import { t } from '$lib/locales/translations';
+	import { restoreWalletConnection } from '$lib/stores/walletStore';
+	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
+	import { currentEnvMode } from '$lib/utils/envUtils';
 
 	onMount(async () => {
-		switch (window.location.hostname) {
-			case "localhost":
-				mode = "DEV";
-				break;
-      case "todo":
-        // TODO: Add staging canister ID
-        break;
-			case "kongswap.io":
-				mode = null;
-				break;
-		}
+		Promise.all([
+			restoreWalletConnection()
+		]);
 	});
-
 </script>
 
 <svelte:head>
-	<title>{mode ? `[${mode}] KongSwap` : 'KongSwap'}</title>
+	<title>{currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t('common.browserSubtitle')}</title>
 </svelte:head>
 
 <LanguageSelector />
+
+<!-- Slot for page content -->
 <slot />
 
 <style>

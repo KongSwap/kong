@@ -3,8 +3,9 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
+import path from "path";
 
-dotenv.config({ path: '../../.env' });
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 export default defineConfig({
   build: {
@@ -27,6 +28,7 @@ export default defineConfig({
   },
   plugins: [
     sveltekit(),
+    // Ensure the prefixes match your .env variables
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
   ],
@@ -41,7 +43,6 @@ export default defineConfig({
     ],
   },
   test: {
-    // Vitest configuration options
     globals: true,
     environment: 'jsdom',
   },

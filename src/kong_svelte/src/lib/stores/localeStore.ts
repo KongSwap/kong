@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
-import { locale as i18nLocale, loadTranslations } from "$lib/translations";
+import { locale as i18nLocale, loadTranslations } from "$lib/locales/translations";
 
 const supportedLocales = ["en", "es"];
 const defaultLocale = "en";
