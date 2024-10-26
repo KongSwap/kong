@@ -13,7 +13,7 @@
     import WalletAddress from './sidebar/WalletAddress.svelte';
     import SendTokens from './sidebar/SendTokens.svelte';
     import TotalBalance from './sidebar/TotalBalance.svelte';
-
+    import WalletConnection from '$lib/components/WalletConnection.svelte';
     export let walletProviders: { name: string; icon: string; description: string; }[] = [];
     export let sidebarOpen: boolean;
     export let onClose: () => void;
@@ -198,16 +198,7 @@
 
                     <div class="wallet-list">
                         {#if !isLoggedIn}
-                            {#each walletProviders as provider, index}
-                                <WalletProvider
-                                    {provider}
-                                    selected={selectedIndex === index}
-                                    onSelect={() => handleWalletSelect(provider.name)}
-                                    onHover={() => {
-                                        selectedIndex = index;
-                                    }}
-                                />
-                            {/each}
+                            <WalletProvider />
                         {:else if activeView === 'main'}
                             <div class="search-container">
                                 <input 

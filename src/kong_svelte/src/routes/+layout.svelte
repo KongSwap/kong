@@ -14,6 +14,8 @@
 	});
 </script>
 
+<Navbar />
+
 <svelte:head>
 	<title>{currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t('common.browserSubtitle')}</title>
 </svelte:head>
