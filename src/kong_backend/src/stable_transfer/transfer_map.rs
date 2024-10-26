@@ -1,5 +1,5 @@
 use candid::Nat;
-use std::cmp::Reverse;
+use std::collections::BTreeMap;
 
 use super::tx_id::TxId;
 
@@ -11,16 +11,17 @@ pub fn get_by_transfer_id(transfer_id: u64) -> Option<StableTransfer> {
     TRANSFER_MAP.with(|m| m.borrow().get(&StableTransferId(transfer_id)))
 }
 
-#[allow(dead_code)]
-pub fn get(max_requests: Option<usize>) -> Vec<StableTransfer> {
-    let mut transfers: Vec<StableTransfer> = TRANSFER_MAP.with(|m| m.borrow().iter().map(|(_, v)| v).collect());
-    // order by timestamp in reverse order
-    transfers.sort_by_key(|transfer| Reverse(transfer.ts));
-    if let Some(max_requests) = max_requests {
-        transfers.into_iter().take(max_requests).collect()
-    } else {
-        transfers
-    }
+pub fn get(max_requests: usize) -> Vec<StableTransfer> {
+    TRANSFER_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .collect::<BTreeMap<_, _>>()
+            .iter()
+            .rev()
+            .take(max_requests)
+            .map(|(_, v)| v.clone())
+            .collect()
+    })
 }
 
 /// check if a transfer is already in the map. If so, used to detect if double recieve/spend where system already processed the transfer
