@@ -38,7 +38,7 @@ pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRe
                 Some(v.clone())
             })
             .take(num_requests)
-            .collect::<Vec<StableRequest>>()
+            .collect()
     })
 }
 

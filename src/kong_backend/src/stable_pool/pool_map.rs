@@ -57,10 +57,9 @@ pub fn get_by_token_wildcard(token: &str) -> Vec<StablePool> {
                     || search_token.matches(v.symbol_with_chain().as_str())
                     || search_token.matches(v.address_with_chain().as_str())
                 {
-                    Some(v)
-                } else {
-                    None
+                    return Some(v);
                 }
+                None
             })
             .collect()
     })
@@ -85,10 +84,9 @@ fn get_by_symbol(symbol: &str) -> Result<StablePool, String> {
         .with(|m| {
             m.borrow().iter().find_map(|(_, v)| {
                 if v.symbol_with_chain() == symbol_with_chain {
-                    Some(v)
-                } else {
-                    None
+                    return Some(v);
                 }
+                None
             })
         })
         .ok_or_else(|| format!("Pool {} not found", symbol_with_chain))
@@ -102,10 +100,9 @@ fn get_by_address(address: &str) -> Result<StablePool, String> {
         .with(|m| {
             m.borrow().iter().find_map(|(_, v)| {
                 if v.address_with_chain() == address_with_chain {
-                    Some(v)
-                } else {
-                    None
+                    return Some(v);
                 }
+                None
             })
         })
         .ok_or_else(|| format!("Pool {} not found", address_with_chain))
@@ -115,10 +112,9 @@ pub fn get_by_token_ids(token_id_0: u32, token_id_1: u32) -> Option<StablePool> 
     POOL_MAP.with(|m| {
         m.borrow().iter().find_map(|(_, v)| {
             if v.token_id_0 == token_id_0 && v.token_id_1 == token_id_1 {
-                Some(v)
-            } else {
-                None
+                return Some(v);
             }
+            None
         })
     })
 }
