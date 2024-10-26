@@ -40,6 +40,7 @@ dfx identity use kong
 ./deploy_ckbtc_ledger.sh
 ./deploy_cketh_ledger.sh
 ./deploy_kong_frontend.sh
+./deploy_kong_svelte.sh
 
 ./user_mint.sh
 
