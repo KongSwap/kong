@@ -87,6 +87,7 @@
         <img src="/titles/stats_title.webp" alt="Stats" class="title-image w-11/12 md:w-1/2" />
       </div>
       <div class="right-buttons">
+        <LanguageSelector />
         <Button
           text="CONNECT"
           active={sidebarOpen}
