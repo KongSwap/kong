@@ -1,15 +1,13 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { t } from '$lib/translations';
+	import { t } from '$lib/locales/translations';
 	import { restoreWalletConnection } from '$lib/stores/walletStore';
 	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
 	import { currentEnvMode } from '$lib/utils/envUtils';
-	import { backendService } from '$lib/services/backendService';
 
 	onMount(async () => {
 		Promise.all([
-			backendService.initializeActors(),
 			restoreWalletConnection()
 		]);
 	});

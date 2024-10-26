@@ -5,75 +5,67 @@
     disconnectWallet,
     availableWallets,
     selectedWalletId,
-  } from '$lib/stores/walletStore';
-  import { t } from '$lib/translations';
-  import { onMount, onDestroy } from 'svelte';
+  } from "$lib/stores/walletStore";
+  import { t } from "$lib/locales/translations";
+  import { onMount } from "svelte";
   import { uint8ArrayToHexString } from "@dfinity/utils";
-  import { backendService } from '$lib/services/backendService';
+  import { backendService } from "$lib/services/backendService";
 
   let user: any;
 
-  // Subscribe to backendService.userStore
-  const unsubscribe = backendService.userStore.subscribe(value => {
-    user = value;
-  });
-
-  onDestroy(() => {
-    unsubscribe();
-  });
-
   // Initialize selectedWalletId from localStorage inside onMount
-  onMount(() => {
-    if (typeof window !== 'undefined') {
-      const storedWalletId = localStorage.getItem('selectedWalletId');
+  onMount(async () => {
+    if (typeof window !== "undefined") {
+      const storedWalletId = localStorage.getItem("selectedWalletId");
       if (storedWalletId) {
         selectedWalletId.set(storedWalletId);
       }
     }
-
-    // Check if wallet is already connected
-    if ($walletStore.account) {
-      // Fetch user data if connected
-      backendService.getWhoami();
-    }
   });
+
+  // Check if wallet is already connected
+  $: if ($walletStore.account) {
+    (async () => {
+      user = await backendService.getWhoami();
+    })();
+  }
 
   async function handleConnect(walletId: string) {
     if (!walletId) {
-      return console.error('No wallet selected');
+      return console.error("No wallet selected");
     }
 
     try {
       selectedWalletId.set(walletId);
-      localStorage.setItem('selectedWalletId', walletId);
+      localStorage.setItem("selectedWalletId", walletId);
       await connectWallet(walletId);
-      await backendService.connectWallet(walletId);
     } catch (error) {
-      console.error('Failed to connect wallet:', error);
+      console.error("Failed to connect wallet:", error);
     }
   }
 
   async function handleDisconnect() {
     try {
-      await backendService.disconnectWallet();
       await disconnectWallet();
-      selectedWalletId.set('');
-      localStorage.removeItem('selectedWalletId');
+      selectedWalletId.set("");
+      localStorage.removeItem("selectedWalletId");
     } catch (error) {
-      console.error('Failed to disconnect wallet:', error);
+      console.error("Failed to disconnect wallet:", error);
     }
   }
 </script>
 
 <div class="wallet-section">
   {#if $walletStore.isConnecting}
-    <p>{$t('common.connecting')}</p>
+    <p>{$t("common.connecting")}</p>
   {:else if $walletStore.account}
-  <div class="my-4">
-    <h2 class="text-lg font-black uppercase">From Wallet Library</h2>
-          {$t('common.connectedTo')}: {$walletStore.account.owner.toString()}
-      <br/>
-      {$t('common.subaccount')}: {uint8ArrayToHexString($walletStore.account.subaccount)}
+    <div class="my-4">
+      <h2 class="text-lg font-black uppercase">From Wallet Library</h2>
+      {$t("common.connectedTo")}: {$walletStore.account.owner.toString()}
+      <br />
+      {$t("common.subaccount")}: {uint8ArrayToHexString(
+        $walletStore.account.subaccount,
+      )}
     </div>
     <div class="mb-4">
       <h2 class="text-lg font-black uppercase">From backend</h2>
@@ -85,29 +77,36 @@
       {/if}
     </div>
     <button on:click={handleDisconnect}>
-      {$t('common.disconnectWallet')}
+      {$t("common.disconnectWallet")}
     </button>
   {:else}
-    <p>{$t('common.notConnected')}</p>
+    <p>{$t("common.notConnected")}</p>
     <div class="wallet-list">
       {#if availableWallets && availableWallets.length > 0}
         {#each availableWallets as wallet}
           <div class="flex flex-col w-56">
-            <button on:click={() => handleConnect(wallet.id)} class="flex items-center gap-x-2 p-2 bg-green-500 rounded-md mb-2">
-              <img src={wallet.icon} alt={wallet.name} class="w-12 h-12 rounded-full" />
+            <button
+              on:click={() => handleConnect(wallet.id)}
+              class="flex items-center gap-x-2 p-2 bg-green-500 rounded-md mb-2"
+            >
+              <img
+                src={wallet.icon}
+                alt={wallet.name}
+                class="w-12 h-12 rounded-full"
+              />
               {wallet.name}
             </button>
           </div>
         {/each}
       {:else}
-        <p>{$t('common.noWalletsAvailable')}</p>
+        <p>{$t("common.noWalletsAvailable")}</p>
       {/if}
     </div>
   {/if}
 
   {#if $walletStore.error}
     <p class="text-red-500">
-      {$t('common.error')}: {$walletStore.error.message}
+      {$t("common.error")}: {$walletStore.error.message}
     </p>
   {/if}
 </div>

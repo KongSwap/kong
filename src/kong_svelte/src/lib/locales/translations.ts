@@ -6,12 +6,12 @@ const config = {
     {
       locale: 'en',
       key: 'common',
-      loader: async () => (await import('./locales/en/common.json')).default,
+      loader: async () => (await import('./en/common.json')).default,
     },
     {
       locale: 'es',
       key: 'common',
-      loader: async () => (await import('./locales/es/common.json')).default,
+      loader: async () => (await import('./es/common.json')).default,
     },
   ],
 };
