@@ -5,10 +5,13 @@
 	import { restoreWalletConnection } from '$lib/stores/walletStore';
 	import LanguageSelector from './../lib/components/LanguageSelector.svelte';
 	import { currentEnvMode } from '$lib/utils/envUtils';
+	import { backendService } from '$lib/services/backendService';
 
 	onMount(async () => {
-		// Attempt to restore wallet connection on page load
-		await restoreWalletConnection();
+		Promise.all([
+			backendService.initializeActors(),
+			restoreWalletConnection()
+		]);
 	});
 </script>
 

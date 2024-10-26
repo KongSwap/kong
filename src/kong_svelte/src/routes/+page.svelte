@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { t } from '$lib/translations';
   import { backendService } from '$lib/services/backendService';
   import WalletConnection from '$lib/components/WalletConnection.svelte';
@@ -7,18 +6,14 @@
   let tokens: any[] = [];
   let isBackendReady = false;
 
-  onMount(async () => {
-    await backendService.initializeActors();
-    await loadTokens();
+  backendService.isReady.subscribe((ready) => {
+    isBackendReady = ready;
   });
 
-  async function loadTokens() {
-    try {
+  $: if (isBackendReady) {
+    (async () => {
       tokens = await backendService.getTokens();
-      console.log('Tokens:', tokens);
-    } catch (error) {
-      console.error('Failed to load tokens:', error);
-    }
+    })();
   }
 </script>
 

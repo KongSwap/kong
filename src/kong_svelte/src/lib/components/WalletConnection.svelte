@@ -7,8 +7,20 @@
     selectedWalletId,
   } from '$lib/stores/walletStore';
   import { t } from '$lib/translations';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { uint8ArrayToHexString } from "@dfinity/utils";
+  import { backendService } from '$lib/services/backendService';
+
+  let user: any;
+
+  // Subscribe to backendService.userStore
+  const unsubscribe = backendService.userStore.subscribe(value => {
+    user = value;
+  });
+
+  onDestroy(() => {
+    unsubscribe();
+  });
 
   // Initialize selectedWalletId from localStorage inside onMount
   onMount(() => {
@@ -19,11 +31,13 @@
       }
     }
 
-    // Log available wallets to debug
-    console.log('Available Wallets on mount:', availableWallets);
+    // Check if wallet is already connected
+    if ($walletStore.account) {
+      // Fetch user data if connected
+      backendService.getWhoami();
+    }
   });
 
-  // Function to handle wallet connection
   async function handleConnect(walletId: string) {
     if (!walletId) {
       return console.error('No wallet selected');
@@ -33,14 +47,15 @@
       selectedWalletId.set(walletId);
       localStorage.setItem('selectedWalletId', walletId);
       await connectWallet(walletId);
+      await backendService.connectWallet(walletId);
     } catch (error) {
       console.error('Failed to connect wallet:', error);
     }
   }
 
-  // Function to handle wallet disconnection
   async function handleDisconnect() {
     try {
+      await backendService.disconnectWallet();
       await disconnectWallet();
       selectedWalletId.set('');
       localStorage.removeItem('selectedWalletId');
@@ -54,11 +69,21 @@
   {#if $walletStore.isConnecting}
     <p>{$t('common.connecting')}</p>
   {:else if $walletStore.account}
-    <p>
-      {$t('common.connectedTo')}: {$walletStore.account.owner.toString()}
+  <div class="my-4">
+    <h2 class="text-lg font-black uppercase">From Wallet Library</h2>
+          {$t('common.connectedTo')}: {$walletStore.account.owner.toString()}
       <br/>
       {$t('common.subaccount')}: {uint8ArrayToHexString($walletStore.account.subaccount)}
-    </p>
+    </div>
+    <div class="mb-4">
+      <h2 class="text-lg font-black uppercase">From backend</h2>
+      {#if user?.Ok}
+        <p>Principal ID: {user.Ok.principal_id}</p>
+        <p>Account ID: {user.Ok.account_id}</p>
+      {:else}
+        <p>Loading user data...</p>
+      {/if}
+    </div>
     <button on:click={handleDisconnect}>
       {$t('common.disconnectWallet')}
     </button>
@@ -67,8 +92,9 @@
     <div class="wallet-list">
       {#if availableWallets && availableWallets.length > 0}
         {#each availableWallets as wallet}
-          <div class="wallet-item">
-            <button on:click={() => handleConnect(wallet.id)}>
+          <div class="flex flex-col w-56">
+            <button on:click={() => handleConnect(wallet.id)} class="flex items-center gap-x-2 p-2 bg-green-500 rounded-md mb-2">
+              <img src={wallet.icon} alt={wallet.name} class="w-12 h-12 rounded-full" />
               {wallet.name}
             </button>
           </div>
