@@ -20,10 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    //tokens::dump_tokens(&client).await?;
+    //users::dump_users(&client).await?;
+    //let tokens_map = tokens::dump_tokens(&client).await?;
     let tokens_map = tokens::load_tokens(&client).await?;
     pools::dump_pools(&client, &tokens_map).await?;
-    users::dump_users(&client).await?;
     lp_token_ledger::dump_lp_token_ledger(&client, &tokens_map).await?;
 
     Ok(())

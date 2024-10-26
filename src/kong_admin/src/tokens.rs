@@ -15,7 +15,7 @@ enum TokenType {
     LP,
 }
 
-pub async fn dump_tokens(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
     let file = File::open("./backup/tokens.json")?;
     let reader = BufReader::new(file);
     let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
@@ -93,7 +93,7 @@ pub async fn dump_tokens(db_client: &Client) -> Result<(), Box<dyn std::error::E
         println!("token_id={} saved", k.0);
     }
 
-    Ok(())
+    load_tokens(db_client).await
 }
 
 pub async fn load_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
