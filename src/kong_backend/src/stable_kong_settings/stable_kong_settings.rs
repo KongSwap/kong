@@ -5,22 +5,12 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp;
 
+use crate::ic::canister_address::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN};
 use crate::ic::id::{kong_account, kong_backend_id};
 use crate::stable_memory::{
     CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
     TX_MAP, USER_MAP,
 };
-
-const CKUSDT_SYMBOL: &str = "ckUSDT";
-const CKUSDT_SYMBOL_WITH_CHAIN: &str = "IC.ckUSDT";
-#[cfg(not(feature = "prod"))]
-const CKUSDT_ADDRESS: &str = "zdzgz-siaaa-aaaar-qaiba-cai";
-#[cfg(not(feature = "prod"))]
-const CKUSDT_ADDRESS_WITH_CHAIN: &str = "IC.zdzgz-siaaa-aaaar-qaiba-cai";
-#[cfg(feature = "prod")]
-const CKUSDT_ADDRESS: &str = "cngnf-vqaaa-aaaar-qag4q-cai";
-#[cfg(feature = "prod")]
-const CKUSDT_ADDRESS_WITH_CHAIN: &str = "IC.cngnf-vqaaa-aaaar-qag4q-cai";
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct StableKongSettings {

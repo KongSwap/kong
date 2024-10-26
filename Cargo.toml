@@ -4,6 +4,7 @@ members = [
     "src/kong_backend",
     "src/kong_data",
     "src/kong_faucet",
+    "src/kong_admin",
     "sdk/rsKong",
 ]
 resolver = "2"

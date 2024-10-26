@@ -19,10 +19,10 @@ pub mod stable_tx;
 pub mod stable_user;
 mod swap;
 mod swap_amounts;
-mod tokens;
+pub mod tokens;
 mod transfers;
 mod txs;
-mod user;
+pub mod user;
 mod user_balances;
 
 pub const APP_NAME: &str = "Kong Lib";

@@ -18,6 +18,7 @@ use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
+use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
 use crate::stable_lp_token_ledger::lp_token_ledger_archive::archive_lp_token_ledger;
@@ -178,12 +179,9 @@ pub struct Icrc28TrustedOriginsResponse {
 #[update]
 fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
     let trusted_origins = vec![
+        format!("https://{}.icp0.io", KONG_BACKEND),
         #[cfg(not(feature = "prod"))]
-        String::from("https://oaq4p-2iaaa-aaaar-qahqa-cai.icp0.io"),
-        #[cfg(not(feature = "prod"))]
-        String::from("http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943"),
-        #[cfg(feature = "prod")]
-        String::from("https://3ldz4-aiaaa-aaaar-qaina-cai.icp0.io"),
+        format!("http://{}.localhost:4943", KONG_BACKEND),
         #[cfg(feature = "prod")]
         String::from("https://www.kongswap.io"),
         #[cfg(feature = "prod")]
