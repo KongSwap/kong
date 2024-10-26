@@ -1,5 +1,5 @@
 # Each line is a file pattern followed by one or more GitHub usernames or team names
-* @global-kongzilla-ks @global-prim8bits
-/src/kong_backend @code-kongzilla-ks @code-prim8bits
-/src/kong_frontend @pgsergiu01
+* @kongzilla-ks @prim8bits
+/src/kong_backend @kongzilla-ks @prim8bits
+/src/kong_frontend @kongzilla-ks @prim8bits @pgsergiu01
 /src/kong_svelte @usern3 @CanerKocak
