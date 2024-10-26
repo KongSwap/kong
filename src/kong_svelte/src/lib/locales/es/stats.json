@@ -1,0 +1,17 @@
+{
+  "stats": "Estadísticas",
+  "volume": "Volumen",
+  "liquidity": "Liquidez",
+  "overviewOfKongPools": "Resumen de Pools de Kong",
+  "pool": "Pool",
+  "tvl": "TVL",
+  "apy": "APY",
+  "actions": "Acciones",
+  "24hVolume": "24h Volumen",
+  "swap": "Intercambiar",
+  "addLiquidity": "Agregar Liquidez",
+  "poolName": "Nombre del Pool",
+  "totalStats": "Totales",
+  "totalTvl": "Total TVL",
+  "24hFees": "24h Comisiones"
+}

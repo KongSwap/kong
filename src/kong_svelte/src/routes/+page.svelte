@@ -21,8 +21,7 @@
     {$t('common.greeting')}, {$t('common.welcome')}
   </p>
 
-  <!-- Wallet Connection Section -->
-  <WalletConnection />
+
 
   <!-- Tokens Display Section -->
   {#if tokens?.Ok}

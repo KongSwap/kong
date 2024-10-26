@@ -18,7 +18,7 @@
 <div class="dropdown-container">
   <button
     type="button"
-    class="dropdown-button"
+    class="dropdown-button pixel-corners primary"
     on:click={() => isOpen.update((n) => !n)}
     aria-haspopup="listbox"
     aria-expanded={$isOpen}
@@ -30,20 +30,6 @@
           <span class="current-language">{name}</span>
         {/if}
       {/each}
-    </span>
-    <span class="dropdown-button-icon">
-      <svg
-        class="icon"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path
-          fill-rule="evenodd"
-          d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.23 8.27a.75.75 0 01.02-1.06z"
-          clip-rule="evenodd"
-        ></path>
-      </svg>
     </span>
   </button>
 
@@ -70,16 +56,23 @@
 </div>
 
 <style lang="postcss" scoped>
+  .dropdown-container {
+    position: relative;
+  }
+
   .dropdown-button {
-    @apply relative cursor-default text-left font-alumni shadow-sm focus:outline-none sm:text-sm sm:leading-6;
-    @apply rounded-md bg-green-600 text-white py-1.5 pl-3 pr-10;
+    @apply relative cursor-pointer text-left font-alumni shadow-sm focus:outline-none sm:text-sm sm:leading-6;
+    @apply rounded-md bg-[#61c9ff] hover:bg-[#00a1fa] text-black py-1.5 px-3;
+    @apply uppercase font-extrabold;
     @apply ring-inset ring-green-500 focus:ring-2 focus:ring-green-700;
   }
 
   .dropdown-list {
-    @apply absolute z-10 mt-1 max-h-56 overflow-auto focus:outline-none;
-    @apply rounded-md bg-green-600 text-white py-1 text-lg shadow-lg;
+    @apply absolute z-10 mb-1 max-h-56 overflow-auto focus:outline-none;
+    @apply rounded-md bg-[#61c9ff] hover:bg-[#00a1fa] text-black py-1 text-lg shadow-lg;
     @apply sm:text-lg;
+    top: 100%; /* Position the dropdown above the button */
+    right: 0; /* Align the dropdown with the button */
   }
 
   .dropdown-item {
@@ -88,11 +81,7 @@
   }
 
   .icon {
-    @apply h-5 w-5 text-white;
-  }
-
-  .dropdown-container {
-    @apply relative mt-2;
+    @apply h-5 w-5 text-black;
   }
 
   .dropdown-button-content {
