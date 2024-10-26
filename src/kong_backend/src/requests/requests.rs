@@ -21,7 +21,7 @@ pub async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, Stri
             .iter()
             .map(to_request_reply)
             .collect(),
-        None => request_map::get_by_user_id(Some(user_id), Some(MAX_REQUESTS))
+        None => request_map::get_by_user_id(Some(user_id), MAX_REQUESTS)
             .iter()
             .map(to_request_reply)
             .collect(),
