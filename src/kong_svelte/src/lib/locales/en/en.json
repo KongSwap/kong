@@ -1,5 +1,9 @@
 {
   "greeting": "Hello",
   "welcome": "Welcome to KongSwap!",
-  "tokenName": "Token Name"
+  "tokenName": "Token Name",
+  "nav": {
+    "logo": "KongSwap",
+    "logoAlt": "KongSwap Logo"
+  }
 }
