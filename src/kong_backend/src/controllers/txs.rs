@@ -19,7 +19,7 @@ fn backup_txs(tx_id: Option<u64>, num_txs: Option<u16>) -> Result<String, String
             serde_json::to_string(
                 &m.borrow()
                     .get(&key)
-                    .map_or_else(|| Err(format!("Tx #{} not found", tx_id)), |v| Ok(BTreeMap::new().insert(key, v))),
+                    .map_or_else(|| Err(format!("Tx #{} not found", tx_id)), |v| Ok(BTreeMap::new().insert(key, v)))?,
             )
             .map_err(|e| format!("Failed to serialize txs: {}", e))
         }),

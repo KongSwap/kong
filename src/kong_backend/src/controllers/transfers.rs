@@ -19,7 +19,7 @@ fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Resu
             serde_json::to_string(&m.borrow().get(&key).map_or_else(
                 || Err(format!("Transfer #{} not found", transfer_id)),
                 |v| Ok(BTreeMap::new().insert(key, v)),
-            ))
+            )?)
             .map_err(|e| format!("Failed to serialize transfers: {}", e))
         }),
         Some(transfer_id) => TRANSFER_MAP.with(|m| {

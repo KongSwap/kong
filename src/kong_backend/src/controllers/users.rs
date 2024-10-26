@@ -5,19 +5,48 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::USER_MAP;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
+const MAX_USERS: usize = 1_000;
+
 #[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_users(user_id: Option<u32>) -> Result<String, String> {
+fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
     match user_id {
-        Some(user_id) => USER_MAP.with(|m| {
-            m.borrow().iter().find(|(k, _)| k.0 == user_id).map_or_else(
+        Some(user_id) if num_users.is_none() => USER_MAP.with(|m| {
+            let key = StableUserId(user_id);
+            serde_json::to_string(&m.borrow().get(&key).map_or_else(
                 || Err(format!("User #{} not found", user_id)),
-                |(k, v)| serde_json::to_string(&(k, v)).map_err(|e| format!("Failed to serialize: {}", e)),
-            )
+                |v| Ok(BTreeMap::new().insert(key, v)),
+            )?)
+            .map_err(|e| format!("Failed to serialize users: {}", e))
         }),
-        None => {
-            let users: BTreeMap<_, _> = USER_MAP.with(|m| m.borrow().iter().collect());
-            serde_json::to_string(&users).map_err(|e| format!("Failed to serialize: {}", e))
-        }
+        Some(user_id) => USER_MAP.with(|m| {
+            let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
+            let start_key = StableUserId(user_id);
+            serde_json::to_string(
+                &m.borrow()
+                    .iter()
+                    .collect::<BTreeMap<_, _>>()
+                    .iter()
+                    .rev()
+                    .collect::<BTreeMap<_, _>>()
+                    .range(start_key..)
+                    .take(num_users)
+                    .collect::<BTreeMap<_, _>>(),
+            )
+            .map_err(|e| format!("Failed to serialize users: {}", e))
+        }),
+        None => USER_MAP.with(|m| {
+            let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
+            serde_json::to_string(
+                &m.borrow()
+                    .iter()
+                    .collect::<BTreeMap<_, _>>()
+                    .iter()
+                    .rev()
+                    .take(num_users)
+                    .collect::<BTreeMap<_, _>>(),
+            )
+            .map_err(|e| format!("Failed to serialize users: {}", e))
+        }),
     }
 }
 
