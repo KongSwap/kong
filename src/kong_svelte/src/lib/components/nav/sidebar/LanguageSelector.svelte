@@ -29,7 +29,7 @@
         {#if $localeStore === code}
           <div class="flex items-center gap-2">
             <Flag class="h-5 w-5" />
-            <span class="language-code">{code.toUpperCase()}</span>
+            <span class="language-code hide-mobile">{code.toUpperCase()}</span>
           </div>
         {/if}
       {/each}
@@ -170,5 +170,19 @@
       inset 2px 2px 0px #99ddff,
       2px 2px 0px rgba(0, 0, 0, 0.2);
     transition-duration: 0.05s;
+  }
+
+  @media (max-width: 768px) {
+    .language-selector {
+      width: 60px;
+    }
+
+    .hide-mobile {
+      display: none;
+    }
+
+    .language-button {
+      padding: 0.5rem;
+    }
   }
 </style>

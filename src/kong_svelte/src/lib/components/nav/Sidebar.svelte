@@ -20,11 +20,27 @@
     let startWidth: number;
     let isResizeHovered = false;
     let activeTab: 'tokens' | 'pools' | 'transactions' = 'tokens';
+    let touchStartX: number;
+    let touchMoveX: number;
     
     let sidebarWidth = spring(500, {
-        stiffness: 0.2,
-        damping: 0.7
+        stiffness: 0.3,
+        damping: 0.8
     });
+
+    function handleTouchStart(event: TouchEvent) {
+        touchStartX = event.touches[0].clientX;
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+        touchMoveX = event.touches[0].clientX;
+        const swipeDistance = touchMoveX - touchStartX;
+        
+        // If swiped right more than 100px, close sidebar
+        if (swipeDistance > 100) {
+            onClose();
+        }
+    }
 
     function startDragging(event: MouseEvent) {
         isDragging = true;
@@ -40,7 +56,9 @@
         if (!isDragging) return;
         const delta = event.clientX - startX;
         const newWidth = Math.max(400, Math.min(800, startWidth - delta));
-        sidebarWidth.set(newWidth);
+        requestAnimationFrame(() => {
+            sidebarWidth.set(newWidth);
+        });
         event.stopPropagation();
     }
 
@@ -77,12 +95,14 @@
         />
         
         <div 
-            class="sidebar pixel-corners"
+            class="sidebar"
             class:is-dragging={isDragging}
             class:resize-hovered={isResizeHovered}
             style="width: {$sidebarWidth}px"
             in:fly={{ x: 400, duration: 300, easing: cubicOut }}
             out:fly={{ x: 400, duration: 200, easing: cubicOut }}
+            on:touchstart={handleTouchStart}
+            on:touchmove={handleTouchMove}
         >
             <div 
                 class="resize-handle" 
@@ -144,94 +164,28 @@
     .sidebar {
         height: 90vh;
         background: var(--sidebar-bg);
+        border: 2px solid var(--sidebar-border);
+        border-radius: 8px;
         box-shadow: 
             -8px 0 32px var(--shadow-color),
             inset -2px -2px 0px rgba(0,0,0,0.2),
-            inset 2px 2px 0px rgba(255,255,255,0.1),
-            inset 16px 0 32px -16px var(--depth-shadow);
+            inset 2px 2px 0px rgba(255,255,255,0.1);
         overflow: hidden;
         position: relative;
         min-width: 420px;
         max-width: 690px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         transform-origin: right center;
         pointer-events: auto;
+        will-change: width;
+        touch-action: pan-x;
     }
 
     .sidebar:hover {
         box-shadow: 
             -12px 0 48px var(--shadow-color),
             inset -2px -2px 0px rgba(0,0,0,0.3),
-            inset 2px 2px 0px rgba(255,255,255,0.15),
-            inset 16px 0 32px -16px var(--depth-shadow);
-    }
-
-    .pixel-corners {
-        clip-path: polygon(
-            0px calc(100% - 28px),
-            4px calc(100% - 28px),
-            4px calc(100% - 20px),
-            8px calc(100% - 20px),
-            8px calc(100% - 12px),
-            12px calc(100% - 12px),
-            12px calc(100% - 8px),
-            20px calc(100% - 8px),
-            20px calc(100% - 4px),
-            28px calc(100% - 4px),
-            28px 100%,
-            calc(100% - 28px) 100%,
-            calc(100% - 28px) calc(100% - 4px),
-            calc(100% - 20px) calc(100% - 4px),
-            calc(100% - 20px) calc(100% - 8px),
-            calc(100% - 12px) calc(100% - 8px),
-            calc(100% - 12px) calc(100% - 12px),
-            calc(100% - 8px) calc(100% - 12px),
-            calc(100% - 8px) calc(100% - 20px),
-            calc(100% - 4px) calc(100% - 20px),
-            calc(100% - 4px) calc(100% - 28px),
-            100% calc(100% - 28px),
-            100% 28px,
-            calc(100% - 4px) 28px,
-            calc(100% - 4px) 20px,
-            calc(100% - 8px) 20px,
-            calc(100% - 8px) 12px,
-            calc(100% - 12px) 12px,
-            calc(100% - 12px) 8px,
-            calc(100% - 20px) 8px,
-            calc(100% - 20px) 4px,
-            calc(100% - 28px) 4px,
-            calc(100% - 28px) 0px,
-            28px 0px,
-            28px 4px,
-            20px 4px,
-            20px 8px,
-            12px 8px,
-            12px 12px,
-            8px 12px,
-            8px 20px,
-            4px 20px,
-            4px 28px,
-            0px 28px
-        );
-        border: 4px solid transparent;
-    }
-
-    .pixel-corners::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        margin: -4px;
-        background: linear-gradient(135deg, var(--active-tab-color) 0%, rgba(97, 201, 255, 0.8) 100%);
-        z-index: -1;
-        clip-path: polygon(
-            0px calc(100% - 28px),
-            4px calc(100% - 28px),
-            4px 28px,
-            0px 28px
-        );
+            inset 2px 2px 0px rgba(255,255,255,0.15);
     }
 
     .sidebar-content {
@@ -262,6 +216,7 @@
         display: flex;
         align-items: center;
         z-index: 101;
+        will-change: opacity, width, left;
     }
 
     .resize-indicator {
@@ -322,11 +277,6 @@
             min-width: 100%;
             height: 100vh;
             border-radius: 0;
-        }
-
-        .pixel-corners,
-        .pixel-corners::after {
-            clip-path: none;
         }
 
         .main-content {

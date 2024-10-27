@@ -56,17 +56,30 @@
                         {/if}
                     </button>
                 </div>
-                <button 
-                    class="disconnect-button" 
-                    on:click={disconnectWallet}
-                    aria-label="Disconnect wallet"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-                        <line x1="12" y1="2" x2="12" y2="12"></line>
-                    </svg>
-                    <span class="disconnect-text">Disconnect</span>
-                </button>
+                <div class="action-buttons">
+                    <button 
+                        class="action-button" 
+                        on:click={disconnectWallet}
+                        aria-label="Disconnect wallet"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                            <line x1="12" y1="2" x2="12" y2="12"></line>
+                        </svg>
+                        <span class="action-text">Disconnect</span>
+                    </button>
+                    <button 
+                        class="action-button" 
+                        on:click={onClose}
+                        aria-label="Close sidebar"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span class="action-text">Close</span>
+                    </button>
+                </div>
             </div>
             <nav class="tab-navigation" role="tablist" aria-label="Content sections">
                 {#each tabs as tab}
@@ -84,18 +97,21 @@
                 {/each}
             </nav>
         {:else}
-            <div class="header-title">
-                <h1 id="wallet-select-title">Select Wallet</h1>
-                <button 
-                    class="close-button" 
-                    on:click={onClose}
-                    aria-label="Close sidebar"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
+            <div class="wallet-info" role="group" aria-label="Wallet selection">
+                <h1 id="wallet-select-title" class="wallet-title">Select Wallet</h1>
+                <div class="action-buttons">
+                    <button 
+                        class="action-button" 
+                        on:click={onClose}
+                        aria-label="Close sidebar"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span class="action-text">Close</span>
+                    </button>
+                </div>
             </div>
         {/if}
     </div>
@@ -119,6 +135,16 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+        position: relative;
+    }
+
+    .wallet-title {
+        font-family: monospace;
+        font-size: 20px;
+        color: var(--sidebar-border-dark);
+        margin: 0;
+        font-weight: 600;
+        padding: 6px 0;
     }
 
     .wallet-address-container {
@@ -129,6 +155,7 @@
         padding: 6px 10px;
         border-radius: 4px;
         border: 1px solid var(--sidebar-border);
+        flex: 1;
     }
 
     .wallet-address {
@@ -166,7 +193,12 @@
         outline-offset: 2px;
     }
 
-    .disconnect-button {
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .action-button {
         background: var(--sidebar-border-dark);
         border: none;
         padding: 6px 12px;
@@ -178,53 +210,20 @@
         cursor: pointer;
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 6px;
         transition: all 0.15s ease;
         white-space: nowrap;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        height: 32px;
     }
 
-    .disconnect-button:hover {
+    .action-button:hover {
         transform: translateY(-1px);
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
 
-    .disconnect-button:focus-visible {
-        outline: 2px solid var(--sidebar-border);
-        outline-offset: 2px;
-    }
-
-    .header-title {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 6px 0;
-    }
-
-    .header-title h1 {
-        font-family: monospace;
-        font-size: 20px;
-        color: var(--sidebar-border-dark);
-        margin: 0;
-        font-weight: 600;
-    }
-
-    .close-button {
-        background: none;
-        border: none;
-        padding: 6px;
-        color: var(--sidebar-border-dark);
-        cursor: pointer;
-        border-radius: 4px;
-        transition: all 0.15s ease;
-    }
-
-    .close-button:hover {
-        background: rgba(0, 0, 0, 0.1);
-        transform: rotate(90deg);
-    }
-
-    .close-button:focus-visible {
+    .action-button:focus-visible {
         outline: 2px solid var(--sidebar-border);
         outline-offset: 2px;
     }
@@ -290,17 +289,21 @@
         }
 
         .wallet-info {
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .wallet-address-container {
-            flex: 1;
             min-width: 140px;
         }
 
-        .disconnect-button {
+        .action-button {
             padding: 6px;
-            flex: 0;
+            width: 32px;
+            height: 32px;
+        }
+
+        .action-text {
+            display: none;
         }
 
         .tab-button {
