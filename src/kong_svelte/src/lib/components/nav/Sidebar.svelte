@@ -22,8 +22,8 @@
     let activeTab: 'tokens' | 'pools' | 'transactions' = 'tokens';
     
     let sidebarWidth = spring(500, {
-        stiffness: 0.1,
-        damping: 0.4
+        stiffness: 0.2,
+        damping: 0.7
     });
 
     function startDragging(event: MouseEvent) {
@@ -33,6 +33,7 @@
         document.addEventListener('mousemove', handleDragging);
         document.addEventListener('mouseup', stopDragging);
         document.body.style.cursor = 'ew-resize';
+        event.stopPropagation();
     }
 
     function handleDragging(event: MouseEvent) {
@@ -40,6 +41,7 @@
         const delta = event.clientX - startX;
         const newWidth = Math.max(400, Math.min(800, startWidth - delta));
         sidebarWidth.set(newWidth);
+        event.stopPropagation();
     }
 
     function stopDragging() {
@@ -123,8 +125,9 @@
         z-index: 100;
         display: flex;
         justify-content: flex-end;
-        padding-right: 32px; /* Added margin on the right */
-        align-items: center; /* Centers vertically */
+        padding-right: 32px;
+        align-items: center;
+        pointer-events: all;
     }
 
     .overlay-button {
@@ -143,12 +146,24 @@
         background: var(--sidebar-bg);
         box-shadow: 
             -8px 0 32px var(--shadow-color),
+            inset -2px -2px 0px rgba(0,0,0,0.2),
+            inset 2px 2px 0px rgba(255,255,255,0.1),
             inset 16px 0 32px -16px var(--depth-shadow);
         overflow: hidden;
         position: relative;
         min-width: 420px;
         max-width: 690px;
-        transition: box-shadow 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: right center;
+        pointer-events: auto;
+    }
+
+    .sidebar:hover {
+        box-shadow: 
+            -12px 0 48px var(--shadow-color),
+            inset -2px -2px 0px rgba(0,0,0,0.3),
+            inset 2px 2px 0px rgba(255,255,255,0.15),
+            inset 16px 0 32px -16px var(--depth-shadow);
     }
 
     .pixel-corners {
@@ -209,7 +224,7 @@
         left: 0;
         right: 0;
         margin: -4px;
-        background: var(--active-tab-color);
+        background: linear-gradient(135deg, var(--active-tab-color) 0%, rgba(97, 201, 255, 0.8) 100%);
         z-index: -1;
         clip-path: polygon(
             0px calc(100% - 28px),
@@ -219,12 +234,16 @@
         );
     }
 
-    /* Content wrapper to ensure proper padding */
     .sidebar-content {
         position: relative;
         height: 100%;
         padding: var(--content-padding);
         z-index: 2;
+        background: linear-gradient(180deg, 
+            rgba(0,0,0,0.1) 0%,
+            rgba(0,0,0,0.05) 50%,
+            rgba(0,0,0,0.1) 100%
+        );
     }
 
     .resize-handle {
@@ -239,7 +258,7 @@
             var(--sidebar-border) 50%,
             transparent 100%);
         opacity: 0;
-        transition: opacity 0.2s, width 0.2s;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
         align-items: center;
         z-index: 101;
@@ -255,6 +274,7 @@
         border-radius: 2px;
         opacity: 0;
         transition: opacity 0.2s;
+        box-shadow: 0 0 8px rgba(97, 201, 255, 0.4);
     }
 
     .resize-handle:hover {
@@ -287,6 +307,7 @@
     .main-content::-webkit-scrollbar-thumb {
         background-color: var(--sidebar-border);
         border-radius: 3px;
+        box-shadow: inset 0 0 6px rgba(0,0,0,0.2);
     }
 
     .wallet-list {
@@ -296,14 +317,11 @@
         padding: 16px;
     }
 
-    @keyframes blink {
-        0%, 100% { opacity: 0.7; }
-        50% { opacity: 0.3; }
-    }
-
     @media (max-width: 768px) {
         .sidebar {
             min-width: 100%;
+            height: 100vh;
+            border-radius: 0;
         }
 
         .pixel-corners,
@@ -316,7 +334,7 @@
         }
 
         .sidebar-overlay {
-            padding-right: 0; /* Remove right padding on mobile */
+            padding-right: 0;
         }
     }
 </style>

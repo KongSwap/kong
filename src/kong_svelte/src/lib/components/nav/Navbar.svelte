@@ -1,14 +1,14 @@
 <script lang="ts">
-  import Button from './Button.svelte';
+  import Button from './sidebar/Button.svelte';
   import Sidebar from './Sidebar.svelte';
   import { onMount } from 'svelte';
-  import LanguageSelector from '../LanguageSelector.svelte';
+  import LanguageSelector from './sidebar/LanguageSelector.svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   
   let activeTab: 'swap' | 'stats' = 'swap';
   let sidebarOpen = false;
   let isMobile = false;
-  let combinedButtonText = 'SWAP';
 
   const walletProviders = [
     {
@@ -40,21 +40,23 @@
     sidebarOpen = false;
   }
 
-  function handleCombinedButton() {
-    activeTab = activeTab === 'swap' ? 'stats' : 'swap';
-    combinedButtonText = activeTab.toUpperCase();
-    goto(activeTab === 'swap' ? '/' : '/stats');
-  }
-
   function checkMobile() {
     isMobile = window.innerWidth <= 768;
   }
 
   onMount(() => {
+    // Set initial active tab based on current route
+    activeTab = $page.url.pathname === '/stats' ? 'stats' : 'swap';
+    
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   });
+
+  // Update active tab when route changes
+  $: {
+    activeTab = $page.url.pathname === '/stats' ? 'stats' : 'swap';
+  }
 </script>
 
 <nav class="fixed top-0 left-0 right-0 z-50">
@@ -63,9 +65,8 @@
       <div class="left-buttons">
         {#if isMobile}
           <Button 
-            text={combinedButtonText}
-            active={true}
-            onClick={handleCombinedButton}
+            text={activeTab === 'swap' ? 'STATS' : 'SWAP'}
+            onClick={() => handleTabChange(activeTab === 'swap' ? 'stats' : 'swap')}
             variant="primary"
             size="medium"
           />

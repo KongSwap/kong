@@ -41,7 +41,6 @@
         --text-secondary: #aaaaaa;
         --border-width: 4px;
     }
-    
     .token-item {
         position: relative;
         display: flex;
