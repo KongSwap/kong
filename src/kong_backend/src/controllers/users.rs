@@ -9,27 +9,22 @@ const MAX_USERS: usize = 1_000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
-    match user_id {
-        Some(user_id) if num_users.is_none() => USER_MAP.with(|m| {
-            let key = StableUserId(user_id);
-            serde_json::to_string(&m.borrow().get(&key).map_or_else(
-                || Err(format!("User #{} not found", user_id)),
-                |v| Ok(BTreeMap::new().insert(key, v)),
-            )?)
-            .map_err(|e| format!("Failed to serialize users: {}", e))
-        }),
-        Some(user_id) => USER_MAP.with(|m| {
-            let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
-            let start_key = StableUserId(user_id);
-            serde_json::to_string(&m.borrow().range(start_key..).take(num_users).collect::<BTreeMap<_, _>>())
-                .map_err(|e| format!("Failed to serialize users: {}", e))
-        }),
-        None => USER_MAP.with(|m| {
-            let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
-            serde_json::to_string(&m.borrow().iter().take(num_users).collect::<BTreeMap<_, _>>())
-                .map_err(|e| format!("Failed to serialize users: {}", e))
-        }),
-    }
+    USER_MAP.with(|m| {
+        let map = m.borrow();
+        let users: BTreeMap<_, _> = match user_id {
+            Some(user_id) => {
+                let num_users = num_users.map_or(1, |n| n as usize);
+                let start_key = StableUserId(user_id);
+                map.range(start_key..).take(num_users).collect()
+            }
+            None => {
+                let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
+                map.iter().take(num_users).collect()
+            }
+        };
+
+        serde_json::to_string(&users).map_err(|e| format!("Failed to serialize users: {}", e))
+    })
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]

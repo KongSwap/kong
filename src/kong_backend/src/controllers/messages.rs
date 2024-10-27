@@ -13,27 +13,22 @@ const MAX_MESSAGE: usize = 1_000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_messages(message_id: Option<u64>, num_messages: Option<u16>) -> Result<String, String> {
-    match message_id {
-        Some(message_id) if num_messages.is_none() => MESSAGE_MAP.with(|m| {
-            let key = StableMessageId(message_id);
-            serde_json::to_string(&m.borrow().get(&key).map_or_else(
-                || Err(format!("Message #{} not found", message_id)),
-                |v| Ok(BTreeMap::new().insert(key, v)),
-            )?)
-            .map_err(|e| format!("Failed to serialize messages: {}", e))
-        }),
-        Some(message_id) => MESSAGE_MAP.with(|m| {
-            let num_messages = num_messages.map_or(MAX_MESSAGE, |n| n as usize);
-            let start_key = StableMessageId(message_id);
-            serde_json::to_string(&m.borrow().range(start_key..).take(num_messages).collect::<BTreeMap<_, _>>())
-                .map_err(|e| format!("Failed to serialize messages: {}", e))
-        }),
-        None => MESSAGE_MAP.with(|m| {
-            let num_messages = num_messages.map_or(MAX_MESSAGE, |n| n as usize);
-            serde_json::to_string(&m.borrow().iter().take(num_messages).collect::<BTreeMap<_, _>>())
-                .map_err(|e| format!("Failed to serialize messages: {}", e))
-        }),
-    }
+    MESSAGE_MAP.with(|m| {
+        let map = m.borrow();
+        let messages: BTreeMap<_, _> = match message_id {
+            Some(message_id) => {
+                let num_messages = num_messages.map_or(1, |n| n as usize);
+                let start_key = StableMessageId(message_id);
+                map.range(start_key..).take(num_messages).collect()
+            }
+            None => {
+                let num_messages = num_messages.map_or(MAX_MESSAGE, |n| n as usize);
+                map.iter().take(num_messages).collect()
+            }
+        };
+
+        serde_json::to_string(&messages).map_err(|e| format!("Failed to serialize messages: {}", e))
+    })
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]

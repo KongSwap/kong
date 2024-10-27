@@ -11,27 +11,22 @@ const MAX_POOLS: usize = 1_000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, String> {
-    match pool_id {
-        Some(pool_id) if num_pools.is_none() => POOL_MAP.with(|m| {
-            let key = StablePoolId(pool_id);
-            serde_json::to_string(&m.borrow().get(&key).map_or_else(
-                || Err(format!("Pool #{} not found", pool_id)),
-                |v| Ok(BTreeMap::new().insert(key, v)),
-            )?)
-            .map_err(|e| format!("Failed to serialize pools: {}", e))
-        }),
-        Some(pool_id) => POOL_MAP.with(|m| {
-            let num_pools = num_pools.map_or(MAX_POOLS, |n| n as usize);
-            let start_key = StablePoolId(pool_id);
-            serde_json::to_string(&m.borrow().range(start_key..).take(num_pools).collect::<BTreeMap<_, _>>())
-                .map_err(|e| format!("Failed to serialize pools: {}", e))
-        }),
-        None => POOL_MAP.with(|m| {
-            let num_pools = num_pools.map_or(MAX_POOLS, |n| n as usize);
-            serde_json::to_string(&m.borrow().iter().take(num_pools).collect::<BTreeMap<_, _>>())
-                .map_err(|e| format!("Failed to serialize pools: {}", e))
-        }),
-    }
+    POOL_MAP.with(|m| {
+        let map = m.borrow();
+        let pools: BTreeMap<_, _> = match pool_id {
+            Some(pool_id) => {
+                let num_pools = num_pools.map_or(1, |n| n as usize);
+                let start_key = StablePoolId(pool_id);
+                map.range(start_key..).take(num_pools).collect()
+            }
+            None => {
+                let num_pools = num_pools.map_or(MAX_POOLS, |n| n as usize);
+                map.iter().take(num_pools).collect()
+            }
+        };
+
+        serde_json::to_string(&pools).map_err(|e| format!("Failed to serialize pools: {}", e))
+    })
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
