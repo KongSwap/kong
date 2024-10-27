@@ -1,154 +1,61 @@
 <script lang="ts">
-    import { fly, fade, slide } from 'svelte/transition';
-    import { elasticOut, quintOut, cubicOut } from 'svelte/easing';
-    import { onMount, onDestroy } from 'svelte';
+    import { fly, fade } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
+    import { onDestroy } from 'svelte';
     import { browser } from '$app/environment';
     import { spring } from 'svelte/motion';
+    import { walletStore } from "$lib/stores/walletStore";
     
-    import SidebarHeader from './sidebar/SidebarHeader.svelte';
     import WalletProvider from './sidebar/WalletProvider.svelte';
-    import TokenItem from './sidebar/TokenItem.svelte';
-    import TransactionHistory from './sidebar/TransactionHistory.svelte';
-    import SocialSection from './sidebar/SocialSection.svelte';
-    import WalletAddress from './sidebar/WalletAddress.svelte';
-    import SendTokens from './sidebar/SendTokens.svelte';
-    import TotalBalance from './sidebar/TotalBalance.svelte';
-    import WalletConnection from '$lib/components/WalletConnection.svelte';
-    export let walletProviders: { name: string; icon: string; description: string; }[] = [];
+    import SidebarHeader from './sidebar/SidebarHeader.svelte';
+
+    import './sidebar/colors.css';
+    
     export let sidebarOpen: boolean;
     export let onClose: () => void;
-    export let onWalletSelect: (provider: string) => void;
 
-    let selectedIndex = 0;
     let isLoggedIn = false;
-    let activeView = 'main'; // main, send, receive, history
-    let searchQuery = '';
     let isDragging = false;
     let startX: number;
     let startWidth: number;
-    let sidebarWidth = spring(600, {
+    let isResizeHovered = false;
+    let activeTab: 'tokens' | 'pools' | 'transactions' = 'tokens';
+    
+    let sidebarWidth = spring(500, {
         stiffness: 0.1,
         damping: 0.4
     });
-    let sidebarElement: HTMLElement;
-
-    let tokens = [
-        { symbol: 'ICP', amount: '5.000', icon: '🔄', usdValue: 12.34 },
-        { symbol: 'CKBTC', amount: '0.00300', icon: '₿', usdValue: 42000.00 },
-        { symbol: 'CHAT', amount: '1.000', icon: '💬', usdValue: 0.05 },
-        { symbol: 'GHOST', amount: '3.000', icon: '👻', usdValue: 1.20 },
-        { symbol: 'SNS1', amount: '5.000', icon: '🌐', usdValue: 3.45 },
-        { symbol: 'KINIC', amount: '8.000', icon: '🔍', usdValue: 0.75 }
-    ];
-
-    $: filteredTokens = tokens.filter(token => 
-        token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    type Transaction = {
-        type: 'send' | 'receive';
-        amount: string;
-        token: string;
-        to?: string;
-        from?: string;
-        date: string;
-    };
-
-    let transactions: Transaction[] = [
-        { type: 'send' as const, amount: '1.234', token: 'ICP', to: '0x123...456', date: '2024-01-20' },
-        { type: 'receive' as const, amount: '0.5', token: 'CKBTC', from: '0x789...012', date: '2024-01-19' }
-    ];
-
-    const walletAddress = "0x1234567890abcdef1234567890abcdef12345678";
-
-    function handleKeydown(event: KeyboardEvent) {
-        if (!sidebarOpen) return;
-        
-        switch (event.key) {
-            case 'ArrowDown':
-                event.preventDefault();
-                selectedIndex = (selectedIndex + 1) % (isLoggedIn ? filteredTokens.length : walletProviders.length);
-                break;
-            case 'ArrowUp':
-                event.preventDefault();
-                selectedIndex = selectedIndex - 1 < 0 ? 
-                    (isLoggedIn ? filteredTokens.length - 1 : walletProviders.length - 1) : 
-                    selectedIndex - 1;
-                break;
-            case 'Enter':
-            case ' ':
-                event.preventDefault();
-                if (!isLoggedIn) {
-                    isLoggedIn = true;
-                    onWalletSelect(walletProviders[selectedIndex].name);
-                }
-                break;
-            case 'Escape':
-                event.preventDefault();
-                if (activeView !== 'main') {
-                    activeView = 'main';
-                } else {
-                    onClose();
-                }
-                break;
-        }
-    }
-
-    function handleWalletSelect(provider: string) {
-        isLoggedIn = true;
-        onWalletSelect(provider);
-    }
-
-    function handleTokenSelect(index: number) {
-        activeView = 'send';
-        selectedIndex = index;
-    }
-
-    function handleBack() {
-        activeView = 'main';
-    }
-
-    function logout() {
-        isLoggedIn = false;
-        activeView = 'main';
-        selectedIndex = 0;
-        searchQuery = '';
-    }
 
     function startDragging(event: MouseEvent) {
         isDragging = true;
         startX = event.clientX;
         startWidth = $sidebarWidth;
-        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', handleDragging);
+        document.addEventListener('mouseup', stopDragging);
         document.body.style.cursor = 'ew-resize';
     }
 
     function handleDragging(event: MouseEvent) {
         if (!isDragging) return;
-        const deltaX = startX - event.clientX;
-        const newWidth = Math.min(Math.max(startWidth + deltaX, 300), window.innerWidth * 0.8);
+        const delta = event.clientX - startX;
+        const newWidth = Math.max(400, Math.min(800, startWidth - delta));
         sidebarWidth.set(newWidth);
     }
 
     function stopDragging() {
         isDragging = false;
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
+        document.removeEventListener('mousemove', handleDragging);
+        document.removeEventListener('mouseup', stopDragging);
+        document.body.style.cursor = 'default';
     }
 
-    onMount(() => {
-        if (browser) {
-            window.addEventListener('keydown', handleKeydown);
-            window.addEventListener('mousemove', handleDragging);
-            window.addEventListener('mouseup', stopDragging);
-        }
-    });
+    $: isLoggedIn = !!$walletStore.account;
 
     onDestroy(() => {
         if (browser) {
-            window.removeEventListener('keydown', handleKeydown);
-            window.removeEventListener('mousemove', handleDragging);
-            window.removeEventListener('mouseup', stopDragging);
+            document.removeEventListener('mousemove', handleDragging);
+            document.removeEventListener('mouseup', stopDragging);
+            document.body.style.cursor = 'default';
         }
     });
 </script>
@@ -168,100 +75,56 @@
         />
         
         <div 
-            class="sidebar" 
-            bind:this={sidebarElement}
+            class="sidebar pixel-corners"
+            class:is-dragging={isDragging}
+            class:resize-hovered={isResizeHovered}
             style="width: {$sidebarWidth}px"
-            in:fly={{ x: 600, duration: 400, easing: cubicOut }}
-            out:fly={{ x: 600, duration: 300, easing: cubicOut }}
+            in:fly={{ x: 400, duration: 300, easing: cubicOut }}
+            out:fly={{ x: 400, duration: 200, easing: cubicOut }}
         >
-            <div class="resize-handle" 
+            <div 
+                class="resize-handle" 
                 on:mousedown={startDragging}
-                role="separator"
-                aria-label="Resize sidebar"
-            ></div>
+                on:mouseenter={() => isResizeHovered = true}
+                on:mouseleave={() => isResizeHovered = false}
+            >
+                <div class="resize-indicator"></div>
+            </div>
             <div class="sidebar-content">
+                <SidebarHeader 
+                    {isLoggedIn}
+                    {onClose}
+                    bind:activeTab
+                />
+                
                 <div class="main-content">
-                    <SidebarHeader {activeView} {isLoggedIn} {onClose} />
-                    {#if isLoggedIn}
-                        <TotalBalance {tokens} />
-                        <WalletAddress address={walletAddress} />
-                    {/if}
-
-                    {#if isLoggedIn && activeView !== 'main'}
-                        <button 
-                            class="back-button"
-                            on:click={handleBack}
-                        >
-                            ← Back
-                        </button>
-                    {/if}
-
                     <div class="wallet-list">
                         {#if !isLoggedIn}
-                            <WalletProvider />
-                        {:else if activeView === 'main'}
-                            <div class="search-container">
-                                <input 
-                                    type="text"
-                                    placeholder="Search tokens..."
-                                    bind:value={searchQuery}
-                                    class="search-input"
-                                />
-                            </div>
-                            {#each filteredTokens as token, index}
-                                <TokenItem
-                                    {token}
-                                    selected={selectedIndex === index}
-                                    onSelect={() => handleTokenSelect(index)}
-                                    onHover={() => {
-                                        selectedIndex = index;
-                                    }}
-                                />
-                            {/each}
-                        {:else if activeView === 'history'}
-                            <TransactionHistory {transactions} />
-                        {:else if activeView === 'send'}
-                            <SendTokens token={tokens[selectedIndex]} />
+                            <WalletProvider 
+                                on:login={() => {}}
+                            />
                         {/if}
                     </div>
                 </div>
-
-                <SocialSection />
             </div>
         </div>
     </div>
 {/if}
 
 <style>
-    /* Theme variables */
-    :root {
-        --sidebar-shadow: rgba(0, 0, 0, 0.8);
-        --border-gradient-start: #ffcc00;
-        --border-gradient-end: #1a4731;
-        --scrollbar-track: rgba(26, 71, 49, 0.2);
-        --scrollbar-thumb: #ffcc00;
-        --scrollbar-thumb-hover: #ffd633;
-        --scrollbar-thumb-border: rgba(26, 71, 49, 0.4);
-        --search-bg: #000000;
-        --search-border: #ffcc00;
-        --search-text: #ffcc00;
-        --search-placeholder: #666666;
-        --search-focus-border: #ffffff;
-        --search-focus-shadow: rgba(255, 204, 0, 0.3);
-    }
-
     .sidebar-overlay {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(8px);
+        height: 100vh;
+        background-color: var(--overlay-bg);
+        backdrop-filter: blur(4px);
         z-index: 100;
         display: flex;
         justify-content: flex-end;
-        transition: backdrop-filter 0.3s ease;
+        padding-right: 32px; /* Added margin on the right */
+        align-items: center; /* Centers vertically */
     }
 
     .overlay-button {
@@ -276,46 +139,141 @@
     }
 
     .sidebar {
+        height: 90vh;
+        background: var(--sidebar-bg);
+        box-shadow: 
+            -8px 0 32px var(--shadow-color),
+            inset 16px 0 32px -16px var(--depth-shadow);
+        overflow: hidden;
+        position: relative;
+        min-width: 420px;
+        max-width: 690px;
+        transition: box-shadow 0.3s ease;
+    }
+
+    .pixel-corners {
+        clip-path: polygon(
+            0px calc(100% - 28px),
+            4px calc(100% - 28px),
+            4px calc(100% - 20px),
+            8px calc(100% - 20px),
+            8px calc(100% - 12px),
+            12px calc(100% - 12px),
+            12px calc(100% - 8px),
+            20px calc(100% - 8px),
+            20px calc(100% - 4px),
+            28px calc(100% - 4px),
+            28px 100%,
+            calc(100% - 28px) 100%,
+            calc(100% - 28px) calc(100% - 4px),
+            calc(100% - 20px) calc(100% - 4px),
+            calc(100% - 20px) calc(100% - 8px),
+            calc(100% - 12px) calc(100% - 8px),
+            calc(100% - 12px) calc(100% - 12px),
+            calc(100% - 8px) calc(100% - 12px),
+            calc(100% - 8px) calc(100% - 20px),
+            calc(100% - 4px) calc(100% - 20px),
+            calc(100% - 4px) calc(100% - 28px),
+            100% calc(100% - 28px),
+            100% 28px,
+            calc(100% - 4px) 28px,
+            calc(100% - 4px) 20px,
+            calc(100% - 8px) 20px,
+            calc(100% - 8px) 12px,
+            calc(100% - 12px) 12px,
+            calc(100% - 12px) 8px,
+            calc(100% - 20px) 8px,
+            calc(100% - 20px) 4px,
+            calc(100% - 28px) 4px,
+            calc(100% - 28px) 0px,
+            28px 0px,
+            28px 4px,
+            20px 4px,
+            20px 8px,
+            12px 8px,
+            12px 12px,
+            8px 12px,
+            8px 20px,
+            4px 20px,
+            4px 28px,
+            0px 28px
+        );
+        border: 4px solid transparent;
+    }
+
+    .pixel-corners::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: -4px;
+        background: var(--active-tab-color);
+        z-index: -1;
+        clip-path: polygon(
+            0px calc(100% - 28px),
+            4px calc(100% - 28px),
+            4px 28px,
+            0px 28px
+        );
+    }
+
+    /* Content wrapper to ensure proper padding */
+    .sidebar-content {
         position: relative;
         height: 100%;
-        background: transparent;
-        box-shadow: -5px 0 30px var(--sidebar-shadow);
-        border: 4px solid;
-        border-image: linear-gradient(to bottom, var(--border-gradient-start), var(--border-gradient-end)) 1;
-        animation: borderPulse 3s ease-in-out infinite;
-        z-index: 1;
-        transform-origin: right center;
-        will-change: transform;
+        padding: var(--content-padding);
+        z-index: 2;
     }
 
     .resize-handle {
         position: absolute;
-        left: -4px;
+        left: -12px;
         top: 0;
-        width: 8px;
+        width: 36px;
         height: 100%;
         cursor: ew-resize;
-        background: linear-gradient(to right, var(--border-gradient-start), transparent);
+        background: linear-gradient(to right, 
+            transparent 0%,
+            var(--sidebar-border) 50%,
+            transparent 100%);
         opacity: 0;
-        transition: opacity 0.2s ease;
+        transition: opacity 0.2s, width 0.2s;
+        display: flex;
+        align-items: center;
+        z-index: 101;
+    }
+
+    .resize-indicator {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 60px;
+        background: var(--sidebar-border);
+        border-radius: 2px;
+        opacity: 0;
+        transition: opacity 0.2s;
     }
 
     .resize-handle:hover {
-        opacity: 0.5;
+        opacity: 0.8;
+        width: 32px;
+        left: -16px;
     }
 
-    .sidebar-content {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+    .resize-handle:hover .resize-indicator {
+        opacity: 1;
     }
 
     .main-content {
         flex: 1;
         overflow-y: auto;
-        padding: 24px 24px 0 24px;
+        padding: 0;
+        margin: 0;
         scrollbar-width: thin;
-        scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+        scrollbar-color: var(--sidebar-border) transparent;
     }
 
     .main-content::-webkit-scrollbar {
@@ -323,82 +281,42 @@
     }
 
     .main-content::-webkit-scrollbar-track {
-        background: var(--scrollbar-track);
-        border-radius: 3px;
+        background: transparent;
     }
 
     .main-content::-webkit-scrollbar-thumb {
-        background: var(--scrollbar-thumb);
+        background-color: var(--sidebar-border);
         border-radius: 3px;
-        border: 1px solid var(--scrollbar-thumb-border);
-    }
-
-    .main-content::-webkit-scrollbar-thumb:hover {
-        background: var(--scrollbar-thumb-hover);
-    }
-
-    .search-container {
-        margin-bottom: 16px;
-    }
-
-    .search-input {
-        width: 100%;
-        padding: 12px;
-        background: var(--search-bg);
-        border: 2px solid var(--search-border);
-        color: var(--search-text);
-        font-family: 'Press Start 2P', monospace;
-        font-size: 12px;
-        outline: none;
-        transition: all 0.3s ease;
-    }
-
-    .search-input:focus {
-        border-color: var(--search-focus-border);
-        box-shadow: 0 0 10px var(--search-focus-shadow);
-    }
-
-    .search-input::placeholder {
-        color: var(--search-placeholder);
-    }
-
-    .back-button {
-        background: none;
-        border: none;
-        color: var(--search-text);
-        font-family: 'Press Start 2P', monospace;
-        font-size: 14px;
-        padding: 8px 16px;
-        margin-bottom: 16px;
-        cursor: pointer;
-        transition: transform 0.2s ease;
-    }
-
-    .back-button:hover {
-        transform: translateX(-5px);
     }
 
     .wallet-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        position: relative;
-        z-index: 1;
+        gap: 16px;
+        padding: 16px;
     }
 
-    @keyframes borderPulse {
-        0% { border-image: linear-gradient(to bottom, var(--border-gradient-start), var(--border-gradient-end)) 1; }
-        50% { border-image: linear-gradient(to bottom, var(--border-gradient-end), var(--border-gradient-start)) 1; }
-        100% { border-image: linear-gradient(to bottom, var(--border-gradient-start), var(--border-gradient-end)) 1; }
+    @keyframes blink {
+        0%, 100% { opacity: 0.7; }
+        50% { opacity: 0.3; }
     }
 
     @media (max-width: 768px) {
         .sidebar {
-            width: 100%;
+            min-width: 100%;
         }
-        
-        .resize-handle {
-            display: none;
+
+        .pixel-corners,
+        .pixel-corners::after {
+            clip-path: none;
+        }
+
+        .main-content {
+            padding: 12px;
+        }
+
+        .sidebar-overlay {
+            padding-right: 0; /* Remove right padding on mobile */
         }
     }
 </style>

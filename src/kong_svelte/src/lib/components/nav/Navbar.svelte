@@ -3,6 +3,7 @@
   import Sidebar from './Sidebar.svelte';
   import { onMount } from 'svelte';
   import LanguageSelector from '../LanguageSelector.svelte';
+  import { goto } from '$app/navigation';
   
   let activeTab: 'swap' | 'stats' = 'swap';
   let sidebarOpen = false;
@@ -26,6 +27,7 @@
 
   function handleTabChange(tab: 'swap' | 'stats') {
     activeTab = tab;
+    goto(tab === 'swap' ? '/' : '/stats');
   }
 
   function handleConnect() {
@@ -41,6 +43,7 @@
   function handleCombinedButton() {
     activeTab = activeTab === 'swap' ? 'stats' : 'swap';
     combinedButtonText = activeTab.toUpperCase();
+    goto(activeTab === 'swap' ? '/' : '/stats');
   }
 
   function checkMobile() {

@@ -1,163 +1,143 @@
 <script lang="ts">
-    import { fade } from 'svelte/transition';
+    import { fade, fly } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
+    import { onMount, onDestroy } from 'svelte';
+    import { browser } from '$app/environment';
     
     export let address: string;
-    export let onLogout: () => void = () => {}; // Add logout handler prop
-    let copied = false;
     
+    let copied = false;
+    let copyTimeout: ReturnType<typeof setTimeout>;
+
     function formatAddress(addr: string): string {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     }
     
     async function copyAddress() {
-        await navigator.clipboard.writeText(address);
-        copied = true;
-        setTimeout(() => {
-            copied = false;
-        }, 2000);
+        if (!browser) return;
+        
+        try {
+            await navigator.clipboard.writeText(address);
+            copied = true;
+            
+            if (copyTimeout) clearTimeout(copyTimeout);
+            copyTimeout = setTimeout(() => {
+                copied = false;
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy address:', err);
+        }
     }
+
+    onDestroy(() => {
+        if (copyTimeout) clearTimeout(copyTimeout);
+    });
 </script>
 
-<div class="wallet-address" transition:fade={{ duration: 200 }}>
-    <div class="address-container">
-        <span class="address-text">{formatAddress(address)}</span>
-        <div class="button-group">
-            <button 
-                class="logout-button"
-                on:click={onLogout}
-                aria-label="Log out"
-            >
-                <span class="logout-icon">⏻</span>
-            </button>
-            <button 
-                class="copy-button" 
-                on:click={copyAddress}
-                aria-label="Copy address"
-            >
-                {#if copied}
-                    <span class="copy-icon">✓</span>
-                {:else}
-                    <span class="copy-icon">⎘</span>
-                {/if}
-            </button>
+<div 
+    class="wallet-address-container"
+    in:fly={{ y: -20, duration: 300, easing: cubicOut }}
+    out:fade={{ duration: 200 }}
+>
+    <div class="wallet-address pixel-corners">
+        <div class="pixel-border-left"></div>
+        <div class="address-content">
+            <span class="address-text">{formatAddress(address)}</span>
+            <div class="button-group">
+                <button 
+                    class="action-button copy-button"
+                    on:click={copyAddress}
+                    aria-label="Copy address"
+                >
+                    <span class="icon copy-icon">
+                        {#if copied}✓{:else}⎘{/if}
+                    </span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<style lang="scss">
-    .wallet-address {
-        margin: -0.25rem 0 1.25rem 0;
-        display: flex;
-        justify-content: center;
+<style>
+    .wallet-address-container {
+        margin: -4px 0 20px 0;
+        padding: 0 var(--content-padding);
         width: 100%;
     }
 
-    .address-container {
+    .wallet-address {
+        position: relative;
+        background: rgba(0, 0, 0, 0.4);
+        border: 2px solid var(--sidebar-border);
+        overflow: hidden;
+    }
+
+    .pixel-border-left {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: var(--border-width);
+        height: 100%;
+        background: var(--sidebar-border);
+        clip-path: polygon(
+            0 0,
+            100% 4px,
+            100% calc(100% - 4px),
+            0 100%,
+            0 calc(100% - 8px),
+            50% calc(100% - 12px),
+            50% 12px,
+            0 8px
+        );
+    }
+
+    .address-content {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 0.5rem;
-        padding: 0.5rem 0.75rem;
-        background: rgba(0, 0, 0, 0.4);
-        border: 2px solid var(--header-border);
-        width: 100%;
-        position: relative;
-        
-        &::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: -1px;
-            right: -1px;
-            bottom: -1px;
-            background: linear-gradient(
-                45deg,
-                var(--header-border) 0%,
-                transparent 40%,
-                transparent 60%,
-                var(--header-border) 100%
-            );
-            opacity: 0.15;
-            pointer-events: none;
-        }
+        padding: 8px 12px;
+        gap: 8px;
     }
 
     .address-text {
         font-family: 'Press Start 2P', monospace;
-        font-size: 0.75rem;
-        color: var(--header-text);
+        font-size: 12px;
+        color: var(--sidebar-bg);
         letter-spacing: 0.05em;
         text-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
     }
 
     .button-group {
         display: flex;
-        gap: 0.5rem;
+        gap: 8px;
     }
 
-    .copy-button,
-    .logout-button {
+    .action-button {
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 1.75rem;
-        height: 1.75rem;
+        min-width: 28px;
+        height: 28px;
         padding: 0;
         background: rgba(255, 204, 0, 0.1);
-        border: 2px solid var(--header-border);
-        color: var(--header-text);
+        border: 2px solid var(--sidebar-border);
+        color: var(--sidebar-bg);
         cursor: pointer;
         transition: all 0.2s ease;
-        position: relative;
-        
-        &::after {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(
-                45deg,
-                var(--header-border) 0%,
-                transparent 40%,
-                transparent 60%,
-                var(--header-border) 100%
-            );
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        &:hover {
-            background: var(--header-border);
-            color: var(--header-bg);
-            
-            &::after {
-                opacity: 0.3;
-            }
-        }
-
-        &:active {
-            transform: scale(0.95);
-        }
     }
 
-    .logout-button {
-        background: rgba(255, 0, 0, 0.1);
-        
-        &:hover {
-            background: rgba(255, 0, 0, 0.8);
-        }
+    .action-button:hover {
+        background: var(--sidebar-border);
+        color: var(--sidebar-bg);
     }
 
-    .copy-icon,
-    .logout-icon {
-        font-size: 0.875rem;
+    .action-button:active {
+        transform: scale(0.95);
+    }
+
+    .icon {
+        font-size: 14px;
         line-height: 1;
         transform: translateY(-1px);
-    }
-
-    .logout-icon {
-        transform: rotate(90deg) translateX(-1px);
     }
 </style>

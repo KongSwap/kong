@@ -1,0 +1,12 @@
+:root {
+    --sidebar-bg: #95C87D;
+    --sidebar-border: #64AD3B;
+    --sidebar-border-dark: #4a8029;
+    --overlay-bg: rgba(0, 0, 0, 0.5);
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --content-padding: 16px;
+    --shine-color: rgba(255, 255, 255, 0.15);
+    --depth-shadow: rgba(0, 0, 0, 0.4);
+    --active-tab-color: #368D00;
+    --active-tab-glow: rgba(54, 141, 0, 0.3);
+}

@@ -10,11 +10,12 @@
 </script>
 
 <button 
-    class="token-item"
+    class="token-item pixel-corners"
     class:selected
     on:click={onSelect}
     on:mouseenter={onHover}
 >
+    <div class="pixel-border-left"></div>
     <div class="selector-arrow">▶</div>
     <div class="token-icon">{token.icon}</div>
     <div class="token-info">
@@ -25,17 +26,30 @@
         <span class="action-text">SEND</span>
         <span class="action-arrow">→</span>
     </div>
+    <div class="shine-effect"></div>
 </button>
 
 <style>
+    :root {
+        --sidebar-bg: #1a3121;
+        --sidebar-bg-rgb: 26, 49, 33;
+        --sidebar-border: #ffcc00;
+        --sidebar-border-rgb: 255, 204, 0;
+        --sidebar-border-dark: #cc9900;
+        --shadow-color: rgba(0, 0, 0, 0.3);
+        --shine-color: rgba(255, 255, 255, 0.1);
+        --text-secondary: #aaaaaa;
+        --border-width: 4px;
+    }
+    
     .token-item {
         position: relative;
         display: flex;
         align-items: center;
         gap: 16px;
         padding: 16px;
-        background: rgba(26, 71, 49, 0.1);
-        border: 2px solid rgba(255, 204, 0, 0.3);
+        background: var(--sidebar-bg);
+        border: 2px solid var(--sidebar-border);
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         transform-origin: center left;
@@ -43,24 +57,63 @@
         text-align: left;
         color: inherit;
         font-family: inherit;
+        overflow: hidden;
+    }
+
+    .pixel-border-left {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: var(--border-width);
+        height: 100%;
+        background: var(--sidebar-border);
+        clip-path: polygon(
+            0 0,
+            100% 4px,
+            100% calc(100% - 4px),
+            0 100%,
+            0 calc(100% - 8px),
+            50% calc(100% - 12px),
+            50% 12px,
+            0 8px
+        );
+    }
+
+    .shine-effect {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--shine-color) 0%, transparent 50%);
+        pointer-events: none;
+        opacity: 0.5;
+        transition: opacity 0.3s ease;
+    }
+
+    .token-item:hover .shine-effect {
+        opacity: 0.8;
     }
 
     .token-item:hover,
     .token-item.selected {
-        background: linear-gradient(90deg, rgba(255, 204, 0, 0.15), rgba(26, 71, 49, 0.05));
-        border-color: #ffcc00;
+        background: linear-gradient(90deg, 
+            rgba(var(--sidebar-border-rgb), 0.15), 
+            rgba(var(--sidebar-bg-rgb), 0.05)
+        );
+        border-color: var(--sidebar-border-dark);
         transform: translateX(8px) scale(1.01);
-        box-shadow: 0 0 15px rgba(255, 204, 0, 0.15);
+        box-shadow: -4px 4px 16px var(--shadow-color);
     }
 
     .selector-arrow {
         position: absolute;
-        left: -15px;
-        color: #ffcc00;
+        left: calc(var(--border-width) + 4px);
+        color: var(--sidebar-border-dark);
         font-size: 14px;
         opacity: 0;
         transition: all 0.2s ease;
-        text-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+        text-shadow: 0 0 8px var(--shadow-color);
     }
 
     .token-item.selected .selector-arrow {
@@ -75,9 +128,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 204, 0, 0.1);
+        background: rgba(var(--sidebar-border-rgb), 0.1);
         border-radius: 8px;
-        border: 1px solid rgba(255, 204, 0, 0.2);
+        border: 1px solid rgba(var(--sidebar-border-rgb), 0.2);
+        margin-left: calc(var(--border-width) + 16px);
     }
 
     .token-info {
@@ -88,14 +142,14 @@
     }
 
     .token-symbol {
-        color: #ffcc00;
+        color: var(--sidebar-border-dark);
         font-family: 'Press Start 2P', monospace;
         font-size: 14px;
-        text-shadow: 2px 2px 0 #000;
+        text-shadow: 1px 1px 0 var(--shadow-color);
     }
 
     .token-amount {
-        color: #aaaaaa;
+        color: var(--text-secondary);
         font-size: 12px;
         font-family: monospace;
         opacity: 0.8;
@@ -119,12 +173,12 @@
     .action-text {
         font-family: 'Press Start 2P', monospace;
         font-size: 10px;
-        color: #ffcc00;
+        color: var(--sidebar-border-dark);
         opacity: 0.6;
     }
 
     .action-arrow {
-        color: #ffcc00;
+        color: var(--sidebar-border-dark);
         font-size: 14px;
         animation: arrowPulse 1s infinite alternate;
     }
@@ -153,6 +207,7 @@
             font-size: 20px;
             width: 28px;
             height: 28px;
+            margin-left: calc(var(--border-width) + 12px);
         }
 
         .token-symbol {
@@ -165,6 +220,11 @@
 
         .action-text {
             font-size: 8px;
+        }
+
+        .selector-arrow {
+            left: calc(var(--border-width) + 2px);
+            font-size: 12px;
         }
     }
 </style>

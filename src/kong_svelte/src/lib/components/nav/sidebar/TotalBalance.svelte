@@ -1,7 +1,8 @@
 <script lang="ts">
-    import { tweened } from 'svelte/motion';
+    import { spring } from 'svelte/motion';
     import { cubicOut } from 'svelte/easing';
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
+    import { browser } from '$app/environment';
 
     export let tokens: Array<{ symbol: string; amount: string; usdValue?: number }>;
     export let preferredCurrency: 'USD' | 'EUR' = 'USD';
@@ -11,45 +12,47 @@
         EUR: '€'
     };
 
-    // Animated total value
-    const animatedValue = tweened(0, {
-        duration: 2000,
-        easing: cubicOut
+    const animatedValue = spring(0, {
+        stiffness: 0.1,
+        damping: 0.6
     });
 
-    // Format number with commas and decimal places
     function formatNumber(num: number): string {
+        if (num >= 1000000) {
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                notation: 'compact',
+                compactDisplay: 'short'
+            }).format(num);
+        }
         return new Intl.NumberFormat('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         }).format(num);
     }
 
-    // Calculate total value from tokens
     $: totalValue = tokens.reduce((acc, token) => {
-        return acc + (parseFloat(token.amount) * (token.usdValue || 0));
+        return acc + (parseFloat(token.amount.replace(/,/g, '')) * (token.usdValue || 0));
     }, 0);
 
-    // Update animated value when total changes
     $: {
         animatedValue.set(totalValue);
     }
 
-    // Format the final display value
     $: displayValue = `${currencySymbols[preferredCurrency]}${formatNumber($animatedValue)}`;
 
-    // Sparkline data for mini chart (last 24h)
     let sparklinePoints = '';
-    let sparklineData = [/* This would come from your data source */];
-    
-    // Generate sample data for demo
-    onMount(() => {
-        // Sample data - replace with real historical data
-        sparklineData = Array.from({ length: 24 }, (_, i) => {
+    let sparklineData: number[] = [];
+    let sparklineInterval: number;
+
+    function generateSparklineData() {
+        return Array.from({ length: 24 }, (_, i) => {
             return totalValue * (1 + Math.sin(i / 3) * 0.03);
         });
+    }
 
-        // Create SVG points
+    function updateSparkline() {
         const width = 100;
         const height = 30;
         const max = Math.max(...sparklineData);
@@ -63,10 +66,30 @@
                 return `${x},${y}`;
             })
             .join(' ');
+    }
+
+    onMount(() => {
+        if (browser) {
+            sparklineData = generateSparklineData();
+            updateSparkline();
+            
+            sparklineInterval = window.setInterval(() => {
+                sparklineData = sparklineData.slice(1);
+                sparklineData.push(totalValue * (1 + (Math.random() - 0.5) * 0.06));
+                updateSparkline();
+            }, 5000);
+        }
+    });
+
+    onDestroy(() => {
+        if (browser && sparklineInterval) {
+            clearInterval(sparklineInterval);
+        }
     });
 </script>
 
-<div class="balance-container">
+<div class="balance-container pixel-corners">
+    <div class="pixel-border-left"></div>
     <div class="value-section">
         <div class="label">Total Balance</div>
         <div class="value" class:positive={totalValue > 0}>
@@ -94,61 +117,77 @@
 
 <style>
     .balance-container {
-        background: rgba(0, 0, 0, 0.3);
-        border: 2px solid var(--border-gradient-start);
-        border-radius: 8px;
+        background: linear-gradient(135deg, var(--shine-color) 0%, transparent 50%),
+                    linear-gradient(to bottom, var(--sidebar-bg), var(--sidebar-bg));
+        border: 2px solid var(--sidebar-border);
+        box-shadow: -4px 4px 16px var(--shadow-color),
+                    inset -1px -1px 0px var(--sidebar-border-dark),
+                    inset 1px 1px 0px var(--shine-color);
         padding: 16px;
-        margin: 16px 0;
+        margin: 16px 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 16px;
         position: relative;
         overflow: hidden;
+        min-height: 80px;
     }
 
-    .balance-container::before {
-        content: '';
+    .pixel-border-left {
         position: absolute;
-        top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(
-            45deg,
-            rgba(255, 204, 0, 0.1),
-            transparent 40%
+        top: 0;
+        width: var(--border-width);
+        height: 100%;
+        background: linear-gradient(to bottom,
+            var(--sidebar-border) 0%,
+            var(--sidebar-border-dark) 100%);
+        clip-path: polygon(
+            0 8px,
+            100% 12px,
+            100% calc(100% - 12px),
+            0 calc(100% - 8px),
+            0 calc(100% - 12px),
+            50% calc(100% - 16px),
+            50% 16px,
+            0 12px
         );
-        pointer-events: none;
+        box-shadow: inset -1px 0 0 var(--sidebar-border-dark);
     }
 
     .value-section {
         flex: 1;
+        padding-left: calc(var(--border-width) + 8px);
     }
 
     .label {
         font-family: 'Press Start 2P', monospace;
-        font-size: 0.8em;
-        color: #666;
-        margin-bottom: 4px;
+        font-size: 0.7em;
+        color: var(--sidebar-border-dark);
+        margin-bottom: 8px;
         text-transform: uppercase;
+        text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.2);
     }
 
     .value {
         font-family: 'Press Start 2P', monospace;
-        font-size: 1.5em;
-        color: var(--border-gradient-start);
-        text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        font-size: 1.1em;
+        color: var(--sidebar-border-dark);
+        text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .value.positive {
-        color: #00ff00;
-        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        color: var(--sidebar-border-dark);
     }
 
     .chart-section {
-        width: 100px;
-        height: 30px;
+        width: 120px;
+        height: 40px;
+        margin-right: 8px;
     }
 
     .sparkline {
@@ -158,30 +197,32 @@
 
     .sparkline-line {
         fill: none;
-        stroke: var(--border-gradient-start);
-        stroke-width: 1;
+        stroke: var(--sidebar-border-dark);
+        stroke-width: 2;
         vector-effect: non-scaling-stroke;
     }
 
     .sparkline-fill {
-        fill: rgba(255, 204, 0, 0.1);
+        fill: var(--sidebar-border-dark);
+        opacity: 0.1;
         stroke: none;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
     }
 
     @media (max-width: 768px) {
         .balance-container {
-            flex-direction: column;
-            align-items: stretch;
+            flex-direction: row;
+            align-items: center;
+            margin: 16px 8px;
+            padding: 16px 8px;
         }
 
         .chart-section {
-            width: 100%;
+            width: 100px;
+            height: 30px;
+        }
+
+        .value {
+            font-size: 0.9em;
         }
     }
 </style>

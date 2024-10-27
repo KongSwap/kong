@@ -1,4 +1,9 @@
 <script lang="ts">
+    import { fade, fly } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
+    import { onMount } from 'svelte';
+    import { browser } from '$app/environment';
+    import { createEventDispatcher } from 'svelte';
     import {
         walletStore,
         connectWallet,
@@ -7,14 +12,16 @@
         selectedWalletId,
     } from "$lib/stores/walletStore";
     import { t } from "$lib/locales/translations";
-    import { onMount } from "svelte";
     import { uint8ArrayToHexString } from "@dfinity/utils";
     import { backendService } from "$lib/services/backendService";
 
+    const dispatch = createEventDispatcher();
+
     let user: any;
+    let selectedIndex = 0;
 
     onMount(async () => {
-        if (typeof window !== "undefined") {
+        if (browser) {
             const storedWalletId = localStorage.getItem("selectedWalletId");
             if (storedWalletId) {
                 selectedWalletId.set(storedWalletId);
@@ -37,6 +44,7 @@
             selectedWalletId.set(walletId);
             localStorage.setItem("selectedWalletId", walletId);
             await connectWallet(walletId);
+            dispatch('login');
         } catch (error) {
             console.error("Failed to connect wallet:", error);
         }
@@ -119,7 +127,7 @@
     }
 
     .status-text {
-        color: #ffcc00;
+        color: var(--sidebar-border);
         font-size: 12px;
         margin-bottom: 8px;
     }
@@ -131,20 +139,32 @@
     }
 
     .info-section {
-        background: rgba(26, 71, 49, 0.1);
+        background: var(--sidebar-border-dark);
         padding: 8px;
-        border-radius: 4px;
+        border: 2px solid var(--sidebar-border);
+        position: relative;
+    }
+
+    .info-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--shine-color) 0%, transparent 50%);
+        pointer-events: none;
     }
 
     .section-title {
-        color: #ffcc00;
+        color: var(--sidebar-bg);
         font-size: 12px;
         margin-bottom: 8px;
         text-transform: uppercase;
     }
 
     .info-text {
-        color: #aaaaaa;
+        color: var(--sidebar-bg);
         font-size: 10px;
         line-height: 1.4;
     }
@@ -160,48 +180,75 @@
         align-items: center;
         gap: 8px;
         padding: 8px;
-        background: rgba(26, 71, 49, 0.1);
-        border: 1px solid rgba(255, 204, 0, 0.3);
-        border-radius: 4px;
+        background: var(--sidebar-border-dark);
+        border: 2px solid var(--sidebar-border);
         cursor: pointer;
         transition: all 0.2s ease;
         width: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .wallet-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--shine-color) 0%, transparent 50%);
+        pointer-events: none;
     }
 
     .wallet-button:hover {
-        background: rgba(255, 204, 0, 0.1);
-        transform: translateX(3px);
+        background: var(--sidebar-border);
+        transform: scale(0.98);
     }
 
     .wallet-icon {
         width: 24px;
         height: 24px;
-        border-radius: 50%;
+        border-radius: 4px;
+        border: 1px solid var(--sidebar-border);
     }
 
     .wallet-name {
-        color: #ffcc00;
+        color: var(--sidebar-bg);
         font-size: 12px;
     }
 
     .disconnect-button {
-        background: rgba(255, 0, 0, 0.2);
-        border: 1px solid rgba(255, 0, 0, 0.3);
-        color: #ff3333;
+        background: var(--sidebar-border-dark);
+        border: 2px solid var(--sidebar-border);
+        color: var(--sidebar-bg);
         padding: 8px;
-        border-radius: 4px;
         font-size: 10px;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .disconnect-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--shine-color) 0%, transparent 50%);
+        pointer-events: none;
     }
 
     .disconnect-button:hover {
-        background: rgba(255, 0, 0, 0.3);
+        background: var(--sidebar-border);
+        transform: scale(0.98);
     }
 
     .error-text {
         color: #ff3333;
         font-size: 10px;
         margin-top: 8px;
+        text-shadow: 1px 1px 0px rgba(0,0,0,0.5);
     }
 </style>
