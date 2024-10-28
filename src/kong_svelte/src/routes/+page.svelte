@@ -2,6 +2,7 @@
   import { t } from '$lib/locales/translations';
   import { backendService } from '$lib/services/backendService';
   import { onMount } from 'svelte';
+  import Swap from '$lib/components/swap/Swap.svelte';
 
   let tokens: any = null;
 
@@ -30,8 +31,16 @@
       </div>
     {/each}
   {:else if tokens}
-    <p>No tokens found.</p>
+    <div class="swap-container">
+      <Swap />
+    </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>
   {/if}
 </main>
+
+<style>
+  .swap-container {
+    margin-top: 128px;
+  }
+</style>

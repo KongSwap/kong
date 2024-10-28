@@ -109,22 +109,21 @@
 <style>
   nav {
     width: 100%;
-    padding: 24px;
+    padding: 12px 40px;
   }
 
   .retro-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 16px;
   }
 
   .buttons {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     width: 100%;
     gap: 16px;
   }
@@ -138,6 +137,7 @@
     gap: 16px;
     align-items: center;
     flex-shrink: 0;
+    margin-top: 8px;
   }
 
   .mobile-buttons {
@@ -149,19 +149,23 @@
     align-items: center;
     gap: 16px;
     flex-shrink: 0;
+    margin-top: 8px;
   }
 
   .title-container {
-    flex: 1;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     justify-content: center;
     align-items: center;
-    min-width: 0;
-    padding: 0 32px;
+    width: 100%;
+    max-width: 600px;
+    z-index: -1;
   }
 
   .title-wrapper {
-    height: 80px;
+    height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -169,7 +173,7 @@
 
   .title-image {
     width: 100%;
-    max-width: 400px;
+    max-width: 500px;
     height: 100%;
     object-fit: contain;
   }
@@ -184,7 +188,7 @@
 
   @media (max-width: 768px) {
     nav {
-      padding: 12px 8px;
+      padding: 8px 8px 16px;
     }
 
     .buttons {
@@ -200,7 +204,16 @@
     }
 
     .title-wrapper {
-      height: 60px;
+      height: 100px;
+      margin-top: 8px;
+    }
+
+    .mobile-title-container {
+      padding: 0;
+    }
+
+    .title-image {
+      max-width: 100%;
     }
   }
 </style>

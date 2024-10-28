@@ -182,6 +182,9 @@
         will-change: transform;
         overflow: hidden;
         background-color: transparent;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     .sidebar-layout {
