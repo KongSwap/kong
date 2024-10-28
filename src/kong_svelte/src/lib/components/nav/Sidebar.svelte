@@ -3,13 +3,11 @@
     import { cubicOut } from 'svelte/easing';
     import { onDestroy } from 'svelte';
     import { browser } from '$app/environment';
-    import { spring } from 'svelte/motion';
     import { walletStore } from "$lib/stores/walletStore";
-    
+    import Panel from '../common/Panel.svelte';
     import WalletProvider from './sidebar/WalletProvider.svelte';
     import SidebarHeader from './sidebar/SidebarHeader.svelte';
-
-    import './sidebar/colors.css';
+    import SocialSection from './sidebar/SocialSection.svelte';
     
     export let sidebarOpen: boolean;
     export let onClose: () => void;
@@ -18,35 +16,20 @@
     let isDragging = false;
     let startX: number;
     let startWidth: number;
-    let isResizeHovered = false;
     let activeTab: 'tokens' | 'pools' | 'transactions' = 'tokens';
-    let touchStartX: number;
-    let touchMoveX: number;
+    let isMobile = false;
     
-    let sidebarWidth = spring(500, {
-        stiffness: 0.3,
-        damping: 0.8
-    });
-
-    function handleTouchStart(event: TouchEvent) {
-        touchStartX = event.touches[0].clientX;
-    }
-
-    function handleTouchMove(event: TouchEvent) {
-        touchMoveX = event.touches[0].clientX;
-        const swipeDistance = touchMoveX - touchStartX;
-        
-        // If swiped right more than 100px, close sidebar
-        if (swipeDistance > 100) {
-            onClose();
-        }
-    }
-
+    let sidebarWidth = 500;
+    let initialWidth = 500;
+    
+    let dragTimeout: number;
+    let resizeHandler: () => void;
+    
     function startDragging(event: MouseEvent) {
         isDragging = true;
         startX = event.clientX;
-        startWidth = $sidebarWidth;
-        document.addEventListener('mousemove', handleDragging);
+        startWidth = sidebarWidth;
+        document.addEventListener('mousemove', handleDragging, { passive: true });
         document.addEventListener('mouseup', stopDragging);
         document.body.style.cursor = 'ew-resize';
         event.stopPropagation();
@@ -54,16 +37,16 @@
 
     function handleDragging(event: MouseEvent) {
         if (!isDragging) return;
-        const delta = event.clientX - startX;
-        const newWidth = Math.max(400, Math.min(800, startWidth - delta));
-        requestAnimationFrame(() => {
-            sidebarWidth.set(newWidth);
+        if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
+        dragTimeout = window.requestAnimationFrame(() => {
+            const delta = event.clientX - startX;
+            sidebarWidth = Math.max(400, Math.min(800, startWidth - delta));
         });
-        event.stopPropagation();
     }
 
     function stopDragging() {
         isDragging = false;
+        if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
         document.removeEventListener('mousemove', handleDragging);
         document.removeEventListener('mouseup', stopDragging);
         document.body.style.cursor = 'default';
@@ -71,11 +54,30 @@
 
     $: isLoggedIn = !!$walletStore.account;
 
+    $: {
+        if (browser) {
+            isMobile = window.innerWidth <= 768;
+            resizeHandler = () => {
+                isMobile = window.innerWidth <= 768;
+                if (isMobile) {
+                    sidebarWidth = window.innerWidth;
+                } else {
+                    sidebarWidth = Math.min(500, window.innerWidth - 64);
+                }
+            };
+            window.addEventListener('resize', resizeHandler);
+        }
+    }
+
     onDestroy(() => {
         if (browser) {
             document.removeEventListener('mousemove', handleDragging);
             document.removeEventListener('mouseup', stopDragging);
             document.body.style.cursor = 'default';
+            if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
+            if (resizeHandler) {
+                window.removeEventListener('resize', resizeHandler);
+            }
         }
     });
 </script>
@@ -86,7 +88,7 @@
         role="dialog"
         aria-modal="true"
         aria-label="Sidebar Menu"
-        transition:fade={{ duration: 200 }}
+        transition:fade={{ duration: 300, easing: cubicOut }}
     >
         <button 
             class="overlay-button"
@@ -95,40 +97,53 @@
         />
         
         <div 
-            class="sidebar"
+            class="sidebar-wrapper"
             class:is-dragging={isDragging}
-            class:resize-hovered={isResizeHovered}
-            style="width: {$sidebarWidth}px"
-            in:fly={{ x: 400, duration: 300, easing: cubicOut }}
-            out:fly={{ x: 400, duration: 200, easing: cubicOut }}
-            on:touchstart={handleTouchStart}
-            on:touchmove={handleTouchMove}
+            style="width: {sidebarWidth}px"
+            in:fly={{ x: 500, duration: 300, easing: cubicOut }}
+            out:fly={{ x: 500, duration: 300, easing: cubicOut }}
         >
             <div 
                 class="resize-handle" 
                 on:mousedown={startDragging}
-                on:mouseenter={() => isResizeHovered = true}
-                on:mouseleave={() => isResizeHovered = false}
+                aria-label="Resize sidebar"
             >
-                <div class="resize-indicator"></div>
+                <div class="resize-line" />
+                <div class="resize-dots" />
+                <div class="resize-line" />
             </div>
-            <div class="sidebar-content">
-                <SidebarHeader 
-                    {isLoggedIn}
-                    {onClose}
-                    bind:activeTab
-                />
-                
-                <div class="main-content">
-                    <div class="wallet-list">
-                        {#if !isLoggedIn}
-                            <WalletProvider 
-                                on:login={() => {}}
-                            />
-                        {/if}
+
+            <Panel 
+                variant="green"
+                type="main"
+                width={isMobile ? '100%' : `${sidebarWidth}px`}
+                height={isMobile ? '100vh' : '90vh'}
+                className="sidebar-panel"
+            >
+                <div class="sidebar-layout">
+                    <header class="sidebar-header">
+                        <SidebarHeader 
+                            {isLoggedIn}
+                            {onClose}
+                            bind:activeTab
+                        />
+                    </header>
+
+                    <div class="sidebar-content">
+                        <div class="scroll-container">
+                            {#if !isLoggedIn}
+                                <WalletProvider on:login={() => {}} />
+                            {/if}
+                        </div>
                     </div>
+
+                    <footer class="sidebar-footer">
+                        <div class="footer-actions">
+                            <SocialSection />
+                        </div>
+                    </footer>
                 </div>
-            </div>
+            </Panel>
         </div>
     </div>
 {/if}
@@ -136,155 +151,158 @@
 <style>
     .sidebar-overlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100vh;
-        background-color: var(--overlay-bg);
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(4px);
-        z-index: 100;
-        display: flex;
-        justify-content: flex-end;
-        padding-right: 32px;
-        align-items: center;
-        pointer-events: all;
+        z-index: 50;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
     }
 
     .overlay-button {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        inset: 0;
         background: transparent;
         border: none;
         cursor: pointer;
     }
 
-    .sidebar {
+    .sidebar-wrapper {
+        position: absolute;
+        top: 5vh;
+        right: 32px;
         height: 90vh;
-        background: var(--sidebar-bg);
-        border: 2px solid var(--sidebar-border);
-        border-radius: 8px;
-        box-shadow: 
-            -8px 0 32px var(--shadow-color),
-            inset -2px -2px 0px rgba(0,0,0,0.2),
-            inset 2px 2px 0px rgba(255,255,255,0.1);
-        overflow: hidden;
-        position: relative;
         min-width: 420px;
-        max-width: 690px;
-        transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-width: min(800px, calc(100vw - 64px));
         transform-origin: right center;
-        pointer-events: auto;
-        will-change: width;
-        touch-action: pan-x;
+        will-change: transform;
+        overflow: hidden;
+        background-color: transparent;
     }
 
-    .sidebar:hover {
-        box-shadow: 
-            -12px 0 48px var(--shadow-color),
-            inset -2px -2px 0px rgba(0,0,0,0.3),
-            inset 2px 2px 0px rgba(255,255,255,0.15);
+    .sidebar-layout {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100%;
+        gap: 16px;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 0 16px;
+    }
+
+    .sidebar-header {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        width: 100%;
+        max-width: 100%;
     }
 
     .sidebar-content {
         position: relative;
-        height: 100%;
-        padding: var(--content-padding);
-        z-index: 2;
-        background: linear-gradient(180deg, 
-            rgba(0,0,0,0.1) 0%,
-            rgba(0,0,0,0.05) 50%,
-            rgba(0,0,0,0.1) 100%
-        );
+        min-height: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .scroll-container {
+        position: absolute;
+        inset: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        width: calc(100% + 16px);
+        max-width: calc(100% + 16px);
+        padding-right: 16px;
+        margin-right: -16px;
+        box-sizing: border-box;
+    }
+
+    .scroll-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .scroll-container::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
     }
 
     .resize-handle {
         position: absolute;
-        left: -12px;
-        top: 0;
-        width: 36px;
-        height: 100%;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 12px;
+        height: 120px;
         cursor: ew-resize;
-        background: linear-gradient(to right, 
-            transparent 0%,
-            var(--sidebar-border) 50%,
-            transparent 100%);
-        opacity: 0;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
+        flex-direction: column;
         align-items: center;
-        z-index: 101;
-        will-change: opacity, width, left;
-    }
-
-    .resize-indicator {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 4px;
-        height: 60px;
-        background: var(--sidebar-border);
-        border-radius: 2px;
-        opacity: 0;
-        transition: opacity 0.2s;
-        box-shadow: 0 0 8px rgba(97, 201, 255, 0.4);
+        justify-content: center;
+        gap: 4px;
+        z-index: 51;
+        padding: 0 4px;
+        transition: background-color 0.2s;
+        border-radius: 0 4px 4px 0;
     }
 
     .resize-handle:hover {
-        opacity: 0.8;
-        width: 32px;
-        left: -16px;
+        background-color: rgba(255, 255, 255, 0.1);
     }
 
-    .resize-handle:hover .resize-indicator {
+    .resize-line {
+        width: 1px;
+        height: 16px;
+        background-color: rgba(255, 255, 255, 0.3);
+        transition: background-color 0.2s;
+    }
+
+    .resize-dots {
+        width: 2px;
+        height: 12px;
+        background-image: radial-gradient(
+            circle,
+            rgba(255, 255, 255, 0.5) 1px,
+            transparent 1px
+        );
+        background-size: 2px 2px;
+        background-position: center;
+        opacity: 0.5;
+        transition: opacity 0.2s;
+    }
+
+    .resize-handle:hover .resize-dots {
         opacity: 1;
     }
 
-    .main-content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0;
-        margin: 0;
-        scrollbar-width: thin;
-        scrollbar-color: var(--sidebar-border) transparent;
+    .resize-handle:hover .resize-line {
+        background-color: rgba(255, 255, 255, 0.5);
     }
 
-    .main-content::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .main-content::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .main-content::-webkit-scrollbar-thumb {
-        background-color: var(--sidebar-border);
-        border-radius: 3px;
-        box-shadow: inset 0 0 6px rgba(0,0,0,0.2);
-    }
-
-    .wallet-list {
+    .footer-actions {
         display: flex;
-        flex-direction: column;
-        gap: 16px;
-        padding: 16px;
+        justify-content: center;
+        align-items: center;
+        padding: 8px;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     @media (max-width: 768px) {
-        .sidebar {
+        .sidebar-wrapper {
+            top: 0;
+            right: 0;
+            width: 100% !important;
             min-width: 100%;
+            max-width: 100%;
             height: 100vh;
-            border-radius: 0;
         }
 
-        .main-content {
-            padding: 12px;
-        }
-
-        .sidebar-overlay {
-            padding-right: 0;
+        .resize-handle {
+            display: none;
         }
     }
 </style>

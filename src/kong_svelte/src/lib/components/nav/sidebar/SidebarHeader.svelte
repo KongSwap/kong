@@ -2,8 +2,6 @@
     import { fly } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import { walletStore, disconnectWallet } from "$lib/stores/walletStore";
-    import { fade } from 'svelte/transition';
-
     import './colors.css';
 
     export let isLoggedIn: boolean;
@@ -12,14 +10,31 @@
 
     let showCopied = false;
 
-    const truncateAddress = (address: string) => {
-        if (!address) return '';
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
-    };
+    // Function to format address with variable truncation based on screen width
+    function formatAddress(address: string, isMobile: boolean): string {
+        if (!address) return "";
+        if (isMobile) {
+            // More truncated for mobile (show fewer characters)
+            const start = address.slice(0, 4);
+            const end = address.slice(-3);
+            return `${start}...${end}`;
+        } else {
+            // Show more characters on desktop
+            const start = address.slice(0, 8);
+            const end = address.slice(-6);
+            return `${start}...${end}`;
+        }
+    }
+
+    let windowWidth: number;
+
+    $: walletAddress = $walletStore.account?.owner.toString() || "";
+    $: isMobile = windowWidth < 768; // Define mobile breakpoint
+    $: displayAddress = formatAddress(walletAddress, isMobile);
 
     const handleCopy = async () => {
-        await navigator.clipboard.writeText(walletAddress);
-        if (!showCopied) {
+        if (!showCopied && $walletStore.account?.owner) {
+            await navigator.clipboard.writeText($walletStore.account.owner.toString());
             showCopied = true;
             setTimeout(() => {
                 showCopied = false;
@@ -27,17 +42,24 @@
         }
     };
 
-    $: walletAddress = $walletStore.account?.owner.toString() || "";
-
     const tabs: ('tokens' | 'pools' | 'transactions')[] = ['tokens', 'pools', 'transactions'];
 </script>
 
-<header class="sidebar-header" role="banner">
+<svelte:window bind:innerWidth={windowWidth} />
+
+<header class="sidebar-header">
     <div class="header-content" in:fly={{ x: 400, duration: 300, easing: cubicOut }}>
         {#if isLoggedIn}
             <div class="wallet-info" role="group" aria-label="Wallet information">
-                <div class="wallet-address-container">
-                    <span class="wallet-address" aria-label="Wallet address">{truncateAddress(walletAddress)}</span>
+                <div class="wallet-section">
+                    <div class="wallet-address-container" 
+                         class:mobile={isMobile}
+                         title={walletAddress}>
+                        <span class="wallet-address" 
+                              aria-label="Wallet address">
+                            {displayAddress}
+                        </span>
+                    </div>
                     <button 
                         class="copy-button" 
                         class:copied={showCopied}
@@ -45,11 +67,11 @@
                         aria-label={showCopied ? "Address copied" : "Copy wallet address"}
                     >
                         {#if showCopied}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         {:else}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
@@ -66,7 +88,6 @@
                             <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
                             <line x1="12" y1="2" x2="12" y2="12"></line>
                         </svg>
-                        <span class="action-text">Disconnect</span>
                     </button>
                     <button 
                         class="action-button" 
@@ -77,7 +98,6 @@
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
-                        <span class="action-text">Close</span>
                     </button>
                 </div>
             </div>
@@ -109,7 +129,6 @@
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
-                        <span class="action-text">Close</span>
                     </button>
                 </div>
             </div>
@@ -118,24 +137,35 @@
 </header>
 
 <style>
+    /* Sidebar Header Styles */
     .sidebar-header {
         min-width: 250px;
         backdrop-filter: blur(8px);
     }
 
+    /* Header Content Layout */
     .header-content {
         display: flex;
         flex-direction: column;
         gap: 12px;
-        padding: 16px;
+        padding: 12px;
     }
 
+    /* Wallet Information Section */
     .wallet-info {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        position: relative;
+        flex-wrap: nowrap;
+    }
+
+    .wallet-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        max-width: calc(100% - 96px);
     }
 
     .wallet-title {
@@ -147,45 +177,73 @@
         padding: 6px 0;
     }
 
+    /* Wallet Address Display */
     .wallet-address-container {
         display: flex;
         align-items: center;
-        gap: 6px;
-        background: rgba(0, 0, 0, 0.15);
-        padding: 6px 10px;
-        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.25);
+        padding: 4px 4px;
+        border-radius: 6px;
         border: 1px solid var(--sidebar-border);
         flex: 1;
+        min-width: 110px;
+        max-width: 100%;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        height: 40px;
+    }
+
+    .wallet-address-container.mobile {
+        padding: 4px 8px;
+        min-width: 90px;
     }
 
     .wallet-address {
         font-family: monospace;
         font-size: 14px;
-        color: var(--sidebar-border-dark);
+        color: white;
         letter-spacing: 0.5px;
         user-select: all;
+        font-weight: 500;
     }
 
+    @media (max-width: 767px) {
+        .wallet-address {
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        .wallet-section {
+            max-width: calc(100% - 88px);
+        }
+    }
+
+    /* Copy Button Styles */
     .copy-button {
-        background: none;
-        border: none;
-        padding: 4px;
-        color: var(--sidebar-border-dark);
+        background: var(--sidebar-border-dark);
+        border: 1px solid var(--sidebar-border);
+        padding: 8px;
+        color: white;
         cursor: pointer;
-        border-radius: 4px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        height: 40px;
+        width: 40px;
+        flex-shrink: 0;
     }
 
     .copy-button.copied {
-        color: #4CAF50;
-        transform: scale(1.1);
+        background: #4CAF50;
+        transform: scale(1.05);
     }
 
     .copy-button:hover {
-        background: rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        filter: brightness(1.1);
     }
 
     .copy-button:focus-visible {
@@ -193,6 +251,7 @@
         outline-offset: 2px;
     }
 
+    /* Action Buttons Styles */
     .action-buttons {
         display: flex;
         gap: 8px;
@@ -200,22 +259,19 @@
 
     .action-button {
         background: var(--sidebar-border-dark);
-        border: none;
-        padding: 6px 12px;
+        border: 1px solid var(--sidebar-border);
+        padding: 6px;
         border-radius: 4px;
         color: white;
-        font-family: monospace;
-        font-size: 14px;
-        font-weight: 600;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
         transition: all 0.15s ease;
-        white-space: nowrap;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        height: 32px;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
     }
 
     .action-button:hover {
@@ -228,6 +284,7 @@
         outline-offset: 2px;
     }
 
+    /* Tab Navigation Styles */
     .tab-navigation {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -239,7 +296,7 @@
     .tab-button {
         background: transparent;
         border: none;
-        padding: 8px 6px;
+        padding: 8px 4px;
         color: var(--sidebar-border);
         font-family: monospace;
         font-size: 14px;
@@ -280,35 +337,5 @@
 
     .tab-button.active::after {
         transform: scaleX(1);
-    }
-
-    @media (max-width: 768px) {
-        .header-content {
-            padding: 12px;
-            gap: 8px;
-        }
-
-        .wallet-info {
-            flex-wrap: nowrap;
-        }
-
-        .wallet-address-container {
-            min-width: 140px;
-        }
-
-        .action-button {
-            padding: 6px;
-            width: 32px;
-            height: 32px;
-        }
-
-        .action-text {
-            display: none;
-        }
-
-        .tab-button {
-            font-size: 14px;
-            padding: 8px 4px;
-        }
     }
 </style>

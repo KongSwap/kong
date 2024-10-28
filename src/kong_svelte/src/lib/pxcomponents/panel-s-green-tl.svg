@@ -1,0 +1,19 @@
+<svg preserveAspectRatio="none" width="30" height="14" viewBox="0 0 30 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M12 2V0H30V2V4V6V8V12V14H0V12H2V8H4V6H6V4H8V2H12Z" fill="#64AD3B"/>
+<path d="M2 12H0V14H2V12Z" fill="#95C87D"/>
+<path d="M4 8H2V10H4V8Z" fill="#95C87D"/>
+<path d="M6 6H4V8H6V6Z" fill="#95C87D"/>
+<path d="M8 4H6V6H8V4Z" fill="#95C87D"/>
+<path d="M12 2H10V4H12V2Z" fill="#95C87D"/>
+<path d="M6 8H4V10H6V8Z" fill="white"/>
+<path d="M8 6H6V8H8V6Z" fill="white"/>
+<path d="M12 4H8V6H12V4Z" fill="white"/>
+<path d="M30 2H12V4H30V2Z" fill="white"/>
+<path d="M4 10H2V14H4V10Z" fill="white"/>
+<path d="M30 0H10V2H30V0Z" fill="black"/>
+<path d="M10 2H6V4H10V2Z" fill="black"/>
+<path d="M6 4H4V6H6V4Z" fill="black"/>
+<path d="M4 6H2V8H4V6Z" fill="black"/>
+<path d="M2 8H0V12H2V8Z" fill="black"/>
+<path d="M2 12H0V14H2V12Z" fill="black"/>
+</svg>

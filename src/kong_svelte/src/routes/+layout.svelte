@@ -5,7 +5,7 @@
 	import { restoreWalletConnection } from '$lib/stores/walletStore';
 	import Navbar from '$lib/components/nav/Navbar.svelte';
 	import { currentEnvMode } from '$lib/utils/envUtils';
-
+  
 	onMount(async () => {
 		Promise.all([
 			restoreWalletConnection()
@@ -16,11 +16,11 @@
 <Navbar />
 
 <svelte:head>
-	<title>{currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t('common.browserSubtitle')}</title>
+	<title>
+		{currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t('common.browserSubtitle')}
+	</title>
 </svelte:head>
 
-
-<!-- Slot for page content -->
 <slot />
 
 <style>

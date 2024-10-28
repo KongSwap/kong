@@ -1,7 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/locales/translations';
   import { backendService } from '$lib/services/backendService';
-  import WalletConnection from '$lib/components/WalletConnection.svelte';
   import { onMount } from 'svelte';
 
   let tokens: any = null;
