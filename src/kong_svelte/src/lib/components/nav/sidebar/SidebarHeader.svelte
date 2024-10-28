@@ -61,11 +61,14 @@
                         </span>
                     </div>
                     <button 
-                        class="copy-button" 
+                        class="copy-button group relative" 
                         class:copied={showCopied}
                         on:click={handleCopy}
-                        aria-label={showCopied ? "Address copied" : "Copy wallet address"}
+                        aria-label={showCopied ? "Principal copied" : "Copy principal"}
                     >
+                        <span class="pointer-events-none absolute -bottom-7 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 before:content-[''] group-hover:opacity-100">
+                            {showCopied ? "Principal copied!" : "Copy principal"}
+                        </span>
                         {#if showCopied}
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="20 6 9 17 4 12"></polyline>
@@ -80,20 +83,26 @@
                 </div>
                 <div class="action-buttons">
                     <button 
-                        class="action-button" 
+                        class="action-button disconnect-button group relative"
                         on:click={disconnectWallet}
                         aria-label="Disconnect wallet"
                     >
+                        <span class="pointer-events-none absolute -bottom-7 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 before:content-[''] group-hover:opacity-100">
+                            Disconnect
+                        </span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
                             <line x1="12" y1="2" x2="12" y2="12"></line>
                         </svg>
                     </button>
                     <button 
-                        class="action-button" 
+                        class="action-button !border-0 !shadow-none group relative"
                         on:click={onClose}
                         aria-label="Close sidebar"
                     >
+                        <span class="pointer-events-none absolute -bottom-7 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 before:content-[''] group-hover:opacity-100">
+                            Close
+                        </span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -171,7 +180,7 @@
     .wallet-title {
         font-family: monospace;
         font-size: 20px;
-        color: var(--sidebar-border-dark);
+        color: var(--sidebar-wallet-button-text);
         margin: 0;
         font-weight: 600;
         padding: 6px 0;
@@ -257,8 +266,15 @@
         gap: 8px;
     }
 
+    .close-button {
+        background: var(--sidebar-close-button-bg);
+    }
+
+    .disconnect-button {
+        background: var(--sidebar-disconnect-button-bg);
+    }
+
     .action-button {
-        background: var(--sidebar-border-dark);
         border: 1px solid var(--sidebar-border);
         padding: 6px;
         border-radius: 4px;
@@ -339,3 +355,4 @@
         transform: scaleX(1);
     }
 </style>
+
