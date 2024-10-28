@@ -19,42 +19,26 @@ class BackendService {
   public async getTokens(): Promise<Token[]> {
     try {
       const actor = await getActor();
-      const result = await actor.tokens(['']);
+      const result = await actor.tokens(['all']);
       
       if (result.Ok) {
-        return result.Ok.map(token => {
-          if ('IC' in token) {
-            return {
-              fee: token.IC.fee,
-              decimals: token.IC.decimals,
-              token: token.IC.token,
-              tokenId: token.IC.token_id,
-              chain: token.IC.chain,
-              name: token.IC.name,
-              canisterId: token.IC.canister_id,
-              icrc1: token.IC.icrc1,
-              icrc2: token.IC.icrc2, 
-              icrc3: token.IC.icrc3,
-              poolSymbol: token.IC.pool_symbol,
-              symbol: token.IC.symbol,
-              onKong: token.IC.on_kong
-            };
-          } else if ('LP' in token) {
-            return {
-              fee: token.LP.fee,
-              decimals: token.LP.decimals,
-              token: token.LP.token,
-              tokenId: token.LP.token_id,
-              chain: token.LP.chain,
-              name: token.LP.name,
-              address: token.LP.address,
-              poolIdOf: token.LP.pool_id_of,
-              poolSymbol: token.LP.pool_symbol,
-              totalSupply: token.LP.total_supply,
-              symbol: token.LP.symbol,
-              onKong: token.LP.on_kong
-            };
-          }
+        return result.Ok.filter(token => 'IC' in token).map(token => {
+          console.log('token', token);
+          return {
+            fee: token.IC.fee,
+            decimals: token.IC.decimals,
+            token: token.IC.token,
+            tokenId: token.IC.token_id,
+            chain: token.IC.chain,
+            name: token.IC.name,
+            canisterId: token.IC.canister_id,
+            icrc1: token.IC.icrc1,
+            icrc2: token.IC.icrc2,
+            icrc3: token.IC.icrc3,
+            poolSymbol: token.IC.pool_symbol,
+            symbol: token.IC.symbol,
+            onKong: token.IC.on_kong
+          };
         });
       }
       return [];

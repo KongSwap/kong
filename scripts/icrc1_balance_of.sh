@@ -10,6 +10,7 @@ IDENTITY="--identity kong_user2"
 QUIET="-qq"
 
 PRINCIPAL_ID=$(dfx identity ${NETWORK} ${IDENTITY} ${QUIET} get-principal)
+
 echo kong_user1: ${PRINCIPAL_ID}
 ICP_LEDGER="icp_ledger"
 dfx canister call ${NETWORK} ${IDENTITY} ${QUIET} ${ICP_LEDGER} icrc1_symbol '()'
