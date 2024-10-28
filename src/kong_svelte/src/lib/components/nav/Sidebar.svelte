@@ -8,6 +8,7 @@
     import WalletProvider from './sidebar/WalletProvider.svelte';
     import SidebarHeader from './sidebar/SidebarHeader.svelte';
     import SocialSection from './sidebar/SocialSection.svelte';
+    import TokenList from './sidebar/TokenList.svelte';
     
     export let sidebarOpen: boolean;
     export let onClose: () => void;
@@ -133,6 +134,8 @@
                         <div class="scroll-container">
                             {#if !isLoggedIn}
                                 <WalletProvider on:login={() => {}} />
+                            {:else}
+                                <TokenList />
                             {/if}
                         </div>
                     </div>
