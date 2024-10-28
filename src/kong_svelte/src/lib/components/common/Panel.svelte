@@ -10,12 +10,12 @@
     function getImagePath(part: string): string {
       if (type === 's') {
         if (['ml', 'mr', 'center'].includes(part)) {
-          return `/src/lib/pxcomponents/panel-${variant}-main-${part}.svg`;
+          return `pxcomponents/panel-${variant}-main-${part}.svg`;
         }
-        return `/src/lib/pxcomponents/panel-s-${variant}-${part}.svg`;
+        return `pxcomponents/panel-s-${variant}-${part}.svg`;
       }
       
-      return `/src/lib/pxcomponents/panel-${variant}-${type}-${part}.svg`;
+      return `pxcomponents/panel-${variant}-${type}-${part}.svg`;
     }
   
     // Format dimension value

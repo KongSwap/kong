@@ -5,7 +5,25 @@ import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import path from "path";
 
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ 
+  path: path.resolve(__dirname, "../../.env"),
+  override: true 
+});
+
+const canisterIds = {
+  local: {
+    KONG_BACKEND: "l4lgk-raaaa-aaaar-qahpq-cai",
+  },
+  staging: {
+    KONG_BACKEND: "2ipq2-uqaaa-aaaar-qailq-cai",
+  }
+};
+
+const ENV = process.env.DFX_NETWORK || 'local';
+
+Object.entries(canisterIds[ENV]).forEach(([key, value]) => {
+  process.env[`CANISTER_ID_${key}`] = value;
+});
 
 export default defineConfig({
   build: {
@@ -46,4 +64,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
   },
+  define: {
+    'process.env.DFX_NETWORK': JSON.stringify(ENV),
+    // Add any other environment variables you need
+  }
 });
