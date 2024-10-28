@@ -1,6 +1,6 @@
 <!-- Panel.svelte -->
 <script lang="ts">
-    export let variant: 'green' | 'yellow' = 'green';
+    export let variant: 'green' | 'yellow' | 'red' = 'green';
     export let type: 'main' | 'second' | 's' = 'main';
     export let width: number | string = 300; // Allow string values like '100%'
     export let height: number | string = 200; // Allow string values like '100vh'

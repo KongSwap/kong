@@ -180,8 +180,8 @@
         align-items: center;
         gap: 8px;
         padding: 8px;
-        background: var(--sidebar-border-dark);
-        border: 2px solid var(--sidebar-border);
+        background: var(--sidebar-wallet-button-bg);
+        border: 2px solid var(--sidebar-wallet-button-border);
         cursor: pointer;
         transition: all 0.2s ease;
         width: 100%;
@@ -196,24 +196,23 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, var(--shine-color) 0%, transparent 50%);
         pointer-events: none;
     }
 
     .wallet-button:hover {
-        background: var(--sidebar-border);
+        background: var(--sidebar-wallet-button-bg);
         transform: scale(0.98);
     }
 
     .wallet-icon {
-        width: 24px;
-        height: 24px;
+        width: 56px;
+        height: 56px;
         border-radius: 4px;
-        border: 1px solid var(--sidebar-border);
     }
 
     .wallet-name {
-        color: var(--sidebar-bg);
+        @apply pl-4;
+        color: var(--sidebar-wallet-button-text);
         font-size: 12px;
     }
 

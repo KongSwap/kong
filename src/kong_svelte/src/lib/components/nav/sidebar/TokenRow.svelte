@@ -24,7 +24,7 @@
 <div class="token-row">
     <div class="token-info">
         <img src="/images/tokens/{token.symbol.toLowerCase()}.png" alt={token.symbol} />
-        <div>
+        <div class="flex flex-col text-left">
             <span class="symbol">{token.symbol}</span>
             <span class="name">{token.name}</span>
         </div>
@@ -35,7 +35,7 @@
     </div>
 </div>
 
-<style>
+<style scoped lang="postcss">
     .token-row {
       display: flex;
       justify-content: space-between;
@@ -58,10 +58,11 @@
     }
     
     .token-values {
-      text-align: right;
+      @apply text-right flex flex-col;
     }
     
     .symbol {
+      @apply text-yellow-300;
       font-weight: bold;
     }
     
