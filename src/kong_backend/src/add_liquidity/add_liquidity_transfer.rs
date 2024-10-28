@@ -118,11 +118,30 @@ async fn check_arguments(
         }
     };
 
+    // check token 1
+    let token_1 = match token_map::get_by_token(&args.token_1) {
+        Ok(token) => token,
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Token1NotFound, Some(e.clone()));
+            return Err(e);
+        }
+    };
+
     // check tx_id_0 is valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
         Some(TxId::BlockIndex(tx_id)) => Some(tx_id),
         _ => None,
     };
+
+    let tx_id_1 = match &args.tx_id_1 {
+        Some(TxId::BlockIndex(tx_id)) => Some(tx_id),
+        _ => None,
+    };
+
+    // either token0 or token1 must have a tx_id
+    if tx_id_0.is_none() && tx_id_1.is_none() {
+        return Err("Tx_id_0 or Tx_id_1 is required".to_string());
+    }
 
     // transfer_id_0 is used to store if the transfer was successful
     // if Some(tx_id_0) and Some(transfer_id_0) then the transfer was successful and the transfer_id_0 stores the block id
@@ -138,23 +157,6 @@ async fn check_arguments(
         }
         None => Err("icrc2_transfer_from".to_string()),
     };
-
-    let token_1 = match token_map::get_by_token(&args.token_1) {
-        Ok(token) => token,
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Token1NotFound, Some(e.clone()));
-            return Err(e);
-        }
-    };
-
-    let tx_id_1 = match &args.tx_id_1 {
-        Some(TxId::BlockIndex(tx_id)) => Some(tx_id),
-        _ => None,
-    };
-
-    if tx_id_0.is_none() && tx_id_1.is_none() {
-        return Err("Tx_id_0 or Tx_id_1 is required".to_string());
-    }
 
     let transfer_id_1 = match tx_id_1 {
         Some(tx_id_1) => {

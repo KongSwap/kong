@@ -91,25 +91,25 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
             return Err(e);
         }
     };
+
     let pay_amount = args.pay_amount.clone();
 
     // check pay_tx_id is valid block index
-    match &args.pay_tx_id {
+    let transfer_id = match &args.pay_tx_id {
         Some(pay_tx_id) => match pay_tx_id {
-            TxId::BlockIndex(pay_tx_id) => {
-                let transfer_id = verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?;
-                Ok((pay_token, pay_amount, transfer_id))
-            }
+            TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
             _ => {
                 request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                Err("Pay tx_id not supported".to_string())
+                return Err("Pay tx_id not supported".to_string());
             }
         },
         None => {
             request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
-            Err("Pay tx_id required".to_string())
+            return Err("Pay tx_id required".to_string());
         }
-    }
+    };
+
+    Ok((pay_token, pay_amount, transfer_id))
 }
 
 fn calculate_amounts(
@@ -124,9 +124,9 @@ fn calculate_amounts(
     let pay_token_id = pay_token.token_id();
     // Receive token
     let receive_token_id = receive_token.token_id();
+
     let user_fee_level = user_map::get_by_user_id(user_id).ok_or("User not found")?.fee_level;
 
-    let ckusdt = token_map::get_ckusdt()?;
     let receive_amount_with_fees_and_gas;
     let mid_price_f64;
     let price_f64;
@@ -153,6 +153,7 @@ fn calculate_amounts(
         slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap);
     } else {
+        let ckusdt = token_map::get_ckusdt()?;
         // 2-step swap via ckUSDT
         let pool1 = pool_map::get_by_token_ids(pay_token.token_id(), ckusdt.token_id()).ok_or("Pool not found")?;
         let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2; // this will round it up

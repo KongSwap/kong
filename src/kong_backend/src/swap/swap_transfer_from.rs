@@ -147,9 +147,9 @@ fn calculate_amounts(
     let pay_token_id = pay_token.token_id();
     // Receive token
     let receive_token_id = receive_token.token_id();
+
     let user_fee_level = user_map::get_by_user_id(user_id).ok_or("User not found")?.fee_level;
 
-    let ckusdt = token_map::get_ckusdt()?;
     let receive_amount_with_fees_and_gas;
     let mid_price_f64;
     let price_f64;
@@ -176,6 +176,7 @@ fn calculate_amounts(
         slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap);
     } else {
+        let ckusdt = token_map::get_ckusdt()?;
         // 2-step swap via ckUSDT
         let pool1 = pool_map::get_by_token_ids(pay_token.token_id(), ckusdt.token_id()).ok_or("Pool not found")?;
         let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2; // this will round it up
