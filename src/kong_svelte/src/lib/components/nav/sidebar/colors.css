@@ -1,11 +1,9 @@
 :root {
-    --sidebar-bg: #c72323;
-    --sidebar-close-button-bg: #e57842;
-    --sidebar-disconnect-button-bg: #8c2020;
-    --sidebar-border: #4f1818;
-    --sidebar-border-dark: #2c2ca0;
-    --sidebar-wallet-button-bg: #2c2ca0;
-    --sidebar-wallet-button-border: #00008b;
+    --sidebar-bg: #95C87D;
+    --sidebar-border: #050C01FF;
+    --sidebar-border-dark: #4a8029;
+    --sidebar-wallet-button-bg: #374f2b;
+    --sidebar-wallet-button-border: #95C87D;
     --sidebar-wallet-button-text: #ffffff;
     --overlay-bg: rgba(0, 0, 0, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.2);

@@ -242,9 +242,9 @@
     >
       <div class="inner-border p-4 w-full h-full">
         <h2
-          class="text-center font-black text-2xl text-white mb-4 text-outline-2"
+          class="text-center font-black text-3xl text-white mb-4 text-outline-2"
         >
-          ** {$t("stats.overviewOfKongPools")} **
+          {$t("stats.overviewOfKongPools")}
         </h2>
         <div class="overflow-x-auto">
           <table class="w-full text-black font-alumni">

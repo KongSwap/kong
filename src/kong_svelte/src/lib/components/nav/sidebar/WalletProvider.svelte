@@ -96,7 +96,7 @@
             {#if availableWallets && availableWallets.length > 0}
                 {#each availableWallets as wallet}
                     <button 
-                        class="wallet-button"
+                        class="wallet-button rounded-2xl"
                         on:click={() => handleConnect(wallet.id)}
                     >
                         <img

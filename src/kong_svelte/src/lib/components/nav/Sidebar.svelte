@@ -115,7 +115,7 @@
             </div>
 
             <Panel 
-                variant="red"
+                variant="green"
                 type="main"
                 width={isMobile ? '100%' : `${sidebarWidth}px`}
                 height={isMobile ? '100vh' : '90vh'}
