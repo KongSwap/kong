@@ -13,11 +13,11 @@
   const titles = {
     swap: {
       desktop: '/titles/titleKingKongSwap.png',
-      mobile: '/titles/titleKingKongSwap-m.png'
+      mobile: '/titles/titleKingKongSwap.png'
     },
     stats: {
       desktop: '/titles/titleKingKongStats.png',
-      mobile: '/titles/titleKingKongStats-m.png'
+      mobile: '/titles/titleKingKongStats.png'
     }
   };
 
@@ -94,7 +94,7 @@
     {#if isMobile}
       <div class="mobile-title-container">
         <div class="title-wrapper">
-          <img src={titleImage} alt={activeTab === 'swap' ? 'Swap' : 'Stats'} class="mobile-title-image" />
+          <img src={titleImage} alt={activeTab === 'swap' ? 'Swap' : 'Stats'} class="title-image" />
         </div>
       </div>
     {/if}
@@ -180,13 +180,6 @@
     justify-content: center;
     align-items: center;
     padding: 0 16px;
-  }
-
-  .mobile-title-image {
-    width: 100%;
-    max-width: 300px;
-    object-fit: contain;
-    margin-top: 16px;
   }
 
   @media (max-width: 768px) {
