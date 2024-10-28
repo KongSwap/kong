@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp;
 
-use crate::ic::canister_address::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN};
+use crate::ic::canister_address::{
+    CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL,
+    ICP_SYMBOL_WITH_CHAIN,
+};
 use crate::ic::id::{kong_account, kong_backend_id};
 use crate::stable_memory::{
     CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
@@ -22,6 +25,10 @@ pub struct StableKongSettings {
     pub ckusdt_symbol_with_chain: String,
     pub ckusdt_address: String,
     pub ckusdt_address_with_chain: String,
+    pub icp_symbol: String,
+    pub icp_symbol_with_chain: String,
+    pub icp_address: String,
+    pub icp_address_with_chain: String,
     pub default_max_slippage: f64,
     pub default_lp_fee_bps: u8,
     pub default_kong_fee_bps: u8,
@@ -85,6 +92,10 @@ impl Default for StableKongSettings {
             ckusdt_symbol_with_chain: CKUSDT_SYMBOL_WITH_CHAIN.to_string(),
             ckusdt_address: CKUSDT_ADDRESS.to_string(),
             ckusdt_address_with_chain: CKUSDT_ADDRESS_WITH_CHAIN.to_string(),
+            icp_symbol: ICP_SYMBOL.to_string(),
+            icp_symbol_with_chain: ICP_SYMBOL_WITH_CHAIN.to_string(),
+            icp_address: ICP_ADDRESS.to_string(),
+            icp_address_with_chain: ICP_ADDRESS_WITH_CHAIN.to_string(),
             default_max_slippage: 2.0_f64,
             default_lp_fee_bps: 30,
             default_kong_fee_bps: 0,

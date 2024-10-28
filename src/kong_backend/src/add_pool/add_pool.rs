@@ -133,17 +133,17 @@ async fn check_arguments(
         None => None,
     };
 
-    // make sure token_1 is ckUSDT
+    // make sure token_1 is ckUSDT or ICP
     let token_1 = match args.token_1.as_str() {
-        token
-            if token == kong_settings::get().ckusdt_symbol
-                || token == kong_settings::get().ckusdt_symbol_with_chain
-                || token == kong_settings::get().ckusdt_address
-                || token == kong_settings::get().ckusdt_address_with_chain =>
-        {
-            token_map::get_ckusdt()?
+        token if is_token_ckusdt(token) => token_map::get_ckusdt()?,
+        token if is_token_icp(token) => token_map::get_icp()?,
+        _ => {
+            return Err(format!(
+                "Token_1 must be {} or {}",
+                kong_settings::get().ckusdt_symbol,
+                kong_settings::get().icp_symbol
+            ))
         }
-        _ => return Err(format!("Token_1 must be {}", kong_settings::get().ckusdt_symbol)),
     };
 
     // token_0, check if it exists already or needs to be added
@@ -680,4 +680,26 @@ async fn return_tokens(
     );
     request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
     reply
+}
+
+fn is_token_ckusdt(token: &str) -> bool {
+    if token == kong_settings::get().ckusdt_symbol
+        || token == kong_settings::get().ckusdt_symbol_with_chain
+        || token == kong_settings::get().ckusdt_address
+        || token == kong_settings::get().ckusdt_address_with_chain
+    {
+        return true;
+    }
+    false
+}
+
+fn is_token_icp(token: &str) -> bool {
+    if token == kong_settings::get().icp_symbol
+        || token == kong_settings::get().icp_symbol_with_chain
+        || token == kong_settings::get().icp_address
+        || token == kong_settings::get().icp_address_with_chain
+    {
+        return true;
+    }
+    false
 }

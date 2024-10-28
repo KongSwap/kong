@@ -169,6 +169,11 @@ pub fn get_ckusdt() -> Result<StableToken, String> {
     token_map::get_by_address(&kong_settings::get().ckusdt_address_with_chain)
 }
 
+/// return ICP token
+pub fn get_icp() -> Result<StableToken, String> {
+    token_map::get_by_address(&kong_settings::get().icp_address_with_chain)
+}
+
 /// return all tokens that are listed on Kong
 pub fn get_on_kong() -> Vec<StableToken> {
     TOKEN_MAP.with(|m| {
