@@ -5,6 +5,7 @@
   import { onMount } from "svelte";
   import { isEqual } from "lodash-es";
   import { browser } from "$app/environment";
+    import Button from "$lib/components/common/Button.svelte";
 
   let options = {
     chart: {
@@ -70,6 +71,50 @@
   let wobbleClass = "wobble";
   let chartLib;
 
+  let sortColumn = 'tvl';
+  let sortDirection: 'asc' | 'desc' = 'desc';
+  let userInitiatedSort = false;
+
+  function sortTable(column, isUserClick = true) {
+    if (isUserClick) {
+      userInitiatedSort = true;
+    }
+
+    if (sortColumn === column && isUserClick) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortColumn = column;
+    }
+
+    poolsInfo = poolsInfo.sort((a, b) => {
+      let aValue = a[column];
+      let bValue = b[column];
+
+      if (typeof aValue === 'string') {
+        aValue = aValue.replace(/[$,]/g, '');
+      }
+      if (typeof bValue === 'string') {
+        bValue = bValue.replace(/[$,]/g, '');
+      }
+
+      aValue = !isNaN(parseFloat(aValue)) ? parseFloat(aValue) : aValue;
+      bValue = !isNaN(parseFloat(bValue)) ? parseFloat(bValue) : bValue;
+
+      if (typeof aValue === 'string' && aValue.includes('%')) {
+        aValue = parseFloat(aValue);
+      }
+      if (typeof bValue === 'string' && bValue.includes('%')) {
+        bValue = parseFloat(bValue);
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    poolsInfo = [...poolsInfo];
+  }
+
   onMount(async () => {
     switchLocale("en");
     let { chart } = await import("svelte-apexcharts");
@@ -126,6 +171,9 @@
         poolsTotals.totalFees = formatBigInt(
           liquidity_pool_balances_response.Ok.total_24h_lp_fee || 0,
         );
+
+        userInitiatedSort = false;
+        sortTable('tvl', false);
       }
 
       if (liquidity_pool_balances_response.hasOwnProperty("Err")) {
@@ -174,6 +222,10 @@
         tvl,
       };
     });
+  }
+
+  $: if (poolsInfo.length > 0 && sortColumn && !userInitiatedSort) {
+    sortTable(sortColumn, false);
   }
 </script>
 
@@ -250,11 +302,36 @@
           <table class="w-full text-black font-alumni">
             <thead>
               <tr class="border-b-4 border-black text-3xl uppercase">
-                <th class="p-2 uppercase text-left">{$t("stats.poolName")}</th>
-                <th class="p-2 text-right">{$t("stats.price")}</th>
-                <th class="p-2 text-right">{$t("stats.tvl")}</th>
-                <th class="p-2 text-right">{$t("stats.24hVolume")}</th>
-                <th class="p-2 text-right">{$t("stats.apy")}</th>
+                <th class="p-2 uppercase text-left cursor-pointer" on:click={() => sortTable('symbol_0')}>
+                  {$t("stats.poolName")}
+                  {#if sortColumn === 'symbol_0'}
+                    <span class="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  {/if}
+                </th>
+                <th class="p-2 text-right cursor-pointer" on:click={() => sortTable('price')}>
+                  {$t("stats.price")}
+                  {#if sortColumn === 'price'}
+                    <span class="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  {/if}
+                </th>
+                <th class="p-2 text-right cursor-pointer" on:click={() => sortTable('tvl')}>
+                  {$t("stats.tvl")}
+                  {#if sortColumn === 'tvl'}
+                    <span class="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  {/if}
+                </th>
+                <th class="p-2 text-right cursor-pointer" on:click={() => sortTable('roll24hVolume')}>
+                  {$t("stats.24hVolume")}
+                  {#if sortColumn === 'roll24hVolume'}
+                    <span class="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  {/if}
+                </th>
+                <th class="p-2 text-right cursor-pointer" on:click={() => sortTable('apy')}>
+                  {$t("stats.apy")}
+                  {#if sortColumn === 'apy'}
+                    <span class="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  {/if}
+                </th>
                 <th class="p-2"></th>
               </tr>
             </thead>
@@ -271,17 +348,21 @@
                   <td class="p-2 text-right">${pool.roll24hVolume}</td>
                   <td class="p-2 text-right">{pool.apy}%</td>
                   <td class="p-2">
-                    <div class="flex justify-center gap-2">
-                      <button
-                        class="bg-green-500 hover:bg-green-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black"
+                    <div class="flex flex-col justify-center gap-2">
+                      <Button
+                        variant="green"
+                        size="small"
+                        className="w-full"
                       >
                         {$t("stats.swap")}
-                      </button>
-                      <button
-                        class="bg-yellow-500 hover:bg-yellow-700 text-black font-bold py-1 px-4 rounded-full border-2 border-black"
+                      </Button>
+                      <Button
+                        variant="green"
+                        size="small"
+                        className="w-full"
                       >
                         {$t("stats.addLiquidity")}
-                      </button>
+                    </Button>
                     </div>
                   </td>
                 </tr>
@@ -415,5 +496,9 @@
   .wood-border p {
     margin: 0;
     padding: 20px;
+  }
+
+  th {
+    cursor: pointer;
   }
 </style>

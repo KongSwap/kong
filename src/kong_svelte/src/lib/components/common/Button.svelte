@@ -8,6 +8,7 @@
   export let text: string = '';
   export let onClick: () => void = () => {};
   export let disabled: boolean = false;
+  export let className: string = '';
 
   $: {
     if (size === 'small' && variant === 'blue') {
@@ -92,7 +93,7 @@
     }
   }
 
-  $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''}`;
+  $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''} ${className}`;
 </script>
 
 <button
@@ -160,7 +161,8 @@
     font-family: theme('fontFamily.alumni');
     font-size: 24px;
     text-transform: uppercase;
-    padding: 0 8px;
+    padding-left: 10px;
+    padding-right: 10px;
     user-select: none;
     white-space: nowrap;
     position: absolute;
