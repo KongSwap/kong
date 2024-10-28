@@ -155,15 +155,6 @@ pub fn get_by_address(address: &str) -> Result<StableToken, String> {
         .ok_or_else(|| format!("Token {} not found", address_with_chain))
 }
 
-/// test if token is ckUSDT
-pub fn is_ckusdt(token: &str) -> bool {
-    let kong_settings = kong_settings::get();
-    token == kong_settings.ckusdt_symbol
-        || token == kong_settings.ckusdt_symbol_with_chain
-        || token == kong_settings.ckusdt_address
-        || token == kong_settings.ckusdt_address_with_chain
-}
-
 /// return ckUSDT token
 pub fn get_ckusdt() -> Result<StableToken, String> {
     token_map::get_by_address(&kong_settings::get().ckusdt_address_with_chain)

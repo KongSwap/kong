@@ -6,7 +6,7 @@ use super::swap_amounts_reply_impl::to_swap_amounts_tx_reply;
 
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::nat_helpers::nat_zero;
-use crate::ic::guards::not_in_maintenance_mode;
+use crate::ic::{ckusdt::is_ckusdt, guards::not_in_maintenance_mode, icp::is_icp};
 use crate::stable_pool::pool_map;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -25,7 +25,7 @@ pub fn swap_amounts(pay_token: String, pay_amount: Nat, receive_token: String) -
     let user_fee_level = user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level;
 
     let mut txs = Vec::new();
-    if token_map::is_ckusdt(&receive_token.address_with_chain()) {
+    if is_ckusdt(&receive_token.address_with_chain()) {
         let pool = pool_map::get_by_token_ids(pay_token_id, receive_token_id).ok_or("Pool not found")?;
         let swap = swap_amount_0(&pool, &pay_amount, Some(user_fee_level), None, None)?;
         txs.push(to_swap_amounts_tx_reply(&swap).ok_or("Invalid swap tokens")?);
@@ -54,7 +54,7 @@ pub fn swap_amounts(pay_token: String, pay_amount: Nat, receive_token: String) -
             mid_price: mid_price_f64,
             slippage: slippage_f64,
         })
-    } else if token_map::is_ckusdt(&pay_token.address_with_chain()) {
+    } else if is_ckusdt(&pay_token.address_with_chain()) {
         let pool = pool_map::get_by_token_ids(receive_token_id, pay_token_id).ok_or("Pool not found")?;
         let swap = swap_amount_1(&pool, &pay_amount, Some(user_fee_level), None, None)?;
         txs.push(to_swap_amounts_tx_reply(&swap).ok_or("Invalid swap tokens")?);

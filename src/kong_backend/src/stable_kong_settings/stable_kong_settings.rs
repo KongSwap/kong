@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp;
 
-use crate::ic::canister_address::{
-    CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL,
-    ICP_SYMBOL_WITH_CHAIN,
+use crate::ic::{
+    ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN},
+    icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN},
+    id::{kong_account, kong_backend_id},
 };
-use crate::ic::id::{kong_account, kong_backend_id};
 use crate::stable_memory::{
     CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
     TX_MAP, USER_MAP,

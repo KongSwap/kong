@@ -18,7 +18,9 @@ use crate::helpers::{
 use crate::ic::{
     address::Address,
     address_impl::get_address,
+    ckusdt::is_ckusdt,
     get_time::get_time,
+    icp::is_icp,
     id::caller_id,
     logging::error_log,
     transfer::{icp_transfer, icrc1_transfer},
@@ -130,7 +132,7 @@ fn calculate_amounts(
     let price_f64;
     let slippage_f64;
     let mut txs = Vec::new();
-    if token_map::is_ckusdt(&receive_token.address_with_chain()) {
+    if is_ckusdt(&receive_token.address_with_chain()) {
         let pool = pool_map::get_by_token_ids(pay_token_id, receive_token_id).ok_or("Pool not found")?;
         let swap = swap_amount_0(&pool, pay_amount, Some(user_fee_level), None, None)?;
         receive_amount_with_fees_and_gas = swap.receive_amount_with_fees_and_gas();
@@ -140,7 +142,7 @@ fn calculate_amounts(
         price_f64 = price_rounded(&price).ok_or("Invalid price")?;
         slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap);
-    } else if token_map::is_ckusdt(&pay_token.address_with_chain()) {
+    } else if is_ckusdt(&pay_token.address_with_chain()) {
         let pool = pool_map::get_by_token_ids(receive_token_id, pay_token_id).ok_or("Pool not found")?;
         let swap = swap_amount_1(&pool, pay_amount, Some(user_fee_level), None, None)?;
         receive_amount_with_fees_and_gas = swap.receive_amount_with_fees_and_gas();
