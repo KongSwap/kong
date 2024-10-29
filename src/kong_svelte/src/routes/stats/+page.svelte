@@ -104,7 +104,6 @@
   }
 
   onMount(async () => {
-    switchLocale("en");
     try {
       tokens = await backendService.getTokens();
       await updatePoolBalances();
