@@ -1,6 +1,10 @@
-import { getTokenDecimals } from '$lib/utils/formatNumberCustom';
-import { formatNumberCustom } from '$lib/utils/formatNumberCustom';
+import { getTokenDecimals, formatNumberCustom } from '$lib/utils/formatNumberCustom';
 
+/**
+ * Parses a value by removing unwanted characters and converting to a number if applicable.
+ * @param value - The value to parse.
+ * @returns The parsed value.
+ */
 export function parseValue(value: any): any {
   if (typeof value === 'string') {
     value = value.replace(/[$%,]/g, '');
@@ -12,7 +16,19 @@ export function parseValue(value: any): any {
   return value;
 }
 
+/**
+ * Sorts an array of pools based on a specified column and direction.
+ * @param pools - The array of pools to sort.
+ * @param column - The column to sort by.
+ * @param direction - The sort direction ('asc' or 'desc').
+ * @returns A new sorted array of pools.
+ */
 export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc'): any[] {
+  if (!Array.isArray(pools)) {
+    console.error('sortPools expects an array, but received:', pools);
+    return [];
+  }
+
   return pools.slice().sort((a, b) => {
     let aValue = parseValue(a[column]);
     let bValue = parseValue(b[column]);
@@ -33,12 +49,17 @@ export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc
   });
 }
 
-export function formatPoolData(pools: any[], tokens: any): any[] {
-  if (pools.length === 0 || !tokens) return pools;
+/**
+ * Formats pool data by calculating APY, 24h Volume, TVL, and adding a unique ID.
+ * @param pools - The array of pools to format.
+ * @returns A new array of formatted pools.
+ */
+export function formatPoolData(pools: any[]): any[] {
+  if (pools.length === 0) return pools;
 
   const decimals1 = getTokenDecimals(pools[0]?.symbol_1) || 6;
 
-  return pools.map((pool) => {
+  return pools.map((pool, index) => {
     const balance = Number(pool.balance || 0);
     const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
     const roll24hVolume = formatNumberCustom(
@@ -49,6 +70,7 @@ export function formatPoolData(pools: any[], tokens: any): any[] {
 
     return {
       ...pool,
+      id: `${pool.symbol_0}-${pool.symbol_1}-${index}`, // Unique ID
       apy,
       roll24hVolume,
       tvl,
@@ -56,6 +78,12 @@ export function formatPoolData(pools: any[], tokens: any): any[] {
   });
 }
 
+/**
+ * Filters pools based on a search query.
+ * @param pools - The array of pools to filter.
+ * @param query - The search query.
+ * @returns A new array of filtered pools.
+ */
 export function filterPools(pools: any[], query: string): any[] {
   if (!query) return pools;
   const lowerQuery = query.toLowerCase();

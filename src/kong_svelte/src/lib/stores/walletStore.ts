@@ -1,15 +1,25 @@
 import { writable, type Writable } from 'svelte/store';
 import { walletsList, createPNP } from '@windoge98/plug-n-play';
 import {
-  createActor as createKongBackendActor,
   canisterId as kongBackendCanisterId,
   idlFactory as kongBackendIDL,
 } from '../../../../declarations/kong_backend';
 import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
 import { backendService } from '$lib/services/backendService';
+import { ICRC1_IDL } from "$lib/idls/icrc1.idl.js";
+import { ICRC2_IDL } from "$lib/idls/icrc2.idl.js";
 
 // Export the list of available wallets
 export const availableWallets = walletsList;
+
+export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2';
+
+// IDL Mappings
+export const canisterIDLs = {
+  kong_backend: kongBackendIDL,
+  icrc1: ICRC1_IDL,
+  icrc2: ICRC2_IDL,
+}
 
 // Stores
 export const selectedWalletId = writable<string>('');
@@ -122,8 +132,9 @@ export async function isConnected(): Promise<boolean> {
 }
 
 // Create actor
-async function createActor(isAuthenticated: boolean): Promise<ActorSubclass<any>> {
-  if (isAuthenticated && !(await isConnected())) {
+async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
+  const isAuthenticated = await isConnected();
+  if (isAuthenticated) {
     throw new Error('Wallet not connected.');
   }
   const isLocalhost = window.location.hostname.includes('localhost');
@@ -133,11 +144,11 @@ async function createActor(isAuthenticated: boolean): Promise<ActorSubclass<any>
     await agent.fetchRootKey();
   }
   return isAuthenticated
-    ? await pnp.getActor(kongBackendCanisterId, kongBackendIDL)
-    : Actor.createActor(kongBackendIDL, { agent, canisterId: kongBackendCanisterId });
+    ? await pnp.getActor(canisterId, idlFactory)
+    : Actor.createActor(idlFactory, { agent, canisterId });
 }
 
 // Export function to get the actor
-export async function getActor(): Promise<ActorSubclass<any>> {
-  return await createActor(await isConnected());
+export async function getActor(canisterId = kongBackendCanisterId, canisterType: CanisterType = 'kong_backend'): Promise<ActorSubclass<any>> {
+  return await createActor(canisterId, canisterIDLs[canisterType]);
 }

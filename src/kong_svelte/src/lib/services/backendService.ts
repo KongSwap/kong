@@ -1,7 +1,7 @@
 // services/backendService.ts
 import { getActor } from '$lib/stores/walletStore';
 import { walletValidator } from '$lib/validators/walletValidator';
-import type { Token, Pool, User, SwapQuoteResponse, SwapAsyncResponse, RequestResponse } from '$lib/types/backend';
+import type { Token, Pool, User, SwapQuoteResponse, SwapAsyncResponse, RequestResponse, PoolResponse } from '$lib/types/backend';
 import type { Principal } from '@dfinity/principal';
 
 class BackendService {
@@ -108,15 +108,25 @@ class BackendService {
     }
   }
 
+  // Token Related Methods
+  public async getTokenLogo(canisterId: string): Promise<void> {
+    try {
+      const actor = await getActor();
+    } catch (error) {
+      console.error('Error calling get_user method:', error);
+      throw error;
+    }
+  }
+
   // Pool Related Methods
-  public async getPools(): Promise<Pool[]> {
+  public async getPools(): Promise<PoolResponse> {
     try {
       const actor = await getActor();
       const result = await actor.pools([]);
       if (result.Ok) {
         return result.Ok;
       }
-      return [];
+      return { pools: [], total_tvl: 0, total_24h_volume: 0, total_24h_lp_fee: 0 };
     } catch (error) {
       console.error('Error calling pools method:', error);
       throw error;

@@ -1,139 +1,98 @@
 <!-- src/kong_svelte/src/routes/stats/+page.svelte -->
 <script lang="ts">
-  import { switchLocale } from "$lib/stores/localeStore";
   import { t } from "$lib/locales/translations";
   import { backendService } from "$lib/services/backendService";
-  import { onMount } from "svelte";
-  import { isEqual } from "lodash-es";
+  import { onMount, onDestroy } from "svelte";
   import Button from "$lib/components/common/Button.svelte";
-  import {
-    formatNumberCustom,
-    getTokenDecimals,
-  } from "$lib/utils/formatNumberCustom";
+  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
   import Clouds from "$lib/components/stats/Clouds.svelte";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import StatsSignPost from "$lib/components/stats/StatsSignPost.svelte";
   import { lpTableHeaders } from "$lib/constants/statsConstants";
   import { filterPools, sortPools } from "$lib/utils/statsUtils";
+  import { fetchPools, poolsInfo, poolsTotals } from "$lib/stores/poolStore";
+  import { writable } from 'svelte/store';
+  import { debounce } from 'lodash-es'; // Import debounce from lodash
 
-  type PoolsTotals = {
+  type PoolsTotalsType = {
     totalTvl: number | string;
     totalVolume: number | string;
     totalFees: number | string;
   };
 
-  let tokens: any = null;
-  let poolsInfo = [];
-  let poolsTotals: PoolsTotals = {
+  let tokens: Record<string, any> = {}; // Define tokens as a Record for better type safety
+  let poolsData: any[] = [];
+  let currentPoolsTotals: PoolsTotalsType = {
     totalTvl: 0,
     totalVolume: 0,
     totalFees: 0,
   };
-  let previousPoolBalances = null;
   let sortColumn = "tvl";
   let sortDirection: "asc" | "desc" = "desc";
-  let userInitiatedSort = false;
   let searchQuery = "";
+  let debouncedSearchQuery = "";
 
-  function parseValue(value: any): any {
-    if (typeof value === "string") {
-      value = value.replace(/[$%,]/g, "");
-      if (value.includes("%")) {
-        return parseFloat(value);
-      }
-      return isNaN(parseFloat(value)) ? value : parseFloat(value);
-    }
-    return value;
+  // Create a writable store for the search input with debouncing
+  const searchStore = writable("");
+
+  // Subscribe to poolsInfo and poolsTotals from the store
+  const unsubscribePoolsInfo = poolsInfo.subscribe(value => {
+    poolsData = value;
+    console.log('poolsInfo updated:', poolsData);
+  });
+
+  const unsubscribePoolsTotals = poolsTotals.subscribe(value => {
+    currentPoolsTotals = value;
+    console.log('poolsTotals updated:', currentPoolsTotals);
+  });
+
+  onDestroy(() => {
+    unsubscribePoolsInfo();
+    unsubscribePoolsTotals();
+  });
+
+  /**
+   * Handles the sort event dispatched from the TableHeader component.
+   * Updates the sort column and direction.
+   * @param event - The custom sort event containing column and direction.
+   */
+  function handleSortEvent(event: CustomEvent<{ column: string; direction: "asc" | "desc" }>) {
+    const { column, direction } = event.detail;
+    sortColumn = column;
+    sortDirection = direction;
   }
 
   onMount(async () => {
     try {
       tokens = await backendService.getTokens();
-      await updatePoolBalances();
+      await fetchPools();
     } catch (error) {
-      console.error("Error fetching tokens:", error);
+      console.error("Error during onMount:", error);
     }
+
+    // Initialize debounced search
+    const debounced = debounce((query: string) => {
+      debouncedSearchQuery = query;
+    }, 300); // 300ms debounce delay
+
+    // Subscribe to searchStore changes with debouncing
+    const unsubscribeSearch = searchStore.subscribe(value => {
+      debounced(value);
+    });
+
+    // Clean up the search subscription on destroy
+    onDestroy(() => {
+      unsubscribeSearch();
+    });
   });
 
-  async function updatePoolBalances() {
-    try {
-      const response = await backendService.getPools();
-      const liquidityPools = response.pools || [];
+  /**
+   * Reactive statement to compute sorted and filtered pools based on search query and sort settings.
+   */
+  let sortedFilteredPools: any[] = [];
 
-      if (!isEqual(previousPoolBalances, liquidityPools)) {
-        poolsInfo = liquidityPools;
-        previousPoolBalances = liquidityPools;
-        const decimals = 6;
-
-        console.log(response);
-
-        poolsTotals = {
-          totalTvl: formatBigInt(response?.total_tvl || 0, decimals),
-          totalVolume: formatBigInt(response?.total_24h_volume || 0, decimals),
-          totalFees: formatBigInt(response?.total_24h_lp_fee || 0, decimals),
-        };
-
-        userInitiatedSort = false;
-
-        // Format and sort pools
-        const formattedPools = formatPools(poolsInfo);
-        poolsInfo = sortPools(formattedPools, sortColumn, sortDirection);
-      }
-    } catch (error) {
-      console.error("Error fetching pool balances, retrying...", error);
-      setTimeout(updatePoolBalances, 2000);
-    }
-  }
-
-  function formatBigInt(value: bigint | number, decimals: number): number | string {
-    if (typeof value === "bigint") {
-      return Number(value) / 10 ** decimals;
-    }
-    return value;
-  }
-
-  function formatPools(pools: any[]): any[] {
-    if (pools.length === 0 || !tokens) return pools;
-
-    const decimals1 = getTokenDecimals(pools[0]?.symbol_1) || 6;
-
-    return pools.map((pool) => {
-      const balance = Number(pool.balance || 0);
-      const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
-      const roll24hVolume = formatNumberCustom(
-        Number(pool.rolling_24h_volume || 0) / 10 ** decimals1,
-        0,
-      );
-      const tvl = formatNumberCustom(balance / 10 ** decimals1, 0);
-
-      return {
-        ...pool,
-        apy,
-        roll24hVolume,
-        tvl,
-      };
-    });
-  }
-
-  // Reactive statement to update poolsInfo when tokens or poolsInfo change
-  $: if (poolsInfo.length > 0 && tokens) {
-    // Format pools
-    const formattedPools = formatPools(poolsInfo);
-    
-    // Sort pools based on current sort settings
-    poolsInfo = sortPools(formattedPools, sortColumn, sortDirection);
-  }
-
-  // Handle the sort event dispatched from TableHeader
-  function handleSortEvent(event: CustomEvent<{ column: string; direction: "asc" | "desc" }>) {
-    const { column, direction } = event.detail;
-    sortColumn = column;
-    sortDirection = direction;
-    poolsInfo = sortPools(formatPools(poolsInfo), sortColumn, sortDirection);
-    userInitiatedSort = true;
-    console.log(`Sorted by ${column} in ${direction} order`, poolsInfo);
-  }
+  $: sortedFilteredPools = sortPools(filterPools(poolsData, debouncedSearchQuery), sortColumn, sortDirection);
 </script>
 
 <Clouds />
@@ -141,9 +100,9 @@
 <main class="flex min-h-[95vh] bg-sky-100 relative pt-28">
   <div class="w-1/12 font-alumni z-[2]">
     <StatsSignPost
-      totalTvl={poolsTotals.totalTvl}
-      totalVolume={poolsTotals.totalVolume}
-      totalFees={poolsTotals.totalFees}
+      totalTvl={currentPoolsTotals.totalTvl}
+      totalVolume={currentPoolsTotals.totalVolume}
+      totalFees={currentPoolsTotals.totalFees}
     />
   </div>
 
@@ -165,7 +124,7 @@
             <input
               type="text"
               placeholder="Search by symbol"
-              bind:value={searchQuery}
+              bind:value={$searchStore}
               class="w-1/2 bg-sky-200/70 text-black border-none rounded-2xl min-w-[160px]"
             />
           </div>
@@ -187,16 +146,25 @@
               </tr>
             </thead>
             <tbody>
-              {#if searchQuery.length > 0}
+              {#if sortedFilteredPools.length === 0}
                 <tr class="border-b-2 border-black text-xl md:text-3xl">
                   <td class="p-2 uppercase font-bold text-center" colspan="50">
                     No results found
                   </td>
                 </tr>
               {:else}
-                {#each filterPools(poolsInfo, searchQuery) as pool}
+                {#each sortedFilteredPools as pool (pool.id)}
                   <tr class="border-b-2 border-black text-xl md:text-3xl">
-                    <td class="p-2 uppercase font-bold">{pool.symbol_0}/{pool.symbol_1}</td>
+                    <td class="uppercase font-bold">
+                      <div class="flex items-center">
+                        <!-- Dynamic Token Logos -->
+                        <div class="isolate flex -space-x-1 overflow-hidden p-2">
+                          <img class="relative z-30 inline-block h-8 w-8 rounded-full ring-[3px] ring-sky-500 bg-white" src="/tokens/icp.png" alt={pool.symbol_0}>
+                          <img class="relative z-20 inline-block h-8 w-8 rounded-full ring-[3px] ring-sky-500 bg-white" src="/tokens/icp.png" alt={pool.symbol_1}>
+                        </div>
+                        <span>{pool.symbol_0}/{pool.symbol_1}</span>
+                      </div>
+                    </td>
                     <td class="p-2 text-right">${formatNumberCustom(pool.price, 2)}</td>
                     <td class="p-2 text-right">${pool.tvl}</td>
                     <td class="p-2 text-right">${pool.roll24hVolume}</td>
@@ -212,11 +180,9 @@
                       </div>
                     </td>
                   </tr>
-                {:else}
-                  <tr class="border-b-2 border-black text-xl md:text-3xl">
-                    <td class="p-2 uppercase font-bold text-center" colspan="12">
-                      <LoadingIndicator />
-                    </td>
+                  {:else}
+                  <tr>
+                    <LoadingIndicator />
                   </tr>
                 {/each}
               {/if}

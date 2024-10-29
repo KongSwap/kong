@@ -1,7 +1,8 @@
 import { writable } from 'svelte/store';
 import { backendService } from '$lib/services/backendService';
 import { isEqual } from 'lodash-es';
-import { sortPools } from '$lib/utils/poolUtils';
+import { formatPoolData } from '$lib/utils/statsUtils';
+import { type Pool } from '$lib/types/backend';
 
 export type PoolsTotals = {
   totalTvl: number | string;
@@ -18,13 +19,28 @@ export const poolsTotals = writable<PoolsTotals>({
 
 let previousPoolBalances: any = null;
 
-export async function fetchPools(sortColumn = 'tvl', sortDirection: 'asc' | 'desc' = 'desc') {
+/**
+ * Fetches pools data from the backend, formats them, and updates the stores.
+ */
+export async function fetchPools() {
   try {
     const liquidityPools = await backendService.getPools();
+    console.log('Fetched liquidityPools:', liquidityPools);
 
-    if (!isEqual(previousPoolBalances, liquidityPools)) {
-      poolsInfo.set(sortPools(liquidityPools, sortColumn, sortDirection));
-      previousPoolBalances = liquidityPools;
+    if (!liquidityPools || !liquidityPools.pools) {
+      console.error('Invalid liquidityPools structure:', liquidityPools);
+      return;
+    }
+
+    if (!Array.isArray(liquidityPools.pools)) {
+      console.error('liquidityPools.pools is not an array:', liquidityPools.pools);
+      return;
+    }
+
+    if (!isEqual(previousPoolBalances, liquidityPools.pools)) {
+      const formattedPools = formatPoolData(liquidityPools.pools);
+      poolsInfo.set(formattedPools);
+      previousPoolBalances = liquidityPools.pools;
 
       const decimals = 6;
       const formatBigInt = (value: bigint | number) => {
@@ -39,9 +55,10 @@ export async function fetchPools(sortColumn = 'tvl', sortDirection: 'asc' | 'des
         totalVolume: formatBigInt(liquidityPools?.total_24h_volume || 0),
         totalFees: formatBigInt(liquidityPools?.total_24h_lp_fee || 0),
       });
+
+      console.log('Updated poolsInfo and poolsTotals:', formattedPools, liquidityPools);
     }
   } catch (error) {
     console.error('Error fetching pool balances:', error);
-    // Retry logic is handled in the service
   }
 } 

@@ -39,6 +39,14 @@ export interface LPToken {
 export type Token = ICToken | LPToken;
 
 // Pool Types
+
+export type PoolResponse = {
+    pools: Pool[];
+    total_tvl: number;
+    total_24h_volume: number;
+    total_24h_lp_fee: number;
+}
+
 export interface Pool {
     lp_token_symbol: string;
     balance: bigint;
