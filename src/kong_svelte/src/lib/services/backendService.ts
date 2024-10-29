@@ -23,7 +23,6 @@ class BackendService {
       
       if (result.Ok) {
         return result.Ok.filter(token => 'IC' in token).map(token => {
-          console.log('token', token);
           return {
             fee: token.IC.fee,
             decimals: token.IC.decimals,
