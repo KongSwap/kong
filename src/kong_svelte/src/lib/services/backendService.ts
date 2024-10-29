@@ -49,6 +49,7 @@ class BackendService {
 
   public async getUserBalances(principal: Principal): Promise<Record<string, any>> {
     try {
+      await walletValidator.requireWalletConnection();
       const actor = await getActor();
       const result = await actor.user_balances(['']);
       if (result.Ok) {

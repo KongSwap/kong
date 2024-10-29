@@ -133,8 +133,10 @@ export async function isConnected(): Promise<boolean> {
 
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
+  // Call initializePNP once when the module is loaded
+initializePNP();
   const isAuthenticated = await isConnected();
-  if (isAuthenticated) {
+  if (!isAuthenticated) {
     throw new Error('Wallet not connected.');
   }
   const isLocalhost = window.location.hostname.includes('localhost');
