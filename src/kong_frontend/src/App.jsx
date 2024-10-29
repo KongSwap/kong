@@ -683,6 +683,7 @@ const App = () => {
       }
     } catch (error) {
       setFetchingTokens(false);
+      console.log('Error claiming tokens:', error);
       toast("Error claiming tokens:", error);
     }
   }, [principal, kingKongFaucetActor, updateUserBalances]);

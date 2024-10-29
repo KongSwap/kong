@@ -20,7 +20,7 @@
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.2",
     "@mui/material": "^6.1.2",
-    "@nfid/identitykit": "^0.0.5",
+    "@nfid/identitykit": "^1.0.0",
     "@tippyjs/react": "^4.2.6",
     "bignumber.js": "^9.1.2",
     "dompurify": "^3.1.6",
