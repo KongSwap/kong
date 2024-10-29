@@ -116,7 +116,7 @@
   async function updatePoolBalances() {
     try {
       const response = await backendService.getPools();
-      const liquidityPools = response.Ok?.pools || [];
+      const liquidityPools = response || [];
 
       if (!isEqual(previousPoolBalances, liquidityPools)) {
         poolsInfo = liquidityPools;
@@ -131,17 +131,13 @@
         };
 
         poolsTotals = {
-          totalTvl: formatBigInt(response.Ok.total_tvl || 0),
-          totalVolume: formatBigInt(response.Ok.total_24h_volume || 0),
-          totalFees: formatBigInt(response.Ok.total_24h_lp_fee || 0),
+          totalTvl: formatBigInt(response?.total_tvl || 0),
+          totalVolume: formatBigInt(response?.total_24h_volume || 0),
+          totalFees: formatBigInt(response?.total_24h_lp_fee || 0),
         };
 
         userInitiatedSort = false;
         sortTable("tvl", false);
-      }
-
-      if (response.hasOwnProperty("Err")) {
-        console.error(response.Err);
       }
     } catch (error) {
       console.error("Error fetching pool balances, retrying...", error);
