@@ -1,11 +1,22 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+
   export let variant: "default" | "stats" = "default";
   export let textClass: "text-left" | "text-right" | "text-center" | null = "text-left";
   export let column: string;
   export let label: string;
   export let sortColumn: string;
   export let sortDirection: "asc" | "desc";
-  export let onSort: (column: string) => void;
+
+  const dispatch = createEventDispatcher();
+
+  function handleSort() {
+    let newDirection: "asc" | "desc" = "asc";
+    if (sortColumn === column) {
+      newDirection = sortDirection === "asc" ? "desc" : "asc";
+    }
+    dispatch('sort', { column, direction: newDirection });
+  }
 
   function getVariantClass() {
     switch (variant) {
@@ -19,7 +30,7 @@
   $: className = getVariantClass();
 </script>
 
-<th class="p-2 cursor-pointer {className} {textClass}" on:click={() => onSort(column)}>
+<th class="p-2 cursor-pointer {className} {textClass}" on:click={handleSort}>
   {label}
   <span>
     {#if sortColumn === column}

@@ -114,7 +114,7 @@ class BackendService {
       const actor = await getActor();
       const result = await actor.pools([]);
       if (result.Ok) {
-        return result.Ok.pools;
+        return result.Ok;
       }
       return [];
     } catch (error) {
