@@ -21,14 +21,14 @@
       mobile: '/titles/titleKingKongStats.png'
     },
     stats: {
-      desktop: '/titles/titleKingKongStats.png',
-      mobile: '/titles/titleKingKongStats.png'
+      desktop: '/titles/stats_title.webp',
+      mobile: '/titles/stats_title.webp'
     }
   };
 
   function handleTabChange(tab: 'swap' | 'pool' | 'stats') {
     activeTab = tab;
-    goto(tab === 'swap' ? '/' : `/${tab}`);
+    goto(`/${tab}`);
   }
 
   function handleConnect() {
@@ -62,9 +62,9 @@
     : titles[activeTab].desktop;
 </script>
 
-<nav class="fixed top-0 left-0 right-0 z-50">
-  <div class="nav-content">
-    <div class="left-nav">
+<nav class="absolute top-0 max-w-6xl w-full z-50 md:px-10">
+  <div class="grid grid-cols-12">
+    <div class="left-nav col-span-3 items-center">
       <Button 
         text="SWAP"
         variant="blue"
@@ -85,13 +85,11 @@
       />
     </div>
 
-    <div class="title-section">
-      <div class="title-wrapper">
-        <img src={titleImage} alt={activeTab} class="title-image" />
-      </div>
+    <div class="col-span-6 flex justify-center items-end">
+        <img src={titleImage} alt={activeTab} class=" w-3/4" />
     </div>
 
-    <div class="right-nav">
+    <div class="col-span-3 flex justify-end items-center">
       <!-- svelte-ignore a11y_consider_explicit_label -->
       <button 
         class="settings-button" 
@@ -142,18 +140,8 @@
   }
 
   .title-section {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
     z-index: 1;
     pointer-events: none;
-  }
-
-  .title-wrapper {
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .title-image {

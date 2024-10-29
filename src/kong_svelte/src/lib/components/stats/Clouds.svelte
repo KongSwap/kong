@@ -11,7 +11,7 @@
   }));
 </script>
 
-<div class="floating-clouds w-screen h-screen overflow-hidden z-[1]">
+<div class="floating-clouds h-screen overflow-hidden z-[1]">
   {#each clouds as cloud}
     <img
       src={cloud.src}

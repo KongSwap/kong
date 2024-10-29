@@ -37,27 +37,27 @@
     {
       label: $t("stats.poolName"),
       column: "symbol_0",
-      textClass: "text-left",
+      textClass: "text-left text-nowrap text-xl md:text-3xl",
     },
     {
       label: $t("stats.price"),
       column: "price",
-      textClass: "text-right",
+      textClass: "text-right text-nowrap text-xl md:text-3xl",
     },
     {
       label: $t("stats.tvl"),
       column: "tvl",
-      textClass: "text-right",
+      textClass: "text-right text-nowrap text-xl md:text-3xl",
     },
     {
       label: $t("stats.24hVolume"),
       column: "roll24hVolume",
-      textClass: "text-right",
+      textClass: "text-right text-nowrap text-xl md:text-3xl",
     },
     {
       label: $t("stats.apy"),
       column: "apy",
-      textClass: "text-right",
+      textClass: "text-right text-nowrap text-xl md:text-3xl",
     },
   ];
 
@@ -79,7 +79,7 @@
       sortDirection = sortDirection === "asc" ? "desc" : "asc";
     } else {
       sortColumn = column;
-      sortDirection = "asc";
+      sortDirection = "desc";
     }
 
     poolsInfo = [...poolsInfo].sort((a, b) => {
@@ -182,105 +182,90 @@
     />
   </div>
 
-  <div class="flex-grow z-10 w-10/12 flex items-center mb-20">
-    <div class="flex-grow z-10 mb-32">
-      <!-- Pool Overview Section -->
-      <div
-        class="bg-k-light-blue bg-opacity-70 border-[5px] border-black p-0.5 w-full max-w-5xl mx-auto"
-      >
-        <div class="inner-border p-4 w-full h-full">
-          <div class="grid grid-cols-3 items-center">
-            <h2
-              class="text-left pl-1 mt-2 font-black col-span-2 text-3xl text-white mb-4 text-outline-2"
-            >
-              {$t("stats.overviewOfKongPools")}
-            </h2>
+  <div class="flex-grow z-10 w-10/12 flex items-center mb-20 overflow-x-scroll">
+    <!-- Pool Overview Section -->
+    <div
+      class="bg-k-light-blue bg-opacity-70 border-[5px] border-black p-0.5 w-full max-w-5xl mx-auto"
+    >
+      <div class="inner-border p-4 w-full h-full">
+        <div class="grid grid-cols-3 items-center mb-2 md:mb-0">
+          <h2
+            class="pl-1 mt-2 font-black col-span-3 md:col-span-2 text-3xl text-center md:text-left text-white mb-4 text-outline-2"
+          >
+            {$t("stats.overviewOfKongPools")}
+          </h2>
 
-            <!-- Search Input -->
-            <div class="col-span-1 flex justify-end">
-              <input
-                type="text"
-                placeholder="Search by symbol"
-                bind:value={searchQuery}
-                class="w-1/2 bg-sky-200/70 text-black border-none rounded-2xl min-w-[160px]"
-              />
-            </div>
+          <!-- Search Input -->
+          <div
+            class="col-span-3 md:col-span-1 flex justify-center md:justify-end"
+          >
+            <input
+              type="text"
+              placeholder="Search by symbol"
+              bind:value={searchQuery}
+              class="w-1/2 bg-sky-200/70 text-black border-none rounded-2xl min-w-[160px]"
+            />
           </div>
-          <div class="overflow-x-auto">
-            {#if filterPools().length > 0}
-              <table class="w-full text-black font-alumni">
-                <thead>
-                  <tr class="border-b-4 border-black text-3xl uppercase">
-                    {#each tableHeaders as header}
-                      <TableHeader
-                        label={header.label}
-                        column={header.column}
-                        textClass={header.textClass}
-                        {sortColumn}
-                        {sortDirection}
-                        onSort={sortTable}
-                      />
-                    {/each}
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-black font-alumni">
+            <thead>
+              <tr class="border-b-4 border-black text-3xl uppercase">
+                {#each tableHeaders as header}
+                  <TableHeader
+                    label={header.label}
+                    column={header.column}
+                    textClass={header.textClass}
+                    {sortColumn}
+                    {sortDirection}
+                    onSort={sortTable}
+                  />
+                {/each}
+              </tr>
+            </thead>
+            <tbody>
+              {#if searchQuery.length > 0}
+                <tr class="border-b-2 border-black text-xl md:text-3xl">
+                  <td class="p-2 uppercase font-bold text-center" colspan="50">
+                    No results found
+                  </td>
+                </tr>
+              {:else}
+                {#each filterPools() as pool}
+                  <tr class="border-b-2 border-black text-xl md:text-3xl">
+                    <td class="p-2 uppercase font-bold"
+                      >{pool.symbol_0}/{pool.symbol_1}</td
+                    >
+                    <td class="p-2 text-right"
+                      >${formatNumberCustom(pool.price, 2)}</td
+                    >
+                    <td class="p-2 text-right">${pool.tvl}</td>
+                    <td class="p-2 text-right">${pool.roll24hVolume}</td>
+                    <td class="p-2 text-right">{pool.apy}%</td>
+                    <td class="p-2">
+                      <div class="flex flex-col justify-center gap-2">
+                        <Button variant="green" size="small">
+                          {$t("stats.swap")}
+                        </Button>
+                        <Button variant="green" size="small">
+                          {$t("stats.addLiquidity")}
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {#each filterPools() as pool}
-                    <tr class="border-b-2 border-black text-3xl">
-                      <td class="p-2 uppercase font-bold"
-                        >{pool.symbol_0}/{pool.symbol_1}</td
-                      >
-                      <td class="p-2 text-right"
-                        >${formatNumberCustom(pool.price, 2)}</td
-                      >
-                      <td class="p-2 text-right">${pool.tvl}</td>
-                      <td class="p-2 text-right">${pool.roll24hVolume}</td>
-                      <td class="p-2 text-right">{pool.apy}%</td>
-                      <td class="p-2">
-                        <div class="flex flex-col justify-center gap-2">
-                          <Button variant="green" size="small">
-                            {$t("stats.swap")}
-                          </Button>
-                          <Button variant="green" size="small">
-                            {$t("stats.addLiquidity")}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            {:else if searchQuery.length > 0}
-              <div class="overflow-x-auto">
-                <table class="w-full text-black font-alumni">
-                  <tbody>
-                    <tr class="border-b-2 border-black text-3xl">
-                      <td
-                        class="p-2 uppercase font-bold text-center"
-                        colspan="50"
-                      >
-                        No results found
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            {:else}
-              <div class="overflow-x-auto">
-                <table class="w-full text-black font-alumni">
-                  <tbody>
-                    <tr class="border-b-2 border-black text-3xl">
-                      <td
-                        class="p-2 uppercase font-bold text-center"
-                        colspan="12"
-                      >
-                        <LoadingIndicator />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            {/if}
-          </div>
+                {:else}
+                  <tr class="border-b-2 border-black text-xl md:text-3xl">
+                    <td
+                      class="p-2 uppercase font-bold text-center"
+                      colspan="12"
+                    >
+                      <LoadingIndicator />
+                    </td>
+                  </tr>
+                {/each}
+              {/if}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
