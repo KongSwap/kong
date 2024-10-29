@@ -6,14 +6,19 @@
   import { page } from '$app/stores';
   import { browser } from '$app/environment';
 
-  let activeTab: 'swap' | 'stats' = 'swap';
+  let activeTab: 'swap' | 'pool' | 'stats' = 'swap';
   let sidebarOpen = false;
   let isMobile = false;
+  let isSpinning = false;
 
   const titles = {
     swap: {
       desktop: '/titles/titleKingKongSwap.png',
       mobile: '/titles/titleKingKongSwap.png'
+    },
+    pool: {
+      desktop: '/titles/titleKingKongStats.png',
+      mobile: '/titles/titleKingKongStats.png'
     },
     stats: {
       desktop: '/titles/titleKingKongStats.png',
@@ -21,9 +26,9 @@
     }
   };
 
-  function handleTabChange(tab: 'swap' | 'stats') {
+  function handleTabChange(tab: 'swap' | 'pool' | 'stats') {
     activeTab = tab;
-    goto(tab === 'swap' ? '/' : '/stats');
+    goto(tab === 'swap' ? '/' : `/${tab}`);
   }
 
   function handleConnect() {
@@ -37,7 +42,8 @@
   }
 
   onMount(() => {
-    activeTab = $page.url.pathname === '/stats' ? 'stats' : 'swap';
+    const path = $page.url.pathname;
+    activeTab = path === '/stats' ? 'stats' : path === '/pool' ? 'pool' : 'swap';
     handleResize();
     
     if (browser) {
@@ -47,7 +53,8 @@
   });
 
   $: {
-    activeTab = $page.url.pathname === '/stats' ? 'stats' : 'swap';
+    const path = $page.url.pathname;
+    activeTab = path === '/stats' ? 'stats' : path === '/pool' ? 'pool' : 'swap';
   }
 
   $: titleImage = isMobile 
@@ -56,48 +63,54 @@
 </script>
 
 <nav class="fixed top-0 left-0 right-0 z-50">
-  <div class="retro-container">
-    <div class="buttons" class:is-mobile={isMobile}>
-      <div class="left-buttons" class:mobile-buttons={isMobile}>
-        <Button 
-          text="SWAP"
-          variant="blue"
-          state={activeTab === 'swap' ? 'selected' : 'default'}
-          onClick={() => handleTabChange('swap')}
-        />
-        <Button 
-          text="STATS"
-          variant="blue" 
-          state={activeTab === 'stats' ? 'selected' : 'default'}
-          onClick={() => handleTabChange('stats')}
-        />
-      </div>
+  <div class="nav-content">
+    <div class="left-nav">
+      <Button 
+        text="SWAP"
+        variant="blue"
+        state={activeTab === 'swap' ? 'selected' : 'default'}
+        onClick={() => handleTabChange('swap')}
+      />
+      <Button 
+        text="POOL"
+        variant="blue"
+        state={activeTab === 'pool' ? 'selected' : 'default'}
+        onClick={() => handleTabChange('pool')}
+      />
+      <Button 
+        text="STATS"
+        variant="blue"
+        state={activeTab === 'stats' ? 'selected' : 'default'}
+        onClick={() => handleTabChange('stats')}
+      />
+    </div>
 
-      {#if !isMobile}
-        <div class="title-container">
-          <div class="title-wrapper">
-            <img src={titleImage} alt={activeTab === 'swap' ? 'Swap' : 'Stats'} class="title-image" />
-          </div>
-        </div>
-      {/if}
-
-      <div class="right-buttons">
-        <Button
-          text="CONNECT"
-          variant="yellow"
-          state={sidebarOpen ? 'selected' : 'default'}
-          onClick={handleConnect}
-        />
+    <div class="title-section">
+      <div class="title-wrapper">
+        <img src={titleImage} alt={activeTab} class="title-image" />
       </div>
     </div>
 
-    {#if isMobile}
-      <div class="mobile-title-container">
-        <div class="title-wrapper">
-          <img src={titleImage} alt={activeTab === 'swap' ? 'Swap' : 'Stats'} class="title-image" />
-        </div>
-      </div>
-    {/if}
+    <div class="right-nav">
+      <!-- svelte-ignore a11y_consider_explicit_label -->
+      <button 
+        class="settings-button" 
+        class:spinning={isSpinning}
+        on:mouseenter={() => isSpinning = true}
+        on:mouseleave={() => isSpinning = false}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+        </svg>
+      </button>
+      <Button
+        text="CONNECT"
+        variant="yellow"
+        state={sidebarOpen ? 'selected' : 'default'}
+        onClick={handleConnect}
+      />
+    </div>
   </div>
 </nav>
 
@@ -109,59 +122,31 @@
 <style>
   nav {
     width: 100%;
-    padding: 12px 40px;
+    padding: 12px 0;
   }
 
-  .retro-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .buttons {
+  .nav-content {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     width: 100%;
-    gap: 16px;
+    position: relative;
+    padding: 0 16px;
   }
 
-  .buttons.is-mobile {
-    padding: 0 8px;
-  }
-
-  .left-buttons {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    flex-shrink: 0;
-    margin-top: 8px;
-  }
-
-  .mobile-buttons {
-    gap: 8px;
-  }
-
-  .right-buttons {
+  .left-nav, .right-nav {
     display: flex;
     align-items: center;
     gap: 16px;
-    flex-shrink: 0;
-    margin-top: 8px;
+    z-index: 2;
   }
 
-  .title-container {
+  .title-section {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    max-width: 600px;
-    z-index: -1;
+    z-index: 1;
+    pointer-events: none;
   }
 
   .title-wrapper {
@@ -173,43 +158,76 @@
 
   .title-image {
     width: 100%;
-    max-width: 500px;
+    max-width: 690px;
     height: 100%;
     object-fit: contain;
+    margin-top: 128px;
   }
 
-  .mobile-title-container {
-    width: 100%;
+  .settings-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+  }
+
+  .settings-button.spinning {
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .mobile-nav {
+    height: auto;
+    background: none;
+    border: none;
+    padding: 0 16px 24px;
     display: flex;
     justify-content: center;
+  }
+
+  .mobile-nav-content {
+    display: flex;
     align-items: center;
-    padding: 0 16px;
+    justify-content: space-around;
+    width: 100%;
+    height: 100%;
+    padding: 0 8px;
+  }
+
+  :global(.mobile-panel) {
+    backdrop-filter: blur(8px);
   }
 
   @media (max-width: 768px) {
     nav {
-      padding: 8px 8px 16px;
+      padding: 8px 0;
     }
 
-    .buttons {
-      justify-content: space-between;
+    .nav-content {
+      flex-wrap: wrap;
+      padding: 0 8px;
     }
 
-    .left-buttons {
-      margin-left: 4px;
-    }
-
-    .right-buttons {
-      margin-right: 4px;
+    .left-nav, .right-nav {
+      gap: 8px;
     }
 
     .title-wrapper {
       height: 100px;
       margin-top: 8px;
-    }
-
-    .mobile-title-container {
-      padding: 0;
     }
 
     .title-image {

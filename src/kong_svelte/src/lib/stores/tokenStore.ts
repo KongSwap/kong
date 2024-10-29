@@ -28,25 +28,37 @@ function createTokenStore() {
 
   return {
     subscribe,
+    getBalance: (symbol: string) => {
+      // Get the current store value
+      let storeValue: TokenState;
+      const unsubscribe = subscribe(value => {
+        storeValue = value;
+      });
+      unsubscribe();
+
+      // Return the balance for the given symbol, or 0 if not found
+      return storeValue.balances[symbol]?.balance || '0';
+    },
     loadTokens: async () => {
       update(s => ({ ...s, isLoading: true }));
       try {
-        const tokens = await backendService.getTokens();
-        if (!Array.isArray(tokens)) {
-          throw new Error('Invalid tokens response');
-        }
-        update(s => ({
-          ...s,
-          tokens,
-          isLoading: false
-        }));
+          const tokens = await backendService.getTokens();
+          console.log('Loaded tokens:', tokens); // Add this debug log
+          if (!Array.isArray(tokens)) {
+              throw new Error('Invalid tokens response');
+          }
+          update(s => ({
+              ...s,
+              tokens,
+              isLoading: false
+          }));
       } catch (error) {
-        console.error('Error loading tokens:', error);
-        update(s => ({
-          ...s,
-          error: error.message,
-          isLoading: false
-        }));
+          console.error('Error loading tokens:', error);
+          update(s => ({
+              ...s,
+              error: error.message,
+              isLoading: false
+          }));
       }
     },
     loadBalances: async (principal: Principal) => {

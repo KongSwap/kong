@@ -1,7 +1,7 @@
 // services/backendService.ts
 import { getActor } from '$lib/stores/walletStore';
 import { walletValidator } from '$lib/validators/walletValidator';
-import type { Token, Pool, SwapQuote, User } from '$lib/types/backend';
+import type { Token, Pool, User, SwapQuoteResponse, SwapAsyncResponse, RequestResponse } from '$lib/types/backend';
 import type { Principal } from '@dfinity/principal';
 
 class BackendService {
@@ -47,8 +47,6 @@ class BackendService {
     }
   }
 
-
-  // for LP i think
   public async getUserBalances(principal: Principal): Promise<Record<string, any>> {
     try {
       const actor = await getActor();
@@ -83,14 +81,13 @@ class BackendService {
   public async getTokenPrices(): Promise<Record<string, number>> {
     try {
         const actor = await getActor();
-        // Use a default price map for now
+        // Use the correct token symbols
         const defaultPrices = {
             "ICP": 1,
             "ckBTC": 1,
             "ckETH": 1,
             "ckUSDC": 1,
             "ckUSDT": 1,
-            // Add other tokens as needed
         };
         return defaultPrices;
     } catch (error) {
@@ -115,7 +112,11 @@ class BackendService {
   public async getPools(): Promise<Pool[]> {
     try {
       const actor = await getActor();
-      return await actor.pools([]);
+      const result = await actor.pools([]);
+      if (result.Ok) {
+        return result.Ok.pools;
+      }
+      return [];
     } catch (error) {
       console.error('Error calling pools method:', error);
       throw error;
@@ -133,46 +134,41 @@ class BackendService {
   }
 
   // Swap Related Methods
-  public async getSwapQuote(params: {
-    payToken: string;
-    payAmount: bigint;
-    receiveToken: string;
-  }): Promise<SwapQuote> {
+  public async swap_amounts(payToken: string, payAmount: bigint, receiveToken: string): Promise<SwapQuoteResponse> {
     try {
       const actor = await getActor();
-      return await actor.swap_amounts(
-        params.payToken,
-        params.payAmount,
-        params.receiveToken
-      );
+      return await actor.swap_amounts(payToken, payAmount, receiveToken);
     } catch (error) {
-      console.error('Error getting swap quote:', error);
+      console.error('Error getting swap amounts:', error);
       throw error;
     }
   }
 
-  public async executeSwap(params: {
-    payToken: string;
-    payAmount: bigint;
-    receiveToken: string;
-    receiveAmount: bigint;
-    slippage: number;
-  }): Promise<{ requestId: string }> {
-    await walletValidator.requireWalletConnection();
+  public async swap_async(params: {
+    pay_token: string;
+    pay_amount: bigint;
+    receive_token: string;
+    receive_amount: bigint[];
+    max_slippage: number[];
+    receive_address?: string[];
+    referred_by?: string[];
+    pay_tx_id?: string[];
+  }): Promise<SwapAsyncResponse> {
     try {
       const actor = await getActor();
-      const result = await actor.swap_async({
-        pay_token: params.payToken,
-        pay_amount: params.payAmount,
-        receive_token: params.receiveToken,
-        receive_amount: [params.receiveAmount],
-        max_slippage: [params.slippage],
-        pay_tx_id: [],
-        referred_by: []
-      });
-      return { requestId: result.Ok };
+      return await actor.swap_async(params);
     } catch (error) {
       console.error('Error executing swap:', error);
+      throw error;
+    }
+  }
+
+  public async requests(requestIds: bigint[]): Promise<RequestResponse> {
+    try {
+      const actor = await getActor();
+      return await actor.requests(requestIds);
+    } catch (error) {
+      console.error('Error getting request status:', error);
       throw error;
     }
   }

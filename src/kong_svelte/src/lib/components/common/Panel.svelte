@@ -2,8 +2,8 @@
 <script lang="ts">
     export let variant: 'green' | 'yellow' | 'red' = 'green';
     export let type: 'main' | 'second' | 's' = 'main';
-    export let width: number | string = 300; // Allow string values like '100%'
-    export let height: number | string = 200; // Allow string values like '100vh'
+    export let width: number | string | 'auto' = 300; // Allow string values like '100%' or 'auto'
+    export let height: number | string | 'auto' = 200; // Allow string values like '100vh' or 'auto'
     export let content: string = '';
     export let className: string = ''; // Allow custom classes
   
@@ -20,6 +20,7 @@
   
     // Format dimension value
     function formatDimension(value: number | string): string {
+      if (value === 'auto') return 'auto';
       if (typeof value === 'number') return `${value}px`;
       return value;
     }
@@ -33,7 +34,7 @@
     class="panel {className}"
     style="width: {formattedWidth}; height: {formattedHeight};"
   >
-    <div class="panel-container">
+    <div class="panel-container" class:auto-size={width === 'auto' || height === 'auto'}>
       <!-- Top -->
       <div class="panel-row top">
         <img src={getImagePath('tl')} alt="" class="corner top-left" />
@@ -80,6 +81,11 @@
       width: 100%;
       height: 100%;
       min-height: 0;
+    }
+
+    .panel-container.auto-size {
+      width: fit-content;
+      height: fit-content;
     }
   
     .panel-row {

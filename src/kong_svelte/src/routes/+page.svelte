@@ -15,15 +15,7 @@
   });
 </script>
 
-<main class="flex flex-col">
-  <!-- Translated Greeting and Welcome Message -->
-  <p>
-    {$t('common.greeting')}, {$t('common.welcome')}
-  </p>
-
-
-
-  <!-- Tokens Display Section -->
+<main class="flex flex-col items-center">
   {#if tokens?.Ok}
     {#each tokens?.Ok as token}
       <div class="text-sm uppercase text-gray-500">
@@ -41,6 +33,10 @@
 
 <style>
   .swap-container {
-    margin-top: 128px;
+    margin-top: 200px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+
   }
 </style>
