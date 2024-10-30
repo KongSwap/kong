@@ -3,7 +3,7 @@ import { walletsList, createPNP } from '@windoge98/plug-n-play';
 import {
   canisterId as kongBackendCanisterId,
   idlFactory as kongBackendIDL,
-} from '../../../../declarations/kong_backend';
+} from '../../../../declarations/kong_backend'; 
 import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
 import { backendService } from '$lib/services/backendService';
 import { ICRC1_IDL } from "$lib/idls/icrc1.idl.js";
@@ -136,9 +136,6 @@ async function createActor(canisterId: string, idlFactory: any): Promise<ActorSu
   // Call initializePNP once when the module is loaded
 initializePNP();
   const isAuthenticated = await isConnected();
-  if (!isAuthenticated) {
-    throw new Error('Wallet not connected.');
-  }
   const isLocalhost = window.location.hostname.includes('localhost');
   const host = isLocalhost ? 'http://localhost:4943' : 'https://ic0.app';
   const agent = HttpAgent.createSync({ host });
