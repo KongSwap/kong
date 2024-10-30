@@ -10,8 +10,8 @@ IDENTITY="--identity kong_token_minter"
 
 TO_PRINCIPAL_ID=$(dfx identity ${NETWORK} --identity kong_user1 get-principal)
 
-# 20,000 ICP
-AMOUNT=2_000_000_000_000_000
+# 100,000 ICP
+AMOUNT=10_000_000_000_000
 TOKEN="icp"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
@@ -53,6 +53,26 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 # 60 ckETH
 AMOUNT=60_000_000_000_000_000_000
 TOKEN="cketh"
+TOKEN_LEDGER="${TOKEN}_ledger"
+
+dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
+	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
+	amount=${AMOUNT};
+},)"
+
+# 5,000,000 KONG1
+AMOUNT=500_000_000_000_000
+TOKEN="kong1"
+TOKEN_LEDGER="${TOKEN}_ledger"
+
+dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
+	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
+	amount=${AMOUNT};
+},)"
+
+# 5,000,000 KONG2
+AMOUNT=500_000_000_000_000
+TOKEN="kong2"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {

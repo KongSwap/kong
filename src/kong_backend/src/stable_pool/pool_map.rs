@@ -149,12 +149,13 @@ pub fn get() -> Vec<StablePool> {
     POOL_MAP.with(|m| m.borrow().iter().map(|(_, v)| v).collect())
 }
 
-// both token's id are the unique identifier for the pool
+/// check if pool exists
 pub fn exists(token_0: &StableToken, token_1: &StableToken) -> bool {
     POOL_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .any(|(_, v)| v.token_id_0 == token_0.token_id() && v.token_id_1 == token_1.token_id())
+        m.borrow().iter().any(|(_, v)| {
+            v.token_id_0 == token_0.token_id() && v.token_id_1 == token_1.token_id()
+                || v.token_id_0 == token_1.token_id() && v.token_id_1 == token_0.token_id()
+        })
     })
 }
 
