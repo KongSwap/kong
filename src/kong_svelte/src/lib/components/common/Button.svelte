@@ -32,7 +32,7 @@
   function getImagePath(part: string): string {
     const prefix = prefixMap[size];
     const middlePart = part === 'middle' ? middlePartMap[size] : part;
-    return `pxcomponents/${prefix}-${variant}-${state}-${middlePart}.svg`;
+    return `/pxcomponents/${prefix}-${variant}-${state}-${middlePart}.svg`;
   }
 
   let isPressed = false;

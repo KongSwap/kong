@@ -14,6 +14,7 @@
   import { fetchPools, poolsInfo, poolsTotals } from "$lib/stores/poolStore";
   import { writable } from 'svelte/store';
   import { debounce } from 'lodash-es'; // Import debounce from lodash
+    import { goto } from "$app/navigation";
 
   type PoolsTotalsType = {
     totalTvl: number | string;
@@ -153,9 +154,9 @@
                   </td>
                 </tr>
               {:else}
-                {#each sortedFilteredPools as pool (pool.id)}
+                {#each sortedFilteredPools as pool (pool.lp_token_symbol)}
                   <tr class="border-b-2 border-black text-xl md:text-3xl">
-                    <td class="uppercase font-bold">
+                    <td class="uppercase font-bold" on:click={() => goto(`/stats/${pool.lp_token_symbol}`)}>
                       <div class="flex items-center">
                         <!-- Dynamic Token Logos -->
                         <div class="isolate flex -space-x-1 overflow-hidden p-2">
