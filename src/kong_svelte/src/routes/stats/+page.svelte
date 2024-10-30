@@ -154,12 +154,12 @@
                   </td>
                 </tr>
               {:else}
-                {#each sortedFilteredPools as pool (pool.lp_token_symbol)}
+                {#each sortedFilteredPools as pool (pool.id)}
                   <tr class="border-b-2 border-black text-xl md:text-3xl">
-                    <td class="uppercase font-bold" on:click={() => goto(`/stats/${pool.lp_token_symbol}`)}>
+                    <td class="uppercase font-bold" on:click={() => goto(`/stats/pools?id=${pool.id}`)}>
                       <div class="flex items-center">
                         <!-- Dynamic Token Logos -->
-                        <div class="isolate flex -space-x-1 overflow-hidden p-2">
+                        <div class="isolate flex -space-x-1 overflow-hidden p-2 w-[5rem]">
                           <img class="relative z-30 inline-block h-8 w-8 rounded-full ring-[3px] ring-sky-500 bg-white" src="/tokens/icp.png" alt={pool.symbol_0}>
                           <img class="relative z-20 inline-block h-8 w-8 rounded-full ring-[3px] ring-sky-500 bg-white" src="/tokens/icp.png" alt={pool.symbol_1}>
                         </div>
@@ -197,7 +197,7 @@
 </main>
 
 <div
-  style="background-image:url('/backgrounds/grass.webp'); background-repeat: repeat-x; background-size: 100% 100%;"
+  style="background-image:url('/backgrounds/grass.webp'); background-repeat: repeat-x; background-size: 100% 100%; z-index: 1000;"
   class="w-full min-h-[80px] max-h-[80px]"
 ></div>
 

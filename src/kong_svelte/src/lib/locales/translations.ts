@@ -14,6 +14,11 @@ const config = {
       loader: async () => (await import('./en/stats.json')).default,
     },
     {
+      locale: 'en',
+      key: 'swap',
+      loader: async () => (await import('./en/swap.json')).default,
+    },
+    {
       locale: 'es',
       key: 'common',
       loader: async () => (await import('./es/common.json')).default,

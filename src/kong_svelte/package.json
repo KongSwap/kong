@@ -21,6 +21,7 @@
     "d3-scale": "^4.0.2",
     "layercake": "^8.4.0",
     "layerchart": "^0.54.1",
+    "lightweight-charts": "^4.2.1",
     "lodash-es": "^4.17.21",
     "lucide-svelte": "^0.454.0",
     "prettier": "^3.3.3",

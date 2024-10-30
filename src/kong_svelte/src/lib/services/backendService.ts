@@ -137,7 +137,7 @@ class BackendService {
   public async getPoolInfo(poolId: string): Promise<Pool> {
     try {
       const actor = await getActor();
-      return await actor.pool_info(poolId);
+      return await actor.get_by_pool_id(poolId);
     } catch (error) {
       console.error('Error getting pool info:', error);
       throw error;

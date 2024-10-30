@@ -10,6 +10,7 @@
     import TokenSelector from '$lib/components/swap/swap_ui/TokenSelectorModal.svelte';
     import SwapConfirmation from '$lib/components/swap/swap_ui/SwapConfirmation.svelte';
     import { formatNumberCustom } from '$lib/utils/formatNumberCustom';
+    import { t } from '$lib/locales/translations';
 
     // Props
     export let slippage = 2;
@@ -43,12 +44,12 @@
     $: buttonText = getButtonText(isCalculating, isValidInput, isProcessing, error);
 
     function getButtonText(isCalculating: boolean, isValidInput: boolean, isProcessing: boolean, error: string | null): string {
-        if (isCalculating) return 'Calculating...';
-        if (isProcessing) return 'Processing...';
-        if (error) return error;
-        if (!isValidInput) return 'Enter Amount';
-        return 'Swap';
-    }
+        if (isCalculating) return $t('swap.calculating');
+        if (isProcessing) return $t('swap.processing');
+    if (error) return error;
+    if (!isValidInput) return $t('swap.enterAmount');
+    return $t('swap.swap');
+  }
 
     function getTokenDecimals(symbol: string): number {
         const token = $tokenStore.tokens.find(t => t.symbol === symbol);
@@ -245,9 +246,12 @@
 
     function handleInputChange(event: Event) {
         const input = (event.target as HTMLInputElement).value;
-        if (/^\d*\.?\d*$/.test(input) || input === '') {
-            payAmount = input;
-            debouncedGetQuote(input);
+        // remove anything that isnt a number or a period and get quote
+        const cleanedInput = input.replace(/[^0-9.]/g, '');
+        event.target.value = cleanedInput;
+        if (/^\d*\.?\d*$/.test(cleanedInput) || cleanedInput === '') {
+            payAmount = cleanedInput;
+            debouncedGetQuote(cleanedInput);
         }
     }
 
@@ -268,7 +272,7 @@
     <div class="swap-container" in:fade>
         <!-- Pay Panel -->
         <SwapPanel
-            title="You Pay"
+            title={$t('swap.pay')}
             token={payToken}
             amount={payAmount}
             balance={$tokenStore.balances[payToken]?.balance || '0'}
@@ -289,7 +293,7 @@
 
         <!-- Receive Panel -->
         <SwapPanel
-            title="You Receive"
+            title={$t('swap.receive')}
             token={receiveToken}
             amount={displayReceiveAmount}
             balance={$tokenStore.balances[receiveToken]?.balance || '0'}

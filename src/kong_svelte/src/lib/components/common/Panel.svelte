@@ -46,8 +46,7 @@
       <div class="panel-row middle">
         <div class="edge vertical middle-left" style="background-image: url({getImagePath('ml')})"></div>
         <div 
-          class="center-content" 
-          style="background-image: url({getImagePath('center')})"
+          class="center-content bg-[#64AD3B]"
           class:main-panel-center={useMainPanelCenter}
         >
           <slot>{content}</slot>
