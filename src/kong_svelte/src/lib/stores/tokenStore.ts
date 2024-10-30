@@ -18,7 +18,7 @@ interface TokenState {
   lastTokensFetch: number | null;
 }
 
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+const CACHE_DURATION = 1000* 60 * 5; // 10 minutes in milliseconds
 
 // Add BigInt serialization handler
 const serializeState = (state: TokenState): string => {
@@ -40,6 +40,11 @@ const deserializeState = (cachedData: string): TokenState => {
     }
     return value;
   });
+};
+
+// Add type guard to check if token has canisterId
+const hasCanisterId = (token: Token): token is Token & { canisterId: string } => {
+  return 'canisterId' in token;
 };
 
 function createTokenStore() {
@@ -112,14 +117,18 @@ function createTokenStore() {
           throw new Error('Invalid tokens response');
         }
 
-        // Fetch all logos in parallel
+        // Fetch all logos in parallel with type checking
         const tokensWithLogos = await Promise.all(
           tokens.map(async (token) => {
             try {
-              const logo = await backendService.getIcrcLogFromMetadata(token.canisterId);
-              return { ...token, logo };
+              if (hasCanisterId(token)) {
+                const logo = await backendService.getIcrcLogFromMetadata(token.canisterId);
+                return { ...token, logo };
+              }
+              console.warn('Token missing canisterId:', token);
+              return { ...token, logo: null };
             } catch (error) {
-              console.error(`Error fetching logo for token ${token.canisterId}:`, error);
+              console.error(`Error fetching logo for token:`, token, error);
               return { ...token, logo: null };
             }
           })
