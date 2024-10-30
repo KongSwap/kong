@@ -3,10 +3,13 @@
   import { backendService } from '$lib/services/backendService';
   import { onMount } from 'svelte';
   import Swap from '$lib/components/swap/Swap.svelte';
+  import { tokenStore } from '$lib/stores/tokenStore';
 
   let tokens: any = null;
 
   onMount(async () => {
+    tokenStore.loadTokens();
+    tokenStore.fetchIcrc1Metadata("nppha-riaaa-aaaal-ajf2q-cai");
     try {
       tokens = await backendService.getTokens();
     } catch (error) {

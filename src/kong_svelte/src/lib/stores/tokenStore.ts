@@ -43,6 +43,9 @@ function createTokenStore() {
       update(s => ({ ...s, isLoading: true }));
       try {
           const tokens = await backendService.getTokens();
+          tokens.forEach(async (token: Token) => {
+            token.logo = await backendService.getIcrcLogFromMetadata(token.canisterId);
+          });
           console.log('Loaded tokens:', tokens); // Add this debug log
           if (!Array.isArray(tokens)) {
               throw new Error('Invalid tokens response');
@@ -60,6 +63,11 @@ function createTokenStore() {
               isLoading: false
           }));
       }
+    },
+    fetchIcrc1Metadata: async (canisterId: string) => {
+      const metadata = await backendService.getIcrc1TokenMetadata(canisterId);
+      console.log('Fetched icrc1 metadata:', metadata);
+      return metadata;
     },
     loadBalances: async (principal: Principal) => {
       update(s => ({ ...s, isLoading: true }));

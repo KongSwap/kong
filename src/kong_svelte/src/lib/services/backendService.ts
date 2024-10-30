@@ -276,6 +276,32 @@ class BackendService {
       throw error;
     }
   }
+
+  public async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
+    try {
+      const actor = await getActor(canisterId, 'icrc1');
+      return await actor.icrc1_metadata();
+    } catch (error) {
+      console.error('Error getting icrc1 token metadata:', error);
+      throw error;
+    }
+  }
+
+  public async getIcrcLogFromMetadata(canisterId: any): Promise<any> {
+    try {
+      const actor = await getActor(canisterId, 'icrc1');
+      const res = await actor.icrc1_metadata();
+      const filtered = res.filter((arr: any[]) => {
+        if (arr[0] === 'icrc1:logo' || arr[0] === 'icrc1_logo') {
+          return arr[1];
+        }
+      });
+      return filtered[0][1].Text
+    } catch (error) {
+      console.error('Error getting icrc1 token metadata:', error);
+      throw error;
+    }
+  }
 }
 
 export const backendService = BackendService.getInstance();

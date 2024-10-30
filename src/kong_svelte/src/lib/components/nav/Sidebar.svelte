@@ -173,7 +173,7 @@
     right: 32px;
     height: 90vh;
     min-width: 420px;
-    max-width: min(800px, calc(100vw - 64px));
+    max-width: min(800px, calc(100vw - 50px));
     transform-origin: right center;
     will-change: transform;
     overflow: hidden;
@@ -217,8 +217,8 @@
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     width: calc(100% + 16px);
     max-width: calc(100% + 16px);
-    padding-right: 16px;
-    margin-right: -16px;
+    padding-right: 4px;
+    margin-right: -4px;
     box-sizing: border-box;
   }
 

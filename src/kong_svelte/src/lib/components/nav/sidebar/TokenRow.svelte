@@ -23,7 +23,7 @@
 
 <div class="token-row">
     <div class="token-info">
-        <img src="/images/tokens/{token.symbol.toLowerCase()}.png" alt={token.symbol} />
+        <img src={token.logo} alt={token.symbol} class="h-10 w-10 rounded-full" />
         <div class="flex flex-col text-left">
             <span class="symbol">{token.symbol}</span>
             <span class="name">{token.name}</span>
@@ -51,23 +51,17 @@
       gap: 12px;
     }
     
-    img {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-    }
-    
     .token-values {
-      @apply text-right flex flex-col;
+      @apply text-right flex flex-col text-base;
     }
     
     .symbol {
-      @apply text-yellow-300;
+      @apply text-yellow-300 text-lg;
       font-weight: bold;
     }
     
     .name {
-      font-size: 0.8em;
+      @apply text-sm opacity-70;
       opacity: 0.7;
     }
 </style>

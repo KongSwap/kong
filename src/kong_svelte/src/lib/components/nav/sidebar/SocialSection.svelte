@@ -59,6 +59,7 @@
 
     .action-button {
         border: 1px solid var(--sidebar-border);
+        background-color: var(--sidebar-border );
         padding: 6px;
         border-radius: 4px;
         color: white;

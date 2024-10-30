@@ -7,16 +7,17 @@ export interface ICToken {
         fee: bigint;
         decimals: number;
         token: string;
-        token_id: number;
+        tokenId: number;
         chain: string;
         name: string;
-        canister_id: string;
+        canisterId: string;
         icrc1: boolean;
         icrc2: boolean;
         icrc3: boolean;
-        pool_symbol: string;
+        poolSymbol: string;
         symbol: string;
-        on_kong: boolean;
+        onKong: boolean;
+        logo: string | null;
     }
 }
 

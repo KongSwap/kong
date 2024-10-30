@@ -20,8 +20,8 @@
       <div class="error">{$tokenStore.error}</div>
     {:else}
       <div class="portfolio-value">
-        <h3>Portfolio Value</h3>
-        <p>${$tokenStore.totalValueUsd}</p>
+        <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
+        <p class="text-3xl font-bold font-mono">${$tokenStore.totalValueUsd}</p>
       </div>
       {#each $tokenStore.tokens as token (token.symbol)}
         <TokenRow {token} />
@@ -31,7 +31,6 @@
   
   <style>
     .token-list {
-      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
