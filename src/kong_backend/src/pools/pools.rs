@@ -1,6 +1,6 @@
 use ic_cdk::query;
 
-use super::pools_reply::{PoolReply, PoolsReply};
+use super::pools_reply::PoolsReply;
 use super::pools_reply_impl::{to_pool_reply, to_pools_reply};
 
 use crate::ic::guards::not_in_maintenance_mode;
@@ -24,9 +24,4 @@ fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
         .pools
         .sort_by(|a, b| b.balance.partial_cmp(&a.balance).unwrap_or(std::cmp::Ordering::Equal));
     Ok(pools)
-}
-
-pub fn get_by_pool_id(id: u32) -> Result<PoolReply, String> {
-    let pool = pool_map::get_by_pool_id(id).ok_or("Pool not found")?;
-    Ok(to_pool_reply(&pool))
 }
