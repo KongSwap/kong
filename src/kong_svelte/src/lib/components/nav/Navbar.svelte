@@ -133,7 +133,7 @@
           </svg>
         </button>
         <Button
-          text="CONNECT"
+          text={$walletStore.isConnected ? $t("common.open") : $t("common.connect")}
           variant="yellow"
           size="medium"
           state={sidebarOpen ? "selected" : "default"}
