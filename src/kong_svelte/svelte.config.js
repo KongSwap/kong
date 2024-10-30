@@ -34,7 +34,6 @@ const config = {
     if (warning.code === "a11y-no-noninteractive-element-interactions") return;
     if (warning.code === "a11y-no-noninteractive-element-to-interactive-role") return;
     if (warning.code === "a11y-consider-explicit-label") return;
-
     handler(warning);
   },
 };
