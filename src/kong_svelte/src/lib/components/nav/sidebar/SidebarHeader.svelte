@@ -1,214 +1,362 @@
 <script lang="ts">
-    import { scale } from 'svelte/transition';
-    import { backOut } from 'svelte/easing';
+    import { fly } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
+    import { walletStore, disconnectWallet } from "$lib/stores/walletStore";
+    import './colors.css';
 
-    export let activeView: string;
     export let isLoggedIn: boolean;
     export let onClose: () => void;
+    export let activeTab: 'tokens' | 'pools' | 'transactions';
+
+    let showCopied = false;
+
+    // Function to format address with variable truncation based on screen width
+    function formatAddress(address: string, isMobile: boolean): string {
+        if (!address) return "";
+        if (isMobile) {
+            // More truncated for mobile (show fewer characters)
+            const start = address.slice(0, 4);
+            const end = address.slice(-3);
+            return `${start}...${end}`;
+        } else {
+            // Show more characters on desktop
+            const start = address.slice(0, 8);
+            const end = address.slice(-6);
+            return `${start}...${end}`;
+        }
+    }
+
+    let windowWidth: number;
+
+    $: walletAddress = $walletStore.account?.owner.toString() || "";
+    $: isMobile = windowWidth < 768; // Define mobile breakpoint
+    $: displayAddress = formatAddress(walletAddress, isMobile);
+
+    const handleCopy = async () => {
+        if (!showCopied && $walletStore.account?.owner) {
+            await navigator.clipboard.writeText($walletStore.account.owner.toString());
+            showCopied = true;
+            setTimeout(() => {
+                showCopied = false;
+            }, 1500);
+        }
+    };
+
+    const tabs: ('tokens' | 'pools' | 'transactions')[] = ['tokens', 'pools', 'transactions'];
 </script>
 
-<div class="sidebar-header"
-    in:scale={{
-        duration: 400,
-        delay: 300,
-        easing: backOut,
-        start: 0.3
-    }}
->
-    <div class="header-content">
-        <div class="pixel-corner top-left"></div>
-        <div class="pixel-corner top-right"></div>
-        <div class="pixel-corner bottom-left"></div>
-        <div class="pixel-corner bottom-right"></div>
+<svelte:window bind:innerWidth={windowWidth} />
 
-        {#if activeView === 'main'}
-            <h2>{isLoggedIn ? 'YOUR TOKENS' : 'SELECT WALLET'}</h2>
-        {:else if activeView === 'send'}
-            <h2>SEND TOKENS</h2>
-        {:else if activeView === 'receive'}
-            <h2>RECEIVE TOKENS</h2>
-        {:else if activeView === 'history'}
-            <h2>HISTORY</h2>
+<header class="sidebar-header">
+    <div class="header-content" in:fly={{ x: 400, duration: 300, easing: cubicOut }}>
+        {#if isLoggedIn}
+            <div class="wallet-info" role="group" aria-label="Wallet information">
+                <div class="wallet-section">
+                    <div class="wallet-address-container" 
+                         class:mobile={isMobile}
+                         title={walletAddress}>
+                        <span class="wallet-address" 
+                              aria-label="Wallet address">
+                            {displayAddress}
+                        </span>
+                    </div>
+                    <button 
+                        class="copy-button group relative" 
+                        class:copied={showCopied}
+                        on:click={handleCopy}
+                        aria-label={showCopied ? "Principal copied" : "Copy principal"}
+                    >
+                        <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
+                            {showCopied ? "Principal copied!" : "Copy principal"}
+                        </span>
+                        {#if showCopied}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        {:else}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        {/if}
+                    </button>
+                </div>
+                <div class="action-buttons">
+                    <button 
+                        class="action-button disconnect-button group relative"
+                        on:click={disconnectWallet}
+                        aria-label="Disconnect wallet"
+                    >
+                        <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
+                            Disconnect
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                            <line x1="12" y1="2" x2="12" y2="12"></line>
+                        </svg>
+                    </button>
+                    <button 
+                        class="action-button close-button !border-0 !shadow-none group relative"
+                        on:click={onClose}
+                        aria-label="Close sidebar"
+                    >
+                        <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
+                            Close
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#ff4444" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <nav class="tab-navigation" role="tablist" aria-label="Content sections">
+                {#each tabs as tab}
+                    <button 
+                        class="tab-button" 
+                        class:active={activeTab === tab}
+                        on:click={() => activeTab = tab}
+                        role="tab"
+                        aria-selected={activeTab === tab}
+                        aria-controls={`${tab}-panel`}
+                        id={`${tab}-tab`}
+                    >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                {/each}
+            </nav>
+        {:else}
+            <div class="wallet-info" role="group" aria-label="Wallet selection">
+                <h1 id="wallet-select-title" class="wallet-title">Select Wallet</h1>
+                <div class="action-buttons">
+                    <button 
+                        class="action-button close-button" 
+                        on:click={onClose}
+                        aria-label="Close sidebar"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#ff4444" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         {/if}
     </div>
+</header>
 
-    <button 
-        class="close-button" 
-        on:click={onClose}
-        aria-label="Close sidebar"
-    >
-        <span class="close-icon">✕</span>
-    </button>
-</div>
-
-<style lang="scss">
-    :root {
-        --header-bg: #000000;
-        --header-border: #FFCC00;
-        --header-text: #FFCC00;
-        --header-glow: rgba(255, 204, 0, 0.2);
-        --header-hover: #FF4444;
-        --header-shadow: #000000;
-    }
-
+<style>
+    /* Sidebar Header Styles */
     .sidebar-header {
-        position: relative;
-        margin-bottom: 1.5rem;
-        background: var(--header-bg);
+        min-width: 250px;
+        backdrop-filter: blur(8px);
     }
 
+    /* Header Content Layout */
     .header-content {
-        position: relative;
-        background: var(--header-bg);
-        padding: 1rem 0.5rem;
-        border: 2px solid var(--header-border);
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+    }
+
+    /* Wallet Information Section */
+    .wallet-info {
+        display: flex;
         align-items: center;
-        
-        &::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: -1px;
-            right: -1px;
-            bottom: -1px;
-            background: linear-gradient(
-                45deg,
-                var(--header-border) 0%,
-                transparent 40%,
-                transparent 60%,
-                var(--header-border) 100%
-            );
-            opacity: 0.3;
-            pointer-events: none;
-        }
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: nowrap;
     }
 
-    .pixel-corner {
-        position: absolute;
-        width: 8px;
-        height: 8px;
-        background: var(--header-border);
-        
-        &.top-left {
-            top: -2px;
-            left: -2px;
-        }
-        
-        &.top-right {
-            top: -2px;
-            right: -2px;
-        }
-        
-        &.bottom-left {
-            bottom: -2px;
-            left: -2px;
-        }
-        
-        &.bottom-right {
-            bottom: -2px;
-            right: -2px;
-        }
+    .wallet-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        max-width: calc(100% - 96px);
     }
 
-    h2 {
-        color: var(--header-text);
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.875rem;
-        text-align: center;
-        letter-spacing: 0.1em;
+    .wallet-title {
+        font-family: monospace;
+        font-size: 20px;
+        color: var(--sidebar-wallet-button-text);
         margin: 0;
-        padding: 0 2.5rem;
-        text-shadow: 
-            2px 2px 0 var(--header-shadow),
-            -2px -2px 0 var(--header-shadow),
-            2px -2px 0 var(--header-shadow),
-            -2px 2px 0 var(--header-shadow);
-        position: relative;
-        
-        &::before,
-        &::after {
-            content: '◆';
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.75rem;
-            color: var(--header-text);
+        font-weight: 600;
+        padding: 6px 0;
+    }
+
+    /* Wallet Address Display */
+    .wallet-address-container {
+        display: flex;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.25);
+        padding: 4px 4px;
+        border-radius: 6px;
+        border: 1px solid var(--sidebar-border);
+        flex: 1;
+        min-width: 110px;
+        max-width: 100%;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        height: 40px;
+    }
+
+    .wallet-address-container.mobile {
+        padding: 4px 8px;
+        min-width: 90px;
+    }
+
+    .wallet-address {
+        font-family: monospace;
+        font-size: 14px;
+        color: white;
+        letter-spacing: 0.5px;
+        user-select: all;
+        font-weight: 500;
+    }
+
+    @media (max-width: 767px) {
+        .wallet-address {
+            font-size: 13px;
+            letter-spacing: 0.3px;
         }
 
-        &::before {
-            left: 1rem;
+        .wallet-section {
+            max-width: calc(100% - 88px);
         }
+    }
 
-        &::after {
-            right: 1rem;
-        }
+    /* Copy Button Styles */
+    .copy-button {
+        background: var(--sidebar-border-dark);
+        border: 1px solid var(--sidebar-border);
+        padding: 8px;
+        color: white;
+        cursor: pointer;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        height: 40px;
+        width: 40px;
+        flex-shrink: 0;
+    }
+
+    .copy-button.copied {
+        background: #4CAF50;
+        transform: scale(1.05);
+    }
+
+    .copy-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        filter: brightness(1.1);
+    }
+
+    .copy-button:focus-visible {
+        outline: 2px solid var(--sidebar-border);
+        outline-offset: 2px;
+    }
+
+    /* Action Buttons Styles */
+    .action-buttons {
+        display: flex;
+        gap: 8px;
     }
 
     .close-button {
-        position: absolute;
-        right: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 2rem;
-        height: 2rem;
+        background: rgba(255, 68, 68, 0.1);
+        color: #ff4444;
+    }
+
+    .close-button:hover {
+        background: rgba(255, 68, 68, 0.2);
+    }
+
+    .disconnect-button {
+        background: var(--sidebar-disconnect-button-bg);
+    }
+
+    .action-button {
+        border: 1px solid var(--sidebar-border);
+        padding: 6px;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--header-bg);
-        border: 2px solid var(--header-border);
-        color: var(--header-text);
-        font-size: 1.25rem;
-        cursor: pointer;
-        z-index: 10;
-        transition: all 0.2s ease;
-
-        &:hover {
-            background: var(--header-border);
-            color: var(--header-bg);
-            transform: translateY(-50%) scale(0.95);
-            
-            &::before {
-                opacity: 1;
-            }
-        }
-
-        &:active {
-            transform: translateY(-50%) scale(0.9);
-        }
-
-        &::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            background: var(--header-border);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            z-index: -1;
-        }
-
-        .close-icon {
-            transform: translateY(-1px);
-            display: block;
-            line-height: 1;
-        }
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
     }
 
-    @media (max-width: 768px) {
-        .header-content {
-            padding: 0.75rem 0.5rem;
-        }
+    .action-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
 
-        h2 {
-            font-size: 0.75rem;
-            padding: 0 2rem;
-        }
+    .action-button:focus-visible {
+        outline: 2px solid var(--sidebar-border);
+        outline-offset: 2px;
+    }
 
-        .close-button {
-            width: 1.75rem;
-            height: 1.75rem;
-            font-size: 1rem;
-        }
+    /* Tab Navigation Styles */
+    .tab-navigation {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        width: 100%;
+        gap: 8px;
+        padding: 0 4px;
+    }
+
+    .tab-button {
+        background: transparent;
+        border: none;
+        padding: 8px 4px;
+        color: var(--sidebar-border);
+        font-family: monospace;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        opacity: 0.7;
+        position: relative;
+    }
+
+    .tab-button::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: white;
+        transform: scaleX(0);
+        transition: transform 0.2s ease;
+    }
+
+    .tab-button:hover {
+        color: white;
+        opacity: 0.9;
+    }
+
+    .tab-button:focus-visible {
+        outline: 2px solid var(--sidebar-border);
+        outline-offset: 2px;
+    }
+
+    .tab-button.active {
+        color: white;
+        opacity: 1;
+    }
+
+    .tab-button.active::after {
+        transform: scaleX(1);
     }
 </style>

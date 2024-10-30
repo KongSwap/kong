@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   preserveAspectRatio="none"
+   width="48"
+   height="26"
+   viewBox="0 0 48 26"
+   fill="none"
+   version="1.1"
+   id="svg13"
+   sodipodi:docname="panel-red-main-tr.svg"
+   inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs13">
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Colorize"
+       id="filter14"
+       x="0"
+       y="0"
+       width="1"
+       height="1">
+      <feComposite
+         in2="SourceGraphic"
+         operator="arithmetic"
+         k1="2.77556e-17"
+         k2="1"
+         result="composite1"
+         id="feComposite13" />
+      <feColorMatrix
+         in="composite1"
+         values="0"
+         type="saturate"
+         result="colormatrix1"
+         id="feColorMatrix13" />
+      <feFlood
+         flood-opacity="1"
+         flood-color="rgb(199,35,35)"
+         result="flood1"
+         id="feFlood13" />
+      <feBlend
+         in="flood1"
+         in2="colormatrix1"
+         mode="multiply"
+         result="blend1"
+         id="feBlend13" />
+      <feBlend
+         in2="blend1"
+         mode="normal"
+         result="blend2"
+         id="feBlend14" />
+      <feColorMatrix
+         in="blend2"
+         values="1"
+         type="saturate"
+         result="colormatrix2"
+         id="feColorMatrix14" />
+      <feComposite
+         in="colormatrix2"
+         in2="SourceGraphic"
+         operator="in"
+         k2="1"
+         result="composite2"
+         id="feComposite14" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Colorize"
+       id="filter16"
+       x="0"
+       y="0"
+       width="1"
+       height="1">
+      <feComposite
+         in2="SourceGraphic"
+         operator="arithmetic"
+         k1="2.77556e-17"
+         k2="1"
+         result="composite1"
+         id="feComposite15" />
+      <feColorMatrix
+         in="composite1"
+         values="0"
+         type="saturate"
+         result="colormatrix1"
+         id="feColorMatrix15" />
+      <feFlood
+         flood-opacity="1"
+         flood-color="rgb(199,35,35)"
+         result="flood1"
+         id="feFlood15" />
+      <feBlend
+         in="flood1"
+         in2="colormatrix1"
+         mode="multiply"
+         result="blend1"
+         id="feBlend15" />
+      <feBlend
+         in2="blend1"
+         mode="normal"
+         result="blend2"
+         id="feBlend16" />
+      <feColorMatrix
+         in="blend2"
+         values="1"
+         type="saturate"
+         result="colormatrix2"
+         id="feColorMatrix16" />
+      <feComposite
+         in="colormatrix2"
+         in2="SourceGraphic"
+         operator="in"
+         k2="1"
+         result="composite2"
+         id="feComposite16" />
+    </filter>
+  </defs>
+  <sodipodi:namedview
+     id="namedview13"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="22"
+     inkscape:cx="24.022727"
+     inkscape:cy="12.977273"
+     inkscape:window-width="1200"
+     inkscape:window-height="1186"
+     inkscape:window-x="0"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg13" />
+  <path
+     d="M48 26V20H46V16H44V12H42V10H40V8H38V6H36V4H32V2H28V0H0V26H48Z"
+     fill="#FFCD1F"
+     id="path1"
+     style="filter:url(#filter14)" />
+  <path
+     d="M40 12V10H38V8H36V6H32V4H28V2H0V6H28V8H32V10H36V12H38V14H40V16H42V12H40Z"
+     fill="#FFE077"
+     id="path2"
+     style="filter:url(#filter16)" />
+  <path
+     d="M46 20H44V24H46V20Z"
+     fill="#FFE077"
+     id="path3" />
+  <path
+     d="M44 16H42V20H44V16Z"
+     fill="#FFE077"
+     id="path4" />
+  <path
+     d="M0 2H28V0H0V2Z"
+     fill="black"
+     id="path5" />
+  <path
+     d="M28 4H32V2H28V4Z"
+     fill="black"
+     id="path6" />
+  <path
+     d="M32 6H36V4H32V6Z"
+     fill="black"
+     id="path7" />
+  <path
+     d="M36 8H38V6H36V8Z"
+     fill="black"
+     id="path8" />
+  <path
+     d="M38 10H40V8H38V10Z"
+     fill="black"
+     id="path9" />
+  <path
+     d="M40 12H42V10H40V12Z"
+     fill="black"
+     id="path10" />
+  <path
+     d="M42 16H44V12H42V16Z"
+     fill="black"
+     id="path11" />
+  <path
+     d="M44 20H46V16H44V20Z"
+     fill="black"
+     id="path12" />
+  <path
+     d="M46 26H48V20H46V26Z"
+     fill="black"
+     id="path13" />
+</svg>

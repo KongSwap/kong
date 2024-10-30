@@ -2,10 +2,27 @@
     import { scale } from 'svelte/transition';
     import { backOut } from 'svelte/easing';
 
+    // Social media links configuration
+    // TODO: Add icons for each social media platform
     const socialLinks = [
-        { id: 'twitter', text: '𝕏', url: 'https://x.com' },
-        { id: 'telegram', text: 'TG', url: 'https://telegram.org' },
-        { id: 'openchat', text: 'OC', url: 'https://openchat.com' }
+        { 
+            id: 'twitter',
+            text: '𝕏', 
+            url: 'https://x.com',
+            icon: '𝕏'
+        },
+        {
+            id: 'telegram',
+            text: 'TG',
+            url: 'https://telegram.org',
+            icon: 'TG'
+        },
+        {
+            id: 'openchat', 
+            text: 'OC',
+            url: 'https://openchat.com',
+            icon: 'OC'
+        }
     ];
 
     function handleSocialClick(url: string) {
@@ -13,7 +30,8 @@
     }
 </script>
 
-<div class="social-section"
+<div 
+    class="social-links"
     in:scale={{
         duration: 400,
         delay: 500,
@@ -21,148 +39,60 @@
         start: 0.3
     }}
 >
-    <div class="pixel-divider"></div>
-    <div class="social-container">
-        <div class="social-text">
-            <span class="blink">►</span> FOLLOW THE KONG QUEST
-        </div>
-        <div class="social-buttons">
-            {#each socialLinks as social}
-                <button 
-                    class="social-btn {social.id}"
-                    on:click={() => handleSocialClick(social.url)}
-                >
-                    <div class="btn-frame"></div>
-                    <span class="btn-text">{social.text}</span>
-                    <div class="btn-highlight"></div>
-                </button>
-            {/each}
-        </div>
-    </div>
+    {#each socialLinks as social}
+        <button 
+            class="action-button"
+            on:click={() => handleSocialClick(social.url)}
+            aria-label={`Visit our ${social.id} page`}
+        >
+            {@html social.icon}
+        </button>
+    {/each}
 </div>
 
 <style>
-    .social-section {
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 2px solid rgba(255, 204, 0, 0.3);
-    }
-
-    .pixel-divider {
-        height: 4px;
-        background: repeating-linear-gradient(
-            to right,
-            #ffcc00 0px,
-            #ffcc00 4px,
-            transparent 4px,
-            transparent 8px
-        );
-        margin-bottom: 24px;
-        opacity: 0.5;
-    }
-
-    .social-container {
+    .social-links {
         display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .social-text {
-        color: #ffcc00;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 12px;
-        text-align: center;
-        text-shadow: 2px 2px 0 #000;
-    }
-
-    .blink {
-        animation: blink 1s steps(2) infinite;
-    }
-
-    .social-buttons {
-        display: flex;
+        gap: 8px;
         justify-content: center;
-        gap: 16px;
     }
 
-    .social-btn {
-        position: relative;
-        width: 48px;
-        height: 48px;
-        background: none;
-        border: 2px solid #ffcc00;
+    .action-button {
+        border: 1px solid var(--sidebar-border);
+        background-color: var(--sidebar-border );
+        padding: 6px;
+        border-radius: 4px;
+        color: white;
+        font-family: monospace;
+        font-size: 14px;
+        font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0;
+        gap: 6px;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
     }
 
-    .social-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 204, 0, 0.3);
+    .action-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
 
-    .btn-frame {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: 1px solid rgba(255, 204, 0, 0.3);
-        pointer-events: none;
-    }
-
-    .btn-text {
-        position: relative;
-        z-index: 1;
-        color: #ffcc00;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 14px;
-    }
-
-    .btn-highlight {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, rgba(255, 204, 0, 0.1), transparent);
-        pointer-events: none;
-    }
-
-    .social-btn:hover .btn-highlight {
-        animation: highlightPulse 1s ease-in-out infinite alternate;
-    }
-
-    @keyframes blink {
-        from { opacity: 1; }
-        to { opacity: 0; }
-    }
-
-    @keyframes highlightPulse {
-        from { opacity: 0.5; }
-        to { opacity: 1; }
+    .action-button:focus-visible {
+        outline: 2px solid var(--sidebar-border);
+        outline-offset: 2px;
     }
 
     @media (max-width: 768px) {
-        .social-section {
-            margin-top: 24px;
-            padding-top: 16px;
-        }
-
-        .social-text {
-            font-size: 10px;
-        }
-
-        .social-btn {
-            width: 40px;
-            height: 40px;
-        }
-
-        .btn-text {
-            font-size: 12px;
+        .action-button {
+            width: 36px;
+            height: 36px;
         }
     }
 </style>

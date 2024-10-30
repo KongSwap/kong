@@ -31,7 +31,9 @@ const config = {
     if (warning.code === "a11y-click-events-have-key-events") return;
     if (warning.code === "a11y-no-static-element-interactions") return;
     if (warning.code === "a11y-missing-attribute") return;
-
+    if (warning.code === "a11y-no-noninteractive-element-interactions") return;
+    if (warning.code === "a11y-no-noninteractive-element-to-interactive-role") return;
+    if (warning.code === "a11y_consider_explicit_label") return;
     handler(warning);
   },
 };

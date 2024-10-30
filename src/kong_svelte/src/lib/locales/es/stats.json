@@ -13,5 +13,6 @@
   "poolName": "Nombre del Pool",
   "totalStats": "Totales",
   "totalTvl": "Total TVL",
-  "24hFees": "24h Comisiones"
+  "24hFees": "24h Comisiones",
+  "price": "Precio"
 }

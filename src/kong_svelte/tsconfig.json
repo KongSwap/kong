@@ -16,6 +16,11 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "$lib": ["src/lib"],
+      "$lib/*": ["src/lib/*"]
+    },
     "types": ["vite/client", "svelte"]
   },
   "include": ["src/**/*"]

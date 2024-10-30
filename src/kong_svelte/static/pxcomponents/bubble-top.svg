@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" width="283" height="24" viewBox="0 0 283 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M274 24V18H268V12H262V6H12V12H6V18H0V24H274Z" fill="#D98C19"/>
+<path d="M277 24V12L271 6H21L15 12V24H277Z" fill="white"/>
+<path d="M283 12H277V24H283V12Z" fill="black"/>
+<path d="M277 6H271V12H277V6Z" fill="black"/>
+<path d="M271 0H21V6H271V0Z" fill="black"/>
+<path d="M15 12H9V24H15V12Z" fill="black"/>
+<path d="M21 6H15V12H21V6Z" fill="black"/>
+</svg>

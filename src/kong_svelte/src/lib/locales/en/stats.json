@@ -2,16 +2,17 @@
   "stats": "Stats",
   "volume": "Volume",
   "liquidity": "Liquidity",
-  "overviewOfKongPools": "Overview of Kong Pools",
+  "overviewOfKongPools": "Liquidity Pools",
   "pool": "Pool",
   "tvl": "TVL",
   "apy": "APY",
   "actions": "Actions",
-  "24hVolume": "24h Volume",
+  "24hVolume": "24h Vol",
   "swap": "Swap",
   "addLiquidity": "Add Liquidity",
   "poolName": "Pool Name",
   "totalStats": "Total Stats",
   "totalTvl": "Total TVL",
-  "24hFees": "24h Fees"
+  "24hFees": "24h Fees",
+  "price": "Price"
 }
