@@ -9,6 +9,7 @@
   export let onClick: () => void = () => {};
   export let disabled: boolean = false;
   export let className: string = '';
+  export let width: number | string | 'auto' = 'auto';
 
   $: {
     if (size === 'small' && variant === 'blue') {
@@ -33,6 +34,12 @@
     const prefix = prefixMap[size];
     const middlePart = part === 'middle' ? middlePartMap[size] : part;
     return `pxcomponents/${prefix}-${variant}-${state}-${middlePart}.svg`;
+  }
+
+  function formatDimension(value: number | string): string {
+    if (value === 'auto') return 'auto';
+    if (typeof value === 'number') return `${value}px`;
+    return value;
   }
 
   let isPressed = false;
@@ -94,6 +101,7 @@
   }
 
   $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''} ${className}`;
+  $: formattedWidth = formatDimension(width);
 </script>
 
 <button
@@ -104,9 +112,9 @@
   on:mouseenter={handleMouseEnter}
   on:mouseleave={handleMouseLeave}
   {disabled}
-  style="transform: translateY({$translateY}px); filter: brightness({$brightness})"
+  style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
 >
-  <div class="button-container">
+  <div class="button-container" class:auto-size={width === 'auto'}>
     <img src={getImagePath('l')} alt="" class="left-part" />
     <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
     <img src={getImagePath('r')} alt="" class="right-part" />
@@ -125,19 +133,22 @@
     cursor: pointer;
     image-rendering: pixelated;
     transform-origin: center;
-    min-width: min-content;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.1s ease-out, filter 0.1s ease-out;
+    min-width: fit-content;
   }
 
   .button-container {
     display: flex;
     align-items: stretch;
-    height: 100%;
     width: 100%;
     position: relative;
+}
+
+  .button-container.auto-size {
+    width: fit-content;
   }
 
   .left-part,
@@ -149,28 +160,28 @@
   }
 
   .middle-part {
-    flex-grow: 1;
+    flex: 1;
     background-repeat: repeat-x;
     background-position: center;
     background-size: auto 100%;
-    min-width: 20px;
     pointer-events: none;
+    min-width: 20px; /* Minimum width to ensure button doesn't collapse */
   }
 
   .button-text {
     font-family: theme('fontFamily.alumni');
     font-size: 24px;
     text-transform: uppercase;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 0 16px;
     user-select: none;
     white-space: nowrap;
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 100%;
     text-align: center;
+    width: auto;
+    min-width: max-content;
   }
 
   .small {

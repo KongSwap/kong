@@ -71,7 +71,7 @@
       display: flex;
       align-items: stretch;
       justify-content: stretch;
-      max-width: 100%;
+      max-width: 100vw;
       max-height: 100vh;
     }
   
@@ -127,13 +127,12 @@
       background-repeat: repeat;
       background-size: auto;
       color: white;
-      font-family: 'Press Start 2P', monospace;
       font-size: 12px;
-      align-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
       justify-content: center;
-      text-align: center;
       min-height: 0;
-      overflow: auto;
     }
   
     @media (max-width: 768px) {
@@ -147,7 +146,11 @@
       }
   
       .edge.vertical {
-        width: 2px;
+        width: 24px;
+      }
+
+      .center-content {
+        padding: 12px;
       }
     }
   </style>

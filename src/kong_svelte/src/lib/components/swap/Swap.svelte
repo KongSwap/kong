@@ -5,9 +5,9 @@
     import BigNumber from 'bignumber.js';
     import { backendService } from '$lib/services/backendService';
     import { tokenStore } from '$lib/stores/tokenStore';
-    import Panel from '$lib/components/common/Panel.svelte';
+    import SwapPanel from '$lib/components/swap/swap_ui/SwapPanel.svelte';
     import Button from '$lib/components/common/Button.svelte';
-    import TokenSelector from '$lib/components/swap/swap_ui/TokenSelector.svelte';
+    import TokenSelector from '$lib/components/swap/swap_ui/TokenSelectorModal.svelte';
     import SwapConfirmation from '$lib/components/swap/swap_ui/SwapConfirmation.svelte';
     import { formatNumberCustom } from '$lib/utils/formatNumberCustom';
 
@@ -31,6 +31,7 @@
     let usdValue = '0';
     let swapSlippage = 0;
     let requestId: bigint | null = null;
+    let isArrowFlipped = false;
 
     // Fees state
     let gasFee = '0';
@@ -139,10 +140,37 @@
         try {
             const payDecimals = getTokenDecimals(payToken);
             const receiveDecimals = getTokenDecimals(receiveToken);
-            
             const payAmountBigInt = toBigInt(payAmount, payDecimals);
             const receiveAmountBigInt = toBigInt(receiveAmount, receiveDecimals);
+            
+            // Get the appropriate ledger canister ID based on the pay token
+            const ledgerCanisterId = {
+                'ckBTC': 'zeyan-7qaaa-aaaar-qaibq-cai',
+                'ckETH': 'zr7ra-6yaaa-aaaar-qaica-cai',
+                'ckUSDC': 'zw6xu-taaaa-aaaar-qaicq-cai',
+                'ckUSDT': 'zdzgz-siaaa-aaaar-qaiba-cai',
+                'ICP': 'nppha-riaaa-aaaal-ajf2q-cai'
+            }[payToken];
 
+            // Add approval call here
+            const approved = await backendService.icrc2_approve({
+                amount: payAmountBigInt,
+                spender: { 
+                    owner: 'l4lgk-raaaa-aaaar-qahpq-cai', // kong_backend canister ID
+                    subaccount: [] 
+                },
+                expires_at: [], 
+                fee: [], 
+                memo: [], 
+                from_subaccount: [], 
+                created_at_time: [] 
+            });
+
+            if ('Err' in approved) {
+                throw new Error(`Failed to approve tokens: ${approved.Err}`);
+            }
+
+            // Then proceed with swap
             const result = await backendService.swap_async({
                 pay_token: payToken,
                 pay_amount: payAmountBigInt,
@@ -225,6 +253,7 @@
 
     function handleTokenSwitch() {
         [payToken, receiveToken] = [receiveToken, payToken];
+        isArrowFlipped = !isArrowFlipped;
         if (payAmount) debouncedGetQuote(payAmount);
     }
 
@@ -238,83 +267,50 @@
 <div class="swap-wrapper">
     <div class="swap-container" in:fade>
         <!-- Pay Panel -->
-        <Panel variant="green" width="100%" height="180">
-            <div class="panel-content">
-                <div class="panel-header">
-                    <h2>You Pay</h2>
-                    <div class="balance">
-                        Balance: {formatNumberCustom($tokenStore.balances[payToken]?.balance || '0', 6)} {payToken}
-                    </div>
-                </div>
-                <div class="input-container">
-                    <input 
-                        type="text" 
-                        value={payAmount}
-                        on:input={handleInputChange}
-                        placeholder="0.00"
-                        class="input-amount"
-                        disabled={isProcessing}
-                    />
-                    <Button 
-                        variant="yellow" 
-                        on:click={() => showPayTokenSelector = true}
-                    >
-                        {payToken}
-                    </Button>
-                </div>
-            </div>
-        </Panel>
+        <SwapPanel
+            title="You Pay"
+            token={payToken}
+            amount={payAmount}
+            balance={$tokenStore.balances[payToken]?.balance || '0'}
+            onTokenSelect={() => showPayTokenSelector = true}
+            onAmountChange={handleInputChange}
+            disabled={isProcessing}
+        />
 
         <!-- Swap Arrow -->
         <button 
             class="switch-button" 
+            class:flipped={isArrowFlipped}
             on:click={handleTokenSwitch}
             disabled={isProcessing}
         >
-            ↓
+            <img src="/pxcomponents/arrow.svg" alt="swap" />
         </button>
 
         <!-- Receive Panel -->
-        <Panel variant="green" width="100%" height="180">
-            <div class="panel-content">
-                <div class="panel-header">
-                    <h2>You Receive</h2>
-                    <div class="balance">
-                        Balance: {formatNumberCustom($tokenStore.balances[receiveToken]?.balance || '0', 6)} {receiveToken}
-                    </div>
-                </div>
-                <div class="input-container">
-                    <input 
-                        type="text" 
-                        value={displayReceiveAmount}
-                        disabled
-                        placeholder="0.00"
-                        class="input-amount"
-                    />
-                    <Button 
-                        variant="yellow"
-                        on:click={() => showReceiveTokenSelector = true}
-                    >
-                        {receiveToken}
-                    </Button>
-                </div>
-                {#if payAmount && payAmount !== '0'}
-                    <div class="price-info">
-                        ~${usdValue} (Slippage: {swapSlippage}%)
-                    </div>
-                {/if}
-            </div>
-        </Panel>
+        <SwapPanel
+            title="You Receive"
+            token={receiveToken}
+            amount={displayReceiveAmount}
+            balance={$tokenStore.balances[receiveToken]?.balance || '0'}
+            onTokenSelect={() => showReceiveTokenSelector = true}
+            onAmountChange={() => {}}
+            disabled={true}
+            showPrice={true}
+            usdValue={usdValue}
+            slippage={swapSlippage}
+        />
 
         {#if error}
             <div class="error" transition:fade>{error}</div>
         {/if}
 
-        <div class="swap-footer">
+        <div class="swap-footer mt-3">
             <Button 
                 variant="yellow"
                 disabled={!isValidInput || isProcessing}
                 on:click={() => isConfirmationOpen = true}
+                width="100%"
             >
                 {buttonText}
             </Button>
@@ -365,34 +361,42 @@
 
 <style>
     .swap-wrapper {
+        font-family: 'Alumni Sans', sans-serif;
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        padding: 2rem;
     }
 
     .swap-container {
         width: 100%;
-        max-width: 480px;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        position: relative;
+        gap: 10px;
     }
 
-    .input-amount {
-        width: 100%;
+    .switch-button {
+        position: absolute;
+        left: 50%;
+        top: 43%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 69px;
         background: transparent;
         border: none;
-        font-size: 1.5rem;
-        color: white;
-        padding: 0.5rem;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        z-index: 10;
     }
 
-    .price-info {
-        font-size: 0.9rem;
-        color: #aaa;
-        margin-top: 0.5rem;
+    .switch-button.flipped {
+        transform: translate(-50%, -50%) rotate(180deg);
+    }
+
+    .switch-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .error {
@@ -401,48 +405,5 @@
         border-radius: 0.25rem;
         background: rgba(255, 68, 68, 0.1);
         text-align: center;
-    }
-
-    .switch-button {
-        align-self: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid white;
-        color: white;
-        cursor: pointer;
-        transition: transform 0.3s ease;
-    }
-
-    .switch-button:hover:not(:disabled) {
-        transform: rotate(180deg);
-    }
-
-    .switch-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .panel-content {
-        padding: 1rem;
-    }
-
-    .panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-
-    .balance {
-        font-size: 0.9rem;
-        opacity: 0.7;
-    }
-
-    .input-container {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
     }
 </style>

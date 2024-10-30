@@ -66,7 +66,7 @@
                         on:click={handleCopy}
                         aria-label={showCopied ? "Principal copied" : "Copy principal"}
                     >
-                        <span class="pointer-events-none absolute -bottom-7 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 before:content-[''] group-hover:opacity-100">
+                        <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
                             {showCopied ? "Principal copied!" : "Copy principal"}
                         </span>
                         {#if showCopied}
@@ -87,7 +87,7 @@
                         on:click={disconnectWallet}
                         aria-label="Disconnect wallet"
                     >
-                        <span class="pointer-events-none absolute -bottom-7 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 before:content-[''] group-hover:opacity-100">
+                        <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
                             Disconnect
                         </span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -96,14 +96,14 @@
                         </svg>
                     </button>
                     <button 
-                        class="action-button !border-0 !shadow-none group relative"
+                        class="action-button close-button !border-0 !shadow-none group relative"
                         on:click={onClose}
                         aria-label="Close sidebar"
                     >
-                        <span class="pointer-events-none absolute -bottom-7 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 before:content-[''] group-hover:opacity-100">
+                        <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
                             Close
                         </span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#ff4444" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -130,11 +130,11 @@
                 <h1 id="wallet-select-title" class="wallet-title">Select Wallet</h1>
                 <div class="action-buttons">
                     <button 
-                        class="action-button" 
+                        class="action-button close-button" 
                         on:click={onClose}
                         aria-label="Close sidebar"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#ff4444" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -267,7 +267,12 @@
     }
 
     .close-button {
-        background: var(--sidebar-close-button-bg);
+        background: rgba(255, 68, 68, 0.1);
+        color: #ff4444;
+    }
+
+    .close-button:hover {
+        background: rgba(255, 68, 68, 0.2);
     }
 
     .disconnect-button {
@@ -355,4 +360,3 @@
         transform: scaleX(1);
     }
 </style>
-
