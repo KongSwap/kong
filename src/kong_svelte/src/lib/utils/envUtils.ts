@@ -1,22 +1,7 @@
-export function isLocalhost(): boolean | null {
-	if (typeof window === 'undefined') {
-		return null;
-	}
-	return window.location.hostname === 'localhost';
+export function isLocalEnv(): boolean {
+	return process.env.DFX_NETWORK === 'local';
 }
 
-export function currentEnvMode(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  switch (window.location.hostname) {
-    case "localhost":
-      return "DEV";
-    case "todo":
-      // TODO: Add staging canister ID
-      break;
-    case "kongswap.io":
-      return null;
-  }
+export function currentEnvMode(): string {
+  return process.env.DFX_NETWORK;
 }

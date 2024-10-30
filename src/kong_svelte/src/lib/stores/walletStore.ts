@@ -43,11 +43,11 @@ let pnp: ReturnType<typeof createPNP> | null = null;
 // Initialize PNP
 function initializePNP() {
   if (pnp === null && typeof window !== 'undefined') {
-    const isLocalhost = window.location.hostname.includes('localhost');
+    const isLocalEnv = process.env.DFX_NETWORK === 'local';
     pnp = createPNP({
-      hostUrl: isLocalhost ? 'http://localhost:4943' : 'https://ic0.app',
+      hostUrl: isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app',
       whitelist: [kongBackendCanisterId],
-      identityProvider: isLocalhost
+      identityProvider: isLocalEnv
         ? 'http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943'
         : 'https://identity.ic0.app',
     });
@@ -136,10 +136,10 @@ async function createActor(canisterId: string, idlFactory: any): Promise<ActorSu
   // Call initializePNP once when the module is loaded
 initializePNP();
   const isAuthenticated = await isConnected();
-  const isLocalhost = window.location.hostname.includes('localhost');
-  const host = isLocalhost ? 'http://localhost:4943' : 'https://ic0.app';
+  const isLocalEnv = window.location.hostname.includes('localhost');
+  const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
   const agent = HttpAgent.createSync({ host });
-  if (isLocalhost) {
+  if (isLocalEnv) {
     await agent.fetchRootKey();
   }
   return isAuthenticated
