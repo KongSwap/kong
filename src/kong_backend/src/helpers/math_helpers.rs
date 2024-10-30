@@ -14,12 +14,16 @@ pub fn price_rounded(price: &BigRational) -> Option<f64> {
         Some(round_f64(price_f64, 12)) // 12 decimals
     } else if price_f64 <= 0.1 {
         Some(round_f64(price_f64, 10)) // 10 decimals
-    } else if price_f64 <= 10.0 {
+    } else if price_f64 <= 20.0 {
         Some(round_f64(price_f64, 8)) // 8 decimals
     } else if price_f64 <= 100.0 {
         Some(round_f64(price_f64, 6)) // 6 decimals
-    } else if price_f64 <= 10000.00 {
+    } else if price_f64 <= 500.0 {
+        Some(round_f64(price_f64, 5)) // 5 decimals
+    } else if price_f64 <= 5000.00 {
         Some(round_f64(price_f64, 4)) // 4 decimals
+    } else if price_f64 <= 50000.00 {
+        Some(round_f64(price_f64, 3)) // 3 decimals
     } else if price_f64 <= 100000.00 {
         Some(round_f64(price_f64, 2)) // 2 decimals
     } else {

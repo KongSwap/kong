@@ -9,8 +9,10 @@ use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero};
 use crate::ic::{
     address::Address,
+    ckusdt::is_ckusdt,
     get_time::get_time,
     guards::not_in_maintenance_mode,
+    icp::is_icp,
     id::{caller_id, is_caller_controller},
     logging::{error_log, info_log},
     transfer::{icrc1_transfer, icrc2_transfer_from},
@@ -133,17 +135,17 @@ async fn check_arguments(
         None => None,
     };
 
-    // make sure token_1 is ckUSDT
+    // make sure token_1 is ckUSDT or ICP
     let token_1 = match args.token_1.as_str() {
-        token
-            if token == kong_settings::get().ckusdt_symbol
-                || token == kong_settings::get().ckusdt_symbol_with_chain
-                || token == kong_settings::get().ckusdt_address
-                || token == kong_settings::get().ckusdt_address_with_chain =>
-        {
-            token_map::get_ckusdt()?
+        token if is_ckusdt(token) => token_map::get_ckusdt()?,
+        token if is_icp(token) => token_map::get_icp()?,
+        _ => {
+            return Err(format!(
+                "Token_1 must be {} or {}",
+                kong_settings::get().ckusdt_symbol,
+                kong_settings::get().icp_symbol
+            ))
         }
-        _ => return Err(format!("Token_1 must be {}", kong_settings::get().ckusdt_symbol)),
     };
 
     // token_0, check if it exists already or needs to be added

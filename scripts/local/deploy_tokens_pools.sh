@@ -182,10 +182,130 @@ dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json
     amount_1 = ${CKUSDT_AMOUNT};
 })" | jq
 
-# 6. Add new pools to Kong
+# 6. Add KONG1/ckUSDT pool
+KONG1_SYMBOL="KONG1"
+KONG1_CKUSDT_PRICE=0.01
+KONG1_CKUSDT_PRICE=${KONG1_CKUSDT_PRICE//_/}        # remove underscore
+KONG1_AMOUNT=100_000_000_000_000        # 1,000,000 KONG1
+KONG1_AMOUNT=${KONG1_AMOUNT//_/}        # remove underscore
+KONG1_CHAIN="IC"
+KONG1_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KONG1_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
+KONG1_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG1_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
+KONG1_DECIMALS=$(echo "10^${KONG1_DECIMALS}" | bc)
+KONG1_CKUSDT_DECIMALS=$(echo "${KONG1_DECIMALS} / ${CKUSDT_DECIMALS}" | bc -l) # convert KONG1 to CKUSDT precision
+KONG1_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG1_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+KONG1_FEE=${KONG1_FEE//_/}
+CKUSDT_AMOUNT=$(echo "scale=0; ${KONG1_AMOUNT} * ${KONG1_CKUSDT_PRICE} / ${KONG1_CKUSDT_DECIMALS}" | bc -l)
+EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
+
+APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG1_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${KONG1_AMOUNT} + ${KONG1_FEE}" | bc);
+    expires_at = opt ${EXPIRES_AT};
+    spender = record {
+        owner = principal \"${KONG_CANISTER}\";
+    };
+})" | awk -F'=' '{print $2}' | awk '{print $1}')
+
+APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${CKUSDT_AMOUNT} + ${CKUSDT_FEE}" | bc);
+    expires_at = opt ${EXPIRES_AT};
+    spender = record {
+        owner = principal \"${KONG_CANISTER}\";
+    };
+})" | awk -F'=' '{print $2}' | awk '{print $1}')
+
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+    token_0 = \"${KONG1_CHAIN}.${KONG1_LEDGER}\";
+    amount_0 = ${KONG1_AMOUNT};
+    token_1 = \"${CKUSDT_CHAIN}.${CKUSDT_LEDGER}\";
+    amount_1 = ${CKUSDT_AMOUNT};
+})" | jq
+
+# 7. Add KONG1/ICP pool
+KONG1_SYMBOL="KONG1"
+KONG1_ICP_PRICE=0.001333
+KONG1_ICP_PRICE=${KONG1_ICP_PRICE//_/}  # remove underscore
+KONG1_AMOUNT=100_000_000_000_000        # 1,000,000 KONG1
+KONG1_AMOUNT=${KONG1_AMOUNT//_/}        # remove underscore
+KONG1_CHAIN="IC"
+KONG1_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KONG1_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
+KONG1_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG1_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
+KONG1_DECIMALS=$(echo "10^${KONG1_DECIMALS}" | bc)
+KONG1_ICP_DECIMALS=$(echo "${KONG1_DECIMALS} / ${ICP_DECIMALS}" | bc -l) # convert KONG1 to ICP precision
+KONG1_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG1_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+KONG1_FEE=${KONG1_FEE//_/}
+ICP_AMOUNT=$(echo "scale=0; ${KONG1_AMOUNT} * ${KONG1_ICP_PRICE} / ${KONG1_ICP_DECIMALS}" | bc -l)
+EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
+
+APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG1_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${KONG1_AMOUNT} + ${KONG1_FEE}" | bc);
+    expires_at = opt ${EXPIRES_AT};
+    spender = record {
+        owner = principal \"${KONG_CANISTER}\";
+    };
+})" | awk -F'=' '{print $2}' | awk '{print $1}')
+
+APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
+    expires_at = opt ${EXPIRES_AT};
+    spender = record {
+        owner = principal \"${KONG_CANISTER}\";
+    };
+})" | awk -F'=' '{print $2}' | awk '{print $1}')
+
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+    token_0 = \"${KONG1_CHAIN}.${KONG1_LEDGER}\";
+    amount_0 = ${KONG1_AMOUNT};
+    token_1 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
+    amount_1 = ${ICP_AMOUNT};
+})" | jq
+
+# 8. Add KONG2/ICP pool
+KONG2_SYMBOL="KONG2"
+KONG2_ICP_PRICE=0.001333
+KONG2_ICP_PRICE=${KONG2_ICP_PRICE//_/}  # remove underscore
+KONG2_AMOUNT=100_000_000_000_000        # 1,000,000 KONG2
+KONG2_AMOUNT=${KONG2_AMOUNT//_/}        # remove underscore
+KONG2_CHAIN="IC"
+KONG2_LEDGER=$(dfx canister id ${NETWORK} ${IDENTITY} $(echo ${KONG2_SYMBOL} | tr '[:upper:]' '[:lower:]')_ledger)
+KONG2_DECIMALS=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG2_LEDGER} icrc1_decimals '()' | awk -F"[^0-9]*" '{print $2}')
+KONG2_DECIMALS=$(echo "10^${KONG2_DECIMALS}" | bc)
+KONG2_ICP_DECIMALS=$(echo "${KONG2_DECIMALS} / ${ICP_DECIMALS}" | bc -l) # convert KONG2 to ICP precision
+KONG2_FEE=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG2_LEDGER} icrc1_fee "()" | awk -F'[:]+' '{print $1}' | awk '{gsub(/\(/, ""); print}')
+KONG2_FEE=${KONG2_FEE//_/}
+ICP_AMOUNT=$(echo "scale=0; ${KONG2_AMOUNT} * ${KONG2_ICP_PRICE} / ${KONG2_ICP_DECIMALS}" | bc -l)
+EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 60000000000" | bc)  # 60 seconds from now
+
+APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${KONG2_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${KONG2_AMOUNT} + ${KONG2_FEE}" | bc);
+    expires_at = opt ${EXPIRES_AT};
+    spender = record {
+        owner = principal \"${KONG_CANISTER}\";
+    };
+})" | awk -F'=' '{print $2}' | awk '{print $1}')
+
+APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
+    amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
+    expires_at = opt ${EXPIRES_AT};
+    spender = record {
+        owner = principal \"${KONG_CANISTER}\";
+    };
+})" | awk -F'=' '{print $2}' | awk '{print $1}')
+
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool --output json "(record {
+    token_0 = \"${KONG2_CHAIN}.${KONG2_LEDGER}\";
+    amount_0 = ${KONG2_AMOUNT};
+    token_1 = \"${ICP_CHAIN}.${ICP_LEDGER}\";
+    amount_1 = ${ICP_AMOUNT};
+})" | jq
+
+# 9. Add new pools to Kong
 IDENTITY="--identity kong"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${ICP_SYMBOL}_${CKUSDT_SYMBOL}'", true)' | jq
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${CKUSDC_SYMBOL}_${CKUSDT_SYMBOL}'", true)' | jq
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${CKBTC_SYMBOL}_${CKUSDT_SYMBOL}'", true)' | jq
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${CKETH_SYMBOL}_${CKUSDT_SYMBOL}'", true)' | jq
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${KONG1_SYMBOL}_${CKUSDT_SYMBOL}'", true)' | jq
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${KONG1_SYMBOL}_${ICP_SYMBOL}'", true)' | jq
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_pool_on_kong --output json '("'${KONG2_SYMBOL}_${ICP_SYMBOL}'", true)' | jq

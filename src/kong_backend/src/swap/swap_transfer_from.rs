@@ -18,7 +18,9 @@ use crate::helpers::{
 use crate::ic::{
     address::Address,
     address_impl::get_address,
+    ckusdt::is_ckusdt,
     get_time::get_time,
+    icp::is_icp,
     id::caller_id,
     logging::error_log,
     transfer::{icp_transfer, icrc1_transfer, icrc2_transfer_from},
@@ -145,15 +147,15 @@ fn calculate_amounts(
     let pay_token_id = pay_token.token_id();
     // Receive token
     let receive_token_id = receive_token.token_id();
+
     let user_fee_level = user_map::get_by_user_id(user_id).ok_or("User not found")?.fee_level;
 
-    let ckusdt = token_map::get_ckusdt()?;
     let receive_amount_with_fees_and_gas;
     let mid_price_f64;
     let price_f64;
     let slippage_f64;
     let mut txs = Vec::new();
-    if token_map::is_ckusdt(&receive_token.address_with_chain()) {
+    if is_ckusdt(&receive_token.address_with_chain()) {
         let pool = pool_map::get_by_token_ids(pay_token_id, receive_token_id).ok_or("Pool not found")?;
         let swap = swap_amount_0(&pool, pay_amount, Some(user_fee_level), None, None)?;
         receive_amount_with_fees_and_gas = swap.receive_amount_with_fees_and_gas();
@@ -163,7 +165,7 @@ fn calculate_amounts(
         price_f64 = price_rounded(&price).ok_or("Invalid price")?;
         slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap);
-    } else if token_map::is_ckusdt(&pay_token.address_with_chain()) {
+    } else if is_ckusdt(&pay_token.address_with_chain()) {
         let pool = pool_map::get_by_token_ids(receive_token_id, pay_token_id).ok_or("Pool not found")?;
         let swap = swap_amount_1(&pool, pay_amount, Some(user_fee_level), None, None)?;
         receive_amount_with_fees_and_gas = swap.receive_amount_with_fees_and_gas();
@@ -174,8 +176,9 @@ fn calculate_amounts(
         slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap);
     } else {
+        let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
         // 2-step swap via ckUSDT
-        let pool1 = pool_map::get_by_token_ids(pay_token.token_id(), ckusdt.token_id()).ok_or("Pool not found")?;
+        let pool1 = pool_map::get_by_token_ids(pay_token.token_id(), ckusdt_token_id).ok_or("Pool not found")?;
         let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2; // this will round it up
         let swap1 = swap_amount_0(
             &pool1,
@@ -184,7 +187,7 @@ fn calculate_amounts(
             Some(swap1_lp_fee),
             Some(&nat_zero()), // swap1 do not take gas fees
         )?;
-        let pool2 = pool_map::get_by_token_ids(receive_token.token_id(), ckusdt.token_id()).ok_or("Pool not found")?;
+        let pool2 = pool_map::get_by_token_ids(receive_token.token_id(), ckusdt_token_id).ok_or("Pool not found")?;
         let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 2;
         let swap2 = swap_amount_1(
             &pool2,
