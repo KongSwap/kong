@@ -96,6 +96,7 @@
           <Button
             text={tab.toUpperCase()}
             variant="blue"
+            size="medium"
             state={activeTab === tab ? "selected" : "default"}
             onClick={() => handleTabChange(tab)}
           />
@@ -134,6 +135,7 @@
         <Button
           text="CONNECT"
           variant="yellow"
+          size="medium"
           state={sidebarOpen ? "selected" : "default"}
           onClick={handleConnect}
         />
@@ -164,6 +166,7 @@
       <button
         class="settings-button"
         class:spinning={isSpinning}
+        aria-label="Settings"
         on:mouseenter={() => (isSpinning = true)}
         on:mouseleave={() => (isSpinning = false)}
       >

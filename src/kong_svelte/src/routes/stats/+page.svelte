@@ -4,17 +4,18 @@
   import { backendService } from "$lib/services/backendService";
   import { onMount, onDestroy } from "svelte";
   import Button from "$lib/components/common/Button.svelte";
+  import Tooltip from "$lib/components/common/Tooltip.svelte";
   import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
   import Clouds from "$lib/components/stats/Clouds.svelte";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
-  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import StatsSignPost from "$lib/components/stats/StatsSignPost.svelte";
   import { lpTableHeaders } from "$lib/constants/statsConstants";
   import { filterPools, sortPools } from "$lib/utils/statsUtils";
   import { fetchPools, poolsInfo, poolsTotals } from "$lib/stores/poolStore";
   import { writable } from 'svelte/store';
-  import { debounce } from 'lodash-es'; // Import debounce from lodash
-    import { goto } from "$app/navigation";
+  import { debounce } from 'lodash-es';
+  import { goto } from "$app/navigation";
+  import { ArrowLeftRight, Droplets } from "lucide-svelte";
 
   type PoolsTotalsType = {
     totalTvl: number | string;
@@ -22,7 +23,7 @@
     totalFees: number | string;
   };
 
-  let tokens: Record<string, any> = {}; // Define tokens as a Record for better type safety
+  let tokens: Record<string, any> = {};
   let poolsData: any[] = [];
   let currentPoolsTotals: PoolsTotalsType = {
     totalTvl: 0,
@@ -34,10 +35,8 @@
   let searchQuery = "";
   let debouncedSearchQuery = "";
 
-  // Create a writable store for the search input with debouncing
   const searchStore = writable("");
 
-  // Subscribe to poolsInfo and poolsTotals from the store
   const unsubscribePoolsInfo = poolsInfo.subscribe(value => {
     poolsData = value;
     console.log('poolsInfo updated:', poolsData);
@@ -48,21 +47,7 @@
     console.log('poolsTotals updated:', currentPoolsTotals);
   });
 
-  onDestroy(() => {
-    unsubscribePoolsInfo();
-    unsubscribePoolsTotals();
-  });
-
-  /**
-   * Handles the sort event dispatched from the TableHeader component.
-   * Updates the sort column and direction.
-   * @param event - The custom sort event containing column and direction.
-   */
-  function handleSortEvent(event: CustomEvent<{ column: string; direction: "asc" | "desc" }>) {
-    const { column, direction } = event.detail;
-    sortColumn = column;
-    sortDirection = direction;
-  }
+  let unsubscribeSearch: () => void;
 
   onMount(async () => {
     try {
@@ -72,25 +57,27 @@
       console.error("Error during onMount:", error);
     }
 
-    // Initialize debounced search
-    const debounced = debounce((query: string) => {
+    const debouncedFn = debounce((query: string) => {
       debouncedSearchQuery = query;
-    }, 300); // 300ms debounce delay
+    }, 300);
 
-    // Subscribe to searchStore changes with debouncing
-    const unsubscribeSearch = searchStore.subscribe(value => {
-      debounced(value);
-    });
-
-    // Clean up the search subscription on destroy
-    onDestroy(() => {
-      unsubscribeSearch();
+    unsubscribeSearch = searchStore.subscribe(value => {
+      debouncedFn(value);
     });
   });
 
-  /**
-   * Reactive statement to compute sorted and filtered pools based on search query and sort settings.
-   */
+  onDestroy(() => {
+    if (unsubscribeSearch) unsubscribeSearch();
+    unsubscribePoolsInfo();
+    unsubscribePoolsTotals();
+  });
+
+  function handleSortEvent(event: CustomEvent<{ column: string; direction: "asc" | "desc" }>) {
+    const { column, direction } = event.detail;
+    sortColumn = column;
+    sortDirection = direction;
+  }
+
   let sortedFilteredPools: any[] = [];
 
   $: sortedFilteredPools = sortPools(filterPools(poolsData, debouncedSearchQuery), sortColumn, sortDirection);
@@ -107,7 +94,7 @@
     />
   </div>
 
-  <div class="flex-grow z-10 w-10/12 flex items-center mb-20 overflow-x-scroll">
+  <div class="flex-grow z-10 w-10/12 flex items-center mb-20">
     <!-- Pool Overview Section -->
     <div
       class="bg-k-light-blue bg-opacity-70 border-[5px] border-black p-0.5 w-full max-w-5xl mx-auto"
@@ -130,7 +117,7 @@
             />
           </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-scroll">
           <table class="w-full text-black font-alumni">
             <thead>
               <tr class="border-b-4 border-black text-3xl uppercase">
@@ -156,7 +143,7 @@
               {:else}
                 {#each sortedFilteredPools as pool (pool.id)}
                   <tr class="border-b-2 border-black text-xl md:text-3xl">
-                    <td class="uppercase font-bold" on:click={() => goto(`/stats/pools?id=${pool.id}`)}>
+                    <td class="uppercase font-bold cursor-pointer" on:click={() => goto(`/stats/pools?id=${pool.id}`)}>
                       <div class="flex items-center">
                         <!-- Dynamic Token Logos -->
                         <div class="isolate flex -space-x-1 overflow-hidden p-2 w-[5rem]">
@@ -170,20 +157,21 @@
                     <td class="p-2 text-right">${pool.tvl}</td>
                     <td class="p-2 text-right">${pool.roll24hVolume}</td>
                     <td class="p-2 text-right">{pool.apy}%</td>
-                    <td class="p-2">
-                      <div class="flex flex-col justify-center gap-2">
-                        <Button variant="green" size="small">
-                          {$t("stats.swap")}
-                        </Button>
-                        <Button variant="green" size="small">
-                          {$t("stats.addLiquidity")}
-                        </Button>
+                    <td class="p-2 flex justify-center">
+                      <div class="flex flex-col content-center items-center justify-center gap-3.5">
+                        <!-- Wrap each Tooltip in a div -->
+                          <Tooltip text={$t("stats.swap") + " " + pool.symbol_0 + "/" + pool.symbol_1}>
+                            <Button variant="green" size="small">
+                              <ArrowLeftRight size={20} />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip text={$t("stats.addLiquidity") + " " + pool.symbol_0 + "/" + pool.symbol_1}>
+                            <Button variant="green" size="small">
+                              <Droplets size={20} />
+                            </Button>
+                          </Tooltip>
                       </div>
                     </td>
-                  </tr>
-                  {:else}
-                  <tr>
-                    <LoadingIndicator />
                   </tr>
                 {/each}
               {/if}
