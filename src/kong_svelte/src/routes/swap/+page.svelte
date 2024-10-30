@@ -9,7 +9,6 @@
 
   onMount(async () => {
     tokenStore.loadTokens();
-    tokenStore.fetchIcrc1Metadata("nppha-riaaa-aaaal-ajf2q-cai");
     try {
       tokens = await backendService.getTokens();
     } catch (error) {
