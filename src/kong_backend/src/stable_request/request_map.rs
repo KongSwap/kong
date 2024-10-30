@@ -21,7 +21,7 @@ pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Opti
     })
 }
 
-/// get requests by user_id
+/// get requests filtered by user_id
 pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRequest> {
     REQUEST_MAP.with(|m| {
         m.borrow()
@@ -35,11 +35,10 @@ pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRe
                         return None;
                     }
                 }
-                // no user_id specified, return all
                 Some(v.clone())
             })
             .take(num_requests)
-            .collect::<Vec<StableRequest>>()
+            .collect()
     })
 }
 

@@ -1,4 +1,4 @@
-use std::cmp::Reverse;
+use std::collections::BTreeMap;
 
 use super::stable_message::{StableMessage, StableMessageId};
 
@@ -10,41 +10,35 @@ use crate::stable_user::user_map;
 pub fn get_by_message_id(message_id: u64) -> Option<StableMessage> {
     let user_id = user_map::get_by_caller().ok().flatten()?.user_id;
     MESSAGE_MAP.with(|m| {
-        m.borrow().iter().find_map(|(_, v)| {
-            if v.message_id == message_id && (v.to_user_id == user_id || v.to_user_id == ALL_USERS_USER_ID) {
-                Some(v)
-            } else {
-                None
+        m.borrow().get(&StableMessageId(message_id)).and_then(|v| {
+            if v.to_user_id == user_id || v.to_user_id == ALL_USERS_USER_ID {
+                return Some(v);
             }
+            None
         })
     })
 }
 
-pub fn get(max_messages: Option<usize>) -> Vec<StableMessage> {
+pub fn get(num_messages: usize) -> Vec<StableMessage> {
     let user_id = match user_map::get_by_caller() {
         Ok(Some(caller)) => caller.user_id,
         Ok(None) | Err(_) => return Vec::new(),
     };
-    let mut messages: Vec<StableMessage> = MESSAGE_MAP.with(|m| {
+    MESSAGE_MAP.with(|m| {
         m.borrow()
             .iter()
+            .collect::<BTreeMap<_, _>>()
+            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 if v.to_user_id == user_id || v.to_user_id == ALL_USERS_USER_ID {
-                    Some(v)
-                } else {
-                    None
+                    return Some(v.clone());
                 }
+                None
             })
+            .take(num_messages)
             .collect()
-    });
-    // order by timestamp in reverse order
-    messages.sort_by_key(|message| Reverse(message.ts));
-
-    if let Some(max_messages) = max_messages {
-        messages.into_iter().take(max_messages).collect()
-    } else {
-        messages
-    }
+    })
 }
 
 pub fn insert(message: &StableMessage) -> u64 {

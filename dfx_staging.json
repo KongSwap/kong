@@ -28,16 +28,6 @@
 				}
 			]
     },
-    "kong_svelte": {
-      "dependencies": [
-        "kong_backend"
-      ],
-      "source": [
-        "src/kong_svelte/dist"
-      ],
-      "type": "assets",
-      "workspace": "kong_svelte"
-    },
     "kong_frontend": {
       "dependencies": [
         "kong_backend"
@@ -49,6 +39,22 @@
       "type": "assets",
       "workspace": "kong_frontend",
       "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
+			"metadata": [
+				{
+					"name": "candid:service"
+				}
+			]
+    },
+    "kong_svelte": {
+      "dependencies": [
+        "kong_backend"
+      ],
+      "source": [
+        "src/kong_svelte/dist"
+      ],
+      "type": "assets",
+      "workspace": "kong_svelte",
+      "specified_id": "be2us-64aaa-aaaaa-qaabq-cai",
 			"metadata": [
 				{
 					"name": "candid:service"

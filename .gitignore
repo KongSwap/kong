@@ -136,3 +136,6 @@ secrets*
 package-lock.json
 *.lock
 backup/
+**/public/.ic-assets.json5
+ic-domains
+ii-alternative-origins

@@ -20,10 +20,9 @@ fn get_by_token_id_by_user_id(token_id: u32, user_id: u32) -> Option<StableLPTok
     LP_TOKEN_LEDGER.with(|m| {
         m.borrow().iter().find_map(|(_, v)| {
             if v.user_id == user_id && v.token_id == token_id {
-                Some(v)
-            } else {
-                None
+                return Some(v);
             }
+            None
         })
     })
 }

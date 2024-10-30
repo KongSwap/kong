@@ -3,26 +3,32 @@ use ic_cdk::{query, update};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
 use crate::ic::get_time::get_time;
+use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::MESSAGE_MAP;
 use crate::stable_message::message_map;
-use crate::stable_message::stable_message::StableMessage;
+use crate::stable_message::stable_message::{StableMessage, StableMessageId};
+
+const MAX_MESSAGE: usize = 1_000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_messages(message_id: Option<u64>) -> Result<String, String> {
-    match message_id {
-        Some(message_id) => MESSAGE_MAP.with(|m| {
-            m.borrow().iter().find(|(k, _)| k.0 == message_id).map_or_else(
-                || Err(format!("Message #{} not found", message_id)),
-                |(k, v)| serde_json::to_string(&(k, v)).map_err(|e| format!("Failed to serialize message: {}", e)),
-            )
-        }),
-        None => {
-            let messages: BTreeMap<_, _> = MESSAGE_MAP.with(|m| m.borrow().iter().collect());
-            serde_json::to_string(&messages).map_err(|e| format!("Failed to serialize messages: {}", e))
-        }
-    }
+fn backup_messages(message_id: Option<u64>, num_messages: Option<u16>) -> Result<String, String> {
+    MESSAGE_MAP.with(|m| {
+        let map = m.borrow();
+        let messages: BTreeMap<_, _> = match message_id {
+            Some(message_id) => {
+                let num_messages = num_messages.map_or(1, |n| n as usize);
+                let start_key = StableMessageId(message_id);
+                map.range(start_key..).take(num_messages).collect()
+            }
+            None => {
+                let num_messages = num_messages.map_or(MAX_MESSAGE, |n| n as usize);
+                map.iter().take(num_messages).collect()
+            }
+        };
+
+        serde_json::to_string(&messages).map_err(|e| format!("Failed to serialize messages: {}", e))
+    })
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]

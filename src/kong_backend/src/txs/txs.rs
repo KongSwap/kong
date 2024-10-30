@@ -12,7 +12,7 @@ const MAX_TXS: usize = 50;
 #[query(guard = "not_in_maintenance_mode")]
 //fn txs(my_txs: Option<bool>, token_id: Option<u32>) -> Result<Vec<TxsReply>, String> {
 fn txs(my_txs: Option<bool>) -> Result<Vec<TxsReply>, String> {
-    match my_txs {
+    Ok(match my_txs {
         Some(true) => {
             // return only txs of the caller, filtered by token_id
             let user_id = match user_map::get_by_caller() {
@@ -20,28 +20,28 @@ fn txs(my_txs: Option<bool>) -> Result<Vec<TxsReply>, String> {
                 Ok(None) | Err(_) => return Ok(Vec::new()),
             };
             /*
-            Ok(tx_map::get_by_user_and_token_id(Some(user_id), token_id, Some(MAX_TXS))
+            Ok(tx_map::get_by_user_and_token_id(Some(user_id), token_id, MAX_TXS)
                 .iter()
                 .map(to_txs_reply)
                 .collect())
             */
-            Ok(tx_map::get_by_user_and_token_id(Some(user_id), None, Some(MAX_TXS))
+            tx_map::get_by_user_and_token_id(Some(user_id), None, MAX_TXS)
                 .iter()
                 .map(to_txs_reply)
-                .collect())
+                .collect()
         }
         Some(false) | None => {
             // return all txs, filtered by token_id
             /*
-            Ok(tx_map::get_by_user_and_token_id(None, token_id, Some(MAX_TXS))
+            Ok(tx_map::get_by_user_and_token_id(None, token_id, MAX_TXS)
                 .iter()
                 .map(to_txs_reply)
                 .collect())
             */
-            Ok(tx_map::get_by_user_and_token_id(None, None, Some(MAX_TXS))
+            tx_map::get_by_user_and_token_id(None, None, MAX_TXS)
                 .iter()
                 .map(to_txs_reply)
-                .collect())
+                .collect()
         }
-    }
+    })
 }

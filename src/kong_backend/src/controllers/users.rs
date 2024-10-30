@@ -5,20 +5,26 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::USER_MAP;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
+const MAX_USERS: usize = 1_000;
+
 #[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_users(user_id: Option<u32>) -> Result<String, String> {
-    match user_id {
-        Some(user_id) => USER_MAP.with(|m| {
-            m.borrow().iter().find(|(k, _)| k.0 == user_id).map_or_else(
-                || Err(format!("User #{} not found", user_id)),
-                |(k, v)| serde_json::to_string(&(k, v)).map_err(|e| format!("Failed to serialize: {}", e)),
-            )
-        }),
-        None => {
-            let users: BTreeMap<_, _> = USER_MAP.with(|m| m.borrow().iter().collect());
-            serde_json::to_string(&users).map_err(|e| format!("Failed to serialize: {}", e))
-        }
-    }
+fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
+    USER_MAP.with(|m| {
+        let map = m.borrow();
+        let users: BTreeMap<_, _> = match user_id {
+            Some(user_id) => {
+                let num_users = num_users.map_or(1, |n| n as usize);
+                let start_key = StableUserId(user_id);
+                map.range(start_key..).take(num_users).collect()
+            }
+            None => {
+                let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
+                map.iter().take(num_users).collect()
+            }
+        };
+
+        serde_json::to_string(&users).map_err(|e| format!("Failed to serialize users: {}", e))
+    })
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
