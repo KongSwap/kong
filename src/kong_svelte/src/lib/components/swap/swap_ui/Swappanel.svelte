@@ -3,12 +3,12 @@
   import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { fade, fly } from "svelte/transition";
   import { t } from "$lib/locales/translations";
+  
   export let title: string;
   export let token: string;
-  export let amount: string;
-  export let balance: string;
+  export let amount: string = "0";
+  export let balance: string = "0";
   export let onTokenSelect: () => void;
   export let onAmountChange: (event: Event) => void;
   export let disabled = false;
@@ -31,14 +31,32 @@
     easing: cubicOut,
   });
 
+  const animatedBalance = tweened(0, {
+    duration: 400,
+    easing: cubicOut,
+  });
+
   $: {
     animatedUsdValue.set(parseFloat(usdValue));
-    animatedAmount.set(parseFloat(amount || "0"));
+    animatedAmount.set(parseFloat(amount || "0"), {
+      duration: 400
+    });
     animatedSlippage.set(slippage);
+    animatedBalance.set(parseFloat(balance || "0"));
   }
 
   let inputFocused = false;
   let showSlippageTooltip = false;
+
+  function handleMaxClick() {
+    if (!disabled && balance) {
+      onAmountChange(new Event('input', { 
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      }));
+    }
+  }
 </script>
 
 <Panel variant="green" width="600px" height="305px" className="token-panel">
@@ -51,13 +69,12 @@
         <div
           class="slippage-text"
           class:high-slippage={$animatedSlippage > 3}
-          transition:fade
           on:mouseenter={() => (showSlippageTooltip = true)}
           on:mouseleave={() => (showSlippageTooltip = false)}
         >
           {$animatedSlippage.toFixed(2)}%
           {#if showSlippageTooltip}
-            <div class="tooltip" transition:fade>
+            <div class="tooltip">
               Price impact for this trade
             </div>
           {/if}
@@ -67,21 +84,20 @@
 
     <div class="input-section flex flex-col justify-center" class:disabled>
       <div class="amount-container">
-        {#if disabled}
+        {#if showPrice}
           <div class="amount-input animated-amount">
             {$animatedAmount.toFixed(6)}
           </div>
         {:else}
           <input
             type="text"
+            class="amount-input"
             value={amount}
             on:input={onAmountChange}
-            on:focus={() => (inputFocused = true)}
-            on:blur={() => (inputFocused = false)}
-            placeholder="0.00"
-            class="amount-input"
-            {disabled}
-            aria-label="Token amount"
+            on:focus={() => inputFocused = true}
+            on:blur={() => inputFocused = false}
+            placeholder="0"
+            disabled={disabled}
           />
         {/if}
         <div class="token-selector">
@@ -89,7 +105,6 @@
             class="token-button"
             on:click={onTokenSelect}
             type="button"
-            {disabled}
           >
             <span class="token-text">{token}</span>
             <span class="chevron">▼</span>
@@ -99,17 +114,19 @@
     </div>
 
     {#if showPrice}
-      <div class="usd-value" transition:fly={{ y: -20, duration: 400 }}>
-        <span class="dollar-sign">≈ $</span>{$animatedUsdValue.toFixed(2)}
+      <div class="price-container">
+        <div class="usd-value">
+          <span class="dollar-sign">≈ $</span>{$animatedUsdValue.toFixed(2)}
+        </div>
       </div>
     {/if}
 
     <footer class="balance-display">
       <div class="balance-text">
         <span>{$t('swap.available')}</span>
-        <span class="balance-amount"
-          >{formatNumberCustom(balance || "0", 6)} {token}</span
-        >
+        <span class="balance-amount" on:click={handleMaxClick}>
+          {formatNumberCustom(balance || "0", 6)} {token}
+        </span>
       </div>
     </footer>
   </div>
@@ -141,12 +158,43 @@
     align-items: flex-start;
     margin-bottom: 0.5rem;
     position: relative;
+    flex-wrap: wrap;
+  }
+
+  .balance-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    margin-right: 1rem;
+  }
+
+  .balance-label {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
+  }
+
+  .balance-value {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+
+  .balance-value:hover {
+    color: #ffcd1f;
   }
 
   .title-container {
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
+  }
+
+  .price-container {
+    margin-top: auto;
+    padding-top: 0.5rem;
   }
 
   .usd-value {
@@ -237,25 +285,6 @@
     transform: translateY(1px);
   }
 
-  .balance-display {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .balance-text {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 1rem;
-  }
-
-  .balance-amount {
-    color: rgba(255, 255, 255, 0.8);
-    font-weight: 500;
-  }
-
   .slippage-text {
     position: absolute;
     right: 0;
@@ -304,5 +333,33 @@
   .disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .balance-display {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .balance-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
+  }
+
+  .balance-amount {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+
+  .balance-amount:hover {
+    color: #ffcd1f;
   }
 </style>
