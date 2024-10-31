@@ -9,7 +9,7 @@
   import { t } from "$lib/locales/translations";
   import { onMount } from "svelte";
   import { uint8ArrayToHexString } from "@dfinity/utils";
-  import { backendService } from "$lib/services/backendService";
+  import { UserService } from "$lib/services/UserService";
 
   let user: any;
 
@@ -26,7 +26,7 @@
   // Check if wallet is already connected
   $: if ($walletStore.account) {
     (async () => {
-      user = await backendService.getWhoami();
+      user = await UserService.getWhoami();
     })();
   }
 

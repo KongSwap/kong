@@ -1,24 +1,24 @@
 // src/lib/stores/tokenStore.ts
 import { writable } from 'svelte/store';
-import type { Token } from '$lib/types/backend';
-import { backendService } from '$lib/services/backendService';
-import type { Principal } from '@dfinity/principal';
+import { TokenService } from '$lib/services/TokenService';
+import { browser } from '$app/environment';
+import { formatTokenBalance } from '$lib/utils/formatNumberCustom';
 
-interface TokenBalance {
+export interface TokenBalance {
   balance: string;
   valueUsd: string;
 }
 
 interface TokenState {
-  tokens: Token[];
-  balances: Record<string, TokenBalance>;
+  tokens: FE.Token[];
+  balances: Record<string, string>;
   isLoading: boolean;
   error: string | null;
   totalValueUsd: string;
   lastTokensFetch: number | null;
 }
 
-const CACHE_DURATION = 1000* 60 * 5; // 10 minutes in milliseconds
+const CACHE_DURATION = 1000* 60 * 1; // 1 minute in milliseconds
 
 // Add BigInt serialization handler
 const serializeState = (state: TokenState): string => {
@@ -42,11 +42,6 @@ const deserializeState = (cachedData: string): TokenState => {
   });
 };
 
-// Add type guard to check if token has canisterId
-const hasCanisterId = (token: Token): token is Token & { canisterId: string } => {
-  return 'canisterId' in token;
-};
-
 function createTokenStore() {
   const { subscribe, set, update } = writable<TokenState>({
     tokens: [],
@@ -57,22 +52,26 @@ function createTokenStore() {
     lastTokensFetch: null
   });
 
-  // Try to load cached data from localStorage
-  try {
-    const cached = localStorage.getItem('tokenStore');
-    if (cached) {
-      const cachedData = deserializeState(cached);
-      set(cachedData);
+  if (browser) {
+    // Try to load cached data from localStorage
+    try {
+      const cached = localStorage.getItem('tokenStore');
+      if (cached) {
+        const cachedData = deserializeState(cached);
+        set(cachedData);
+      }
+    } catch (error) {
+      console.error('Error loading cached token data:', error);
     }
-  } catch (error) {
-    console.error('Error loading cached token data:', error);
   }
 
   const saveToCache = (state: TokenState) => {
-    try {
-      localStorage.setItem('tokenStore', serializeState(state));
-    } catch (error) {
-      console.error('Error saving token data to cache:', error);
+    if (browser) {
+      try {
+        localStorage.setItem('tokenStore', serializeState(state));
+      } catch (error) {
+        console.error('Error saving token data to cache:', error);
+      }
     }
   };
 
@@ -90,61 +89,47 @@ function createTokenStore() {
     return currentState;
   };
 
+  const enrichTokens = async (tokens: FE.Token[]): Promise<FE.Token[]> => {
+    return Promise.all(
+      tokens.map(token => TokenService.enrichTokenWithMetadata(token))
+    );
+  };
+
+  const calculateTotalValue = (
+    balances: Record<string, bigint>,
+    prices: Record<string, number>
+  ): number => {
+    return Object.entries(balances).reduce((total, [canisterId, balance]) => {
+      const price = prices[canisterId] || 0;
+      return total + (Number(balance) * price);
+    }, 0);
+  };
+
   return {
     subscribe,
-    getBalance: (symbol: string) => {
-      const currentState = getCurrentState();
-      return currentState.balances[symbol]?.balance || '0';
-    },
     loadTokens: async (forceRefresh = false) => {
       const currentState = getCurrentState();
 
-      // Check if we should use cached data
-      if (!forceRefresh && 
-          currentState.tokens.length > 0 && 
-          currentState.lastTokensFetch && 
-          !shouldRefetch(currentState.lastTokensFetch)) {
-        console.log('Using cached token data');
+      if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
         return currentState.tokens;
       }
 
       update(s => ({ ...s, isLoading: true }));
       
       try {
-        const tokens = await backendService.getTokens();
-        
-        if (!Array.isArray(tokens)) {
-          throw new Error('Invalid tokens response');
-        }
-
-        // Fetch all logos in parallel with type checking
-        const tokensWithLogos = await Promise.all(
-          tokens.map(async (token) => {
-            try {
-              if (hasCanisterId(token)) {
-                const logo = await backendService.getIcrcLogFromMetadata(token.canisterId);
-                return { ...token, logo };
-              }
-              console.warn('Token missing canisterId:', token);
-              return { ...token, logo: null };
-            } catch (error) {
-              console.error(`Error fetching logo for token:`, token, error);
-              return { ...token, logo: null };
-            }
-          })
-        );
+        const baseTokens = await TokenService.fetchTokens();
+        const enrichedTokens = await enrichTokens(baseTokens);
 
         const newState = {
           ...currentState,
-          tokens: tokensWithLogos,
+          tokens: enrichedTokens,
           isLoading: false,
           lastTokensFetch: Date.now()
         };
 
         set(newState);
         saveToCache(newState);
-
-        return tokensWithLogos;
+        return enrichedTokens;
       } catch (error) {
         console.error('Error loading tokens:', error);
         update(s => ({
@@ -155,38 +140,38 @@ function createTokenStore() {
         return [];
       }
     },
-    loadBalances: async (principal: Principal) => {
+    getBalance: (canisterId: string) => {
+      const currentState = getCurrentState();
+      return currentState.balances[canisterId] || '0';
+    },
+    loadBalances: async () => {
       const currentState = getCurrentState();
       update(s => ({ ...s, isLoading: true }));
 
       try {
         const [balances, prices] = await Promise.all([
-          backendService.getUserBalances(principal),
-          backendService.getTokenPrices()
+          TokenService.fetchBalances(currentState.tokens),
+          TokenService.fetchPrices(currentState.tokens)
         ]);
-        
-        let totalValueUsd = 0;
-        const formattedBalances = {};
 
-        Object.entries(balances).forEach(([token, balance]) => {
-          const price = prices[token] || 0;
-          const valueUsd = Number(balance) * price;
-          totalValueUsd += valueUsd;
-          formattedBalances[token] = {
-            balance: balance.toString(),
-            valueUsd: valueUsd.toFixed(2)
-          };
-        });
+        const totalValueUsd = calculateTotalValue(balances, prices);
+        const formattedBalances = Object.entries(balances).reduce(
+          (acc, [key, value]) => ({
+            ...acc,
+            [key]: value.toString()
+          }), 
+          {}
+        );
 
         const newState = {
           ...currentState,
           balances: formattedBalances,
-          totalValueUsd: totalValueUsd.toFixed(2),
+          totalValueUsd: formatTokenBalance(totalValueUsd.toString(), 2),
           isLoading: false
         };
 
         set(newState);
-        saveToCache(newState);
+        return formattedBalances;
       } catch (error) {
         console.error('Error loading balances:', error);
         update(s => ({ 

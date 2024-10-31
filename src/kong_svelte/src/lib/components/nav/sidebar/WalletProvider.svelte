@@ -13,7 +13,7 @@
     } from "$lib/stores/walletStore";
     import { t } from "$lib/locales/translations";
     import { uint8ArrayToHexString } from "@dfinity/utils";
-    import { backendService } from "$lib/services/backendService";
+    import { UserService } from "$lib/services/UserService";
 
     const dispatch = createEventDispatcher();
 
@@ -31,7 +31,7 @@
 
     $: if ($walletStore.account) {
         (async () => {
-            user = await backendService.getWhoami();
+            user = await UserService.getWhoami();
         })();
     }
 

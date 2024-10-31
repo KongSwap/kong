@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly, fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { browser } from "$app/environment";
   import { walletStore } from "$lib/stores/walletStore";
   import Panel from "../common/Panel.svelte";
@@ -9,22 +9,24 @@
   import SidebarHeader from "./sidebar/SidebarHeader.svelte";
   import SocialSection from "./sidebar/SocialSection.svelte";
   import TokenList from "./sidebar/TokenList.svelte";
+  import { tokenStore } from "$lib/stores/tokenStore";
 
   export let sidebarOpen: boolean;
   export let onClose: () => void;
 
-  let isLoggedIn = false;
   let isDragging = false;
   let startX: number;
   let startWidth: number;
   let activeTab: "tokens" | "pools" | "transactions" = "tokens";
   let isMobile = false;
-
   let sidebarWidth = 500;
-  let initialWidth = 500;
-
   let dragTimeout: number;
   let resizeHandler: () => void;
+
+  onMount(async () => {
+    await tokenStore.loadBalances();
+    await tokenStore.loadTokens();
+  });
 
   function startDragging(event: MouseEvent) {
     isDragging = true;
@@ -53,22 +55,37 @@
     document.body.style.cursor = "default";
   }
 
-  $: isLoggedIn = !!$walletStore.account;
-
-  $: {
-    if (browser) {
-      isMobile = window.innerWidth <= 768;
-      resizeHandler = () => {
-        isMobile = window.innerWidth <= 768;
-        if (isMobile) {
-          sidebarWidth = window.innerWidth;
-        } else {
-          sidebarWidth = Math.min(500, window.innerWidth - 64);
-        }
-      };
-      window.addEventListener("resize", resizeHandler);
-    }
+  // Debounce resize handler
+  function debounce(fn: Function, ms: number) {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return function (...args: any[]) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    };
   }
+
+  const debouncedResize = debounce(() => {
+    isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      sidebarWidth = window.innerWidth;
+    } else {
+      sidebarWidth = Math.min(500, window.innerWidth - 64);
+    }
+  }, 100);
+
+  onMount(() => {
+    if (browser) {
+      window.addEventListener('resize', debouncedResize, { passive: true });
+    }
+  });
+
+  onMount(async () => {
+    walletStore.subscribe((wallet) => {
+      if (wallet.isConnected) {
+        tokenStore.loadBalances();
+      }
+    });
+  });
 
   onDestroy(() => {
     if (browser) {
@@ -89,7 +106,7 @@
     role="dialog"
     aria-modal="true"
     aria-label="Sidebar Menu"
-    transition:fade={{ duration: 300, easing: cubicOut }}
+    transition:fade|local={{ duration: 300, easing: cubicOut }}
   >
     <button
       class="overlay-button"
@@ -123,12 +140,12 @@
       >
         <div class="sidebar-layout">
           <header class="sidebar-header">
-            <SidebarHeader {isLoggedIn} {onClose} bind:activeTab />
+            <SidebarHeader {onClose} bind:activeTab />
           </header>
 
           <div class="sidebar-content">
             <div class="scroll-container">
-              {#if !isLoggedIn}
+              {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
               {:else}
                 <TokenList />
