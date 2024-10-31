@@ -22,5 +22,11 @@
   },
   "kong_frontend": {
     "ic": "oaq4p-2iaaa-aaaar-qahqa-cai"
+  },
+  "kong1_ledger": {
+    "ic": "qas2p-2iaaa-aaaar-qajra-cai"
+  },
+  "kong2_ledger": {
+    "ic": "qht43-xqaaa-aaaar-qajrq-cai"
   }
 }
