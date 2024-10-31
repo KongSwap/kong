@@ -157,12 +157,12 @@ pub fn get_by_address(address: &str) -> Result<StableToken, String> {
 
 /// return ckUSDT token
 pub fn get_ckusdt() -> Result<StableToken, String> {
-    token_map::get_by_address(&kong_settings::get().ckusdt_address_with_chain)
+    token_map::get_by_token_id(kong_settings::get().ckusdt_token_id).ok_or("ckUSDT token not found".to_string())
 }
 
 /// return ICP token
 pub fn get_icp() -> Result<StableToken, String> {
-    token_map::get_by_address(&kong_settings::get().icp_address_with_chain)
+    token_map::get_by_token_id(kong_settings::get().icp_token_id).ok_or("ICP token not found".to_string())
 }
 
 /// return all tokens that are listed on Kong

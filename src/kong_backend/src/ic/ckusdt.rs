@@ -1,5 +1,6 @@
 use crate::stable_kong_settings::kong_settings;
 
+pub const CKUSDT_TOKEN_ID: u32 = 1;
 pub const CKUSDT_SYMBOL: &str = "ckUSDT";
 pub const CKUSDT_SYMBOL_WITH_CHAIN: &str = "IC.ckUSDT";
 #[cfg(not(feature = "prod"))]

@@ -5,9 +5,9 @@ use super::stable_pool::StablePoolId;
 
 use crate::helpers::math_helpers::{price_rounded, round_f64};
 use crate::helpers::nat_helpers::{nat_add, nat_divide_as_f64, nat_multiply_f64, nat_to_decimal_precision, nat_zero};
+use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::ic::logging::info_log;
-use crate::ic::get_time::get_time;
 use crate::stable_memory::{POOL_MAP, TX_24H_MAP};
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_token::token::Token;
