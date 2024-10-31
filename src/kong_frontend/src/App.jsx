@@ -23,6 +23,8 @@ import tokenCkbtcImage from "../../assets/tokens/ckBTC.svg";
 import tokenCkethImage from "../../assets/tokens/ckETH.svg";
 import tokenCkusdcImage from "../../assets/tokens/ckUSDC.svg";
 import tokenCkusdtImage from "../../assets/tokens/ckUSDT.svg";
+import tokenCkpepeImage from "../../assets/tokens/ckpepe.dvg";
+import tokenCkshibImage from "../../assets/tokens/ckshib.svg";
 import tokenClownImage from "../../assets/tokens/clown.svg";
 import tokenCsprImage from "../../assets/tokens/CSPR.svg";
 import tokenCtzImage from "../../assets/tokens/ctz.png";
@@ -30,6 +32,7 @@ import tokenDamonicImage from "../../assets/tokens/damonic.svg";
 import tokenDecideAiImage from "../../assets/tokens/decideai.png";
 import tokenDittoImage from "../../assets/tokens/ditto.png";
 import tokenDkpImage from "../../assets/tokens/DKP.svg";
+import tokenDodImage from "../../assets/tokens/dod.png";
 import tokenDotImage from "../../assets/tokens/DOT.svg";
 import tokenDogmiImage from "../../assets/tokens/dogmi.png";
 import tokenDolrImage from "../../assets/tokens/dolr.png";
@@ -40,6 +43,7 @@ import tokenExeImage from "../../assets/tokens/EXE.svg";
 import tokenFplImage from "../../assets/tokens/fpl.png";
 import tokenGhostImage from "../../assets/tokens/GHOST.svg";
 import tokenGlazeImage from "../../assets/tokens/glaze.png";
+import tokenGldtImage from "../../assets/tokens/gldt.png";
 import tokenGoldDaoImage from "../../assets/tokens/golddao.png";
 import tokenGrtImage from "../../assets/tokens/GRT.svg";
 import tokenHmfeeImage from "../../assets/tokens/hmfee.svg";
@@ -56,6 +60,7 @@ import tokenLinkImage from "../../assets/tokens/LINK.svg";
 import tokenLtcImage from "../../assets/tokens/LTC.svg";
 import tokenMaticImage from "../../assets/tokens/MATIC.svg";
 import tokenMcsImage from "../../assets/tokens/mcs.svg";
+import tokenMotokoImage from "../../assets/tokens/motoko.png";
 import tokenNanasImage from "../../assets/tokens/nanas.svg";
 import tokenNd64Image from "../../assets/tokens/nd64.svg";
 import tokenNicpImage from "../../assets/tokens/nicp.svg";
@@ -121,6 +126,8 @@ const tokenImages = {
   ckETH: tokenCkethImage,
   ckUSDC: tokenCkusdcImage,
   ckUSDT: tokenCkusdtImage,
+  ckPEPE: tokenCkpepeImage,
+  ckSHIB: tokenCkshibImage,
   CLOWN: tokenClownImage,
   CSPR: tokenCsprImage,
   CTZ: tokenCtzImage,
@@ -128,6 +135,7 @@ const tokenImages = {
   DCD: tokenDecideAiImage,
   DITTO: tokenDittoImage,
   DKP: tokenDkpImage,
+  DOD: tokenDodImage,
   DOT: tokenDotImage,
   DOGMI: tokenDogmiImage,
   DOLR: tokenDolrImage,
@@ -139,6 +147,7 @@ const tokenImages = {
   GHOST: tokenGhostImage,
   GLAZE: tokenGlazeImage,
   GLDGov: tokenGoldDaoImage,
+  GLDT: tokenGldtImage,
   GRT: tokenGrtImage,
   HMFEE: tokenHmfeeImage,
   HTCETH: tokenHtcethImage,
@@ -154,6 +163,7 @@ const tokenImages = {
   LTC: tokenLtcImage,
   MATIC: tokenMaticImage,
   MCS: tokenMcsImage,
+  MOTOKO: tokenMotokoImage,
   nanas: tokenNanasImage,
   ND64: tokenNd64Image,
   nICP: tokenNicpImage,
