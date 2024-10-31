@@ -1,23 +1,19 @@
 <!-- src/lib/components/sidebar/TokenRow.svelte -->
 <script lang="ts">
-  import { formatTokenBalance } from "$lib/utils/formatNumberCustom";
+  import { formatTokenAmount, formatNumberCustom } from "$lib/utils/formatNumberCustom";
   import { tokenStore } from "$lib/stores/tokenStore";
-  import { onMount } from "svelte";
 
   export let token: FE.Token;
 
   // Memoize formatted values
-  let formattedBalance: string;
+  let formattedBalance: number;
   let formattedUsdValue: string;
 
   // Update formatted values only when balance changes
   $: {
-    const balance = $tokenStore.balances[token.canister_id] || "0";
-    formattedBalance = formatTokenBalance(balance, token.decimals);
-    formattedUsdValue = formatTokenBalance(
-      (BigInt(balance) * 0n).toString(),
-      2,
-    );
+    const balance = $tokenStore.balances[token.canister_id].in_tokens || 0;
+    formattedBalance = formatTokenAmount(balance, token.decimals);
+    formattedUsdValue = formatNumberCustom($tokenStore.balances[token.canister_id].in_usd, 2) || "0";
   }
 </script>
 

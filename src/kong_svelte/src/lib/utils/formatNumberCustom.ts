@@ -1,4 +1,7 @@
 export const formatNumberCustom = (number, maxDecimals) => {
+  if (number === undefined || number === null) {
+    return "0";
+  }
   const parts = number.toString().split(".");
   const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   if (maxDecimals > 0) {
@@ -32,4 +35,16 @@ export const formatTokenBalance = (balance = "0", decimals: number): string => {
 
   // Return the formatted balance with commas and at least two decimal places
   return `${integerPart}.${paddedFractionalPart}`;
+};
+
+export const formatUSD = (number: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(number);
+};
+
+export const formatTokenAmount = (amount: bigint | number, decimals: number): number => {
+  return Number(amount) / Math.pow(10, decimals);
 };

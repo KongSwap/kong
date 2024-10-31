@@ -1,7 +1,9 @@
 import { getActor } from '$lib/stores/walletStore';
-import { UserService } from './UserService';
-import { Principal } from '@dfinity/principal';
 import { isConnected } from '$lib/stores/walletStore';
+import { PoolService } from './PoolService';
+import { formatUSD, formatTokenAmount } from '$lib/utils/formatNumberCustom';
+import { walletStore } from '$lib/stores/walletStore';
+import { get } from 'svelte/store';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -26,31 +28,41 @@ export class TokenService {
     return {
       ...token,
       logo: await this.getTokenLogo(token.canister_id),
-      user_balance: BigInt(0)
     };
   }
 
-  public static async fetchBalances(tokens: FE.Token[]): Promise<Record<string, bigint>> {
-    const isWalletConnected = await isConnected();
+  public static async fetchBalances(tokens: FE.Token[], principalId: string = null): Promise<Record<string, FE.TokenBalance>> {
+    let wallet;
+    const isWalletConnected = isConnected();
     if (!isWalletConnected) return {};
 
-    const wallet = await UserService.getWhoami();
-    if (!wallet) return {};
-
-    const balances: Record<string, bigint> = {};
+    if (!principalId) {
+      wallet = get(walletStore);
+      principalId = wallet.account.owner;
+    }
+    
+    const balances: Record<string, FE.TokenBalance> = {};
     
     for (const token of tokens) {
       try {
         const actor = await getActor(token.canister_id, 'icrc1');
-        const owner = Principal.fromText(wallet.principal_id);
+        const owner = wallet.account.owner;
         const balance = await actor.icrc1_balance_of({
           owner,
           subaccount: [],
         });
-        balances[token.canister_id] = balance || BigInt(0);
+        
+        const actualBalance = formatTokenAmount(balance, token.decimals);
+        const price = await this.fetchPrice(token.canister_id);
+        const usdValue = actualBalance * price;
+
+        balances[token.canister_id] = {
+          in_tokens: BigInt(balance) || BigInt(0),
+          in_usd: formatUSD(usdValue)
+        }
       } catch (err) {
         console.error(`Error fetching balance for ${token.canister_id}:`, err);
-        balances[token.canister_id] = BigInt(0);
+        balances[token.canister_id] = {in_tokens: 0n, in_usd: formatUSD(0)}
       }
     }
     
@@ -58,15 +70,16 @@ export class TokenService {
   }
 
   public static async fetchPrices(tokens: FE.Token[]): Promise<Record<string, number>> {
-    // In the future, this could fetch real prices from an API
-    return tokens.reduce((acc, token) => ({
-      ...acc,
-      [token.canister_id]: 1
-    }), {});
+    let poolData = await PoolService.fetchPoolsData();
+    return tokens.reduce((acc, token) => {
+      acc[token.canister_id] = poolData.pools.find(pool => pool.address_0 === token.canister_id && pool.symbol_1 === "ckUSDT")?.price || 0;
+      return acc;
+    }, {});
   }
 
-  public static getLogo(canisterId: string): Promise<string | null> {
-    return null;
+  public static async fetchPrice(canisterId: string): Promise<number> {
+    let poolData = await PoolService.fetchPoolsData();
+    return poolData.pools.find(pool => pool.address_0 === canisterId && pool.symbol_1 === "ckUSDT")?.price || 0;
   }
 
   public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
@@ -100,9 +113,7 @@ export class TokenService {
   public static async claimFaucetTokens(): Promise<void> {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
-      console.log('kongFaucetId', kongFaucetId);
       const actor = await getActor(kongFaucetId, 'kong_faucet');
-      console.log('actor', actor);
       const res = await actor.claim();
       console.log('Faucet tokens claimed', res);
     } catch (error) {

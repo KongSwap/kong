@@ -1,14 +1,15 @@
 <!-- src/lib/components/sidebar/TokenList.svelte -->
 <script lang="ts">
-    import { tokenStore } from '$lib/stores/tokenStore';
+    import { tokenStore, portfolioValue } from '$lib/stores/tokenStore';
     import TokenRow from '$lib/components/nav/sidebar/TokenRow.svelte';
-    import { onMount } from 'svelte';  
-
+    import { onMount } from 'svelte';
+    import { walletStore } from '$lib/stores/walletStore';
+  
     onMount(async () => {
-      await Promise.all([ 
-        tokenStore.loadTokens(),
-        tokenStore.loadBalances()
-      ]);
+      if ($walletStore.isConnected) {
+        await tokenStore.loadTokens();
+        await tokenStore.loadBalances();
+      }
     });
   </script>
   
@@ -20,9 +21,9 @@
     {:else}
       <div class="portfolio-value">
         <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-        <p class="text-3xl font-bold font-mono">${$tokenStore.totalValueUsd}</p>
+        <p class="text-3xl font-bold font-mono">${$portfolioValue}</p>
       </div>
-      {#each $tokenStore.tokens as token}
+      {#each $tokenStore.tokens as token (token.symbol)}
         <TokenRow {token} />
       {/each}
     {/if}
