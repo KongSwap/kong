@@ -1478,23 +1478,6 @@ const App = () => {
     return () => clearInterval(intervalId);
   }, [principal, isInitialized, updateUserBalances]);
 
-  console.log('actors',       gldt_backend,
-    ghost_backend,
-    ctz_backend,
-    elna_backend,
-    dogmi_backend,
-    est_backend,
-    panda_backend,
-    kinic_backend,
-    dolr_backend,
-    trax_backend,
-    motoko_backend,
-    ckpepe_backend,
-    ckshib_backend,
-    dod_backend,
-    kong1_backend,
-    kong2_backend,)
-
   return (
     <>
       {isStatsPage ? (
