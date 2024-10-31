@@ -34,6 +34,22 @@ import { idlFactory as icvcIdlFactory, canisterId as icvcCanisterId } from '../.
 import { idlFactory as ntnIdlFactory, canisterId as ntnCanisterId } from '../../../declarations/ntn_ledger/index.js';
 import { idlFactory as ogyIdlFactory, canisterId as ogyCanisterId } from '../../../declarations/ogy_ledger/index.js';
 import { idlFactory as owlIdlFactory, canisterId as owlCanisterId } from '../../../declarations/owl_ledger/index.js';
+import { idlFactory as gldtIdlFactory, canisterId as gldtCanisterId } from '../../../declarations/gldt_ledger/index.js';
+import { idlFactory as ghostIdlFactory, canisterId as ghostCanisterId } from '../../../declarations/ghost_ledger/index.js';
+import { idlFactory as ctzIdlFactory, canisterId as ctzCanisterId } from '../../../declarations/ctz_ledger/index.js';
+import { idlFactory as elnaIdlFactory, canisterId as elnaCanisterId } from '../../../declarations/elna_ledger/index.js';
+import { idlFactory as dogmiIdlFactory, canisterId as dogmiCanisterId } from '../../../declarations/dogmi_ledger/index.js';
+import { idlFactory as estIdlFactory, canisterId as estCanisterId } from '../../../declarations/est_ledger/index.js';
+import { idlFactory as pandaIdlFactory, canisterId as pandaCanisterId } from '../../../declarations/panda_ledger/index.js';
+import { idlFactory as kinicIdlFactory, canisterId as kinicCanisterId } from '../../../declarations/kinic_ledger/index.js';
+import { idlFactory as dolrIdlFactory, canisterId as dolrCanisterId } from '../../../declarations/dolr_ledger/index.js';
+import { idlFactory as traxIdlFactory, canisterId as traxCanisterId } from '../../../declarations/trax_ledger/index.js';
+import { idlFactory as motokoIdlFactory, canisterId as motokoCanisterId } from '../../../declarations/motoko_ledger/index.js';
+import { idlFactory as ckpepeIdlFactory, canisterId as ckpepeCanisterId } from '../../../declarations/ckpepe_ledger/index.js';
+import { idlFactory as ckshibIdlFactory, canisterId as ckshibCanisterId } from '../../../declarations/ckshib_ledger/index.js';
+import { idlFactory as dodIdlFactory, canisterId as dodCanisterId } from '../../../declarations/dod_ledger/index.js';
+import { idlFactory as kong1IdlFactory, canisterId as kong1CanisterId } from '../../../declarations/kong1_ledger/index.js';
+import { idlFactory as kong2IdlFactory, canisterId as kong2CanisterId } from '../../../declarations/kong2_ledger/index.js';
 
 
 
@@ -201,3 +217,83 @@ export const {
   PlugWalletActorProvider: OWLActorProviderPlug,
   usePlugWalletActor: useOWLBackendPlug,
 } = createPlugWalletActorProvider(owlIdlFactory, owlCanisterId);
+
+export const {
+  PlugWalletActorProvider: GLDTActorProviderPlug,
+  usePlugWalletActor: useGLDTBackendPlug,
+} = createPlugWalletActorProvider(gldtIdlFactory, gldtCanisterId);
+
+export const {
+  PlugWalletActorProvider: GHOSTActorProviderPlug,
+  usePlugWalletActor: useGHOSTBackendPlug,
+} = createPlugWalletActorProvider(ghostIdlFactory, ghostCanisterId);
+
+export const {
+  PlugWalletActorProvider: CTZActorProviderPlug,
+  usePlugWalletActor: useCTZBackendPlug,
+} = createPlugWalletActorProvider(ctzIdlFactory, ctzCanisterId);
+
+export const {
+  PlugWalletActorProvider: ELNAActorProviderPlug,
+  usePlugWalletActor: useELNABackendPlug,
+} = createPlugWalletActorProvider(elnaIdlFactory, elnaCanisterId);
+
+export const {
+  PlugWalletActorProvider: DOGMIActorProviderPlug,
+  usePlugWalletActor: useDOGMIBackendPlug,
+} = createPlugWalletActorProvider(dogmiIdlFactory, dogmiCanisterId);
+
+export const {
+  PlugWalletActorProvider: ESTActorProviderPlug,
+  usePlugWalletActor: useESTBackendPlug,
+} = createPlugWalletActorProvider(estIdlFactory, estCanisterId);
+
+export const {
+  PlugWalletActorProvider: PANDAActorProviderPlug,
+  usePlugWalletActor: usePANDABackendPlug,
+} = createPlugWalletActorProvider(pandaIdlFactory, pandaCanisterId);
+
+export const {
+  PlugWalletActorProvider: KINICActorProviderPlug,
+  usePlugWalletActor: useKINICBackendPlug,
+} = createPlugWalletActorProvider(kinicIdlFactory, kinicCanisterId);
+
+export const {
+  PlugWalletActorProvider: DOLRActorProviderPlug,
+  usePlugWalletActor: useDOLRBackendPlug,
+} = createPlugWalletActorProvider(dolrIdlFactory, dolrCanisterId);
+
+export const {
+  PlugWalletActorProvider: TRAXActorProviderPlug,
+  usePlugWalletActor: useTRAXBackendPlug,
+} = createPlugWalletActorProvider(traxIdlFactory, traxCanisterId);
+
+export const {
+  PlugWalletActorProvider: MOTOKOActorProviderPlug,
+  usePlugWalletActor: useMOTOKOBackendPlug,
+} = createPlugWalletActorProvider(motokoIdlFactory, motokoCanisterId);
+
+export const {
+  PlugWalletActorProvider: CKPEPEActorProviderPlug,
+  usePlugWalletActor: useCKPEPEBackendPlug,
+} = createPlugWalletActorProvider(ckpepeIdlFactory, ckpepeCanisterId);
+
+export const {
+  PlugWalletActorProvider: CKSHIBActorProviderPlug,
+  usePlugWalletActor: useCKSHIBBackendPlug,
+} = createPlugWalletActorProvider(ckshibIdlFactory, ckshibCanisterId);
+
+export const {
+  PlugWalletActorProvider: DODActorProviderPlug,
+  usePlugWalletActor: useDODBackendPlug,
+} = createPlugWalletActorProvider(dodIdlFactory, dodCanisterId);
+
+export const {
+  PlugWalletActorProvider: KONG1ActorProviderPlug,
+  usePlugWalletActor: useKONG1BackendPlug,
+} = createPlugWalletActorProvider(kong1IdlFactory, kong1CanisterId);
+
+export const {
+  PlugWalletActorProvider: KONG2ActorProviderPlug,
+  usePlugWalletActor: useKONG2BackendPlug,
+} = createPlugWalletActorProvider(kong2IdlFactory, kong2CanisterId);

@@ -26,23 +26,23 @@ if [[ $USER_LIST != *"kong"* ]] || [[ $USER_LIST != *"kong_token_minter"* ]] || 
 	exit 1
 fi
 
-./switch_local.sh
+# ./switch_local.sh
 
 cd ..
 
 dfx identity use kong
 
-./deploy_kong_backend.sh
-./deploy_internet_identity.sh
-./deploy_icp_ledger.sh
-./deploy_ckusdc_ledger.sh
-./deploy_ckusdt_ledger.sh
-./deploy_ckbtc_ledger.sh
-./deploy_cketh_ledger.sh
-./deploy_kong1_ledger.sh
-./deploy_kong_svelte.sh
+# ./deploy_kong_backend.sh
+# ./deploy_internet_identity.sh
+# ./deploy_icp_ledger.sh
+# ./deploy_ckusdc_ledger.sh
+# ./deploy_ckusdt_ledger.sh
+# ./deploy_ckbtc_ledger.sh
+# ./deploy_cketh_ledger.sh
+# ./deploy_kong1_ledger.sh
+# ./deploy_kong_svelte.sh
 ./deploy_kong_frontend.sh
 
-./user_mint.sh
+# ./user_mint.sh
 
-./deploy_kong_faucet.sh
+# ./deploy_kong_faucet.sh

@@ -83,6 +83,22 @@ const SwapComponent = memo(({
       fpl_backend,
       ditto_backend,
       icvc_backend,
+      gldt_backend,
+      ghost_backend,
+      ctz_backend,
+      elna_backend,
+      dogmi_backend,
+      est_backend,
+      panda_backend,
+      kinic_backend,
+      dolr_backend,
+      trax_backend,
+      motoko_backend,
+      ckpepe_backend,
+      ckshib_backend,
+      dod_backend,
+      kong1_backend,
+      kong2_backend,
     },
   } = useIdentity();
 
@@ -645,6 +661,38 @@ const SwapComponent = memo(({
           return ditto_backend;
         case "ICVC":
           return icvc_backend;
+        case "GLDT":
+          return gldt_backend;
+        case "GHOST":
+          return ghost_backend;
+        case "CTZ":
+          return ctz_backend;
+        case "ELNA":
+          return elna_backend;
+        case "DOGMI":
+          return dogmi_backend;
+        case "EST":
+          return est_backend;
+        case "PANDA":
+          return panda_backend;
+        case "KINIC":
+          return kinic_backend;
+        case "DOLR":
+          return dolr_backend;
+        case "TRAX":
+          return trax_backend;
+        case "MOTOKO":
+          return motoko_backend;
+        case "ckPEPE":
+          return ckpepe_backend;
+        case "ckSHIB":
+          return ckshib_backend;
+        case "DOD":
+          return dod_backend;
+        case "KONG1":
+          return kong1_backend;
+        case "KONG2":
+          return kong2_backend;
         default:
           return null;
       }
@@ -729,6 +777,22 @@ const SwapComponent = memo(({
     fpl_backend,
     ditto_backend,
     icvc_backend,
+    ghost_backend,
+    ctz_backend,
+    elna_backend,
+    dogmi_backend,
+    est_backend,
+    panda_backend,
+    kinic_backend,
+    dolr_backend,
+    trax_backend,
+    motoko_backend,
+    ckpepe_backend,
+    ckshib_backend,
+    dod_backend,
+    gldt_backend,
+    kong1_backend,
+    kong2_backend,
   ]);
 
   const sanitizeInput = useCallback((input) => {

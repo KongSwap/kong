@@ -71,6 +71,22 @@ const PoolsComponent = ({
       fpl_backend,
       ditto_backend,
       icvc_backend,
+      gldt_backend,
+      ghost_backend,
+      ctz_backend,
+      elna_backend,
+      dogmi_backend,
+      est_backend,
+      panda_backend,
+      kinic_backend,
+      dolr_backend,
+      trax_backend,
+      motoko_backend,
+      ckpepe_backend,
+      ckshib_backend,
+      dod_backend,
+      kong1_backend,
+      kong2_backend,
     },
   } = useIdentity();
 
@@ -83,9 +99,10 @@ const PoolsComponent = ({
   const initialYouPayToken = initialPool ? initialPool.split("_")[0] : null;
   const initialYouReceiveToken = initialPool ? initialPool.split("_")[1] : null;
   const [youPayToken, setYouPayToken] = useState(initialYouPayToken);
-  const [youReceiveToken] = useState("ckUSDT");
+  const [youReceiveToken, setYouReceiveToken] = useState(initialYouReceiveToken || "ckUSDT");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalLimited, setIsModalLimited] = useState(false);
   const [isSelectingPayToken, setIsSelectingPayToken] = useState(true);
   const [youPay, setYouPay] = useState("0");
   // const [youPayToken, setYouPayToken] = useState("ckBTC");
@@ -137,10 +154,12 @@ const PoolsComponent = ({
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
-    const pool = `${youPayToken}_ckUSDT`;
+    const pool = `${youPayToken}_${youReceiveToken}`;
     queryParams.set("pool", pool);
-    if (youPayToken === "ckUSDT") {
-      queryParams.set("pool", `${initialYouReceiveToken}_ckUSDT`);
+    if (youReceiveToken !== "ckUSDT" && youReceiveToken !== "ICP") {
+      queryParams.set("pool", `${youPayToken}_ckUSDT`);
+    } else if (youPayToken === youReceiveToken) {
+      queryParams.set("pool", `${youPayToken}_ckUSDT`);
     }
     navigate({ search: queryParams.toString() });
   }, [youPayToken, youReceiveToken, navigate]);
@@ -390,6 +409,38 @@ const PoolsComponent = ({
           return ditto_backend;
         case "ICVC":
           return icvc_backend;
+        case "GLDT":
+          return gldt_backend;
+        case "GHOST":
+          return ghost_backend;
+        case "CTZ":
+          return ctz_backend;
+        case "ELNA":
+          return elna_backend;
+        case "DOGMI":
+          return dogmi_backend;
+        case "EST":
+          return est_backend;
+        case "PANDA":
+          return panda_backend;
+        case "KINIC":
+          return kinic_backend;
+        case "DOLR":
+          return dolr_backend;
+        case "TRAX":
+          return trax_backend;
+        case "MOTOKO":
+          return motoko_backend;
+        case "ckPEPE":
+          return ckpepe_backend;
+        case "ckSHIB":
+          return ckshib_backend;
+        case "DOD":
+          return dod_backend;
+        case "KONG1":
+          return kong1_backend;
+        case "KONG2":
+          return kong2_backend;
         default:
           return null;
       }
@@ -444,7 +495,6 @@ const PoolsComponent = ({
       amount_1: youReceiveAmountFinal.toNumber(),
       tx_id_1: [],
     };
-
     backendKingKong
       .add_liquidity_async(liquidityObjRequest)
       .then((response) => {
@@ -502,6 +552,22 @@ const PoolsComponent = ({
     fpl_backend,
     ditto_backend,
     icvc_backend,
+    ghost_backend,
+    ctz_backend,
+    elna_backend,
+    dogmi_backend,
+    est_backend,
+    panda_backend,
+    kinic_backend,
+    dolr_backend,
+    trax_backend,
+    motoko_backend,
+    ckpepe_backend,
+    ckshib_backend,
+    dod_backend,
+    gldt_backend,
+    kong1_backend,
+    kong2_backend,
   ]);
 
   useEffect(() => {
@@ -582,13 +648,38 @@ const PoolsComponent = ({
   ]);
 
   const handleTokenChange = (token) => {
-    if (token === "ckUSDT") {
-      setIsModalOpen(false);
-      return;
+    // console.log('TEST', token, isSelectingPayToken, youPayToken, youReceiveToken)
+    let newPayToken;
+    let newReceiveToken;
+    if (token === "ckUSDT" && isSelectingPayToken && youReceiveToken === "ckUSDT") {
+      // if either of this is true, set the token to "ICP" token and return
+
+      newPayToken = "ckUSDT";
+      newReceiveToken = "ICP";
+    } else if (token === "ckUSDT" && !isSelectingPayToken && youPayToken === "ckUSDT") {
+      // if either of this is true, set the token to "ICP" token and return
+
+      newPayToken = "ICP";
+      newReceiveToken = "ckUSDT";
+    } else if (token === "ICP" && isSelectingPayToken && youReceiveToken === "ICP") {
+      // if either of this is true, set the token to "ICP" token and return
+
+      newPayToken = "ICP";
+      newReceiveToken = "ckUSDT";
+    } else if (token === "ICP" && !isSelectingPayToken && youPayToken === "ICP") {
+      newPayToken = "ckUSDT";
+      newReceiveToken = "ICP";
+    } else {
+      if (isSelectingPayToken) {
+        newPayToken = token;
+        newReceiveToken = youReceiveToken;
+      } else {
+        newPayToken = youPayToken;
+        newReceiveToken = token;
+      }
     }
-    if (isSelectingPayToken) {
-      setYouPayToken(token);
-    }
+    setYouPayToken(newPayToken);
+    setYouReceiveToken(newReceiveToken);
     setIsModalOpen(false);
   };
 
@@ -822,6 +913,7 @@ const PoolsComponent = ({
     }
   }, [displayYouReceive]);
 
+
   return (
     <>
       <div className="panel-green-main panel-green-main--sending-address-container">
@@ -856,7 +948,9 @@ const PoolsComponent = ({
               <span
                 onClick={() => {
                   setIsSelectingPayToken(true);
+                  setIsModalLimited(false);
                   setIsModalOpen(true);
+                  
                 }}
                 className="buttonmed-yellow buttonmed-yellow--customselect2 buttonmed-yellow--poolpay"
               >
@@ -903,7 +997,14 @@ const PoolsComponent = ({
                 </svg>
               </span>
 
-              <span className="buttonmed-yellow buttonmed-yellow--selected buttonmed-yellow--customselect2 buttonmed-yellow--poolreceive">
+              <span
+                              onClick={() => {
+                                setIsSelectingPayToken(false);
+                                setIsModalLimited(true);
+                                setIsModalOpen(true);
+                                
+                              }} 
+              className="buttonmed-yellow buttonmed-yellow--selected buttonmed-yellow--customselect2 buttonmed-yellow--poolreceive">
                 <span className="buttonmed-yellow__pressed">
                   <span className="buttonmed-yellow__pressed__l"></span>
                   <span className="buttonmed-yellow__pressed__mid"></span>
@@ -1064,23 +1165,26 @@ const PoolsComponent = ({
           headTitle={"Select a token"}
         >
           <div className="token-select-list">
-            {Object.keys(tokenBalancesSelector).map((token) => (
-              <div
-                className="token-select-item"
-                key={token}
-                onClick={() => handleTokenChange(token)}
-              >
-                <img
-                  src={tokenImages[token]}
-                  className="token-select-logo"
-                  alt={token}
-                />
-                <span className="token-select-details">
-                  <span className="token-select-longname">{token}</span>
-                  <span className="token-select-name">{token}</span>
-                </span>
-              </div>
-            ))}
+            {Object.keys(tokenBalancesSelector).map((token) => {
+              if (isModalLimited && token !== "ICP" && token !== "ckUSDT") return;
+              return (
+                <div
+                  className="token-select-item"
+                  key={token}
+                  onClick={() => handleTokenChange(token)}
+                >
+                  <img
+                    src={tokenImages[token]}
+                    className="token-select-logo"
+                    alt={token}
+                  />
+                  <span className="token-select-details">
+                    <span className="token-select-longname">{token}</span>
+                    <span className="token-select-name">{token}</span>
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </Modal>
       ) : isAddLiquidityConfirmationModalOpen ? (

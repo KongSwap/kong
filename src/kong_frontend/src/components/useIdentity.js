@@ -34,6 +34,22 @@ import {
   useFPLBackendPlug,
   useDITTOBackendPlug,
   useICVCBackendPlug,
+  useGLDTBackendPlug,
+  useGHOSTBackendPlug,
+  useCTZBackendPlug,
+  useELNABackendPlug,
+  useDOGMIBackendPlug,
+  useESTBackendPlug,
+  usePANDABackendPlug,
+  useKINICBackendPlug,
+  useDOLRBackendPlug,
+  useTRAXBackendPlug,
+  useMOTOKOBackendPlug,
+  useCKPEPEBackendPlug,
+  useCKSHIBBackendPlug,
+  useDODBackendPlug,
+  useKONG1BackendPlug,
+  useKONG2BackendPlug
 } from '../Actors/plugActorProviders';
 import { useCkbtcBackend } from '../Actors/CKBTC-ACTOR';
 import { useKingKongFaucetBackend } from '../Actors/KONG-FAUCET-ACTOR';
@@ -69,6 +85,22 @@ import { useOGYBackend } from '../Actors/OGYActor';
 import { useFPLBackend } from '../Actors/FPLActor';
 import { useDITTOBackend } from '../Actors/DITTOActor';
 import { useICVCBackend } from '../Actors/ICVCActor';
+import { useGLDTBackend } from '../Actors/GLDTActor';
+import { useGHOSTBackend } from '../Actors/GHOSTActor';
+import { useCTZBackend } from '../Actors/CTZActor';
+import { useELNABackend } from '../Actors/ELNAActor';
+import { useDOGMIBackend } from '../Actors/DOGMIActor';
+import { useESTBackend } from '../Actors/ESTActor';
+import { usePANDABackend } from '../Actors/PANDAActor';
+import { useKINICBackend } from '../Actors/KINICActor';
+import { useDOLRBackend } from '../Actors/DOLRActor';
+import { useTRAXBackend } from '../Actors/TRAXActor';
+import { useMOTOKOBackend } from '../Actors/MOTOKOActor';
+import { useCKPEPEBackend } from '../Actors/CKPEPEActor';
+import { useCKSHIBBackend } from '../Actors/CKSHIBActor';
+import { useDODBackend } from '../Actors/DODActor';
+import { useKONG1Backend } from '../Actors/KONG1Actor';
+import { useKONG2Backend } from '../Actors/KONG2Actor';
 
 import {
   getActor as kong_backend
@@ -119,6 +151,22 @@ const useIdentity = () => {
   const { actor: fpl_backend } = useFPLBackend();
   const { actor: ditto_backend } = useDITTOBackend();
   const { actor: icvc_backend } = useICVCBackend();
+  const { actor: gldt_backend } = useGLDTBackend();
+  const { actor: ghost_backend } = useGHOSTBackend();
+  const { actor: ctz_backend } = useCTZBackend();
+  const { actor: elna_backend } = useELNABackend();
+  const { actor: dogmi_backend } = useDOGMIBackend();
+  const { actor: est_backend } = useESTBackend();
+  const { actor: panda_backend } = usePANDABackend();
+  const { actor: kinic_backend } = useKINICBackend();
+  const { actor: dolr_backend } = useDOLRBackend();
+  const { actor: trax_backend } = useTRAXBackend();
+  const { actor: motoko_backend } = useMOTOKOBackend();
+  const { actor: ckpepe_backend } = useCKPEPEBackend();
+  const { actor: ckshib_backend } = useCKSHIBBackend();
+  const { actor: dod_backend } = useDODBackend();
+  const { actor: kong1_backend } = useKONG1Backend();
+  const { actor: kong2_backend } = useKONG2Backend();
 
   const { plugActor: backendKingKongPlug, isInitialized: isInitializedKingKongPlug } = useKingKongBackendPlug();
   const { plugActor: backendKingKongFaucetPlug, isInitialized: isInitializedKingKongFaucetPlug } = useKingKongFaucetBackendPlug();
@@ -153,6 +201,22 @@ const useIdentity = () => {
   const { plugActor: fpl_backendPlug, isInitialized: isInitializedFplPlug } = useFPLBackendPlug();
   const { plugActor: ditto_backendPlug, isInitialized: isInitializedDittoPlug } = useDITTOBackendPlug();
   const { plugActor: icvc_backendPlug, isInitialized: isInitializedIcvcPlug } = useICVCBackendPlug();
+  const { plugActor: gldt_backendPlug, isInitialized: isInitializedGldtPlug } = useGLDTBackendPlug();
+  const { plugActor: ghost_backendPlug, isInitialized: isInitializedGhostPlug } = useGHOSTBackendPlug();
+  const { plugActor: ctz_backendPlug, isInitialized: isInitializedCtzPlug } = useCTZBackendPlug();
+  const { plugActor: elna_backendPlug, isInitialized: isInitializedElnaPlug } = useELNABackendPlug();
+  const { plugActor: dogmi_backendPlug, isInitialized: isInitializedDogmiPlug } = useDOGMIBackendPlug();
+  const { plugActor: est_backendPlug, isInitialized: isInitializedEstPlug } = useESTBackendPlug();
+  const { plugActor: panda_backendPlug, isInitialized: isInitializedPandaPlug } = usePANDABackendPlug();
+  const { plugActor: kinic_backendPlug, isInitialized: isInitializedKinicPlug } = useKINICBackendPlug();
+  const { plugActor: dolr_backendPlug, isInitialized: isInitializedDolrPlug } = useDOLRBackendPlug();
+  const { plugActor: trax_backendPlug, isInitialized: isInitializedTraxPlug } = useTRAXBackendPlug();
+  const { plugActor: motoko_backendPlug, isInitialized: isInitializedMotokoPlug } = useMOTOKOBackendPlug();
+  const { plugActor: ckpepe_backendPlug, isInitialized: isInitializedCkpepePlug } = useCKPEPEBackendPlug();
+  const { plugActor: ckshib_backendPlug, isInitialized: isInitializedCkshibPlug } = useCKSHIBBackendPlug();
+  const { plugActor: dod_backendPlug, isInitialized: isInitializedDodPlug } = useDODBackendPlug();
+  const { plugActor: kong1_backendPlug, isInitialized: isInitializedKong1Plug } = useKONG1BackendPlug();
+  const { plugActor: kong2_backendPlug, isInitialized: isInitializedKong2Plug } = useKONG2BackendPlug();
 
   useEffect(() => {
     // Handle identity changes and session expiration in one effect
@@ -253,6 +317,22 @@ const useIdentity = () => {
       fpl_backend: identityType === 'ii' ? fpl_backend : fpl_backendPlug,
       ditto_backend: identityType === 'ii' ? ditto_backend : ditto_backendPlug,
       icvc_backend: identityType === 'ii' ? icvc_backend : icvc_backendPlug,
+      gldt_backend: identityType === 'ii' ? gldt_backend : gldt_backendPlug,
+      ghost_backend: identityType === 'ii' ? ghost_backend : ghost_backendPlug,
+      ctz_backend: identityType === 'ii' ? ctz_backend : ctz_backendPlug,
+      elna_backend: identityType === 'ii' ? elna_backend : elna_backendPlug,
+      dogmi_backend: identityType === 'ii' ? dogmi_backend : dogmi_backendPlug,
+      est_backend: identityType === 'ii' ? est_backend : est_backendPlug,
+      panda_backend: identityType === 'ii' ? panda_backend : panda_backendPlug,
+      kinic_backend: identityType === 'ii' ? kinic_backend : kinic_backendPlug,
+      dolr_backend: identityType === 'ii' ? dolr_backend : dolr_backendPlug,
+      trax_backend: identityType === 'ii' ? trax_backend : trax_backendPlug,
+      motoko_backend: identityType === 'ii' ? motoko_backend : motoko_backendPlug,
+      ckpepe_backend: identityType === 'ii' ? ckpepe_backend : ckpepe_backendPlug,
+      ckshib_backend: identityType === 'ii' ? ckshib_backend : ckshib_backendPlug,
+      dod_backend: identityType === 'ii' ? dod_backend : dod_backendPlug,
+      kong1_backend: identityType === 'ii' ? kong1_backend : kong1_backendPlug,
+      kong2_backend: identityType === 'ii' ? kong2_backend : kong2_backendPlug,
     },
     isInitialized: identityType === 'ii'
     ? !!backendKingKong

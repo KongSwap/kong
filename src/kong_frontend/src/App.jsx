@@ -23,7 +23,7 @@ import tokenCkbtcImage from "../../assets/tokens/ckBTC.svg";
 import tokenCkethImage from "../../assets/tokens/ckETH.svg";
 import tokenCkusdcImage from "../../assets/tokens/ckUSDC.svg";
 import tokenCkusdtImage from "../../assets/tokens/ckUSDT.svg";
-import tokenCkpepeImage from "../../assets/tokens/ckpepe.dvg";
+import tokenCkpepeImage from "../../assets/tokens/ckpepe.svg";
 import tokenCkshibImage from "../../assets/tokens/ckshib.svg";
 import tokenClownImage from "../../assets/tokens/clown.svg";
 import tokenCsprImage from "../../assets/tokens/CSPR.svg";
@@ -157,7 +157,7 @@ const tokenImages = {
   ICPUMPER: tokenIcPumperImage,
   ICVC: tokenIcvcImage,
   IDOGE: tokenIdogeImage,
-  Kinic: tokenKinicImage,
+  KINIC: tokenKinicImage,
   KONG: tokenKongImage,
   LINK: tokenLinkImage,
   LTC: tokenLtcImage,
@@ -187,6 +187,8 @@ const tokenImages = {
   WTN: tokenWtnImage,
   WUMBO: tokenWumboImage,
   YUGE: tokenYugeImage,
+  KONG1: tokenKongImage,
+  KONG2: tokenKongImage,
 };
 
 const allowedViewTabs = ["swap", "pools", "send", "receive", "remove"];
@@ -223,6 +225,22 @@ export const tokenBalancesSelector = {
   FPL: "fplBalance",
   DITTO: "dittoBalance",
   ICVC: "icvcBalance",
+  GLDT: "gldtBalance",
+  GHOST: "ghostBalance",
+  CTZ: "ctzBalance",
+  ELNA: "elnaBalance",
+  DOGMI: "dogmiBalance",
+  EST: "estBalance",
+  PANDA: "pandaBalance",
+  KINIC: "kinicBalance",
+  DOLR: "dolrBalance",
+  TRAX: "traxBalance",
+  MOTOKO: "motokoBalance",
+  ckPEPE: "ckpepeBalance",
+  ckSHIB: "ckshibBalance",
+  DOD: "dodBalance",
+  KONG1: "kong1Balance",
+  KONG2: "kong2Balance",
 };
 
 const validTokens = Object.keys(tokenBalancesSelector);
@@ -272,6 +290,22 @@ const App = () => {
       fpl_backend,
       ditto_backend,
       icvc_backend,
+      gldt_backend,
+      ghost_backend,
+      ctz_backend,
+      elna_backend,
+      dogmi_backend,
+      est_backend,
+      panda_backend,
+      kinic_backend,
+      dolr_backend,
+      trax_backend,
+      motoko_backend,
+      ckpepe_backend,
+      ckshib_backend,
+      dod_backend,
+      kong1_backend,
+      kong2_backend,
     },
     isInitialized,
   } = useIdentity();
@@ -541,6 +575,22 @@ const App = () => {
       updateBalance(fpl_backend, "FPL"),
       updateBalance(ditto_backend, "DITTO"),
       updateBalance(icvc_backend, "ICVC"),
+      updateBalance(ghost_backend, "GHOST"),
+      updateBalance(ctz_backend, "CTZ"),
+      updateBalance(elna_backend, "ELNA"),
+      updateBalance(dogmi_backend, "DOGMI"),
+      updateBalance(est_backend, "EST"),
+      updateBalance(panda_backend, "PANDA"),
+      updateBalance(kinic_backend, "KINIC"),
+      updateBalance(dolr_backend, "DOLR"),
+      updateBalance(trax_backend, "TRAX"),
+      updateBalance(motoko_backend, "MOTOKO"),
+      updateBalance(ckpepe_backend, "ckPEPE"),
+      updateBalance(ckshib_backend, "ckSHIB"),
+      updateBalance(dod_backend, "DOD"),
+      updateBalance(gldt_backend, "GLDT"),
+      updateBalance(kong1_backend, "KONG1"),
+      updateBalance(kong2_backend, "KONG2"),
     ]);
 
     // Convert the Map to an object
@@ -593,6 +643,22 @@ const App = () => {
     ditto_backend,
     icvc_backend,
     userDetails,
+    ghost_backend,
+    ctz_backend,
+    elna_backend,
+    dogmi_backend,
+    est_backend,
+    panda_backend,
+    kinic_backend,
+    dolr_backend,
+    trax_backend,
+    motoko_backend,
+    ckpepe_backend,
+    ckshib_backend,
+    dod_backend,
+    gldt_backend,
+    kong1_backend,
+    kong2_backend,
   ]);
 
   const updateUserPools = useCallback(async () => {
@@ -1180,6 +1246,215 @@ const App = () => {
             tokenPrices["ICVC_ckUSDT"]
           ) || 0,
       },
+      {
+        symbol: "GLDT",
+        balance: shownBalances.gldtBalance,
+        usdBalance: parseBalance(shownBalances.gldtBalance)
+          .multipliedBy(parsePrice(tokenPrices["GLDT_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["GLDT"],
+        price:
+          priceRoundedPool(
+            tokenPrices["GLDT_ckUSDT"],
+            tokenPrices["GLDT_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "GHOST",
+        balance: shownBalances.ghostBalance,
+        usdBalance: parseBalance(shownBalances.ghostBalance)
+          .multipliedBy(parsePrice(tokenPrices["GHOST_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["GHOST"],
+        price:
+          priceRoundedPool(
+            tokenPrices["GHOST_ckUSDT"],
+            tokenPrices["GHOST_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "CTZ",
+        balance: shownBalances.ctzBalance,
+        usdBalance: parseBalance(shownBalances.ctzBalance)
+          .multipliedBy(parsePrice(tokenPrices["CTZ_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["CTZ"],
+        price:
+          priceRoundedPool(
+            tokenPrices["CTZ_ckUSDT"],
+            tokenPrices["CTZ_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "ELNA",
+        balance: shownBalances.elnaBalance,
+        usdBalance: parseBalance(shownBalances.elnaBalance)
+          .multipliedBy(parsePrice(tokenPrices["ELNA_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["ELNA"],
+        price:
+          priceRoundedPool(
+            tokenPrices["ELNA_ckUSDT"],
+            tokenPrices["ELNA_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "DOGMI",
+        balance: shownBalances.dogmiBalance,
+        usdBalance: parseBalance(shownBalances.dogmiBalance)
+          .multipliedBy(parsePrice(tokenPrices["DOGMI_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["DOGMI"],
+        price:
+          priceRoundedPool(
+            tokenPrices["DOGMI_ckUSDT"],
+            tokenPrices["DOGMI_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "EST",
+        balance: shownBalances.estBalance,
+        usdBalance: parseBalance(shownBalances.estBalance)
+          .multipliedBy(parsePrice(tokenPrices["EST_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["EST"],
+        price:
+          priceRoundedPool(
+            tokenPrices["EST_ckUSDT"],
+            tokenPrices["EST_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "PANDA",
+        balance: shownBalances.pandaBalance,
+        usdBalance: parseBalance(shownBalances.pandaBalance)
+          .multipliedBy(parsePrice(tokenPrices["PANDA_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["PANDA"],
+        price:
+          priceRoundedPool(
+            tokenPrices["PANDA_ckUSDT"],
+            tokenPrices["PANDA_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "KINIC",
+        balance: shownBalances.kinicBalance,
+        usdBalance: parseBalance(shownBalances.kinicBalance)
+          .multipliedBy(parsePrice(tokenPrices["KINIC_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["KINIC"],
+        price:
+          priceRoundedPool(
+            tokenPrices["KINIC_ckUSDT"],
+            tokenPrices["KINIC_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "DOLR",
+        balance: shownBalances.dolrBalance,
+        usdBalance: parseBalance(shownBalances.dolrBalance)
+          .multipliedBy(parsePrice(tokenPrices["DOLR_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["DOLR"],
+        price:
+          priceRoundedPool(
+            tokenPrices["DOLR_ckUSDT"],
+            tokenPrices["DOLR_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "TRAX",
+        balance: shownBalances.traxBalance,
+        usdBalance: parseBalance(shownBalances.traxBalance)
+          .multipliedBy(parsePrice(tokenPrices["TRAX_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["TRAX"],
+        price:
+          priceRoundedPool(
+            tokenPrices["TRAX_ckUSDT"],
+            tokenPrices["TRAX_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "MOTOKO",
+        balance: shownBalances.motokoBalance,
+        usdBalance: parseBalance(shownBalances.motokoBalance)
+          .multipliedBy(parsePrice(tokenPrices["MOTOKO_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["MOTOKO"],
+        price:
+          priceRoundedPool(
+            tokenPrices["MOTOKO_ckUSDT"],
+            tokenPrices["MOTOKO_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "ckPEPE",
+        balance: shownBalances.ckpepeBalance,
+        usdBalance: parseBalance(shownBalances.ckpepeBalance)
+          .multipliedBy(parsePrice(tokenPrices["ckPEPE_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["ckPEPE"],
+        price:
+          priceRoundedPool(
+            tokenPrices["ckPEPE_ckUSDT"],
+            tokenPrices["ckPEPE_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "ckSHIB",
+        balance: shownBalances.ckshibBalance,
+        usdBalance: parseBalance(shownBalances.ckshibBalance)
+          .multipliedBy(parsePrice(tokenPrices["ckSHIB_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["ckSHIB"],
+        price:
+          priceRoundedPool(
+            tokenPrices["ckSHIB_ckUSDT"],
+            tokenPrices["ckSHIB_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "DOD",
+        balance: shownBalances.dodBalance,
+        usdBalance: parseBalance(shownBalances.dodBalance)
+          .multipliedBy(parsePrice(tokenPrices["DOD_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["DOD"],
+        price:
+          priceRoundedPool(
+            tokenPrices["DOD_ckUSDT"],
+            tokenPrices["DOD_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "KONG1",
+        balance: shownBalances.kong1Balance,
+        usdBalance: parseBalance(shownBalances.kong1Balance)
+          .multipliedBy(parsePrice(tokenPrices["KONG1_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["KONG1"],
+        price:
+          priceRoundedPool(
+            tokenPrices["KONG1_ckUSDT"],
+            tokenPrices["KONG1_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "KONG2",
+        balance: shownBalances.kong2Balance,
+        usdBalance: parseBalance(shownBalances.kong2Balance)
+          .multipliedBy(parsePrice(tokenPrices["KONG2_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["KONG2"],
+        price:
+          priceRoundedPool(
+            tokenPrices["KONG2_ckUSDT"],
+            tokenPrices["KONG2_ckUSDT"]
+          ) || 0,
+      },
+
     ].sort((a, b) => parseFloat(b.usdBalance) - parseFloat(a.usdBalance));
   }, [shownBalances, tokenPrices]);
 
@@ -1202,6 +1477,23 @@ const App = () => {
 
     return () => clearInterval(intervalId);
   }, [principal, isInitialized, updateUserBalances]);
+
+  console.log('actors',       gldt_backend,
+    ghost_backend,
+    ctz_backend,
+    elna_backend,
+    dogmi_backend,
+    est_backend,
+    panda_backend,
+    kinic_backend,
+    dolr_backend,
+    trax_backend,
+    motoko_backend,
+    ckpepe_backend,
+    ckshib_backend,
+    dod_backend,
+    kong1_backend,
+    kong2_backend,)
 
   return (
     <>

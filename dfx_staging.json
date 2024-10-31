@@ -141,28 +141,6 @@
 					"name": "candid:service"
 				}
 			]
-    },
-    "kong1_ledger": {
-      "type": "custom",
-      "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
-      "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "qas2p-2iaaa-aaaar-qajra-cai",
-      "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
-    },
-    "kong2_ledger": {
-      "type": "custom",
-      "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
-      "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "qht43-xqaaa-aaaar-qajrq-cai",
-      "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
     }
   },
   "defaults": {
