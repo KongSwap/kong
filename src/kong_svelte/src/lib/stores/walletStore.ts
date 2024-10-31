@@ -16,9 +16,9 @@ import { ICRC2_IDL } from '$lib/idls/icrc2.idl.js';
 // Export the list of available wallets
 export const availableWallets = walletsList;
 
-export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2' | 'kong_faucet';
 
 // IDL Mappings
+export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2' | 'kong_faucet';
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
   kong_faucet: kongFaucetIDL,
@@ -72,12 +72,9 @@ function handleConnectionError(error: Error) {
 
 // Connect to a wallet
 export async function connectWallet(walletId: string) {
-  initializePNP();
   updateWalletStore({ isConnecting: true });
-
   try {
     const account = await pnp.connect(walletId);
-
     isReady.set(true);
     updateWalletStore({
       account,
@@ -97,7 +94,6 @@ export async function connectWallet(walletId: string) {
 
 // Disconnect from a wallet
 export async function disconnectWallet() {
-  initializePNP();
   try {
     await pnp.disconnect();
     updateWalletStore({
@@ -132,15 +128,14 @@ export async function restoreWalletConnection() {
 }
 
 // Check if wallet is connected
-export async function isConnected(): Promise<boolean> {
-  initializePNP();
-  return pnp.isWalletConnected();
+export function isConnected(): boolean {
+  return pnp ? pnp.isWalletConnected() : false;
 }
 
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
   initializePNP();
-  const isAuthenticated = await isConnected();
+  const isAuthenticated = isConnected();
   const isLocalEnv = window.location.hostname.includes('localhost');
   const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
   const agent = HttpAgent.createSync({ host });

@@ -2,6 +2,11 @@
 // for information about these interfaces
 declare global {
   namespace FE {
+    interface TokenBalance {
+      in_tokens: bigint;
+      in_usd: string;
+    }
+
     interface Token {
       canister_id: string;
       name: string;
@@ -17,7 +22,6 @@ declare global {
       on_kong: boolean;
       pool_symbol: string;
       logo?: string;
-      user_balance?: bigint;
     }
   }
 

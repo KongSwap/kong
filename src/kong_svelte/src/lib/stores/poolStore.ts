@@ -1,4 +1,4 @@
-import { derived, writable } from 'svelte/store';
+import { derived, writable, type Readable } from 'svelte/store';
 import { PoolService } from '$lib/services/PoolService';
 import { formatPoolData } from '$lib/utils/statsUtils';
 
@@ -6,8 +6,8 @@ interface PoolState {
   pools: BE.Pool[];
   totals: {
     tvl: number;
-    volume24h: number;
-    fees24h: number;
+    rolling_24h_volume: number;
+    fees_24h: number;
   };
   isLoading: boolean;
   error: string | null;
@@ -19,8 +19,8 @@ function createPoolStore() {
     pools: [],
     totals: {
       tvl: 0,
-      volume24h: 0,
-      fees24h: 0
+      rolling_24h_volume: 0,
+      fees_24h: 0
     },
     isLoading: false,
     error: null,
@@ -47,15 +47,12 @@ function createPoolStore() {
       });
       
       try {
-        const poolsData = await PoolService.fetchPoolsData();
-        console.log('[PoolStore] Raw pools data:', poolsData);
-        
+        const poolsData = await PoolService.fetchPoolsData();        
         if (!poolsData?.pools) {
           throw new Error('Invalid pools data received');
         }
 
         const formattedPools = formatPoolData(poolsData.pools);
-        console.log('[PoolStore] Formatted pools:', formattedPools);
         
         update(state => {
           const newState = {
@@ -63,8 +60,8 @@ function createPoolStore() {
             pools: formattedPools,
             totals: {
               tvl: Number(poolsData.total_tvl) / 1e6,
-              volume24h: Number(poolsData.total_24h_volume) / 1e6,
-              fees24h: Number(poolsData.total_24h_lp_fee) / 1e6
+              rolling_24h_volume: Number(poolsData.total_24h_volume) / 1e6,
+              fees_24h: Number(poolsData.total_24h_lp_fee) / 1e6
             },
             isLoading: false,
             lastUpdate: Date.now()
@@ -96,8 +93,8 @@ function createPoolStore() {
         pools: [],
         totals: {
           tvl: 0,
-          volume24h: 0,
-          fees24h: 0
+          rolling_24h_volume: 0,
+          fees_24h: 0
         },
         isLoading: false,
         error: null,
@@ -110,15 +107,13 @@ function createPoolStore() {
 export const poolStore = createPoolStore();
 
 // Derived stores with debug logging
-export const poolsTotals = derived(poolStore, ($store, set) => {
-  console.log('[PoolStore] Derived totals:', $store.totals);
+export const poolTotals: Readable<{ tvl: number; rolling_24h_volume: number; fees_24h: number }> = derived(poolStore, ($store, set) => {
   set($store.totals);
 });
 
-export const poolsList = derived(poolStore, ($store, set) => {
-  console.log('[PoolStore] Derived pools list:', $store.pools);
+export const poolsList: Readable<BE.Pool[]> = derived(poolStore, ($store, set) => {
   set($store.pools);
 });
 
-export const poolsLoading = derived(poolStore, $store => $store.isLoading);
-export const poolsError = derived(poolStore, $store => $store.error);
+export const poolsLoading: Readable<boolean> = derived(poolStore, $store => $store.isLoading);
+export const poolsError: Readable<string | null> = derived(poolStore, $store => $store.error);

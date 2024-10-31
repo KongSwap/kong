@@ -10,14 +10,13 @@
   let tooltipContainer: HTMLElement;
 
   function showTooltip() {
-    console.log('showing tooltip'); // Debug
     tooltipVisible = true;
+    positionTooltip
     // Wait for DOM update before positioning
     setTimeout(positionTooltip, 0);
   }
 
   function hideTooltip() {
-    console.log('hiding tooltip'); // Debug
     tooltipVisible = false;
   }
 

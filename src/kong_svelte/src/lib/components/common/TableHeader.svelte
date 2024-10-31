@@ -2,11 +2,11 @@
   import { createEventDispatcher } from 'svelte';
 
   export let variant: "default" | "stats" = "default";
-  export let textClass: "text-left" | "text-right" | "text-center" | null = "text-left";
+  export let textClass: string = "text-left";
   export let column: string;
   export let label: string;
-  export let sortColumn: string;
-  export let sortDirection: "asc" | "desc";
+  export let sortColumn: string | null = null;
+  export let sortDirection: "asc" | "desc" | null = null;
 
   const dispatch = createEventDispatcher();
 

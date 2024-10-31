@@ -30,15 +30,24 @@ export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc
   }
 
   return pools.slice().sort((a, b) => {
+    // Special handling for pool name
+    if (column === 'poolName') {
+      const aName = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
+      const bName = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
+      return direction === 'asc' 
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName);
+    }
+
     let aValue = parseValue(a[column]);
     let bValue = parseValue(b[column]);
 
     if (typeof aValue === 'string') {
       aValue = aValue.toLowerCase();
       bValue = bValue.toLowerCase();
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-      return 0;
+      return direction === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     }
 
     if (typeof aValue === 'number' && typeof bValue === 'number') {

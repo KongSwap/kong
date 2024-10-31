@@ -1,7 +1,12 @@
 <script lang="ts">
+  import cloud1 from '$lib/assets/clouds/cloud1.webp';
+  import cloud2 from '$lib/assets/clouds/cloud2.webp';
+  import cloud3 from '$lib/assets/clouds/cloud3.webp';
+  import cloud4 from '$lib/assets/clouds/cloud4.webp';
+
   let clouds: Array<any>;
   clouds = Array.from({ length: 20 }, (_, i) => ({
-    src: `/backgrounds/cloud${(i % 4) + 1}.webp`,
+    src: [cloud1, cloud2, cloud3, cloud4][i % 4],
     top: `${Math.random() * 85}%`,
     left: Math.random() > 0.5 ? "-20%" : "120%",
     animationDuration: `${200 + Math.random() * 1200}s`,
@@ -11,7 +16,7 @@
   }));
 </script>
 
-<div class="floating-clouds h-screen overflow-hidden z-[1]">
+<div class="floating-clouds overflow-hidden z-[1]">
   {#each clouds as cloud}
     <img
       src={cloud.src}
