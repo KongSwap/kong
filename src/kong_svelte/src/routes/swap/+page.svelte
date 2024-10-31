@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/locales/translations';
-  import { backendService } from '$lib/services/backendService';
+  import { TokenService } from '$lib/services/TokenService';
   import { onMount } from 'svelte';
   import Swap from '$lib/components/swap/Swap.svelte';
   import { tokenStore } from '$lib/stores/tokenStore';
@@ -10,7 +10,7 @@
   onMount(async () => {
     tokenStore.loadTokens();
     try {
-      tokens = await backendService.getTokens();
+      tokens = await TokenService.fetchTokens();
     } catch (error) {
       console.error('Error fetching tokens:', error);
     }
@@ -18,6 +18,7 @@
 </script>
 
 <main class="flex flex-col items-center">
+  <button class="pt-32" on:click={async () => await TokenService.claimFaucetTokens()}>Claim Tokens</button>
   {#if tokens?.Ok}
     {#each tokens?.Ok as token}
       <div class="text-sm uppercase text-gray-500">

@@ -1,7 +1,7 @@
 <script lang="ts">
     import Panel from '$lib/components/common/Panel.svelte';
     import { fade, fly } from 'svelte/transition';
-    import { backendService } from '$lib/services/backendService';
+    import { TokenService } from '$lib/services/TokenService';
     import { onMount } from 'svelte';
 
     export let show = false;
@@ -13,7 +13,7 @@
 
     onMount(async () => {
         try {
-            const result = await backendService.getTokens();
+            const result = await TokenService.fetchTokens();
             tokens = result;
         } catch (error) {
             console.error('Error loading tokens:', error);

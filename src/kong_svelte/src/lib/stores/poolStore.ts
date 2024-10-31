@@ -1,64 +1,124 @@
-import { writable } from 'svelte/store';
-import { backendService } from '$lib/services/backendService';
-import { isEqual } from 'lodash-es';
+import { derived, writable } from 'svelte/store';
+import { PoolService } from '$lib/services/PoolService';
 import { formatPoolData } from '$lib/utils/statsUtils';
-import { type Pool } from '$lib/types/backend';
 
-export type PoolsTotals = {
-  totalTvl: number | string;
-  totalVolume: number | string;
-  totalFees: number | string;
-};
+interface PoolState {
+  pools: BE.Pool[];
+  totals: {
+    tvl: number;
+    volume24h: number;
+    fees24h: number;
+  };
+  isLoading: boolean;
+  error: string | null;
+  lastUpdate: number | null;
+}
 
-export const poolsInfo = writable([]);
-export const poolsTotals = writable<PoolsTotals>({
-  totalTvl: 0,
-  totalVolume: 0,
-  totalFees: 0,
+function createPoolStore() {
+  const { subscribe, set, update } = writable<PoolState>({
+    pools: [],
+    totals: {
+      tvl: 0,
+      volume24h: 0,
+      fees24h: 0
+    },
+    isLoading: false,
+    error: null,
+    lastUpdate: null
+  });
+
+  // Add debug logging
+  const logState = (state: PoolState, action: string) => {
+    console.log(`[PoolStore ${action}]`, {
+      poolsCount: state.pools.length,
+      totals: state.totals,
+      isLoading: state.isLoading,
+      error: state.error
+    });
+  };
+
+  return {
+    subscribe,
+    
+    loadPools: async () => {
+      update(state => {
+        logState(state, 'Loading Start');
+        return { ...state, isLoading: true, error: null };
+      });
+      
+      try {
+        const poolsData = await PoolService.fetchPoolsData();
+        console.log('[PoolStore] Raw pools data:', poolsData);
+        
+        if (!poolsData?.pools) {
+          throw new Error('Invalid pools data received');
+        }
+
+        const formattedPools = formatPoolData(poolsData.pools);
+        console.log('[PoolStore] Formatted pools:', formattedPools);
+        
+        update(state => {
+          const newState = {
+            ...state,
+            pools: formattedPools,
+            totals: {
+              tvl: Number(poolsData.total_tvl) / 1e6,
+              volume24h: Number(poolsData.total_24h_volume) / 1e6,
+              fees24h: Number(poolsData.total_24h_lp_fee) / 1e6
+            },
+            isLoading: false,
+            lastUpdate: Date.now()
+          };
+          logState(newState, 'Update Complete');
+          return newState;
+        });
+      } catch (error) {
+        console.error('[PoolStore] Error:', error);
+        update(state => ({
+          ...state,
+          error: error.message,
+          isLoading: false
+        }));
+      }
+    },
+
+    getPool: async (poolId: string) => {
+      try {
+        return await PoolService.getPoolDetails(poolId);
+      } catch (error) {
+        console.error('[PoolStore] Error fetching pool:', error);
+        throw error;
+      }
+    },
+
+    reset: () => {
+      set({
+        pools: [],
+        totals: {
+          tvl: 0,
+          volume24h: 0,
+          fees24h: 0
+        },
+        isLoading: false,
+        error: null,
+        lastUpdate: null
+      });
+    }
+  };
+}
+
+export const poolStore = createPoolStore();
+
+// Derived stores with debug logging
+export const poolsTotals = derived(poolStore, ($store, set) => {
+  console.log('[PoolStore] Derived totals:', $store.totals);
+  set($store.totals);
 });
 
-let previousPoolBalances: any = null;
+export const poolsList = derived(poolStore, ($store, set) => {
+  console.log('[PoolStore] Derived pools list:', $store.pools);
+  set($store.pools);
+});
 
-/**
- * Fetches pools data from the backend, formats them, and updates the stores.
- */
-export async function fetchPools() {
-  try {
-    const liquidityPools = await backendService.getPools();
-    console.log('Fetched liquidityPools:', liquidityPools);
-
-    if (!liquidityPools || !liquidityPools.pools) {
-      console.error('Invalid liquidityPools structure:', liquidityPools);
-      return;
-    }
-
-    if (!Array.isArray(liquidityPools.pools)) {
-      console.error('liquidityPools.pools is not an array:', liquidityPools.pools);
-      return;
-    }
-
-    if (!isEqual(previousPoolBalances, liquidityPools.pools)) {
-      const formattedPools = formatPoolData(liquidityPools.pools);
-      poolsInfo.set(formattedPools);
-      previousPoolBalances = liquidityPools.pools;
-
-      const decimals = 6;
-      const formatBigInt = (value: bigint | number) => {
-        if (typeof value === 'bigint') {
-          return Number(value) / 10 ** decimals;
-        }
-        return value;
-      };
-
-      poolsTotals.set({
-        totalTvl: formatBigInt(liquidityPools?.total_tvl || 0),
-        totalVolume: formatBigInt(liquidityPools?.total_24h_volume || 0),
-        totalFees: formatBigInt(liquidityPools?.total_24h_lp_fee || 0),
-      });
-
-      console.log('Updated poolsInfo and poolsTotals:', formattedPools, liquidityPools);
-    }
-  } catch (error) {
-    console.error('Error fetching pool balances:', error);
-  }
-} 
+export const poolsLoading = derived(poolStore, $store => $store.isLoading);
+export const poolsError = derived(poolStore, $store => $store.error);

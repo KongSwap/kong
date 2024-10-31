@@ -2,14 +2,13 @@
 <script lang="ts">
     import { tokenStore } from '$lib/stores/tokenStore';
     import TokenRow from '$lib/components/nav/sidebar/TokenRow.svelte';
-    import { onMount } from 'svelte';
-    import { walletStore } from '$lib/stores/walletStore';
-  
+    import { onMount } from 'svelte';  
+
     onMount(async () => {
-      await tokenStore.loadTokens();
-      if ($walletStore.account) {
-        await tokenStore.loadBalances($walletStore.account.principal);
-      }
+      await Promise.all([ 
+        tokenStore.loadTokens(),
+        tokenStore.loadBalances()
+      ]);
     });
   </script>
   
@@ -23,7 +22,7 @@
         <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
         <p class="text-3xl font-bold font-mono">${$tokenStore.totalValueUsd}</p>
       </div>
-      {#each $tokenStore.tokens as token (token.symbol)}
+      {#each $tokenStore.tokens as token}
         <TokenRow {token} />
       {/each}
     {/if}

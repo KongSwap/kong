@@ -2,7 +2,6 @@
   import { page } from "$app/stores";
   import { onMount } from "svelte";
   import { createChart } from "lightweight-charts";
-  import { backendService } from "$lib/services/backendService";
 
   let lpId;
   let poolData = {};

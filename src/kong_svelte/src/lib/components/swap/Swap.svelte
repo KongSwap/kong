@@ -3,7 +3,7 @@
     import { onMount } from 'svelte';
     import debounce from 'lodash/debounce';
     import BigNumber from 'bignumber.js';
-    import { backendService } from '$lib/services/backendService';
+    import { SwapService } from '$lib/services/SwapService';
     import { tokenStore } from '$lib/stores/tokenStore';
     import SwapPanel from '$lib/components/swap/swap_ui/SwapPanel.svelte';
     import Button from '$lib/components/common/Button.svelte';
@@ -85,7 +85,7 @@
             const payDecimals = getTokenDecimals(payToken);
             const payAmountBigInt = toBigInt(amount, payDecimals);
 
-            const quote = await backendService.swap_amounts(
+            const quote = await SwapService.swap_amounts(
                 payToken,
                 payAmountBigInt,
                 receiveToken
@@ -154,7 +154,7 @@
             }[payToken];
 
             // Add approval call here
-            const approved = await backendService.icrc2_approve({
+            const approved = await SwapService.icrc2_approve({
                 amount: payAmountBigInt,
                 spender: { 
                     owner: 'l4lgk-raaaa-aaaar-qahpq-cai', // kong_backend canister ID
@@ -172,7 +172,7 @@
             }
 
             // Then proceed with swap
-            const result = await backendService.swap_async({
+            const result = await SwapService.swap_async({
                 pay_token: payToken,
                 pay_amount: payAmountBigInt,
                 receive_token: receiveToken,
@@ -201,7 +201,7 @@
     function startPolling(reqId: bigint) {
         const interval = setInterval(async () => {
             try {
-                const status = await backendService.requests([reqId]);
+                const status = await SwapService.requests([reqId]);
                 
                 if ('Ok' in status && status.Ok.length > 0) {
                     const request = status.Ok[0];
