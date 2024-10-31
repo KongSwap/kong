@@ -27,8 +27,8 @@ pub struct SwapAmountsReply {
     pub receive_symbol: String,
     pub receive_address: String,
     pub receive_amount: Nat,
-    pub mid_price: f64,
     pub price: f64,
+    pub mid_price: f64,
     pub slippage: f64,
     pub txs: Vec<SwapAmountsTxReply>,
 }
