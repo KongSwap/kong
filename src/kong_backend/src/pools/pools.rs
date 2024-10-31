@@ -19,7 +19,7 @@ fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
         Some(symbol) => pool_map::get_by_token_wildcard(symbol).iter().map(to_pool_reply).collect(),
         None => pool_map::get_on_kong().iter().map(to_pool_reply).collect(),
     });
-    // order by tvl in reverse order
+    // order by TVL in reverse order
     pools
         .pools
         .sort_by(|a, b| b.balance.partial_cmp(&a.balance).unwrap_or(std::cmp::Ordering::Equal));

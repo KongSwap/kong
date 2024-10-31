@@ -146,7 +146,7 @@
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+      "specified_id": "qas2p-2iaaa-aaaar-qajra-cai",
       "metadata": [
 				{
 					"name": "candid:service"
@@ -157,7 +157,7 @@
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "br5f7-7uaaa-aaaaa-qaaca-cai",
+      "specified_id": "qht43-xqaaa-aaaar-qajrq-cai",
       "metadata": [
 				{
 					"name": "candid:service"

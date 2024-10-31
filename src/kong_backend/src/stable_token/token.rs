@@ -32,16 +32,19 @@ impl Token for StableToken {
         }
     }
 
-    /// Pool ID of the token
+    // Pool ID of the token
     fn pool_id(&self) -> Option<u32> {
         match self {
             LP(_) => None, // currently LP tokens don't have pool
-            IC(_) => pool_map::get_by_tokens(
-                &self.address_with_chain(),
-                &kong_settings::get().ckusdt_address_with_chain,
-            )
-            .map(|pool| pool.pool_id)
-            .ok(),
+            IC(_) => {
+                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings::get().ckusdt_address_with_chain) {
+                    return Some(pool.pool_id);
+                }
+                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings::get().icp_address_with_chain) {
+                    return Some(pool.pool_id);
+                }
+                None
+            }
         }
     }
 

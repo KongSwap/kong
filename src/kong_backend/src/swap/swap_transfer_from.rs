@@ -2,14 +2,14 @@ use candid::Nat;
 use num::{BigRational, Zero};
 use num_traits::ToPrimitive;
 
+use super::swap_amounts::swap_amounts;
 use super::swap_args::SwapArgs;
 use super::swap_calc::SwapCalc;
-use super::swap_calc_impl::{get_slippage, swap_amount_0, swap_amount_1};
 use super::swap_reply::SwapReply;
 
 use crate::helpers::nat_helpers::nat_divide_as_f64;
 use crate::helpers::{
-    math_helpers::{price_rounded, round_f64},
+    math_helpers::round_f64,
     nat_helpers::{
         nat_add, nat_divide, nat_is_zero, nat_multiply, nat_multiply_f64, nat_subtract, nat_to_decimal_precision, nat_to_decimals_f64,
         nat_zero,
@@ -18,9 +18,7 @@ use crate::helpers::{
 use crate::ic::{
     address::Address,
     address_impl::get_address,
-    ckusdt::is_ckusdt,
     get_time::get_time,
-    icp::is_icp,
     id::caller_id,
     logging::error_log,
     transfer::{icp_transfer, icrc1_transfer, icrc2_transfer_from},
@@ -123,126 +121,47 @@ fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToke
 
     // calculate receive_amount and swaps
     // no needs to store the return values as it'll be called again in process_swap
-    calculate_amounts(
-        user_id,
-        &pay_token,
-        &pay_amount,
-        &receive_token,
-        args.receive_amount.as_ref(),
-        max_slippage,
-    )?;
+    calculate_amounts(&pay_token, &pay_amount, &receive_token, args.receive_amount.as_ref(), max_slippage)?;
 
     Ok((user_id, pay_token, pay_amount, receive_token, max_slippage, to_address))
 }
 
 fn calculate_amounts(
-    user_id: u32,
     pay_token: &StableToken,
     pay_amount: &Nat,
     receive_token: &StableToken,
     user_receive_amount: Option<&Nat>,
     user_max_slippage: f64,
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
-    // Pay token
-    let pay_token_id = pay_token.token_id();
-    // Receive token
-    let receive_token_id = receive_token.token_id();
-
-    let user_fee_level = user_map::get_by_user_id(user_id).ok_or("User not found")?.fee_level;
-
-    let receive_amount_with_fees_and_gas;
-    let mid_price_f64;
-    let price_f64;
-    let slippage_f64;
-    let mut txs = Vec::new();
-    if is_ckusdt(&receive_token.address_with_chain()) {
-        let pool = pool_map::get_by_token_ids(pay_token_id, receive_token_id).ok_or("Pool not found")?;
-        let swap = swap_amount_0(&pool, pay_amount, Some(user_fee_level), None, None)?;
-        receive_amount_with_fees_and_gas = swap.receive_amount_with_fees_and_gas();
-        let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
-        mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let price = swap.get_price().ok_or("Invalid price")?;
-        price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap);
-    } else if is_ckusdt(&pay_token.address_with_chain()) {
-        let pool = pool_map::get_by_token_ids(receive_token_id, pay_token_id).ok_or("Pool not found")?;
-        let swap = swap_amount_1(&pool, pay_amount, Some(user_fee_level), None, None)?;
-        receive_amount_with_fees_and_gas = swap.receive_amount_with_fees_and_gas();
-        let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
-        mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let price = swap.get_price().ok_or("Invalid price")?;
-        price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap);
-    } else {
-        let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
-        // 2-step swap via ckUSDT
-        let pool1 = pool_map::get_by_token_ids(pay_token.token_id(), ckusdt_token_id).ok_or("Pool not found")?;
-        let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2; // this will round it up
-        let swap1 = swap_amount_0(
-            &pool1,
-            pay_amount,
-            Some(user_fee_level),
-            Some(swap1_lp_fee),
-            Some(&nat_zero()), // swap1 do not take gas fees
-        )?;
-        let pool2 = pool_map::get_by_token_ids(receive_token.token_id(), ckusdt_token_id).ok_or("Pool not found")?;
-        let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 2;
-        let swap2 = swap_amount_1(
-            &pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
-            Some(user_fee_level),
-            Some(swap2_lp_fee),
-            None,
-        )?;
-        receive_amount_with_fees_and_gas = swap2.receive_amount_with_fees_and_gas();
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
-        let mid_price = swap1_mid_price * swap2_mid_price;
-        mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
-        let price = swap1_price * swap2_price;
-        price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap1);
-        txs.push(swap2);
-    }
+    let (receive_amount, price, mid_price, slippage, txs) = swap_amounts(pay_token, pay_amount, receive_token)?;
 
     // check if receive_amount is within user's specified
     if let Some(user_receive_amount) = user_receive_amount {
-        if receive_amount_with_fees_and_gas < *user_receive_amount {
+        if receive_amount < *user_receive_amount {
             let decimals = receive_token.decimals();
-            let receive_amount_with_fees_and_gas_f64 = round_f64(
-                nat_to_decimals_f64(decimals, &receive_amount_with_fees_and_gas).unwrap_or(0_f64),
-                decimals,
-            );
+            let receive_amount_with_fees_and_gas_f64 = round_f64(nat_to_decimals_f64(decimals, &receive_amount).unwrap_or(0_f64), decimals);
             return Err(format!(
                 "Insufficient receive amount. Can only receive {} {} with {}% slippage",
                 receive_amount_with_fees_and_gas_f64,
                 receive_token.symbol(),
-                slippage_f64
+                slippage
             ));
         }
     }
 
     // check if slippage is within user's specified
-    if slippage_f64 > user_max_slippage {
+    if slippage > user_max_slippage {
         let decimals = receive_token.decimals();
-        let receive_amount_with_fees_and_gas_f64 = round_f64(
-            nat_to_decimals_f64(decimals, &receive_amount_with_fees_and_gas).unwrap_or(0_f64),
-            decimals,
-        );
+        let receive_amount_with_fees_and_gas_f64 = round_f64(nat_to_decimals_f64(decimals, &receive_amount).unwrap_or(0_f64), decimals);
         return Err(format!(
             "Slippage exceeded. Can only receive {} {} with {}% slippage",
             receive_amount_with_fees_and_gas_f64,
             receive_token.symbol(),
-            slippage_f64
+            slippage
         ));
     }
 
-    Ok((receive_amount_with_fees_and_gas, mid_price_f64, price_f64, slippage_f64, txs))
+    Ok((receive_amount, mid_price, price, slippage, txs))
 }
 
 // swaps needs to be passed in to get the pool of the pay token which is needed to determine if the
@@ -271,15 +190,7 @@ async fn process_swap(
     transfer_ids.push(pay_transfer_id);
 
     // re-calculate receive_amount and swaps with the latest pool state
-    match update_liquidity_pool(
-        request_id,
-        user_id,
-        pay_token,
-        pay_amount,
-        receive_token,
-        receive_amount,
-        max_slippage,
-    ) {
+    match update_liquidity_pool(request_id, pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
         Ok((receive_amount, mid_price, price, slippage, swaps)) => {
             // send_receive_token() will always return a SwapReply
             Ok(send_receive_token(
@@ -351,7 +262,6 @@ async fn transfer_from_token(request_id: u64, token: &StableToken, amount: &Nat,
 
 fn update_liquidity_pool(
     request_id: u64,
-    user_id: u32,
     pay_token: &StableToken,
     pay_amount: &Nat,
     receive_token: &StableToken,
@@ -360,8 +270,8 @@ fn update_liquidity_pool(
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
     request_map::update_status(request_id, StatusCode::CalculatePoolAmounts, None);
 
-    match calculate_amounts(user_id, pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
-        Ok((receive_amount, mid_price, price, slippage, swaps)) => {
+    match calculate_amounts(pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
+        Ok((receive_amount, price, mid_price, slippage, swaps)) => {
             request_map::update_status(request_id, StatusCode::CalculatePoolAmountsSuccess, None);
 
             // update the pool, in some cases there could be multiple pools

@@ -335,8 +335,8 @@ type SwapAmountsReply = record {
     receive_symbol : text;
     receive_address : text;
     receive_amount : nat;
-    mid_price : float64;    
     price : float64;
+    mid_price : float64;
     slippage : float64;
     txs : vec SwapAmountsTxReply;    
 };
