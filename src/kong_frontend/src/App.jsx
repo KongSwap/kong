@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Principal } from "@dfinity/principal";
 import BigNumber from "bignumber.js";
 import {
@@ -29,6 +23,8 @@ import tokenCkbtcImage from "../../assets/tokens/ckBTC.svg";
 import tokenCkethImage from "../../assets/tokens/ckETH.svg";
 import tokenCkusdcImage from "../../assets/tokens/ckUSDC.svg";
 import tokenCkusdtImage from "../../assets/tokens/ckUSDT.svg";
+import tokenCkpepeImage from "../../assets/tokens/ckpepe.svg";
+import tokenCkshibImage from "../../assets/tokens/ckshib.svg";
 import tokenClownImage from "../../assets/tokens/clown.svg";
 import tokenCsprImage from "../../assets/tokens/CSPR.svg";
 import tokenCtzImage from "../../assets/tokens/ctz.png";
@@ -36,6 +32,7 @@ import tokenDamonicImage from "../../assets/tokens/damonic.svg";
 import tokenDecideAiImage from "../../assets/tokens/decideai.png";
 import tokenDittoImage from "../../assets/tokens/ditto.png";
 import tokenDkpImage from "../../assets/tokens/DKP.svg";
+import tokenDodImage from "../../assets/tokens/dod.png";
 import tokenDotImage from "../../assets/tokens/DOT.svg";
 import tokenDogmiImage from "../../assets/tokens/dogmi.png";
 import tokenDolrImage from "../../assets/tokens/dolr.png";
@@ -46,6 +43,7 @@ import tokenExeImage from "../../assets/tokens/EXE.svg";
 import tokenFplImage from "../../assets/tokens/fpl.png";
 import tokenGhostImage from "../../assets/tokens/GHOST.svg";
 import tokenGlazeImage from "../../assets/tokens/glaze.png";
+import tokenGldtImage from "../../assets/tokens/gldt.png";
 import tokenGoldDaoImage from "../../assets/tokens/golddao.png";
 import tokenGrtImage from "../../assets/tokens/GRT.svg";
 import tokenHmfeeImage from "../../assets/tokens/hmfee.svg";
@@ -62,6 +60,7 @@ import tokenLinkImage from "../../assets/tokens/LINK.svg";
 import tokenLtcImage from "../../assets/tokens/LTC.svg";
 import tokenMaticImage from "../../assets/tokens/MATIC.svg";
 import tokenMcsImage from "../../assets/tokens/mcs.svg";
+import tokenMotokoImage from "../../assets/tokens/motoko.png";
 import tokenNanasImage from "../../assets/tokens/nanas.svg";
 import tokenNd64Image from "../../assets/tokens/nd64.svg";
 import tokenNicpImage from "../../assets/tokens/nicp.svg";
@@ -102,6 +101,7 @@ import {
   getActor as kong_backend,
   getAuthActor as kong_backend_auth,
 } from "./lib/kong_backend";
+import useIdentity from "./components/useIdentity";
 import { FRONTEND_URL } from "./constants/config";
 import ReceiveComponent from "./components/ReceiveComponent";
 import Tippy from "@tippyjs/react";
@@ -109,42 +109,6 @@ import FooterSocials from "./components/FooterSocials";
 import { defaultStateUser } from "./constants/defaultState";
 import GorilaText from "./components/GorilaText";
 import { isEqual } from "lodash";
-import { useIdentityKit } from "@nfid/identitykit/react";
-import {
-  useCkbtcActor,
-  useCkethActor,
-  useCkusdcActor,
-  useIcpActor,
-  useKingKongActor,
-  useKingKongFaucetActor,
-  useCkusdtActor,
-  useNICPActor,
-  useWtnActor,
-  useYugeActor,
-  useChatActor,
-  useDkpActor,
-  useNanasActor,
-  useNd64Actor,
-  useBitsActor,
-  useAlpacalbActor,
-  usePartyActor,
-  useSneedActor,
-  useClownActor,
-  useExeActor,
-  useWumboActor,
-  useMcsActor,
-  useDamonicActor,
-  useBobActor,
-  useBurnActor,
-  useDcdActor,
-  useDittoActor,
-  useFplActor,
-  useGldgovActor,
-  useIcvcActor,
-  useNtnActor,
-  useOgyActor,
-  useOwlActor,
-} from "./Actors/identityKitActorInitiation";
 
 const tokenImages = {
   ADA: tokenAdaImage,
@@ -162,6 +126,8 @@ const tokenImages = {
   ckETH: tokenCkethImage,
   ckUSDC: tokenCkusdcImage,
   ckUSDT: tokenCkusdtImage,
+  ckPEPE: tokenCkpepeImage,
+  ckSHIB: tokenCkshibImage,
   CLOWN: tokenClownImage,
   CSPR: tokenCsprImage,
   CTZ: tokenCtzImage,
@@ -169,6 +135,7 @@ const tokenImages = {
   DCD: tokenDecideAiImage,
   DITTO: tokenDittoImage,
   DKP: tokenDkpImage,
+  DOD: tokenDodImage,
   DOT: tokenDotImage,
   DOGMI: tokenDogmiImage,
   DOLR: tokenDolrImage,
@@ -180,6 +147,7 @@ const tokenImages = {
   GHOST: tokenGhostImage,
   GLAZE: tokenGlazeImage,
   GLDGov: tokenGoldDaoImage,
+  GLDT: tokenGldtImage,
   GRT: tokenGrtImage,
   HMFEE: tokenHmfeeImage,
   HTCETH: tokenHtcethImage,
@@ -189,12 +157,13 @@ const tokenImages = {
   ICPUMPER: tokenIcPumperImage,
   ICVC: tokenIcvcImage,
   IDOGE: tokenIdogeImage,
-  Kinic: tokenKinicImage,
+  KINIC: tokenKinicImage,
   KONG: tokenKongImage,
   LINK: tokenLinkImage,
   LTC: tokenLtcImage,
   MATIC: tokenMaticImage,
   MCS: tokenMcsImage,
+  MOTOKO: tokenMotokoImage,
   nanas: tokenNanasImage,
   ND64: tokenNd64Image,
   nICP: tokenNicpImage,
@@ -218,6 +187,8 @@ const tokenImages = {
   WTN: tokenWtnImage,
   WUMBO: tokenWumboImage,
   YUGE: tokenYugeImage,
+  KONG1: tokenKongImage,
+  KONG2: tokenKongImage,
 };
 
 const allowedViewTabs = ["swap", "pools", "send", "receive", "remove"];
@@ -254,6 +225,22 @@ export const tokenBalancesSelector = {
   FPL: "fplBalance",
   DITTO: "dittoBalance",
   ICVC: "icvcBalance",
+  GLDT: "gldtBalance",
+  GHOST: "ghostBalance",
+  CTZ: "ctzBalance",
+  ELNA: "elnaBalance",
+  DOGMI: "dogmiBalance",
+  EST: "estBalance",
+  PANDA: "pandaBalance",
+  KINIC: "kinicBalance",
+  DOLR: "dolrBalance",
+  TRAX: "traxBalance",
+  MOTOKO: "motokoBalance",
+  ckPEPE: "ckpepeBalance",
+  ckSHIB: "ckshibBalance",
+  DOD: "dodBalance",
+  KONG1: "kong1Balance",
+  KONG2: "kong2Balance",
 };
 
 const validTokens = Object.keys(tokenBalancesSelector);
@@ -262,50 +249,75 @@ const defaultSlippage = 2;
 
 const App = () => {
   const location = useLocation();
-  const { identity, accounts, delegationType, isInitializing } =
-    useIdentityKit();
-  const { authenticated: kingKongActor } = useKingKongActor();
-  const { authenticated: kingKongFaucetActor } = useKingKongFaucetActor();
-
-  const { anonymous: icpAnonActor } = useIcpActor();
-  const { anonymous: ckbtcAnonActor } = useCkbtcActor();
-  const { anonymous: ckethAnonActor } = useCkethActor();
-  const { anonymous: ckusdcAnonActor } = useCkusdcActor();
-  const { anonymous: ckusdtAnonActor } = useCkusdtActor();
-  const { anonymous: NICPAnonActor } = useNICPActor();
-  const { anonymous: wtnAnonActor } = useWtnActor();
-  const { anonymous: yugeAnonActor } = useYugeActor();
-  const { anonymous: chatAnonActor } = useChatActor();
-  const { anonymous: dkpAnonActor } = useDkpActor();
-  const { anonymous: nanasAnonActor } = useNanasActor();
-  const { anonymous: nd64AnonActor } = useNd64Actor();
-  const { anonymous: bitsAnonActor } = useBitsActor();
-  const { anonymous: alpacalbAnonActor } = useAlpacalbActor();
-  const { anonymous: partyAnonActor } = usePartyActor();
-  const { anonymous: sneedAnonActor } = useSneedActor();
-  const { anonymous: clownAnonActor } = useClownActor();
-  const { anonymous: exeAnonActor } = useExeActor();
-  const { anonymous: wumboAnonActor } = useWumboActor();
-  const { anonymous: mcsAnonActor } = useMcsActor();
-  const { anonymous: damonicAnonActor } = useDamonicActor();
-  const { anonymous: bobAnonActor } = useBobActor();
-  const { anonymous: burnAnonActor } = useBurnActor();
-  const { anonymous: ntnAnonActor } = useNtnActor();
-  const { anonymous: dcdAnonActor } = useDcdActor();
-  const { anonymous: gldgovAnonActor } = useGldgovActor();
-  const { anonymous: owlAnonActor } = useOwlActor();
-  const { anonymous: ogyAnonActor } = useOgyActor();
-  const { anonymous: fplAnonActor } = useFplActor();
-  const { anonymous: dittoAnonActor } = useDittoActor();
-  const { anonymous: icvcAnonActor } = useIcvcActor();
+  const {
+    activeIdentity,
+    plugPrincipal,
+    isAuthenticated,
+    expiredSession,
+    identityType,
+    clear,
+    actors: {
+      backendKingKong,
+      backendKingKongFaucet,
+      icp_ledger_backend,
+      ckbtc_ledger_backend,
+      cketh_ledger_backend,
+      ckusdc_ledger_backend,
+      ckusdt_ledger_backend,
+      dkp_ledger_backend,
+      bits_ledger_backend,
+      chat_ledger_backend,
+      nanas_ledger_backend,
+      nd64_ledger_backend,
+      wtn_ledger_backend,
+      yuge_ledger_backend,
+      NICP_ledger_backend,
+      alpacalb_backend,
+      party_backend,
+      sneed_backend,
+      clown_backend,
+      damonic_backend,
+      exe_backend,
+      wumbo_backend,
+      mcs_backend,
+      bob_backend,
+      burn_backend,
+      ntn_backend,
+      dcd_backend,
+      gldgov_backend,
+      owl_backend,
+      ogy_backend,
+      fpl_backend,
+      ditto_backend,
+      icvc_backend,
+      gldt_backend,
+      ghost_backend,
+      ctz_backend,
+      elna_backend,
+      dogmi_backend,
+      est_backend,
+      panda_backend,
+      kinic_backend,
+      dolr_backend,
+      trax_backend,
+      motoko_backend,
+      ckpepe_backend,
+      ckshib_backend,
+      dod_backend,
+      kong1_backend,
+      kong2_backend,
+    },
+    isInitialized,
+  } = useIdentity();
 
   const [userDetails, setUserDetails] = useState(defaultStateUser);
-  const [principal, setPrincipal] = useState(null);
+
   const [shownBalances, setShownBalances] = useState({});
   const [poolBalances, setPoolBalances] = useState([]);
   const [poolsInfo, setPoolsInfo] = useState([]);
   const [isCopied, setIsCopied] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
+  const [principal, setPrincipal] = useState(null);
   const [fetchingTokens, setFetchingTokens] = useState(false);
   const queryParams = new URLSearchParams(location.search);
   const viewTab = queryParams.get("viewtab");
@@ -326,14 +338,6 @@ const App = () => {
   });
   const [accountId, setAccountId] = useState(null);
   const previousPoolBalances = useRef([]);
-  const initializationRef = useRef(false);
-  const previousPrincipalRef = useRef();
-
-  useEffect(() => {
-    if (identity) {
-      setPrincipal(identity.getPrincipal().toText());
-    }
-  }, [identity]);
 
   const smallerPrincipal = useMemo(() => {
     if (principal) {
@@ -369,16 +373,16 @@ const App = () => {
           return;
         }
       }
-    }
+    } 
 
     navigate("/?viewtab=swap&pool=ICP_ckUSDT", { replace: true });
   }, [pool, navigate]);
 
   useEffect(() => {
-    if (principal) {
+    if (isInitialized) {
       setShownBalances(formatBalances(userDetails, tokenPrices));
     }
-  }, [userDetails, tokenPrices, principal]);
+  }, [userDetails, tokenPrices, isInitialized]);
 
   useEffect(() => {
     const getTokenDetails = async () => {
@@ -387,6 +391,56 @@ const App = () => {
     };
     getTokenDetails();
   }, []);
+
+  useEffect(() => {
+    if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
+      setPrincipal(null);
+      initializeUserData();
+      setIsDrawerOpen(false);
+    } else if (plugPrincipal && !principal) {
+      setPrincipal(plugPrincipal);
+    } else if (
+      !principal &&
+      backendKingKong &&
+      activeIdentity &&
+      activeIdentity.getPrincipal()
+    ) {
+      setPrincipal(
+        Principal.fromUint8Array(activeIdentity.getPrincipal()._arr).toText()
+      );
+    }
+  }, [
+    activeIdentity,
+    backendKingKong,
+    plugPrincipal,
+    principal,
+    isAuthenticated,
+  ]);
+
+  useEffect(() => {
+    if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
+      setPrincipal(null);
+      initializeUserData();
+    }
+  }, [activeIdentity, plugPrincipal]);
+
+  useEffect(() => {
+    if (expiredSession) {
+      toast.info("Session expired. Reloading in 5 seconds...", {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      setTimeout(async () => {
+        await clear(); // Clear identity (logout)
+        window.location.reload(); // Refresh the page
+      }, 5000);
+    }
+  }, [expiredSession, clear]);
 
   const initializeUserData = useCallback(() => {
     setUserDetails(defaultStateUser);
@@ -423,11 +477,12 @@ const App = () => {
 
   const getUserProfile = useCallback(
     async (retryCount = 0, maxRetries = 5) => {
-      if (!principal || !kingKongActor) {
+      if (!principal || !isInitialized) {
         return;
       }
+
       try {
-        const result = await kingKongActor.get_user();
+        const result = await backendKingKong.get_user();
         const accountId = result.Ok ? result.Ok.account_id : "";
         setAccountId(accountId);
       } catch (error) {
@@ -445,17 +500,17 @@ const App = () => {
         }
       }
     },
-    [principal, kingKongActor]
+    [isInitialized, principal, backendKingKong]
   );
 
   const updateUserBalances = useCallback(async () => {
-    if (!principal || !tokenDetails || !icpAnonActor) {
+    if (!principal || !tokenDetails) {
       initializeUserData();
       return;
     }
     const principalBalance = principal
       ? Principal.fromText(principal)
-      : identity.getPrincipal();
+      : activeIdentity.getPrincipal();
 
     const balanceUpdates = new Map(); // Use a Map to store balances immutably
 
@@ -489,38 +544,55 @@ const App = () => {
 
     // Fetch all balances in parallel and wait for all promises to resolve
     await Promise.allSettled([
-      updateBalance(icpAnonActor, "ICP"),
-      updateBalance(ckbtcAnonActor, "ckBTC"),
-      updateBalance(ckethAnonActor, "ckETH"),
-      updateBalance(ckusdcAnonActor, "ckUSDC"),
-      updateBalance(ckusdtAnonActor, "ckUSDT"),
-      updateBalance(dkpAnonActor, "DKP"),
-      updateBalance(bitsAnonActor, "Bits"),
-      updateBalance(chatAnonActor, "CHAT"),
-      updateBalance(nanasAnonActor, "nanas"),
-      updateBalance(nd64AnonActor, "ND64"),
-      updateBalance(wtnAnonActor, "WTN"),
-      updateBalance(yugeAnonActor, "YUGE"),
-      updateBalance(NICPAnonActor, "nICP"),
-      updateBalance(alpacalbAnonActor, "ALPACALB"),
-      updateBalance(partyAnonActor, "PARTY"),
-      updateBalance(sneedAnonActor, "SNEED"),
-      updateBalance(clownAnonActor, "CLOWN"),
-      updateBalance(exeAnonActor, "EXE"),
-      updateBalance(wumboAnonActor, "WUMBO"),
-      updateBalance(mcsAnonActor, "MCS"),
-      updateBalance(damonicAnonActor, "DAMONIC"),
-      updateBalance(bobAnonActor, "BOB"),
-      updateBalance(burnAnonActor, "BURN"),
-      updateBalance(ntnAnonActor, "NTN"),
-      updateBalance(dcdAnonActor, "DCD"),
-      updateBalance(gldgovAnonActor, "GLDGov"),
-      updateBalance(owlAnonActor, "OWL"),
-      updateBalance(ogyAnonActor, "OGY"),
-      updateBalance(fplAnonActor, "FPL"),
-      updateBalance(dittoAnonActor, "DITTO"),
-      updateBalance(icvcAnonActor, "ICVC"),
+      updateBalance(icp_ledger_backend, "ICP"),
+      updateBalance(ckbtc_ledger_backend, "ckBTC"),
+      updateBalance(cketh_ledger_backend, "ckETH"),
+      updateBalance(ckusdc_ledger_backend, "ckUSDC"),
+      updateBalance(ckusdt_ledger_backend, "ckUSDT"),
+      updateBalance(dkp_ledger_backend, "DKP"),
+      updateBalance(bits_ledger_backend, "Bits"),
+      updateBalance(chat_ledger_backend, "CHAT"),
+      updateBalance(nanas_ledger_backend, "nanas"),
+      updateBalance(nd64_ledger_backend, "ND64"),
+      updateBalance(wtn_ledger_backend, "WTN"),
+      updateBalance(yuge_ledger_backend, "YUGE"),
+      updateBalance(NICP_ledger_backend, "nICP"),
+      updateBalance(alpacalb_backend, "ALPACALB"),
+      updateBalance(party_backend, "PARTY"),
+      updateBalance(sneed_backend, "SNEED"),
+      updateBalance(clown_backend, "CLOWN"),
+      updateBalance(exe_backend, "EXE"),
+      updateBalance(wumbo_backend, "WUMBO"),
+      updateBalance(mcs_backend, "MCS"),
+      updateBalance(damonic_backend, "DAMONIC"),
+      updateBalance(bob_backend, "BOB"),
+      updateBalance(burn_backend, "BURN"),
+      updateBalance(ntn_backend, "NTN"),
+      updateBalance(dcd_backend, "DCD"),
+      updateBalance(gldgov_backend, "GLDGov"),
+      updateBalance(owl_backend, "OWL"),
+      updateBalance(ogy_backend, "OGY"),
+      updateBalance(fpl_backend, "FPL"),
+      updateBalance(ditto_backend, "DITTO"),
+      updateBalance(icvc_backend, "ICVC"),
+      updateBalance(ghost_backend, "GHOST"),
+      updateBalance(ctz_backend, "CTZ"),
+      updateBalance(elna_backend, "ELNA"),
+      updateBalance(dogmi_backend, "DOGMI"),
+      updateBalance(est_backend, "EST"),
+      updateBalance(panda_backend, "PANDA"),
+      updateBalance(kinic_backend, "KINIC"),
+      updateBalance(dolr_backend, "DOLR"),
+      updateBalance(trax_backend, "TRAX"),
+      updateBalance(motoko_backend, "MOTOKO"),
+      updateBalance(ckpepe_backend, "ckPEPE"),
+      updateBalance(ckshib_backend, "ckSHIB"),
+      updateBalance(dod_backend, "DOD"),
+      updateBalance(gldt_backend, "GLDT"),
+      updateBalance(kong1_backend, "KONG1"),
+      updateBalance(kong2_backend, "KONG2"),
     ]);
+
     // Convert the Map to an object
     const balanceUpdatesObject = Object.fromEntries(balanceUpdates);
 
@@ -535,51 +607,67 @@ const App = () => {
       setUserDetails(updatedUserDetails);
     }
   }, [
-    icpAnonActor,
-    ckbtcAnonActor,
-    ckethAnonActor,
-    ckusdcAnonActor,
-    ckusdtAnonActor,
-    dkpAnonActor,
-    bitsAnonActor,
-    chatAnonActor,
-    nanasAnonActor,
-    nd64AnonActor,
-    wtnAnonActor,
-    yugeAnonActor,
-    NICPAnonActor,
-    alpacalbAnonActor,
-    partyAnonActor,
-    sneedAnonActor,
-    clownAnonActor,
-    exeAnonActor,
-    wumboAnonActor,
-    mcsAnonActor,
-    damonicAnonActor,
-    bobAnonActor,
-    identity,
+    icp_ledger_backend,
+    ckbtc_ledger_backend,
+    cketh_ledger_backend,
+    ckusdc_ledger_backend,
+    ckusdt_ledger_backend,
+    dkp_ledger_backend,
+    bits_ledger_backend,
+    chat_ledger_backend,
+    nanas_ledger_backend,
+    nd64_ledger_backend,
+    wtn_ledger_backend,
+    yuge_ledger_backend,
+    NICP_ledger_backend,
+    alpacalb_backend,
+    party_backend,
+    sneed_backend,
+    clown_backend,
+    exe_backend,
+    wumbo_backend,
+    mcs_backend,
+    damonic_backend,
+    bob_backend,
+    principal,
     initializeUserData,
     tokenDetails,
     getTokenDecimals,
-    burnAnonActor,
-    ntnAnonActor,
-    dcdAnonActor,
-    gldgovAnonActor,
-    owlAnonActor,
-    ogyAnonActor,
-    fplAnonActor,
-    dittoAnonActor,
-    icvcAnonActor,
+    burn_backend,
+    ntn_backend,
+    dcd_backend,
+    gldgov_backend,
+    owl_backend,
+    ogy_backend,
+    fpl_backend,
+    ditto_backend,
+    icvc_backend,
     userDetails,
-    principal,
+    ghost_backend,
+    ctz_backend,
+    elna_backend,
+    dogmi_backend,
+    est_backend,
+    panda_backend,
+    kinic_backend,
+    dolr_backend,
+    trax_backend,
+    motoko_backend,
+    ckpepe_backend,
+    ckshib_backend,
+    dod_backend,
+    gldt_backend,
+    kong1_backend,
+    kong2_backend,
   ]);
 
   const updateUserPools = useCallback(async () => {
-    if (!principal || !kingKongActor) {
+    if (!principal || !backendKingKong) {
       return;
     }
+
     try {
-      const userBalances = await kingKongActor.user_balances([]);
+      const userBalances = await backendKingKong.user_balances([]);
       const balances = userBalances.Ok || [];
       // Format the pool balances, including amount_0 and amount_1
       const updatedPoolBalances = balances
@@ -614,7 +702,7 @@ const App = () => {
     } catch (error) {
       console.error("Error fetching pool balances:", error);
     }
-  }, [kingKongActor, principal, tokenPrices, delegationType, isInitializing]);
+  }, [backendKingKong, principal, tokenPrices]);
 
   const onTabClick = useCallback(
     (tab, pool = "ICP_ckUSDT") => {
@@ -668,11 +756,11 @@ const App = () => {
   }, []);
 
   const getTokens = useCallback(async () => {
-    if (!principal || !kingKongFaucetActor) return;
+    if (!principal || !backendKingKongFaucet) return;
     setFetchingTokens(true);
 
     try {
-      const result = await kingKongFaucetActor.claim();
+      const result = await backendKingKongFaucet.claim();
       updateUserBalances();
       setFetchingTokens(false);
 
@@ -683,10 +771,9 @@ const App = () => {
       }
     } catch (error) {
       setFetchingTokens(false);
-      console.log('Error claiming tokens:', error);
       toast("Error claiming tokens:", error);
     }
-  }, [principal, kingKongFaucetActor, updateUserBalances]);
+  }, [principal, backendKingKongFaucet, updateUserBalances]);
 
   const updatePoolBalances = useCallback(async () => {
     try {
@@ -695,16 +782,16 @@ const App = () => {
         (liquidity_pool_balances_response.Ok &&
           liquidity_pool_balances_response.Ok.pools) ||
         [];
-
+  
       // Check for equality between previous and current balances
       if (!isEqual(previousPoolBalances.current, liquidity_pool_balances)) {
         // Only update if pool balances have changed
         setPoolsInfo(liquidity_pool_balances); // Update pool info
         previousPoolBalances.current = liquidity_pool_balances; // Update the reference
-
+  
         // Fetch the decimals for proper conversion (using the first pool's token as reference)
         const decimals = 6;
-
+  
         const formatBigInt = (value) => {
           if (typeof value === "bigint") {
             const dividedValue = Number(value) / 10 ** decimals;
@@ -712,7 +799,7 @@ const App = () => {
           }
           return value;
         };
-
+  
         // Update totals if pool balances changed
         setPoolsTotals({
           totalTvl: formatBigInt(
@@ -726,7 +813,7 @@ const App = () => {
           ),
         });
       }
-
+  
       if (liquidity_pool_balances_response.hasOwnProperty("Err")) {
         console.error(liquidity_pool_balances_response.Err);
       }
@@ -1159,6 +1246,215 @@ const App = () => {
             tokenPrices["ICVC_ckUSDT"]
           ) || 0,
       },
+      {
+        symbol: "GLDT",
+        balance: shownBalances.gldtBalance,
+        usdBalance: parseBalance(shownBalances.gldtBalance)
+          .multipliedBy(parsePrice(tokenPrices["GLDT_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["GLDT"],
+        price:
+          priceRoundedPool(
+            tokenPrices["GLDT_ckUSDT"],
+            tokenPrices["GLDT_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "GHOST",
+        balance: shownBalances.ghostBalance,
+        usdBalance: parseBalance(shownBalances.ghostBalance)
+          .multipliedBy(parsePrice(tokenPrices["GHOST_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["GHOST"],
+        price:
+          priceRoundedPool(
+            tokenPrices["GHOST_ckUSDT"],
+            tokenPrices["GHOST_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "CTZ",
+        balance: shownBalances.ctzBalance,
+        usdBalance: parseBalance(shownBalances.ctzBalance)
+          .multipliedBy(parsePrice(tokenPrices["CTZ_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["CTZ"],
+        price:
+          priceRoundedPool(
+            tokenPrices["CTZ_ckUSDT"],
+            tokenPrices["CTZ_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "ELNA",
+        balance: shownBalances.elnaBalance,
+        usdBalance: parseBalance(shownBalances.elnaBalance)
+          .multipliedBy(parsePrice(tokenPrices["ELNA_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["ELNA"],
+        price:
+          priceRoundedPool(
+            tokenPrices["ELNA_ckUSDT"],
+            tokenPrices["ELNA_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "DOGMI",
+        balance: shownBalances.dogmiBalance,
+        usdBalance: parseBalance(shownBalances.dogmiBalance)
+          .multipliedBy(parsePrice(tokenPrices["DOGMI_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["DOGMI"],
+        price:
+          priceRoundedPool(
+            tokenPrices["DOGMI_ckUSDT"],
+            tokenPrices["DOGMI_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "EST",
+        balance: shownBalances.estBalance,
+        usdBalance: parseBalance(shownBalances.estBalance)
+          .multipliedBy(parsePrice(tokenPrices["EST_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["EST"],
+        price:
+          priceRoundedPool(
+            tokenPrices["EST_ckUSDT"],
+            tokenPrices["EST_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "PANDA",
+        balance: shownBalances.pandaBalance,
+        usdBalance: parseBalance(shownBalances.pandaBalance)
+          .multipliedBy(parsePrice(tokenPrices["PANDA_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["PANDA"],
+        price:
+          priceRoundedPool(
+            tokenPrices["PANDA_ckUSDT"],
+            tokenPrices["PANDA_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "KINIC",
+        balance: shownBalances.kinicBalance,
+        usdBalance: parseBalance(shownBalances.kinicBalance)
+          .multipliedBy(parsePrice(tokenPrices["KINIC_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["KINIC"],
+        price:
+          priceRoundedPool(
+            tokenPrices["KINIC_ckUSDT"],
+            tokenPrices["KINIC_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "DOLR",
+        balance: shownBalances.dolrBalance,
+        usdBalance: parseBalance(shownBalances.dolrBalance)
+          .multipliedBy(parsePrice(tokenPrices["DOLR_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["DOLR"],
+        price:
+          priceRoundedPool(
+            tokenPrices["DOLR_ckUSDT"],
+            tokenPrices["DOLR_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "TRAX",
+        balance: shownBalances.traxBalance,
+        usdBalance: parseBalance(shownBalances.traxBalance)
+          .multipliedBy(parsePrice(tokenPrices["TRAX_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["TRAX"],
+        price:
+          priceRoundedPool(
+            tokenPrices["TRAX_ckUSDT"],
+            tokenPrices["TRAX_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "MOTOKO",
+        balance: shownBalances.motokoBalance,
+        usdBalance: parseBalance(shownBalances.motokoBalance)
+          .multipliedBy(parsePrice(tokenPrices["MOTOKO_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["MOTOKO"],
+        price:
+          priceRoundedPool(
+            tokenPrices["MOTOKO_ckUSDT"],
+            tokenPrices["MOTOKO_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "ckPEPE",
+        balance: shownBalances.ckpepeBalance,
+        usdBalance: parseBalance(shownBalances.ckpepeBalance)
+          .multipliedBy(parsePrice(tokenPrices["ckPEPE_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["ckPEPE"],
+        price:
+          priceRoundedPool(
+            tokenPrices["ckPEPE_ckUSDT"],
+            tokenPrices["ckPEPE_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "ckSHIB",
+        balance: shownBalances.ckshibBalance,
+        usdBalance: parseBalance(shownBalances.ckshibBalance)
+          .multipliedBy(parsePrice(tokenPrices["ckSHIB_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["ckSHIB"],
+        price:
+          priceRoundedPool(
+            tokenPrices["ckSHIB_ckUSDT"],
+            tokenPrices["ckSHIB_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "DOD",
+        balance: shownBalances.dodBalance,
+        usdBalance: parseBalance(shownBalances.dodBalance)
+          .multipliedBy(parsePrice(tokenPrices["DOD_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["DOD"],
+        price:
+          priceRoundedPool(
+            tokenPrices["DOD_ckUSDT"],
+            tokenPrices["DOD_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "KONG1",
+        balance: shownBalances.kong1Balance,
+        usdBalance: parseBalance(shownBalances.kong1Balance)
+          .multipliedBy(parsePrice(tokenPrices["KONG1_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["KONG1"],
+        price:
+          priceRoundedPool(
+            tokenPrices["KONG1_ckUSDT"],
+            tokenPrices["KONG1_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "KONG2",
+        balance: shownBalances.kong2Balance,
+        usdBalance: parseBalance(shownBalances.kong2Balance)
+          .multipliedBy(parsePrice(tokenPrices["KONG2_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["KONG2"],
+        price:
+          priceRoundedPool(
+            tokenPrices["KONG2_ckUSDT"],
+            tokenPrices["KONG2_ckUSDT"]
+          ) || 0,
+      },
+
     ].sort((a, b) => parseFloat(b.usdBalance) - parseFloat(a.usdBalance));
   }, [shownBalances, tokenPrices]);
 
@@ -1174,43 +1470,13 @@ const App = () => {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      if (principal) {
+      if (principal && isInitialized) {
         updateUserBalances();
       }
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [principal, updateUserBalances]);
-
-  useEffect(() => {
-    if (isInitializing || !kingKongActor || !icpAnonActor) return;
-    if (principal && delegationType) {
-      if (principal !== previousPrincipalRef.current) {
-        // Principal has changed, reinitialize
-        previousPrincipalRef.current = principal;
-        // add 3 seconds before initializing
-        const initialize = async () => {
-          await getUserProfile();
-          await updatePoolBalances();
-          await updateUserBalances();
-        };
-
-        initialize();
-      }
-    } else if (!principal) {
-      // Principal is null, reset the ref
-      previousPrincipalRef.current = null;
-    }
-  }, [
-    principal,
-    getUserProfile,
-    updateUserBalances,
-    updatePoolBalances,
-    delegationType,
-    isInitializing,
-    kingKongActor,
-    icpAnonActor,
-  ]);
+  }, [principal, isInitialized, updateUserBalances]);
 
   return (
     <>
@@ -1294,6 +1560,7 @@ const App = () => {
           />
         </div>
       )}
+      {/* <Outlet /> */}
     </>
   );
 };
@@ -1797,7 +2064,7 @@ function MainPage({
               </div>
             </div>
           </div>
-          <GorilaText />
+        <GorilaText />
           {/* <img src={kongImage} className="swap-page-kong-image-container" alt="" /> */}
         </section>
         {isSlippageModalOpen && (

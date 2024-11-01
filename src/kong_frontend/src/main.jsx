@@ -4,52 +4,110 @@ import App from "./App";
 import "./index.scss";
 import "tippy.js/dist/tippy.css"; // optional
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { InternetIdentityProvider } from "ic-use-internet-identity";
+import KongBackendActor from "./Actors/KONG-BACKEND-ACTOR";
+import KongFaucetActor from "./Actors/KONG-FAUCET-ACTOR";
+import CkbtcActor from "./Actors/CKBTC-ACTOR";
+import CkethActor from "./Actors/CKETH-ACTOR";
+import CkusdcActor from "./Actors/CKUSDC-ACTOR";
+import IcpActor from "./Actors/ICP-ACTOR";
+import CkusdtActor from "./Actors/CKUSDT-ACTOR";
+import BITSActor from "./Actors/BITSActor";
+import YUGEActor from "./Actors/YUGEActor";
+import CHATActor from "./Actors/CHATActor";
+import DKPActor from "./Actors/DKPActor";
+import NANASActor from "./Actors/NANASActor";
+import ND64Actor from "./Actors/ND64Actor";
+import ALPACALBActor from "./Actors/ALPACALBActor";
+import PARTYActor from "./Actors/PARTYActor";
+import SNEEDActor from "./Actors/SNEEDActor";
+import CLOWNActor from "./Actors/CLOWNActor";
+import EXEActor from "./Actors/EXEActor";
+import WUMBOActor from "./Actors/WUMBOActor";
+import MCSActor from "./Actors/MCSActor";
+import DAMONICActor from "./Actors/DAMONICActor";
+import BOBActor from "./Actors/BOBActor";
+import BURNActor from "./Actors/BURNActor";
+import DCDActor from "./Actors/DCDActor";
+import DITTOActor from "./Actors/DITTOActor";
+import FPLActor from "./Actors/FPLActor";
+import GLDGovActor from "./Actors/GLDGovActor";
+import ICVCActor from "./Actors/ICVCActor";
+import NTNActor from "./Actors/NTNActor";
+import OGYActor from "./Actors/OGYActor";
+import OWLActor from "./Actors/OWLActor";
+import GLDTActor from "./Actors/GLDTActor";
+import GHOSTActor from "./Actors/GHOSTActor";
+import CTZActor from "./Actors/CTZActor";
+import ELNAActor from "./Actors/ELNAActor";
+import DOGMIActor from "./Actors/DOGMIActor";
+import ESTActor from "./Actors/ESTActor";
+import PANDAActor from "./Actors/PANDAActor";
+import KINICActor from "./Actors/KINICActor";
+import DOLRActor from "./Actors/DOLRActor";
+import TRAXActor from "./Actors/TRAXActor";
+import MOTOKOActor from "./Actors/MOTOKOActor";
+import CKPEPEActor from "./Actors/CKPEPEActor";
+import CKSHIBActor from "./Actors/CKSHIBActor";
+import DODActor from "./Actors/DODActor";
+import KONG1Actor from "./Actors/KONG1Actor";
+import KONG2Actor from "./Actors/KONG2Actor";
+import { PlugWalletProvider } from "./components/PlugWalletContext";
 import { FRONTEND_URL } from "./constants/config";
+import {
+  CkbtcActorProviderPlug,
+  CkethActorProviderPlug,
+  CkusdcActorProviderPlug,
+  IcpActorProviderPlug,
+  KingKongActorProviderPlug,
+  KingKongFaucetActorProviderPlug,
+  CkusdtActorProviderPlug,
+  NICPActorProviderPlug,
+  WTNActorProviderPlug,
+  YUGEActorProviderPlug,
+  CHATActorProviderPlug,
+  DKPActorProviderPlug,
+  NANASActorProviderPlug,
+  ND64ActorProviderPlug,
+  BITSActorProviderPlug,
+  AlpacaLBActorProviderPlug,
+  PartyActorProviderPlug,
+  SneedActorProviderPlug,
+  ClownActorProviderPlug,
+  ExeActorProviderPlug,
+  WumboActorProviderPlug,
+  McsActorProviderPlug,
+  DamonicActorProviderPlug,
+  BobActorProviderPlug,
+  BurnActorProviderPlug,
+  DCDActorProviderPlug,
+  DITTOActorProviderPlug,
+  FPLActorProviderPlug,
+  GLDGovActorProviderPlug,
+  ICVCActorProviderPlug,
+  NTNActorProviderPlug,
+  OGYActorProviderPlug,
+  OWLActorProviderPlug,
+  GLDTActorProviderPlug,
+  GHOSTActorProviderPlug,
+  CTZActorProviderPlug,
+  ELNAActorProviderPlug,
+  DOGMIActorProviderPlug,
+  ESTActorProviderPlug,
+  PANDAActorProviderPlug,
+  KINICActorProviderPlug,
+  DOLRActorProviderPlug,
+  TRAXActorProviderPlug,
+  MOTOKOActorProviderPlug,
+  CKPEPEActorProviderPlug,
+  CKSHIBActorProviderPlug,
+  DODActorProviderPlug,
+  KONG1ActorProviderPlug,
+  KONG2ActorProviderPlug,
+} from "./Actors/plugActorProviders";
+import NICPActor from "./Actors/NICPActor";
+import WTNActor from "./Actors/WTNActor";
 import NotFoundPage from "./components/NotFoundPage";
-import {
-  CkbtcActorProvider,
-  CkethActorProvider,
-  CkusdcActorProvider,
-  IcpActorProvider,
-  KingKongActorProvider,
-  KingKongFaucetActorProvider,
-  CkusdtActorProvider,
-  NICPActorProvider,
-  WtnActorProvider,
-  YugeActorProvider,
-  ChatActorProvider,
-  DkpActorProvider,
-  NanasActorProvider,
-  Nd64ActorProvider,
-  BitsActorProvider,
-  AlpacalbActorProvider,
-  PartyActorProvider,
-  SneedActorProvider,
-  ClownActorProvider,
-  ExeActorProvider,
-  WumboActorProvider,
-  McsActorProvider,
-  DamonicActorProvider,
-  BobActorProvider,
-  BurnActorProvider,
-  DcdActorProvider,
-  DittoActorProvider,
-  FplActorProvider,
-  GldgovActorProvider,
-  IcvcActorProvider,
-  NtnActorProvider,
-  OgyActorProvider,
-  OwlActorProvider,
-} from "./Actors/identityKitActorInitiation";
-import "@nfid/identitykit/react/styles.css";
-import { IdentityKitProvider, IdentityKitTheme } from "@nfid/identitykit/react";
-import {
-  NFIDW,
-  Plug,
-  InternetIdentity,
-  Stoic,
-  IdentityKitAuthType,
-} from "@nfid/identitykit";
 
 const router = createBrowserRouter([
   {
@@ -72,104 +130,220 @@ const router = createBrowserRouter([
     element: <NotFoundPage />,
   },
 ]);
-
-const AuthenticatedActorProviders = ({ children }) => (
-  <CkbtcActorProvider>
-    <CkethActorProvider>
-      <CkusdcActorProvider>
-        <IcpActorProvider>
-          <KingKongActorProvider>
-            <KingKongFaucetActorProvider>
-              <CkusdtActorProvider>
-                <NICPActorProvider>
-                  <WtnActorProvider>
-                    <YugeActorProvider>
-                      <ChatActorProvider>
-                        <DkpActorProvider>
-                          <NanasActorProvider>
-                            <Nd64ActorProvider>
-                              <BitsActorProvider>
-                                <AlpacalbActorProvider>
-                                  <PartyActorProvider>
-                                    <SneedActorProvider>
-                                      <ClownActorProvider>
-                                        <ExeActorProvider>
-                                          <WumboActorProvider>
-                                            <McsActorProvider>
-                                              <DamonicActorProvider>
-                                                <BobActorProvider>
-                                                  <BurnActorProvider>
-                                                    <DcdActorProvider>
-                                                      <DittoActorProvider>
-                                                        <FplActorProvider>
-                                                          <GldgovActorProvider>
-                                                            <IcvcActorProvider>
-                                                              <NtnActorProvider>
-                                                                <OgyActorProvider>
-                                                                  <OwlActorProvider>
-                                                                    {children}
-                                                                  </OwlActorProvider>
-                                                                </OgyActorProvider>
-                                                              </NtnActorProvider>
-                                                            </IcvcActorProvider>
-                                                          </GldgovActorProvider>
-                                                        </FplActorProvider>
-                                                      </DittoActorProvider>
-                                                    </DcdActorProvider>
-                                                  </BurnActorProvider>
-                                                </BobActorProvider>
-                                              </DamonicActorProvider>
-                                            </McsActorProvider>
-                                          </WumboActorProvider>
-                                        </ExeActorProvider>
-                                      </ClownActorProvider>
-                                    </SneedActorProvider>
-                                  </PartyActorProvider>
-                                </AlpacalbActorProvider>
-                              </BitsActorProvider>
-                            </Nd64ActorProvider>
-                          </NanasActorProvider>
-                        </DkpActorProvider>
-                      </ChatActorProvider>
-                    </YugeActorProvider>
-                  </WtnActorProvider>
-                </NICPActorProvider>
-              </CkusdtActorProvider>
-            </KingKongFaucetActorProvider>
-          </KingKongActorProvider>
-        </IcpActorProvider>
-      </CkusdcActorProvider>
-    </CkethActorProvider>
-  </CkbtcActorProvider>
-);
-
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <IdentityKitProvider
-      theme={IdentityKitTheme.LIGHT}
-      signerClientOptions={{
+    <InternetIdentityProvider
+      loginOptions={{
+        maxTimeToLive: BigInt(1) * BigInt(3_600_000_000_000), // 1 hours
         derivationOrigin:
           process.env.DFX_NETWORK === "local"
             ? "http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943"
             : "https://" + FRONTEND_URL + ".icp0.io",
-        targets: ["l4lgk-raaaa-aaaar-qahpq-cai"],
-      }}
-      authType={IdentityKitAuthType.DELEGATION}
-      signers={[NFIDW, Plug, InternetIdentity, Stoic]}
-      onConnectFailure={(e) => {
-        console.log("Connect failed", e);
-      }}
-      onConnectSuccess={(s) => {
-        console.log("Connect success", s);
-      }}
-      onDisconnect={(e) => {
-        console.log("Disconnect", e);
-        window.location.reload();
       }}
     >
-      <AuthenticatedActorProviders>
-          <RouterProvider router={router} />
-      </AuthenticatedActorProviders>
-    </IdentityKitProvider>
+      <PlugWalletProvider>
+        <KingKongActorProviderPlug>
+          <KingKongFaucetActorProviderPlug>
+            <CkbtcActorProviderPlug>
+              <CkethActorProviderPlug>
+                <CkusdcActorProviderPlug>
+                  <IcpActorProviderPlug>
+                    <CkusdtActorProviderPlug>
+                      <KongBackendActor>
+                        <KongFaucetActor>
+                          <CkbtcActor>
+                            <CkethActor>
+                              <CkusdcActor>
+                                <IcpActor>
+                                  <CkusdtActor>
+                                    <BITSActor>
+                                      <YUGEActor>
+                                        <CHATActor>
+                                          <DKPActor>
+                                            <NANASActor>
+                                              <ND64Actor>
+                                                <WTNActor>
+                                                  <NICPActor>
+                                                    <NANASActorProviderPlug>
+                                                      <ND64ActorProviderPlug>
+                                                        <BITSActorProviderPlug>
+                                                          <WTNActorProviderPlug>
+                                                            <NICPActorProviderPlug>
+                                                              <YUGEActorProviderPlug>
+                                                                <CHATActorProviderPlug>
+                                                                  <DKPActorProviderPlug>
+                                                                    <CLOWNActor>
+                                                                      <SNEEDActor>
+                                                                        <PARTYActor>
+                                                                          <ALPACALBActor>
+                                                                            <EXEActor>
+                                                                              <WUMBOActor>
+                                                                                <MCSActor>
+                                                                                  <DAMONICActor>
+                                                                                    <BOBActor>
+                                                                                      <BobActorProviderPlug>
+                                                                                        <DamonicActorProviderPlug>
+                                                                                          <McsActorProviderPlug>
+                                                                                            <WumboActorProviderPlug>
+                                                                                              <ExeActorProviderPlug>
+                                                                                                <AlpacaLBActorProviderPlug>
+                                                                                                  <PartyActorProviderPlug>
+                                                                                                    <SneedActorProviderPlug>
+                                                                                                      <ClownActorProviderPlug>
+                                                                                                        <BURNActor>
+                                                                                                          <BurnActorProviderPlug>
+                                                                                                            <OWLActor>
+                                                                                                              <OGYActor>
+                                                                                                                <NTNActor>
+                                                                                                                  <ICVCActor>
+                                                                                                                    <GLDGovActor>
+                                                                                                                      <FPLActor>
+                                                                                                                        <DITTOActor>
+                                                                                                                          <DCDActor>
+                                                                                                                            <DCDActorProviderPlug>
+                                                                                                                              <DITTOActorProviderPlug>
+                                                                                                                                <FPLActorProviderPlug>
+                                                                                                                                  <GLDGovActorProviderPlug>
+                                                                                                                                    <ICVCActorProviderPlug>
+                                                                                                                                      <NTNActorProviderPlug>
+                                                                                                                                        <OGYActorProviderPlug>
+                                                                                                                                          <OWLActorProviderPlug>
+                                                                                                                                            <CKSHIBActorProviderPlug>
+                                                                                                                                              <CKPEPEActorProviderPlug>
+                                                                                                                                                <MOTOKOActorProviderPlug>
+                                                                                                                                                  <TRAXActorProviderPlug>
+                                                                                                                                                    <DOLRActorProviderPlug>
+                                                                                                                                                      <KINICActorProviderPlug>
+                                                                                                                                                        <PANDAActorProviderPlug>
+                                                                                                                                                          <ESTActorProviderPlug>
+                                                                                                                                                            <DOGMIActorProviderPlug>
+                                                                                                                                                              <ELNAActorProviderPlug>
+                                                                                                                                                                <CTZActorProviderPlug>
+                                                                                                                                                                  <GHOSTActorProviderPlug>
+                                                                                                                                                                    <GLDTActorProviderPlug>
+                                                                                                                                                                      <DODActorProviderPlug>
+                                                                                                                                                                        <CKSHIBActor>
+                                                                                                                                                                          <CKPEPEActor>
+                                                                                                                                                                            <MOTOKOActor>
+                                                                                                                                                                              <TRAXActor>
+                                                                                                                                                                                <DOLRActor>
+                                                                                                                                                                                  <KINICActor>
+                                                                                                                                                                                    <PANDAActor>
+                                                                                                                                                                                      <ESTActor>
+                                                                                                                                                                                        <DOGMIActor>
+                                                                                                                                                                                          <ELNAActor>
+                                                                                                                                                                                            <CTZActor>
+                                                                                                                                                                                              <GHOSTActor>
+                                                                                                                                                                                                <GLDTActor>
+                                                                                                                                                                                                  <DODActor>
+                                                                                                                                                                                                    <KONG1ActorProviderPlug>
+                                                                                                                                                                                                      <KONG2ActorProviderPlug>
+                                                                                                                                                                                                        <KONG1Actor>
+                                                                                                                                                                                                          <KONG2Actor>
+                                                                                                                                                                                                            <RouterProvider
+                                                                                                                                                                                                              router={
+                                                                                                                                                                                                                router
+                                                                                                                                                                                                              }
+                                                                                                                                                                                                            ></RouterProvider>
+                                                                                                                                                                                                          </KONG2Actor>
+                                                                                                                                                                                                        </KONG1Actor>
+                                                                                                                                                                                                      </KONG2ActorProviderPlug>
+                                                                                                                                                                                                    </KONG1ActorProviderPlug>
+                                                                                                                                                                                                  </DODActor>
+                                                                                                                                                                                                </GLDTActor>
+                                                                                                                                                                                              </GHOSTActor>
+                                                                                                                                                                                            </CTZActor>
+                                                                                                                                                                                          </ELNAActor>
+                                                                                                                                                                                        </DOGMIActor>
+                                                                                                                                                                                      </ESTActor>
+                                                                                                                                                                                    </PANDAActor>
+                                                                                                                                                                                  </KINICActor>
+                                                                                                                                                                                </DOLRActor>
+                                                                                                                                                                              </TRAXActor>
+                                                                                                                                                                            </MOTOKOActor>
+                                                                                                                                                                          </CKPEPEActor>
+                                                                                                                                                                        </CKSHIBActor>
+                                                                                                                                                                      </DODActorProviderPlug>
+                                                                                                                                                                    </GLDTActorProviderPlug>
+                                                                                                                                                                  </GHOSTActorProviderPlug>
+                                                                                                                                                                </CTZActorProviderPlug>
+                                                                                                                                                              </ELNAActorProviderPlug>
+                                                                                                                                                            </DOGMIActorProviderPlug>
+                                                                                                                                                          </ESTActorProviderPlug>
+                                                                                                                                                        </PANDAActorProviderPlug>
+                                                                                                                                                      </KINICActorProviderPlug>
+                                                                                                                                                    </DOLRActorProviderPlug>
+                                                                                                                                                  </TRAXActorProviderPlug>
+                                                                                                                                                </MOTOKOActorProviderPlug>
+                                                                                                                                              </CKPEPEActorProviderPlug>
+                                                                                                                                            </CKSHIBActorProviderPlug>
+                                                                                                                                          </OWLActorProviderPlug>
+                                                                                                                                        </OGYActorProviderPlug>
+                                                                                                                                      </NTNActorProviderPlug>
+                                                                                                                                    </ICVCActorProviderPlug>
+                                                                                                                                  </GLDGovActorProviderPlug>
+                                                                                                                                </FPLActorProviderPlug>
+                                                                                                                              </DITTOActorProviderPlug>
+                                                                                                                            </DCDActorProviderPlug>
+                                                                                                                          </DCDActor>
+                                                                                                                        </DITTOActor>
+                                                                                                                      </FPLActor>
+                                                                                                                    </GLDGovActor>
+                                                                                                                  </ICVCActor>
+                                                                                                                </NTNActor>
+                                                                                                              </OGYActor>
+                                                                                                            </OWLActor>
+                                                                                                          </BurnActorProviderPlug>
+                                                                                                        </BURNActor>
+                                                                                                      </ClownActorProviderPlug>
+                                                                                                    </SneedActorProviderPlug>
+                                                                                                  </PartyActorProviderPlug>
+                                                                                                </AlpacaLBActorProviderPlug>
+                                                                                              </ExeActorProviderPlug>
+                                                                                            </WumboActorProviderPlug>
+                                                                                          </McsActorProviderPlug>
+                                                                                        </DamonicActorProviderPlug>
+                                                                                      </BobActorProviderPlug>
+                                                                                    </BOBActor>
+                                                                                  </DAMONICActor>
+                                                                                </MCSActor>
+                                                                              </WUMBOActor>
+                                                                            </EXEActor>
+                                                                          </ALPACALBActor>
+                                                                        </PARTYActor>
+                                                                      </SNEEDActor>
+                                                                    </CLOWNActor>
+                                                                  </DKPActorProviderPlug>
+                                                                </CHATActorProviderPlug>
+                                                              </YUGEActorProviderPlug>
+                                                            </NICPActorProviderPlug>
+                                                          </WTNActorProviderPlug>
+                                                        </BITSActorProviderPlug>
+                                                      </ND64ActorProviderPlug>
+                                                    </NANASActorProviderPlug>
+                                                  </NICPActor>
+                                                </WTNActor>
+                                              </ND64Actor>
+                                            </NANASActor>
+                                          </DKPActor>
+                                        </CHATActor>
+                                      </YUGEActor>
+                                    </BITSActor>
+                                  </CkusdtActor>
+                                </IcpActor>
+                              </CkusdcActor>
+                            </CkethActor>
+                          </CkbtcActor>
+                        </KongFaucetActor>
+                      </KongBackendActor>
+                    </CkusdtActorProviderPlug>
+                  </IcpActorProviderPlug>
+                </CkusdcActorProviderPlug>
+              </CkethActorProviderPlug>
+            </CkbtcActorProviderPlug>
+          </KingKongFaucetActorProviderPlug>
+        </KingKongActorProviderPlug>
+      </PlugWalletProvider>
+    </InternetIdentityProvider>
   </React.StrictMode>
 );

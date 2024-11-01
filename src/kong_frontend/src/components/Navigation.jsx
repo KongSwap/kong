@@ -10,11 +10,10 @@ import { Principal } from "@dfinity/principal";
 import { ThreeDots } from "react-loader-spinner";
 import SideDrawer from "./SideDrawer";
 import iconPlugImage from "../../../assets/icons/plug.png";
+import useIdentity from "./useIdentity";
 import { toast } from "react-toastify";
 import TransactionList from "./TransactionList";
 import { FRONTEND_URL } from "../constants/config"; 
-import { useIdentityKit } from "@nfid/identitykit/react";
-import { useKingKongActor } from "../Actors/identityKitActorInitiation";
 
 export const KONG_FRONTEND =
   "http://" + process.env.CANISTER_ID_KONG_FRONTEND + ".localhost:4943";
@@ -37,6 +36,7 @@ export function formatPoolName(name) {
 const Navigation = React.memo(
   ({
     getTokens,
+    getUserProfile,
     updatePoolBalances,
     updateUserBalances,
     principal,
@@ -53,13 +53,20 @@ const Navigation = React.memo(
     sortedTokens,
     tokenPrices,
     tokenImages,
-    getUserProfile,
   }) => {
     const location = useLocation();
-    const { connect, disconnect, delegationType, isInitializing } = useIdentityKit();
-
-    const { authenticated: backendKingKong } = useKingKongActor();
-
+    const {
+      login,
+      clear,
+      identityType,
+      connectPlugWallet,
+      activeIdentity,
+      disconnectPlugWallet,
+      actors: { backendKingKong },
+      isInitialized
+    } = useIdentity();
+    const initializationRef = useRef(false);
+    const previousPrincipalRef = useRef();
     const [transactions, setTransactions] = useState([]);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -71,7 +78,7 @@ const Navigation = React.memo(
     }, [principal]);
 
     const fetchAndSetTransactions = useCallback(async () => {
-      if (!principal) return;
+      if (!activeIdentity) return;
       try {
         const result = await backendKingKong.txs([true]);
         if (result.Ok) {
@@ -82,17 +89,17 @@ const Navigation = React.memo(
       } catch (error) {
         toast("Error fetching transactions");
       }
-    }, [backendKingKong, principal]);
+    }, [backendKingKong, activeIdentity]);
 
-    const loginWithPlugWallet = useCallback(() => {
-      connect("Plug");
+    const loginWithPlugWallet = useCallback(async () => {
+      await connectPlugWallet();
       setIsDrawerOpen(false);
-    }, [connect, setIsDrawerOpen]);
+    }, [connectPlugWallet, setIsDrawerOpen]);
 
     const loginWithInternetIdentity = useCallback(() => {
-      connect("InternetIdentity");
+      login();
       setIsDrawerOpen(false);
-    }, [connect, setIsDrawerOpen]);
+    }, [login, setIsDrawerOpen]);
 
     const toggleDrawer = useCallback(
       (specificState) => {
@@ -100,6 +107,15 @@ const Navigation = React.memo(
       },
       [setIsDrawerOpen, isDrawerOpen]
     );
+
+    const handleDisconnect = useCallback(async () => {
+      if (identityType === "ii") {
+        clear();
+        window.location.reload();
+      } else {
+        await disconnectPlugWallet();
+      }
+    }, [identityType, clear, disconnectPlugWallet]);
 
     const copyToClipboard = useCallback(async (text) => {
       try {
@@ -112,66 +128,29 @@ const Navigation = React.memo(
       }
     }, []);
 
-    const handleDisconnect = useCallback(async () => {
-      await disconnect();
-    }, [disconnect]);
-
-    // useEffect(() => {
-    //   if (principal && isInitialized) {
-    //     if (principal !== previousPrincipalRef.current) {
-    //       // Principal has changed, reinitialize
-    //       previousPrincipalRef.current = principal;
-    //       const initialize = async () => {
-    //         await getUserProfile();
-    //         await updatePoolBalances();
-    //         await updateUserBalances();
-    //       };
-    //       initialize();
-    //     }
-    //   } else if (!principal) {
-    //     // Principal is null, reset the ref
-    //     previousPrincipalRef.current = null;
-    //   }
-    // }, [
-    //   principal,
-    //   getUserProfile,
-    //   updateUserBalances,
-    //   updatePoolBalances,
-    //   isInitialized,
-    // ]);
-
-    // useEffect(() => {
-    //   if (isInitializing) return;
-    //   console.log('STARTING APP', principal, delegationType)
-    //   if (principal && delegationType) {
-    //     if (principal !== previousPrincipalRef.current) {
-    //       // Principal has changed, reinitialize
-    //       previousPrincipalRef.current = principal;
-    //       // add 3 seconds before initializing
-    //       setTimeout(() => {
-    //       const initialize = async () => {
-    //         console.log('getUserProfile')
-    //         await getUserProfile();
-    //         await updatePoolBalances();
-    //         await updateUserBalances();
-    //       };
-
-    //       initialize();
-
-    //       }, 3000)
-    //     }
-    //   } else if (!principal) {
-    //     // Principal is null, reset the ref
-    //     previousPrincipalRef.current = null;
-    //   }
-    // }, [
-    //   principal,
-    //   getUserProfile,
-    //   updateUserBalances,
-    //   updatePoolBalances,
-    //   delegationType,
-    //   isInitializing
-    // ]);
+    useEffect(() => {
+      if (principal && isInitialized) {
+        if (principal !== previousPrincipalRef.current) {
+          // Principal has changed, reinitialize
+          previousPrincipalRef.current = principal;
+          const initialize = async () => {
+            await getUserProfile();
+            await updatePoolBalances();
+            await updateUserBalances();
+          };
+          initialize();
+        }
+      } else if (!principal) {
+        // Principal is null, reset the ref
+        previousPrincipalRef.current = null;
+      }
+    }, [
+      principal,
+      getUserProfile,
+      updateUserBalances,
+      updatePoolBalances,
+      isInitialized,
+    ]);
 
     useEffect(() => {
       if (principal && isDrawerOpen) fetchAndSetTransactions();
@@ -360,7 +339,7 @@ const Navigation = React.memo(
                     </svg>
                   )}
                 </button>
-                <span onClick={handleDisconnect} className="disconnect">
+                <span onClick={() => handleDisconnect()} className="disconnect">
                   <span className="disconnect-icon">
                     <svg
                       width="30"
@@ -513,12 +492,6 @@ const Navigation = React.memo(
                     <img src={iconPlugImage} className="wallet-button-logo" />
                   </span>
                   <span className="wallet-button-text">Plug Wallet</span>
-                </span>
-                <span className="wallet-button" onClick={() => connect("NFIDW")}>
-                  <span className="wallet-button-thumb">
-                    <img src={iconPlugImage} className="wallet-button-logo" />
-                  </span>
-                  <span className="wallet-button-text">NFID Wallet</span>
                 </span>
               </div>
               <div className="side-drawer-terms">

@@ -97,5 +97,47 @@
   },
   "icvc_ledger": {
     "ic": "m6xut-mqaaa-aaaaq-aadua-cai"
+  },
+  "gldt_ledger": {
+    "ic": "6c7su-kiaaa-aaaar-qaira-cai"
+  },
+  "ghost_ledger": {
+    "ic": "4c4fd-caaaa-aaaaq-aaa3a-cai"
+  },
+  "ctz_ledger": {
+    "ic": "uf2wh-taaaa-aaaaq-aabna-cai"
+  },
+  "elna_ledger": {
+    "ic": "gemj7-oyaaa-aaaaq-aacnq-cai"
+  },
+  "dogmi_ledger": {
+    "ic": "np5km-uyaaa-aaaaq-aadrq-cai"
+  },
+  "est_ledger": {
+    "ic": "bliq2-niaaa-aaaaq-aac4q-cai"
+  },
+  "panda_ledger": {
+    "ic": "druyg-tyaaa-aaaaq-aactq-cai"
+  },
+  "kinic_ledger": {
+    "ic": "73mez-iiaaa-aaaaq-aaasq-cai"
+  },
+  "dolr_ledger": {
+    "ic": "6rdgd-kyaaa-aaaaq-aaavq-cai"
+  },
+  "trax_ledger": {
+    "ic": "emww2-4yaaa-aaaaq-aacbq-cai"
+  },
+  "motoko_ledger": {
+    "ic": "k45jy-aiaaa-aaaaq-aadcq-cai"
+  },
+  "ckpepe_ledger": {
+    "ic": "etik7-oiaaa-aaaar-qagia-cai"
+  },
+  "ckshib_ledger": {
+    "ic": "fxffn-xiaaa-aaaar-qagoa-cai"
+  },
+  "dod_ledger": {
+    "ic": "cp4zx-yiaaa-aaaah-aqzea-cai"
   }
 }

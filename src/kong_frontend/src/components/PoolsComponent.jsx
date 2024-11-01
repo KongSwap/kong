@@ -4,6 +4,7 @@ import BigNumber from "bignumber.js";
 import Modal from "./Modal";
 import { toast } from "react-toastify";
 import { Principal } from "@dfinity/principal";
+import useIdentity from "./useIdentity";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import TransactionProgressComponent from "./TransactionProgressComponent";
 import DOMPurify from "dompurify";
@@ -15,40 +16,6 @@ import { formatNumber } from "../utils/formatBalances";
 import { tokenBalancesSelector } from "../App";
 import { icrc1Tokens } from "../utils/getIcrc1Tokens";
 import { Skeleton } from "@mui/material";
-import {
-  useCkbtcActor,
-  useCkethActor,
-  useCkusdcActor,
-  useIcpActor,
-  useKingKongActor,
-  useCkusdtActor,
-  useNICPActor,
-  useWtnActor,
-  useYugeActor,
-  useChatActor,
-  useDkpActor,
-  useNanasActor,
-  useNd64Actor,
-  useBitsActor,
-  useAlpacalbActor,
-  usePartyActor,
-  useSneedActor,
-  useClownActor,
-  useExeActor,
-  useWumboActor,
-  useMcsActor,
-  useDamonicActor,
-  useBobActor,
-  useBurnActor,
-  useDcdActor,
-  useDittoActor,
-  useFplActor,
-  useGldgovActor,
-  useIcvcActor,
-  useNtnActor,
-  useOgyActor,
-  useOwlActor
-} from "../Actors/identityKitActorInitiation";
 
 export const KONG_FRONTEND =
   "http://" + process.env.CANISTER_ID_KONG_FRONTEND + ".localhost:4943";
@@ -69,51 +36,73 @@ const PoolsComponent = ({
   tokenImages,
   initialPool
 }) => {
-  const { authenticated: kingKongActor } = useKingKongActor();
-  const { authenticated: icpLedgerActor } = useIcpActor();
-  const { authenticated: ckbtcLedgerActor } = useCkbtcActor();
-  const { authenticated: ckethLedgerActor } = useCkethActor();
-  const { authenticated: ckusdcLedgerActor } = useCkusdcActor();
-  const { authenticated: ckusdtLedgerActor } = useCkusdtActor();
-  const { authenticated: NICPLedgerActor } = useNICPActor();
-  const { authenticated: wtnLedgerActor } = useWtnActor();
-  const { authenticated: yugeLedgerActor } = useYugeActor();
-  const { authenticated: chatLedgerActor } = useChatActor();
-  const { authenticated: dkpLedgerActor } = useDkpActor();
-  const { authenticated: nanasLedgerActor } = useNanasActor();
-  const { authenticated: nd64LedgerActor } = useNd64Actor();
-  const { authenticated: bitsLedgerActor } = useBitsActor();
-  const { authenticated: alpacalbLedgerActor } = useAlpacalbActor();
-  const { authenticated: partyLedgerActor } = usePartyActor();
-  const { authenticated: sneedLedgerActor } = useSneedActor();
-  const { authenticated: clownLedgerActor } = useClownActor();
-  const { authenticated: exeLedgerActor } = useExeActor();
-  const { authenticated: wumboLedgerActor } = useWumboActor();
-  const { authenticated: mcsLedgerActor } = useMcsActor();
-  const { authenticated: damonicLedgerActor } = useDamonicActor();
-  const { authenticated: bobLedgerActor } = useBobActor();
-  const { authenticated: burnLedgerActor } = useBurnActor();
-  const { authenticated: ntnLedgerActor } = useNtnActor();
-  const { authenticated: dcdLedgerActor } = useDcdActor();
-  const { authenticated: gldgovLedgerActor } = useGldgovActor();
-  const { authenticated: owlLedgerActor } = useOwlActor();
-  const { authenticated: ogyLedgerActor } = useOgyActor();
-  const { authenticated: fplLedgerActor } = useFplActor();
-  const { authenticated: dittoLedgerActor } = useDittoActor();
-  const { authenticated: icvcLedgerActor } = useIcvcActor();
+  const {
+    actors: {
+      backendKingKong,
+      icp_ledger_backend,
+      ckbtc_ledger_backend,
+      cketh_ledger_backend,
+      // kong_ledger_backend,
+      ckusdc_ledger_backend,
+      ckusdt_ledger_backend,
+      dkp_ledger_backend,
+      bits_ledger_backend,
+      chat_ledger_backend,
+      nanas_ledger_backend,
+      nd64_ledger_backend,
+      wtn_ledger_backend,
+      yuge_ledger_backend,
+      NICP_ledger_backend,
+      alpacalb_backend,
+      party_backend,
+      sneed_backend,
+      clown_backend,
+      damonic_backend,
+      exe_backend,
+      wumbo_backend,
+      mcs_backend,
+      bob_backend,
+      burn_backend,
+      ntn_backend,
+      dcd_backend,
+      gldgov_backend,
+      owl_backend,
+      ogy_backend,
+      fpl_backend,
+      ditto_backend,
+      icvc_backend,
+      gldt_backend,
+      ghost_backend,
+      ctz_backend,
+      elna_backend,
+      dogmi_backend,
+      est_backend,
+      panda_backend,
+      kinic_backend,
+      dolr_backend,
+      trax_backend,
+      motoko_backend,
+      ckpepe_backend,
+      ckshib_backend,
+      dod_backend,
+      kong1_backend,
+      kong2_backend,
+    },
+  } = useIdentity();
 
   const location = useLocation();
   const navigate = useNavigate();
-  // const queryParams = new URLSearchParams(location.search);
+  const queryParams = new URLSearchParams(location.search);
   // const initialPool = queryParams.get("pool")
   //   ? queryParams.get("pool").split("_")
   //   : ["ICP", "ckUSDT"];
   const initialYouPayToken = initialPool ? initialPool.split("_")[0] : null;
   const initialYouReceiveToken = initialPool ? initialPool.split("_")[1] : null;
   const [youPayToken, setYouPayToken] = useState(initialYouPayToken);
-  const [youReceiveToken] = useState("ckUSDT");
+  const [youReceiveToken, setYouReceiveToken] = useState(initialYouReceiveToken || "ckUSDT");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalLimited, setIsModalLimited] = useState(false);
   const [isSelectingPayToken, setIsSelectingPayToken] = useState(true);
   const [youPay, setYouPay] = useState("0");
   // const [youPayToken, setYouPayToken] = useState("ckBTC");
@@ -165,10 +154,12 @@ const PoolsComponent = ({
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
-    const pool = `${youPayToken}_ckUSDT`;
+    const pool = `${youPayToken}_${youReceiveToken}`;
     queryParams.set("pool", pool);
-    if (youPayToken === "ckUSDT") {
-      queryParams.set("pool", `${initialYouReceiveToken}_ckUSDT`);
+    if (youReceiveToken !== "ckUSDT" && youReceiveToken !== "ICP") {
+      queryParams.set("pool", `${youPayToken}_ckUSDT`);
+    } else if (youPayToken === youReceiveToken) {
+      queryParams.set("pool", `${youPayToken}_ckUSDT`);
     }
     navigate({ search: queryParams.toString() });
   }, [youPayToken, youReceiveToken, navigate]);
@@ -222,7 +213,7 @@ const PoolsComponent = ({
           new BigNumber(10).pow(youPayDecimals)
         );
       }
-      const liqudityAmounts = await kingKongActor.add_liquidity_amounts(
+      const liqudityAmounts = await backendKingKong.add_liquidity_amounts(
         youPayToken,
         youPayAmount.toNumber(),
         youReceiveToken
@@ -260,7 +251,7 @@ const PoolsComponent = ({
       youReceive,
       youPayToken,
       youReceiveToken,
-      kingKongActor,
+      backendKingKong,
       getTokenDecimals,
       tokenPrices,
     ]
@@ -357,67 +348,99 @@ const PoolsComponent = ({
     const selectBackend = (token) => {
       switch (token) {
         case "ICP":
-          return icpLedgerActor;
+          return icp_ledger_backend;
         case "ckBTC":
-          return ckbtcLedgerActor;
+          return ckbtc_ledger_backend;
         case "ckETH":
-          return ckethLedgerActor;
+          return cketh_ledger_backend;
         case "ckUSDC":
-          return ckusdcLedgerActor;
+          return ckusdc_ledger_backend;
         case "ckUSDT":
-          return ckusdtLedgerActor;
+          return ckusdt_ledger_backend;
         case "DKP":
-          return dkpLedgerActor;
+          return dkp_ledger_backend;
         case "Bits":
-          return bitsLedgerActor;
+          return bits_ledger_backend;
         case "CHAT":
-          return chatLedgerActor;
+          return chat_ledger_backend;
         case "nanas":
-          return nanasLedgerActor;
+          return nanas_ledger_backend;
         case "ND64":
-          return nd64LedgerActor;
+          return nd64_ledger_backend;
         case "WTN":
-          return wtnLedgerActor;
+          return wtn_ledger_backend;
         case "YUGE":
-          return yugeLedgerActor;
+          return yuge_ledger_backend;
         case "nICP":
-          return NICPLedgerActor;
+          return NICP_ledger_backend;
         case "ALPACALB":
-          return alpacalbLedgerActor;
+          return alpacalb_backend;
         case "PARTY":
-          return partyLedgerActor;
+          return party_backend;
         case "SNEED":
-          return sneedLedgerActor;
+          return sneed_backend;
         case "CLOWN":
-          return clownLedgerActor;
+          return clown_backend;
         case "DAMONIC":
-          return damonicLedgerActor;
+          return damonic_backend;
         case "EXE":
-          return exeLedgerActor;
+          return exe_backend;
         case "WUMBO":
-          return wumboLedgerActor;
+          return wumbo_backend;
         case "MCS":
-          return mcsLedgerActor;
+          return mcs_backend;
         case "BOB":
-          return bobLedgerActor;
+          return bob_backend;
         case "BURN":
-          return burnLedgerActor;
+          return burn_backend;
         case "NTN":
-          return ntnLedgerActor;
+          return ntn_backend;
         case "DCD":
-          return dcdLedgerActor;
+          return dcd_backend;
         case "GLDGov":
-          return gldgovLedgerActor;
+          return gldgov_backend;
         case "OWL":
-          return owlLedgerActor;
+          return owl_backend;
         case "OGY":
-          return ogyLedgerActor;
+          return ogy_backend;
         case "FPL":
-          return fplLedgerActor;
+          return fpl_backend;
         case "DITTO":
-          return dittoLedgerActor;
+          return ditto_backend;
         case "ICVC":
-          return icvcLedgerActor;
+          return icvc_backend;
+        case "GLDT":
+          return gldt_backend;
+        case "GHOST":
+          return ghost_backend;
+        case "CTZ":
+          return ctz_backend;
+        case "ELNA":
+          return elna_backend;
+        case "DOGMI":
+          return dogmi_backend;
+        case "EST":
+          return est_backend;
+        case "PANDA":
+          return panda_backend;
+        case "KINIC":
+          return kinic_backend;
+        case "DOLR":
+          return dolr_backend;
+        case "TRAX":
+          return trax_backend;
+        case "MOTOKO":
+          return motoko_backend;
+        case "ckPEPE":
+          return ckpepe_backend;
+        case "ckSHIB":
+          return ckshib_backend;
+        case "DOD":
+          return dod_backend;
+        case "KONG1":
+          return kong1_backend;
+        case "KONG2":
+          return kong2_backend;
         default:
           return null;
       }
@@ -472,8 +495,7 @@ const PoolsComponent = ({
       amount_1: youReceiveAmountFinal.toNumber(),
       tx_id_1: [],
     };
-
-    kingKongActor
+    backendKingKong
       .add_liquidity_async(liquidityObjRequest)
       .then((response) => {
         if (response.Ok) {
@@ -492,50 +514,67 @@ const PoolsComponent = ({
     youReceiveToken,
     youPayInternal,
     youReceive,
-    kingKongActor,
+    backendKingKong,
     approvePayToken,
     setPayToken1Finished,
     setReceiveToken1Finished,
     getTokenDecimals,
     setIsAddLiquidityConfirmationModalOpen,
-    icpLedgerActor,
-    ckbtcLedgerActor,
-    ckethLedgerActor,
-    ckusdcLedgerActor,
-    ckusdtLedgerActor,
-    dkpLedgerActor,
-    bitsLedgerActor,
-    chatLedgerActor,
-    nanasLedgerActor,
-    nd64LedgerActor,
-    wtnLedgerActor,
-    yugeLedgerActor,
-    NICPLedgerActor,
-    alpacalbLedgerActor,
-    partyLedgerActor,
-    sneedLedgerActor,
-    clownLedgerActor,
-    exeLedgerActor,
-    wumboLedgerActor,
-    mcsLedgerActor,
-    damonicLedgerActor,
-    bobLedgerActor,
-    burnLedgerActor,
-    ntnLedgerActor,
-    dcdLedgerActor,
-    gldgovLedgerActor,
-    owlLedgerActor,
-    ogyLedgerActor,
-    fplLedgerActor,
-    dittoLedgerActor,
-    icvcLedgerActor,
+    icp_ledger_backend,
+    ckbtc_ledger_backend,
+    cketh_ledger_backend,
+    // kong_ledger_backend,
+    ckusdc_ledger_backend,
+    ckusdt_ledger_backend,
+    dkp_ledger_backend,
+    bits_ledger_backend,
+    chat_ledger_backend,
+    nanas_ledger_backend,
+    nd64_ledger_backend,
+    wtn_ledger_backend,
+    yuge_ledger_backend,
+    NICP_ledger_backend,
+    alpacalb_backend,
+    party_backend,
+    sneed_backend,
+    clown_backend,
+    damonic_backend,
+    exe_backend,
+    wumbo_backend,
+    mcs_backend,
+    bob_backend,
+    burn_backend,
+    ntn_backend,
+    dcd_backend,
+    gldgov_backend,
+    owl_backend,
+    ogy_backend,
+    fpl_backend,
+    ditto_backend,
+    icvc_backend,
+    ghost_backend,
+    ctz_backend,
+    elna_backend,
+    dogmi_backend,
+    est_backend,
+    panda_backend,
+    kinic_backend,
+    dolr_backend,
+    trax_backend,
+    motoko_backend,
+    ckpepe_backend,
+    ckshib_backend,
+    dod_backend,
+    gldt_backend,
+    kong1_backend,
+    kong2_backend,
   ]);
 
   useEffect(() => {
     if (requestId) {
       const intervalId = setInterval(async () => {
         try {
-          const requestObj = await kingKongActor.requests([requestId]);
+          const requestObj = await backendKingKong.requests([requestId]);
           const requestReply =
             requestObj && requestObj.Ok[0] && requestObj.Ok[0].reply;
           setTransactionStateObject(requestObj);
@@ -599,7 +638,7 @@ const PoolsComponent = ({
     }
   }, [
     requestId,
-    kingKongActor,
+    backendKingKong,
     youReceiveToken,
     youPayToken,
     tokenPrices,
@@ -609,13 +648,38 @@ const PoolsComponent = ({
   ]);
 
   const handleTokenChange = (token) => {
-    if (token === "ckUSDT") {
-      setIsModalOpen(false);
-      return;
+    // console.log('TEST', token, isSelectingPayToken, youPayToken, youReceiveToken)
+    let newPayToken;
+    let newReceiveToken;
+    if (token === "ckUSDT" && isSelectingPayToken && youReceiveToken === "ckUSDT") {
+      // if either of this is true, set the token to "ICP" token and return
+
+      newPayToken = "ckUSDT";
+      newReceiveToken = "ICP";
+    } else if (token === "ckUSDT" && !isSelectingPayToken && youPayToken === "ckUSDT") {
+      // if either of this is true, set the token to "ICP" token and return
+
+      newPayToken = "ICP";
+      newReceiveToken = "ckUSDT";
+    } else if (token === "ICP" && isSelectingPayToken && youReceiveToken === "ICP") {
+      // if either of this is true, set the token to "ICP" token and return
+
+      newPayToken = "ICP";
+      newReceiveToken = "ckUSDT";
+    } else if (token === "ICP" && !isSelectingPayToken && youPayToken === "ICP") {
+      newPayToken = "ckUSDT";
+      newReceiveToken = "ICP";
+    } else {
+      if (isSelectingPayToken) {
+        newPayToken = token;
+        newReceiveToken = youReceiveToken;
+      } else {
+        newPayToken = youPayToken;
+        newReceiveToken = token;
+      }
     }
-    if (isSelectingPayToken) {
-      setYouPayToken(token);
-    }
+    setYouPayToken(newPayToken);
+    setYouReceiveToken(newReceiveToken);
     setIsModalOpen(false);
   };
 
@@ -665,7 +729,7 @@ const PoolsComponent = ({
 
   useEffect(() => {
     const getLiquidityPriceInitial = async () => {
-      if (!kingKongActor || !youPayToken || !youReceiveToken || !userDetails)
+      if (!backendKingKong || !youPayToken || !youReceiveToken || !userDetails)
         return null;
 
       // Get user balance and sanitize by removing commas, handling empty values as "0"
@@ -754,7 +818,7 @@ const PoolsComponent = ({
     userDetails,
     youPayToken,
     youReceiveToken,
-    kingKongActor,
+    backendKingKong,
     getTokenDecimals,
     tokenPrices,
   ]);
@@ -849,6 +913,7 @@ const PoolsComponent = ({
     }
   }, [displayYouReceive]);
 
+
   return (
     <>
       <div className="panel-green-main panel-green-main--sending-address-container">
@@ -883,7 +948,9 @@ const PoolsComponent = ({
               <span
                 onClick={() => {
                   setIsSelectingPayToken(true);
+                  setIsModalLimited(false);
                   setIsModalOpen(true);
+                  
                 }}
                 className="buttonmed-yellow buttonmed-yellow--customselect2 buttonmed-yellow--poolpay"
               >
@@ -930,7 +997,14 @@ const PoolsComponent = ({
                 </svg>
               </span>
 
-              <span className="buttonmed-yellow buttonmed-yellow--selected buttonmed-yellow--customselect2 buttonmed-yellow--poolreceive">
+              <span
+                              onClick={() => {
+                                setIsSelectingPayToken(false);
+                                setIsModalLimited(true);
+                                setIsModalOpen(true);
+                                
+                              }} 
+              className="buttonmed-yellow buttonmed-yellow--customselect2 buttonmed-yellow--poolpay">
                 <span className="buttonmed-yellow__pressed">
                   <span className="buttonmed-yellow__pressed__l"></span>
                   <span className="buttonmed-yellow__pressed__mid"></span>
@@ -953,6 +1027,27 @@ const PoolsComponent = ({
                 <span className="buttonmed-yellow__text">
                   {youReceiveToken}
                 </span>
+                <svg
+                  className="custom-select-2-arrow"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g clipPath="url(#clip0_75_306)">
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M9.795 12.045C9.58406 12.2557 9.29813 12.374 9 12.374C8.70188 12.374 8.41594 12.2557 8.205 12.045L3.9615 7.80304C3.75056 7.59199 3.63209 7.30579 3.63216 7.0074C3.63223 6.709 3.75083 6.42286 3.96188 6.21191C4.17292 6.00097 4.45912 5.8825 4.75752 5.88257C5.05591 5.88264 5.34205 6.00124 5.553 6.21229L9 9.65929L12.447 6.21229C12.6591 6.00726 12.9432 5.89373 13.2382 5.89615C13.5332 5.89858 13.8154 6.01676 14.0241 6.22524C14.2327 6.43373 14.3512 6.71584 14.3539 7.01081C14.3566 7.30578 14.2433 7.59002 14.0385 7.80229L9.79575 12.0458L9.795 12.045Z"
+                    />
+                  </g>
+                  <defs>
+                    <clipPath id="clip0_75_306">
+                      <rect width="18" height="18" fill="white" />
+                    </clipPath>
+                  </defs>
+                </svg>
               </span>
             </div>
             <h4 className="pool-container-title pool-container-title--deposit">
@@ -1091,23 +1186,26 @@ const PoolsComponent = ({
           headTitle={"Select a token"}
         >
           <div className="token-select-list">
-            {Object.keys(tokenBalancesSelector).map((token) => (
-              <div
-                className="token-select-item"
-                key={token}
-                onClick={() => handleTokenChange(token)}
-              >
-                <img
-                  src={tokenImages[token]}
-                  className="token-select-logo"
-                  alt={token}
-                />
-                <span className="token-select-details">
-                  <span className="token-select-longname">{token}</span>
-                  <span className="token-select-name">{token}</span>
-                </span>
-              </div>
-            ))}
+            {Object.keys(tokenBalancesSelector).map((token) => {
+              if (isModalLimited && token !== "ICP" && token !== "ckUSDT") return;
+              return (
+                <div
+                  className="token-select-item"
+                  key={token}
+                  onClick={() => handleTokenChange(token)}
+                >
+                  <img
+                    src={tokenImages[token]}
+                    className="token-select-logo"
+                    alt={token}
+                  />
+                  <span className="token-select-details">
+                    <span className="token-select-longname">{token}</span>
+                    <span className="token-select-name">{token}</span>
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </Modal>
       ) : isAddLiquidityConfirmationModalOpen ? (
