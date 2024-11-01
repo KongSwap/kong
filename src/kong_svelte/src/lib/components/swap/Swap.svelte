@@ -244,8 +244,17 @@
         }, 200);
     }
 
-    function handleInputChange(event: Event) {
-        const input = (event.target as HTMLInputElement).value;
+    function handleInputChange(event: Event | CustomEvent) {
+        let input: string;
+        
+        if ('detail' in event && event.detail?.value) {
+            // Handle custom event from max button
+            input = event.detail.value;
+        } else {
+            // Handle normal input event
+            input = (event.target as HTMLInputElement).value;
+        }
+        
         const cleanedInput = input.replace(/[^0-9.]/g, '');
         if (/^\d*\.?\d*$/.test(cleanedInput) || cleanedInput === '') {
             payAmount = cleanedInput;

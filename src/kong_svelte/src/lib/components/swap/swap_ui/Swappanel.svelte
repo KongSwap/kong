@@ -60,11 +60,11 @@
 
   function handleMaxClick() {
     if (!disabled && balance) {
-      onAmountChange(new Event('input', { 
-        bubbles: true,
-        cancelable: true,
-        composed: true
-      }));
+        const event = new CustomEvent('input', {
+            bubbles: true,
+            detail: { value: balance.toString() }
+        });
+        onAmountChange(event);
     }
   }
 </script>
