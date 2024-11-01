@@ -159,7 +159,7 @@
               width="14"
               height="14"
               viewBox="0 0 24 24"
-              fill="#ff4444"
+              fill="#b53f3f"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
@@ -340,12 +340,12 @@
   }
 
   .close-button {
-    background: rgba(255, 68, 68, 0.1);
-    color: #ff4444;
+    background: rgba(186, 49, 49, 0.4);
+    color: #b43d3d;
   }
 
   .close-button:hover {
-    background: rgba(255, 68, 68, 0.2);
+    background: rgba(255, 68, 68, 0.5);
   }
 
   .disconnect-button {

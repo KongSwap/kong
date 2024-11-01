@@ -1,39 +1,30 @@
 <!-- src/lib/components/sidebar/TokenRow.svelte -->
 <script lang="ts">
-  import { formatTokenAmount, formatNumberCustom } from "$lib/utils/formatNumberCustom";
-  import { tokenStore } from "$lib/stores/tokenStore";
-
-  export let token: FE.Token;
-
-  // Memoize formatted values
-  let formattedBalance: number;
-  let formattedUsdValue: string;
-
-  // Update formatted values only when balance changes
-  $: {
-    const balance = $tokenStore.balances[token.canister_id].in_tokens || 0;
-    formattedBalance = formatTokenAmount(balance, token.decimals);
-    formattedUsdValue = formatNumberCustom($tokenStore.balances[token.canister_id].in_usd, 2) || "0";
-  }
+  export let token: {
+    logo: string;
+    symbol: string;
+    name: string;
+    formattedBalance: string;
+    formattedUsdValue: string;
+  };
 </script>
 
 <div class="token-row">
   <div class="token-info">
-      <img
-        src={token.logo || "/tokens/not_verified.webp"}
-        alt={token.name}
-        class="h-12 w-12 rounded-full"
-        loading="lazy"
-        decoding="async"
-      />
+    <img
+      src={token.logo || "/tokens/not_verified.webp"}
+      alt={token.name}
+      class="h-12 w-12 rounded-full"
+      loading="lazy"
+    />
     <div class="flex flex-col text-left">
       <span class="symbol">{token.symbol}</span>
       <span class="name text-nowrap text-ellipsis text-xs">{token.name}</span>
     </div>
   </div>
   <div class="token-values">
-    <span>{formattedBalance} {token.symbol}</span>
-    <span>${formattedUsdValue}</span>
+    <span>{token.formattedBalance} {token.symbol}</span>
+    <span>${token.formattedUsdValue}</span>
   </div>
 </div>
 
@@ -54,16 +45,20 @@
   }
 
   .token-values {
-    @apply text-right flex flex-col text-sm;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.875rem; /* 14px */
   }
 
   .symbol {
-    @apply text-yellow-300 text-base;
+    color: #fbbf24; /* Tailwind's yellow-300 */
+    font-size: 1rem; /* 16px */
     font-weight: bold;
   }
 
   .name {
-    @apply text-sm opacity-70;
+    font-size: 0.875rem; /* 14px */
     opacity: 0.7;
   }
 </style>

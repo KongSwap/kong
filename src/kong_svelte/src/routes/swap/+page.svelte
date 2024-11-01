@@ -17,7 +17,7 @@
   });
 </script>
 
-<main class="flex flex-col items-center">
+<section class="flex flex-col items-center">
   <button class="pt-32" on:click={async () => await TokenService.claimFaucetTokens()}>Claim Tokens</button>
   {#if tokens?.Ok}
     {#each tokens?.Ok as token}
@@ -26,17 +26,11 @@
       </div>
     {/each}
   {:else if tokens}
-    <div class="swap-container">
+    <div class="flex justify-center">
       <Swap />
     </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>
   {/if}
-</main>
+</section>
 
-<style>
-  .swap-container {
-    display: flex;
-    justify-content: center;
-  }
-</style>

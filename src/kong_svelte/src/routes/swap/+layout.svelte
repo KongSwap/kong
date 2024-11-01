@@ -24,10 +24,12 @@
   </title>
 </svelte:head>
 
-<slot />
+<main class="swap">
+  <slot />
+</main>
 
 <style scoped>
-  :global(body) {
+  .swap {
     background: #000000 url("/backgrounds/kong_jungle.webp") no-repeat center
       center fixed;
     background-size: cover;

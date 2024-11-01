@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
+  import { tooltip } from '$lib/actions/tooltip';
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
   export let size: 'small' | 'medium' | 'big' = 'big';
@@ -10,6 +11,7 @@
   export let disabled: boolean = false;
   export let className: string = '';
   export let width: number | string | 'auto' = 'auto';
+  export let tooltipText: string | null = null;
 
   $: {
     if (size === 'small' && variant === 'blue') {
@@ -105,6 +107,7 @@
 </script>
 
 <button
+  use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
   class={buttonClass}
   on:click={handleClick}
   on:mousedown={handleMouseDown}
@@ -118,7 +121,7 @@
     <img src={getImagePath('l')} alt="" class="left-part" />
     <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
     <img src={getImagePath('r')} alt="" class="right-part" />
-    <span class="button-text">
+    <span class="button-text {state === 'selected' ? 'text-white' : ''}">
       <slot>{text}</slot>
     </span>
   </div>
@@ -205,9 +208,16 @@
     pointer-events: none;
   }
 
-  .blue .button-text {
+  .blue {
+    color: #000;
+    font-weight: 600;
+  }
+
+  .blue:hover {
     color: #fff;
-    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.5);
+    .button-text {
+      color: #fff;
+    }
   }
 
   .green .button-text {

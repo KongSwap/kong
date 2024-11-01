@@ -102,30 +102,6 @@
   });
 </script>
 
-<style scoped>
-  .mt-32 {
-    margin-top: 8rem; /* Adjust as needed */
-  }
-  .flex {
-    display: flex;
-  }
-  .flex-col {
-    flex-direction: column;
-  }
-  .items-center {
-    align-items: center;
-  }
-  .text-3xl {
-    font-size: 1.875rem; /* 30px */
-  }
-  .font-bold {
-    font-weight: 700;
-  }
-  .font-alumni {
-    font-family: 'Alumni', sans-serif; /* Ensure custom font is loaded or fallback is set */
-  }
-</style>
-
 <div class="mt-32 flex flex-col items-center">
   <h1 class="text-3xl font-bold font-alumni">Pool: {lpId}</h1>
   <div class="flex justify-center px-2 w-full">

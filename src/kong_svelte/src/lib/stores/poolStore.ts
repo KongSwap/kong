@@ -27,22 +27,10 @@ function createPoolStore() {
     lastUpdate: null
   });
 
-  // Add debug logging
-  const logState = (state: PoolState, action: string) => {
-    console.log(`[PoolStore ${action}]`, {
-      poolsCount: state.pools.length,
-      totals: state.totals,
-      isLoading: state.isLoading,
-      error: state.error
-    });
-  };
-
   return {
     subscribe,
-    
     loadPools: async () => {
       update(state => {
-        logState(state, 'Loading Start');
         return { ...state, isLoading: true, error: null };
       });
       
@@ -66,7 +54,6 @@ function createPoolStore() {
             isLoading: false,
             lastUpdate: Date.now()
           };
-          logState(newState, 'Update Complete');
           return newState;
         });
       } catch (error) {
