@@ -89,7 +89,7 @@
                 const token = $tokenStore.tokens?.find(t => t.symbol === payToken);
                 if (!token?.canister_id) return '0';
                 const balance = $tokenStore.balances[token.canister_id];
-                return balance?.amount?.toString() || '0';
+                return balance
             })(),
             onTokenSelect: () => showPayTokenSelector = true,
             onAmountChange: handleInputChange,
@@ -103,7 +103,7 @@
                 const token = $tokenStore.tokens?.find(t => t.symbol === receiveToken);
                 if (!token?.canister_id) return '0';
                 const balance = $tokenStore.balances[token.canister_id];
-                return balance?.amount?.toString() || '0';
+                return balance
             })(),
             onTokenSelect: () => showReceiveTokenSelector = true,
             onAmountChange: () => {},
