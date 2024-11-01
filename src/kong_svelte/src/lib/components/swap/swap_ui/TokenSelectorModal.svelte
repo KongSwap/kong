@@ -9,26 +9,21 @@
     export let onSelect: (token: string) => void;
     export let onClose: () => void;
 
-    let tokens: any[] = [];
+    let tokens: FE.Token[] = [];
     let searchQuery = '';
 
     onMount(async () => {
         try {
-            // Get tokens from TokenService
-            const result = await TokenService.fetchTokens();
+            // Get base tokens
+            const baseTokens = await TokenService.fetchTokens();
             
-            // Map tokens to include required properties for TokenRow
-            tokens = result.map(token => ({
-                ...token,
-                logo: token.logo || "/tokens/not_verified.webp",
-                canister_id: token.canister_id || token.id,
-                decimals: token.decimals || 8
-            }));
+            // Enrich tokens with metadata (logos)
+            tokens = await Promise.all(
+                baseTokens.map(token => TokenService.enrichTokenWithMetadata(token))
+            );
+            // Load balances into tokenStore
+            tokenStore.loadBalances();
 
-            // Load balances into tokenStore if not already loaded
-            if (!$tokenStore.balances) {
-                await tokenStore.loadBalances();
-            }
         } catch (error) {
             console.error('Error loading tokens:', error);
         }
@@ -46,27 +41,54 @@
 </script>
 
 {#if show}
-    <div class="modal-overlay" on:click={onClose}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div 
+        class="modal-overlay" 
+        on:click={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Token selector"
+    >
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="modal-container" on:click|stopPropagation>
             <Panel variant="green" width="600px" height="80vh" className="token-modal">
                 <div class="modal-content">
                     <header class="modal-header">
-                        <h2>Select Token</h2>
-                        <button class="close-button" on:click={onClose}>×</button>
+                        <h2 id="modal-title">Select Token</h2>
+                        <button 
+                            class="close-button" 
+                            on:click={onClose}
+                            aria-label="Close token selector"
+                        >
+                            ×
+                        </button>
                     </header>
                     
                     <div class="search-container">
+                        <label for="token-search" class="sr-only">Search tokens</label>
                         <input
+                            id="token-search"
                             type="text"
                             bind:value={searchQuery}
                             placeholder="Search tokens..."
                             class="search-input"
+                            aria-label="Search tokens"
                         />
                     </div>
 
-                    <div class="token-list">
+                    <div 
+                        class="token-list"
+                        role="listbox"
+                        aria-label="Token list"
+                    >
                         {#each filteredTokens as token}
-                            <button class="token-button" on:click={() => handleSelect(token.symbol)}>
+                            <button 
+                                class="token-button" 
+                                on:click={() => handleSelect(token.symbol)}
+                                role="option"
+                                aria-selected="false"
+                            >
                                 <TokenRow {token} />
                             </button>
                         {/each}
