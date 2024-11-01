@@ -5,6 +5,7 @@
   import { t } from "$lib/locales/translations";
   import { tokenStore } from "$lib/stores/tokenStore";
   import { formatTokenAmount, formatNumberCustom } from "$lib/utils/formatNumberCustom";
+  import { toastStore } from "$lib/stores/toastStore";
   
   export let title: string;
   export let token: string;
@@ -15,6 +16,7 @@
   export let showPrice = false;
   export let usdValue = "0";
   export let slippage = 0;
+  export let maxSlippage = 2; // Default max slippage value
 
   $: balance = (() => {
     const tokenInfo = $tokenStore.tokens?.find(t => t.symbol === token);
@@ -25,6 +27,12 @@
     // Use the token's decimals to format the balance
     return formatTokenAmount(rawBalance, tokenInfo.decimals);
   })();
+
+  $: isOverBalance = parseFloat(amount || "0") > parseFloat(balance?.toString() || "0");
+
+  $: if (isOverBalance && title === "You Pay") {
+    toastStore.error("Insufficient balance");
+  }
 
   const animatedUsdValue = tweened(0, {
     duration: 400,
@@ -52,17 +60,18 @@
       duration: 400
     });
     animatedSlippage.set(slippage);
-    animatedBalance.set(parseFloat(balance || "0"));
+    animatedBalance.set(parseFloat(balance?.toString() || "0"));
   }
 
   let inputFocused = false;
   let showSlippageTooltip = false;
 
   function handleMaxClick() {
-    if (!disabled && balance) {
+    if (!disabled) {
+        const value = parseFloat(balance?.toString() || "0") <= 0 ? "0" : balance.toString();
         const event = new CustomEvent('input', {
             bubbles: true,
-            detail: { value: balance.toString() }
+            detail: { value }
         });
         onAmountChange(event);
     }
@@ -76,32 +85,39 @@
         <h2 class="text-4xl font-bold">{title}</h2>
       </div>
       {#if showPrice && amount && amount !== "0" && slippage > 0}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-          class="slippage-text"
-          class:high-slippage={$animatedSlippage > 3}
+          class="relative flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium"
+          class:bg-red-100={$animatedSlippage > maxSlippage}
+          class:bg-green-100={$animatedSlippage <= maxSlippage}
+          class:text-red-600={$animatedSlippage > maxSlippage}
+          class:text-green-600={$animatedSlippage <= maxSlippage}
           on:mouseenter={() => (showSlippageTooltip = true)}
           on:mouseleave={() => (showSlippageTooltip = false)}
         >
-          {$animatedSlippage.toFixed(2)}%
-          {#if showSlippageTooltip}
-            <div class="tooltip">
-              Price impact for this trade
-            </div>
-          {/if}
-        </div>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            {#if $animatedSlippage <= maxSlippage}
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            {:else}
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            {/if}
+          </svg>
+          <span>{$animatedSlippage.toFixed(2)}% slippage</span>
+  </div>
       {/if}
     </header>
 
     <div class="input-section flex flex-col justify-center" class:disabled>
       <div class="amount-container">
         {#if showPrice}
-          <div class="amount-input animated-amount">
+          <div class="amount-input animated-amount" class:error={isOverBalance && title === "You Pay"}>
             {$animatedAmount.toFixed(6)}
           </div>
         {:else}
           <input
             type="text"
             class="amount-input"
+            class:error={isOverBalance && title === "You Pay"}
             value={amount}
             on:input={onAmountChange}
             on:focus={() => inputFocused = true}
@@ -147,14 +163,6 @@
     font-family: "Alumni Sans", sans-serif;
   }
 
-  .panel-content > *:not(.balance-display *) {
-    text-shadow:
-      -1px -1px 0 #000,
-      1px -1px 0 #000,
-      -1px 1px 0 #000,
-      1px 1px 0 #000;
-  }
-
   .panel-content {
     transition: transform 0.3s ease;
     height: 100%;
@@ -169,31 +177,6 @@
     margin-bottom: 0.5rem;
     position: relative;
     flex-wrap: wrap;
-  }
-
-  .balance-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: auto;
-    margin-right: 1rem;
-  }
-
-  .balance-label {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 1rem;
-  }
-
-  .balance-value {
-    color: rgba(255, 255, 255, 0.8);
-    font-weight: 500;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: color 0.3s ease;
-  }
-
-  .balance-value:hover {
-    color: #ffcd1f;
   }
 
   .title-container {
@@ -249,6 +232,12 @@
     text-overflow: ellipsis;
   }
 
+  .amount-input.error,
+  .animated-amount.error {
+    color: #e74c3c;
+    animation: shake 0.5s;
+  }
+
   .amount-input:focus {
     outline: none;
   }
@@ -295,51 +284,6 @@
     transform: translateY(1px);
   }
 
-  .slippage-text {
-    position: absolute;
-    right: 0;
-    top: 0;
-    color: #d1f052;
-    font-size: 1.25rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    transition: all 0.3s ease;
-    cursor: help;
-    position: relative;
-    text-shadow:
-      -1px -1px 0 #000,
-      1px -1px 0 #000,
-      -1px 1px 0 #000,
-      1px 1px 0 #000;
-    margin-top: 0.25rem;
-  }
-
-  .slippage-text.high-slippage {
-    color: #e74c3c;
-  }
-
-  .tooltip {
-    position: absolute;
-    bottom: calc(100% + 10px);
-    right: 0;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-
-  .tooltip::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    right: 15px;
-    border: 5px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
-  }
-
   .disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -371,5 +315,11 @@
 
   .balance-amount:hover {
     color: #ffcd1f;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
   }
 </style>

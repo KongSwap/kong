@@ -17,13 +17,8 @@
     import { tweened } from 'svelte/motion';
     import { cubicOut } from 'svelte/easing';
     import { toastStore } from '$lib/stores/toastStore';
-
     export let slippage = 2;
     export let initialPool: string | null = null;
-
-    const [send, receive] = crossfade({
-        duration: 40,
-    });
 
     let payToken = initialPool?.split('_')[0] || 'ICP';
     let receiveToken = initialPool?.split('_')[1] || 'ckBTC';
@@ -115,7 +110,8 @@
             disabled: isProcessing,
             showPrice: true,
             usdValue,
-            slippage: swapSlippage
+            slippage: swapSlippage,
+            maxSlippage: slippage
         }
     };
 
@@ -142,13 +138,18 @@
     }
 
     function fromBigInt(amount: bigint, decimals: number): string {
-        return new BigNumber(amount.toString())
-            .div(new BigNumber(10).pow(decimals))
-            .toString();
+        try {
+            const result = new BigNumber(amount.toString())
+                .div(new BigNumber(10).pow(decimals))
+                .toString();
+            return isNaN(Number(result)) ? '0' : result;
+        } catch {
+            return '0';
+        }
     }
 
     async function getSwapQuote(amount: string) {
-        if (!amount || Number(amount) <= 0) {
+        if (!amount || Number(amount) <= 0 || isNaN(Number(amount))) {
             setReceiveAmount('0');
             return;
         }
@@ -170,15 +171,19 @@
                 const receiveDecimals = getTokenDecimals(receiveToken);
                 const receivedAmount = fromBigInt(quote.Ok.receive_amount, receiveDecimals);
                 
+                if (isNaN(Number(receivedAmount))) {
+                    throw new Error('Invalid received amount');
+                }
+                
                 setReceiveAmount(receivedAmount);
                 setDisplayAmount(formatNumberCustom(receivedAmount, 6));
                 
-                price = quote.Ok.price.toString();
-                swapSlippage = quote.Ok.slippage;
+                const priceNum = Number(quote.Ok.price);
+                price = !isNaN(priceNum) ? priceNum.toString() : '0';
+                swapSlippage = !isNaN(quote.Ok.slippage) ? quote.Ok.slippage : 0;
                 
-                usdValue = new BigNumber(receivedAmount)
-                    .times(quote.Ok.price)
-                    .toFormat(2);
+                const usdValueNum = new BigNumber(receivedAmount).times(quote.Ok.price);
+                usdValue = !usdValueNum.isNaN() ? usdValueNum.toFormat(2) : '0';
 
                 if (quote.Ok.txs.length > 0) {
                     const firstTx = quote.Ok.txs[0];
@@ -188,12 +193,12 @@
                     gasFeeToken = firstTx.receive_symbol;
                 }
             } else if ('Err' in quote) {
-                toastStore.showError(quote.Err);
+                toastStore.error(quote.Err);
                 setReceiveAmount('0');
             }
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'An error occurred';
-            toastStore.showError(errorMsg);
+            toastStore.error(errorMsg);
             setReceiveAmount('0');
         } finally {
             isCalculating = false;
@@ -266,7 +271,7 @@
         // Don't allow selecting the same token that's already selected on the other side
         if ((type === 'pay' && token === receiveToken) || 
             (type === 'receive' && token === payToken)) {
-            toastStore.showError("Cannot select the same token for both sides");
+            toastStore.error("Cannot select the same token for both sides");
             return;
         }
 
@@ -324,7 +329,7 @@
                 requestId = result.Ok;
                 startPolling(result.Ok);
             } else {
-                toastStore.showError(result.Err);
+                toastStore.error(result.Err);
                 isConfirmationOpen = false;
             }
         } catch (err) {
@@ -363,14 +368,14 @@
             } catch (err) {
                 clearInterval(pollInterval);
                 clearTimeout(timeout);
-                toastStore.showError('Failed to check swap status');
+                toastStore.error('Failed to check swap status');
                 isProcessing = false;
             }
         }, 1000);
 
         timeout = setTimeout(() => {
             clearInterval(pollInterval);
-            toastStore.showError('Swap timed out');
+            toastStore.error('Swap timed out');
             isProcessing = false;
         }, 60000);
     }
@@ -386,25 +391,23 @@
     function handleSwapFailure(reply: any) {
         isProcessing = false;
         isConfirmationOpen = false;
-        toastStore.showError('Swap failed');
+        toastStore.error('Swap failed');
     }
 </script>
 
 <div class="swap-wrapper">
-    <div class="swap-container" in:fade>
+    <div class="swap-container" in:fade={{ duration: 420 }}>
         <div class="panels-container">
             {#each panels as panel (panel.id)}
                 <div 
                     animate:flip={{
-                        duration: 200,
+                        duration: 169,
                         easing: quintOut
                     }}
                     class="panel-wrapper"
                 >
                     <div 
                         class="panel-content"
-                        in:send={{key: panel.id, direction: panel.direction}}
-                        out:receive={{key: panel.id, direction: panel.direction}}
                     >
                         <SwapPanel
                             title={panel.title}
@@ -417,10 +420,10 @@
             <button 
                 class="switch-button {isAnimating ? 'rotating' : ''}"
                 on:click={handleTokenSwitch}
-                disabled={isProcessing || isAnimating}
+                disabled={isProcessing || isAnimating} 
             >
                 <img 
-                    src="/pxcomponents/arrow.svg" 
+                    src="/pxcomponents/arrow.svg"
                     alt="swap"
                     class="swap-arrow"
                 />
@@ -441,7 +444,7 @@
 </div>
 
 {#if showPayTokenSelector}
-    <div class="modal-overlay" transition:fade on:click|self={() => showPayTokenSelector = false}>
+    <div class="modal-overlay" transition:fade={{ duration: 100 }} on:click|self={() => showPayTokenSelector = false}>
         <div class="modal-content" on:click|stopPropagation>
             <TokenSelector 
                 show={true}
@@ -454,7 +457,7 @@
 {/if}
 
 {#if showReceiveTokenSelector}
-    <div class="modal-overlay" transition:fade on:click|self={() => showReceiveTokenSelector = false}>
+    <div class="modal-overlay" transition:fade={{ duration: 100 }} on:click|self={() => showReceiveTokenSelector = false}>
         <div class="modal-content" on:click|stopPropagation>
             <TokenSelector 
                 show={true}

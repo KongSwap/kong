@@ -12,6 +12,7 @@
 
     let tokens: FE.Token[] = [];
     let searchQuery = '';
+    let standardFilter = 'all';
 
     onMount(async () => {
         try {
@@ -30,10 +31,23 @@
         }
     });
 
-    $: filteredTokens = tokens.filter(token => 
-        token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        token.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    $: filteredTokens = tokens.filter(token => {
+        // First check if token matches search query
+        const matchesSearch = 
+            token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            token.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (!matchesSearch) return false;
+
+        // Then apply filter
+        switch (standardFilter) {
+            case 'ck':
+                return token.symbol.toLowerCase().startsWith('ck');
+            case 'all':
+            default:
+                return true;
+        }
+    });
 
     function handleSelect(token: string) {
         onSelect(token);
@@ -76,6 +90,20 @@
                             class="search-input"
                             aria-label="Search tokens"
                         />
+                        <div class="filter-buttons">
+                            <button 
+                                class="filter-btn {standardFilter === 'all' ? 'active' : ''}"
+                                on:click={() => standardFilter = 'all'}
+                            >
+                                All
+                            </button>
+                            <button 
+                                class="filter-btn {standardFilter === 'ck' ? 'active' : ''}"
+                                on:click={() => standardFilter = 'ck'}
+                            >
+                                ckTokens
+                            </button>
+                        </div>
                     </div>
 
                     <div 
@@ -104,11 +132,11 @@
 <style lang="postcss">
     /* Modal Layout */
     .modal-overlay {
-        @apply fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50;
+        @apply fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-100;
     }
 
     .modal-container {
-        @apply relative w-full h-full max-w-[600px] max-h-[80vh] transform transition-all;
+        @apply relative w-full h-full max-w-[600px] max-h-[80vh] transform transition-all duration-100;
     }
 
     .modal-content {
@@ -131,13 +159,28 @@
 
     /* Search Input */
     .search-container {
-        @apply mb-6;
+        @apply mb-6 space-y-4;
     }
 
     .search-input {
         @apply w-full bg-black/30 border-2 border-white/10 rounded-xl p-4 
-               text-white text-base focus:border-yellow-300/50 focus:outline-none
-               transition-all duration-200 hover:border-white/20;
+               text-white text-lg font-medium focus:border-yellow-300/50 focus:outline-none
+               transition-all duration-200 hover:border-white/20 placeholder:text-white/60;
+    }
+
+    /* Filter Buttons */
+    .filter-buttons {
+        @apply flex flex-wrap gap-2 justify-start;
+        margin-top: 1rem;
+    }
+
+    .filter-btn {
+        @apply px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80
+               hover:border-white/20 hover:text-white transition-all duration-200 text-sm font-medium;
+    }
+
+    .filter-btn.active {
+        @apply border-yellow-300/50 text-yellow-300 bg-black/50;
     }
 
     /* Token List */
