@@ -117,8 +117,6 @@ Cargo.lock
 # dfx temporary files
 .dfx/
 
-# generated files
-**/declarations/
 
 # rust
 target/

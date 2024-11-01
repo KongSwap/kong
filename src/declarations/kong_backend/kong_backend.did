@@ -36,20 +36,20 @@ type UserReply = record {
 type UserResult = variant { Ok : UserReply; Err : text };
 
 type UserBalancesReply = variant {
-	LP : BalancesReply;
+    LP : BalancesReply;
 };
 type BalancesReply = record {
     name : text;
-	symbol : text;
-	balance : float64;
-	usd_balance : float64;
+    symbol : text;
+    balance : float64;
+    usd_balance : float64;
     symbol_0 : text;
     amount_0 : float64;
     usd_amount_0 : float64;
     symbol_1 : text;
     amount_1 : float64;
     usd_amount_1 : float64;
-	ts : nat64;
+    ts : nat64;
 };
 type UserBalancesResult = variant { Ok : vec UserBalancesReply; Err : text };
 
@@ -62,33 +62,33 @@ type MessagesReply = record {
 type MessagesResult = variant { Ok : vec MessagesReply; Err : text };
 
 type TokenReply = variant {
-	LP : LPTokenReply;
-	IC : ICTokenReply;
+    LP : LPTokenReply;
+    IC : ICTokenReply;
 };
 type LPTokenReply = record {
-	token_id : nat32;
+    token_id : nat32;
     pool_symbol : text;
     name : text;
     chain : text;
-	symbol : text;
+    symbol : text;
     token : text;
     pool_id_of : nat32;
     address : text;
-	decimals : nat8;
+    decimals : nat8;
     fee : nat;
     total_supply : nat;
     on_kong : bool;
 };
 type ICTokenReply = record {
-	token_id : nat32;
-	pool_symbol : text;
+    token_id : nat32;
+    pool_symbol : text;
     name : text;
     chain : text;
-	symbol : text;
+    symbol : text;
     token : text;
-	canister_id : text;
-	decimals : nat8;	
-	fee : nat;
+    canister_id : text;
+    decimals : nat8;	
+    fee : nat;
     icrc1 : bool;
     icrc2 : bool;
     icrc3 : bool;
@@ -424,7 +424,7 @@ service : {
     // requests(request_id) - returns specific request or all requests of the user
     requests : (opt nat64) -> (RequestsResult) query;
 
-    // add a new liquidity pool
+    // add a new liquidity pool and token
     add_pool : (AddPoolArgs) -> (AddPoolResult);
 
     // add_liquidity_amounts(token_0, amount_0, token_1)
