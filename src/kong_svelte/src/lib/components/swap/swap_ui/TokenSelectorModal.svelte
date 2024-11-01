@@ -8,6 +8,7 @@
     export let show = false;
     export let onSelect: (token: string) => void;
     export let onClose: () => void;
+    export let currentToken: string;
 
     let tokens: FE.Token[] = [];
     let searchQuery = '';
@@ -84,10 +85,11 @@
                     >
                         {#each filteredTokens as token}
                             <button 
-                                class="token-button" 
+                                class="token-button"
+                                class:active={token.symbol === currentToken}
                                 on:click={() => handleSelect(token.symbol)}
                                 role="option"
-                                aria-selected="false"
+                                aria-selected={token.symbol === currentToken}
                             >
                                 <TokenRow {token} />
                             </button>
@@ -102,56 +104,84 @@
 <style lang="postcss">
     /* Modal Layout */
     .modal-overlay {
-        @apply fixed inset-0 bg-black/70 flex items-center justify-center;
+        @apply fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50;
     }
 
     .modal-container {
-        @apply relative w-full h-full max-w-[600px] max-h-[80vh];
+        @apply relative w-full h-full max-w-[600px] max-h-[80vh] transform transition-all;
     }
 
     .modal-content {
-        @apply p-4 h-full flex flex-col;
+        @apply p-6 h-full flex flex-col;
     }
 
     /* Header Styles */
     .modal-header {
-        @apply flex justify-between items-center mb-4;
+        @apply flex justify-between items-center mb-6;
     }
 
     .modal-header h2 {
-        @apply text-2xl text-white m-0;
+        @apply text-3xl font-bold text-white m-0;
     }
 
     .close-button {
-        @apply bg-transparent border-none text-white/60 text-2xl cursor-pointer 
-               hover:text-white transition-colors;
+        @apply bg-transparent border-none text-white/60 text-3xl cursor-pointer 
+               hover:text-white transition-colors duration-200 hover:rotate-90;
     }
 
     /* Search Input */
     .search-container {
-        @apply mb-4;
+        @apply mb-6;
     }
 
     .search-input {
-        @apply w-full bg-black/20 border border-white/10 rounded-lg p-3 
-               text-white text-base focus:border-white/20 focus:outline-none;
+        @apply w-full bg-black/30 border-2 border-white/10 rounded-xl p-4 
+               text-white text-base focus:border-yellow-300/50 focus:outline-none
+               transition-all duration-200 hover:border-white/20;
     }
 
     /* Token List */
     .token-list {
-        @apply flex-1 overflow-y-auto -mx-4 px-4;
+        @apply flex-1 overflow-y-auto -mx-6 px-6 space-y-3;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+
+    .token-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .token-list::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    .token-list::-webkit-scrollbar-thumb {
+        @apply bg-white/20 rounded-full hover:bg-white/30;
     }
 
     /* Token Button */
     .token-button {
         @apply w-full p-0 bg-transparent border-none cursor-pointer 
-               transition-transform hover:translate-x-1;
+               transition-all duration-200 hover:translate-x-2 hover:scale-[1.02]
+               focus:outline-none focus:ring-2 focus:ring-yellow-300/50 rounded-lg;
+    }
+
+    .token-button.active {
+        @apply opacity-50 cursor-not-allowed hover:translate-x-0 hover:scale-100;
     }
 
     /* Responsive */
     @media (max-width: 768px) {
         .modal-container {
             @apply max-w-full max-h-[90vh] m-4;
+        }
+        
+        .modal-content {
+            @apply p-4;
+        }
+        
+        .token-list {
+            @apply -mx-4 px-4;
         }
     }
 </style>

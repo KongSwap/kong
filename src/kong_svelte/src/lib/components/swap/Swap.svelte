@@ -16,6 +16,7 @@
     import { t } from '$lib/locales/translations';
     import { tweened } from 'svelte/motion';
     import { cubicOut } from 'svelte/easing';
+    import { toastStore } from '$lib/stores/toastStore';
 
     export let slippage = 2;
     export let initialPool: string | null = null;
@@ -89,7 +90,12 @@
         pay: {
             token: payToken,
             amount: payAmount,
-            balance: $tokenStore.balances[payToken]?.amount.toString() || '0',
+            balance: (() => {
+                const token = $tokenStore.tokens?.find(t => t.symbol === payToken);
+                if (!token?.canister_id) return '0';
+                const balance = $tokenStore.balances[token.canister_id];
+                return balance?.amount?.toString() || '0';
+            })(),
             onTokenSelect: () => showPayTokenSelector = true,
             onAmountChange: handleInputChange,
             disabled: isProcessing,
@@ -98,7 +104,12 @@
         receive: {
             token: receiveToken,
             amount: $tweenedReceiveAmount.toFixed(6),
-            balance: $tokenStore.balances[receiveToken]?.amount.toString() || '0',
+            balance: (() => {
+                const token = $tokenStore.tokens?.find(t => t.symbol === receiveToken);
+                if (!token?.canister_id) return '0';
+                const balance = $tokenStore.balances[token.canister_id];
+                return balance?.amount?.toString() || '0';
+            })(),
             onTokenSelect: () => showReceiveTokenSelector = true,
             onAmountChange: () => {},
             disabled: isProcessing,
@@ -111,7 +122,6 @@
     function getButtonText(isCalculating: boolean, isValidInput: boolean, isProcessing: boolean, error: string | null): string {
         if (isCalculating) return $t('swap.calculating');
         if (isProcessing) return $t('swap.processing');
-        if (error) return error;
         if (!isValidInput) return $t('swap.enterAmount');
         return $t('swap.swap');
     }
@@ -178,11 +188,12 @@
                     gasFeeToken = firstTx.receive_symbol;
                 }
             } else if ('Err' in quote) {
-                error = quote.Err;
+                toastStore.showError(quote.Err);
                 setReceiveAmount('0');
             }
         } catch (err) {
-            error = err instanceof Error ? err.message : 'An error occurred';
+            const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+            toastStore.showError(errorMsg);
             setReceiveAmount('0');
         } finally {
             isCalculating = false;
@@ -243,6 +254,13 @@
     }
 
     function handleSelectToken(type: 'pay' | 'receive', token: string) {
+        // Don't allow selecting the same token that's already selected on the other side
+        if ((type === 'pay' && token === receiveToken) || 
+            (type === 'receive' && token === payToken)) {
+            toastStore.showError("Cannot select the same token for both sides");
+            return;
+        }
+
         if (type === 'pay') {
             payToken = token;
             showPayTokenSelector = false;
@@ -297,11 +315,12 @@
                 requestId = result.Ok;
                 startPolling(result.Ok);
             } else {
-                error = result.Err;
+                toastStore.showError(result.Err);
                 isConfirmationOpen = false;
             }
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Swap failed';
+            const errorMsg = err instanceof Error ? err.message : 'Swap failed';
+            toastStore.showError(errorMsg);
             isConfirmationOpen = false;
         } finally {
             if (error) isProcessing = false;
@@ -335,14 +354,14 @@
             } catch (err) {
                 clearInterval(pollInterval);
                 clearTimeout(timeout);
-                error = 'Failed to check swap status';
+                toastStore.showError('Failed to check swap status');
                 isProcessing = false;
             }
         }, 1000);
 
         timeout = setTimeout(() => {
             clearInterval(pollInterval);
-            error = 'Swap timed out';
+            toastStore.showError('Swap timed out');
             isProcessing = false;
         }, 60000);
     }
@@ -358,7 +377,7 @@
     function handleSwapFailure(reply: any) {
         isProcessing = false;
         isConfirmationOpen = false;
-        error = 'Swap failed';
+        toastStore.showError('Swap failed');
     }
 </script>
 
@@ -399,10 +418,6 @@
             </button>
         </div>
 
-        {#if error}
-            <div class="error" transition:fade>{error}</div>
-        {/if}
-
         <div class="swap-footer mt-3">
             <Button 
                 variant="yellow"
@@ -423,6 +438,7 @@
                 show={true}
                 onSelect={(token) => handleSelectToken('pay', token)}
                 onClose={() => showPayTokenSelector = false}
+                currentToken={receiveToken}
             />
         </div>
     </div>
@@ -435,6 +451,7 @@
                 show={true}
                 onSelect={(token) => handleSelectToken('receive', token)}
                 onClose={() => showReceiveTokenSelector = false}
+                currentToken={payToken}
             />
         </div>
     </div>

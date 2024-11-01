@@ -1,20 +1,30 @@
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
-  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import { t } from "$lib/locales/translations";
+  import { tokenStore } from "$lib/stores/tokenStore";
+  import { formatTokenAmount, formatNumberCustom } from "$lib/utils/formatNumberCustom";
   
   export let title: string;
   export let token: string;
   export let amount: string = "0";
-  export let balance: string = "0";
   export let onTokenSelect: () => void;
   export let onAmountChange: (event: Event) => void;
   export let disabled = false;
   export let showPrice = false;
   export let usdValue = "0";
   export let slippage = 0;
+
+  $: balance = (() => {
+    const tokenInfo = $tokenStore.tokens?.find(t => t.symbol === token);
+    if (!tokenInfo?.canister_id) return "0";
+    const balanceInfo = $tokenStore.balances[tokenInfo.canister_id];
+    const rawBalance = balanceInfo?.in_tokens;
+    
+    // Use the token's decimals to format the balance
+    return formatTokenAmount(rawBalance, tokenInfo.decimals);
+  })();
 
   const animatedUsdValue = tweened(0, {
     duration: 400,
