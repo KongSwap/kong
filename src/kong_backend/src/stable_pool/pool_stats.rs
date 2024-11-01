@@ -4,17 +4,17 @@ use super::pool_map;
 
 use crate::helpers::math_helpers::round_f64;
 use crate::helpers::nat_helpers::{nat_add, nat_divide_as_f64, nat_zero};
+use crate::ic::ckusdt::ckusdt_amount;
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::ic::logging::info_log;
 use crate::stable_memory::TX_24H_MAP;
 use crate::stable_token::token_map;
 use crate::stable_tx::stable_tx::StableTx;
-use crate::swap::swap_amounts::ckusdt_amount;
 
-pub fn update_pool_stats() -> Result<(), String> {
+pub fn update_pool_stats() {
     if not_in_maintenance_mode().is_err() {
-        return Err("Kong Swap in maintenance mode".to_string());
+        return;
     }
 
     info_log("Updating 24h stats...");
@@ -50,12 +50,9 @@ pub fn update_pool_stats() -> Result<(), String> {
 
         let (rolling_24h_volume, rolling_24h_lp_fee) = swaps.iter().fold((nat_zero(), nat_zero()), |acc, swap| -> (Nat, Nat) {
             if let Some(receive_token) = token_map::get_by_token_id(swap.receive_token_id) {
-                if let Ok((receive_amount, _)) = ckusdt_amount(&receive_token, &swap.receive_amount) {
-                    nat_add(&acc.0, &receive_amount);
-                }
-                if let Ok((lp_fee, _)) = ckusdt_amount(&receive_token, &swap.lp_fee) {
-                    nat_add(&acc.1, &lp_fee);
-                }
+                let receive_amount = ckusdt_amount(&receive_token, &swap.receive_amount).unwrap_or(nat_zero());
+                let lp_fee = ckusdt_amount(&receive_token, &swap.lp_fee).unwrap_or(nat_zero());
+                return (nat_add(&acc.0, &receive_amount), nat_add(&acc.1, &lp_fee));
             }
             (acc.0, acc.1)
         });
@@ -70,6 +67,4 @@ pub fn update_pool_stats() -> Result<(), String> {
 
         pool_map::update(&pool);
     }
-
-    Ok(())
 }

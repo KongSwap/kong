@@ -23,11 +23,17 @@ use crate::stable_kong_settings::kong_settings;
 use crate::stable_lp_token_ledger::lp_token_ledger;
 use crate::stable_lp_token_ledger::lp_token_ledger::LP_DECIMALS;
 use crate::stable_lp_token_ledger::stable_lp_token_ledger::StableLPTokenLedger;
-use crate::stable_pool::{pool_map, stable_pool::StablePool};
+use crate::stable_pool::pool_map;
+use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::lp_token_impl::{address, symbol};
-use crate::stable_token::{lp_token::LPToken, stable_token::StableToken, token::Token, token_map};
-use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_token::lp_token::LPToken;
+use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token;
+use crate::stable_token::token::Token;
+use crate::stable_token::token_map;
+use crate::stable_transfer::stable_transfer::StableTransfer;
+use crate::stable_transfer::transfer_map;
+use crate::stable_transfer::tx_id::TxId;
 use crate::stable_tx::{add_pool_tx::AddPoolTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
 
@@ -163,9 +169,9 @@ async fn check_arguments(
     };
 
     // make sure LP token does not already exist
-    let lp_token_address = address(&token_0, &token_1);
+    let lp_token_address = token::address(&token_0, &token_1);
     if token_map::exists(&lp_token_address) {
-        return Err(format!("LP token {} already exists", symbol(&token_0, &token_1)));
+        return Err(format!("LP token {} already exists", token::symbol(&token_0, &token_1)));
     }
 
     // make sure pool does not already exist

@@ -16,15 +16,6 @@ use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
-/// Calculate the ckusdt amount for a given pay token and amount
-///
-/// Returns (receive_amount, mid_price)
-pub fn ckusdt_amount(pay_token: &StableToken, pay_amount: &Nat) -> Result<(Nat, f64), String> {
-    let ckusdt_token = token_map::get_ckusdt()?;
-    let (receive_amount, _, mid_price, _, _) = swap_amounts(pay_token, pay_amount, &ckusdt_token)?;
-    Ok((receive_amount, mid_price))
-}
-
 pub fn swap_amounts(
     pay_token: &StableToken,
     pay_amount: &Nat,

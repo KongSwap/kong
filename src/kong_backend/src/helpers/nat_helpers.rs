@@ -14,7 +14,6 @@ pub fn nat_is_zero(n: &Nat) -> bool {
     n.0.is_zero()
 }
 
-#[allow(dead_code)]
 pub fn nat_to_biguint(n: &Nat) -> BigUint {
     BigUint::from_bytes_be(&n.0.to_bytes_be())
 }
@@ -38,8 +37,8 @@ pub fn nat_to_f64(n: &Nat) -> Option<f64> {
 }
 
 #[allow(dead_code)]
-pub fn nat_10pow(n: u32) -> Nat {
-    Nat::from(10_u128.pow(n))
+pub fn nat_10pow(n: u8) -> Nat {
+    Nat::from(10_u128.pow(n as u32))
 }
 
 /// Convert Nat to f64 with decimals
@@ -82,11 +81,13 @@ pub fn nat_multiply(n1: &Nat, n2: &Nat) -> Nat {
     n1.clone() * n2.clone()
 }
 
+#[allow(dead_code)]
 pub fn nat_multiply_rational(n1: &Nat, n2: &BigRational) -> Option<Nat> {
     let numerator = nat_multiply(n1, &Nat::from(n2.numer().to_biguint()?));
     nat_divide(&numerator, &Nat::from(n2.denom().to_biguint()?))
 }
 
+#[allow(dead_code)]
 pub fn nat_multiply_f64(n1: &Nat, n2: f64) -> Option<Nat> {
     let n2 = BigRational::from_float(n2)?;
     nat_multiply_rational(n1, &n2)

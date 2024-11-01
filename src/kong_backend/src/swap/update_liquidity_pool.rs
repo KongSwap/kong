@@ -1,7 +1,6 @@
 use candid::Nat;
 
 use super::calculate_amounts::calculate_amounts;
-use super::swap_amounts::ckusdt_amount;
 use super::swap_calc::SwapCalc;
 
 use crate::helpers::nat_helpers::nat_divide_as_f64;
@@ -9,6 +8,7 @@ use crate::helpers::{
     math_helpers::round_f64,
     nat_helpers::{nat_add, nat_divide, nat_multiply, nat_subtract, nat_zero},
 };
+use crate::ic::ckusdt::ckusdt_amount;
 use crate::stable_pool::pool_map;
 use crate::stable_request::request_map;
 use crate::stable_request::status::StatusCode;
@@ -41,7 +41,7 @@ pub fn update_liquidity_pool(
                     // user pays token_0 and receives token_1
                     pool.balance_0 = nat_add(&pool.balance_0, &swap.pay_amount); // pay_amount is in token_0
                     pool.balance_1 = nat_subtract(&pool.balance_1, &swap.receive_amount).unwrap_or(nat_zero()); // receive_amount is in token_1
-                    if let Ok((ckusdt_volume, _)) = ckusdt_amount(&pool.token_1(), &swap.receive_amount) {
+                    if let Ok(ckusdt_volume) = ckusdt_amount(&pool.token_1(), &swap.receive_amount) {
                         // update 24h stats
                         pool.rolling_24h_volume = nat_add(&pool.rolling_24h_volume, &ckusdt_volume);
                         // update lifetime stats
@@ -55,7 +55,7 @@ pub fn update_liquidity_pool(
                     let lp_fee_1 = nat_subtract(&swap.lp_fee, &kong_fee_1).unwrap_or(nat_zero());
                     pool.lp_fee_1 = nat_add(&pool.lp_fee_1, &lp_fee_1);
                     pool.kong_fee_1 = nat_add(&pool.kong_fee_1, &kong_fee_1);
-                    if let Ok((ckusdt_lp_fee, _)) = ckusdt_amount(&pool.token_1(), &lp_fee_1) {
+                    if let Ok(ckusdt_lp_fee) = ckusdt_amount(&pool.token_1(), &lp_fee_1) {
                         pool.rolling_24h_lp_fee = nat_add(&pool.rolling_24h_lp_fee, &ckusdt_lp_fee);
                         pool.total_lp_fee = nat_add(&pool.total_lp_fee, &ckusdt_lp_fee);
                     }
@@ -63,7 +63,7 @@ pub fn update_liquidity_pool(
                     // user pays token_1 and receives token_0
                     pool.balance_1 = nat_add(&pool.balance_1, &swap.pay_amount); // pay_amount is in token_1
                     pool.balance_0 = nat_subtract(&pool.balance_0, &swap.receive_amount).unwrap_or(nat_zero()); // receive_amount is in token_0
-                    if let Ok((ckusdt_volume, _)) = ckusdt_amount(&pool.token_0(), &swap.receive_amount) {
+                    if let Ok(ckusdt_volume) = ckusdt_amount(&pool.token_0(), &swap.receive_amount) {
                         pool.rolling_24h_volume = nat_add(&pool.rolling_24h_volume, &ckusdt_volume);
                         pool.total_volume = nat_add(&pool.total_volume, &ckusdt_volume);
                     }
@@ -75,7 +75,7 @@ pub fn update_liquidity_pool(
                     let lp_fee_0 = nat_subtract(&swap.lp_fee, &kong_fee_0).unwrap_or(nat_zero());
                     pool.lp_fee_0 = nat_add(&pool.lp_fee_0, &lp_fee_0);
                     pool.kong_fee_0 = nat_add(&pool.kong_fee_0, &kong_fee_0);
-                    if let Ok((ckusdt_lp_fee, _)) = ckusdt_amount(&pool.token_0(), &lp_fee_0) {
+                    if let Ok(ckusdt_lp_fee) = ckusdt_amount(&pool.token_0(), &lp_fee_0) {
                         pool.rolling_24h_lp_fee = nat_add(&pool.rolling_24h_lp_fee, &ckusdt_lp_fee);
                         pool.total_lp_fee = nat_add(&pool.total_lp_fee, &ckusdt_lp_fee);
                     }

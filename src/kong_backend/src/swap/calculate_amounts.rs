@@ -3,7 +3,7 @@ use candid::Nat;
 use super::swap_amounts::swap_amounts;
 use super::swap_calc::SwapCalc;
 
-use crate::helpers::{math_helpers::round_f64, nat_helpers::nat_to_decimals_f64};
+use crate::helpers::nat_helpers::nat_to_decimals_f64;
 use crate::stable_token::{stable_token::StableToken, token::Token};
 
 pub fn calculate_amounts(
@@ -19,7 +19,7 @@ pub fn calculate_amounts(
     if let Some(user_receive_amount) = user_receive_amount {
         if receive_amount < *user_receive_amount {
             let decimals = receive_token.decimals();
-            let receive_amount_with_fees_and_gas_f64 = round_f64(nat_to_decimals_f64(decimals, &receive_amount).unwrap_or(0_f64), decimals);
+            let receive_amount_with_fees_and_gas_f64 = nat_to_decimals_f64(decimals, &receive_amount).unwrap_or(0_f64);
             return Err(format!(
                 "Insufficient receive amount. Can only receive {} {} with {}% slippage",
                 receive_amount_with_fees_and_gas_f64,
@@ -32,7 +32,7 @@ pub fn calculate_amounts(
     // check if slippage is within user's specified
     if slippage > user_max_slippage {
         let decimals = receive_token.decimals();
-        let receive_amount_with_fees_and_gas_f64 = round_f64(nat_to_decimals_f64(decimals, &receive_amount).unwrap_or(0_f64), decimals);
+        let receive_amount_with_fees_and_gas_f64 = nat_to_decimals_f64(decimals, &receive_amount).unwrap_or(0_f64);
         return Err(format!(
             "Slippage exceeded. Can only receive {} {} with {}% slippage",
             receive_amount_with_fees_and_gas_f64,
