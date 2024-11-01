@@ -36,7 +36,7 @@
     let swapSlippage = 0;
     let requestId: bigint | null = null;
     let isAnimating = false;
-    let intervalId: NodeJS.Timer;
+    let intervalId: ReturnType<typeof setInterval>;
 
     let panels = [
         { id: 'pay', type: 'pay', title: $t('swap.pay') },

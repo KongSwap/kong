@@ -150,6 +150,8 @@
     <footer class="balance-display">
       <div class="balance-text">
         <span>{$t('swap.available')}</span>
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <span class="balance-amount" on:click={handleMaxClick}>
           {formatNumberCustom(balance || "0", 6)} {token}
         </span>
