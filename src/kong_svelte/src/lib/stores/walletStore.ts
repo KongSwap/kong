@@ -12,10 +12,10 @@ import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
 import { UserService } from '$lib/services/UserService';
 import { ICRC1_IDL } from '$lib/idls/icrc1.idl.js';
 import { ICRC2_IDL } from '$lib/idls/icrc2.idl.js';
+import { browser } from '$app/environment';
 
 // Export the list of available wallets
 export const availableWallets = walletsList;
-
 
 // IDL Mappings
 export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2' | 'kong_faucet';
@@ -94,6 +94,7 @@ export async function connectWallet(walletId: string) {
 
 // Disconnect from a wallet
 export async function disconnectWallet() {
+  initializePNP();
   try {
     await pnp.disconnect();
     updateWalletStore({
@@ -114,40 +115,45 @@ export async function disconnectWallet() {
 // Attempt to restore wallet connection on page load
 export async function restoreWalletConnection() {
   initializePNP();
-  const storedWalletId = localStorage.getItem('selectedWalletId');
-  if (!storedWalletId) return;
+  if(browser) {
+    const storedWalletId = localStorage.getItem('selectedWalletId');
+    if (!storedWalletId) return;
 
-  updateWalletStore({ isConnecting: true });
-  selectedWalletId.set(storedWalletId);
+    updateWalletStore({ isConnecting: true });
+    selectedWalletId.set(storedWalletId);
 
-  try {
-    await connectWallet(storedWalletId);
-  } catch (error) {
-    handleConnectionError(error);
+    try {
+      await connectWallet(storedWalletId);
+    } catch (error) {
+      handleConnectionError(error);
+    }
   }
 }
 
 // Check if wallet is connected
 export function isConnected(): boolean {
+  initializePNP();
   return pnp ? pnp.isWalletConnected() : false;
 }
 
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
-  initializePNP();
-  const isAuthenticated = isConnected();
-  const isLocalEnv = window.location.hostname.includes('localhost');
-  const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
-  const agent = HttpAgent.createSync({ host });
-  if (isLocalEnv) {
+  if(browser) {
+    const isAuthenticated = isConnected();
+    const isLocalEnv = window.location.hostname.includes('localhost');
+    const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
+    const agent = HttpAgent.createSync({ host });
+    if (isLocalEnv) {
     await agent.fetchRootKey();
   }
   return isAuthenticated
     ? await pnp.getActor(canisterId, idlFactory)
     : Actor.createActor(idlFactory, { agent, canisterId });
+  }
 }
 
 // Export function to get the actor
 export async function getActor(canisterId = kongBackendCanisterId, canisterType: CanisterType = 'kong_backend'): Promise<ActorSubclass<any>> {
+  initializePNP();
   return await createActor(canisterId, canisterIDLs[canisterType]);
 }

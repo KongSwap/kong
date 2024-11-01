@@ -7,11 +7,11 @@
   import { browser } from "$app/environment";
   import { t } from "$lib/locales/translations";
   import { walletStore } from "$lib/stores/walletStore";
-  import { fade, slide } from 'svelte/transition'; // Import transition functions
+  import { fade } from 'svelte/transition';
 
   type Tab = "swap" | "pool" | "stats";
 
-  let activeTab: "swap" | "pool" | "stats" = "swap";
+  let activeTab: Tab = "swap";
   let sidebarOpen = false;
   let isMobile = false;
   let isSpinning = false;
@@ -19,8 +19,8 @@
   const tabs: Tab[] = ["swap", "pool", "stats"];
   const titles = {
     swap: {
-      desktop: "/titles/titleKingKongSwap.png",
-      mobile: "/titles/titleKingKongSwap.png",
+      desktop: "/titles/swap_title.webp",
+      mobile: "/titles/swap_title.webp",
     },
     pool: {
       desktop: "/titles/titleKingKongStats.png",
@@ -32,10 +32,13 @@
     },
   };
 
-  function handleTabChange(tab: "swap" | "pool" | "stats") {
-    activeTab = tab;
-    goto(`/${tab}`);
-    navOpen = false;
+  function handleTabChange(tab: Tab) {
+    // Always navigate to the tab's root path, even if it's already active
+    if (activeTab !== tab || $page.url.pathname !== `/${tab}`) {
+      activeTab = tab;
+      goto(`/${tab}`);
+      navOpen = false;
+    }
   }
 
   function handleConnect() {
@@ -48,8 +51,8 @@
     }
   }
 
-  function determineActiveTab(path: string) {
-    return path === "/stats" ? "stats" : path === "/pool" ? "pool" : "swap";
+  function determineActiveTab(path: string): Tab {
+    return path.includes("stats") ? "stats" : path.includes("pool") ? "pool" : "swap";
   }
 
   onMount(() => {
@@ -68,9 +71,7 @@
     activeTab = determineActiveTab(path);
   }
 
-  $: titleImage = isMobile
-    ? titles[activeTab].mobile
-    : titles[activeTab].desktop;
+  $: titleImage = isMobile ? titles[activeTab].mobile : titles[activeTab].desktop;
 </script>
 
 <nav class="absolute w-full z-50 md:px-10 pt-4">
@@ -105,15 +106,17 @@
     </div>
 
     <div class="col-span-6 flex justify-center items-end">
-      <img src={titleImage} alt={activeTab} class="w-3/4" />
+      <div class="title-image-container">
+        <img src={titleImage} alt={activeTab} class="title-image" />
+      </div>
     </div>
 
     <div class="col-span-3 flex justify-end items-center gap-x-4 mb-2">
-      <!-- svelte-ignore a11y_consider_explicit_label -->
       {#if !isMobile}
         <button
           class="settings-button"
           class:spinning={isSpinning}
+          aria-label="Settings"
           on:mouseenter={() => (isSpinning = true)}
           on:mouseleave={() => (isSpinning = false)}
         >
@@ -152,8 +155,9 @@
         ✕
       </button>
 
-      <h2 class="text-white text-2xl font-bold font-alumni uppercase border-b-2 border-b-sky-300
-      ">{$t("common.navigation")}</h2>
+      <h2 class="text-white text-2xl font-bold font-alumni uppercase border-b-2 border-b-sky-300">
+        {$t("common.navigation")}
+      </h2>
       {#each tabs as tab}
         <Button
           text={tab.toUpperCase()}
@@ -192,6 +196,19 @@
 <Sidebar {sidebarOpen} onClose={() => (sidebarOpen = false)} />
 
 <style lang="postcss" scoped>
+  .title-image-container {
+    width: 100%;
+    height: 66px; /* Set a fixed height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .title-image {
+    max-height: 100%;
+    object-fit: contain; /* Ensure the image fits within the container */
+  }
+
   .settings-button {
     background: none;
     border: none;
@@ -226,7 +243,7 @@
   }
 
   .mobile-menu {
-    @apply fixed top-0 left-0 w-full h-full bg-black bg-opacity-60 backdrop-blur-lg	flex flex-col items-center justify-center;
+    @apply fixed top-0 left-0 w-full h-full bg-black bg-opacity-60 backdrop-blur-lg flex flex-col items-center justify-center;
     z-index: 100;
   }
 
@@ -244,10 +261,6 @@
     }
     .grid {
       grid-template-columns: 1fr;
-    }
-    .left-nav {
-      flex-direction: column;
-      align-items: flex-start;
     }
   }
 </style>

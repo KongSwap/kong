@@ -5,7 +5,6 @@ import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
 import { formatUSD, formatTokenAmount } from '$lib/utils/formatNumberCustom';
 
-
 interface TokenState {
   readonly tokens: FE.Token[];
   readonly balances: Record<string, FE.TokenBalance>;
@@ -39,7 +38,7 @@ const deserializeState = (cachedData: string): TokenState => {
   });
 };
 
-// Debounced save to cache
+// Debounced save to cache with a longer delay to reduce frequency
 const saveToCache = debounce((state: TokenState) => {
   if (browser) {
     try {
@@ -48,7 +47,7 @@ const saveToCache = debounce((state: TokenState) => {
       console.error('Error saving token data to cache:', error);
     }
   }
-}, 1000);
+}, 3500); // Increased debounce delay
 
 function createTokenStore() {
   const store = writable<TokenState>({
@@ -89,6 +88,15 @@ function createTokenStore() {
     if (serializeState(currentState) !== serializeState(newState)) {
       store.set(newState);
       saveToCache(newState);
+    }
+  };
+
+  const reloadTokensAndBalances = async () => {
+    try {
+      await tokenStore.loadTokens(true); // Force refresh
+      await tokenStore.loadBalances();
+    } catch (error) {
+      console.error("Failed to reload tokens and balances:", error);
     }
   };
 
@@ -178,11 +186,33 @@ function createTokenStore() {
         totalValueUsd: '0.00',
         lastTokensFetch: null
       });
-    }
+    },
+    reloadTokensAndBalances
   };
 }
 
 export const tokenStore = createTokenStore();
+
+// Memoize the portfolio value calculation
+const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, tokens: FE.Token[]) => {
+  let total = 0;
+  // Assuming TokenService.fetchPrices is optimized for batch processing
+  return TokenService.fetchPrices(tokens)
+    .then(prices => {
+      for (const [canisterId, balance] of Object.entries(balances)) {
+        const token = tokens.find(t => t.canister_id === canisterId);
+        if (token && prices[canisterId]) {
+          const actualBalance = formatTokenAmount(balance.in_tokens, token.decimals);
+          total += actualBalance * prices[canisterId];
+        }
+      }
+      return formatUSD(total);
+    })
+    .catch(error => {
+      console.error('Error calculating portfolio value:', error);
+      return formatUSD(0);
+    });
+};
 
 // Derived stores for better separation
 const balancesStore = derived(tokenStore, $tokenStore => $tokenStore.balances);
@@ -191,21 +221,6 @@ const tokensStore = derived(tokenStore, $tokenStore => $tokenStore.tokens);
 export const portfolioValue = derived(
   [balancesStore, tokensStore],
   ([$balances, $tokens], set) => {
-    let total = 0;
-    TokenService.fetchPrices($tokens)
-      .then(prices => {
-        for (const [canisterId, balance] of Object.entries($balances)) {
-          const token = $tokens.find(t => t.canister_id === canisterId);
-          if (token && prices[canisterId]) {
-            const actualBalance = formatTokenAmount(balance.in_tokens, token.decimals);
-            total += actualBalance * prices[canisterId];
-          }
-        }
-        set(formatUSD(total));
-      })
-      .catch(error => {
-        console.error('Error calculating portfolio value:', error);
-        set(formatUSD(0));
-      });
+    calculatePortfolioValue($balances, $tokens).then(set);
   }
 );

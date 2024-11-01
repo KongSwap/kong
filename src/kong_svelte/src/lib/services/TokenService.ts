@@ -27,7 +27,7 @@ export class TokenService {
   public static async enrichTokenWithMetadata(token: FE.Token): Promise<FE.Token> {
     return {
       ...token,
-      logo: await this.getTokenLogo(token.canister_id),
+      logo: await this.fetchTokenLogo(token.canister_id),
     };
   }
 
@@ -92,7 +92,7 @@ export class TokenService {
     }
   }
 
-  public static async getTokenLogo(canisterId: any): Promise<any> {
+  public static async fetchTokenLogo(canisterId: any): Promise<any> {
     try {
       const actor = await getActor(canisterId, 'icrc1');
       const res = await actor.icrc1_metadata();

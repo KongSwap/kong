@@ -10,9 +10,11 @@
   let wobbleClass = "wobble";
 
   onMount(() => {
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       wobbleClass = "";
     }, 400);
+
+    return () => clearTimeout(timeoutId);
   });
 </script>
 
@@ -37,10 +39,15 @@
     src="/backgrounds/grass_post.webp"
     alt="Sign Post"
     class="absolute -bottom-5 left-0 z-10 {wobbleClass} hidden md:block max-w-[200px]"
+    loading="lazy"
   />
 </div>
 
 <style scoped>
+  .wobble {
+    animation: wobble 0.8s ease-out;
+  }
+
   @keyframes wobble {
     0% {
       transform: translateX(0%);

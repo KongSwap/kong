@@ -16,7 +16,7 @@
   }));
 </script>
 
-<div class="floating-clouds overflow-hidden z-[1]">
+<div class="floating-clouds overflow-hidden z-[1] bg-transparent">
   {#each clouds as cloud}
     <img
       src={cloud.src}
@@ -50,6 +50,7 @@
     animation-name: float;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
+    z-index: 1;
   }
 
   @keyframes float {
