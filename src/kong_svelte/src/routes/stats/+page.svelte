@@ -89,7 +89,7 @@
 
 <section class="flex min-h-[94vh] relative w-full">
   <!-- Left Spacer -->
-  <div class="hidden md:block md:w-1/12 font-alumni z-[2]">
+  <div class="hidden md:block md:w-[210px] font-alumni z-[2]">
     <StatsSignPost
       totalTvl={$poolTotals.tvl}
       totalVolume={$poolTotals.rolling_24h_volume}
@@ -98,12 +98,12 @@
   </div>
 
   <!-- Main Content -->
-  <div class="z-10 flex pt-40 justify-center w-full md:w-10/12 px-2 md:px-0">
+  <div class="z-10 flex pt-40 justify-center w-full md:w-100 px-2 md:px-0">
     <div class="flex flex-col w-full">
-    <div class="bg-k-light-blue bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 max-w-5xl w-full mx-auto">
-      <div class="inner-border p-4 w-full h-full">
+    <div class="inner-border bg-k-light-blue bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto">
+      <div class="p-4 w-full max-h-[68vh] overflow-y-auto pb-8">
         <!-- Header and Search Bar -->
-        <div class="grid grid-cols-3 items-center mb-2 md:mb-0">
+        <div class="grid grid-cols-3 items-center mb-2 md:mb-0 pb-2">
           <h2
             class="pl-1 mt-2 font-black col-span-3 md:col-span-2 text-3xl text-center md:text-left text-white mb-4 text-outline-2"
           >
@@ -160,7 +160,7 @@
                 {:else}
                   {#each $filteredSortedPools as pool (pool.id)}
                     <tr
-                      class="border-b-2 border-black text-xl md:text-3xl cursor-pointer"
+                      class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
                       animate:flip={{ duration: 300 }}
                       on:click={() => handlePoolClick(pool.id)}
                       on:keypress={(e) => handleKeyPress(e, pool.id)}
@@ -213,30 +213,97 @@
                           {formatNumberCustom(pool.rolling_24h_apy.toString(), 2)}%
                         </div>
                       </td>
-                      <td class="p-2 flex justify-center">
+                      <td class="p-2">
                         <div
-                          class="flex flex-col content-center items-center justify-center gap-y-1"
+                          class="flex content-center items-center justify-center gap-x-1"
                         >
+                        <button
+                        class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                      >
+                        <Droplets size={18} class="mr-1" /> Add LP
+                      </button>
                           <button
-                            use:tooltip={{
-                              text: `${$t("stats.swap")} ${pool.symbol_0}/${pool.symbol_1}`,
-                            }}
-                            class="rounded-full bg-[#64AD3B] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                            class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
                           >
                             <ArrowLeftRight size={18} class="mr-1" /> Swap
-                          </button>
-                          <button
-                            use:tooltip={{
-                              text: `${$t("stats.addLiquidity")} ${pool.symbol_0}/${pool.symbol_1}`,
-                            }}
-                            class="rounded-full bg-[#64AD3B] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
-                          >
-                            <Droplets size={18} class="mr-1" /> Add LP
                           </button>
                         </div>
                       </td>
                     </tr>
                   {/each}
+                  {#each $filteredSortedPools as pool (pool.id)}
+                  <tr
+                    class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
+                    animate:flip={{ duration: 300 }}
+                    on:click={() => handlePoolClick(pool.id)}
+                    on:keypress={(e) => handleKeyPress(e, pool.id)}
+                    tabindex="0"
+                    aria-label={`View details for pool ${pool.symbol_0}/${pool.symbol_1}`}
+                  >
+                    <td class="uppercase font-bold">
+                      <div class="flex items-center">
+                        <div
+                          class="isolate flex -space-x-3 overflow-hidden p-2 w-[98px]"
+                        >
+                          <img
+                            class="relative z-30 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
+                            src={
+                              $tokenMap.get(pool.address_0)?.logo ||
+                              "/tokens/not_verified.webp"
+                            }
+                            alt={pool.symbol_0}
+                            loading="lazy"
+                          />
+                          <img
+                            class="relative z-20 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
+                            src={
+                              $tokenMap.get(pool.address_1)?.logo ||
+                              "/tokens/not_verified.webp"
+                            }
+                            alt={pool.symbol_1}
+                            loading="lazy"
+                          />
+                        </div>
+                        <span>{pool.symbol_0}/{pool.symbol_1}</span>
+                        {#if pool.is_hot}
+                          <span class="flex items-center text-xs ml-2">
+                            <span class="text-xs mr-0.5">🔥</span> HOT
+                          </span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="p-2 text-right">
+                      ${formatNumberCustom(pool.price.toString(), 2)}
+                    </td>
+                    <td class="p-2 text-right">
+                      ${formatNumberCustom(pool.tvl.toString(), 2)}
+                    </td>
+                    <td class="p-2 text-right">
+                      ${formatNumberCustom(pool.rolling_24h_volume.toString(), 2)}
+                    </td>
+                    <td class="p-2 text-right">
+                      <div class="flex items-center">
+                        {formatNumberCustom(pool.rolling_24h_apy.toString(), 2)}%
+                      </div>
+                    </td>
+                    <td class="p-2">
+                      <div
+                        class="flex content-center items-center justify-center gap-x-1"
+                      >
+                      <button
+                      class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                    >
+                      <Droplets size={18} class="mr-1" /> Add LP
+                    </button>
+                        <button
+                          class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                        >
+                          <ArrowLeftRight size={18} class="mr-1" /> Swap
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
                 {/if}
               </tbody>
             </table>
@@ -248,7 +315,8 @@
   </div>
 
   <!-- Right Spacer -->
-  <div class="hidden md:block md:w-1/12"></div>
+  <div class="hidden md:block md:w-[210px] font-alumni z-[2]">
+  </div>
 </section>
 
 <style scoped>
