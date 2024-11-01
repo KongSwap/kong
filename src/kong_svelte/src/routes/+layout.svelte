@@ -5,6 +5,7 @@
   import { restoreWalletConnection } from "$lib/stores/walletStore";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import { currentEnvMode } from "$lib/utils/envUtils";
+  import Toast from "$lib/components/common/Toast.svelte";
 
   onMount(async () => {
     Promise.all([restoreWalletConnection()]);
@@ -14,6 +15,8 @@
 <div class="flex justify-center">
   <Navbar />
 </div>
+
+<Toast />
 
 <svelte:head>
   <title>
