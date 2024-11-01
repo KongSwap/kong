@@ -6,7 +6,7 @@ use std::io::BufReader;
 use tokio_postgres::Client;
 
 pub async fn dump_lp_token_ledger(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backup/lp_token_ledger.json")?;
+    let file = File::open("./backups/lp_token_ledger.json")?;
     let reader = BufReader::new(file);
     let lp_token_ledger_map: BTreeMap<StableLPTokenLedgerId, StableLPTokenLedger> = serde_json::from_reader(reader)?;
 

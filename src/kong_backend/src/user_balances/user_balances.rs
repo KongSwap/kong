@@ -4,12 +4,10 @@ use super::lp_reply::LPReply;
 use super::usd_balance::USDBalance;
 use super::user_balances_reply::UserBalancesReply;
 
-use crate::helpers::math_helpers::round_f64;
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
+use crate::ic::ckusdt::{ckusdt_amount, to_ckusdt_decimals_f64};
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode_and_caller_is_not_anonymous};
 use crate::stable_lp_token_ledger::lp_token_ledger;
-use crate::stable_lp_token_ledger::lp_token_ledger::LP_DECIMALS;
-use crate::stable_pool::pool_map;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
 use crate::stable_token::token::Token;
@@ -52,7 +50,7 @@ fn user_balance_lp_token_reply(token: &LPToken, ts: u64) -> Option<UserBalancesR
     let pool = token.pool_of()?;
 
     // convert balance to real number
-    let balance = round_f64(nat_to_decimals_f64(token.decimals, &user_lp_token_balance)?, LP_DECIMALS);
+    let balance = nat_to_decimals_f64(token.decimals, &user_lp_token_balance)?;
 
     // user_amount_0 = reserve0 * user_lp_token_balance / lp_token_total_supply
     let token_0 = pool.token_0();
@@ -62,13 +60,9 @@ fn user_balance_lp_token_reply(token: &LPToken, ts: u64) -> Option<UserBalancesR
     let denominator = lp_token_total_supply;
     let raw_amount_0 = nat_divide(&numerator, &denominator).unwrap_or(nat_zero());
     let amount_0 = nat_to_decimals_f64(token_0.decimals(), &raw_amount_0)?;
-    let usd_amount_0 = match token_0.pool_id() {
-        // return 0_f64 if pool is not found or unable to get price
-        Some(pool_id) => pool_map::get_by_pool_id(pool_id)
-            .and_then(|pool| pool.get_price_as_f64())
-            .map_or_else(|| 0_f64, |price| amount_0 * price),
-        None => 0_f64,
-    };
+    let usd_amount_0 = ckusdt_amount(&token_0, &raw_amount_0)
+        .and_then(|amount_0| to_ckusdt_decimals_f64(&amount_0).ok_or("Error converting amount 0 to ckUSDT".to_string()))
+        .unwrap_or(0_f64);
 
     // user_amount_1 = reserve1 * user_lp_token_balance / lp_token_total_supply
     let token_1 = pool.token_1();
@@ -77,8 +71,9 @@ fn user_balance_lp_token_reply(token: &LPToken, ts: u64) -> Option<UserBalancesR
     let numerator = nat_multiply(&reserve1, &user_lp_token_balance);
     let raw_amount_1 = nat_divide(&numerator, &denominator).unwrap_or(nat_zero());
     let amount_1 = nat_to_decimals_f64(token_1.decimals(), &raw_amount_1)?;
-    // currently all token_1 must be ckUSDT, so take as 1:1
-    let usd_amount_1 = amount_1;
+    let usd_amount_1 = ckusdt_amount(&token_1, &raw_amount_1)
+        .and_then(|amount_1| to_ckusdt_decimals_f64(&amount_1).ok_or("Error converting amount 1 to ckUSDT".to_string()))
+        .unwrap_or(0_f64);
 
     let usd_balance = usd_amount_0 + usd_amount_1;
 

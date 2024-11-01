@@ -6,7 +6,7 @@ use std::io::BufReader;
 use tokio_postgres::Client;
 
 pub async fn dump_pools(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backup/pools.json")?;
+    let file = File::open("./backups/pools.json")?;
     let reader = BufReader::new(file);
     let pools_map: BTreeMap<StablePoolId, StablePool> = serde_json::from_reader(reader)?;
 

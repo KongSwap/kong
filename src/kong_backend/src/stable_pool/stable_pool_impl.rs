@@ -5,7 +5,8 @@ use super::pool_map;
 use super::stable_pool::StablePool;
 
 use crate::helpers::math_helpers::price_rounded;
-use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply_f64, nat_to_bigint, nat_to_decimal_precision, nat_zero};
+use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision, nat_zero};
+use crate::ic::ckusdt::ckusdt_amount;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -103,14 +104,13 @@ impl StablePool {
         price_rounded(&self.get_price()?)
     }
 
-    // returns total balance (balance_0 + balance_1) in token_1
+    // returns total balance (balance_0 + balance_1) in ckusdt
     pub fn get_balance(&self) -> Nat {
         let token_0 = self.token_0();
         let token_1 = self.token_1();
-        let balance_0_in_token_1 = nat_to_decimal_precision(&self.balance_0, token_0.decimals(), token_1.decimals());
-        let price = self.get_price_as_f64().unwrap_or(0_f64);
-        let balance_0 = nat_multiply_f64(&balance_0_in_token_1, price).unwrap_or(nat_zero());
-        nat_add(&balance_0, &self.balance_1)
+        let balance_0_ckusdt = ckusdt_amount(&token_0, &self.balance_0).unwrap_or(nat_zero());
+        let balance_1_ckusdt = ckusdt_amount(&token_1, &self.balance_1).unwrap_or(nat_zero());
+        nat_add(&balance_0_ckusdt, &balance_1_ckusdt)
     }
 
     pub fn set_on_kong(&mut self, on_kong: bool) {

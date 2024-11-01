@@ -16,7 +16,7 @@ enum TokenType {
 }
 
 pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
-    let file = File::open("./backup/tokens.json")?;
+    let file = File::open("./backups/tokens.json")?;
     let reader = BufReader::new(file);
     let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
 

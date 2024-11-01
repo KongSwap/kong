@@ -10,6 +10,7 @@ IDENTITY="--identity kong_user1"	# cannot be mint account
 
 KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
+# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ICP", 50_000_000, "ICP")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ICP", 200_000_000, "ckUSDT")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ICP", 425_500, "ckUSDT")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckUSDT", 0, "ICP")'
@@ -52,5 +53,7 @@ KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckUSDT", 5_000_000, "KONG2")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("KONG2", 50_000_000_000, "ckUSDC")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckUSDC", 5_000_000, "KONG2")'
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("KONG2", 50_000_000_000, "ckBTC")'
-dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckBTC", 50_000, "KONG2")'
+# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("KONG2", 50_000_000_000, "ckBTC")'
+# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckBTC", 50_000, "KONG2")'
+# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("KONG1", 50_000_000, "KONG2")'
+# dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("KONG2", 50_000_000, "KONG1")'

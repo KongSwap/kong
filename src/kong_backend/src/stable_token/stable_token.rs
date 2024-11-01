@@ -1,9 +1,11 @@
-use super::ic_token::ICToken;
-use super::lp_token::LPToken;
 use candid::{CandidType, Decode, Encode};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+
+use super::ic_token::ICToken;
+use super::lp_token::LPToken;
+
 const TOKEN_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

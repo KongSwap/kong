@@ -355,7 +355,7 @@ pub fn swap_amounts(
 
 /// Swap amount 0 of a given pool
 /// use_lp_fee and use_gas_fee are used to overwrite the default LP and gas fees, if None, then use the pool's default
-pub fn swap_amount_0(
+fn swap_amount_0(
     pool: &StablePool,
     amount_0: &Nat,
     user_fee_level: Option<u8>, // user specific fee level, 0 = 100% fee (no discount), 100 = 0% fee (max discount)
@@ -436,7 +436,7 @@ pub fn swap_amount_0(
 
 /// Swap amount 1 of a given pool
 /// use_lp_fee and use_gas_fee are used to overwrite the default LP and gas fees, if None, then use the pool's default
-pub fn swap_amount_1(
+fn swap_amount_1(
     pool: &StablePool,
     amount_1: &Nat,
     user_fee_level: Option<u8>,
@@ -512,7 +512,7 @@ pub fn swap_amount_1(
     })
 }
 
-pub fn get_slippage(price_achieved: &BigRational, price_expected: &BigRational) -> Option<f64> {
+fn get_slippage(price_achieved: &BigRational, price_expected: &BigRational) -> Option<f64> {
     if price_achieved > price_expected {
         return Some(0.0); // if price is greater than expected, slippage is 0
     }
