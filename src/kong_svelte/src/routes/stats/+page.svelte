@@ -1,8 +1,8 @@
 <!-- src/kong_svelte/src/routes/stats/+page.svelte -->
 <script lang="ts">
+	import { tooltip } from '$lib/actions/tooltip';
   import { t } from "$lib/locales/translations";
   import { writable } from "svelte/store";
-  import Button from "$lib/components/common/Button.svelte";
   import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import StatsSignPost from "$lib/components/stats/StatsSignPost.svelte";
@@ -200,13 +200,13 @@
                         </div>
                       </td>
                       <td class="p-2 text-right">
-                        {formatNumberCustom(pool.price.toString(), 2)}
+                        ${formatNumberCustom(pool.price.toString(), 2)}
                       </td>
                       <td class="p-2 text-right">
-                        {formatNumberCustom(pool.tvl.toString(), 2)}
+                        ${formatNumberCustom(pool.tvl.toString(), 2)}
                       </td>
                       <td class="p-2 text-right">
-                        {formatNumberCustom(pool.rolling_24h_volume.toString(), 2)}
+                        ${formatNumberCustom(pool.rolling_24h_volume.toString(), 2)}
                       </td>
                       <td class="p-2 text-right">
                         <div class="flex items-center">
@@ -215,22 +215,24 @@
                       </td>
                       <td class="p-2 flex justify-center">
                         <div
-                          class="flex flex-col content-center items-center justify-center gap-y-3.5"
+                          class="flex flex-col content-center items-center justify-center gap-y-1"
                         >
-                          <Button
-                            tooltipText={`${$t("stats.swap")} ${pool.symbol_0}/${pool.symbol_1}`}
-                            variant="green"
-                            size="small"
+                          <button
+                            use:tooltip={{
+                              text: `${$t("stats.swap")} ${pool.symbol_0}/${pool.symbol_1}`,
+                            }}
+                            class="rounded-full bg-[#64AD3B] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
                           >
-                            <ArrowLeftRight size={20} />
-                          </Button>
-                          <Button
-                            tooltipText={`${$t("stats.addLiquidity")} ${pool.symbol_0}/${pool.symbol_1}`}
-                            variant="green"
-                            size="small"
+                            <ArrowLeftRight size={18} class="mr-1" /> Swap
+                          </button>
+                          <button
+                            use:tooltip={{
+                              text: `${$t("stats.addLiquidity")} ${pool.symbol_0}/${pool.symbol_1}`,
+                            }}
+                            class="rounded-full bg-[#64AD3B] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
                           >
-                            <Droplets size={20} />
-                          </Button>
+                            <Droplets size={18} class="mr-1" /> Add LP
+                          </button>
                         </div>
                       </td>
                     </tr>
