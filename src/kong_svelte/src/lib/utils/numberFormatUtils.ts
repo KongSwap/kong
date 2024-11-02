@@ -28,3 +28,8 @@ export const formatTokenAmount = (amount: bigint | number | string, decimals: nu
   const amountNumber = Number(amount);
   return amountNumber / Math.pow(10, decimals);
 };
+
+export const parseTokenAmount = (formattedAmount: number | string, decimals: number): bigint => {
+  const amountNumber = Number(formattedAmount);
+  return BigInt(Math.round(amountNumber * Math.pow(10, decimals)));
+};
