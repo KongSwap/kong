@@ -1,555 +1,609 @@
 <script lang="ts">
-    import { fade, fly, crossfade } from 'svelte/transition';
-    import { flip } from 'svelte/animate';
-    import { quintOut } from 'svelte/easing';
-    import { onMount, onDestroy } from 'svelte';
-    import debounce from 'lodash/debounce';
-    import BigNumber from 'bignumber.js';
-    import { SwapService } from '$lib/services/SwapService';
-    import { tokenStore } from '$lib/stores/tokenStore';
-    import { walletStore } from '$lib/stores/walletStore';
-    import SwapPanel from '$lib/components/swap/swap_ui/SwapPanel.svelte';
-    import Button from '$lib/components/common/Button.svelte';
-    import TokenSelector from '$lib/components/swap/swap_ui/TokenSelectorModal.svelte';
-    import SwapConfirmation from '$lib/components/swap/swap_ui/SwapConfirmation.svelte';
-    import { formatNumberCustom } from '$lib/utils/formatNumberCustom';
-    import { t } from '$lib/locales/translations';
-    import { tweened } from 'svelte/motion';
-    import { cubicOut } from 'svelte/easing';
-    import { toastStore } from '$lib/stores/toastStore';
-    export let slippage = 2;
-    export let initialPool: string | null = null;
+  import { fade } from "svelte/transition";
+  import { tweened } from "svelte/motion";
+  import { cubicOut } from "svelte/easing";
+  import { onMount, onDestroy } from "svelte";
+  import debounce from "lodash/debounce";
+  import { SwapService } from "$lib/services/SwapService";
+  import { walletStore } from "$lib/stores/walletStore";
+  import { tokenStore } from "$lib/stores/tokenStore";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
+  import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
+  import Button from "$lib/components/common/Button.svelte";
+  import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
+  import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
+  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
+  import BigNumber from "bignumber.js";
+  import { fly } from 'svelte/transition';
+  import { flip } from 'svelte/animate';
+  import { quintOut } from 'svelte/easing';
 
-    let payToken = initialPool?.split('_')[0] || 'ICP';
-    let receiveToken = initialPool?.split('_')[1] || 'ckBTC';
-    let payAmount = '';
-    let receiveAmount = '0';
-    let displayReceiveAmount = '0';
-    let isCalculating = false;
-    let error: string | null = null;
-    let showPayTokenSelector = false;
-    let showReceiveTokenSelector = false;
-    let isProcessing = false;
-    let isConfirmationOpen = false;
-    let price = '0';
-    let usdValue = '0';
-    let swapSlippage = 0;
-    let requestId: bigint | null = null;
-    let isAnimating = false;
-    let intervalId: NodeJS.Timer;
+  const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
+  const swapService = SwapService.getInstance();
 
-    let panels = [
-        { id: 'pay', type: 'pay', title: $t('swap.pay') },
-        { id: 'receive', type: 'receive', title: $t('swap.receive') }
-    ];
+  export let slippage = 2;
+  export let initialPool: string | null = null;
 
-    let gasFee = '0';
-    let lpFee = '0';
-    let lpFeeToken = '';
-    let gasFeeToken = '';
+  // Core state
+  let payToken = initialPool?.split("_")[0] || "ICP";
+  let receiveToken = initialPool?.split("_")[1] || "ckBTC";
+  let payAmount = "";
+  let receiveAmount = "0";
+  let displayReceiveAmount = "0";
 
-    const swapService = SwapService.getInstance();
+  // UI state
+  let isCalculating = false;
+  let error: string | null = null;
+  let showPayTokenSelector = false;
+  let showReceiveTokenSelector = false;
+  let isProcessing = false;
+  let isConfirmationOpen = false;
 
-    let tweenedReceiveAmount = tweened(0, {
-        duration: 400,
-        easing: cubicOut
-    });
+  // Swap details
+  let price = "0";
+  let usdValue = "0";
+  let swapSlippage = 0;
+  let gasFee = "0";
+  let lpFee = "0";
+  let tokenFee: string | undefined;
 
-    onMount(async () => {
-        if ($walletStore.isConnected) {
-            await tokenStore.loadTokens();
-            await tokenStore.loadBalances();
-        }
+  // Transaction state
+  let requestId: bigint | null = null;
+  let transactionStateObject: any = null;
+  let intervalId: any = null;
 
-        intervalId = setInterval(async () => {
-            if ($walletStore.isConnected) {
-                await tokenStore.loadBalances();
-            }
-        }, 10000);
-    });
+  let tweenedReceiveAmount = tweened(0, {
+    duration: 400,
+    easing: cubicOut,
+  });
 
-    onDestroy(() => {
-        if (intervalId) {
-            clearInterval(intervalId);
-        }
-    });
+  let isAnimating = false;
+  let panels = [
+    { id: 'pay', type: 'pay', title: 'You Pay' },
+    { id: 'receive', type: 'receive', title: 'You Receive' }
+  ];
 
-    $: if ($walletStore.isConnected) {
-        tokenStore.loadBalances();
+  onMount(async () => {
+    if ($walletStore.isConnected) {
+      await tokenStore.loadTokens();
+      await tokenStore.loadBalances();
+    }
+  });
+
+  onDestroy(() => {
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+  });
+
+  $: isValidInput = payAmount && Number(payAmount) > 0 && !isCalculating;
+  $: buttonText = getButtonText(
+    isCalculating,
+    isValidInput,
+    isProcessing,
+    error,
+  );
+
+  $: panelData = {
+    pay: {
+      token: payToken,
+      amount: payAmount,
+      balance: getTokenBalance(payToken),
+      onTokenSelect: () => (showPayTokenSelector = true),
+      onAmountChange: handleInputChange,
+      disabled: isProcessing,
+      showPrice: false,
+    },
+    receive: {
+      token: receiveToken,
+      amount: $tweenedReceiveAmount.toFixed(6),
+      balance: getTokenBalance(receiveToken),
+      onTokenSelect: () => (showReceiveTokenSelector = true),
+      onAmountChange: () => {},
+      disabled: isProcessing,
+      showPrice: true,
+      usdValue,
+      slippage: swapSlippage,
+      maxSlippage: slippage,
+    },
+  };
+
+  function getButtonText(
+    isCalculating: boolean,
+    isValidInput: boolean,
+    isProcessing: boolean,
+    error: string | null,
+  ): string {
+    if (!$walletStore.isConnected) return "Connect Wallet";
+    if (isCalculating) return "Calculating...";
+    if (isProcessing) return "Processing...";
+    if (!isValidInput) return "Enter Amount";
+    if (error) return error;
+    return "Swap";
+  }
+
+  function getTokenBalance(symbol: string): string {
+    const token = $tokenStore.tokens?.find((t) => t.symbol === symbol);
+    if (!token?.canister_id) return "0";
+    return $tokenStore.balances[token.canister_id]?.toString() || "0";
+  }
+
+  function getTokenDecimals(symbol: string): number {
+    const token = $tokenStore.tokens?.find((t) => t.symbol === symbol);
+    return token?.decimals || 8;
+  }
+
+  async function getSwapQuote(amount: string) {
+    if (!amount || Number(amount) <= 0 || isNaN(Number(amount))) {
+      setReceiveAmount("0");
+      return;
     }
 
-    $: isValidInput = payAmount && Number(payAmount) > 0 && !isCalculating;
-    $: buttonText = getButtonText(isCalculating, isValidInput, isProcessing, error);
-    
-    $: panelData = {
-        pay: {
-            token: payToken,
-            amount: payAmount,
-            balance: (() => {
-                const token = $tokenStore.tokens?.find(t => t.symbol === payToken);
-                if (!token?.canister_id) return '0';
-                const balance = $tokenStore.balances[token.canister_id];
-                return balance
-            })(),
-            onTokenSelect: () => showPayTokenSelector = true,
-            onAmountChange: handleInputChange,
-            disabled: isProcessing,
-            showPrice: false
-        },
-        receive: {
-            token: receiveToken,
-            amount: $tweenedReceiveAmount.toFixed(6),
-            balance: (() => {
-                const token = $tokenStore.tokens?.find(t => t.symbol === receiveToken);
-                if (!token?.canister_id) return '0';
-                const balance = $tokenStore.balances[token.canister_id];
-                return balance
-            })(),
-            onTokenSelect: () => showReceiveTokenSelector = true,
-            onAmountChange: () => {},
-            disabled: isProcessing,
-            showPrice: true,
-            usdValue,
-            slippage: swapSlippage,
-            maxSlippage: slippage
-        }
-    };
+    isCalculating = true;
+    error = null;
 
-    function getButtonText(isCalculating: boolean, isValidInput: boolean, isProcessing: boolean, error: string | null): string {
-        if (isCalculating) return $t('swap.calculating');
-        if (isProcessing) return $t('swap.processing');
-        if (!isValidInput) return $t('swap.enterAmount');
-        return $t('swap.swap');
-    }
+    try {
+      const payDecimals = getTokenDecimals(payToken);
+      const payAmountBigInt = swapService.toBigInt(amount, payDecimals);
 
-    function getTokenDecimals(symbol: string): number {
-        const token = $tokenStore.tokens.find(t => t.symbol === symbol);
-        return token?.decimals || 8;
-    }
+      const quote = await swapService.swap_amounts(
+        payToken,
+        payAmountBigInt,
+        receiveToken,
+      );
 
-    function toBigInt(amount: string, decimals: number): bigint {
-        if (!amount || isNaN(Number(amount))) return BigInt(0);
-        return BigInt(
-            new BigNumber(amount)
-                .times(new BigNumber(10).pow(decimals))
-                .integerValue()
-                .toString()
+      if ("Ok" in quote) {
+        const receiveDecimals = getTokenDecimals(receiveToken);
+        const receivedAmount = swapService.fromBigInt(
+          quote.Ok.receive_amount,
+          receiveDecimals,
         );
-    }
 
-    function fromBigInt(amount: bigint, decimals: number): string {
-        try {
-            const result = new BigNumber(amount.toString())
-                .div(new BigNumber(10).pow(decimals))
-                .toString();
-            return isNaN(Number(result)) ? '0' : result;
-        } catch {
-            return '0';
+        setReceiveAmount(receivedAmount);
+        setDisplayAmount(formatNumberCustom(receivedAmount, 6));
+
+        price = quote.Ok.price.toString();
+        swapSlippage = quote.Ok.slippage;
+        usdValue = new BigNumber(receivedAmount)
+          .times(quote.Ok.price)
+          .toFormat(2);
+
+        if (quote.Ok.txs.length > 0) {
+          const tx = quote.Ok.txs[0];
+          lpFee = swapService.fromBigInt(tx.lp_fee, receiveDecimals);
+          gasFee = swapService.fromBigInt(tx.gas_fee, receiveDecimals);
+          tokenFee = tx.receive_symbol;
         }
+      } else {
+        toastStore.error(quote.Err);
+        setReceiveAmount("0");
+      }
+    } catch (err) {
+      toastStore.error(
+        err instanceof Error ? err.message : "An error occurred",
+      );
+      setReceiveAmount("0");
+    } finally {
+      isCalculating = false;
+    }
+  }
+
+  const debouncedGetQuote = debounce(getSwapQuote, 500);
+
+  function setReceiveAmount(amount: string) {
+    receiveAmount = amount;
+    tweenedReceiveAmount.set(Number(amount));
+  }
+
+  function setDisplayAmount(amount: string) {
+    displayReceiveAmount = amount;
+    tweenedReceiveAmount.set(Number(amount));
+  }
+
+  async function handleTokenSwitch() {
+    if (isAnimating) return;
+    
+    isAnimating = true;
+    
+    panels = panels.map((panel, i) => ({
+        ...panel,
+        direction: i === 0 ? 'topLeft' : 'bottomRight'
+    })).reverse();
+    
+    [payToken, receiveToken] = [receiveToken, payToken];
+    payAmount = "";
+    setReceiveAmount("0");
+    
+    setTimeout(() => {
+        isAnimating = false;
+        panels = panels.reverse();
+    }, 200);
+  }
+
+  function handleInputChange(event: Event | CustomEvent) {
+    let input: string;
+
+    if ("detail" in event && event.detail?.value) {
+      input = event.detail.value;
+    } else {
+      input = (event.target as HTMLInputElement).value;
     }
 
-    async function getSwapQuote(amount: string) {
-        if (!amount || Number(amount) <= 0 || isNaN(Number(amount))) {
-            setReceiveAmount('0');
-            return;
+    const cleanedInput = input.replace(/[^0-9.]/g, "");
+    if (/^\d*\.?\d*$/.test(cleanedInput) || cleanedInput === "") {
+      payAmount = cleanedInput;
+      debouncedGetQuote(cleanedInput);
+    }
+  }
+
+  function handleSelectToken(type: "pay" | "receive", token: string) {
+    if (
+      (type === "pay" && token === receiveToken) ||
+      (type === "receive" && token === payToken)
+    ) {
+      toastStore.error("Cannot select the same token for both sides");
+      return;
+    }
+
+    if (type === "pay") {
+      payToken = token;
+      showPayTokenSelector = false;
+    } else {
+      receiveToken = token;
+      showReceiveTokenSelector = false;
+    }
+
+    if (payAmount) debouncedGetQuote(payAmount);
+  }
+
+  function startPolling(reqId: bigint) {
+    intervalId = setInterval(async () => {
+      try {
+        const status = await swapService.requests([reqId]);
+        if (!status.Ok?.[0]) return;
+
+        const requestReply = status.Ok[0].reply;
+        transactionStateObject = status;
+
+        if (requestReply?.Pending) {
+          return;
+        } else if (requestReply?.Swap) {
+          if (requestReply.Swap.status === "Success") {
+            clearInterval(intervalId);
+            handleSwapSuccess(requestReply.Swap);
+          } else if (requestReply.Swap.status === "Failed") {
+            clearInterval(intervalId);
+            handleSwapFailure(requestReply.Swap);
+          }
         }
+      } catch (error) {
+        clearInterval(intervalId);
+        console.error("Error polling transaction:", error);
+        handleSwapFailure(null);
+      }
+    }, 500);
+  }
 
-        isCalculating = true;
-        error = null;
-
-        try {
-            const payDecimals = getTokenDecimals(payToken);
-            const payAmountBigInt = toBigInt(amount, payDecimals);
-
-            const quote = await swapService.swap_amounts(
-                payToken,
-                payAmountBigInt,
-                receiveToken
-            );
-
-            if ('Ok' in quote) {
-                const receiveDecimals = getTokenDecimals(receiveToken);
-                const receivedAmount = fromBigInt(quote.Ok.receive_amount, receiveDecimals);
-                
-                if (isNaN(Number(receivedAmount))) {
-                    throw new Error('Invalid received amount');
-                }
-                
-                setReceiveAmount(receivedAmount);
-                setDisplayAmount(formatNumberCustom(receivedAmount, 6));
-                
-                const priceNum = Number(quote.Ok.price);
-                price = !isNaN(priceNum) ? priceNum.toString() : '0';
-                swapSlippage = !isNaN(quote.Ok.slippage) ? quote.Ok.slippage : 0;
-                
-                const usdValueNum = new BigNumber(receivedAmount).times(quote.Ok.price);
-                usdValue = !usdValueNum.isNaN() ? usdValueNum.toFormat(2) : '0';
-
-                if (quote.Ok.txs.length > 0) {
-                    const firstTx = quote.Ok.txs[0];
-                    lpFee = fromBigInt(firstTx.lp_fee, receiveDecimals);
-                    gasFee = fromBigInt(firstTx.gas_fee, receiveDecimals);
-                    lpFeeToken = firstTx.receive_symbol;
-                    gasFeeToken = firstTx.receive_symbol;
-                }
-            } else if ('Err' in quote) {
-                toastStore.error(quote.Err);
-                setReceiveAmount('0');
-            }
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'An error occurred';
-            toastStore.error(errorMsg);
-            setReceiveAmount('0');
-        } finally {
-            isCalculating = false;
-        }
+  async function handleSwap() {
+    if (!isValidInput || isProcessing) {
+        console.log('Invalid input or already processing');
+        return;
     }
 
-    const debouncedGetQuote = debounce(getSwapQuote, 500);
+    isProcessing = true;
+    error = null;
 
-    function setReceiveAmount(amount: string) {
-        receiveAmount = amount;
-        tweenedReceiveAmount.set(Number(amount));
-    }
+    try {
+        console.log('Starting swap execution');
+        const requestId = await swapService.executeSwap({
+            payToken,
+            payAmount,
+            receiveToken,
+            receiveAmount,
+            slippage,
+            backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        });
 
-    function setDisplayAmount(amount: string) {
-        const numAmount = Number(amount);
-        tweenedReceiveAmount.set(numAmount);
-        displayReceiveAmount = amount;
-    }
+        console.log('Swap execution result:', requestId);
 
-    async function handleTokenSwitch() {
-        if (isAnimating) return;
-        
-        isAnimating = true;
-        
-        panels = panels.map((panel, i) => ({
-            ...panel,
-            direction: i === 0 ? 'topLeft' : 'bottomRight'
-        })).reverse();
-        
-        const oldPayToken = payToken;
-        const oldDisplayAmount = displayReceiveAmount;
-        
-        payToken = receiveToken;
-        receiveToken = oldPayToken;
-        
-        payAmount = '';
-        receiveAmount = '0';
-        displayReceiveAmount = '0';
-        
-        if (oldDisplayAmount !== '0') {
-            payAmount = oldDisplayAmount;
-            await debouncedGetQuote(oldDisplayAmount);
-        }
-        
-        setTimeout(() => {
-            isAnimating = false;
-            panels = panels.reverse();
-        }, 200);
-    }
-
-    function handleInputChange(event: Event | CustomEvent) {
-        let input: string;
-        
-        if ('detail' in event && event.detail?.value) {
-            // Handle custom event from max button
-            input = event.detail.value;
+        if (requestId) {
+            console.log('Starting polling with requestId:', requestId);
+            startPolling(requestId);
         } else {
-            // Handle normal input event
-            input = (event.target as HTMLInputElement).value;
+            throw new Error("Failed to execute swap - no requestId returned");
         }
-        
-        const cleanedInput = input.replace(/[^0-9.]/g, '');
-        if (/^\d*\.?\d*$/.test(cleanedInput) || cleanedInput === '') {
-            payAmount = cleanedInput;
-            debouncedGetQuote(cleanedInput);
-        }
-    }
-
-    function handleSelectToken(type: 'pay' | 'receive', token: string) {
-        // Don't allow selecting the same token that's already selected on the other side
-        if ((type === 'pay' && token === receiveToken) || 
-            (type === 'receive' && token === payToken)) {
-            toastStore.error("Cannot select the same token for both sides");
-            return;
-        }
-
-        if (type === 'pay') {
-            payToken = token;
-            showPayTokenSelector = false;
-        } else {
-            receiveToken = token;
-            showReceiveTokenSelector = false;
-        }
-        if (payAmount) debouncedGetQuote(payAmount);
-    }
-
-    async function handleSwap() {
-        if (!isValidInput || isProcessing) return;
-
-        isProcessing = true;
-        error = null;
-        
-        try {
-            const payDecimals = getTokenDecimals(payToken);
-            const receiveDecimals = getTokenDecimals(receiveToken);
-            const payAmountBigInt = toBigInt(payAmount, payDecimals);
-            const receiveAmountBigInt = toBigInt(receiveAmount, receiveDecimals);
-            
-            const approved = await swapService.approve({
-                amount: payAmountBigInt,
-                spender: { 
-                    owner: 'l4lgk-raaaa-aaaar-qahpq-cai',
-                    subaccount: [] 
-                },
-                expires_at: [], 
-                fee: [], 
-                memo: [], 
-                from_subaccount: [], 
-                created_at_time: [] 
-            });
-
-            if ('Err' in approved) {
-                throw new Error(`Failed to approve tokens: ${approved.Err}`);
-            }
-
-            const result = await swapService.swap_async({
-                pay_token: payToken,
-                pay_amount: payAmountBigInt,
-                receive_token: receiveToken,
-                receive_amount: [receiveAmountBigInt],
-                max_slippage: [slippage],
-                receive_address: [],
-                referred_by: [],
-                pay_tx_id: []
-            });
-
-            if ('Ok' in result) {
-                requestId = result.Ok;
-                startPolling(result.Ok);
-            } else {
-                toastStore.error(result.Err);
-                isConfirmationOpen = false;
-            }
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Swap failed';
-            toastStore.showError(errorMsg);
-            isConfirmationOpen = false;
-        } finally {
-            if (error) isProcessing = false;
-        }
-    }
-
-    function startPolling(reqId: bigint) {
-        let pollInterval: NodeJS.Timer;
-        let timeout: NodeJS.Timeout;
-
-        pollInterval = setInterval(async () => {
-            try {
-                const status = await swapService.requests([reqId]);
-                
-                if ('Ok' in status && status.Ok.length > 0) {
-                    const request = status.Ok[0];
-                    if (request.reply && 'Swap' in request.reply) {
-                        const swapReply = request.reply.Swap;
-                        
-                        if (swapReply.status === 'Success') {
-                            clearInterval(pollInterval);
-                            clearTimeout(timeout);
-                            handleSwapSuccess(swapReply);
-                        } else if (swapReply.status === 'Failed') {
-                            clearInterval(pollInterval);
-                            clearTimeout(timeout);
-                            handleSwapFailure(swapReply);
-                        }
-                    }
-                }
-            } catch (err) {
-                clearInterval(pollInterval);
-                clearTimeout(timeout);
-                toastStore.error('Failed to check swap status');
-                isProcessing = false;
-            }
-        }, 1000);
-
-        timeout = setTimeout(() => {
-            clearInterval(pollInterval);
-            toastStore.error('Swap timed out');
-            isProcessing = false;
-        }, 60000);
-    }
-
-    function handleSwapSuccess(reply: any) {
+    } catch (err) {
+        console.error('Swap execution error:', err);
+        toastStore.error(err instanceof Error ? err.message : "Swap failed");
         isProcessing = false;
         isConfirmationOpen = false;
-        payAmount = '';
-        setReceiveAmount('0');
-        setDisplayAmount('0');
+    }
+  }
+
+  function handleSwapSuccess(reply: any) {
+    isProcessing = false;
+    isConfirmationOpen = false;
+
+    if (reply.receive_amount) {
+      const receiveDecimals = getTokenDecimals(receiveToken);
+      const formattedAmount = swapService.fromBigInt(
+        reply.receive_amount,
+        receiveDecimals,
+      );
+      setReceiveAmount(formattedAmount);
+      setDisplayAmount(formatNumberCustom(formattedAmount, 6));
     }
 
-    function handleSwapFailure(reply: any) {
-        isProcessing = false;
-        isConfirmationOpen = false;
-        toastStore.error('Swap failed');
-    }
+    clearInputs();
+    toastStore.success("Swap successful");
+    tokenStore.loadBalances(); // Refresh balances after successful swap
+  }
+
+  function handleSwapFailure(reply: any) {
+    isProcessing = false;
+    isConfirmationOpen = false;
+    toastStore.error("Swap failed");
+  }
+
+  function clearInputs() {
+    payAmount = "";
+    setReceiveAmount("0");
+    setDisplayAmount("0");
+    price = "0";
+    usdValue = "0";
+    swapSlippage = 0;
+    lpFee = "0";
+    gasFee = "0";
+    tokenFee = undefined;
+    requestId = null;
+    transactionStateObject = null;
+  }
 </script>
 
 <div class="swap-wrapper">
-    <div class="swap-container" in:fade={{ duration: 420 }}>
-        <div class="panels-container">
-            {#each panels as panel (panel.id)}
-                <div 
-                    animate:flip={{
-                        duration: 169,
-                        easing: quintOut
-                    }}
-                    class="panel-wrapper"
-                >
-                    <div 
-                        class="panel-content"
-                    >
-                        <SwapPanel
-                            title={panel.title}
-                            {...panelData[panel.type]}
-                        />
-                    </div>
-                </div>
-            {/each}
-
-            <button 
-                class="switch-button {isAnimating ? 'rotating' : ''}"
-                on:click={handleTokenSwitch}
-                disabled={isProcessing || isAnimating} 
-            >
-                <img 
-                    src="/pxcomponents/arrow.svg"
-                    alt="swap"
-                    class="swap-arrow"
-                />
-            </button>
+  <div class="swap-container" in:fade={{ duration: 420 }}>
+    <div class="panels-container">
+      {#each panels as panel (panel.id)}
+        <div 
+          animate:flip={{
+            duration: 169,
+            easing: quintOut
+          }}
+          class="panel-wrapper"
+        >
+          <div class="panel-content">
+            <SwapPanel
+              title={panel.title}
+              {...panelData[panel.type]}
+            />
+          </div>
         </div>
+      {/each}
 
-        <div class="swap-footer mt-3">
-            <Button 
-                variant="yellow"
-                disabled={!isValidInput || isProcessing || isAnimating}
-                on:click={() => isConfirmationOpen = true}
-                width="100%"
-            >
-                {buttonText}
-            </Button>
-        </div>
+      <button 
+        class="switch-button {isAnimating ? 'rotating' : ''}"
+        on:click={handleTokenSwitch}
+        disabled={isProcessing || isAnimating} 
+      >
+        <img src="/pxcomponents/arrow.svg" alt="swap" class="swap-arrow" />
+      </button>
     </div>
+
+    <div class="swap-footer mt-3">
+      <Button
+        variant="yellow"
+        disabled={!isValidInput || isProcessing || isAnimating || !$walletStore.isConnected}
+        onClick={() => {
+          console.log('Button clicked, current isConfirmationOpen:', isConfirmationOpen);
+          isConfirmationOpen = true;
+          console.log('Set isConfirmationOpen to:', isConfirmationOpen);
+        }}
+        width="100%"
+      >
+        {buttonText}
+      </Button>
+    </div>
+  </div>
 </div>
 
 {#if showPayTokenSelector}
-    <div class="modal-overlay" transition:fade={{ duration: 100 }} on:click|self={() => showPayTokenSelector = false}>
-        <div class="modal-content" on:click|stopPropagation>
-            <TokenSelector 
-                show={true}
-                onSelect={(token) => handleSelectToken('pay', token)}
-                onClose={() => showPayTokenSelector = false}
-                currentToken={receiveToken}
-            />
-        </div>
+  <div
+    class="modal-overlay"
+    transition:fade={{ duration: 100 }}
+    on:click|self={() => (showPayTokenSelector = false)}
+  >
+    <div class="modal-content">
+      <TokenSelector
+        show={true}
+        onSelect={(token) => handleSelectToken("pay", token)}
+        onClose={() => (showPayTokenSelector = false)}
+        currentToken={receiveToken}
+      />
     </div>
+  </div>
 {/if}
 
 {#if showReceiveTokenSelector}
-    <div class="modal-overlay" transition:fade={{ duration: 100 }} on:click|self={() => showReceiveTokenSelector = false}>
-        <div class="modal-content" on:click|stopPropagation>
-            <TokenSelector 
-                show={true}
-                onSelect={(token) => handleSelectToken('receive', token)}
-                onClose={() => showReceiveTokenSelector = false}
-                currentToken={payToken}
-            />
-        </div>
+  <div
+    class="modal-overlay"
+    transition:fade={{ duration: 100 }}
+    on:click|self={() => (showReceiveTokenSelector = false)}
+  >
+    <div class="modal-content">
+      <TokenSelector
+        show={true}
+        onSelect={(token) => handleSelectToken("receive", token)}
+        onClose={() => (showReceiveTokenSelector = false)}
+        currentToken={payToken}
+      />
     </div>
+  </div>
 {/if}
 
 {#if isConfirmationOpen}
-    <div class="modal-overlay" transition:fade on:click|self={() => isConfirmationOpen = false}>
-        <div class="modal-content" on:click|stopPropagation>
-            <SwapConfirmation 
-                payToken={payToken}
-                payAmount={payAmount}
-                receiveToken={receiveToken}
-                receiveAmount={receiveAmount}
-                onConfirm={handleSwap}
-                onClose={() => isConfirmationOpen = false}
-            />
-        </div>
+  <div
+    class="modal-overlay"
+    transition:fade={{ duration: 200 }}
+    on:click|self={() => {
+      console.log('Closing modal from overlay click');
+      isConfirmationOpen = false;
+    }}
+  >
+    <div class="modal-content" on:click|stopPropagation>
+      <SwapConfirmation
+        {payToken}
+        {payAmount}
+        {receiveToken}
+        receiveAmount={displayReceiveAmount}
+        onConfirm={() => {
+          console.log('Confirm clicked in SwapConfirmation');
+          handleSwap();
+        }}
+        onClose={() => {
+          console.log('Close clicked in SwapConfirmation');
+          isConfirmationOpen = false;
+        }}
+        {price}
+        {gasFee}
+        {lpFee}
+        slippage={swapSlippage}
+      />
     </div>
+  </div>
 {/if}
 
-<style>
+<style lang="postcss">
+  .swap-wrapper {
+    width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .swap-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .panels-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .panel-wrapper {
+    position: relative;
+    transition: all 0.15s ease;
+    transform-style: preserve-3d;
+  }
+
+  .switch-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    background: #ffcd1f;
+    border: 2px solid #368d00;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 1;
+    padding: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .switch-button:hover:not(:disabled) {
+    background: #ffe077;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  .switch-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .swap-arrow {
+    width: 100%;
+    height: 100%;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  .modal-content {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 1rem;
+    border-radius: 1rem;
+    overflow: hidden;
+    z-index: 10000;
+  }
+
+  @media (max-width: 480px) {
+    .swap-wrapper {
+      padding: 0.5rem;
+      display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
     .swap-container {
         display: flex;
         flex-direction: column;
         min-height: 100vh;
     }
 
-    .panels-container {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .panel-wrapper {
-        position: relative;
-        transition: all 0.15s ease;
-        transform-style: preserve-3d;
-    }
-
-    .panel-content {
-        transform-origin: center center;
-        backface-visibility: hidden;
-    }
-
     .switch-button {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 50px;
-        height: 50px;
-        background: #FFCD1F;
-        border: 2px solid #368D00;
-        border-radius: 50%;
-        cursor: pointer;
-        z-index: 1;
-        padding: 6px;
-        transition: all 0.2s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 32px;
+      height: 32px;
+      padding: 6px;
     }
 
-    .switch-button:hover:not(:disabled) {
-        background: #FFE077;
-        transform: translate(-50%, -50%) scale(1.05);
+    .modal-content {
+      margin: 0.5rem;
     }
+  }
 
-    .switch-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+  :global(.token-modal) {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  :global(.swap-footer) {
+    margin-top: 1.5rem;
+  }
+
+  .panel-content {
+    transform-origin: center center;
+    backface-visibility: hidden;
+  }
+
+  .rotating {
+    animation: rotate 0.2s ease-in-out;
+  }
+
+  @keyframes rotate {
+    from {
+      transform: translate(-50%, -50%) rotate(0deg);
     }
-
-    .swap-arrow {
-        width: 100%;
-        height: 100%;
+    to {
+      transform: translate(-50%, -50%) rotate(180deg);
     }
-
-    @media (max-width: 480px) {
-        .swap-container {
-            padding: 0.5rem;
-        }
-
-        .switch-button {
-            width: 32px;
-            height: 32px;
-            padding: 6px;
-        }
-    }
+  }
 </style>

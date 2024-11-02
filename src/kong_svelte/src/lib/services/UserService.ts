@@ -37,4 +37,40 @@ export class UserService {
       return null;
     });
   }
-}
+
+  public static async getUserBalances(): Promise<Record<string, any>> {
+    const isWalletConnected = get(walletStore).isConnected;
+    if (!isWalletConnected) {
+      return {};
+    }
+    try {
+      const actor = await getActor();
+      const result = await actor.user_balances([]);
+      console.log("user_balances result", result);
+      if (result.Ok) {
+        const balances: Record<string, any> = {};
+        result.Ok.forEach((lpToken) => {
+          if ('LP' in lpToken) {
+            const lp = lpToken.LP;
+            balances[lp.symbol] = {
+              balance: lp.balance,
+              usdBalance: lp.usd_balance,
+              token0Amount: lp.amount_0,
+              token1Amount: lp.amount_1,
+              token0Symbol: lp.symbol_0,
+              token1Symbol: lp.symbol_1,
+              token0UsdAmount: lp.usd_amount_0,
+              token1UsdAmount: lp.usd_amount_1,
+              timestamp: lp.ts
+            };
+          }
+        });
+        return balances;
+      }
+      return {};
+    } catch (error) {
+      console.error('Error getting user balances:', error);
+      throw error;
+    }
+  }
+} 
