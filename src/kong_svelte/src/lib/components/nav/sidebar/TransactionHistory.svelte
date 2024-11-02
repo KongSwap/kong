@@ -57,7 +57,7 @@
     {/if}
 </div>
 
-<style>
+<style scoped>
     .transaction-history {
         display: flex;
         flex-direction: column;

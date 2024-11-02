@@ -1,19 +1,24 @@
+<!-- src/kong_svelte/src/lib/components/nav/Sidebar.svelte -->
 <script lang="ts">
   import { fly, fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { onDestroy, onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
   import { walletStore } from "$lib/stores/walletStore";
+  import { tokenStore } from "$lib/stores/tokenStore";
   import Panel from "../common/Panel.svelte";
   import WalletProvider from "./sidebar/WalletProvider.svelte";
   import SidebarHeader from "./sidebar/SidebarHeader.svelte";
-  import SocialSection from "./sidebar/SocialSection.svelte";
-  import TokenList from "./sidebar/TokenList.svelte";
-  import { tokenStore } from "$lib/stores/tokenStore";
 
+  // Lazy-loaded components
+  let SocialSection;
+  let TokenList;
+
+  // Exported props
   export let sidebarOpen: boolean;
   export let onClose: () => void;
 
+  // Reactive variables
   let isDragging = false;
   let startX: number;
   let startWidth: number;
@@ -21,13 +26,27 @@
   let isMobile = false;
   let sidebarWidth = 500;
   let dragTimeout: number;
-  let resizeHandler: () => void;
 
-  onMount(async () => {
-    await tokenStore.loadBalances();
-    await tokenStore.loadTokens();
-  });
+  // Reactive subscription to walletStore
+  $: if ($walletStore.isConnected) {
+    tokenStore.loadBalances();
+  }
 
+  // Debounce utility
+  function debounce(fn: Function, ms: number) {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return function (...args: any[]) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+
+  const debouncedResize = debounce(() => {
+    isMobile = window.innerWidth <= 768;
+    sidebarWidth = isMobile ? window.innerWidth : Math.min(500, window.innerWidth - 64);
+  }, 100);
+
+  // Drag event handlers
   function startDragging(event: MouseEvent) {
     isDragging = true;
     startX = event.clientX;
@@ -55,47 +74,46 @@
     document.body.style.cursor = "default";
   }
 
-  // Debounce resize handler
-  function debounce(fn: Function, ms: number) {
-    let timeoutId: ReturnType<typeof setTimeout>;
-    return function (...args: any[]) {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => fn.apply(this, args), ms);
+  // Custom action for resize handle
+  function resizeHandle(node) {
+    const handleMouseDown = (event: MouseEvent) => startDragging(event);
+    node.addEventListener("mousedown", handleMouseDown);
+
+    return {
+      destroy() {
+        node.removeEventListener("mousedown", handleMouseDown);
+      }
     };
   }
 
-  const debouncedResize = debounce(() => {
-    isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-      sidebarWidth = window.innerWidth;
-    } else {
-      sidebarWidth = Math.min(500, window.innerWidth - 64);
-    }
-  }, 100);
-
-  onMount(() => {
-    if (browser) {
-      window.addEventListener('resize', debouncedResize, { passive: true });
-    }
-  });
-
+  // Combine all onMount logic
   onMount(async () => {
-    walletStore.subscribe((wallet) => {
-      if (wallet.isConnected) {
-        tokenStore.loadBalances();
-      }
-    });
+    await tokenStore.loadBalances();
+    await tokenStore.loadTokens();
+
+    if (browser) {
+      window.addEventListener("resize", debouncedResize, { passive: true });
+    }
+
+    // Lazy load components
+    const [tokenListModule, socialSectionModule] = await Promise.all([
+      import("./sidebar/TokenList.svelte"),
+      import("./sidebar/SocialSection.svelte")
+    ]);
+    TokenList = tokenListModule.default;
+    SocialSection = socialSectionModule.default;
+    // Initialize resize on mount
+    debouncedResize();
   });
 
+  // Clean up on destroy
   onDestroy(() => {
     if (browser) {
       document.removeEventListener("mousemove", handleDragging);
       document.removeEventListener("mouseup", stopDragging);
       document.body.style.cursor = "default";
       if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
-      if (resizeHandler) {
-        window.removeEventListener("resize", resizeHandler);
-      }
+      window.removeEventListener("resize", debouncedResize);
     }
   });
 </script>
@@ -123,7 +141,7 @@
     >
       <div
         class="resize-handle"
-        on:mousedown={startDragging}
+        use:resizeHandle
         aria-label="Resize sidebar"
       >
         <div class="resize-line" />
@@ -140,7 +158,7 @@
       >
         <div class="sidebar-layout">
           <header class="sidebar-header">
-            <SidebarHeader {onClose} bind:activeTab />
+            <SidebarHeader {onClose} activeTab={activeTab} />
           </header>
 
           <div class="sidebar-content">
@@ -148,14 +166,18 @@
               {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
               {:else}
-                <TokenList />
+                {#if TokenList}
+                  <TokenList />
+                {/if}
               {/if}
             </div>
           </div>
 
           <footer class="sidebar-footer">
             <div class="footer-actions">
-              <SocialSection />
+              {#if SocialSection}
+                <SocialSection />
+              {/if}
             </div>
           </footer>
         </div>
@@ -164,7 +186,7 @@
   </div>
 {/if}
 
-<style>
+<style scoped>
   .sidebar-overlay {
     position: fixed;
     inset: 0;
@@ -188,26 +210,38 @@
     position: absolute;
     top: 5vh;
     right: 32px;
-    height: 90vh;
+    height: 90vh; /* Default height */
     min-width: 420px;
     max-width: min(800px, calc(100vw - 50px));
     transform-origin: right center;
-    will-change: transform;
     overflow: hidden;
     background-color: transparent;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    grid-template-rows: auto 1fr auto;
+    box-sizing: border-box;
+    padding: 0 8px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar-wrapper {
+      top: 0; /* Align to the very top */
+      right: 0;
+      width: 100% !important;
+      min-width: 100%;
+      max-width: 100%;
+      height: 100vh; /* Full viewport height */
+    }
+
+    .resize-handle {
+      display: none;
+    }
   }
 
   .sidebar-layout {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100%;
-    gap: 16px;
-    max-width: 100%;
-    box-sizing: border-box;
-    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure layout fills the sidebar */
   }
 
   .sidebar-header {
@@ -219,8 +253,8 @@
   }
 
   .sidebar-content {
+    flex: 1; /* Allows the content to expand and fill available space */
     position: relative;
-    min-height: 0;
     width: 100%;
     max-width: 100%;
   }
@@ -300,6 +334,16 @@
     background-color: rgba(255, 255, 255, 0.5);
   }
 
+  .sidebar-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   .footer-actions {
     display: flex;
     justify-content: center;
@@ -317,7 +361,7 @@
       width: 100% !important;
       min-width: 100%;
       max-width: 100%;
-      height: 100vh;
+      height: 100vh; /* Full viewport height */
     }
 
     .resize-handle {

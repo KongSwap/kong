@@ -16,12 +16,33 @@ export class PoolService {
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
       const actor = await getActor();
+      if (!actor) {
+        return {
+          pools: [],
+          total_tvl: 0,
+          total_24h_volume: 0,
+          total_24h_lp_fee: 0
+        };
+      }
       const result = await actor.pools([]);
-      return result.Ok || {
-        pools: [],
-        total_tvl: 0n,
-        total_24h_volume: 0n,
-        total_24h_lp_fee: 0n
+
+      if (!result || !result.Ok) {
+        console.error('Unexpected response structure:', result);
+        throw new Error('Invalid response from actor');
+      }
+
+      const { pools, total_tvl, total_24h_volume, total_24h_lp_fee } = result.Ok;
+
+      if (!pools) {
+        console.error('Pools data is undefined:', result.Ok);
+        throw new Error('Invalid pools data received');
+      }
+
+      return {
+        pools: pools || [],
+        total_tvl: total_tvl || 0n,
+        total_24h_volume: total_24h_volume || 0n,
+        total_24h_lp_fee: total_24h_lp_fee || 0n
       };
     } catch (error) {
       console.error('Error fetching pools:', error);

@@ -558,6 +558,15 @@
   @media (max-width: 480px) {
     .swap-wrapper {
       padding: 0.5rem;
+      display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
+    .swap-container {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
     }
 
     .switch-button {

@@ -25,9 +25,15 @@
 
   // Check if wallet is already connected
   $: if ($walletStore.account) {
-    (async () => {
+    loadUser();
+  }
+
+  async function loadUser() {
+    try {
       user = await UserService.getWhoami();
-    })();
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
   }
 
   async function handleConnect(walletId: string) {

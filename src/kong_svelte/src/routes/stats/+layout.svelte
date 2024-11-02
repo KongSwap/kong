@@ -7,22 +7,14 @@
   import { currentEnvMode } from "$lib/utils/envUtils";
   import { switchLocale } from "$lib/stores/localeStore";
   import { poolStore } from "$lib/stores/poolStore";
-  import { locale } from "$lib/locales/translations";
-    import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
+  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
 
   onMount(() => {
-    if (!$locale) {
-      switchLocale("en");
-    }
-    return () => {
-      // Cleanup any subscriptions if needed
-    };
+    switchLocale("en");
   });
 
-  const initializeData = Promise.all([
-    restoreWalletConnection(),
-    poolStore.loadPools(),
-  ]);
+  const initializeData = Promise.all([restoreWalletConnection(), poolStore.loadPools()])
+
 </script>
 
 <svelte:head>
@@ -33,17 +25,15 @@
   </title>
 </svelte:head>
 
-<div class="nav-container">
-  <Navbar />
-</div>
+<Navbar />
 
 {#await initializeData}
   <div class="min-h-[94vh] flex justify-center items-center">
     <LoadingIndicator />
   </div>
 {:then}
-  <Clouds />
-  <main>
+  <main class="stats">
+    <Clouds />
     <slot />
   </main>
 {/await}
@@ -51,21 +41,15 @@
 <div class="grass-background"></div>
 
 <style scoped>
-  :global(body) {
-    background-color: #5BB2CF;
-  }
-
-  .nav-container {
-    transform: translateX(-50%);
-    left: 50%;
-    position: relative;
+  .stats {
+    background-color: #5bb2cf;
   }
 
   .grass-background {
-    background-image: url('/backgrounds/grass.webp');
+    background-image: url("/backgrounds/grass.webp");
     background-repeat: repeat-x;
     background-size: 100% 100%;
-    z-index: 1000;
+    z-index: 10;
     width: 100%;
     height: 80px;
     min-height: 80px;
