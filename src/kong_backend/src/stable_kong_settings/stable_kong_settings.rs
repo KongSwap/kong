@@ -51,21 +51,6 @@ pub struct StableKongSettings {
     pub lp_token_ledger_archive_interval_secs: u64,
 }
 
-impl Storable for StableKongSettings {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        // if any error occurs saving, use the default StableKongSettings
-        Cow::Owned(Encode!(self).unwrap_or_default())
-    }
-
-    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        // if any error occurs retreiving the StableKongSettings, use the default
-        Decode!(bytes.as_ref(), Self).unwrap_or_default()
-    }
-
-    // unbounded size
-    const BOUND: Bound = Bound::Unbounded;
-}
-
 impl Default for StableKongSettings {
     fn default() -> Self {
         let user_map_idx = USER_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
@@ -120,4 +105,19 @@ impl Default for StableKongSettings {
             lp_token_ledger_archive_interval_secs: 3600, // archive lp_positions every hour
         }
     }
+}
+
+impl Storable for StableKongSettings {
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        // if any error occurs saving, use the default StableKongSettings
+        Cow::Owned(Encode!(self).unwrap_or_default())
+    }
+
+    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+        // if any error occurs retreiving the StableKongSettings, use the default
+        Decode!(bytes.as_ref(), Self).unwrap_or_default()
+    }
+
+    // unbounded size
+    const BOUND: Bound = Bound::Unbounded;
 }

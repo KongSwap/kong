@@ -107,7 +107,7 @@ type PoolReply = record {
     pool_id : nat32;
     name : text;
     symbol : text;
-    balance : nat;
+    balance : nat;              // USD value of balance0 + balance1
     chain_0 : text;
     symbol_0 : text;
     address_0 : text;
@@ -120,15 +120,15 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
-    rolling_24h_volume : nat;
-    rolling_24h_lp_fee : nat;
+    rolling_24h_volume : nat;   // USD value of rolling 24h volume
+    rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;
     rolling_24h_apy : float64;
     lp_token_symbol : text;
     lp_token_supply : nat;
-    total_volume : nat;
-    total_lp_fee : nat;
-    on_kong : bool;
+    total_volume : nat;         // USD value of lifetime volume
+    total_lp_fee : nat;         // USD value of lifetime LP fees
+    on_kong : bool;             // flag indicating if displayed on Kong Swap
 };
 type PoolsResult = variant { Ok : PoolsReply; Err : text };
 

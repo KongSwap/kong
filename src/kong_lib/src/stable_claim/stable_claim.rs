@@ -7,7 +7,7 @@ use crate::ic::address::Address;
 
 const CLAIM_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
 
-#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableClaimId(pub u64);
 
 impl Storable for StableClaimId {
@@ -37,8 +37,8 @@ pub enum ClaimStatus {
 pub struct StableClaim {
     pub claim_id: u64,
     pub user_id: u32,
-    pub status: ClaimStatus,
     pub token_id: u32,
+    pub status: ClaimStatus,
     pub amount: Nat,
     pub request_id: Option<u64>,     // optional to allow claims not associated with a request. ie. airdrops
     pub to_address: Option<Address>, // optional, will default to caller's principal id
