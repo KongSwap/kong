@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { poolStore, poolsList } from '$lib/stores/poolStore';
 	import { createEventDispatcher } from 'svelte';
-	import { formatUSD, formatTokenAmount, parseTokenAmount } from '$lib/utils/numberFormatUtils';
-  import { tokenStore } from '$lib/stores/tokenStore';
+	import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+	import { tokenStore } from '$lib/stores/tokenStore';
+	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
+
 	export let value: string = '';
 	export let token: FE.Token;
 	export let error: string = '';
@@ -16,21 +18,22 @@
 	// Handle input validation and formatting
 	function handleInput(event: Event) {
 		const input = event.target as HTMLInputElement;
-		let newValue = input.value.replace(/[^0-9.]/g, '');
-
+		const newValue = input.value.replace(/[^0-9.]/g, '');
 		value = newValue;
 		dispatch('input', { value: newValue });
 	}
 
 	function setMax() {
-		// Use the raw balance and convert it to a number
 		const rawBalance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
 		const max = formatTokenAmount(rawBalance, token.decimals);
 		value = max.toString();
 		dispatch('input', { value: max.toString() });
 	}
 
-	$: pool = $poolsList.find(p => p.address_0 === token.canister_id);
+	// Use reactive statements to compute derived values
+	$: pool = $poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID);
+	$: poolPrice = pool?.price ? parseFloat(pool.price) : 0;
+	$: usdValue = formatUSD(parseFloat(value || '0') * poolPrice);
 </script>
 
 <div class="flex flex-col gap-2 w-full">
@@ -44,6 +47,7 @@
 				on:input={handleInput}
 				class="
 					w-full px-4 py-4 pr-[4.5rem]
+					placeholder:text-white/50
 					bg-white/5 
 					border-2 
 					rounded-lg
@@ -77,7 +81,7 @@
 				</button>
 			{/if}
 		</div>
-		<span class="text-white/50">${formatUSD(parseFloat(value) * pool?.price)}</span>
+		<span class="text-white/50">${usdValue}</span>
 	</div>
 
 	{#if error}

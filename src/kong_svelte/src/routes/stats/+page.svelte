@@ -218,13 +218,13 @@
                           class="flex content-center items-center justify-center gap-x-1"
                         >
                         <button
-                        class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
-                      >
+                        class="rounded-full text-nowrap bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                        >
                         <Droplets size={18} class="mr-1" /> Add LP
                       </button>
                           <button
                             on:click={() => goto(`/swap?from=${pool.symbol_0}&to=${pool.symbol_1}`)}
-                            class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                            class="rounded-full text-nowrap bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
                           >
                             <ArrowLeftRight size={18} class="mr-1" /> Swap
                           </button>

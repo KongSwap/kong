@@ -1,0 +1,1 @@
+export const CKUSDT_CANISTER_ID = "zdzgz-siaaa-aaaar-qaiba-cai";
