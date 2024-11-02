@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  
+  import { tokenStore } from '$lib/stores/tokenStore';
   export let payToken: string;
   export let payAmount: string;
   export let receiveToken: string;
@@ -24,7 +25,17 @@
     easing: cubicOut
   });
 
+  onMount(() => {
+    tokenStore.loadTokens();
+  });
+
   $: animatedSlippage.set(slippage);
+  $: tokenData = tokenStore.tokens?.forEach((token) => {
+    console.log(payToken);
+    if (token.canister_id === payToken) {
+      payTokenData = token;
+    }
+  });
 </script>
 
 <div class="modal-backdrop" transition:fade={{ duration: 200 }}>
