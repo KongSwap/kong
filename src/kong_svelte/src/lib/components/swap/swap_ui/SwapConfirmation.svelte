@@ -1,12 +1,13 @@
+<!-- Description: This is the SwapConfirmation component that displays the swap summary and details. -->
 <script lang="ts">
-	import { onMount } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+  import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { tokenStore } from '$lib/stores/tokenStore';
+
   export let payToken: string;
   export let payAmount: string;
   export let receiveToken: string;
@@ -25,17 +26,9 @@
     easing: cubicOut
   });
 
-  onMount(() => {
-    tokenStore.loadTokens();
-  });
-
   $: animatedSlippage.set(slippage);
-  $: tokenData = tokenStore.tokens?.forEach((token) => {
-    console.log(payToken);
-    if (token.canister_id === payToken) {
-      payTokenData = token;
-    }
-  });
+  $: payTokenInfo = $tokenStore.tokens?.find(t => t.symbol === payToken);
+  $: receiveTokenInfo = $tokenStore.tokens?.find(t => t.symbol === receiveToken);
 </script>
 
 <div class="modal-backdrop" transition:fade={{ duration: 200 }}>
@@ -50,11 +43,12 @@
         <section class="swap-summary">
           <div class="token-panel">
             <span class="label">You Pay</span>
-            <div class="token-info">
-              <img src="/tokens/{payToken}.svg" alt={payToken} />
-              <span class="amount">{formatTokenAmount(payAmount, 6)}</span>
-              <span class="symbol">{payToken}</span>
+            <div class="token-amount">
+              <span class="amount">{payAmount}</span>
             </div>
+            {#if payTokenInfo}
+              <TokenRow token={payTokenInfo} />
+            {/if}
           </div>
 
           <div class="divider">
@@ -65,18 +59,19 @@
 
           <div class="token-panel">
             <span class="label">You Receive</span>
-            <div class="token-info">
-              <img src="/tokens/{receiveToken}.svg" alt={receiveToken} />
-              <span class="amount">{formatTokenAmount(receiveAmount, 6)}</span>
-              <span class="symbol">{receiveToken}</span>
+            <div class="token-amount">
+              <span class="amount">{receiveAmount}</span>
             </div>
+            {#if receiveTokenInfo}
+              <TokenRow token={receiveTokenInfo} />
+            {/if}
           </div>
         </section>
 
         <section class="details">
           <div class="detail-row">
             <span>Exchange Rate</span>
-            <span class="value">1 {payToken} = {exchangeRate.toFixed(6)} {receiveToken}</span>
+            <span class="value">1 {payToken} = {exchangeRate} {receiveToken}</span>
           </div>
           <div class="detail-row">
             <span>Network Fee</span>
@@ -154,21 +149,13 @@
     @apply text-white/60 text-sm font-medium mb-3 block uppercase tracking-wider;
   }
 
-  .token-info {
-    @apply flex items-center gap-4;
-  }
-
-  .token-info img {
-    @apply w-12 h-12 rounded-full shadow-lg;
+  .token-amount {
+    @apply mb-4;
   }
 
   .amount {
     @apply text-4xl text-white font-bold tracking-tight;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  }
-
-  .symbol {
-    @apply text-white/80 text-2xl font-medium;
   }
 
   .divider {
@@ -225,12 +212,8 @@
       @apply text-2xl;
     }
 
-    .symbol {
-      @apply text-lg;
-    }
-
-    .token-info img {
-      @apply w-8 h-8;
+    .token-amount {
+      @apply mb-2;
     }
   }
 </style>

@@ -1,3 +1,4 @@
+<!-- Description: This is the SwapPanel component that displays the swap input fields and token selector. -->
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
@@ -18,14 +19,14 @@
   export let slippage = 0;
   export let maxSlippage = 2; // Default max slippage value
 
+  $: tokenInfo = $tokenStore.tokens?.find(t => t.symbol === token);
+  $: decimals = tokenInfo?.decimals || 8;
+
   $: balance = (() => {
-    const tokenInfo = $tokenStore.tokens?.find(t => t.symbol === token);
     if (!tokenInfo?.canister_id) return "0";
     const balanceInfo = $tokenStore.balances[tokenInfo.canister_id];
     const rawBalance = balanceInfo?.in_tokens;
-    
-    // Use the token's decimals to format the balance
-    return formatTokenAmount(rawBalance, tokenInfo.decimals);
+    return formatTokenAmount(rawBalance, decimals);
   })();
 
   $: isOverBalance = parseFloat(amount || "0") > parseFloat(balance?.toString() || "0");
@@ -111,7 +112,7 @@
       <div class="amount-container">
         {#if showPrice}
           <div class="amount-input animated-amount" class:error={isOverBalance && title === "You Pay"}>
-            {$animatedAmount.toFixed(6)}
+            {$animatedAmount.toFixed(decimals)}
           </div>
         {:else}
           <input

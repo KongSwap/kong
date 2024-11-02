@@ -1,3 +1,4 @@
+<!-- Description: This is the TokenSelectorModal component that displays the token selector modal. -->
 <script lang="ts">
     import Panel from '$lib/components/common/Panel.svelte';
     import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
@@ -203,7 +204,12 @@
     }
 
     .token-button.active {
-        @apply opacity-50 cursor-not-allowed hover:translate-x-0 hover:scale-100;
+        @apply opacity-50 cursor-not-allowed hover:translate-x-0 hover:scale-100 hover:bg-transparent;
+    }
+
+    .token-button.active:hover {
+        cursor: not-allowed;
+        transform: none;
     }
 
     /* Responsive */

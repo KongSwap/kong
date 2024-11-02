@@ -13,9 +13,7 @@
   import Button from "$lib/components/common/Button.svelte";
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
-  import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
-  import { fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { quintOut } from 'svelte/easing';
 
@@ -97,7 +95,7 @@
     },
     receive: {
       token: receiveToken,
-      amount: $tweenedReceiveAmount.toFixed(6),
+      amount: $tweenedReceiveAmount.toFixed(getTokenDecimals(receiveToken)),
       balance: getTokenBalance(receiveToken),
       onTokenSelect: () => (showReceiveTokenSelector = true),
       onAmountChange: () => {},
@@ -161,7 +159,7 @@
         );
 
         setReceiveAmount(receivedAmount);
-        setDisplayAmount(formatTokenAmount(receivedAmount, 6));
+        setDisplayAmount(new BigNumber(receivedAmount).toFixed(receiveDecimals));
 
         price = quote.Ok.price.toString();
         swapSlippage = quote.Ok.slippage;
@@ -332,7 +330,7 @@
         receiveDecimals,
       );
       setReceiveAmount(formattedAmount);
-      setDisplayAmount(formatTokenAmount(formattedAmount, 6));
+      setDisplayAmount(new BigNumber(formattedAmount).toFixed(receiveDecimals));
     }
 
     clearInputs();
