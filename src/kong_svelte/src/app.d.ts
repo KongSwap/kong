@@ -23,6 +23,15 @@ declare global {
       pool_symbol: string;
       logo?: string;
     }
+
+    interface Transaction {
+      type: 'send' | 'receive';
+      amount: string;
+      token: string;
+      to?: string;
+      from?: string;
+      date: string;
+    }
   }
 
   namespace BE {

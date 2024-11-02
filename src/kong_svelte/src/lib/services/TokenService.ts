@@ -4,6 +4,7 @@ import { PoolService } from './PoolService';
 import { formatUSD, formatTokenAmount } from '$lib/utils/formatNumberCustom';
 import { walletStore } from '$lib/stores/walletStore';
 import { get } from 'svelte/store';
+import { tokenStore } from '$lib/stores/tokenStore';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -32,12 +33,10 @@ export class TokenService {
   }
 
   public static async fetchBalances(tokens: FE.Token[], principalId: string = null): Promise<Record<string, FE.TokenBalance>> {
-    let wallet;
-    const isWalletConnected = isConnected();
-    if (!isWalletConnected) return {};
+    const wallet = get(walletStore);
+    if (!wallet.isConnected) return {};
 
     if (!principalId) {
-      wallet = get(walletStore);
       principalId = wallet.account.owner;
     }
     
@@ -67,6 +66,17 @@ export class TokenService {
     }
     
     return balances;
+  }
+
+  public static async fetchBalance(principalId: string, token: string): Promise<string> {
+    const tokens = get(tokenStore);
+    const canisterId = tokens.tokens.find(t => t.symbol === token)?.canister_id;
+    const actor = await getActor(canisterId, 'icrc1');
+    const balance = actor.icrc1_balance_of({
+      owner: principalId,
+      subaccount: [],
+    });
+    return balance;
   }
 
   public static async fetchPrices(tokens: FE.Token[]): Promise<Record<string, number>> {
@@ -108,6 +118,11 @@ export class TokenService {
     } catch (error) {
       console.error('Error getting icrc1 token metadata:', error);
     }
+  }
+
+  public static async fetchUserTransactions(principalId: string, tokenId = ""): Promise<any> {
+    const actor = await getActor();
+    return await actor.txs([true]);
   }
 
   public static async claimFaucetTokens(): Promise<void> {

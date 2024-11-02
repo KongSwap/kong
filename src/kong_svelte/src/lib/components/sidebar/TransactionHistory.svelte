@@ -1,55 +1,74 @@
 <script lang="ts">
-    export let transactions: {
-        type: 'send' | 'receive';
-        amount: string;
-        token: string;
-        to?: string;
-        from?: string;
-        date: string;
-    }[];
+	import { onMount } from 'svelte';
+    import {TokenService} from '$lib/services/TokenService';
+    import { walletStore } from '$lib/stores/walletStore';
 
-    function formatAddress(address: string): string {
-        return address.slice(0, 6) + '...' + address.slice(-4);
+    interface TransactionData {
+        ts: bigint;
+        txs: Array<any>;
+        request_id: bigint;
+        status: string;
+        tx_id: bigint;
     }
 
-    function getTransactionIcon(type: 'send' | 'receive'): string {
-        return type === 'send' ? '↗' : '↙';
+    let transactions: Array<Record<string, TransactionData>>;
+
+    function getTransactionData(tx: Record<string, TransactionData>): { type: string, data: TransactionData } {
+        const type = Object.keys(tx)[0];
+        return { type, data: tx[type] };
     }
+
+    function formatTimestamp(ts: bigint): string {
+        return new Date(Number(ts) / 1_000_000).toLocaleString();
+    }
+
+    onMount(async () => {
+     await TokenService.fetchUserTransactions($walletStore.account.owner).then(txs => {
+        if(txs.Ok) {
+            transactions = txs.Ok;
+            console.log(transactions);
+        } else {
+            console.error(txs.Err);
+        }
+     });
+    });
 </script>
 
 <div class="transaction-history">
-    {#if transactions.length === 0}
+    {#if !transactions || transactions.length === 0}
         <div class="empty-state">
             <span class="empty-icon">📜</span>
             <p class="empty-text">No transactions yet</p>
         </div>
     {:else}
         {#each transactions as tx}
+            {@const { type, data } = getTransactionData(tx)}
             <button 
                 class="transaction-item"
-                class:send={tx.type === 'send'}
-                class:receive={tx.type === 'receive'}
                 type="button"
             >
                 <div class="tx-icon">
-                    {getTransactionIcon(tx.type)}
+                    {#if type === "Swap"}
+                        ↔️
+                    {/if}
                 </div>
                 <div class="tx-details">
                     <div class="tx-header">
-                        <span class="tx-type">{tx.type}</span>
-                        <span class="tx-amount">
-                            {tx.type === 'send' ? '-' : '+'}{tx.amount} {tx.token}
+                        <span class="tx-type">
+                            {type} 
+                            {#if type === "Swap"}
+                                {data.pay_symbol} ({data.pay_chain})
+                                to 
+                                {data.receive_symbol} ({data.receive_chain})
+                            {/if}
+                        </span>
+                        <span class="tx-status" class:success={data.status === 'Success'}>
+                            {data.status}
                         </span>
                     </div>
                     <div class="tx-info">
-                        <span class="tx-address">
-                            {#if tx.type === 'send'}
-                                To: {formatAddress(tx.to || '')}
-                            {:else}
-                                From: {formatAddress(tx.from || '')}
-                            {/if}
-                        </span>
-                        <span class="tx-date">{tx.date}</span>
+                        <span class="tx-id">ID: {data.request_id.toString()}</span>
+                        <span class="tx-date">{formatTimestamp(data.ts)}</span>
                     </div>
                 </div>
             </button>
@@ -95,7 +114,6 @@
 
     .empty-text {
         font-family: 'Press Start 2P', monospace;
-        font-size: 10px;
         color: var(--sidebar-border);
         text-align: center;
         margin: 0;
@@ -143,7 +161,7 @@
         height: 28px;
         background: var(--sidebar-bg);
         border: 1px solid var(--sidebar-border);
-        font-size: 16px;
+        font-size: 1rem;
     }
 
     .send .tx-icon {
@@ -169,30 +187,7 @@
 
     .tx-type {
         font-family: 'Press Start 2P', monospace;
-        font-size: 10px;
         text-transform: uppercase;
-    }
-
-    .send .tx-type {
-        color: var(--error-color);
-    }
-
-    .receive .tx-type {
-        color: var(--success-color);
-    }
-
-    .tx-amount {
-        font-family: monospace;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .send .tx-amount {
-        color: var(--error-color);
-    }
-
-    .receive .tx-amount {
-        color: var(--success-color);
     }
 
     .tx-info {
@@ -200,13 +195,6 @@
         justify-content: space-between;
         align-items: center;
         gap: 8px;
-    }
-
-    .tx-address {
-        font-family: monospace;
-        font-size: 10px;
-        color: var(--sidebar-border);
-        opacity: 0.8;
     }
 
     .tx-date {

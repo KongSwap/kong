@@ -1,5 +1,5 @@
 // src/kong_svelte/src/lib/stores/tokenStore.ts
-import { writable, derived, get } from 'svelte/store';
+import { writable, derived, get, type Readable } from 'svelte/store';
 import { TokenService } from '$lib/services/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
@@ -218,9 +218,29 @@ const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, toke
 const balancesStore = derived(tokenStore, $tokenStore => $tokenStore.balances);
 const tokensStore = derived(tokenStore, $tokenStore => $tokenStore.tokens);
 
-export const portfolioValue = derived(
+export const portfolioValue: Readable<string> = derived(
   [balancesStore, tokensStore],
   ([$balances, $tokens], set) => {
     calculatePortfolioValue($balances, $tokens).then(set);
+  }
+);
+
+// Derived store to prepare tokens with formatted values
+export const formattedTokens = derived(
+  [tokenStore, portfolioValue],
+  ([tokenStore, portfolioValue]) => {
+    return {
+      tokens: tokenStore.tokens.map(token => {
+        const balance = tokenStore.balances[token.canister_id]?.in_tokens || 0;
+        const usdValue = tokenStore.balances[token.canister_id]?.in_usd || 0;
+        return {
+          ...token,
+          logo: token.logo || '/tokens/not_verified.webp', // Ensure logo is always defined
+          formattedBalance: formatTokenAmount(balance, token.decimals),
+          formattedUsdValue: formatUSD(Number(usdValue)) || '0',
+        };
+      }),
+      portfolioValue: formatUSD(portfolioValue) || '0',
+    };
   }
 );

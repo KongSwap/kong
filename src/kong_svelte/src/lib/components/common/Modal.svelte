@@ -5,7 +5,8 @@
     export let isOpen: boolean = false;
     export let onClose: () => void;
     export let title: string = '';
-    export let width: string = '480px';
+    export let width: string = 'auto';
+    export let height: string = 'auto';
     
     function handleBackdropClick(event: MouseEvent) {
       if (event.target === event.currentTarget) {
@@ -16,12 +17,12 @@
     
     {#if isOpen}
     <div
-      class="modal-backdrop"
+      class="modal-backdrop font-play"
       on:click={handleBackdropClick}
       transition:fade={{ duration: 200 }}
     >
       <div class="modal-container" transition:scale={{ duration: 200, start: 0.95 }}>
-        <Panel variant="green" type="s" {width}>
+        <Panel variant="green" type="s" {width} {height}>
           <div class="modal-content">
             <div class="modal-header">
               <h2>{title}</h2>

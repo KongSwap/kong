@@ -6,6 +6,7 @@
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "transactions";
+  export let setActiveTab: (tab: "tokens" | "pools" | "transactions") => void;
 
   let showCopied = false;
 
@@ -177,7 +178,7 @@
           <button
             class="tab-button"
             class:active={activeTab === tab}
-            on:click={() => (activeTab = tab)}
+            on:click={() => setActiveTab(tab)}
             role="tab"
             aria-selected={activeTab === tab}
             aria-controls={`${tab}-panel`}

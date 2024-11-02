@@ -1,11 +1,14 @@
 <!-- Panel.svelte -->
 <script lang="ts">
+    import { browser } from "$app/environment";
+
   export let variant: 'green' | 'yellow' | 'red' = 'green';
   export let type: 'main' | 'second' | 's' = 'main';
   export let width: number | string | 'auto' = 300; // Allow string values like '100%' or 'auto'
   export let height: number | string | 'auto' = 200; // Allow string values like '100vh' or 'auto'
   export let content: string = '';
   export let className: string = ''; // Allow custom classes
+  export let zIndex: number = 1000;
 
   // Precompute all image paths based on variant and type
   const imageParts = ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'];
@@ -34,6 +37,10 @@
   $: formattedHeight = formatDimension(height);
   $: isAutoSize = width === 'auto' || height === 'auto';
   $: useMainPanelCenter = type === 's';
+  $: if(browser) {
+     // set z-index of the panel
+     document.getElementById('panel')?.style.setProperty('z-index', zIndex.toString());
+  }
 </script>
 
 <div 
@@ -128,8 +135,6 @@
 
   .center-content {
     flex: 1;
-    background-repeat: repeat;
-    background-size: auto;
     color: white;
     font-size: 12px;
     display: flex;

@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         alumni: ['Alumni Sans', "sans-serif"],
+        play: ["Press Start 2P", "monospace"]
       },
       colors: {
         "k-light-blue": "#00A1FA",
@@ -13,7 +14,6 @@ export default {
   },
   plugins: [
     require('@tailwindcss/typography'),
-    require('@tailwindcss/forms'),
     function({ addUtilities }) {
       const outlineThicknesses = [1, 2, 3, 4, 5]; // Define the thicknesses you want
       const newUtilities = outlineThicknesses.reduce((acc, thickness) => {

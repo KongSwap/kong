@@ -7,14 +7,19 @@
     formattedBalance: string;
     formattedUsdValue: string;
   };
+  export let onClick: () => void;
 </script>
 
-<div class="token-row">
+<button 
+  class="token-row"
+  on:click={onClick}
+  type="button"
+>
   <div class="token-info">
     <img
       src={token.logo || "/tokens/not_verified.webp"}
       alt={token.name}
-      class="h-12 w-12 rounded-full"
+      class="h-[48px] w-[48px] rounded-full"
       loading="lazy"
     />
     <div class="flex flex-col text-left">
@@ -26,16 +31,27 @@
     <span>{token.formattedBalance} {token.symbol}</span>
     <span>${token.formattedUsdValue}</span>
   </div>
-</div>
+</button>
 
 <style scoped lang="postcss">
   .token-row {
+    width: 100%;
+    text-align: left;
+    border: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .token-row:hover {
+    border: 2px solid #f7bf26c8;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    transform: scale(1.02);
   }
 
   .token-info {

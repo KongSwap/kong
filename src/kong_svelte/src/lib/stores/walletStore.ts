@@ -47,7 +47,7 @@ let pnp: ReturnType<typeof createPNP> | null = null;
 
 // Initialize PNP
 export function initializePNP() {
-  if (pnp === null && typeof window !== 'undefined') {
+  if (pnp === null && browser) {
     const isLocalEnv = process.env.DFX_NETWORK === 'local';
     pnp = createPNP({
       hostUrl: isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app',
@@ -72,6 +72,7 @@ function handleConnectionError(error: Error) {
 
 // Connect to a wallet
 export async function connectWallet(walletId: string) {
+  initializePNP();
   updateWalletStore({ isConnecting: true });
   try {
     const account = await pnp.connect(walletId);
@@ -138,6 +139,7 @@ export function isConnected(): boolean {
 
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
+  initializePNP();
   if(browser) {
     const isAuthenticated = isConnected();
     const isLocalEnv = window.location.hostname.includes('localhost');
@@ -154,6 +156,5 @@ async function createActor(canisterId: string, idlFactory: any): Promise<ActorSu
 
 // Export function to get the actor
 export async function getActor(canisterId = kongBackendCanisterId, canisterType: CanisterType = 'kong_backend'): Promise<ActorSubclass<any>> {
-  initializePNP();
   return await createActor(canisterId, canisterIDLs[canisterType]);
 }

@@ -104,7 +104,7 @@
 
 <style lang="postcss">
   .modal-backdrop {
-    @apply fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-50;
+    @apply fixed inset-0 flex items-center justify-center p-4 z-50;
   }
 
   .modal-container {

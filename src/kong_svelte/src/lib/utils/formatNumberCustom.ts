@@ -37,12 +37,12 @@ export const formatTokenBalance = (balance = "0", decimals: number): string => {
   return `${integerPart}.${paddedFractionalPart}`;
 };
 
-export const formatUSD = (number: number): string => {
+export const formatUSD = (number: number | string): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(number);
+  }).format(Number(number));
 };
 
 export const formatTokenAmount = (amount: bigint | number, decimals: number): number => {

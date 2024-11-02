@@ -14,18 +14,18 @@
     size: number;
   }
 
-  const clouds: Array<Cloud> = Array.from({ length: 20 }, (_, i) => ({
+  const clouds: Array<Cloud> = Array.from({ length: 14 }, (_, i) => ({
     src: [cloud1, cloud2, cloud3, cloud4][i % 4],
     top: `${Math.random() * 85}%`,
     left: Math.random() > 0.5 ? '-20%' : '120%',
-    animationDuration: `${200 + Math.random() * 1200}s`,
+    animationDuration: `${200 + Math.random() * 900}s`,
     delay: `-${Math.random() * 1000}s`,
     direction: Math.random() > 0.5 ? 1 : -1,
     size: 0.7 + Math.random() * 1.3,
   }));
 </script>
 
-<div class="floating-clouds overflow-hidden z-[1] bg-transparent">
+<div class="floating-clouds overflow-hidden z-[0] bg-transparent">
   {#each clouds as cloud}
     <img
       src={cloud.src}
@@ -70,10 +70,10 @@
 
   @keyframes float {
     from {
-      transform: translateX(-200vw);
+      transform: translateX(-120vw);
     }
     to {
-      transform: translateX(200vw);
+      transform: translateX(130vw);
     }
   }
 </style>

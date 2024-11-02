@@ -117,7 +117,7 @@
               type="text"
               placeholder="Search by symbol"
               on:input={(e) => debouncedSearch(e.currentTarget.value)}
-              class="w-1/2 bg-sky-200/30 placeholder:text-gray-600 font-alumni text-xl text-black border-none rounded-xl min-w-[160px] focus:ring-green-700 focus:ring-2"
+              class="w-1/2 bg-sky-200/30 placeholder:text-gray-600 font-alumni text-xl text-black border-none rounded-xl min-w-[160px] focus:ring-green-700 focus:ring-2 p-2.5"
               aria-label="Search Pools by Symbol"
             />
           </div>
@@ -167,10 +167,10 @@
                       tabindex="0"
                       aria-label={`View details for pool ${pool.symbol_0}/${pool.symbol_1}`}
                     >
-                      <td class="uppercase font-bold">
+                      <td class="uppercase font-bold pl-2 focused:ring-0 ring-0 focused:border-none active:border-none">
                         <div class="flex items-center">
                           <div
-                            class="isolate flex -space-x-3 overflow-hidden p-2 w-[98px]"
+                            class="isolate flex -space-x-4 overflow-hidden w-[84px]"
                           >
                             <img
                               class="relative z-30 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
@@ -223,6 +223,7 @@
                         <Droplets size={18} class="mr-1" /> Add LP
                       </button>
                           <button
+                            on:click={() => goto(`/swap?from=${pool.symbol_0}&to=${pool.symbol_1}`)}
                             class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
                           >
                             <ArrowLeftRight size={18} class="mr-1" /> Swap
@@ -231,79 +232,6 @@
                       </td>
                     </tr>
                   {/each}
-                  {#each $filteredSortedPools as pool (pool.id)}
-                  <tr
-                    class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
-                    animate:flip={{ duration: 300 }}
-                    on:click={() => handlePoolClick(pool.id)}
-                    on:keypress={(e) => handleKeyPress(e, pool.id)}
-                    tabindex="0"
-                    aria-label={`View details for pool ${pool.symbol_0}/${pool.symbol_1}`}
-                  >
-                    <td class="uppercase font-bold">
-                      <div class="flex items-center">
-                        <div
-                          class="isolate flex -space-x-3 overflow-hidden p-2 w-[98px]"
-                        >
-                          <img
-                            class="relative z-30 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
-                            src={
-                              $tokenMap.get(pool.address_0)?.logo ||
-                              "/tokens/not_verified.webp"
-                            }
-                            alt={pool.symbol_0}
-                            loading="lazy"
-                          />
-                          <img
-                            class="relative z-20 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
-                            src={
-                              $tokenMap.get(pool.address_1)?.logo ||
-                              "/tokens/not_verified.webp"
-                            }
-                            alt={pool.symbol_1}
-                            loading="lazy"
-                          />
-                        </div>
-                        <span>{pool.symbol_0}/{pool.symbol_1}</span>
-                        {#if pool.is_hot}
-                          <span class="flex items-center text-xs ml-2">
-                            <span class="text-xs mr-0.5">🔥</span> HOT
-                          </span>
-                        {/if}
-                      </div>
-                    </td>
-                    <td class="p-2 text-right">
-                      ${formatNumberCustom(pool.price.toString(), 2)}
-                    </td>
-                    <td class="p-2 text-right">
-                      ${formatNumberCustom(pool.tvl.toString(), 2)}
-                    </td>
-                    <td class="p-2 text-right">
-                      ${formatNumberCustom(pool.rolling_24h_volume.toString(), 2)}
-                    </td>
-                    <td class="p-2 text-right">
-                      <div class="flex items-center">
-                        {formatNumberCustom(pool.rolling_24h_apy.toString(), 2)}%
-                      </div>
-                    </td>
-                    <td class="p-2">
-                      <div
-                        class="flex content-center items-center justify-center gap-x-1"
-                      >
-                      <button
-                      class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
-                    >
-                      <Droplets size={18} class="mr-1" /> Add LP
-                    </button>
-                        <button
-                          class="rounded-full bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
-                        >
-                          <ArrowLeftRight size={18} class="mr-1" /> Swap
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                {/each}
                 {/if}
               </tbody>
             </table>

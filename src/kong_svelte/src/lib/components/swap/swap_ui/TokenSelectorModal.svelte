@@ -1,28 +1,21 @@
 <script lang="ts">
     import Panel from '$lib/components/common/Panel.svelte';
-    import TokenRow from '$lib/components/nav/sidebar/TokenRow.svelte';
+    import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
     import { TokenService } from '$lib/services/TokenService';
     import { tokenStore } from '$lib/stores/tokenStore';
     import { onMount } from 'svelte';
+    import { formattedTokens } from '$lib/stores/tokenStore';
 
     export let show = false;
     export let onSelect: (token: string) => void;
     export let onClose: () => void;
     export let currentToken: string;
 
-    let tokens: FE.Token[] = [];
     let searchQuery = '';
     let standardFilter = 'all';
 
     onMount(async () => {
         try {
-            // Get base tokens
-            const baseTokens = await TokenService.fetchTokens();
-            
-            // Enrich tokens with metadata (logos)
-            tokens = await Promise.all(
-                baseTokens.map(token => TokenService.enrichTokenWithMetadata(token))
-            );
             // Load balances into tokenStore
             tokenStore.loadBalances();
 
@@ -31,7 +24,7 @@
         }
     });
 
-    $: filteredTokens = tokens.filter(token => {
+    $: filteredTokens = $formattedTokens.tokens.filter(token => {
         // First check if token matches search query
         const matchesSearch = 
             token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,7 +125,7 @@
 <style lang="postcss">
     /* Modal Layout */
     .modal-overlay {
-        @apply fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-100;
+        @apply fixed inset-0 flex items-center justify-center z-50 transition-all duration-100;
     }
 
     .modal-container {
@@ -185,7 +178,7 @@
 
     /* Token List */
     .token-list {
-        @apply flex-1 overflow-y-auto -mx-6 px-6 space-y-3;
+        @apply flex-1 overflow-y-auto -mx-6 px-6 space-y-3 py-2;
         scrollbar-width: thin;
         scrollbar-color: rgba(255,255,255,0.2) transparent;
     }
@@ -205,7 +198,7 @@
     /* Token Button */
     .token-button {
         @apply w-full p-0 bg-transparent border-none cursor-pointer 
-               transition-all duration-200 hover:translate-x-2 hover:scale-[1.02]
+               transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] hover:bg-black/20
                focus:outline-none focus:ring-2 focus:ring-yellow-300/50 rounded-lg;
     }
 

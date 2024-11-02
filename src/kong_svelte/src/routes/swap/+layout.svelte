@@ -24,7 +24,7 @@
   </title>
 </svelte:head>
 
-<main class="swap">
+<main class="swap min-h-screen">
   <slot />
 </main>
 

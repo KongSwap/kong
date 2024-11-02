@@ -7,12 +7,13 @@
   import { walletStore } from "$lib/stores/walletStore";
   import { tokenStore } from "$lib/stores/tokenStore";
   import Panel from "../common/Panel.svelte";
-  import WalletProvider from "./sidebar/WalletProvider.svelte";
-  import SidebarHeader from "./sidebar/SidebarHeader.svelte";
+  import WalletProvider from "./WalletProvider.svelte";
+  import SidebarHeader from "./SidebarHeader.svelte";
 
   // Lazy-loaded components
   let SocialSection;
   let TokenList;
+  let TransactionHistory;
 
   // Exported props
   export let sidebarOpen: boolean;
@@ -22,7 +23,10 @@
   let isDragging = false;
   let startX: number;
   let startWidth: number;
-  let activeTab: "tokens" | "pools" | "transactions" = "tokens";
+  let activeTab: "tokens" | "pools" | "transactions" = 
+      browser ? 
+          (localStorage.getItem('sidebarActiveTab') as "tokens" | "pools" | "transactions") || "tokens" 
+          : "tokens";
   let isMobile = false;
   let sidebarWidth = 500;
   let dragTimeout: number;
@@ -96,12 +100,14 @@
     }
 
     // Lazy load components
-    const [tokenListModule, socialSectionModule] = await Promise.all([
-      import("./sidebar/TokenList.svelte"),
-      import("./sidebar/SocialSection.svelte")
+    const [tokenListModule, socialSectionModule, transactionHistoryModule] = await Promise.all([
+      import("./TokenList.svelte"),
+      import("./SocialSection.svelte"),
+      import("./TransactionHistory.svelte")
     ]);
     TokenList = tokenListModule.default;
     SocialSection = socialSectionModule.default;
+    TransactionHistory = transactionHistoryModule.default;
     // Initialize resize on mount
     debouncedResize();
   });
@@ -116,6 +122,13 @@
       window.removeEventListener("resize", debouncedResize);
     }
   });
+
+  function setActiveTab(tab: "tokens" | "pools" | "transactions") {
+    activeTab = tab;
+    if (browser) {
+      localStorage.setItem('sidebarActiveTab', tab);
+    }
+  }
 </script>
 
 {#if sidebarOpen}
@@ -158,16 +171,20 @@
       >
         <div class="sidebar-layout">
           <header class="sidebar-header">
-            <SidebarHeader {onClose} activeTab={activeTab} />
+            <SidebarHeader {onClose} {activeTab} {setActiveTab} />
           </header>
 
           <div class="sidebar-content">
-            <div class="scroll-container">
+            <div class="scroll-container p-2">
               {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
               {:else}
-                {#if TokenList}
+                {#if activeTab === "tokens" && TokenList}
                   <TokenList />
+                {:else if activeTab === "pools" && SocialSection  }
+                  <!-- Add your pools component here -->
+                {:else if activeTab === "transactions"}
+                  <TransactionHistory />
                 {/if}
               {/if}
             </div>
@@ -214,7 +231,6 @@
     min-width: 420px;
     max-width: min(800px, calc(100vw - 50px));
     transform-origin: right center;
-    overflow: hidden;
     background-color: transparent;
     display: flex;
     flex-direction: column;
@@ -253,7 +269,10 @@
   }
 
   .sidebar-content {
-    flex: 1; /* Allows the content to expand and fill available space */
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
     position: relative;
     width: 100%;
     max-width: 100%;
@@ -263,13 +282,13 @@
     position: absolute;
     inset: 0;
     overflow-y: auto;
-    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+    width: 100%;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     width: calc(100% + 16px);
     max-width: calc(100% + 16px);
-    padding-right: 4px;
-    margin-right: -4px;
     box-sizing: border-box;
   }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import Button from "../common/Button.svelte";
-  import Sidebar from "./Sidebar.svelte";
+  import Sidebar from "../sidebar/Sidebar.svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
@@ -8,6 +8,8 @@
   import { t } from "$lib/locales/translations";
   import { walletStore } from "$lib/stores/walletStore";
   import { fade } from 'svelte/transition';
+  import Modal from "../common/Modal.svelte";
+    import LanguageSelector from "../common/LanguageSelector.svelte";
 
   type Tab = "swap" | "pool" | "stats";
 
@@ -16,6 +18,7 @@
   let isMobile = false;
   let isSpinning = false;
   let navOpen = false;
+  let isModalOpen = false;
   const tabs: Tab[] = ["swap", "pool", "stats"];
   const titles = {
     swap: {
@@ -23,8 +26,8 @@
       mobile: "/titles/swap_title.webp",
     },
     pool: {
-      desktop: "/titles/titleKingKongStats.png",
-      mobile: "/titles/titleKingKongStats.png",
+      desktop: "/titles/stats_title.webp",
+      mobile: "/titles/stats_title.webp",
     },
     stats: {
       desktop: "/titles/stats_title.webp",
@@ -65,6 +68,10 @@
       return () => window.removeEventListener("resize", handleResize);
     }
   });
+
+  function handleCloseModal() {
+    isModalOpen = false;
+  }
 
   $: {
     const path = $page.url.pathname;
@@ -119,6 +126,7 @@
           aria-label="Settings"
           on:mouseenter={() => (isSpinning = true)}
           on:mouseleave={() => (isSpinning = false)}
+          on:click={() => (isModalOpen = true)}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -173,6 +181,7 @@
         aria-label="Settings"
         on:mouseenter={() => (isSpinning = true)}
         on:mouseleave={() => (isSpinning = false)}
+        on:click={() => (isModalOpen = true)}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -194,6 +203,15 @@
 </nav>
 
 <Sidebar {sidebarOpen} onClose={() => (sidebarOpen = false)} />
+
+<Modal
+  isOpen={isModalOpen}
+  onClose={handleCloseModal}
+  title="Settings"
+  width="550px"
+>
+  <LanguageSelector />
+</Modal>
 
 <style lang="postcss" scoped>
   .title-image-container {
