@@ -6,8 +6,8 @@ use std::borrow::Cow;
 use std::cmp;
 
 use crate::ic::{
-    ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN},
-    icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN},
+    ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
+    icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
     id::{kong_account, kong_backend_id},
 };
 use crate::stable_memory::{
@@ -21,10 +21,12 @@ pub struct StableKongSettings {
     pub kong_backend_account: Account,
     pub maintenance_mode: bool,
     pub kingkong: Vec<u32>, // list of user_ids for maintainers
+    pub ckusdt_token_id: u32,
     pub ckusdt_symbol: String,
     pub ckusdt_symbol_with_chain: String,
     pub ckusdt_address: String,
     pub ckusdt_address_with_chain: String,
+    pub icp_token_id: u32,
     pub icp_symbol: String,
     pub icp_symbol_with_chain: String,
     pub icp_address: String,
@@ -47,21 +49,6 @@ pub struct StableKongSettings {
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
     pub lp_token_ledger_archive_interval_secs: u64,
-}
-
-impl Storable for StableKongSettings {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        // if any error occurs saving, use the default StableKongSettings
-        Cow::Owned(Encode!(self).unwrap_or_default())
-    }
-
-    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        // if any error occurs retreiving the StableKongSettings, use the default
-        Decode!(bytes.as_ref(), Self).unwrap_or_default()
-    }
-
-    // unbounded size
-    const BOUND: Bound = Bound::Unbounded;
 }
 
 impl Default for StableKongSettings {
@@ -88,10 +75,12 @@ impl Default for StableKongSettings {
             kong_backend_account: kong_account(),
             maintenance_mode: false,
             kingkong: vec![100, 101], // default kingkong users
+            ckusdt_token_id: CKUSDT_TOKEN_ID,
             ckusdt_symbol: CKUSDT_SYMBOL.to_string(),
             ckusdt_symbol_with_chain: CKUSDT_SYMBOL_WITH_CHAIN.to_string(),
             ckusdt_address: CKUSDT_ADDRESS.to_string(),
             ckusdt_address_with_chain: CKUSDT_ADDRESS_WITH_CHAIN.to_string(),
+            icp_token_id: ICP_TOKEN_ID,
             icp_symbol: ICP_SYMBOL.to_string(),
             icp_symbol_with_chain: ICP_SYMBOL_WITH_CHAIN.to_string(),
             icp_address: ICP_ADDRESS.to_string(),
@@ -116,4 +105,19 @@ impl Default for StableKongSettings {
             lp_token_ledger_archive_interval_secs: 3600, // archive lp_positions every hour
         }
     }
+}
+
+impl Storable for StableKongSettings {
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        // if any error occurs saving, use the default StableKongSettings
+        Cow::Owned(Encode!(self).unwrap_or_default())
+    }
+
+    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+        // if any error occurs retreiving the StableKongSettings, use the default
+        Decode!(bytes.as_ref(), Self).unwrap_or_default()
+    }
+
+    // unbounded size
+    const BOUND: Bound = Bound::Unbounded;
 }

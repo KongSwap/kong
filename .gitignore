@@ -117,8 +117,6 @@ Cargo.lock
 # dfx temporary files
 .dfx/
 
-# generated files
-**/declarations/
 
 # rust
 target/
@@ -135,7 +133,7 @@ dfx.json
 secrets*
 package-lock.json
 *.lock
-backup/
+backups/
 **/public/.ic-assets.json5
 ic-domains
 ii-alternative-origins

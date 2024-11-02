@@ -121,3 +121,11 @@ impl Token for StableToken {
         token_map::update(self);
     }
 }
+
+pub fn symbol(token_0: &StableToken, token_1: &StableToken) -> String {
+    format!("{}_{}", token_0.symbol(), token_1.symbol())
+}
+
+pub fn address(token_0: &StableToken, token_1: &StableToken) -> String {
+    format!("{}_{}", token_0.token_id(), token_1.token_id())
+}

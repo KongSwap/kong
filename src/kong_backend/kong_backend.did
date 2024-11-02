@@ -36,20 +36,20 @@ type UserReply = record {
 type UserResult = variant { Ok : UserReply; Err : text };
 
 type UserBalancesReply = variant {
-	LP : BalancesReply;
+    LP : BalancesReply;
 };
 type BalancesReply = record {
     name : text;
-	symbol : text;
-	balance : float64;
-	usd_balance : float64;
+    symbol : text;
+    balance : float64;
+    usd_balance : float64;
     symbol_0 : text;
     amount_0 : float64;
     usd_amount_0 : float64;
     symbol_1 : text;
     amount_1 : float64;
     usd_amount_1 : float64;
-	ts : nat64;
+    ts : nat64;
 };
 type UserBalancesResult = variant { Ok : vec UserBalancesReply; Err : text };
 
@@ -62,33 +62,33 @@ type MessagesReply = record {
 type MessagesResult = variant { Ok : vec MessagesReply; Err : text };
 
 type TokenReply = variant {
-	LP : LPTokenReply;
-	IC : ICTokenReply;
+    LP : LPTokenReply;
+    IC : ICTokenReply;
 };
 type LPTokenReply = record {
-	token_id : nat32;
+    token_id : nat32;
     pool_symbol : text;
     name : text;
     chain : text;
-	symbol : text;
+    symbol : text;
     token : text;
     pool_id_of : nat32;
     address : text;
-	decimals : nat8;
+    decimals : nat8;
     fee : nat;
     total_supply : nat;
     on_kong : bool;
 };
 type ICTokenReply = record {
-	token_id : nat32;
-	pool_symbol : text;
+    token_id : nat32;
+    pool_symbol : text;
     name : text;
     chain : text;
-	symbol : text;
+    symbol : text;
     token : text;
-	canister_id : text;
-	decimals : nat8;	
-	fee : nat;
+    canister_id : text;
+    decimals : nat8;	
+    fee : nat;
     icrc1 : bool;
     icrc2 : bool;
     icrc3 : bool;
@@ -107,7 +107,7 @@ type PoolReply = record {
     pool_id : nat32;
     name : text;
     symbol : text;
-    balance : nat;
+    balance : nat;              // USD value of balance0 + balance1
     chain_0 : text;
     symbol_0 : text;
     address_0 : text;
@@ -120,15 +120,15 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
-    rolling_24h_volume : nat;
-    rolling_24h_lp_fee : nat;
+    rolling_24h_volume : nat;   // USD value of rolling 24h volume
+    rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;
     rolling_24h_apy : float64;
     lp_token_symbol : text;
     lp_token_supply : nat;
-    total_volume : nat;
-    total_lp_fee : nat;
-    on_kong : bool;
+    total_volume : nat;         // USD value of lifetime volume
+    total_lp_fee : nat;         // USD value of lifetime LP fees
+    on_kong : bool;             // flag indicating if displayed on Kong Swap
 };
 type PoolsResult = variant { Ok : PoolsReply; Err : text };
 
@@ -424,7 +424,7 @@ service : {
     // requests(request_id) - returns specific request or all requests of the user
     requests : (opt nat64) -> (RequestsResult) query;
 
-    // add a new liquidity pool
+    // add a new liquidity pool and token
     add_pool : (AddPoolArgs) -> (AddPoolResult);
 
     // add_liquidity_amounts(token_0, amount_0, token_1)

@@ -45,22 +45,6 @@
 				}
 			]
     },
-    "kong_svelte": {
-      "dependencies": [
-        "kong_backend"
-      ],
-      "source": [
-        "src/kong_svelte/dist"
-      ],
-      "type": "assets",
-      "workspace": "kong_svelte",
-      "specified_id": "be2us-64aaa-aaaaa-qaabq-cai",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
-    },
     "kong_faucet": {
       "candid": "src/kong_faucet/kong_faucet.did",
       "declarations": {

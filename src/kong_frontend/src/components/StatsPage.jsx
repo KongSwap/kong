@@ -62,7 +62,8 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
     if (poolInfo && tokenDetails.length > 0) {
       const updatedPools = poolInfo.map((pool) => {
         const balance = Number(pool.balance || 0);
-        const decimals1 = getTokenDecimals(pool.symbol_1);
+        //const decimals1 = getTokenDecimals(pool.symbol_1);
+        const decimals1 = 6;  // ckUSDT has 6 decimals
 
         const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
         const roll24hVolume = formatNumberCustom(Number(pool.rolling_24h_volume || 0) / 10 ** decimals1, 0);
@@ -281,27 +282,31 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
           </div>
 
           <div className="statspage-tokenstable-body">
-                {poolInfo.map((pool, index) => {
-                  const tokenName = tokenFullNames[pool.symbol_0] || pool.symbol_0; // Default to symbol if full name not found
+                {tokenDetails.map((token, index) => {
+                  const token_type = Object.keys(token)[0];
+                  if (token_type !== "IC") {
+                    return null;  // skip
+                  }
+                  token = token[token_type];
                   return (
                     <div className="statspage-tokenstable-row" key={index}>
                       <div className="statspage-tokenstable-cell statspage-tokenstable-cell-token">
                         <div className="statspage-tokenstable-logo">
                           <img
-                            src={tokenImages[pool.symbol_0]}
+                            src={tokenImages[token.symbol]}
                             className="statspage-tokenstable-token"
-                            alt={pool.symbol_0}
+                            alt={token.symbol}
                           />
                         </div>
-                        <span className="statspage-tokenstable-tokenname">{tokenName}</span>
+                        <span className="statspage-tokenstable-tokenname">{token.name}</span>
                       </div>
 
                       <div className="statspage-tokenstable-cell statspage-tokenstable-cell-symbol">
-                        <span className="statspage-tokenstable-cell-value">{pool.symbol_0}</span>
+                        <span className="statspage-tokenstable-cell-value">{token.symbol}</span>
                       </div>
 
                       <div className="statspage-tokenstable-cell statspage-tokenstable-cell-address">
-                        <span className="statspage-tokenstable-cell-value">{pool.address_0}</span>
+                        <span className="statspage-tokenstable-cell-value">{token.canister_id}</span>
                       </div>
                     </div>
                   );

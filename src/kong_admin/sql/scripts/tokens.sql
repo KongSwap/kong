@@ -2,16 +2,16 @@ CREATE TYPE token_type AS ENUM ('IC', 'LP');
 
 CREATE TABLE tokens (
     token_id INT PRIMARY KEY,
-    token_type token_type,
-    name VARCHAR(64),
-    symbol VARCHAR(20),
-    canister_id VARCHAR(64),
-    address VARCHAR(20),
-    decimals SMALLINT,
-    fee FLOAT8,
+    token_type token_type NOT NULL,
+    name TEXT,
+    symbol TEXT,
+    canister_id TEXT,
+    address TEXT,
+    decimals SMALLINT NOT NULL,
+    fee DOUBLE PRECISION,
     icrc1 BOOLEAN,
     icrc2 BOOLEAN,
     icrc3 BOOLEAN,
-    on_kong BOOLEAN,
+    on_kong BOOLEAN NOT NULL,
     UNIQUE (canister_id, address)
 );

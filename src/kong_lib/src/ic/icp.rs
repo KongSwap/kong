@@ -1,3 +1,4 @@
+pub const ICP_TOKEN_ID: u32 = 2;
 pub const ICP_SYMBOL: &str = "ICP";
 pub const ICP_SYMBOL_WITH_CHAIN: &str = "IC.ICP";
 #[cfg(not(feature = "prod"))]
