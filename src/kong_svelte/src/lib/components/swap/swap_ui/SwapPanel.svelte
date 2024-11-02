@@ -4,7 +4,7 @@
   import { cubicOut } from "svelte/easing";
   import { t } from "$lib/locales/translations";
   import { tokenStore } from "$lib/stores/tokenStore";
-  import { formatTokenAmount, formatNumberCustom } from "$lib/utils/formatNumberCustom";
+  import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   
   export let title: string;
@@ -153,7 +153,7 @@
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <span class="balance-amount" on:click={handleMaxClick}>
-          {formatNumberCustom(balance || "0", 6)} {token}
+            {balance} {token}
         </span>
       </div>
     </footer>

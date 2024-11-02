@@ -21,7 +21,7 @@
       "$lib": ["src/lib"],
       "$lib/*": ["src/lib/*"]
     },
-    "types": ["vite/client", "svelte", "bignumber.js"]
+    "types": ["vite/client", "svelte"]
   },
   "include": [
     "src/**/*.d.ts",

@@ -2,7 +2,7 @@
   import { fade, scale } from 'svelte/transition';
   import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';
-  import { formatNumberCustom } from '$lib/utils/formatNumberCustom';
+  import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   
@@ -41,7 +41,7 @@
             <span class="label">You Pay</span>
             <div class="token-info">
               <img src="/tokens/{payToken}.svg" alt={payToken} />
-              <span class="amount">{formatNumberCustom(payAmount, 6)}</span>
+              <span class="amount">{formatTokenAmount(payAmount, 6)}</span>
               <span class="symbol">{payToken}</span>
             </div>
           </div>
@@ -56,7 +56,7 @@
             <span class="label">You Receive</span>
             <div class="token-info">
               <img src="/tokens/{receiveToken}.svg" alt={receiveToken} />
-              <span class="amount">{formatNumberCustom(receiveAmount, 6)}</span>
+              <span class="amount">{formatTokenAmount(receiveAmount, 6)}</span>
               <span class="symbol">{receiveToken}</span>
             </div>
           </div>

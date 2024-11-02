@@ -3,7 +3,7 @@ import { writable, derived, get, type Readable } from 'svelte/store';
 import { TokenService } from '$lib/services/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
-import { formatUSD, formatTokenAmount } from '$lib/utils/formatNumberCustom';
+import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 
 interface TokenState {
   readonly tokens: FE.Token[];

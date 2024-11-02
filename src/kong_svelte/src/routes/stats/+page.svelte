@@ -3,7 +3,7 @@
 	import { tooltip } from '$lib/actions/tooltip';
   import { t } from "$lib/locales/translations";
   import { writable } from "svelte/store";
-  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
+  import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import StatsSignPost from "$lib/components/stats/StatsSignPost.svelte";
   import { lpTableHeaders } from "$lib/constants/statsConstants";
@@ -200,17 +200,17 @@
                         </div>
                       </td>
                       <td class="p-2 text-right">
-                        ${formatNumberCustom(pool.price.toString(), 2)}
+                        ${formatTokenAmount(pool.price.toString(), 2)}
                       </td>
                       <td class="p-2 text-right">
-                        ${formatNumberCustom(pool.tvl.toString(), 2)}
+                        ${formatTokenAmount(pool.tvl.toString(), 2)}
                       </td>
                       <td class="p-2 text-right">
-                        ${formatNumberCustom(pool.rolling_24h_volume.toString(), 2)}
+                        ${formatTokenAmount(pool.rolling_24h_volume.toString(), 2)}
                       </td>
                       <td class="p-2 text-right">
                         <div class="flex items-center">
-                          {formatNumberCustom(pool.rolling_24h_apy.toString(), 2)}%
+                          {formatTokenAmount(pool.rolling_24h_apy.toString(), 2)}%
                         </div>
                       </td>
                       <td class="p-2">

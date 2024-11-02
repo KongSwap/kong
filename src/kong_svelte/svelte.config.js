@@ -16,6 +16,10 @@ const config = {
     files: {
       assets: "static",
     },
+    alias: {
+      $lib: 'src/lib',
+      "$lib/*": 'src/lib/*',
+    },
   },
   preprocess: vitePreprocess({
     typescript: true,

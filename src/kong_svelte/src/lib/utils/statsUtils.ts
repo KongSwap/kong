@@ -1,4 +1,4 @@
-import { getTokenDecimals, formatNumberCustom } from '$lib/utils/formatNumberCustom';
+import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
 
 /**
  * Parses a value by removing unwanted characters and converting to a number if applicable.
@@ -66,16 +66,16 @@ export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc
 export function formatPoolData(pools: any[]): any[] {
   if (pools.length === 0) return pools;
 
-  const decimals1 = getTokenDecimals(pools[0]?.symbol_1) || 6;
+  const decimals1 =  6;
 
   return pools.map((pool, index) => {
     const balance = Number(pool.balance || 0);
-    const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
-    const roll24hVolume = formatNumberCustom(
+    const apy = formatTokenAmount(Number(pool.rolling_24h_apy || 0), 2);
+    const roll24hVolume = formatTokenAmount(
       Number(pool.rolling_24h_volume || 0) / 10 ** decimals1,
       0,
     );
-    const tvl = formatNumberCustom(balance / 10 ** decimals1, 0);
+    const tvl = formatTokenAmount(balance / 10 ** decimals1, 0);
 
     return {
       ...pool,

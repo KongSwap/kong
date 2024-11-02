@@ -1,7 +1,6 @@
 import { getActor } from '$lib/stores/walletStore';
-import { isConnected } from '$lib/stores/walletStore';
 import { PoolService } from './PoolService';
-import { formatUSD, formatTokenAmount } from '$lib/utils/formatNumberCustom';
+import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 import { walletStore } from '$lib/stores/walletStore';
 import { get } from 'svelte/store';
 import { tokenStore } from '$lib/stores/tokenStore';

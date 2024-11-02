@@ -13,7 +13,7 @@
   import Button from "$lib/components/common/Button.svelte";
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
-  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
+  import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
   import { fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
@@ -161,7 +161,7 @@
         );
 
         setReceiveAmount(receivedAmount);
-        setDisplayAmount(formatNumberCustom(receivedAmount, 6));
+        setDisplayAmount(formatTokenAmount(receivedAmount, 6));
 
         price = quote.Ok.price.toString();
         swapSlippage = quote.Ok.slippage;
@@ -332,7 +332,7 @@
         receiveDecimals,
       );
       setReceiveAmount(formattedAmount);
-      setDisplayAmount(formatNumberCustom(formattedAmount, 6));
+      setDisplayAmount(formatTokenAmount(formattedAmount, 6));
     }
 
     clearInputs();

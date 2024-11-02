@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
+  import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import { t } from "$lib/locales/translations";
   import { onMount } from "svelte";
 
@@ -24,13 +24,13 @@
 >
   <ul class="text-left">
     <li>
-      {$t("stats.totalTvl")}: ${formatNumberCustom(totalTvl, 2)}
+      {$t("stats.totalTvl")}: ${formatTokenAmount(totalTvl, 2)}
     </li>
     <li>
-      {$t("stats.24hVolume")}: ${formatNumberCustom(totalVolume, 2)}
+      {$t("stats.24hVolume")}: ${formatTokenAmount(totalVolume, 2)}
     </li>
     <li>
-      {$t("stats.24hFees")}: ${formatNumberCustom(totalFees, 2)}
+      {$t("stats.24hFees")}: ${formatTokenAmount(totalFees, 2)}
     </li>
   </ul>
 </div>

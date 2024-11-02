@@ -58,6 +58,12 @@ export default defineConfig({
           new URL("../declarations", import.meta.url)
         ),
       },
+      {
+        find: "$lib",
+        replacement: fileURLToPath(
+          new URL("../src/lib", import.meta.url)
+        ),
+      },
     ],
   },
   test: {

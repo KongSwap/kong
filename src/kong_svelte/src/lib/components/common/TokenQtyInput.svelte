@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formattedTokens } from '$lib/stores/tokenStore';
     import { createEventDispatcher } from 'svelte';
-    import { formatUSD, formatTokenAmount } from '$lib/utils/formatNumberCustom';
+    import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 
     export let value: string = '';
     export let token: FE.Token;

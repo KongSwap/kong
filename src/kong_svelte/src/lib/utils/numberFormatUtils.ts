@@ -1,24 +1,3 @@
-export const formatNumberCustom = (number, maxDecimals) => {
-  if (number === undefined || number === null) {
-    return "0";
-  }
-  const parts = number.toString().split(".");
-  const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  if (maxDecimals > 0) {
-    const decimalPart = (parts[1] || "")
-      .padEnd(maxDecimals, "0")
-      .substring(0, maxDecimals);
-    return `${integerPart}.${decimalPart}`;
-  } else {
-    return integerPart;
-  }
-}; 
-
-export const getTokenDecimals = (symbol) => {
-  // Implement logic to get token decimals
-  return 6;
-};
-
 export const formatTokenBalance = (balance = "0", decimals: number): string => {
   // Convert the balance to a string and pad with zeros if necessary
   const balanceStr = balance.toString().padStart(decimals + 1, '0');
@@ -45,6 +24,7 @@ export const formatUSD = (number: number | string): string => {
   }).format(Number(number));
 };
 
-export const formatTokenAmount = (amount: bigint | number, decimals: number): number => {
-  return Number(amount) / Math.pow(10, decimals);
+export const formatTokenAmount = (amount: bigint | number | string, decimals: number): number => {
+  const amountNumber = Number(amount);
+  return amountNumber / Math.pow(10, decimals);
 };
