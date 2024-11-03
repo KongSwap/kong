@@ -127,6 +127,70 @@ export function formatBalances(userDetails, tokenPrices) {
       tokenPrices["ICVC_ckUSDT"], // Assuming the pool symbol is "ICVC_ckUSDT"
       userDetails.icvcBalance
     ),
+    gldtBalance: priceRoundedAmount(
+      tokenPrices["GLDT_ckUSDT"], // Assuming the pool symbol is "GLDT_ckUSDT"
+      userDetails.gldtBalance
+    ),
+    ghostBalance: priceRoundedAmount(
+      tokenPrices["GHOST_ckUSDT"], // Assuming the pool symbol is "GHOST_ckUSDT"
+      userDetails.ghostBalance
+    ),
+    ctzBalance: priceRoundedAmount(
+      tokenPrices["CTZ_ckUSDT"], // Assuming the pool symbol is "CTZ_ckUSDT"
+      userDetails.ctzBalance
+    ),
+    elnaBalance: priceRoundedAmount(
+      tokenPrices["ELNA_ckUSDT"], // Assuming the pool symbol is "ELNA_ckUSDT"
+      userDetails.elnaBalance
+    ),
+    dogmiBalance: priceRoundedAmount(
+      tokenPrices["DOGMIB_ckUSDT"], // Assuming the pool symbol is "DOGMI_ckUSDT"
+      userDetails.dogmiBalance
+    ),
+    estBalance: priceRoundedAmount(
+      tokenPrices["EST_ckUSDT"], // Assuming the pool symbol is "EST_ckUSDT"
+      userDetails.estBalance
+    ),
+    pandaBalance: priceRoundedAmount(
+      tokenPrices["PANDA_ckUSDT"], // Assuming the pool symbol is "PANDA_ckUSDT"
+      userDetails.pandaBalance
+    ),
+    kinicBalance: priceRoundedAmount(
+      tokenPrices["KINIC_ckUSDT"], // Assuming the pool symbol is "KINIC_ckUSDT"
+      userDetails.kinicBalance
+    ),
+    dolrBalance: priceRoundedAmount(
+      tokenPrices["DOLR_ckUSDT"], // Assuming the pool symbol is "DOLR_ckUSDT"
+      userDetails.dolrBalance
+    ),
+    traxBalance: priceRoundedAmount(
+      tokenPrices["TRAX_ckUSDT"], // Assuming the pool symbol is "TRAX_ckUSDT"
+      userDetails.traxBalance
+    ),
+    motokoBalance: priceRoundedAmount(
+      tokenPrices["MOTOKO_ckUSDT"], // Assuming the pool symbol is "MOTOKO_ckUSDT"
+      userDetails.motokoBalance
+    ),
+    ckpepeBalance: priceRoundedAmount(
+      tokenPrices["CKPEPE_ckUSDT"], // Assuming the pool symbol is "CKPEPE_ckUSDT"
+      userDetails.ckpepeBalance
+    ),
+    ckshibBalance: priceRoundedAmount(
+      tokenPrices["CKSHIB_ckUSDT"], // Assuming the pool symbol is "CKSHIB_ckUSDT"
+      userDetails.ckshibBalance
+    ),
+    dodBalance: priceRoundedAmount(
+      tokenPrices["DOD_ckUSDT"], // Assuming the pool symbol is "DOD_ckUSDT"
+      userDetails.dodBalance
+    ),
+    kong1Balance: priceRoundedAmount(
+      tokenPrices["KONG1_ckUSDT"], // Assuming the pool symbol is "KONG1_ckUSDT"
+      userDetails.kong1Balance
+    ),
+    kong2Balance: priceRoundedAmount(
+      tokenPrices["KONG2_ckUSDT"], // Assuming the pool symbol is "KONG2_ckUSDT"
+      userDetails.kong2Balance
+    ),
   };
 }
 

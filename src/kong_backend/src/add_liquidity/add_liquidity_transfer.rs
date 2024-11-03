@@ -110,7 +110,7 @@ async fn check_arguments(
     // update the request status
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    // check token_0. If token_0 is not valid, we still need to proceed as we may need to return token_1 to the user
+    // check token_0. If token_0 is not valid, we still need to continue as we may need to return token_1 to the user
     let token_0 = match token_map::get_by_token(&args.token_0) {
         Ok(token) => Some(token),
         Err(e) => {
@@ -128,6 +128,11 @@ async fn check_arguments(
         }
     };
 
+    // either token_0 and token_1 must be valid token
+    if token_0.is_none() && token_1.is_none() {
+        return Err("Token_0 or Token_1 is required".to_string());
+    }
+
     // check tx_id_0 is valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
         Some(TxId::BlockIndex(tx_id)) => Some(tx_id.clone()),
@@ -138,11 +143,6 @@ async fn check_arguments(
         Some(TxId::BlockIndex(tx_id)) => Some(tx_id.clone()),
         _ => None,
     };
-
-    // either token_0 and token_1 must be valid token
-    if token_0.is_none() && token_1.is_none() {
-        return Err("Token_0 or Token_1 is required".to_string());
-    }
 
     // either tx_id_0 or tx_id_1 must be valid
     if tx_id_0.is_none() && tx_id_1.is_none() {
@@ -301,7 +301,7 @@ async fn process_add_liquidity(
             transfer_ids.push(transfer_id);
             Ok(())
         }
-        // either icrc1_transfer could not be verified (tx_id_0.is_some()) or must be an icrc2_transfer_from
+        // either icrc1_transfer could not be verified (transfer_id_0.is_err()) or must be an icrc2_transfer_from (tx_id_0.is_none())
         // which is handled a bit later on
         Err(e) => Err(e),
     };
@@ -322,7 +322,7 @@ async fn process_add_liquidity(
         let token_id_1 = token_1.token_id();
         match pool_map::get_by_token_ids(token_id_0, token_id_1) {
             Some(pool) => {
-                // now that we know the pool exists, if tx_id.is_none() then it's an icrc2_transfer_from
+                // now that we know the pool exists, if transfer_0.is_err() and tx_id.is_none() then it's an icrc2_transfer_from
                 if transfer_0.is_err() && tx_id_0.is_none() {
                     transfer_0 = match transfer_from_token(request_id, &TokenIndex::Token0, token_0, &add_amount_0, ts).await {
                         Ok(transfer_id) => {
