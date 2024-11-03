@@ -48,6 +48,10 @@ function createToastStore() {
         update(() => []);
     };
 
+    const dismissToast = (id: string) => {
+        update(toasts => toasts.filter(t => t.id !== id));
+    };
+
     return {
         subscribe,
         success: (message: string, duration?: number, title?: string) => 
@@ -59,7 +63,8 @@ function createToastStore() {
         info: (message: string, duration?: number, title?: string) => 
             addToast(message, 'info', duration, title),
         remove: removeToast,
-        clear: clearToasts
+        clear: clearToasts,
+        dismiss: dismissToast
     };
 }
 

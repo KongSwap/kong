@@ -15,14 +15,19 @@
         warning: 'text-gray-900',
         info: 'text-white'
     };
+
+    function dismissToast(id: string) {
+        toastStore.dismiss(id);
+    }
 </script>
 
-<div class="fixed top-4 right-4 z-[9999] flex flex-col items-end gap-3 max-w-lg">
+<div class="fixed top-20 right-4 z-[9999] flex flex-col items-end gap-3 max-w-lg">
     {#each $toastStore as toast (toast.id)}
         <div
-            class="toast-container"
+            class="toast-container cursor-pointer"
             in:fly={{ x: 50, duration: 400 }}
             out:fade={{ duration: 300 }}
+            on:click={() => dismissToast(toast.id)}
         >
             <div class="toast {colors[toast.type]}">
                 <div class="content">
