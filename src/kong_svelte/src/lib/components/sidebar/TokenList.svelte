@@ -58,21 +58,20 @@
   {:else if $tokenStore.error}
     <div class="error">{$tokenStore.error}</div>
   {:else}
-    <div class="relative flex justify-end">
-      <button
-        class="flex items-center px-2 py-1 bg-white/10 hover:bg-yellow-500 hover:text-black rounded-md"
-        on:click={handleReload}
-        aria-label="Refresh Balances"
-      >
-        <RefreshCw size={18} class="mr-2" /> Refresh Balances
-      </button>
-    </div>
-
     <div class="portfolio-value">
-      <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-      <p class="text-3xl font-bold font-mono">
-        ${$formattedTokens.portfolioValue}
-      </p>
+      <button
+        class="portfolio-refresh-button"
+        on:click={handleReload}
+        aria-label="Refresh Portfolio Value"
+      >
+        <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
+        <p class="text-3xl font-bold font-mono">
+          ${$formattedTokens.portfolioValue}
+        </p>
+        <div class="refresh-overlay">
+          <RefreshCw size={24} />
+        </div>
+      </button>
     </div>
 
     {#each $formattedTokens.tokens as token (token.canister_id)}
@@ -139,10 +138,58 @@
   .portfolio-value {
     position: relative;
     text-align: center;
-    padding: 16px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     margin-bottom: 16px;
+    transition: transform 0.2s ease;
+  }
+
+  .portfolio-value:hover {
+    transform: scale(1.02);
+  }
+
+  .portfolio-refresh-button {
+    width: 100%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    padding: 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .portfolio-refresh-button:active {
+    transform: scale(0.98);
+  }
+
+  .refresh-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    color: white;
+    gap: 8px;
+  }
+
+  .refresh-overlay :global(svg) {
+    transition: transform 0.3s ease;
+  }
+
+  .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
+    transform: rotate(180deg);
+  }
+
+  .portfolio-refresh-button:hover .refresh-overlay,
+  .portfolio-refresh-button:focus-visible .refresh-overlay {
+    opacity: 0.69;
   }
 
   .token-details {

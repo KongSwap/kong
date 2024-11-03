@@ -6,9 +6,9 @@
   import { browser } from "$app/environment";
   import { walletStore } from "$lib/stores/walletStore";
   import { tokenStore } from "$lib/stores/tokenStore";
-  import Panel from "../common/Panel.svelte";
-  import WalletProvider from "./WalletProvider.svelte";
-  import SidebarHeader from "./SidebarHeader.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
+  import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
 
   // Lazy-loaded components
   let SocialSection;
@@ -276,20 +276,14 @@
     position: relative;
     width: 100%;
     max-width: 100%;
+    margin-bottom: 4px;
   }
 
   .scroll-container {
     position: absolute;
     inset: 0;
     overflow-y: auto;
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    width: calc(100% + 16px);
-    max-width: calc(100% + 16px);
-    box-sizing: border-box;
+
   }
 
   .scroll-container::-webkit-scrollbar {
@@ -357,17 +351,19 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 8px;
+    padding: 12px;
+    margin-top: auto;
     border-radius: 4px;
     width: 100%;
     box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .footer-actions {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 8px;
     border-radius: 4px;
     width: 100%;
     box-sizing: border-box;
