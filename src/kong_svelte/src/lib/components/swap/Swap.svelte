@@ -45,6 +45,8 @@
   let gasFee = "0";
   let lpFee = "0";
   let tokenFee: string | undefined;
+  let gasFees: string[] = [];
+  let lpFees: string[] = [];
 
   // Transaction state
   let requestId: bigint | null = null;
@@ -61,6 +63,8 @@
     { id: 'pay', type: 'pay', title: 'You Pay' },
     { id: 'receive', type: 'receive', title: 'You Receive' }
   ];
+
+  let routingPath: string[] = [];
 
   onMount(async () => {
     if ($walletStore.isConnected) {
@@ -168,10 +172,26 @@
           .toFormat(2);
 
         if (quote.Ok.txs.length > 0) {
-          const tx = quote.Ok.txs[0];
-          lpFee = swapService.fromBigInt(tx.lp_fee, receiveDecimals);
-          gasFee = swapService.fromBigInt(tx.gas_fee, receiveDecimals);
-          tokenFee = tx.receive_symbol;
+          // Extract routing path from txs
+          routingPath = [payToken, ...quote.Ok.txs.map(tx => tx.receive_symbol)];
+          
+          // Reset fee arrays
+          gasFees = [];
+          lpFees = [];
+          
+          // Collect fees for each hop
+          quote.Ok.txs.forEach(tx => {
+            const receiveDecimals = getTokenDecimals(tx.receive_symbol);
+            gasFees.push(swapService.fromBigInt(tx.gas_fee, receiveDecimals));
+            lpFees.push(swapService.fromBigInt(tx.lp_fee, receiveDecimals));
+          });
+
+          // Set the total fees for display
+          if (gasFees.length > 0) {
+            gasFee = gasFees[gasFees.length - 1];
+            lpFee = lpFees[lpFees.length - 1];
+            tokenFee = routingPath[routingPath.length - 1];
+          }
         }
       } else {
         toastStore.error(quote.Err);
@@ -184,7 +204,7 @@
       setReceiveAmount("0");
     } finally {
       isCalculating = false;
-    }
+    } 
   }
 
   const debouncedGetQuote = debounce(getSwapQuote, 500);
@@ -411,7 +431,7 @@
     transition:fade={{ duration: 100 }}
     on:click|self={() => (showPayTokenSelector = false)}
   >
-    <div class="modal-content">
+    <div class="modal-content token-selector">
       <TokenSelector
         show={true}
         onSelect={(token) => handleSelectToken("pay", token)}
@@ -428,7 +448,7 @@
     transition:fade={{ duration: 100 }}
     on:click|self={() => (showReceiveTokenSelector = false)}
   >
-    <div class="modal-content">
+    <div class="modal-content token-selector">
       <TokenSelector
         show={true}
         onSelect={(token) => handleSelectToken("receive", token)}
@@ -448,7 +468,7 @@
       isConfirmationOpen = false;
     }}
   >
-    <div class="modal-content" on:click|stopPropagation>
+    <div class="modal-content confirmation">
       <SwapConfirmation
         {payToken}
         {payAmount}
@@ -465,7 +485,10 @@
         {price}
         {gasFee}
         {lpFee}
+        {gasFees}
+        {lpFees}
         slippage={swapSlippage}
+        {routingPath}
       />
     </div>
   </div>
@@ -545,12 +568,20 @@
 
   .modal-content {
     position: relative;
-    width: 100%;
-    max-width: 500px;
     margin: 1rem;
     border-radius: 1rem;
     overflow: hidden;
     z-index: 10000;
+  }
+
+  .modal-content.token-selector {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .modal-content.confirmation {
+    width: 100%;
+    height: auto;
   }
 
   @media (max-width: 480px) {
@@ -575,6 +606,12 @@
 
     .modal-content {
       margin: 0.5rem;
+    }
+
+    .modal-content.confirmation {
+      max-width: calc(100% - 1rem);
+      margin: 0.5rem;
+      height: auto;
     }
   }
 

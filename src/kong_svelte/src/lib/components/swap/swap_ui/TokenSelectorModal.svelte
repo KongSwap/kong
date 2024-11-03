@@ -204,12 +204,7 @@
     }
 
     .token-button.active {
-        @apply opacity-50 cursor-not-allowed hover:translate-x-0 hover:scale-100 hover:bg-transparent;
-    }
-
-    .token-button.active:hover {
-        cursor: not-allowed;
-        transform: none;
+        @apply opacity-50 cursor-not-allowed hover:translate-x-0 hover:scale-100;
     }
 
     /* Responsive */
