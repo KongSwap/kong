@@ -8,5 +8,8 @@ IDENTITY="--identity kong"
 dfx build ${NETWORK} ${IDENTITY} kong_backend
 dfx canister install ${NETWORK} ${IDENTITY} kong_backend --mode upgrade
 
+dfx build ${NETWORK} ${IDENTITY} kong_faucet
+dfx canister install ${NETWORK} ${IDENTITY} kong_faucet --mode upgrade
+
 dfx build ${NETWORK} ${IDENTITY} kong_data
 dfx canister install ${NETWORK} ${IDENTITY} kong_data --mode upgrade
