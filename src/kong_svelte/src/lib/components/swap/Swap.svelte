@@ -16,6 +16,7 @@
   import BigNumber from "bignumber.js";
   import { flip } from 'svelte/animate';
   import { quintOut } from 'svelte/easing';
+  import SwapSettings from './swap_ui/SwapSettings.svelte';
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
   const swapService = SwapService.getInstance();
@@ -65,6 +66,8 @@
   ];
 
   let routingPath: string[] = [];
+
+  let showSettings = false;
 
   onMount(async () => {
     if ($walletStore.isConnected) {
@@ -354,6 +357,7 @@
     }
 
     clearInputs();
+    slippage = 2; // Reset slippage to default 2%
     toastStore.success("Swap successful");
     tokenStore.loadBalances(); // Refresh balances after successful swap
   }
@@ -381,6 +385,15 @@
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
+    <button 
+      class="settings-button"
+      on:click={() => {
+        showSettings = true;
+      }}
+    >
+      Settings
+    </button>
+
     <div class="panels-container">
       {#each panels as panel (panel.id)}
         <div 
@@ -488,9 +501,24 @@
         {gasFees}
         {lpFees}
         slippage={swapSlippage}
+        maxAllowedSlippage={slippage}
         {routingPath}
       />
     </div>
+  </div>
+{/if}
+
+{#if showSettings}
+  <div class="modal-overlay" transition:fade={{ duration: 200 }}>
+    <SwapSettings
+      show={showSettings}
+      onClose={() => showSettings = false}
+      slippage={slippage}
+      onSlippageChange={(value) => {
+        slippage = value;
+        if (payAmount) debouncedGetQuote(payAmount);
+      }}
+    />
   </div>
 {/if}
 
@@ -502,6 +530,7 @@
   }
 
   .swap-container {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -575,27 +604,36 @@
   }
 
   .modal-content.token-selector {
-    width: 100%;
-    max-width: 500px;
+    max-height: 90vh;
   }
 
   .modal-content.confirmation {
-    width: 100%;
-    height: auto;
+    max-height: 90vh;
+    margin: 1rem;
   }
 
   @media (max-width: 480px) {
     .swap-wrapper {
       padding: 0.5rem;
-      display: flex;
-        flex-direction: column;
-        min-height: 100vh;
     }
 
-    .swap-container {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
+    .modal-content {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      border-radius: 0;
+    }
+
+    .modal-content.token-selector,
+    .modal-content.confirmation {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      border-radius: 0;
+    }
+
+    .modal-overlay {
+      padding: 0;
     }
 
     .switch-button {
@@ -640,5 +678,26 @@
     to {
       transform: translate(-50%, -50%) rotate(180deg);
     }
+  }
+
+  .settings-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: #ffcd1f;
+    border: 2px solid #368d00;
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 14px;
+    color: #000;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 2;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .settings-button:hover {
+    background: #ffe077;
+    transform: scale(1.05);
   }
 </style>
