@@ -7,5 +7,5 @@ NETWORK="--network ic"
 dfx build ${NETWORK} ${IDENTITY} kong_backend
 
 cd ../../target/wasm32-unknown-unknown/release
-gzip kong_backend_opt.wasm
+gzip -c kong_backend.wasm > kong_backend.wasm.gz
 cd ../../../scripts/prod
