@@ -34,6 +34,7 @@ const PoolsComponent = ({
   tokenPrices,
   principal,
   tokenImages,
+  poolsInfo,
   initialPool
 }) => {
   const {
@@ -96,7 +97,14 @@ const PoolsComponent = ({
   //   ? queryParams.get("pool").split("_")
   //   : ["ICP", "ckUSDT"];
   const initialYouPayToken = initialPool ? initialPool.split("_")[0] : null;
-  const initialYouReceiveToken = initialPool ? initialPool.split("_")[1] : null;
+  // check if pool exists firsts
+  const initialYouReceiveToken = poolsInfo ? poolsInfo.forEach((pool) => {
+    if (pool.symbol_1 === initialPool.split("_")[1]){
+        return pool.symbol_1;
+    } else {
+      return "ckUSDT";
+    }
+  }) : null;
   const [youPayToken, setYouPayToken] = useState(initialYouPayToken);
   const [youReceiveToken, setYouReceiveToken] = useState(initialYouReceiveToken || "ckUSDT");
 
