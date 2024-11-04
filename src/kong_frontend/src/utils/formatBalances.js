@@ -184,6 +184,10 @@ export function formatBalances(userDetails, tokenPrices) {
       userDetails.dodBalance
     ),
     kong1Balance: priceRoundedAmount(
+      tokenPrices["KONG_ckUSDT"], // Assuming the pool symbol is "KONG_ckUSDT"
+      userDetails.kongBalance
+    ),
+    kong1Balance: priceRoundedAmount(
       tokenPrices["KONG1_ckUSDT"], // Assuming the pool symbol is "KONG1_ckUSDT"
       userDetails.kong1Balance
     ),
