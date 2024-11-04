@@ -15,7 +15,8 @@ tokens=("GLDT 6c7su-kiaaa-aaaar-qaira-cai"
         "MOTOKO k45jy-aiaaa-aaaaq-aadcq-cai"
         "ckPEPE etik7-oiaaa-aaaar-qagia-cai"
         "ckSHIB fxffn-xiaaa-aaaar-qagoa-cai"
-        "DOD cp4zx-yiaaa-aaaah-aqzea-cai")
+        "DOD cp4zx-yiaaa-aaaah-aqzea-cai"
+        "KONG o7oak-iyaaa-aaaaq-aadzq-cai")
 
 # Define paths to templates and destination
 DESTINATION_DIR="./src/kong_frontend/src/Actors"  # Change this if your folder structure is different
