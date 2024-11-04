@@ -350,8 +350,12 @@ const App = () => {
     if (!poolsInfo.length) return {};
     const priceMap = {};
     poolsInfo.forEach((pool) => {
-      const tokenSymbol = pool.lp_token_symbol;
-      priceMap[tokenSymbol] = pool.price; // Store price against token symbol
+      if (pool.symbol_1 === 'ICP') {
+        priceMap[pool.symbol_0 + '_ckUSDT'] = pool.price * priceMap['ICP_ckUSDT'];
+      } else {
+        const tokenSymbol = pool.lp_token_symbol;
+        priceMap[tokenSymbol] = pool.price; // Store price against token symbol
+      }
     });
     return priceMap;
   }, [poolsInfo]);

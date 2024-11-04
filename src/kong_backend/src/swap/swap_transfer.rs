@@ -59,10 +59,9 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
 
 /// check pay token is valid and verify the transfer
 async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(StableToken, Nat, u64), String> {
-    // update the request status
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    // check pay_token is a valid token
+    // check pay_token is a valid token. We need to know the canister id so return here if token is not valid
     let pay_token = match token_map::get_by_token(&args.pay_token) {
         Ok(token) => token,
         Err(e) => {
