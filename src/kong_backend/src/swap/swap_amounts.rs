@@ -29,6 +29,11 @@ pub fn swap_amounts(
     let user_fee_level = user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level;
     let mut txs = Vec::new();
 
+    // if tokens are the same return the same amount
+    if pay_token_id == receive_token_id {
+        return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, txs));
+    }
+
     // check if direct pool exists
     if let Some(pool) = pool_map::get_by_token_ids(pay_token_id, receive_token_id) {
         let swap = swap_amount_0(&pool, pay_amount, Some(user_fee_level), None, None)?;

@@ -1,6 +1,6 @@
 use candid::Nat;
 
-use crate::helpers::nat_helpers::nat_to_decimals_f64;
+use crate::helpers::nat_helpers::{nat_multiply_f64, nat_to_decimal_precision, nat_to_decimals_f64, nat_zero};
 use crate::stable_kong_settings::kong_settings;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
@@ -32,12 +32,12 @@ pub fn is_ckusdt(token: &str) -> bool {
 }
 
 /// Calculate the ckusdt amount for a given pay token and amount
-///
-/// Returns (receive_amount, mid_price)
 pub fn ckusdt_amount(pay_token: &StableToken, pay_amount: &Nat) -> Result<Nat, String> {
     let ckusdt_token = token_map::get_ckusdt()?;
-    let (receive_amount, _, _, _, _) = swap_amounts(pay_token, pay_amount, &ckusdt_token)?;
-    Ok(receive_amount)
+    let (_, _, mid_price, _, _) = swap_amounts(pay_token, &nat_zero(), &ckusdt_token)?;
+    let receive_amount = nat_multiply_f64(pay_amount, mid_price).ok_or("Failed to calculate ckUSDT amount")?;
+    let receieve_amount_ckusdt = nat_to_decimal_precision(&receive_amount, pay_token.decimals(), ckusdt_token.decimals());
+    Ok(receieve_amount_ckusdt)
 }
 
 /// Convert a Nat amount to a f64 with the correct number of decimals for ckUSDT
