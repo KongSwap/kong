@@ -2,8 +2,11 @@ use tokio_postgres::{Config, NoTls};
 
 mod claims;
 mod lp_token_ledger;
+mod math_helpers;
 mod pools;
+mod requests;
 mod tokens;
+mod transfers;
 mod users;
 
 #[tokio::main]
@@ -26,6 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let tokens_map = tokens::load_tokens(&client).await?;
     pools::dump_pools(&client, &tokens_map).await?;
     lp_token_ledger::dump_lp_token_ledger(&client, &tokens_map).await?;
+    requests::dump_requests(&client, &tokens_map).await?;
+    transfers::dump_transfers(&client, &tokens_map).await?;
 
     Ok(())
 }

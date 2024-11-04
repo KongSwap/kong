@@ -1,21 +1,22 @@
 CREATE TABLE pools (
     pool_id INT PRIMARY KEY,
-    token_id_0 INT NOT NULL,
+    token_id_0 INT REFERENCES tokens(token_id) NOT NULL,
     balance_0 DOUBLE PRECISION NOT NULL,
     lp_fee_0 DOUBLE PRECISION NOT NULL,
     kong_fee_0 DOUBLE PRECISION NOT NULL,
-    token_id_1 INT NOT NULL,
+    token_id_1 INT REFERENCES tokens(token_id) NOT NULL,
     balance_1 DOUBLE PRECISION NOT NULL,
     lp_fee_1 DOUBLE PRECISION NOT NULL,
     kong_fee_1 DOUBLE PRECISION NOT NULL,
     lp_fee_bps SMALLINT NOT NULL,
     kong_fee_bps SMALLINT NOT NULL,
-    lp_token_id INT NOT NULL,
+    lp_token_id INT REFERENCES tokens(token_id) NOT NULL,
     on_kong BOOLEAN NOT NULL,
     rolling_24h_volume DOUBLE PRECISION NOT NULL,
     rolling_24h_lp_fee DOUBLE PRECISION NOT NULL,
     rolling_24h_num_swaps INT NOT NULL,
     rolling_24h_apy DOUBLE PRECISION NOT NULL,
     total_volume DOUBLE PRECISION NOT NULL,
-    total_lp_fee DOUBLE PRECISION NOT NULL
+    total_lp_fee DOUBLE PRECISION NOT NULL,
+    raw_json JSONB NOT NULL
 );
