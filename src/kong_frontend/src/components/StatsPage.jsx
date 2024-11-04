@@ -105,48 +105,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
         {/* Desktop Total Stats */}
         <div className="stats-page-leftcolumn">
           <div className="stats-page-tabs">
-            <span
-              className={`stats-page-tab button-blue button-blue--stats ${viewTab === "stats" ? "button-blue--selected" : ""}`}
-              onClick={() => setViewTab("stats")}
-            >
-              <span className="button-blue__pressed">
-                <span className="button-blue__pressed__l"></span>
-                <span className="button-blue__pressed__mid"></span>
-                <span className="button-blue__pressed__r"></span>
-              </span>
-              <span className="button-blue__selected">
-                <span className="button-blue__selected__l"></span>
-                <span className="button-blue__selected__mid"></span>
-                <span className="button-blue__selected__r"></span>
-              </span>
-              <span className="button-blue__default">
-                <span className="button-blue__default__l"></span>
-                <span className="button-blue__default__mid"></span>
-                <span className="button-blue__default__r"></span>
-              </span>
-              <span className="button-blue__text">STATS</span>
-            </span>
-            <span
-              className={`stats-page-tab button-blue button-blue--tokens ${viewTab === "tokens" ? "button-blue--selected" : ""}`}
-              onClick={() => setViewTab("tokens")}
-            >
-              <span className="button-blue__pressed">
-                <span className="button-blue__pressed__l"></span>
-                <span className="button-blue__pressed__mid"></span>
-                <span className="button-blue__pressed__r"></span>
-              </span>
-              <span className="button-blue__selected">
-                <span className="button-blue__selected__l"></span>
-                <span className="button-blue__selected__mid"></span>
-                <span className="button-blue__selected__r"></span>
-              </span>
-              <span className="button-blue__default">
-                <span className="button-blue__default__l"></span>
-                <span className="button-blue__default__mid"></span>
-                <span className="button-blue__default__r"></span>
-              </span>
-              <span className="button-blue__text">TOKENS</span>
-            </span>
+            {/* div left to preserve spacing */}
           </div>
           <div className="stats-page-kong-panel-container">
             <img src={panelGroundBg} className="stats-page-kong-panel-ground-bg" alt="" />
