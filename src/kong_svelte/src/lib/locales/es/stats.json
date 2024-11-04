@@ -2,7 +2,7 @@
   "stats": "Estadísticas",
   "volume": "Volumen",
   "liquidity": "Liquidez",
-  "overviewOfKongPools": "Resumen de Pools de Kong",
+  "poolsTableTitle": "Resumen de Pools de Kong",
   "pool": "Pool",
   "tvl": "TVL",
   "apy": "APY",

@@ -1,14 +1,20 @@
 <script lang="ts">
   import "../app.css";
-  import { t } from "$lib/locales/translations";
   import { onMount } from "svelte";
   import Navbar from "$lib/components/nav/Navbar.svelte";
-  import { currentEnvMode } from "$lib/utils/envUtils";
   import Toast from "$lib/components/common/Toast.svelte";
+  import { t } from "$lib/locales/translations";
+  import { currentEnvMode } from "$lib/utils/envUtils";
   import { restoreWalletConnection } from "$lib/stores/walletStore";
+  import { switchLocale } from "$lib/stores/localeStore";
+  import { tokenStore } from "$lib/stores/tokenStore";
+  import { poolStore } from "$lib/stores/poolStore";
+  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
 
+  const initializeData = Promise.all([tokenStore.loadTokens(), poolStore.loadPools()]);
   onMount(async () => {
-    Promise.all([restoreWalletConnection()]);
+    switchLocale("en");
+    await restoreWalletConnection();
   });
 </script>
 
@@ -20,13 +26,17 @@
 
 <svelte:head>
   <title>
-    {currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t(
-      "common.browserSubtitle",
-    )}
+    {currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t("common.browserSubtitle")}
   </title>
 </svelte:head>
 
-<slot />
+{#await initializeData}
+  <div class="min-h-[94vh] flex justify-center items-center">
+    <LoadingIndicator />
+  </div>
+{:then}
+  <slot />
+{/await}
 
 <style scoped>
   :global(body) {

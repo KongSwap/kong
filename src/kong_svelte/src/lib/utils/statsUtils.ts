@@ -23,9 +23,9 @@ export function parseValue(value: any): any {
  * @param direction - The sort direction ('asc' or 'desc').
  * @returns A new sorted array of pools.
  */
-export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc'): any[] {
+export function sortTableData(pools: any[], column: string, direction: 'asc' | 'desc'): any[] {
   if (!Array.isArray(pools)) {
-    console.error('sortPools expects an array, but received:', pools);
+    console.error('sortTableData expects an array, but received:', pools);
     return [];
   }
 
@@ -100,3 +100,15 @@ export function filterPools(pools: any[], query: string): any[] {
     `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(lowerQuery),
   );
 }
+
+  // $lib/utils/statsUtils.ts
+  export function filterTokens(tokens: any[], searchQuery: string): any[] {
+    if (!searchQuery) {
+      return tokens;
+    }
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    return tokens.filter(token =>
+      token.symbol.toLowerCase().includes(lowerCaseQuery) ||
+      token.name.toLowerCase().includes(lowerCaseQuery)
+    );
+  }

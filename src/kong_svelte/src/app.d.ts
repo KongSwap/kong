@@ -1,6 +1,12 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
 declare global {
+  interface CanisterIdIcpLedger {
+    [key: string]: any;
+  }
+  
+  const CANISTER_ID_ICP_LEDGER: CanisterIdIcpLedger;
+  
   namespace FE {
     interface TokenBalance {
       in_tokens: bigint;
@@ -22,6 +28,10 @@ declare global {
       on_kong: boolean;
       pool_symbol: string;
       logo?: string;
+      total_24h_volume?: number;
+      price?: number;
+      tvl?: number;
+      balance?: bigint;
     }
 
     interface Transaction {

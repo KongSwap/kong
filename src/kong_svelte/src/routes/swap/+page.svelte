@@ -15,10 +15,15 @@
       console.error('Error fetching tokens:', error);
     }
   });
+
+  const claimTokens = async () => {
+    await TokenService.claimFaucetTokens();
+    tokenStore.loadTokens();
+  };
 </script>
 
 <section class="flex flex-col items-center">
-  <button class="pt-32" on:click={async () => await TokenService.claimFaucetTokens()}>Claim Tokens</button>
+  <button class="pt-32" on:click={claimTokens}>Claim Tokens</button>
   {#if tokens?.Ok}
     {#each tokens?.Ok as token}
       <div class="text-sm uppercase text-gray-500">

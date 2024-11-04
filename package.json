@@ -17,7 +17,9 @@
     "src/kong_svelte"
   ],
   "dependencies": {
-    "@dfinity/ledger-icp": "^2.6.2",
-    "kong_frontend": "^0.0.1"
+    "@dfinity/ledger-icp": "^2.6.2"
+  },
+  "devDependencies": {
+    "vite-plugin-pwa": "^0.20.5"
   }
 }

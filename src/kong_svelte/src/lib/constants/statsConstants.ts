@@ -2,32 +2,40 @@ type TableHeader = {
   label: string;
   column: string;
   textClass: string;
+  requiresAuth?: boolean;
 };
 
 export const lpTableHeaders: TableHeader[] = [
   {
-    label: 'stats.poolName',
-    column: 'poolName',
+    label: 'stats.tokenHeader',
+    column: 'token',
     textClass: 'text-left text-nowrap text-xl md:text-3xl',
   },
   {
-    label: 'stats.price',
+    label: 'stats.priceHeader',
     column: 'price',
     textClass: 'text-right text-nowrap text-xl md:text-3xl',
   },
   {
-    label: 'stats.tvl',
+    label: 'stats.tvlHeader',
     column: 'tvl',
     textClass: 'text-right text-nowrap text-xl md:text-3xl',
   },
   {
-    label: 'stats.24hVolume',
+    label: 'stats.24hVolumeHeader',
     column: 'rolling_24h_volume',
     textClass: 'text-right text-nowrap text-xl md:text-3xl',
   },
   {
-    label: 'stats.apy',
-    column: 'rolling_24h_apy',
+    label: 'stats.apyHeader',
+    column: 'apy',
     textClass: 'text-right text-nowrap text-xl md:text-3xl',
-  },
+  }
+];
+
+export const tokensTableHeaders: TableHeader[] = [
+  { label: 'stats.tokenHeader', column: 'symbol', textClass: 'text-left text-nowrap text-xl md:text-3xl' },
+  { label: 'stats.priceHeader', column: 'price', textClass: 'text-right text-nowrap text-xl md:text-3xl' },
+  { label: 'stats.24hVolumeHeader', column: 'rolling_24h_volume', textClass: 'text-right text-nowrap text-xl md:text-3xl' },
+  { label: 'stats.inWalletHeader', column: 'formattedUsdValue', requiresAuth: true, textClass: 'text-right text-nowrap text-xl md:text-3xl' },
 ];

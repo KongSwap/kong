@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import path from "path";
+import { VitePWA } from 'vite-plugin-pwa';
 
 dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
@@ -46,9 +47,32 @@ export default defineConfig({
   },
   plugins: [
     sveltekit(),
-    // Ensure the prefixes match your .env variables
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'Kong Svelte App',
+        short_name: 'Kong',
+        description: 'A SvelteKit application with PWA capabilities',
+        theme_color: '#ffffff',
+        icons: [
+          {
+            src: '/icons/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/icons/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff,woff2,ttf,json}'],
+      },
+    }),
   ],
   resolve: {
     alias: [
@@ -72,6 +96,5 @@ export default defineConfig({
   },
   define: {
     'process.env.DFX_NETWORK': JSON.stringify(ENV),
-    // Add any other environment variables you need
   }
 });

@@ -4,7 +4,7 @@ import { TokenService } from '$lib/services/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
 import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
-
+import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 interface TokenState {
   readonly tokens: FE.Token[];
   readonly balances: Record<string, FE.TokenBalance>;
@@ -233,9 +233,9 @@ export const formattedTokens = derived(
       tokens: tokenStore.tokens.map(token => {
         const balance = tokenStore.balances[token.canister_id]?.in_tokens || 0;
         const usdValue = tokenStore.balances[token.canister_id]?.in_usd || 0;
+ 
         return {
           ...token,
-          logo: token.logo || '/tokens/not_verified.webp', // Ensure logo is always defined
           formattedBalance: formatTokenAmount(balance, token.decimals),
           formattedUsdValue: formatUSD(Number(usdValue)) || '0',
         };
