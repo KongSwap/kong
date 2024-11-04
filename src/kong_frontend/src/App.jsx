@@ -1542,6 +1542,7 @@ const App = () => {
             tokenPrices={tokenPrices}
             tokenImages={tokenImages}
             accountId={accountId}
+            poolsInfo={poolsInfo}
           />
         </div>
       )}
@@ -1577,6 +1578,7 @@ function MainPage({
   tokenPrices,
   tokenImages,
   accountId,
+  poolsInfo,
 }) {
   const [walletContentView, setWalletContentView] = useState("tokens-table");
   const [slippageDefaultView, setSlippageDefaultView] = useState(true);
@@ -2027,6 +2029,7 @@ function MainPage({
                     principal={principal}
                     initialPool={selectedPool}
                     tokenImages={tokenImages}
+                    poolsInfo={poolsInfo}
                   />
                 ) : viewTab === "remove" ? (
                   <RemoveLiquidityComponent
