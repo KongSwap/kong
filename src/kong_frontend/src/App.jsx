@@ -159,8 +159,6 @@ const tokenImages = {
   IDOGE: tokenIdogeImage,
   KINIC: tokenKinicImage,
   KONG: tokenKongImage,
-  KONG1: tokenKongImage,
-  KONG2: tokenKongImage,
   LINK: tokenLinkImage,
   LTC: tokenLtcImage,
   MATIC: tokenMaticImage,
@@ -240,8 +238,6 @@ export const tokenBalancesSelector = {
   ckSHIB: "ckshibBalance",
   DOD: "dodBalance",
   KONG: "kongBalance",
-  KONG1: "kong1Balance",
-  KONG2: "kong2Balance",
 };
 
 const validTokens = Object.keys(tokenBalancesSelector);
@@ -306,8 +302,6 @@ const App = () => {
       ckshib_backend,
       dod_backend,
       kong_ledger_backend,
-      kong1_backend,
-      kong2_backend,
     },
     isInitialized,
   } = useIdentity();
@@ -595,9 +589,7 @@ const App = () => {
       updateBalance(ckpepe_backend, "ckPEPE"),
       updateBalance(ckshib_backend, "ckSHIB"),
       updateBalance(dod_backend, "DOD"),
-      updateBalance(kong1_backend, "KONG"),
-      updateBalance(kong1_backend, "KONG1"),
-      updateBalance(kong2_backend, "KONG2"),
+      updateBalance(kong_ledger_backend, "KONG"),
     ]);
 
     // Convert the Map to an object
@@ -665,8 +657,7 @@ const App = () => {
     ckshib_backend,
     dod_backend,
     kong_backend,
-    kong1_backend,
-    kong2_backend,
+    kong_ledger_backend,
   ]);
 
   const updateUserPools = useCallback(async () => {
@@ -1438,8 +1429,8 @@ const App = () => {
       },
       {
         symbol: "KONG",
-        balance: shownBalances.kong1Balance,
-        usdBalance: parseBalance(shownBalances.kong1Balance)
+        balance: shownBalances.kongBalance,
+        usdBalance: parseBalance(shownBalances.kongBalance)
           .multipliedBy(parsePrice(tokenPrices["KONG_ckUSDT"]))
           .toFixed(2),
         image: tokenImages["KONG"],
@@ -1449,33 +1440,6 @@ const App = () => {
             tokenPrices["KONG_ckUSDT"]
           ) || 0,
       },
-      {
-        symbol: "KONG1",
-        balance: shownBalances.kong1Balance,
-        usdBalance: parseBalance(shownBalances.kong1Balance)
-          .multipliedBy(parsePrice(tokenPrices["KONG1_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["KONG1"],
-        price:
-          priceRoundedPool(
-            tokenPrices["KONG1_ckUSDT"],
-            tokenPrices["KONG1_ckUSDT"]
-          ) || 0,
-      },
-      {
-        symbol: "KONG2",
-        balance: shownBalances.kong2Balance,
-        usdBalance: parseBalance(shownBalances.kong2Balance)
-          .multipliedBy(parsePrice(tokenPrices["KONG2_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["KONG2"],
-        price:
-          priceRoundedPool(
-            tokenPrices["KONG2_ckUSDT"],
-            tokenPrices["KONG2_ckUSDT"]
-          ) || 0,
-      },
-
     ].sort((a, b) => parseFloat(b.usdBalance) - parseFloat(a.usdBalance));
   }, [shownBalances, tokenPrices]);
 

@@ -48,8 +48,7 @@ import {
   useCKPEPEBackendPlug,
   useCKSHIBBackendPlug,
   useDODBackendPlug,
-  useKONG1BackendPlug,
-  useKONG2BackendPlug
+  useKONGBackendPlug,
 } from '../Actors/plugActorProviders';
 import { useCkbtcBackend } from '../Actors/CKBTC-ACTOR';
 import { useKingKongFaucetBackend } from '../Actors/KONG-FAUCET-ACTOR';
@@ -99,8 +98,7 @@ import { useMOTOKOBackend } from '../Actors/MOTOKOActor';
 import { useCKPEPEBackend } from '../Actors/CKPEPEActor';
 import { useCKSHIBBackend } from '../Actors/CKSHIBActor';
 import { useDODBackend } from '../Actors/DODActor';
-import { useKONG1Backend } from '../Actors/KONG1Actor';
-import { useKONG2Backend } from '../Actors/KONG2Actor';
+import { useKONGBackend } from '../Actors/KONGActor';
 
 import {
   getActor as kong_backend
@@ -165,8 +163,7 @@ const useIdentity = () => {
   const { actor: ckpepe_backend } = useCKPEPEBackend();
   const { actor: ckshib_backend } = useCKSHIBBackend();
   const { actor: dod_backend } = useDODBackend();
-  const { actor: kong1_backend } = useKONG1Backend();
-  const { actor: kong2_backend } = useKONG2Backend();
+  const { actor: kong_ledger_backend } = useKONGBackend();
 
   const { plugActor: backendKingKongPlug, isInitialized: isInitializedKingKongPlug } = useKingKongBackendPlug();
   const { plugActor: backendKingKongFaucetPlug, isInitialized: isInitializedKingKongFaucetPlug } = useKingKongFaucetBackendPlug();
@@ -215,8 +212,7 @@ const useIdentity = () => {
   const { plugActor: ckpepe_backendPlug, isInitialized: isInitializedCkpepePlug } = useCKPEPEBackendPlug();
   const { plugActor: ckshib_backendPlug, isInitialized: isInitializedCkshibPlug } = useCKSHIBBackendPlug();
   const { plugActor: dod_backendPlug, isInitialized: isInitializedDodPlug } = useDODBackendPlug();
-  const { plugActor: kong1_backendPlug, isInitialized: isInitializedKong1Plug } = useKONG1BackendPlug();
-  const { plugActor: kong2_backendPlug, isInitialized: isInitializedKong2Plug } = useKONG2BackendPlug();
+  const { plugActor: kong_backendPlug, isInitialized: isInitializedKongPlug } = useKONGBackendPlug();
 
   useEffect(() => {
     // Handle identity changes and session expiration in one effect
@@ -331,8 +327,7 @@ const useIdentity = () => {
       ckpepe_backend: identityType === 'ii' ? ckpepe_backend : ckpepe_backendPlug,
       ckshib_backend: identityType === 'ii' ? ckshib_backend : ckshib_backendPlug,
       dod_backend: identityType === 'ii' ? dod_backend : dod_backendPlug,
-      kong1_backend: identityType === 'ii' ? kong1_backend : kong1_backendPlug,
-      kong2_backend: identityType === 'ii' ? kong2_backend : kong2_backendPlug,
+      kong_ledger_backend: identityType === 'ii' ? kong_ledger_backend : kong_backendPlug,
     },
     isInitialized: identityType === 'ii'
     ? !!backendKingKong

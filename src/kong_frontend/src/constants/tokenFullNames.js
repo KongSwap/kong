@@ -45,8 +45,6 @@ const tokenFullNames = {
     CKSHIB: "ckSHIB",
     DOD: "DOD",
     KONG: "KongSwap",
-    KONG1: "KONG1 Swap",
-    KONG2: "KONG2 Swap"
 };
 
 export default tokenFullNames;

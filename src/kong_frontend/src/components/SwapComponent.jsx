@@ -97,8 +97,6 @@ const SwapComponent = memo(({
       ckshib_backend,
       dod_backend,
       kong_ledger_backend,
-      kong1_backend,
-      kong2_backend,
     },
   } = useIdentity();
 
@@ -787,10 +785,6 @@ const SwapComponent = memo(({
           return dod_backend;
         case "KONG":
           return kong_ledger_backend;
-        case "KONG1":
-          return kong1_backend;
-        case "KONG2":
-          return kong2_backend;
         default:
           return null;
       }
@@ -889,8 +883,6 @@ const SwapComponent = memo(({
     dod_backend,
     gldt_backend,
     kong_ledger_backend,
-    kong1_backend,
-    kong2_backend,
   ]);
 
   const sanitizeInput = useCallback((input) => {

@@ -50,8 +50,6 @@ import MOTOKOActor from "./Actors/MOTOKOActor";
 import CKPEPEActor from "./Actors/CKPEPEActor";
 import CKSHIBActor from "./Actors/CKSHIBActor";
 import DODActor from "./Actors/DODActor";
-import KONG1Actor from "./Actors/KONG1Actor";
-import KONG2Actor from "./Actors/KONG2Actor";
 import KONGActor from "./Actors/KONGActor";
 import { PlugWalletProvider } from "./components/PlugWalletContext";
 import { FRONTEND_URL } from "./constants/config";
@@ -103,8 +101,6 @@ import {
   CKPEPEActorProviderPlug,
   CKSHIBActorProviderPlug,
   DODActorProviderPlug,
-  KONG1ActorProviderPlug,
-  KONG2ActorProviderPlug,
   KONGActorProviderPlug,
 } from "./Actors/plugActorProviders";
 import NICPActor from "./Actors/NICPActor";
@@ -238,19 +234,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                                                                                                                                                                                               <GHOSTActor>
                                                                                                                                                                                                 <GLDTActor>
                                                                                                                                                                                                   <DODActor>
-                                                                                                                                                                                                    <KONG1ActorProviderPlug>
-                                                                                                                                                                                                      <KONG2ActorProviderPlug>
-                                                                                                                                                                                                        <KONG1Actor>
-                                                                                                                                                                                                          <KONG2Actor>
+                                                                                                                                                                                                    <KONGActorProviderPlug>
+                                                                                                                                                                                                        <KONGActor>
                                                                                                                                                                                                             <RouterProvider
                                                                                                                                                                                                               router={
                                                                                                                                                                                                                 router
                                                                                                                                                                                                               }
                                                                                                                                                                                                             ></RouterProvider>
-                                                                                                                                                                                                          </KONG2Actor>
-                                                                                                                                                                                                        </KONG1Actor>
-                                                                                                                                                                                                      </KONG2ActorProviderPlug>
-                                                                                                                                                                                                    </KONG1ActorProviderPlug>
+                                                                                                                                                                                                        </KONGActor>
+                                                                                                                                                                                                    </KONGActorProviderPlug>
                                                                                                                                                                                                   </DODActor>
                                                                                                                                                                                                 </GLDTActor>
                                                                                                                                                                                               </GHOSTActor>
