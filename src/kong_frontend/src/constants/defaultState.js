@@ -99,8 +99,4 @@ export const defaultStateUser = {
     dodUsdBalance: "0",
     kongBalance: "0",
     kongUsdBalance: "0",
-    kong1Balance: "0",
-    kong1UsdBalance: "0",
-    kong2Balance: "0",
-    kong2UsdBalance: "0"
 };

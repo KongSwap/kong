@@ -6,7 +6,6 @@ import { idlFactory as ckusdcIdlFactory, canisterId as ckusdcCanisterId } from '
 import { idlFactory as icpIdlFactory, canisterId as icpCanisterId } from '../../../declarations/icp_ledger/index.js';
 import { idlFactory as kingKongIdlFactory, canisterId as kingKongCanisterId } from '../../../declarations/kong_backend/index.js';
 import { idlFactory as kingKongFaucetIdlFactory, canisterId as kingKongFaucetCanisterId } from '../../../declarations/kong_faucet/index.js';
-// import { idlFactory as kongIdlFactory, canisterId as kongCanisterId } from '../../../declarations/kong_ledger/index.js';
 import { idlFactory as ckusdtIdlFactory, canisterId as ckusdtCanisterId } from '../../../declarations/ckusdt_ledger/index.js';
 import { idlFactory as NICPIdlFactory, canisterId as NICPCanisterId } from '../../../declarations/nicp_ledger/index.js';
 import { idlFactory as wtnIdlFactory, canisterId as wtnCanisterId } from '../../../declarations/wtn_ledger/index.js';
@@ -49,10 +48,6 @@ import { idlFactory as ckpepeIdlFactory, canisterId as ckpepeCanisterId } from '
 import { idlFactory as ckshibIdlFactory, canisterId as ckshibCanisterId } from '../../../declarations/ckshib_ledger/index.js';
 import { idlFactory as dodIdlFactory, canisterId as dodCanisterId } from '../../../declarations/dod_ledger/index.js';
 import { idlFactory as kongIdlFactory, canisterId as kongCanisterId } from '../../../declarations/kong_ledger/index.js';
-import { idlFactory as kong1IdlFactory, canisterId as kong1CanisterId } from '../../../declarations/kong1_ledger/index.js';
-import { idlFactory as kong2IdlFactory, canisterId as kong2CanisterId } from '../../../declarations/kong2_ledger/index.js';
-
-
 
 export const {
   PlugWalletActorProvider: CkbtcActorProviderPlug,
@@ -293,13 +288,3 @@ export const {
   PlugWalletActorProvider: KONGActorProviderPlug,
   usePlugWalletActor: useKONGBackendPlug,
 } = createPlugWalletActorProvider(kongIdlFactory, kongCanisterId);
-
-export const {
-  PlugWalletActorProvider: KONG1ActorProviderPlug,
-  usePlugWalletActor: useKONG1BackendPlug,
-} = createPlugWalletActorProvider(kong1IdlFactory, kong1CanisterId);
-
-export const {
-  PlugWalletActorProvider: KONG2ActorProviderPlug,
-  usePlugWalletActor: useKONG2BackendPlug,
-} = createPlugWalletActorProvider(kong2IdlFactory, kong2CanisterId);

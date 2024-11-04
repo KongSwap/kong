@@ -60,19 +60,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 	amount=${AMOUNT};
 },)"
 
-# 5,000,000 KONG1
+# 5,000,000 KONG
 AMOUNT=500_000_000_000_000
-TOKEN="kong1"
-TOKEN_LEDGER="${TOKEN}_ledger"
-
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
-},)"
-
-# 5,000,000 KONG2
-AMOUNT=500_000_000_000_000
-TOKEN="kong2"
+TOKEN="kong"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {

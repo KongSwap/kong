@@ -23,10 +23,7 @@
   "cketh_ledger": {
     "ic": "zr7ra-6yaaa-aaaar-qaica-cai"
   },
-  "kong1_ledger": {
-    "ic": "qas2p-2iaaa-aaaar-qajra-cai"
-  },
-  "kong2_ledger": {
-    "ic": "qht43-xqaaa-aaaar-qajrq-cai"
+  "kong_ledger": {
+    "ic": "o7oak-iyaaa-aaaaq-aadzq-cai"
   }
 }
