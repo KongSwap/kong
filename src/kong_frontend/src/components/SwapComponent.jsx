@@ -54,7 +54,6 @@ const SwapComponent = memo(({
       icp_ledger_backend,
       ckbtc_ledger_backend,
       cketh_ledger_backend,
-      // kong_ledger_backend,
       ckusdc_ledger_backend,
       ckusdt_ledger_backend,
       dkp_ledger_backend,
@@ -97,6 +96,7 @@ const SwapComponent = memo(({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
+      kong_ledger_backend,
       kong1_backend,
       kong2_backend,
     },
@@ -785,6 +785,8 @@ const SwapComponent = memo(({
           return ckshib_backend;
         case "DOD":
           return dod_backend;
+        case "KONG":
+          return kong_ledger_backend;
         case "KONG1":
           return kong1_backend;
         case "KONG2":
@@ -842,7 +844,6 @@ const SwapComponent = memo(({
     ckbtc_ledger_backend,
     cketh_ledger_backend,
     icp_ledger_backend,
-    // kong_ledger_backend,
     ckusdt_ledger_backend,
     backendKingKong,
     sendTo,
@@ -887,6 +888,7 @@ const SwapComponent = memo(({
     ckshib_backend,
     dod_backend,
     gldt_backend,
+    kong_ledger_backend,
     kong1_backend,
     kong2_backend,
   ]);

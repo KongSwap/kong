@@ -5,20 +5,20 @@
   "kong_frontend": {
     "ic": "3ldz4-aiaaa-aaaar-qaina-cai"
   },
-  "ckbtc_ledger": {
-    "ic": "mxzaz-hqaaa-aaaar-qaada-cai"
-  },
-  "cketh_ledger": {
-    "ic": "ss2fx-dyaaa-aaaar-qacoq-cai"
-  },
-  "ckusdc_ledger": {
-    "ic": "xevnm-gaaaa-aaaar-qafnq-cai"
-  },
   "ckusdt_ledger": {
     "ic": "cngnf-vqaaa-aaaar-qag4q-cai"
   },
   "icp_ledger": {
     "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+  },
+  "ckusdc_ledger": {
+    "ic": "xevnm-gaaaa-aaaar-qafnq-cai"
+  },
+  "ckbtc_ledger": {
+    "ic": "mxzaz-hqaaa-aaaar-qaada-cai"
+  },
+  "cketh_ledger": {
+    "ic": "ss2fx-dyaaa-aaaar-qacoq-cai"
   },
   "dkp_ledger": {
     "ic": "zfcdd-tqaaa-aaaaq-aaaga-cai"
@@ -139,5 +139,8 @@
   },
   "dod_ledger": {
     "ic": "cp4zx-yiaaa-aaaah-aqzea-cai"
+  },
+  "kong_ledger": {
+    "ic": "o7oak-iyaaa-aaaaq-aadzq-cai"
   }
 }

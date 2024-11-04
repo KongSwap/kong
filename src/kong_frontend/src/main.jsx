@@ -52,6 +52,7 @@ import CKSHIBActor from "./Actors/CKSHIBActor";
 import DODActor from "./Actors/DODActor";
 import KONG1Actor from "./Actors/KONG1Actor";
 import KONG2Actor from "./Actors/KONG2Actor";
+import KONGActor from "./Actors/KONGActor";
 import { PlugWalletProvider } from "./components/PlugWalletContext";
 import { FRONTEND_URL } from "./constants/config";
 import {
@@ -104,6 +105,7 @@ import {
   DODActorProviderPlug,
   KONG1ActorProviderPlug,
   KONG2ActorProviderPlug,
+  KONGActorProviderPlug,
 } from "./Actors/plugActorProviders";
 import NICPActor from "./Actors/NICPActor";
 import WTNActor from "./Actors/WTNActor";
