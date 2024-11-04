@@ -10,5 +10,6 @@ CREATE TABLE users (
     campaign1_flags BOOLEAN[],
     last_login_ts TIMESTAMP,
     last_swap_ts TIMESTAMP,
+    raw_json JSONB NOT NULL,
     UNIQUE (principal_id)
 );
