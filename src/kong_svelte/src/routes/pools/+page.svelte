@@ -19,7 +19,8 @@
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce"; // Import debounce from lodash-es
-  import { onMount } from 'svelte';
+  import { onMount } from "svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
 
   onMount(async () => {
     await tokenStore.loadTokens();
@@ -81,21 +82,24 @@
       >
         <div class="p-4 w-full max-h-[68vh] overflow-y-auto pb-8">
           <!-- Header and Search Bar -->
-          <div class="grid grid-cols-3 items-center mb-2 md:mb-0 pb-2">
-            <h2
-              class="pl-1 mt-2 font-black col-span-3 md:col-span-2 text-3xl text-center md:text-left text-white mb-4 text-outline-2"
-            >
-              {$t("stats.poolsTableTitle")}
-            </h2>
-
-            <div
-              class="col-span-3 md:col-span-1 flex justify-center md:justify-end"
-            >
+          <div class="flex flex-col md:flex-row items-center mb-2 md:mb-0 pb-2">
+            <!-- Invisible spacer for left side -->
+            <div class="hidden md:block w-[200px]"></div>
+            
+            <!-- Centered title -->
+            <div class="flex-1 flex justify-center">
+              <h2 class="mt-2 font-bold text-3xl text-center text-white mb-4 text-outline-2">
+                {$t("stats.poolsTableTitle")}
+              </h2>
+            </div>
+            
+            <!-- Search on right -->
+            <div class="w-[200px] flex justify-end">
               <input
                 type="text"
                 placeholder="Search by symbol"
                 on:input={(e) => debouncedSearch(e.currentTarget.value)}
-                class="w-1/2 bg-sky-200/30 placeholder:text-gray-600 font-alumni text-xl text-black border-none rounded-xl min-w-[160px] focus:ring-green-700 focus:ring-2 p-2.5"
+                class="w-full bg-sky-200/30 placeholder:text-gray-600 font-alumni text-xl text-black border-none rounded-xl min-w-[160px] focus:ring-green-700 focus:ring-2 p-2.5"
                 aria-label="Search Pools by Symbol"
               />
             </div>
@@ -147,25 +151,13 @@
                           class="uppercase font-bold pl-2 focused:ring-0 ring-0 focused:border-none active:border-none"
                         >
                           <div class="flex items-center">
-                            <div
-                              class="isolate flex -space-x-4 overflow-hidden w-[84px]"
-                            >
-                              <img
-                                class="relative z-30 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
-                                src={$tokenMap.get(pool.address_0)?.logo}
-                                alt={pool.symbol_0}
-                                loading="lazy"
-                              />
-                              <img
-                                class="relative z-20 inline-block h-11 w-11 rounded-full ring-0 ring-black bg-white object-cover"
-                                src={$tokenMap.get(pool.address_1)?.logo}
-                                alt={pool.symbol_1}
-                                loading="lazy"
-                              />
-                            </div>
+                            <TokenImages
+                              tokens={[$tokenMap.get(pool.address_0), $tokenMap.get(pool.address_1)]}
+                              containerClass="mr-2.5"
+                            />
                             <span>{pool.symbol_0}/{pool.symbol_1}</span>
                             {#if pool.is_hot}
-                              <span class="flex items-center text-xs ml-2">
+                              <span class="flex items-center text-xs">
                                 <span class="text-xs mr-0.5">🔥</span> HOT
                               </span>
                             {/if}
@@ -189,11 +181,13 @@
                           >
                             <button
                               class="rounded-full text-nowrap bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
-                              on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
+                              on:click={() =>
+                                goto(
+                                  `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
+                                )}
                             >
                               <Droplets size={18} class="mr-1" /> Add LP
                             </button>
-                           
                           </div>
                         </td>
                       </tr>

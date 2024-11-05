@@ -5,11 +5,12 @@
 	import { tokenStore } from '$lib/stores/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 
-	export let value: string = '';
+	export let value: string | number = '';
 	export let token: FE.Token;
 	export let error: string = '';
 	export let disabled: boolean = false;
 	export let placeholder: string = '0.00';
+	export let onTokenSelect: () => void;
 
 	poolStore.loadPools();
 
@@ -46,7 +47,7 @@
 				bind:value
 				on:input={handleInput}
 				class="
-					w-full px-4 py-4 pr-[4.5rem]
+					w-full px-4 py-4 pr-[8rem]
 					placeholder:text-white/50
 					bg-white/5 
 					border-2 
@@ -61,9 +62,14 @@
 					{error ? 'border-red-500/30 focus:border-red-400' : 'border-white/10 focus:border-yellow-400'}
 				"
 			/>
-			<div class="absolute right-0 inset-y-0 flex items-center pr-4">
+			<button
+				type="button"
+				on:click={onTokenSelect}
+				class="absolute right-0 inset-y-0 flex items-center px-4 gap-2 hover:bg-white/5 rounded-r-lg transition-colors"
+			>
 				<span class="text-white/50 text-lg font-play">{token.symbol}</span>
-			</div>
+				<span class="text-white/50">↓</span>
+			</button>
 		</div>
 	</div>
 

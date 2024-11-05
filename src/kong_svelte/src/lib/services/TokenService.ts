@@ -209,7 +209,7 @@ export class TokenService {
       }
 
       if (token.canister_id === ICP_CANISTER_ID) {
-        return '/tokens/icp.png';
+        return '/tokens/icp.webp';
       } else {
         return '/tokens/not_verified.webp';
       }
@@ -217,7 +217,7 @@ export class TokenService {
       console.error('Error getting icrc1 token metadata:', error);
 
       if (token.canister_id === ICP_CANISTER_ID) {
-        return '/tokens/icp.png';
+        return '/tokens/icp.webp';
       } else {
         return '/tokens/not_verified.webp';
       }

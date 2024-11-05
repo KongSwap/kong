@@ -115,6 +115,15 @@ export class PoolService {
     }
   }
 
+
+  public static async addLiquidityAmounts(
+    token0Symbol: string,
+    amount0: bigint,
+    token1Symbol: string
+  ): Promise<any> {
+    return this.calculateLiquidityAmounts(token0Symbol, amount0, token1Symbol);
+  }
+
   /**
    * Add liquidity to a pool
    */
@@ -129,7 +138,7 @@ export class PoolService {
     await walletValidator.requireWalletConnection();
     try {
       const actor = await getActor();
-      const result = await actor.add_liquidity_async({
+      const result = await actor.add_liquidity({
         token_0: params.token_0,
         amount_0: params.amount_0,
         token_1: params.token_1,

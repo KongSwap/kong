@@ -7,6 +7,7 @@ interface TooltipOptions {
   html?: HTMLElement;
   paddingClass?: string;
   background?: string;
+  direction?: 'top' | 'bottom' | 'left' | 'right';
 }
 
 /**
@@ -17,7 +18,7 @@ interface TooltipOptions {
  * @param node - The HTML element to attach the tooltip to.
  * @param options - Configuration options for the tooltip.
  */
-export function tooltip(node: HTMLElement, options: TooltipOptions) {
+export function tooltip(node: HTMLElement, options: TooltipOptions = { direction: 'top' }) {
   let tooltipEl: HTMLElement | null = null;
 
   /**
@@ -35,10 +36,96 @@ export function tooltip(node: HTMLElement, options: TooltipOptions) {
   };
 
   /**
+   * Creates an arrow element with the correct direction
+   */
+  const createArrow = (direction: 'top' | 'bottom' | 'left' | 'right' = 'top') => {
+    const arrow = document.createElement('div');
+    arrow.classList.add(
+      'absolute',
+      'w-0',
+      'h-0',
+      'border-solid'
+    );
+
+    // Set arrow position and border based on direction
+    switch (direction) {
+      case 'bottom':
+        arrow.classList.add('-top-2');
+        arrow.style.borderWidth = '0 8px 8px 8px';
+        arrow.style.borderColor = 'transparent transparent var(--tooltip-bg) transparent';
+        break;
+      case 'top':
+        arrow.classList.add('-bottom-2');
+        arrow.style.borderWidth = '8px 8px 0 8px';
+        arrow.style.borderColor = 'var(--tooltip-bg) transparent transparent transparent';
+        break;
+      case 'left':
+        arrow.classList.add('-right-2');
+        arrow.style.borderWidth = '8px 0 8px 8px';
+        arrow.style.borderColor = 'transparent transparent transparent var(--tooltip-bg)';
+        break;
+      case 'right':
+        arrow.classList.add('-left-2');
+        arrow.style.borderWidth = '8px 8px 8px 0';
+        arrow.style.borderColor = 'transparent var(--tooltip-bg) transparent transparent';
+        break;
+    }
+
+    return arrow;
+  };
+
+  /**
+   * Positions the tooltip based on direction
+   */
+  const positionTooltip = () => {
+    if (!tooltipEl) return;
+    const rect = node.getBoundingClientRect();
+    const tooltipRect = tooltipEl.getBoundingClientRect();
+    const direction = options.direction || 'top';
+    const spacing = 12; // Space between tooltip and element
+
+    let top = 0;
+    let left = 0;
+
+    switch (direction) {
+      case 'top':
+        top = rect.top - tooltipRect.height - spacing;
+        left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        break;
+      case 'bottom':
+        top = rect.bottom + spacing;
+        left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        break;
+      case 'left':
+        top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+        left = rect.left - tooltipRect.width - spacing;
+        break;
+      case 'right':
+        top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+        left = rect.right + spacing;
+        break;
+    }
+
+    // Boundary checking
+    const padding = 8;
+    if (left < padding) left = padding;
+    if (left + tooltipRect.width > window.innerWidth - padding) {
+      left = window.innerWidth - tooltipRect.width - padding;
+    }
+    if (top < padding) top = padding;
+    if (top + tooltipRect.height > window.innerHeight - padding) {
+      top = window.innerHeight - tooltipRect.height - padding;
+    }
+
+    tooltipEl.style.top = `${top + window.scrollY}px`;
+    tooltipEl.style.left = `${left + window.scrollX}px`;
+  };
+
+  /**
    * Creates and displays the tooltip.
    */
   const showTooltip = () => {
-    if (tooltipEl || !shouldShowTooltip()) return; // Tooltip already exists or should not show
+    if (tooltipEl || !shouldShowTooltip()) return;
 
     tooltipEl = document.createElement('div');
     tooltipEl.classList.add(
@@ -51,58 +138,46 @@ export function tooltip(node: HTMLElement, options: TooltipOptions) {
       'duration-200',
       'opacity-0',
       'text-white',
-      'max-w-xs' // Limit the maximum width
+      'max-w-xs'
     );
 
-    // Apply background class or default
+    // Set tooltip background color as CSS variable for arrow
+    const bgColor = options.background ? 
+      getComputedStyle(document.documentElement).getPropertyValue(`--${options.background.replace('bg-', '')}`) :
+      'rgba(0, 0, 0, 0.75)';
+    tooltipEl.style.setProperty('--tooltip-bg', bgColor);
+
+    // Apply background
     if (options.background) {
       tooltipEl.classList.add(options.background);
     } else {
       tooltipEl.classList.add('bg-black', 'bg-opacity-75');
     }
 
-    // Apply padding class or default
+    // Apply padding
     if (options.paddingClass) {
       tooltipEl.classList.add(options.paddingClass);
     } else {
       tooltipEl.classList.add('p-2');
     }
 
-    // Populate content
+    // Add content
     if (options.html) {
       tooltipEl.appendChild(options.html);
     } else if (options.text) {
       tooltipEl.textContent = options.text;
     }
 
-    // Create arrow element
-    const arrow = document.createElement('div');
-    arrow.classList.add(
-      'absolute',
-      'w-2',
-      'h-2',
-      'bg-transparent',
-      'border-solid',
-      'transform',
-      '-mt-1'
-    );
-
-    if (options.background) {
-      const bgColor = options.background.replace('bg-', '');
-      arrow.style.borderTopColor = getComputedStyle(document.documentElement).getPropertyValue(`--${bgColor}`);
-    } else {
-      arrow.classList.add('border-t-4', 'border-t-black');
-    }
-
+    // Add directional arrow
+    const arrow = createArrow(options.direction);
     tooltipEl.appendChild(arrow);
 
     document.body.appendChild(tooltipEl);
     positionTooltip();
 
-    // Fade in
     requestAnimationFrame(() => {
-      tooltipEl!.classList.remove('opacity-0');
-      tooltipEl!.classList.add('opacity-100');
+      tooltipEl?.classList.remove('opacity-0');
+      tooltipEl?.classList.add('opacity-100');
     });
   };
 
@@ -121,44 +196,6 @@ export function tooltip(node: HTMLElement, options: TooltipOptions) {
         }
       }, 200);
     }
-  };
-
-  /**
-   * Positions the tooltip relative to the target element.
-   */
-  const positionTooltip = () => {
-    if (!tooltipEl) return;
-    const rect = node.getBoundingClientRect();
-    const tooltipRect = tooltipEl.getBoundingClientRect();
-
-    // Default position: above the element
-    let top = rect.top - tooltipRect.height - 8;
-    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-
-    // Adjust if tooltip goes off-screen
-    if (left < 8) left = 8;
-    if (left + tooltipRect.width > window.innerWidth - 8) {
-      left = window.innerWidth - tooltipRect.width - 8;
-    }
-    if (top < 8) {
-      // Position below the element if not enough space above
-      top = rect.bottom + 8;
-      // Adjust arrow direction
-      const arrow = tooltipEl.querySelector('.border-t-4, .border-b-4') as HTMLElement;
-      if (arrow) {
-        if (arrow.classList.contains('border-t-4')) {
-          arrow.classList.remove('border-t-4', 'border-t-black');
-          arrow.classList.add('border-b-4', 'border-b-black', 'top-auto', 'bottom-full', 'mt-[-4px]');
-        } else if (arrow.classList.contains('border-b-4')) {
-          // Reverse back if needed
-          arrow.classList.remove('border-b-4', 'border-b-black', 'top-auto', 'bottom-full', 'mt-[-4px]');
-          arrow.classList.add('border-t-4', 'border-t-black');
-        }
-      }
-    }
-
-    tooltipEl.style.top = `${top + window.scrollY}px`;
-    tooltipEl.style.left = `${left + window.scrollX}px`;
   };
 
   // Event listeners
@@ -223,24 +260,7 @@ export function tooltip(node: HTMLElement, options: TooltipOptions) {
         }
 
         // Recreate arrow
-        const arrow = document.createElement('div');
-        arrow.classList.add(
-          'absolute',
-          'w-2',
-          'h-2',
-          'bg-transparent',
-          'border-solid',
-          'transform',
-          '-mt-1'
-        );
-
-        if (options.background) {
-          const bgColor = options.background.replace('bg-', '');
-          arrow.style.borderTopColor = getComputedStyle(document.documentElement).getPropertyValue(`--${bgColor}`);
-        } else {
-          arrow.classList.add('border-t-4', 'border-t-black');
-        }
-
+        const arrow = createArrow(options.direction);
         tooltipEl.appendChild(arrow);
         positionTooltip();
       }

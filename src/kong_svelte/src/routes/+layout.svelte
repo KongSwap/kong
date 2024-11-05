@@ -11,10 +11,12 @@
   import { poolStore } from "$lib/stores/poolStore";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
 
-  const initializeData = Promise.all([tokenStore.loadTokens(), poolStore.loadPools()]);
+  let initialized: boolean = false;
+
   onMount(async () => {
     switchLocale("en");
-    await restoreWalletConnection();
+    await Promise.all([restoreWalletConnection(), tokenStore.loadTokens(), poolStore.loadPools()]);
+    initialized = true;
   });
 </script>
 
@@ -30,13 +32,13 @@
   </title>
 </svelte:head>
 
-{#await initializeData}
+{#if !initialized}
   <div class="min-h-[94vh] flex justify-center items-center">
     <LoadingIndicator />
   </div>
-{:then}
+{:else}
   <slot />
-{/await}
+{/if}
 
 <style scoped>
   :global(body) {
