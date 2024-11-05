@@ -1,12 +1,13 @@
 <script lang="ts">
-    import { fade } from 'svelte/transition';
+    import { fade, fly } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
     import { tokenStore } from '$lib/stores/tokenStore';
     import { SwapService } from '$lib/services/SwapService';
     import { toastStore } from '$lib/stores/toastStore';
     import { getKongBackendPrincipal } from '$lib/utils/canisterIds';
     import { onMount } from 'svelte';
     import { spring } from 'svelte/motion';
-    import { cubicOut } from 'svelte/easing';
+    import Panel from '$lib/components/common/Panel.svelte';
 
     export let show = false;
     export let onClose: () => void;
@@ -19,26 +20,33 @@
     let approvalAmounts: { [key: string]: bigint } = {};
     let isApproving: { [key: string]: boolean } = {};
     let isRevoking: { [key: string]: boolean } = {};
+    let activeTab: "slippage" | "approvals" = "slippage";
+    let isDragging = false;
+    let settingsWidth = 480;
+    let isMobile = false;
 
     const scaleSpring = spring(1, {
       stiffness: 0.3,
       damping: 0.6
     });
 
-    const slideIn = (node, { delay = 0, duration = 150 }) => ({
-      delay,
-      duration,
-      css: t => {
-        const steps = Math.floor(t * 4) / 4;
-        return `
-          transform: translateY(${(1 - steps) * 16}px);
-          opacity: ${steps};
-        `;
-      }
-    });
+    function debounce(fn: Function, ms: number) {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      return function (...args: any[]) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(this, args), ms);
+      };
+    }
+
+    const debouncedResize = debounce(() => {
+      isMobile = window.innerWidth <= 768;
+      settingsWidth = isMobile ? window.innerWidth : Math.min(480, window.innerWidth - 64);
+    }, 100);
 
     onMount(async () => {
       await refreshApprovals();
+      debouncedResize();
+      window.addEventListener("resize", debouncedResize);
     });
 
     async function refreshApprovals() {
@@ -113,504 +121,254 @@
     }
 </script>
 
-<div class="modal-overlay" transition:fade={{ duration: 150 }}>
-  <div class="modal-content" style="transform: scale({$scaleSpring})">
-    <div class="modal-header" in:slideIn={{ delay: 50 }}>
-      <h2 class="section-title">Settings</h2>
-      <button class="close-button" on:click={onClose}>×</button>
-    </div>
+{#if show}
+<div 
+  class="settings-overlay"
+  transition:fade={{ duration: 300, easing: cubicOut }}
+>
+  <button
+    class="overlay-button"
+    on:click={onClose}
+    aria-label="Close settings"
+  />
 
-    <div class="settings-content">
-      <!-- Slippage Settings -->
-      <div class="section" in:slideIn={{ delay: 100 }}>
-        <h3 class="section-title glow-text">Slippage Tolerance</h3>
-        <p class="section-description">
-          Your transaction will revert if the price changes unfavorably by more than this percentage
-        </p>
-        <div class="slippage-buttons">
-          {#each commonSlippageValues as value}
+  <div
+    class="settings-wrapper"
+    class:is-dragging={isDragging}
+    style="width: {settingsWidth}px"
+    in:fly={{ x: 500, duration: 300, easing: cubicOut }}
+    out:fly={{ x: 500, duration: 300, easing: cubicOut }}
+  >
+    <Panel
+      variant="green"
+      type="main"
+      width={isMobile ? "100%" : `${settingsWidth}px`}
+      height={isMobile ? "100vh" : "90vh"}
+      className="settings-panel"
+    >
+      <div class="settings-layout">
+        <header class="settings-header">
+          <h2>Settings</h2>
+          <div class="tab-buttons">
             <button
-              class="slippage-btn {slippage === value ? 'active' : ''}"
-              on:click={() => onSlippageChange(value)}
+              class:active={activeTab === "slippage"}
+              on:click={() => activeTab = "slippage"}
             >
-              {value}%
+              Slippage
             </button>
-          {/each}
-          <div class="custom-slippage">
-            <input
-              type="number"
-              min="0.1"
-              max="50"
-              step="0.1"
-              bind:value={slippage}
-              on:input={(e) => onSlippageChange(Number(e.currentTarget.value))}
-            />
-            <span class="percent">%</span>
+            <button
+              class:active={activeTab === "approvals"}
+              on:click={() => activeTab = "approvals"}
+            >
+              Approvals
+            </button>
+          </div>
+        </header>
+
+        <div class="settings-content">
+          <div class="scroll-container">
+            {#if activeTab === "slippage"}
+              <div class="section">
+                <h3 class="section-title glow-text">Slippage Tolerance</h3>
+                <p class="section-description">
+                  Your transaction will revert if the price changes unfavorably by more than this percentage
+                </p>
+                <div class="slippage-buttons">
+                  {#each commonSlippageValues as value}
+                    <button
+                      class="slippage-btn {slippage === value ? 'active' : ''}"
+                      on:click={() => onSlippageChange(value)}
+                    >
+                      {value}%
+                    </button>
+                  {/each}
+                  <div class="custom-slippage">
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="50"
+                      step="0.1"
+                      bind:value={slippage}
+                      on:input={(e) => onSlippageChange(Number(e.currentTarget.value))}
+                    />
+                    <span class="percent">%</span>
+                  </div>
+                </div>
+              </div>
+            {:else}
+              <div class="section">
+                <h3 class="section-title glow-text">Token Approvals</h3>
+                <div class="token-grid">
+                  {#each $tokenStore.tokens || [] as token}
+                    {@const isApproved = approvalAmounts[token.symbol] > BigInt(0)}
+                    {@const isLoading = isApproving[token.symbol] || isRevoking[token.symbol]}
+                    <div class="token-approval-card {isApproved ? 'approved' : ''}">
+                      <div class="token-info">
+                        <img 
+                          src={token.logo || "/tokens/not_verified.webp"} 
+                          alt={token.symbol} 
+                          class="token-icon"
+                        />
+                        <div class="token-details">
+                          <span class="token-symbol">{token.symbol}</span>
+                          <span class="approval-status">
+                            {#if isApproved}
+                              <span class="status approved">✓ Approved</span>
+                            {:else}
+                              <span class="status not-approved">⚠ Not Approved</span>
+                            {/if}
+                          </span>
+                        </div>
+                      </div>
+                      <div class="action-container">
+                        <span class="approval-amount">
+                          {#if isApproved}
+                            Approved amount: {formatAmount(approvalAmounts[token.symbol] || BigInt(0))}
+                          {:else}
+                            Ready to enable fast swaps
+                          {/if}
+                        </span>
+                        <div class="action-buttons">
+                          {#if isApproved}
+                            <button 
+                              class="revoke-button"
+                              disabled={isLoading}
+                              on:click={() => handleRevoke(token)}
+                            >
+                              {#if isRevoking[token.symbol]}
+                                <div class="loader revoke-loader"></div>
+                              {:else}
+                                Revoke Access
+                              {/if}
+                            </button>
+                          {:else}
+                            <button 
+                              class="approve-button"
+                              disabled={isLoading}
+                              on:click={() => handlePreApprove(token)}
+                            >
+                              {#if isApproving[token.symbol]}
+                                <div class="loader"></div>
+                              {:else}
+                                Enable Fast Swaps
+                              {/if}
+                            </button>
+                          {/if}
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
         </div>
       </div>
-
-      <!-- Pre-approval Settings -->
-      <div class="section" in:slideIn={{ delay: 150 }}>
-        <h3 class="section-title glow-text">Token Approvals</h3>
-        <div class="approval-info">
-          <p class="section-description">
-            Pre-approving tokens enables one-click swaps by granting Kong permission to move tokens on your behalf. 
-            This saves gas and time by eliminating separate approval transactions.
-          </p>
-          <ul class="benefits-list">
-            <li>✨ One-click swaps</li>
-            <li>💨 Faster transactions</li>
-            <li>💰 Save on gas fees</li>
-          </ul>
-        </div>
-        <div class="token-grid">
-          {#each $tokenStore.tokens || [] as token}
-            {@const isApproved = approvalAmounts[token.symbol] > BigInt(0)}
-            {@const isLoading = isApproving[token.symbol] || isRevoking[token.symbol]}
-            <div class="token-approval-card {isApproved ? 'approved' : ''}">
-              <div class="token-info">
-                <img 
-                  src={token.logo || "/tokens/not_verified.webp"} 
-                  alt={token.symbol} 
-                  class="token-icon"
-                />
-                <div class="token-details">
-                  <span class="token-symbol">{token.symbol}</span>
-                  <span class="approval-status">
-                    {#if isApproved}
-                      <span class="status approved">✓ Approved</span>
-                    {:else}
-                      <span class="status not-approved">⚠ Not Approved</span>
-                    {/if}
-                  </span>
-                </div>
-              </div>
-              <div class="action-container">
-                <span class="approval-amount">
-                  {#if isApproved}
-                    Approved amount: {formatAmount(approvalAmounts[token.symbol] || BigInt(0))}
-                  {:else}
-                    Ready to enable fast swaps
-                  {/if}
-                </span>
-                <div class="action-buttons">
-                  {#if isApproved}
-                    <button 
-                      class="revoke-button"
-                      disabled={isLoading}
-                      on:click={() => handleRevoke(token)}
-                    >
-                      {#if isRevoking[token.symbol]}
-                        <div class="loader revoke-loader"></div>
-                      {:else}
-                        Revoke Access
-                      {/if}
-                    </button>
-                  {:else}
-                    <button 
-                      class="approve-button"
-                      disabled={isLoading}
-                      on:click={() => handlePreApprove(token)}
-                    >
-                      {#if isApproving[token.symbol]}
-                        <div class="loader"></div>
-                      {:else}
-                        Enable Fast Swaps
-                      {/if}
-                    </button>
-                  {/if}
-                </div>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    </div>
+    </Panel>
   </div>
 </div>
+{/if}
 
 <style>
-  .modal-overlay {
+  .settings-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    backdrop-filter: blur(8px);
-  }
-
-  .modal-content {
-    background: #2a2a2a;
-    border: 4px solid #454545;
-    border-radius: 0;
-    box-shadow: 
-      inset -4px -4px 0 #111,
-      inset 4px 4px 0 #333,
-      8px 8px 0 rgba(0,0,0,0.5);
-    image-rendering: pixelated;
-    padding: 24px;
-    color: white;
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    border-bottom: 4px solid #454545;
-    padding-bottom: 16px;
-  }
-
-  .section {
-    border: 2px solid #333;
-    background: #222;
-    box-shadow: 
-      inset 2px 2px #111,
-      inset -2px -2px #444;
-    padding: 16px;
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .section::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255,255,255,0.1),
-      transparent
-    );
-    animation: shine 3s 1;
-  }
-
-  .section-title {
-    font-family: 'Alumni Sans', sans-serif;
-    font-size: 1.8em;
-    font-weight: 800;
-    color: #ffd700;
-    text-transform: uppercase;
-    text-shadow: 
-      2px 2px 0 #000,
-      -2px -2px 0 #000,
-      4px 4px 0 rgba(0,0,0,0.5);
-    letter-spacing: 1px;
-  }
-
-  .close-button {
-    background: #454545;
-    border: 2px solid #555;
-    color: white;
-    width: 32px;
-    height: 32px;
-    font-size: 1.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-  }
-
-  .section-description {
-    color: #888;
-    margin-bottom: 16px;
-    font-size: 0.9em;
-  }
-
-  .slippage-buttons {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .slippage-btn {
-    background: #454545;
-    border: 2px solid #555;
-    border-radius: 0;
-    padding: 8px 16px;
-    color: white;
-    cursor: pointer;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.9em;
-    box-shadow:
-      inset -2px -2px 0 #222,
-      inset 2px 2px 0 #666;
-    image-rendering: pixelated;
-  }
-
-  .slippage-btn.active {
-    background: #ffd700;
-    color: black;
-    border: 2px solid #806c00;
-    box-shadow:
-      inset -2px -2px 0 #806c00,
-      inset 2px 2px 0 #ffe033;
-    text-shadow: 1px 1px 0 #806c00;
-  }
-
-  .custom-slippage {
-    position: relative;
-    width: 100px;
-  }
-
-  .custom-slippage input {
-    background: #333;
-    border: 2px solid #444;
-    border-radius: 0;
-    box-shadow: 
-      inset -2px -2px 0 #222,
-      inset 2px 2px 0 #444;
-    color: white;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.8em;
-    padding: 8px 24px 8px 12px;
-  }
-
-  .custom-slippage .percent {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #888;
-  }
-
-  .token-grid {
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 50;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-  }
-
-  .token-approval-card {
-    background: #333;
-    border: 2px solid #444;
-    border-radius: 0;
-    box-shadow: 
-      inset -2px -2px 0 #222,
-      inset 2px 2px 0 #444;
-    position: relative;
+    place-items: center;
     overflow: hidden;
   }
 
-  .token-approval-card::after {
-    content: '';
+  .overlay-button {
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255,255,255,0.1),
-      transparent
-    );
-    animation: shine 3s 1;
-  }
-
-  .token-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .token-details {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .token-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    image-rendering: pixelated;
-  }
-
-  .token-symbol {
-    font-weight: 500;
-    color: #ffd700;
-  }
-
-  .approval-amount {
-    font-size: 0.8rem;
-    color: #888;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-  }
-
-  .approve-button, .revoke-button {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.8em;
-    border-radius: 0;
-    padding: 8px 16px;
-    image-rendering: pixelated;
-  }
-
-  .approve-button {
-    background: #ffd700;
-    color: black;
-    border: none;
-    box-shadow:
-      inset -2px -2px 0 #806c00,
-      inset 2px 2px 0 #ffe033,
-      2px 2px 0 #000;
-    text-shadow: 1px 1px 0 #806c00;
-  }
-
-  .revoke-button {
-    background: #ff4444;
-    color: white;
-    border: none;
-    box-shadow:
-      inset -2px -2px 0 #992929,
-      inset 2px 2px 0 #ff6666,
-      2px 2px 0 #000;
-    text-shadow: 1px 1px 0 #992929;
-  }
-
-  .approve-button:disabled, .revoke-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .loader {
-    width: 16px;
-    height: 16px;
-    border: none;
+    inset: 0;
     background: transparent;
-    box-shadow: 
-      4px 4px 0 0 currentColor,
-      8px 4px 0 0 currentColor,
-      4px 8px 0 0 currentColor;
-    animation: pixelSpin 0.8s steps(4) infinite;
+    border: none;
+    cursor: pointer;
   }
 
-  .revoke-loader {
-    border-top-color: white;
-  }
-
-  @keyframes pixelSpin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  @keyframes shine {
-    to {
-      left: 100%;
-    }
-  }
-
-  .glow-text {
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-    color: #ffd700;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  @media (max-width: 480px) {
-    .modal-content {
-      border-radius: 16px;
-      max-height: 80vh;
-      height: auto;
-      max-width: 95%;
-      margin: 0 auto;
-    }
-
-    .token-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .approval-info {
-    background: rgba(0, 0, 0, 0.2);
-    border-left: 4px solid #ffd700;
-    padding: 12px;
-    margin-bottom: 20px;
-  }
-
-  .benefits-list {
-    list-style: none;
-    padding: 0;
-    margin: 8px 0 0 0;
+  .settings-wrapper {
+    position: absolute;
+    top: 5vh;
+    right: 32px;
+    height: 90vh;
+    min-width: 420px;
+    max-width: min(800px, calc(100vw - 50px));
+    transform-origin: right center;
+    background-color: transparent;
     display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 0 8px;
+  }
+
+  .settings-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .settings-header {
+    display: flex;
+    flex-direction: column;
     gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .benefits-list li {
-    color: #ffd700;
-    font-size: 0.9em;
-  }
-
-  .token-approval-card {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
     padding: 16px;
-    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .token-approval-card.approved {
-    background: linear-gradient(45deg, #333, #383838);
-    border-color: #ffd700;
-  }
-
-  .action-container {
+  .tab-buttons {
     display: flex;
-    flex-direction: column;
     gap: 8px;
   }
 
-  .approval-status {
-    font-size: 0.8em;
-  }
-
-  .status {
-    padding: 2px 6px;
+  .tab-buttons button {
+    background: transparent;
+    border: none;
+    color: #888;
+    padding: 8px 16px;
+    cursor: pointer;
     border-radius: 4px;
   }
 
-  .status.approved {
-    background: rgba(0, 255, 0, 0.1);
-    color: #00ff00;
-  }
-
-  .status.not-approved {
+  .tab-buttons button.active {
     background: rgba(255, 215, 0, 0.1);
     color: #ffd700;
   }
 
-  .approve-button, .revoke-button {
-    width: 100%;
-    padding: 10px;
-    font-size: 0.75em;
+  .settings-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
   }
 
-  .approve-button {
-    background: linear-gradient(45deg, #ffd700, #ffed4a);
+  .scroll-container {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 16px;
   }
 
-  .revoke-button {
-    background: linear-gradient(45deg, #ff4444, #ff6666);
+  .scroll-container::-webkit-scrollbar {
+    width: 6px;
   }
+
+  .scroll-container::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  @media (max-width: 768px) {
+    .settings-wrapper {
+      top: 0;
+      right: 0;
+      width: 100% !important;
+      min-width: 100%;
+      max-width: 100%;
+      height: 100vh;
+    }
+  }
+
+  /* Rest of the styles remain the same */
 </style>

@@ -71,7 +71,7 @@
           <img src={imagePaths.bl} alt="" class="corner bottom-left" />
           <div class="edge horizontal bottom-middle" style="background-image: url({imagePaths.bm})"></div>
           <img src={imagePaths.br} alt="" class="corner bottom-right" />
-      </div>
+      </div>  
   </div>
 </div>
 
