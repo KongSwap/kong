@@ -1,44 +1,63 @@
 <script lang="ts">
   import { tokenStore } from '$lib/stores/tokenStore';
+  import { cubicOut } from 'svelte/easing';
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
+  export let payToken: string;
+  export let receiveToken: string;
+
+  const swoopIn = (node, { delay = 0, duration = 500 }) => {
+    return {
+      delay,
+      duration,
+      css: t => {
+        const bounce = cubicOut(t);
+        const scale = 0.9 + (bounce * 0.1) + Math.sin(t * Math.PI) * 0.02;
+        return `
+          transform: translateY(${(1 - bounce) * 20}px) scale(${scale});
+          opacity: ${bounce};
+        `;
+      }
+    };
+  };
 </script>
 
 <div class="section">
-  <h3>Swap Route</h3>
-  <div class="route-steps">
+  <h3 class="section-title">Route</h3>
+  <div class="route-visualization">
     {#each routingPath.slice(0, -1) as token, i}
-      <div class="route-step">
+      <div class="route-step" in:swoopIn={{ delay: 200 + (i * 100) }}>
         <div class="token-pair">
-          <div class="token">
-            <img 
-              src={$tokenStore.tokens?.find(t => t.symbol === token)?.logo || "/tokens/not_verified.webp"}
-              alt={token}
-              class="token-icon"
-            />
-            <span>{token}</span>
+          <div class="token-badge-small from {token === payToken ? 'highlight' : ''}">
+            <div class="token-icon-wrapper">
+              <img 
+                src={$tokenStore.tokens?.find(t => t.symbol === token)?.logo || "/tokens/not_verified.webp"}
+                alt={token}
+                class="token-icon-small"
+              />
+            </div>
+            <span class="token-symbol">{token}</span>
           </div>
-          <div class="arrow">→</div>
-          <div class="token">
-            <img 
-              src={$tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1])?.logo || "/tokens/not_verified.webp"}
-              alt={routingPath[i + 1]}
-              class="token-icon"
-            />
-            <span>{routingPath[i + 1]}</span>
+          <div class="arrow-container">
+            <span class="arrow">→</span>
+            <div class="arrow-line"></div>
+          </div>
+          <div class="token-badge-small to {routingPath[i + 1] === receiveToken ? 'highlight' : ''}">
+            <div class="token-icon-wrapper">
+              <img 
+                src={$tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1])?.logo || "/tokens/not_verified.webp"}
+                alt={routingPath[i + 1]}
+                class="token-icon-small"
+              />
+            </div>
+            <span class="token-symbol">{routingPath[i + 1]}</span>
           </div>
         </div>
-        <div class="fees">
-          <div class="fee">
-            <span class="fee-label">Gas:</span>
-            <span class="fee-amount">{gasFees[i]} {routingPath[i + 1]}</span>
-          </div>
-          <div class="fee">
-            <span class="fee-label">LP:</span>
-            <span class="fee-amount">{lpFees[i]} {routingPath[i + 1]}</span>
-          </div>
+        <div class="step-fees">
+          <span class="fee-text">Gas: {gasFees[i]} {routingPath[i + 1]}</span>
+          <span class="fee-text">LP: {lpFees[i]} {routingPath[i + 1]}</span>
         </div>
       </div>
     {/each}
@@ -47,78 +66,112 @@
 
 <style>
   .section {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 320px;
   }
 
-  h3 {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 16px;
+  .section-title {
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
+    font-weight: 500;
+    color: #ffd700;
   }
 
-  .route-steps {
+  .route-visualization {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 
   .route-step {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .token-pair {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    position: relative;
+    min-height: 48px;
   }
 
-  .token {
+  .token-badge-small {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 8px 12px;
-    border-radius: 20px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    z-index: 1;
+    min-width: 100px;
   }
 
-  .token-icon {
+  .token-icon-wrapper {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .token-icon-small {
     width: 24px;
     height: 24px;
     border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .token-symbol {
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 40px;
+  }
+
+  .arrow-container {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 40px;
   }
 
   .arrow {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 1.25rem;
+    color: #ffd700;
+    font-size: 18px;
+    position: relative;
+    z-index: 2;
   }
 
-  .fees {
+  .arrow-line {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .step-fees {
     display: flex;
     justify-content: space-between;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
   }
 
-  .fee {
-    display: flex;
-    gap: 8px;
-  }
-
-  .fee-label {
-    font-family: 'Press Start 2P', monospace;
+  .fee-text {
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .fee-amount {
+    color: #ffffff;
     font-family: monospace;
-    font-size: 0.875rem;
-    color: #fff;
+    white-space: nowrap;
   }
-</style> 
+</style>

@@ -58,6 +58,7 @@
         role="dialog"
         aria-modal="true"
         aria-label="Token selector"
+        transition:fade={{ duration: 200 }}
     >
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class="modal-container" on:click|stopPropagation>
@@ -126,11 +127,30 @@
 <style lang="postcss">
     /* Modal Layout */
     .modal-overlay {
-        @apply fixed inset-0 flex items-center justify-center z-50 transition-all duration-100;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 50;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
     }
 
     .modal-container {
-        @apply relative w-full h-full max-w-[600px] max-h-[80vh] transform transition-all duration-100;
+        @apply relative w-full h-full max-w-[600px] max-h-[80vh] transform;
+        animation: modalSlideIn 200ms ease-out;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .modal-content {

@@ -8,87 +8,76 @@
 </script>
 
 <div class="section">
-  <div class="amount-row">
-    <div class="label">You Pay</div>
-    <div class="token-amount">
+  <div class="token-amount">
+    <span class="label">You Pay</span>
+    <div class="amount">
       <img 
         src={$tokenStore.tokens?.find(t => t.symbol === payToken)?.logo || "/tokens/not_verified.webp"}
         alt={payToken}
         class="token-icon"
       />
-      <span class="token-symbol">{payToken}</span>
-      <span class="amount">{payAmount}</span>
+      <span class="value">{payAmount}</span>
+      <span class="token">{payToken}</span>
     </div>
   </div>
-
-  <div class="arrow">↓</div>
-
-  <div class="amount-row">
-    <div class="label">You Receive</div>
-    <div class="token-amount">
+  
+  <div class="token-amount">
+    <span class="label">You Receive</span>
+    <div class="amount">
       <img 
         src={$tokenStore.tokens?.find(t => t.symbol === receiveToken)?.logo || "/tokens/not_verified.webp"}
         alt={receiveToken}
         class="token-icon"
       />
-      <span class="token-symbol">{receiveToken}</span>
-      <span class="amount">{receiveAmount}</span>
+      <span class="value">{receiveAmount}</span>
+      <span class="token">{receiveToken}</span>
     </div>
   </div>
 </div>
 
 <style>
   .section {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
   }
 
-  .amount-row {
-    background: rgba(0, 0, 0, 0.1);
-    padding: 16px;
-    border-radius: 8px;
+  .token-amount {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
+  .token-amount:first-child {
+    margin-bottom: 8px;
+  }
+
   .label {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .token-amount {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .token-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-  }
-
-  .token-symbol {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.875rem;
-    color: #fff;
-  }
-
-  .amount {
-    font-family: monospace;
-    font-size: 1.25rem;
-    color: #fff;
+    color: #ffd700;
+    font-size: 0.9rem;
     font-weight: 500;
   }
 
-  .arrow {
+  .amount {
+    font-size: 1rem;
+    font-weight: 500;
     display: flex;
-    justify-content: center;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 1.5rem;
-    padding: 8px 0;
+    align-items: center;
+    gap: 4px;
   }
-</style> 
+
+  .value {
+    color: #ffffff;
+  }
+
+  .token {
+    color: #ffd700;
+    font-weight: 500;
+  }
+
+  .token-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+  }
+</style>

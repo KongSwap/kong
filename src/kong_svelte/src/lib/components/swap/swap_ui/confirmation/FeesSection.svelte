@@ -5,68 +5,72 @@
   export let receiveToken: string;
 
   const formatNumber = (num: number) => num.toFixed(8);
+  let isExpanded = false;
+
+  $: totalFees = totalGasFee + totalLPFee;
 </script>
 
 <div class="section">
-  <div class="fees-grid">
-    <div class="fee-item">
-      <span class="fee-label">Network Fee</span>
-      <span class="fee-value">{formatNumber(totalGasFee)} {receiveToken}</span>
+  <div class="fee-row">
+    <span class="label">Gas Fee</span>
+    <div class="amount">
+      <span class="value">{totalGasFee.toFixed(6)}</span>
+      <span class="token">{receiveToken}</span>
     </div>
-    
-    <div class="fee-item">
-      <span class="fee-label">LP Fee</span>
-      <span class="fee-value">{formatNumber(totalLPFee)} {receiveToken}</span>
+  </div>
+  <div class="fee-row">
+    <span class="label">LP Fee</span>
+    <div class="amount">
+      <span class="value">{totalLPFee.toFixed(6)}</span>
+      <span class="token">{receiveToken}</span>
     </div>
-    
-    <div class="fee-item">
-      <span class="fee-label">Max Slippage</span>
-      <span class="fee-value highlight">{slippage}%</span>
+  </div>
+  <div class="fee-row">
+    <span class="label">Max Slippage</span>
+    <div class="amount">
+      <span class="value">{slippage}</span>
+      <span class="token">%</span>
     </div>
   </div>
 </div>
 
 <style>
   .section {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-  }
-
-  .fees-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-
-  .fee-item {
-    background: rgba(0, 0, 0, 0.1);
-    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
+    padding: 12px;
+  }
+
+  .fee-row {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    justify-content: space-between;
+    align-items: center;
   }
 
-  .fee-label {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.7);
+  .fee-row:not(:last-child) {
+    margin-bottom: 8px;
   }
 
-  .fee-value {
-    font-family: monospace;
+  .label {
+    color: #ffd700;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .amount {
     font-size: 1rem;
-    color: #fff;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
-  .highlight {
-    color: #FFB800;
+  .value {
+    color: #ffffff;
   }
 
-  @media (max-width: 480px) {
-    .fees-grid {
-      grid-template-columns: 1fr;
-    }
+  .token {
+    color: #ffd700;
+    font-weight: 500;
   }
 </style>
