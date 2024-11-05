@@ -1,6 +1,6 @@
 use candid::Nat;
 
-use crate::helpers::nat_helpers::{nat_multiply_f64, nat_to_decimal_precision, nat_to_decimals_f64, nat_zero};
+use crate::helpers::nat_helpers::{nat_multiply_f64, nat_to_decimal_precision, nat_to_decimals_f64};
 use crate::stable_kong_settings::kong_settings;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
