@@ -4,10 +4,6 @@ version = "0.0.9"
 edition = "2021"
 description = "Kong Swap backend canister"
 
-[profile.release]
-lto = true
-opt-level = 'z'
-
 [lib]
 name = "kong_backend"
 crate-type = ["cdylib"]
