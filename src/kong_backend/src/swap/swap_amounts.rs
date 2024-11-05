@@ -16,6 +16,11 @@ use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
+pub fn swap_mid_price(pay_token: &StableToken, receive_token: &StableToken) -> Result<f64, String> {
+    let (_, mid_price, _, _, _) = swap_amounts(pay_token, &nat_zero(), receive_token)?;
+    Ok(mid_price)
+}
+
 pub fn swap_amounts(
     pay_token: &StableToken,
     pay_amount: &Nat,
@@ -26,13 +31,19 @@ pub fn swap_amounts(
     // Receive token
     let receive_token_id = receive_token.token_id();
 
-    let user_fee_level = user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level;
     let mut txs = Vec::new();
 
     // if tokens are the same return the same amount
     if pay_token_id == receive_token_id {
         return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, txs));
     }
+
+    // if called from swap_mid_price, no need to check user's fee level
+    let user_fee_level = if nat_is_zero(pay_amount) {
+        0
+    } else {
+        user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level
+    };
 
     // check if direct pool exists
     if let Some(pool) = pool_map::get_by_token_ids(pay_token_id, receive_token_id) {
