@@ -1,12 +1,14 @@
 {
   "canisters": {
     "kong_backend": {
-      "candid": "src/kong_backend/kong_backend.did",
       "declarations": {
         "node_compatibility": true
       },
       "package": "kong_backend",
+      "candid": "src/kong_backend/kong_backend.did",
       "type": "rust",
+      "optimize": "cycles",
+      "gzip": true,
 			"specified_id": "l4lgk-raaaa-aaaar-qahpq-cai",
 			"metadata": [
 				{
