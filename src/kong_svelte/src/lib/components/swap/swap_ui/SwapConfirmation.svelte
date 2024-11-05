@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import { tokenStore } from '$lib/stores/tokenStore';
   import { SwapService } from '$lib/services/SwapService';
+  import Panel from '$lib/components/common/Panel.svelte';
+  import Button from '$lib/components/common/Button.svelte';
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
   import RouteSection from './confirmation/RouteSection.svelte';
   import FeesSection from './confirmation/FeesSection.svelte';
@@ -52,34 +55,72 @@
 
 <div class="modal-overlay" transition:fade={{ duration: 300 }}>
   <div class="modal-content">
-    <div class="modal-header">
+    <div class="header">
       <h2>Review Swap</h2>
-      <button class="close-button" on:click={onClose}>×</button>
+      <button class="close" on:click={onClose}>×</button>
     </div>
 
-    <PayReceiveSection 
-      {payToken}
-      {payAmount}
-      {receiveToken}
-      {receiveAmount}
-    />
+    <div class="swap-info">
+      <div class="row">
+        <span>You Pay</span>
+        <div class="token">
+          <img src={$tokenStore.tokens?.find(t => t.symbol === payToken)?.logo || "/tokens/not_verified.webp"} 
+               alt={payToken} />
+          <span>{payToken}</span>
+          <span>{payAmount}</span>
+        </div>
+      </div>
 
-    <RouteSection 
-      {routingPath}
-      {gasFees}
-      {lpFees}
-    />
+      <div class="row">
+        <span>You Receive</span>
+        <div class="token">
+          <img src={$tokenStore.tokens?.find(t => t.symbol === receiveToken)?.logo || "/tokens/not_verified.webp"} 
+               alt={receiveToken} />
+          <span>{receiveToken}</span>
+          <span>{receiveAmount}</span>
+        </div>
+      </div>
+    </div>
 
-    <FeesSection
-      {totalGasFee}
-      {totalLPFee}
-      {slippage}
-      {receiveToken}
-    />
+    <div class="route">
+      <h3>Route</h3>
+      {#each routingPath.slice(0, -1) as token, i}
+        <div class="step">
+          <div class="tokens">
+            <img src={$tokenStore.tokens?.find(t => t.symbol === token)?.logo || "/tokens/not_verified.webp"} 
+                 alt={token} />
+            <span>→</span>
+            <img src={$tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1])?.logo || "/tokens/not_verified.webp"} 
+                 alt={routingPath[i + 1]} />
+          </div>
+          <div class="fees">
+            <span>Gas: {gasFees[i]} {routingPath[i + 1]}</span>
+            <span>LP: {lpFees[i]} {routingPath[i + 1]}</span>
+          </div>
+        </div>
+      {/each}
+    </div>
 
-    <button class="confirm-button {isLoading ? 'loading' : ''}"
-            on:click={() => { isLoading = true; onConfirm(); }}>
-      {isLoading ? 'Confirming...' : 'Confirm Swap'}
+    <div class="summary">
+      <div class="fee">
+        <span>Network Fee</span>
+        <span>{totalGasFee} {receiveToken}</span>
+      </div>
+      <div class="fee">
+        <span>LP Fee</span>
+        <span>{totalLPFee} {receiveToken}</span>
+      </div>
+      <div class="fee">
+        <span>Slippage</span>
+        <span class="highlight">{slippage}%</span>
+      </div>
+    </div>
+
+    <button 
+      class="confirm"
+      disabled={isLoading}
+      on:click={() => { isLoading = true; onConfirm(); }}>
+      {isLoading ? 'Confirming...' : 'CONFIRM SWAP'}
     </button>
   </div>
 </div>
@@ -87,93 +128,120 @@
 <style>
   .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
+    display: grid;
+    place-items: center;
+    z-index: 50;
+    padding: 16px;
   }
 
   .modal-content {
-    background: linear-gradient(145deg, #1A1A1A, #232323);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    padding: 24px;
-    width: clamp(300px, 90%, 480px);
-    color: white;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
-                0 2px 8px rgba(255, 215, 0, 0.1);
+    background: #95C87D;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
 
-  .modal-header {
+  .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
   }
 
-  .modal-header h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
+  h2, h3 {
+    font-size: 1rem;
+    color: #fff;
   }
 
-  .close-button {
+  .close {
     background: none;
     border: none;
-    color: #888;
-    font-size: 1.5rem;
+    color: #ff4444;
+    font-size: 24px;
     cursor: pointer;
   }
 
-  .confirm-button {
-    width: 100%;
-    margin-top: 24px;
-    background: linear-gradient(45deg, #FFD700, #FFA500);
-    border: none;
-    border-radius: 12px;
-    padding: 14px;
-    font-weight: bold;
-    font-size: 1.1rem;
-    color: black;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+  .row, .step, .fee {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
   }
 
-  .confirm-button:hover:not(.loading) {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
+  .token, .tokens {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  .confirm-button.loading {
+  img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+  }
+
+  .fees {
+    display: flex;
+    gap: 12px;
+    font-size: 0.875rem;
     opacity: 0.8;
-    cursor: wait;
   }
 
-  .confirm-button.loading::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 200%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    );
-    animation: loading 1.5s infinite;
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
 
-  @keyframes loading {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(100%); }
+  .fee {
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: 0.875rem;
+  }
+
+  .highlight {
+    color: #FFB800;
+  }
+
+  .confirm {
+    background: #FFB800;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .confirm:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+
+  .confirm:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 480px) {
+    .modal-content {
+      padding: 16px;
+    }
+
+    .summary {
+      grid-template-columns: 1fr;
+    }
+
+    .fee {
+      flex-direction: row;
+    }
   }
 </style>

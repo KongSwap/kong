@@ -7,85 +7,66 @@
   const formatNumber = (num: number) => num.toFixed(8);
 </script>
 
-<div class="section bottom-section glass-effect" role="region" aria-label="Fee breakdown">
-  <div class="compact-totals">
-    <div class="total-row">
-      <span class="label" title="Network fee for processing the transaction">Gas Fee</span>
-      <span class="mono">{formatNumber(totalGasFee)} {receiveToken}</span>
+<div class="section">
+  <div class="fees-grid">
+    <div class="fee-item">
+      <span class="fee-label">Network Fee</span>
+      <span class="fee-value">{formatNumber(totalGasFee)} {receiveToken}</span>
     </div>
-    <div class="total-row">
-      <span class="label" title="Fee paid to liquidity providers">LP Fee</span>
-      <span class="mono">{formatNumber(totalLPFee)} {receiveToken}</span>
+    
+    <div class="fee-item">
+      <span class="fee-label">LP Fee</span>
+      <span class="fee-value">{formatNumber(totalLPFee)} {receiveToken}</span>
     </div>
-    <div class="total-row">
-      <span class="label" title="Maximum price impact you're willing to accept">Slippage</span>
-      <span class="highlight">{slippage}%</span>
+    
+    <div class="fee-item">
+      <span class="fee-label">Max Slippage</span>
+      <span class="fee-value highlight">{slippage}%</span>
     </div>
   </div>
 </div>
 
 <style>
   .section {
-    margin-bottom: 16px;
-    padding: 16px;
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
   }
 
-  .bottom-section {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-    padding: 12px;
-  }
-
-  .glass-effect {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  }
-
-  .compact-totals {
-    display: flex;
-    justify-content: space-between;
+  .fees-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    flex-wrap: wrap;
   }
 
-  .total-row {
+  .fee-item {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 12px;
+    border-radius: 8px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-width: 120px;
-    gap: 12px;
-    color: #888;
-    font-size: 0.9rem;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .label {
-    cursor: help;
+  .fee-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
   }
 
-  .total-row:hover {
-    color: #999;
-  }
-
-  .total-row .mono {
+  .fee-value {
     font-family: monospace;
-    color: white;
+    font-size: 1rem;
+    color: #fff;
   }
 
-  .total-row .highlight {
+  .highlight {
     color: #FFB800;
-    font-weight: 500;
   }
 
   @media (max-width: 480px) {
-    .compact-totals {
-      flex-direction: column;
-      gap: 12px;
-    }
-    
-    .total-row {
-      width: 100%;
+    .fees-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
