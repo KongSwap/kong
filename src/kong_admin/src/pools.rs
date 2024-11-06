@@ -84,3 +84,15 @@ pub async fn dump_pools(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> R
 
     Ok(())
 }
+
+pub async fn load_pools(db_client: &Client) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
+    let mut pools_map = BTreeMap::new();
+    let rows = db_client.query("SELECT pool_id, token_id_0, token_id_1 FROM pools", &[]).await?;
+    for row in rows {
+        let pool_id: i32 = row.get(0);
+        let token_id_0: i32 = row.get(1);
+        let token_id_1: i32 = row.get(2);
+        pools_map.insert(pool_id as u32, (token_id_0 as u32, token_id_1 as u32));
+    }
+    Ok(pools_map)
+}
