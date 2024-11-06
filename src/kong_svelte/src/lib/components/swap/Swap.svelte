@@ -69,6 +69,8 @@
 
   let showSettings = false;
 
+  let showConfirmation = false;
+
   onMount(async () => {
     if ($walletStore.isConnected) {
       await tokenStore.loadTokens();
@@ -306,39 +308,36 @@
     }, 500);
   }
 
-  async function handleSwap() {
+  async function handleSwap(): Promise<boolean> {
     if (!isValidInput || isProcessing) {
-        console.log('Invalid input or already processing');
-        return;
+      return false;
     }
 
     isProcessing = true;
     error = null;
 
     try {
-        console.log('Starting swap execution');
-        const requestId = await swapService.executeSwap({
-            payToken,
-            payAmount,
-            receiveToken,
-            receiveAmount,
-            slippage,
-            backendPrincipal: KONG_BACKEND_PRINCIPAL,
-        });
+      const requestId = await swapService.executeSwap({
+        payToken,
+        payAmount,
+        receiveToken,
+        receiveAmount,
+        slippage,
+        backendPrincipal: KONG_BACKEND_PRINCIPAL,
+      });
 
-        console.log('Swap execution result:', requestId);
-
-        if (requestId) {
-            console.log('Starting polling with requestId:', requestId);
-            startPolling(requestId);
-        } else {
-            throw new Error("Failed to execute swap - no requestId returned");
-        }
+      if (requestId) {
+        startPolling(requestId);
+        return true;
+      } else {
+        throw new Error("Failed to execute swap - no requestId returned");
+      }
     } catch (err) {
-        console.error('Swap execution error:', err);
-        toastStore.error(err instanceof Error ? err.message : "Swap failed");
-        isProcessing = false;
-        isConfirmationOpen = false;
+      console.error('Swap execution error:', err);
+      toastStore.error(err instanceof Error ? err.message : "Swap failed");
+      isProcessing = false;
+      isConfirmationOpen = false;
+      return false;
     }
   }
 
@@ -380,6 +379,16 @@
     tokenFee = undefined;
     requestId = null;
     transactionStateObject = null;
+  }
+
+  function handleSwapClick() {
+    if (!isValidInput || isProcessing) return;
+    
+    showConfirmation = true;
+  }
+
+  function closeConfirmation() {
+    showConfirmation = false;
   }
 </script>
 
@@ -425,11 +434,7 @@
       <Button
         variant="yellow"
         disabled={!isValidInput || isProcessing || isAnimating || !$walletStore.isConnected}
-        onClick={() => {
-          console.log('Button clicked, current isConfirmationOpen:', isConfirmationOpen);
-          isConfirmationOpen = true;
-          console.log('Set isConfirmationOpen to:', isConfirmationOpen);
-        }}
+        onClick={handleSwapClick}
         width="100%"
       >
         {buttonText}
@@ -472,39 +477,24 @@
   </div>
 {/if}
 
-{#if isConfirmationOpen}
-  <div
-    class="modal-overlay"
-    transition:fade={{ duration: 200 }}
-    on:click|self={() => {
-      console.log('Closing modal from overlay click');
-      isConfirmationOpen = false;
-    }}
-  >
-    <div class="modal-content confirmation">
-      <SwapConfirmation
-        {payToken}
-        {payAmount}
-        {receiveToken}
-        receiveAmount={displayReceiveAmount}
-        onConfirm={() => {
-          console.log('Confirm clicked in SwapConfirmation');
-          handleSwap();
-        }}
-        onClose={() => {
-          console.log('Close clicked in SwapConfirmation');
-          isConfirmationOpen = false;
-        }}
-        {price}
-        {gasFee}
-        {lpFee}
-        {gasFees}
-        {lpFees}
-        slippage={swapSlippage}
-        maxAllowedSlippage={slippage}
-        {routingPath}
-      />
-    </div>
+{#if showConfirmation}
+  <div class="modal-overlay" transition:fade={{ duration: 200 }}>
+    <SwapConfirmation
+      {payToken}
+      {payAmount}
+      {receiveToken}
+      {receiveAmount}
+      {gasFees}
+      {lpFees}
+      {slippage}
+      {routingPath}
+      expectedSlippage={swapSlippage}
+      onConfirm={handleSwap}
+      onClose={() => {
+        showConfirmation = false;
+        isProcessing = false;
+      }}
+    />
   </div>
 {/if}
 

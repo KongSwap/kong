@@ -2,10 +2,10 @@
 <script lang="ts">
     import { browser } from "$app/environment";
 
-  export let variant: 'green' | 'yellow' | 'red' = 'green';
-  export let type: 'main' | 'second' | 's' = 'main';
-  export let width: number | string | 'auto' = 300; // Allow string values like '100%' or 'auto'
-  export let height: number | string | 'auto' = 200; // Allow string values like '100vh' or 'auto'
+  export let variant: "green" | "yellow" | "blue" = "green";
+  export let type: "main" | "secondary" = "main";
+  export let width: string = "auto";
+  export let height: string = "auto"; 
   export let content: string = '';
   export let className: string = ''; // Allow custom classes
   export let zIndex: number = 1000;
@@ -44,7 +44,7 @@
 </script>
 
 <div 
-  class="panel {className}"
+  class="panel {variant} {type}"
   style="width: {formattedWidth}; height: {formattedHeight};"
 >
   <div class="panel-container" class:auto-size={isAutoSize}>
@@ -75,15 +75,14 @@
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   .panel {
     position: relative;
-    image-rendering: pixelated;
-    display: flex;
-    align-items: stretch;
-    justify-content: stretch;
-    max-width: 100vw;
-    max-height: 100vh;
+    border-radius: 1rem;
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+    overflow: hidden;
+    height: auto;
   }
 
   .panel-container {
@@ -161,5 +160,10 @@
     .center-content {
       padding: 12px;
     }
+  }
+
+  .panel.main {
+    min-width: min-content;
+    width: 100%;
   }
 </style>

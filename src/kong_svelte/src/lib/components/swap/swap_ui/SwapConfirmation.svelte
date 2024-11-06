@@ -7,6 +7,9 @@
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
   import RouteSection from './confirmation/RouteSection.svelte';
   import FeesSection from './confirmation/FeesSection.svelte';
+  import SwapProgressOverlay from './confirmation/SwapProgressOverlay.svelte';
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
 
   export let payToken: string;
   export let payAmount: string;
@@ -15,23 +18,74 @@
   export let routingPath: string[] = [];
   export let slippage: number;
   export let onClose: () => void;
-  export let onConfirm: () => void;
+  export let onConfirm: () => Promise<boolean>;
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
 
   let isLoading = false;
   let showLoadingScreen = false;
+  let swapStatus: 'pending' | 'success' | 'failed' = 'pending';
+  let currentStep = '';
+  let error = '';
+
+  let currentRouteIndex = 0;
+  let routeProgress = tweened(0, {
+    duration: 1000,
+    easing: cubicOut
+  });
+
+  $: isLastRoute = currentRouteIndex === routingPath.length - 1;
 
   function handleOverlayClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
+    if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
       onClose();
     }
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     isLoading = true;
     showLoadingScreen = true;
-    onConfirm();
+    swapStatus = 'pending';
+    error = '';
+    currentRouteIndex = 0;
+    
+    try {
+      currentStep = 'Initializing swap...';
+      await routeProgress.set(0);
+      
+      // Simulate progress through each route
+      for (let i = 0; i < routingPath.length - 1; i++) {
+        currentRouteIndex = i;
+        currentStep = `Swapping ${routingPath[i]} → ${routingPath[i + 1]}...`;
+        await routeProgress.set((i + 1) / (routingPath.length - 1));
+      }
+      
+      const success = await onConfirm();
+      
+      if (!success) {
+        throw new Error('Swap failed');
+      }
+      
+      currentRouteIndex = routingPath.length - 1;
+      await routeProgress.set(1);
+      
+      swapStatus = 'success';
+      currentStep = 'Swap completed successfully!';
+      
+      setTimeout(() => {
+        onClose();
+      }, 3000);
+      
+    } catch (err) {
+      swapStatus = 'failed';
+      error = err instanceof Error ? err.message : 'Transaction failed';
+      currentStep = 'Transaction failed. Please check your wallet and try again.';
+      
+      setTimeout(() => {
+        isLoading = false;
+        showLoadingScreen = false;
+      }, 3000);
+    }
   }
 
   $: totalGasFee = routingPath.length > 0 ? 
@@ -66,104 +120,75 @@
 </script>
 
 {#if showLoadingScreen}
-  <div 
-    class="loading-overlay"
-    transition:fade={{ duration: 300 }}
-  >
-    <div class="loading-content">
-      <div class="jungle-mist"></div>
-      
-      <div class="title-container">
-        <img 
-          src="/titles/swap_title.webp" 
-          alt="Kong Swap" 
-          class="kong-title"
-        />
-      </div>
-
-      <div class="center-container">
-        <div class="pixel-box">
-          <div class="progress-bar">
-            <div class="progress-fill"></div>
-          </div>
-          <p class="status-text">SWAP IN PROGRESS...</p>
-          <p class="warning-text">DO NOT CLOSE THIS WINDOW</p>
-        </div>
-      </div>
-
-      <div class="vines left-vines"></div>
-      <div class="vines right-vines"></div>
-    </div>
-  </div>
+  <SwapProgressOverlay
+    {routingPath}
+    {currentRouteIndex}
+    {swapStatus}
+    {currentStep}
+    {error}
+    {onClose}
+    {routeProgress}
+  />
 {:else}
-  <div 
-    class="modal-overlay" 
-    transition:fade={{ duration: 200 }}
-    on:click={handleOverlayClick}
-  >
-    <Panel variant="green" width="auto" height="auto">
-      <div class="modal-content">
-        <div class="header">
-          <h2>Review Swap</h2>
-          <button class="close" on:click={onClose}>×</button>
-        </div>
+  <div class="modal-overlay" on:click|self={onClose}>
+    <div 
+      class="modal-content confirmation-modal" 
+      transition:fade={{ duration: 200 }}
+    >
+      <Panel variant="green" type="main" width="auto">
+        <div class="modal-content">
+          <div class="header">
+            <h2>Review Swap</h2>
+            <button class="close" on:click={onClose}>×</button>
+          </div>
 
-        <div class="sections-container">
-          <PayReceiveSection
-            {payToken}
-            {payAmount}
-            {receiveToken}
-            {receiveAmount}
-          />
-
-          <RouteSection
-            {routingPath}
-            {gasFees}
-            {lpFees}
-            {payToken}
-            {receiveToken}
-          />
-
-          <FeesSection
-            {totalGasFee}
-            {totalLPFee}
-            {slippage}
-            {receiveToken}
-          />
-
-          <div class="mt-4">
-            <Button
-              text={isLoading ? 'Confirming...' : 'CONFIRM SWAP'}
-              variant="yellow"
-              size="big"
-              disabled={isLoading}
-              onClick={handleConfirm}
-              width="100%"
+          <div class="sections-container">
+            <PayReceiveSection
+              {payToken}
+              {payAmount}
+              {receiveToken}
+              {receiveAmount}
             />
+
+            <RouteSection
+              {routingPath}
+              {gasFees}
+              {lpFees}
+              {payToken}
+              {receiveToken}
+            />
+
+            <FeesSection
+              {totalGasFee}
+              {totalLPFee}
+              {slippage}
+              {receiveToken}
+            />
+
+            <div class="mt-4">
+              <Button
+                text={isLoading ? 'Confirming...' : 'CONFIRM SWAP'}
+                variant="yellow"
+                size="big"
+                disabled={isLoading}
+                onClick={handleConfirm}
+                width="100%"
+              />
+            </div>
           </div>
         </div>
-      </div>
-    </Panel>
+      </Panel>
+    </div>
   </div>
 {/if}
 
-<style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    display: grid;
-    place-items: center;
-    z-index: 50;
-    padding: 12px;
-  }
-
+<style lang="postcss">
   .modal-content {
     width: 100%;
     padding: 16px;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 12px;
   }
 
@@ -194,7 +219,6 @@
   }
 
   h2 {
-    font-family: 'Press Start 2P', monospace;
     font-size: 1rem;
     color: #fff;
     margin: 0;
@@ -227,176 +251,17 @@
     padding: 12px;
   }
 
-  .loading-overlay {
+  .modal-overlay {
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
-    z-index: 9999;
-    overflow: hidden;
-  }
-
-  .loading-content {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 999;
   }
 
-  .jungle-mist {
-    position: absolute;
-    inset: 0;
-    background: 
-      repeating-linear-gradient(
-        0deg,
-        transparent 0%,
-        rgba(0, 255, 0, 0.05) 50%,
-        transparent 100%
-      );
-    background-size: 100% 8px;
-    animation: mistScroll 20s linear infinite;
-    pointer-events: none;
-  }
-
-  .title-container {
-    position: absolute;
-    top: 15%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 500px;
-    animation: titlePulse 2s ease-in-out infinite;
-  }
-
-  .kong-title {
-    width: 100%;
-    height: auto;
-    filter: drop-shadow(0 0 20px rgba(0, 255, 0, 0.4));
-  }
-
-  .center-container {
-    position: relative;
-    z-index: 2;
-  }
-
-  .pixel-box {
-    background: rgba(0, 0, 0, 0.8);
-    border: 4px solid #4a4;
-    padding: 20px;
-    width: 400px;
-    box-shadow: 
-      0 0 0 4px #000,
-      0 0 20px rgba(0, 255, 0, 0.4);
-    image-rendering: pixelated;
-  }
-
-  .progress-bar {
-    height: 30px;
-    background: #000;
-    border: 2px solid #4a4;
-    padding: 4px;
-    margin-bottom: 20px;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: #4a4;
-    width: 0%;
-    animation: progressFill 2s ease-in-out infinite;
-  }
-
-  .status-text {
-    font-family: 'Press Start 2P', monospace;
-    color: #4a4;
-    text-align: center;
-    margin: 10px 0;
-    font-size: 1.2rem;
-    animation: textBlink 1s step-end infinite;
-  }
-
-  .warning-text {
-    font-family: 'Press Start 2P', monospace;
-    color: #f44;
-    text-align: center;
-    font-size: 0.8rem;
-    margin-top: 20px;
-    animation: warningPulse 2s ease-in-out infinite;
-  }
-
-  .vines {
-    position: absolute;
-    width: 200px;
-    height: 100%;
-    background: 
-      repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 20px,
-        #4a4 22px,
-        #4a4 25px
-      );
-    opacity: 0.2;
-  }
-
-  .left-vines {
-    left: 0;
-    transform: skew(-15deg);
-  }
-
-  .right-vines {
-    right: 0;
-    transform: skew(15deg);
-  }
-
-  @keyframes mistScroll {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 100%; }
-  }
-
-  @keyframes titlePulse {
-    0%, 100% { 
-      transform: translateX(-50%) scale(1);
-      filter: drop-shadow(0 0 20px rgba(0, 255, 0, 0.4));
-    }
-    50% { 
-      transform: translateX(-50%) scale(1.05);
-      filter: drop-shadow(0 0 30px rgba(0, 255, 0, 0.6));
-    }
-  }
-
-  @keyframes progressFill {
-    0% { width: 0%; }
-    50% { width: 100%; }
-    100% { width: 0%; }
-  }
-
-  @keyframes textBlink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-  }
-
-  @keyframes warningPulse {
-    0%, 100% { color: #f44; }
-    50% { color: #f88; }
-  }
-
-  @media (max-width: 768px) {
-    .title-container {
-      width: 80%;
-    }
-
-    .pixel-box {
-      width: 90%;
-      margin: 0 20px;
-    }
-
-    .status-text {
-      font-size: 0.9rem;
-    }
-
-    .warning-text {
-      font-size: 0.7rem;
-    }
+  Button.mt-4 {
+    margin-top: 1rem;
   }
 </style>
-
