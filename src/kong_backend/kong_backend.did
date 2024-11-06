@@ -269,6 +269,7 @@ type AddLiquidityReply = record {
 };
 type AddLiquidityResult = variant { Ok : AddLiquidityReply; Err : text };
 type AddLiquidityAsyncResult = variant { Ok : nat64; Err : text };
+type ValidateAddLiquidityResult = variant { Ok : text; Err : text };
 
 type RemoveLiquidityAmountsReply = record {
     symbol : text;
@@ -441,6 +442,8 @@ service : {
     // asnychronous version of add_liquidity()
     // request_id will be returned by add_liquidity_async() and poll requests(request_id) to get updated status
     add_liquidity_async : (AddLiquidityArgs) -> (AddLiquidityAsyncResult);
+    // validate add_liquidity for SNS proposals
+    validate_add_liquidity : () -> (ValidateAddLiquidityResult);
 
     // remove_liquidity_amounts(token_0, token_1, remove_lp_token_amount)
     // calcalates the expected token_0 and token_1 to be received from redeeming remove_lp_token_amount of LP tokens to the pool

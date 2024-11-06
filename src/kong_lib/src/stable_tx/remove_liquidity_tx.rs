@@ -7,8 +7,8 @@ use super::status_tx::StatusTx;
 pub struct RemoveLiquidityTx {
     pub tx_id: u64,
     pub pool_id: u32,
-    pub user_id: u32,
     pub request_id: u64,
+    pub user_id: u32,
     pub status: StatusTx,
     pub amount_0: Nat,
     pub lp_fee_0: Nat,

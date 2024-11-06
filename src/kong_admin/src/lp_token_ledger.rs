@@ -26,7 +26,7 @@ pub async fn dump_lp_token_ledger(db_client: &Client, tokens_map: &BTreeMap<u32,
         db_client
             .execute(
                 "INSERT INTO lp_token_ledger 
-                    (lp_token_id, user_id, token_id, amount, ts, raw_jon)
+                    (lp_token_id, user_id, token_id, amount, ts, raw_json)
                     VALUES ($1, $2, $3, $4, to_timestamp($5), $6)
                     ON CONFLICT (lp_token_id) DO UPDATE SET
                         user_id = $2,

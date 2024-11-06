@@ -10,7 +10,7 @@ use tokio_postgres::Client;
 use super::math_helpers::round_f64;
 
 pub async fn dump_transfers(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backups/transfers.json")?;
+    let file = File::open("./backups/transfers.44000.json")?;
     let reader = BufReader::new(file);
     let transfer_map: BTreeMap<StableTransferId, StableTransfer> = serde_json::from_reader(reader)?;
 

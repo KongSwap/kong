@@ -26,7 +26,7 @@ enum RequestType {
 }
 
 pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backups/requests.json")?;
+    let file = File::open("./backups/requests.25000.json")?;
     let reader = BufReader::new(file);
     let request_map: BTreeMap<StableRequestId, StableRequest> = serde_json::from_reader(reader)?;
 
