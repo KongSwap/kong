@@ -1,221 +1,254 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
-  import { spring } from 'svelte/motion';
+  import Panel from '$lib/components/common/Panel.svelte';
   import { tokenStore } from '$lib/stores/tokenStore';
 
   export let routingPath: string[] = [];
   export let currentRouteIndex: number;
   export let swapStatus: 'pending' | 'success' | 'failed';
+  export let currentStep: string;
+  export let error: string;
 
-  // Spring animation for smooth token progression
-  const progressSpring = spring({ x: 0 }, {
-    stiffness: 0.08,
-    damping: 0.35
-  });
-
-  $: {
-    progressSpring.set({ x: currentRouteIndex });
-  }
-
-  // Increase number of bananas and adjust their properties
-  const bananas = Array(40).fill(0).map((_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: -20 - Math.random() * 100, // Start above viewport
-    delay: Math.random() * 2,
-    speed: 2 + Math.random() * 2,
-    rotation: Math.random() * 360,
-    scale: 0.3 + Math.random() * 0.3
-  }));
+  const STATUS_COLORS = {
+    pending: '#FFA500',
+    success: '#00E676',
+    failed: '#FF1744'
+  };
 
   function getTokenLogo(symbol: string): string {
     const token = $tokenStore.tokens.find(t => t.symbol === symbol);
     return token?.logo || `/tokens/${symbol.toLowerCase()}.webp`;
   }
+
+  function getStepStatus(index: number) {
+    if (swapStatus === 'failed' && index <= currentRouteIndex) {
+      return 'failed';
+    }
+    if (index < currentRouteIndex) {
+      return 'completed';
+    }
+    if (index === currentRouteIndex) {
+      return 'current';
+    }
+    return 'upcoming';
+  }
+
+  function getStepDescription(index: number): string {
+    if (swapStatus === 'failed') {
+      return 'Swap failed';
+    }
+    
+    const fromToken = routingPath[index];
+    const toToken = routingPath[index + 1];
+    
+    if (index < currentRouteIndex) {
+      return `Completed ${fromToken} → ${toToken}`;
+    }
+    if (index === currentRouteIndex) {
+      return `Swapping ${fromToken} → ${toToken}...`;
+    }
+    return `Waiting to swap ${fromToken} → ${toToken}`;
+  }
 </script>
 
-<div class="swap-overlay">
-  <!-- Banana particle effects -->
-  <div class="particle-field">
-    {#each bananas as banana (banana.id)}
-      <img 
-        src="/stats/banana.webp"
-        alt="Banana"
-        class="banana-particle"
-        style="
-          --x: {banana.x}%;
-          --y: {banana.y}%;
-          --delay: {banana.delay}s;
-          --speed: {banana.speed}s;
-          --rotation: {banana.rotation}deg;
-          --scale: {banana.scale};
-        "
-      />
-    {/each}
-  </div>
-
-  <div class="swap-progress">
-    <!-- Loading spinner video -->
-    <video 
-      class="loading-spinner" 
-      autoplay 
-      loop 
-      muted 
-      playsinline
-    >
-      <source src="loading/spin.mp4" type="video/mp4">
-    </video>
-
-    <!-- Token path visualization -->
-    <div class="token-path">
-      {#each routingPath as token, i}
-        <div class="token-node" class:active={i <= $progressSpring.x}>
-          <img 
-            src={getTokenLogo(token)}
-            alt={token}
-            class="token-icon"
-          />
-          {#if i < routingPath.length - 1}
-            <div class="path-line">
-              <div class="energy-pulse" class:flowing={i === currentRouteIndex} />
-            </div>
-          {/if}
+<div class="overlay">
+  <Panel variant="green" type="main" width="500px">
+    <div class="content">
+      <!-- Status Header -->
+      <div class="status-header">
+        <div 
+          class="status-indicator"
+          style="background-color: {STATUS_COLORS[swapStatus]}">
         </div>
-      {/each}
-    </div>
+        <span class="status-text" class:error={!!error}>
+          {error || currentStep}
+        </span>
+      </div>
 
-    <span class="status-text">SWAP IN PROGRESS</span>
-  </div>
+      <!-- Route Display -->
+      <div class="route">
+        {#each routingPath as token, i}
+          <div class="token-step" data-status={getStepStatus(i)}>
+            <img 
+              src={getTokenLogo(token)}
+              alt={token}
+              class="token-icon"
+              loading="eager"
+            />
+            {#if i < routingPath.length - 1}
+              <div class="arrow">→</div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+
+      <!-- Step Description -->
+      {#if routingPath.length > 1}
+        <div class="step-description">
+          {#each routingPath.slice(0, -1) as _, i}
+            <div 
+              class="step-text"
+              class:active={i === currentRouteIndex}
+              class:completed={i < currentRouteIndex}
+              class:failed={swapStatus === 'failed' && i <= currentRouteIndex}
+            >
+              {getStepDescription(i)}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </Panel>
 </div>
 
-<style lang="postcss">
-  .swap-overlay {
+<style>
+  .overlay {
     position: fixed;
     inset: 0;
+    background: rgba(0, 0, 0, 0.8);
     display: grid;
     place-items: center;
     z-index: 100;
-    overflow: hidden;
   }
 
-  .particle-field {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: -1; /* Place behind the swap progress panel */
+  .content {
+    padding: 1.5rem;
+    min-width: 320px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
   }
 
-  .banana-particle {
-    position: absolute;
-    left: var(--x);
-    top: var(--y);
-    width: 24px;
-    height: 24px;
-    opacity: 0;
-    animation: fall var(--speed) linear infinite;
-    animation-delay: var(--delay);
-    transform: rotate(var(--rotation)) scale(var(--scale));
-  }
-
-  .swap-progress {
-    background: rgba(0, 20, 10, 0.8);
-    padding: 2rem;
-    border-radius: 16px;
-    border: 1px solid rgba(0, 230, 118, 0.2);
-    box-shadow: 0 0 40px rgba(0, 230, 118, 0.1);
-  }
-
-  .token-path {
+  .status-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .token-node {
-    display: flex;
-    align-items: center;
-    opacity: 0.5;
-    transition: all 0.4s ease;
-  }
-
-  .token-node.active {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-
-  .token-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 2px solid rgba(0, 230, 118, 0.3);
-    background: #000;
-    transition: all 0.3s ease;
-  }
-
-  .path-line {
-    width: 60px;
-    height: 2px;
-    background: rgba(0, 230, 118, 0.2);
-    margin: 0 0.5rem;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .energy-pulse {
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background: linear-gradient(
-      90deg,
-      transparent,
-      #00E676,
-      transparent
-    );
-  }
-
-  .energy-pulse.flowing {
-    animation: pulseFlow 1.5s ease-in-out infinite;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .status-indicator {
-    text-align: center;
-    position: relative;
-  }
-
-  .progress-ring {
-    display: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px currentColor;
   }
 
   .status-text {
+    font-family: 'Aeonik Mono', 'Aluminium Sans', monospace;
+    font-size: 0.875rem;
+    color: #fff;
+  }
+
+  .status-text.error {
+    color: #FF1744;
+  }
+
+  .route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    flex-wrap: wrap;
+    min-width: 280px;
+    width: 100%;
+  }
+
+  .token-step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .token-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background: #000;
+    transition: all 0.2s ease;
+  }
+
+  .arrow {
+    color: #666;
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
+
+  /* Step States */
+  .token-step[data-status="completed"] .token-icon {
+    --border-color: #00E676;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.4);
+  }
+
+  .token-step[data-status="current"] .token-icon {
+    --border-color: #FFA500;
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.4);
+  }
+
+  .token-step[data-status="failed"] .token-icon {
+    --border-color: #FF1744;
+    box-shadow: 0 0 10px rgba(255, 23, 68, 0.4);
+  }
+
+  .token-step[data-status="upcoming"] .token-icon {
+    --border-color: #666;
+    opacity: 0.5;
+  }
+
+  .step-description {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-family: 'Aeonik Mono', 'Aluminium Sans', monospace;
+    font-size: 0.75rem;
+  }
+
+  .step-text {
+    padding: 0.5rem;
+    color: #666;
+    text-align: center;
+    font-family: 'Aeonik Mono', 'Aluminium Sans', monospace;
+  }
+
+  .step-text.active {
+    color: #FFA500;
+  }
+
+  .step-text.completed {
     color: #00E676;
-    font-family: monospace;
-    font-size: 0.9rem;
-    letter-spacing: 1px;
-    animation: pulse 2s infinite;
   }
 
-  @keyframes fall {
-    0% {
-      transform: translateY(-20px) rotate(var(--rotation));
-      opacity: 0.8;
+  .step-text.failed {
+    color: #FF1744;
+  }
+
+  @media (max-width: 480px) {
+    .content {
+      padding: 1rem;
+      min-width: 280px;
     }
-    100% {
-      transform: translateY(120vh) rotate(calc(var(--rotation) + 360deg));
-      opacity: 0;
+
+    .route {
+      min-width: 240px;
     }
-  }
 
-  @keyframes pulseFlow {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
+    .token-icon {
+      width: 32px;
+      height: 32px;
+    }
 
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
+    .status-text {
+      font-size: 0.75rem;
+    }
 
-  @keyframes pulse {
-    50% { opacity: 0.5; }
+    .step-text {
+      font-size: 0.65rem;
+      padding: 0.25rem;
+    }
   }
 </style>

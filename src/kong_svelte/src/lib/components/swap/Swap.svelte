@@ -71,6 +71,12 @@
 
   let showConfirmation = false;
 
+  let currentStep = '';
+  let currentRouteIndex = 0;
+
+  let maxAllowedSlippage = slippage;
+  let isSlippageExceeded = false;
+
   onMount(async () => {
     if ($walletStore.isConnected) {
       await tokenStore.loadTokens();
@@ -84,7 +90,10 @@
     }
   });
 
-  $: isValidInput = payAmount && Number(payAmount) > 0 && !isCalculating;
+  $: isValidInput = payAmount && 
+                    Number(payAmount) > 0 && 
+                    !isCalculating && 
+                    swapSlippage <= maxAllowedSlippage;
   $: buttonText = getButtonText(
     isCalculating,
     isValidInput,
@@ -125,6 +134,7 @@
     if (!$walletStore.isConnected) return "Connect Wallet";
     if (isCalculating) return "Calculating...";
     if (isProcessing) return "Processing...";
+    if (swapSlippage > maxAllowedSlippage) return `High Slippage: ${swapSlippage.toFixed(2)}%`;
     if (!isValidInput) return "Enter Amount";
     if (error) return error;
     return "Swap";
@@ -144,6 +154,7 @@
   async function getSwapQuote(amount: string) {
     if (!amount || Number(amount) <= 0 || isNaN(Number(amount))) {
       setReceiveAmount("0");
+      isSlippageExceeded = false;
       return;
     }
 
@@ -172,6 +183,9 @@
 
         price = quote.Ok.price.toString();
         swapSlippage = quote.Ok.slippage;
+        
+        // Check if slippage exceeds max allowed
+        isSlippageExceeded = swapSlippage > maxAllowedSlippage;
         usdValue = new BigNumber(receivedAmount)
           .times(quote.Ok.price)
           .toFormat(2);
@@ -281,20 +295,51 @@
   }
 
   function startPolling(reqId: bigint) {
+    let hasCompleted = false;
+    
     intervalId = setInterval(async () => {
       try {
         const status = await swapService.requests([reqId]);
-        if (status.Ok?.[0]?.reply?.Swap) {
-          clearInterval(intervalId);
-          status.Ok[0].reply.Swap.status === "Success" 
-            ? handleSwapSuccess(status.Ok[0].reply.Swap)
-            : handleSwapFailure(status.Ok[0].reply.Swap);
+        
+        if (status.Ok?.[0]?.reply && !hasCompleted) {
+          const reply = status.Ok[0].reply;
+          
+          if ('Swap' in reply) {
+            const swapStatus = reply.Swap;
+            
+            if (showConfirmation) {
+              const txIndex = swapStatus.txs?.findIndex(tx => !tx.completed);
+              if (txIndex !== -1 && txIndex !== undefined) {
+                const currentTx = swapStatus.txs[txIndex];
+                currentStep = `Swapping ${currentTx.pay_symbol} → ${currentTx.receive_symbol}`;
+                currentRouteIndex = txIndex;
+              } else {
+                currentStep = 'Processing...';
+              }
+            }
+            
+            if (!hasCompleted) {
+              if (swapStatus.status === "Success") {
+                hasCompleted = true;
+                clearInterval(intervalId);
+                handleSwapSuccess(swapStatus);
+              } else if (swapStatus.status === "Failed") {
+                hasCompleted = true;
+                clearInterval(intervalId);
+                handleSwapFailure(swapStatus);
+              }
+            }
+          }
         }
-      } catch {
-        clearInterval(intervalId);
-        handleSwapFailure(null);
+      } catch (err) {
+        if (!hasCompleted) {
+          hasCompleted = true;
+          console.error('Polling error:', err);
+          clearInterval(intervalId);
+          handleSwapFailure(null);
+        }
       }
-    }, 25); // Extremely aggressive polling
+    }, 100);
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -336,8 +381,9 @@
     
     if (reply.receive_amount) {
       const receiveDecimals = getTokenDecimals(receiveToken);
-      setReceiveAmount(swapService.fromBigInt(reply.receive_amount, receiveDecimals));
-      setDisplayAmount(new BigNumber(swapService.fromBigInt(reply.receive_amount, receiveDecimals)).toFixed(receiveDecimals));
+      const finalAmount = swapService.fromBigInt(reply.receive_amount, receiveDecimals);
+      setReceiveAmount(finalAmount);
+      setDisplayAmount(new BigNumber(finalAmount).toFixed(receiveDecimals));
     }
 
     clearInputs();
@@ -348,8 +394,8 @@
 
   function handleSwapFailure(reply: any) {
     isProcessing = false;
-    isConfirmationOpen = false;
-    toastStore.error("Swap failed");
+    showConfirmation = false; // Instant close
+    toastStore.error(reply?.error || "Swap failed");
   }
 
   function clearInputs() {
@@ -364,11 +410,12 @@
     tokenFee = undefined;
     requestId = null;
     transactionStateObject = null;
+    currentStep = '';
+    currentRouteIndex = 0;
   }
 
   function handleSwapClick() {
     if (!isValidInput || isProcessing) return;
-    
     showConfirmation = true;
   }
 
@@ -417,7 +464,7 @@
 
     <div class="swap-footer mt-3">
       <Button
-        variant="yellow"
+        variant={swapSlippage > maxAllowedSlippage ? "blue" : "yellow"}
         disabled={!isValidInput || isProcessing || isAnimating || !$walletStore.isConnected}
         onClick={handleSwapClick}
         width="100%"
@@ -473,7 +520,6 @@
       {lpFees}
       {slippage}
       {routingPath}
-      expectedSlippage={swapSlippage}
       onConfirm={handleSwap}
       onClose={() => {
         showConfirmation = false;
@@ -491,8 +537,11 @@
       slippage={slippage}
       onSlippageChange={(value) => {
         slippage = value;
+        maxAllowedSlippage = value;
         if (payAmount) debouncedGetQuote(payAmount);
       }}
+      onApproveToken={async () => {}}
+      onRevokeToken={async () => {}}
     />
   </div>
 {/if}
@@ -671,5 +720,17 @@
   .settings-button:hover {
     background: #ffe077;
     transform: scale(1.05);
+  }
+
+  .slippage-warning {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 23, 68, 0.1);
+    border: 1px solid #FF1744;
+    border-radius: 8px;
+    color: #FF1744;
+    font-family: 'Aeonik Mono', monospace;
+    font-size: 0.75rem;
+    text-align: center;
   }
 </style>

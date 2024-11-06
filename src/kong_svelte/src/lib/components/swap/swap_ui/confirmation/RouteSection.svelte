@@ -9,6 +9,7 @@
 
   export let currentRouteIndex = 0;
   export let progress = 0;
+  export let currentStep: string = '';
 </script>
 
 <div class="section">
@@ -52,6 +53,9 @@
         </div>
         
         {#if i === currentRouteIndex}
+          <div class="step-status">
+            {currentStep}
+          </div>
           <div class="progress-bar">
             <div 
               class="progress-fill"
@@ -198,5 +202,12 @@
     height: 100%;
     background: #ffd700;
     transition: width 0.3s ease;
+  }
+
+  .step-status {
+    font-size: 0.8rem;
+    color: #ffd700;
+    text-align: center;
+    margin-top: 4px;
   }
 </style>

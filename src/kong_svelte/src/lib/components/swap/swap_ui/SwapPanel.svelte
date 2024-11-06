@@ -32,10 +32,6 @@
 
   $: isOverBalance = parseFloat(amount || "0") > parseFloat(balance?.toString() || "0");
 
-  $: if (isOverBalance && title === "You Pay") {
-    toastStore.error("Insufficient balance");
-  }
-
   const animatedUsdValue = tweened(0, {
     duration: 400,
     easing: cubicOut,
@@ -82,18 +78,11 @@
         
         if (isNaN(balanceNum) || isNaN(gasFeeNum)) {
           console.error("Invalid balance or gas fee values", { balance, estimatedGasFee });
-          toastStore.error("Error calculating maximum amount");
           return;
         }
 
         // Calculate max amount that can be swapped
         const maxSwappable = Math.max(0, balanceNum - gasFeeNum);
-        
-        // Add additional check for minimum viable amount
-        if (maxSwappable <= gasFeeNum) {
-          toastStore.error("Insufficient balance to cover gas fees");
-          return;
-        }
         
         // Round down slightly to provide extra safety margin for floating point precision
         const safeMaxAmount = maxSwappable * 0.99;
@@ -130,7 +119,6 @@
         });
       } catch (error) {
         console.error("Error in handleMaxClick:", error);
-        toastStore.error("Error calculating maximum amount");
       }
     }
   }
@@ -149,10 +137,6 @@
       const balanceNum = parseFloat(balance || "0");
       const gasFeeNum = parseFloat(estimatedGasFee || "0") * 1.1; // Add 10% safety margin
       
-      if (numValue > (balanceNum - gasFeeNum)) {
-        toastStore.warning("Amount exceeds maximum swappable balance (including gas fees)");
-      }
-      
       isAnimating = false;
       onAmountChange(e);
       animatedAmount.set(numValue, { duration: 0 });
@@ -164,55 +148,56 @@
   }
 
   // Add reactive statement to validate amount changes
+  // TODO
   $: {
     if (amount && title === "You Pay") {
       const inputAmount = parseFloat(amount);
       const balanceNum = parseFloat(balance || "0");
       const gasFeeNum = parseFloat(estimatedGasFee || "0") * 1.1;
-      
-      if (inputAmount > (balanceNum - gasFeeNum)) {
-        toastStore.warning("Insufficient balance for transaction including gas fees");
-      }
     }
   }
+
+  // Add new computed values for slippage warning
+  $: slippageWarning = showPrice && amount && amount !== "0" && slippage > maxSlippage;
+  $: slippageClass = slippageWarning ? 'high-slippage' : 'normal-slippage';
 </script>
 
 <Panel variant="green" width="600px" height="305px" className="token-panel">
   <div class="panel-content" class:input-focused={inputFocused}>
     <header class="panel-header">
       <div class="title-container">
-        <h2 class="text-4xl font-bold">{title}</h2>
+        <h2 class="panel-title">{title}</h2>
       </div>
-      {#if showPrice && amount && amount !== "0" && slippage > 0}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          class="relative flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium"
-          class:bg-red-100={$animatedSlippage > maxSlippage}
-          class:bg-green-100={$animatedSlippage <= maxSlippage}
-          class:text-red-600={$animatedSlippage > maxSlippage}
-          class:text-green-600={$animatedSlippage <= maxSlippage}
-          on:mouseenter={() => (showSlippageTooltip = true)}
-          on:mouseleave={() => (showSlippageTooltip = false)}
+      
+      {#if showPrice && slippage > 0}
+        <div 
+          class="slippage-badge {slippageClass}"
+          class:warning={slippageWarning}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            {#if $animatedSlippage <= maxSlippage}
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            {:else}
-              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-            {/if}
-          </svg>
-          <span>{$animatedSlippage.toFixed(2)}% slippage</span>
+          <span class="slippage-value">{slippage.toFixed(2)}%</span>
+          {#if slippageWarning}
+            <span class="warning-icon">⚠️</span>
+          {/if}
         </div>
       {/if}
     </header>
 
-    <div class="input-section flex flex-col justify-center" class:disabled>
-      <div class="amount-container">
+    <div class="input-section" class:disabled class:warning={slippageWarning}>
+      <div class="amount-container" class:warning={slippageWarning}>
+        <div class="token-logo">
+          <img
+            src={tokenInfo?.logo || "/tokens/not_verified.webp"}
+            alt={token}
+            class="token-image"
+            loading="lazy"
+          />
+        </div>
         <input
           bind:this={inputElement}
           type="text"
           class="amount-input"
           class:error={isOverBalance && title === "You Pay"}
+          class:warning={slippageWarning}
           value={isAnimating ? $animatedAmount.toFixed(decimals) : amount}
           on:input={handleInput}
           on:focus={() => inputFocused = true}
@@ -224,6 +209,7 @@
         <div class="token-selector">
           <button
             class="token-button"
+            class:warning={slippageWarning}
             on:click={onTokenSelect}
             type="button"
           >
@@ -235,7 +221,7 @@
     </div>
 
     {#if showPrice}
-      <div class="price-container">
+      <div class="price-info">
         <div class="usd-value">
           <span class="dollar-sign">≈ $</span>{$animatedUsdValue.toFixed(2)}
         </div>
@@ -285,16 +271,17 @@
   .panel-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 0.5rem;
     position: relative;
-    flex-wrap: wrap;
+    padding: 0.5rem;
+    border-radius: 8px;
   }
 
   .title-container {
     display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
+    align-items: center;
+    gap: 1rem;
   }
 
   .price-container {
@@ -325,22 +312,34 @@
   .amount-container {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    background: rgba(0, 0, 0, 0.1);
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 0.5rem 0.75rem;
-    transition: all 0.3s ease;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+  }
+
+  .amount-container:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.25);
   }
 
   .amount-input {
+    flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
-    font-size: 4rem;
     color: white;
+    font-size: 2.5rem;
+    font-family: "Alumni Sans", sans-serif;
+    padding: 0.5rem;
     width: 100%;
-    padding: 0;
-    font-weight: 300;
-    text-overflow: ellipsis;
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.2),
+      1px -1px 0 rgba(0, 0, 0, 0.2),
+      -1px 1px 0 rgba(0, 0, 0, 0.2),
+      1px 1px 0 rgba(0, 0, 0, 0.2);
   }
 
   .amount-input.error {
@@ -362,27 +361,29 @@
   }
 
   .token-button {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 0.05rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.5rem 1rem;
     color: white;
-    font-size: 2.5rem;
+    font-size: 2rem;
+    font-family: "Alumni Sans", sans-serif;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    transition: all 0.3s ease;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
     cursor: pointer;
-    width: 100%;
+    min-width: 140px;
+  }
+
+  .token-button:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.25);
+    transform: translateY(-1px);
   }
 
   .token-text {
     margin-right: auto;
-  }
-
-  .token-button:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
   }
 
   .chevron {
@@ -415,13 +416,10 @@
   }
 
   .balance-amount {
-    color: rgba(255, 255, 255, 0.8);
+    color: white;
     font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     cursor: pointer;
-    transition: color 0.3s ease;
+    transition: color 0.2s ease;
   }
 
   .balance-amount:hover {
@@ -482,5 +480,217 @@
     padding-top: 0.25rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     font-weight: 500;
+  }
+
+  .panel-title {
+    font-size: 2rem;
+    font-family: "Alumni Sans", sans-serif;
+    color: white;
+    margin: 0;
+    padding: 0.5rem 0;
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.5),
+      1px -1px 0 rgba(0, 0, 0, 0.5),
+      -1px 1px 0 rgba(0, 0, 0, 0.5),
+      1px 1px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  .slippage-warning {
+    font-size: 0.875rem;
+    color: #FF1744;
+    margin-top: 0.25rem;
+    font-family: 'Aeonik Mono', 'Aluminium Sans', monospace;
+  }
+
+  .price-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 0.5rem;
+  }
+
+  .slippage-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-family: 'Aeonik Mono', 'Aluminium Sans', monospace;
+  }
+
+  .normal-slippage {
+    background: rgba(0, 230, 118, 0.1);
+    color: #00E676;
+  }
+
+  .high-slippage {
+    background: rgba(255, 23, 68, 0.1);
+    color: #FF1744;
+  }
+
+  .warning-icon {
+    font-size: 1rem;
+  }
+
+  .amount-container.warning {
+    border: 1px solid rgba(255, 23, 68, 0.3);
+    background: rgba(255, 23, 68, 0.05);
+  }
+
+  .token-button.warning {
+    background: rgba(255, 23, 68, 0.1);
+    border-color: rgba(255, 23, 68, 0.3);
+  }
+
+  .amount-input.warning {
+    color: #FF1744;
+  }
+
+  .input-section.warning:hover .amount-container {
+    border-color: rgba(255, 23, 68, 0.5);
+  }
+
+  .slippage-value {
+    font-weight: 500;
+  }
+
+  .amount-container {
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .amount-container:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .token-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid transparent;
+  }
+
+  .token-button:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .slippage-banner {
+    display: none;
+  }
+
+  .slippage-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    font-family: 'Aeonik Mono', 'Aluminium Sans', monospace;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+  }
+
+  .slippage-badge.normal-slippage {
+    background: rgba(0, 230, 118, 0.1);
+    color: #00E676;
+    border-color: rgba(0, 230, 118, 0.3);
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.5),
+       1px -1px 0 rgba(0, 0, 0, 0.5),
+      -1px  1px 0 rgba(0, 0, 0, 0.5),
+       1px  1px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  .slippage-badge.high-slippage {
+    background: rgba(255, 23, 68, 0.1);
+    color: #FF1744;
+    border-color: #FF1744;
+    animation: pulse 2s infinite;
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.5),
+       1px -1px 0 rgba(0, 0, 0, 0.5),
+      -1px  1px 0 rgba(0, 0, 0, 0.5),
+       1px  1px 0 rgba(0, 0, 0, 0.5);
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .warning-icon {
+    font-size: 1rem;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  }
+
+  @keyframes pulse {
+    0%, 100% { 
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 0.8;
+      transform: scale(0.95);
+    }
+  }
+
+  .amount-container.warning {
+    border: 2px solid rgba(255, 23, 68, 0.3);
+    background: rgba(255, 23, 68, 0.05);
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .token-button.warning {
+    background: rgba(255, 23, 68, 0.1);
+    border: 2px solid rgba(255, 23, 68, 0.3);
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .slippage-indicator {
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.5),  
+       1px -1px 0 rgba(0, 0, 0, 0.5),
+      -1px  1px 0 rgba(0, 0, 0, 0.5),
+       1px  1px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  .amount-input {
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.2),
+       1px -1px 0 rgba(0, 0, 0, 0.2),
+      -1px  1px 0 rgba(0, 0, 0, 0.2),
+       1px  1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .usd-value {
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.3),
+       1px -1px 0 rgba(0, 0, 0, 0.3),
+      -1px  1px 0 rgba(0, 0, 0, 0.3),
+       1px  1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .balance-text {
+    text-shadow: 
+      -1px -1px 0 rgba(0, 0, 0, 0.3),
+       1px -1px 0 rgba(0, 0, 0, 0.3),
+      -1px  1px 0 rgba(0, 0, 0, 0.3),
+       1px  1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .token-logo {
+    display: flex;
+    align-items: center;
+  }
+
+  .token-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.1);
   }
 </style>
