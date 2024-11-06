@@ -7,7 +7,6 @@
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
   import RouteSection from './confirmation/RouteSection.svelte';
   import FeesSection from './confirmation/FeesSection.svelte';
-  import SwapProgressOverlay from './confirmation/SwapProgressOverlay.svelte';
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
@@ -22,19 +21,20 @@
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
 
-  let isLoading = false;
-  let showLoadingScreen = false;
+  let isSwapping = false;
+  let currentRouteIndex = 0;
   let swapStatus: 'pending' | 'success' | 'failed' = 'pending';
   let currentStep = '';
   let error = '';
-
-  let currentRouteIndex = 0;
   let routeProgress = tweened(0, {
-    duration: 1000,
+    duration: 25,
     easing: cubicOut
   });
 
   $: isLastRoute = currentRouteIndex === routingPath.length - 1;
+  $: buttonText = isSwapping ? currentStep : 'CONFIRM SWAP';
+  $: buttonVariant = swapStatus === 'failed' ? 'red' : 'yellow';
+  $: buttonDisabled = isSwapping || swapStatus === 'success';
 
   function handleOverlayClick(event: MouseEvent) {
     if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
@@ -43,48 +43,19 @@
   }
 
   async function handleConfirm() {
-    isLoading = true;
-    showLoadingScreen = true;
-    swapStatus = 'pending';
-    error = '';
-    currentRouteIndex = 0;
+    isSwapping = true;
+    currentStep = 'Swapping...';
     
     try {
-      currentStep = 'Initializing swap...';
-      await routeProgress.set(0);
-      
-      // Simulate progress through each route
-      for (let i = 0; i < routingPath.length - 1; i++) {
-        currentRouteIndex = i;
-        currentStep = `Swapping ${routingPath[i]} → ${routingPath[i + 1]}...`;
-        await routeProgress.set((i + 1) / (routingPath.length - 1));
-      }
-      
+      routeProgress.set(0.5);
       const success = await onConfirm();
+      if (!success) throw new Error('Failed');
       
-      if (!success) {
-        throw new Error('Swap failed');
-      }
-      
-      currentRouteIndex = routingPath.length - 1;
-      await routeProgress.set(1);
-      
-      swapStatus = 'success';
-      currentStep = 'Swap completed successfully!';
-      
-      setTimeout(() => {
-        onClose();
-      }, 3000);
-      
+      routeProgress.set(1);
+      onClose();
     } catch (err) {
-      swapStatus = 'failed';
-      error = err instanceof Error ? err.message : 'Transaction failed';
-      currentStep = 'Transaction failed. Please check your wallet and try again.';
-      
-      setTimeout(() => {
-        isLoading = false;
-        showLoadingScreen = false;
-      }, 3000);
+      error = 'Failed';
+      isSwapping = false;
     }
   }
 
@@ -119,68 +90,62 @@
   }
 </script>
 
-{#if showLoadingScreen}
-  <SwapProgressOverlay
-    {routingPath}
-    {currentRouteIndex}
-    {swapStatus}
-    {currentStep}
-    {error}
-    {onClose}
-    {routeProgress}
-  />
-{:else}
-  <div class="modal-overlay" on:click|self={onClose}>
-    <div 
-      class="modal-content confirmation-modal" 
-      transition:fade={{ duration: 200 }}
-    >
-      <Panel variant="green" type="main" width="auto">
-        <div class="modal-content">
-          <div class="header">
-            <h2>Review Swap</h2>
-            <button class="close" on:click={onClose}>×</button>
-          </div>
+<div class="modal-overlay" on:click|self={onClose}>
+  <div class="modal-content confirmation-modal" transition:fade={{ duration: 200 }}>
+    <Panel variant="green" type="main" width="auto">
+      <div class="modal-content">
+        <div class="header">
+          <h2>Review Swap</h2>
+          <button class="close" on:click={onClose}>×</button>
+        </div>
 
-          <div class="sections-container">
-            <PayReceiveSection
-              {payToken}
-              {payAmount}
-              {receiveToken}
-              {receiveAmount}
-            />
+        <div class="sections-container">
+          <PayReceiveSection
+            {payToken}
+            {payAmount}
+            {receiveToken}
+            {receiveAmount}
+          />
 
-            <RouteSection
-              {routingPath}
-              {gasFees}
-              {lpFees}
-              {payToken}
-              {receiveToken}
-            />
+          <RouteSection
+            {routingPath}
+            {gasFees}
+            {lpFees}
+            {payToken}
+            {receiveToken}
+            {currentRouteIndex}
+            progress={$routeProgress}
+            status={swapStatus}
+          />
 
-            <FeesSection
-              {totalGasFee}
-              {totalLPFee}
-              {slippage}
-              {receiveToken}
-            />
+          <FeesSection
+            {totalGasFee}
+            {totalLPFee}
+            {slippage}
+            {receiveToken}
+          />
 
-            <div class="mt-4">
-              <Button
-                text={isLoading ? 'Confirming...' : 'CONFIRM SWAP'}
-                variant="yellow"
-                size="big"
-                disabled={isLoading}
-                onClick={handleConfirm}
-                width="100%"
-              />
+          {#if error}
+            <div class="error-message">
+              {error}
             </div>
+          {/if}
+
+          <div class="mt-4">
+            <Button
+              text={isSwapping ? 'Swapping...' : 'Confirm Swap'}
+              variant={error ? 'red' : 'yellow'}
+              size="big"
+              disabled={isSwapping}
+              onClick={handleConfirm}
+              width="100%"
+            />
           </div>
         </div>
-      </Panel>
-    </div>
+      </div>
+    </Panel>
   </div>
-{/if}
+</div>
 
 <style lang="postcss">
   .modal-content {
@@ -263,5 +228,14 @@
 
   Button.mt-4 {
     margin-top: 1rem;
+  }
+
+  .error-message {
+    color: #ff4444;
+    text-align: center;
+    padding: 8px;
+    background: rgba(255, 68, 68, 0.1);
+    border-radius: 8px;
+    margin-top: 8px;
   }
 </style>

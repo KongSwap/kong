@@ -1,6 +1,5 @@
 <script lang="ts">
   import { tokenStore } from '$lib/stores/tokenStore';
-  import { cubicOut } from 'svelte/easing';
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];
@@ -8,32 +7,24 @@
   export let payToken: string;
   export let receiveToken: string;
 
-  const swoopIn = (node, { delay = 0, duration = 500 }) => {
-    return {
-      delay,
-      duration,
-      css: t => {
-        const bounce = cubicOut(t);
-        const scale = 0.9 + (bounce * 0.1) + Math.sin(t * Math.PI) * 0.02;
-        return `
-          transform: translateY(${(1 - bounce) * 20}px) scale(${scale});
-          opacity: ${bounce};
-        `;
-      }
-    };
-  };
+  export let currentRouteIndex = 0;
+  export let progress = 0;
 </script>
 
 <div class="section">
   <h3 class="section-title">Route</h3>
   <div class="route-visualization">
     {#each routingPath.slice(0, -1) as token, i}
-      <div class="route-step" in:swoopIn={{ delay: 200 + (i * 100) }}>
+      <div 
+        class="route-step" 
+        class:active={i === currentRouteIndex}
+        class:completed={i < currentRouteIndex}
+      >
         <div class="token-pair">
           <div class="token-badge-small from {token === payToken ? 'highlight' : ''}">
             <div class="token-icon-wrapper">
               <img 
-                src={$tokenStore.tokens?.find(t => t.symbol === token)?.logo || "/tokens/not_verified.webp"}
+                src={$tokenStore.tokens?.find(t => t.symbol === token)?.logo || "tokens/not_verified.webp"}
                 alt={token}
                 class="token-icon-small"
               />
@@ -59,6 +50,15 @@
           <span class="fee-text">Gas: {gasFees[i]} {routingPath[i + 1]}</span>
           <span class="fee-text">LP: {lpFees[i]} {routingPath[i + 1]}</span>
         </div>
+        
+        {#if i === currentRouteIndex}
+          <div class="progress-bar">
+            <div 
+              class="progress-fill"
+              style="width: {progress * 100}%"
+            />
+          </div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -89,6 +89,17 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    opacity: 0.5;
+    transition: all 0.3s ease;
+  }
+
+  .route-step.active {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+
+  .route-step.completed {
+    opacity: 0.8;
   }
 
   .token-pair {
@@ -173,5 +184,19 @@
     color: #ffffff;
     font-family: monospace;
     white-space: nowrap;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: #ffd700;
+    transition: width 0.3s ease;
   }
 </style>

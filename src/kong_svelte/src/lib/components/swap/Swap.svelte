@@ -284,28 +284,17 @@
     intervalId = setInterval(async () => {
       try {
         const status = await swapService.requests([reqId]);
-        if (!status.Ok?.[0]) return;
-
-        const requestReply = status.Ok[0].reply;
-        transactionStateObject = status;
-
-        if (requestReply?.Pending) {
-          return;
-        } else if (requestReply?.Swap) {
-          if (requestReply.Swap.status === "Success") {
-            clearInterval(intervalId);
-            handleSwapSuccess(requestReply.Swap);
-          } else if (requestReply.Swap.status === "Failed") {
-            clearInterval(intervalId);
-            handleSwapFailure(requestReply.Swap);
-          }
+        if (status.Ok?.[0]?.reply?.Swap) {
+          clearInterval(intervalId);
+          status.Ok[0].reply.Swap.status === "Success" 
+            ? handleSwapSuccess(status.Ok[0].reply.Swap)
+            : handleSwapFailure(status.Ok[0].reply.Swap);
         }
-      } catch (error) {
+      } catch {
         clearInterval(intervalId);
-        console.error("Error polling transaction:", error);
         handleSwapFailure(null);
       }
-    }, 500);
+    }, 25); // Extremely aggressive polling
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -343,22 +332,18 @@
 
   function handleSwapSuccess(reply: any) {
     isProcessing = false;
-    isConfirmationOpen = false;
-
+    showConfirmation = false; // Instant close
+    
     if (reply.receive_amount) {
       const receiveDecimals = getTokenDecimals(receiveToken);
-      const formattedAmount = swapService.fromBigInt(
-        reply.receive_amount,
-        receiveDecimals,
-      );
-      setReceiveAmount(formattedAmount);
-      setDisplayAmount(new BigNumber(formattedAmount).toFixed(receiveDecimals));
+      setReceiveAmount(swapService.fromBigInt(reply.receive_amount, receiveDecimals));
+      setDisplayAmount(new BigNumber(swapService.fromBigInt(reply.receive_amount, receiveDecimals)).toFixed(receiveDecimals));
     }
 
     clearInputs();
-    slippage = 2; // Reset slippage to default 2%
+    slippage = 2;
     toastStore.success("Swap successful");
-    tokenStore.loadBalances(); // Refresh balances after successful swap
+    tokenStore.loadBalances();
   }
 
   function handleSwapFailure(reply: any) {
