@@ -42,6 +42,7 @@
   // Swap details
   let price = "0";
   let usdValue = "0";
+  let payUsdValue = "0";
   let swapSlippage = 0;
   let gasFee = "0";
   let lpFee = "0";
@@ -55,7 +56,7 @@
   let intervalId: any = null;
 
   let tweenedReceiveAmount = tweened(0, {
-    duration: 400,
+    duration: 420,
     easing: cubicOut,
   });
 
@@ -110,6 +111,8 @@
       onAmountChange: handleInputChange,
       disabled: isProcessing,
       showPrice: false,
+      usdValue: payUsdValue,
+      estimatedGasFee: "",
     },
     receive: {
       token: receiveToken,
@@ -119,9 +122,8 @@
       onAmountChange: () => {},
       disabled: isProcessing,
       showPrice: true,
-      usdValue,
+      usdValue: usdValue,
       slippage: swapSlippage,
-      maxSlippage: slippage,
     },
   };
 
@@ -155,6 +157,8 @@
     if (!amount || Number(amount) <= 0 || isNaN(Number(amount))) {
       setReceiveAmount("0");
       isSlippageExceeded = false;
+      payUsdValue = "0";
+      usdValue = "0";
       return;
     }
 
@@ -181,31 +185,33 @@
         setReceiveAmount(receivedAmount);
         setDisplayAmount(new BigNumber(receivedAmount).toFixed(receiveDecimals));
 
-        price = quote.Ok.price.toString();
+        const quotePrice = new BigNumber(quote.Ok.price || 0);
+        price = quotePrice.toString();
+        
+        payUsdValue = new BigNumber(amount)
+          .times(quotePrice)
+          .toFixed(2);
+        
+        usdValue = new BigNumber(receivedAmount)
+          .times(quotePrice)
+          .toFixed(2);
+
         swapSlippage = quote.Ok.slippage;
         
-        // Check if slippage exceeds max allowed
         isSlippageExceeded = swapSlippage > maxAllowedSlippage;
-        usdValue = new BigNumber(receivedAmount)
-          .times(quote.Ok.price)
-          .toFormat(2);
-
+        
         if (quote.Ok.txs.length > 0) {
-          // Extract routing path from txs
           routingPath = [payToken, ...quote.Ok.txs.map(tx => tx.receive_symbol)];
           
-          // Reset fee arrays
           gasFees = [];
           lpFees = [];
           
-          // Collect fees for each hop
           quote.Ok.txs.forEach(tx => {
             const receiveDecimals = getTokenDecimals(tx.receive_symbol);
             gasFees.push(swapService.fromBigInt(tx.gas_fee, receiveDecimals));
             lpFees.push(swapService.fromBigInt(tx.lp_fee, receiveDecimals));
           });
 
-          // Set the total fees for display
           if (gasFees.length > 0) {
             gasFee = gasFees[gasFees.length - 1];
             lpFee = lpFees[lpFees.length - 1];
@@ -221,6 +227,8 @@
         err instanceof Error ? err.message : "An error occurred",
       );
       setReceiveAmount("0");
+      payUsdValue = "0";
+      usdValue = "0";
     } finally {
       isCalculating = false;
     } 
@@ -251,6 +259,8 @@
     [payToken, receiveToken] = [receiveToken, payToken];
     payAmount = "";
     setReceiveAmount("0");
+    payUsdValue = "0";
+    usdValue = "0";
     
     setTimeout(() => {
         isAnimating = false;
@@ -404,6 +414,7 @@
     setDisplayAmount("0");
     price = "0";
     usdValue = "0";
+    payUsdValue = "0";
     swapSlippage = 0;
     lpFee = "0";
     gasFee = "0";
@@ -426,15 +437,6 @@
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
-    <button 
-      class="settings-button"
-      on:click={() => {
-        showSettings = true;
-      }}
-    >
-      Settings
-    </button>
-
     <div class="panels-container">
       {#each panels as panel (panel.id)}
         <div 
@@ -448,6 +450,7 @@
             <SwapPanel
               title={panel.title}
               {...panelData[panel.type]}
+              onSettingsClick={() => showSettings = true}
             />
           </div>
         </div>
@@ -550,21 +553,20 @@
   .swap-wrapper {
     width: 100%;
     margin: 0 auto;
-    padding: 1rem;
   }
 
   .swap-container {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    margin: 0 auto;
   }
 
   .panels-container {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.25rem;
   }
 
   .panel-wrapper {
@@ -578,21 +580,25 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 50px;
-    height: 50px;
-    background: #ffcd1f;
-    border: 2px solid #368d00;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(45deg, #ffcd1f, #ffe077);
+    border: 3px solid #368d00;
     border-radius: 50%;
     cursor: pointer;
     z-index: 1;
-    padding: 6px;
+    padding: 8px;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      inset 0 2px 4px rgba(255, 255, 255, 0.3);
   }
 
   .switch-button:hover:not(:disabled) {
-    background: #ffe077;
-    transform: translate(-50%, -50%) scale(1.05);
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 
+      0 6px 16px rgba(0, 0, 0, 0.2),
+      inset 0 2px 4px rgba(255, 255, 255, 0.3);
   }
 
   .switch-button:disabled {
@@ -608,8 +614,8 @@
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
     z-index: 50;
     display: grid;
     place-items: center;
@@ -672,6 +678,14 @@
       margin: 0.5rem;
       height: auto;
     }
+
+    .swap-footer {
+      margin-top: 0.5rem;
+    }
+
+    .panels-container {
+      gap: 0.2rem;
+    }
   }
 
   :global(.token-modal) {
@@ -680,7 +694,7 @@
   }
 
   :global(.swap-footer) {
-    margin-top: 1.5rem;
+    margin-top: 0.75rem;
   }
 
   .panel-content {
@@ -699,27 +713,6 @@
     to {
       transform: translate(-50%, -50%) rotate(180deg);
     }
-  }
-
-  .settings-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    background: #ffcd1f;
-    border: 2px solid #368d00;
-    border-radius: 8px;
-    padding: 4px 12px;
-    font-size: 14px;
-    color: #000;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 2;
-    font-family: 'Press Start 2P', monospace;
-  }
-
-  .settings-button:hover {
-    background: #ffe077;
-    transform: scale(1.05);
   }
 
   .slippage-warning {

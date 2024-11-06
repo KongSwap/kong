@@ -44,7 +44,7 @@
 </script>
 
 <div 
-  class="panel {variant} {type}"
+  class="panel {variant} {type} {className}"
   style="width: {formattedWidth}; height: {formattedHeight};"
 >
   <div class="panel-container" class:auto-size={isAutoSize}>
@@ -58,9 +58,7 @@
       <!-- Middle -->
       <div class="panel-row middle">
           <div class="edge vertical middle-left" style="background-image: url({imagePaths.ml})"></div>
-          <div 
-              class="center-content bg-[#64AD3B] {useMainPanelCenter ? 'main-panel-center' : ''}"
-          >
+          <div class="center-content bg-[#64AD3B] {useMainPanelCenter ? 'main-panel-center' : ''}" style="margin: -10px;">
               <slot>{content}</slot>
           </div>
           <div class="edge vertical middle-right" style="background-image: url({imagePaths.mr})"></div>
@@ -141,6 +139,8 @@
     align-items: stretch;
     justify-content: center;
     min-height: 0;
+    overflow: visible;
+    padding-bottom: 10px;
   }
 
   @media (max-width: 768px) {
