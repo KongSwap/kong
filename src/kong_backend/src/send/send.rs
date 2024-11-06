@@ -59,7 +59,7 @@ fn send(args: SendArgs) -> Result<SendReply, String> {
             SendReply::new_with_tx_id(tx_id, &send_tx)
         }
         Err(e) => {
-            request_map::update_status(request_id, StatusCode::SendLPTokenToUserFailed, Some(e));
+            request_map::update_status(request_id, StatusCode::SendLPTokenToUserFailed, Some(&e));
 
             request_map::update_status(request_id, StatusCode::Failed, None);
 

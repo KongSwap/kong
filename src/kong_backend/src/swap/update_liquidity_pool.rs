@@ -95,7 +95,7 @@ pub fn update_liquidity_pool(
             Ok((receive_amount, mid_price, price, slippage, swaps))
         }
         Err(e) => {
-            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(e.clone()));
+            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&e));
             Err(e)
         }
     }

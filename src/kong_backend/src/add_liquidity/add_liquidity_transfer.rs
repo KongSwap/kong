@@ -28,7 +28,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
-    let error = match check_arguments(&args, request_id, ts).await {
+    match check_arguments(&args, request_id, ts).await {
         Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1)) => {
             match process_add_liquidity(
                 request_id,
@@ -46,16 +46,19 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
             {
                 Ok(reply) => {
                     request_map::update_status(request_id, StatusCode::Success, None);
-                    return Ok(reply);
+                    Ok(reply)
                 }
-                Err(e) => e,
+                Err(e) => {
+                    request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                    Err(e)
+                }
             }
         }
-        Err(e) => e,
-    };
-
-    request_map::update_status(request_id, StatusCode::Failed, None);
-    Err(error)
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        }
+    }
 }
 
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {
@@ -64,28 +67,28 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     ic_cdk::spawn(async move {
-        if let Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1)) = check_arguments(&args, request_id, ts).await {
-            if (process_add_liquidity(
-                request_id,
-                user_id,
-                token_0.as_ref(),
-                tx_id_0.as_ref(),
-                transfer_id_0,
-                token_1.as_ref(),
-                tx_id_1.as_ref(),
-                transfer_id_1,
-                &args,
-                ts,
-            )
-            .await)
-                .is_ok()
-            {
-                request_map::update_status(request_id, StatusCode::Success, None);
-                return;
+        match check_arguments(&args, request_id, ts).await {
+            Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1)) => {
+                match process_add_liquidity(
+                    request_id,
+                    user_id,
+                    token_0.as_ref(),
+                    tx_id_0.as_ref(),
+                    transfer_id_0,
+                    token_1.as_ref(),
+                    tx_id_1.as_ref(),
+                    transfer_id_1,
+                    &args,
+                    ts,
+                )
+                .await
+                {
+                    Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+                    Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+                }
             }
+            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
-
-        request_map::update_status(request_id, StatusCode::Failed, None);
     });
 
     Ok(request_id)
@@ -114,7 +117,7 @@ async fn check_arguments(
     let token_0 = match token_map::get_by_token(&args.token_0) {
         Ok(token) => Some(token),
         Err(e) => {
-            request_map::update_status(request_id, StatusCode::Token0NotFound, Some(e.clone()));
+            request_map::update_status(request_id, StatusCode::Token0NotFound, Some(&e));
             None
         }
     };
@@ -123,7 +126,7 @@ async fn check_arguments(
     let token_1 = match token_map::get_by_token(&args.token_1) {
         Ok(token) => Some(token),
         Err(e) => {
-            request_map::update_status(request_id, StatusCode::Token1NotFound, Some(e.clone()));
+            request_map::update_status(request_id, StatusCode::Token1NotFound, Some(&e));
             None
         }
     };
@@ -441,10 +444,10 @@ async fn verify_transfer_token(
                 );
                 match token_index {
                     TokenIndex::Token0 => {
-                        request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some("Duplicate block id".to_string()))
+                        request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some("Duplicate block id"))
                     }
                     TokenIndex::Token1 => {
-                        request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some("Duplicate block id".to_string()))
+                        request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some("Duplicate block id"))
                     }
                 };
                 return Err(error);
@@ -467,8 +470,8 @@ async fn verify_transfer_token(
         Err(e) => {
             let error = format!("AddLiq #{} failed to verify tx {} #{}: {}", request_id, symbol, tx_id, e);
             match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(e)),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(e)),
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
             };
             Err(error)
         }
@@ -516,14 +519,14 @@ fn update_liquidity_pool(
                     }
                 }
                 Err(e) => {
-                    request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(e.clone()));
+                    request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&e));
                     Err(e)
                 }
             }
         }
         None => {
             let error = format!("AddLiq #{} failed: pool not found", request_id);
-            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(error.clone()));
+            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&error));
             Err(error)
         }
     }
@@ -656,7 +659,7 @@ async fn return_tokens(
                     "AddLiq #{} Kong failed to return {} {}: {}",
                     request_id, amount_0, symbol_0, message
                 ));
-                request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(message));
+                request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
             }
         }
     }
@@ -699,7 +702,7 @@ async fn return_tokens(
                     "AddLiq #{} Kong failed to return {} {}: {}",
                     request_id, amount_1, symbol_1, message
                 ));
-                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(message));
+                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
             }
         }
     }

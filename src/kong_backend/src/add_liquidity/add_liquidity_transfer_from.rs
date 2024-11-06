@@ -30,16 +30,16 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
 
-    let error = match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
+    match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
         Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            return Ok(reply);
+            Ok(reply)
         }
-        Err(e) => e,
-    };
-
-    request_map::update_status(request_id, StatusCode::Failed, None);
-    Err(error)
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        }
+    }
 }
 
 pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result<u64, String> {
@@ -49,12 +49,10 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
 
     ic_cdk::spawn(async move {
-        if (process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await).is_ok() {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            return;
-        }
-
-        request_map::update_status(request_id, StatusCode::Failed, None);
+        match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+        };
     });
 
     Ok(request_id)
@@ -288,8 +286,8 @@ pub async fn transfer_from_token(
         Err(e) => {
             let error = format!("AddLiq #{} failed transfer_from user {} {}: {}", request_id, amount, symbol, e,);
             match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(e.clone())),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(e.clone())),
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(&e)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(&e)),
             };
             Err(error)
         }
@@ -337,14 +335,14 @@ fn update_liquidity_pool(
                     }
                 }
                 Err(e) => {
-                    request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(e.clone()));
+                    request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&e));
                     Err(e)
                 }
             }
         }
         None => {
             let error = format!("AddLiq #{} failed: pool not found", request_id);
-            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(error.clone()));
+            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&error));
             Err(error)
         }
     }
@@ -472,7 +470,7 @@ async fn return_tokens(
                 "AddLiq #{} Kong failed to send {} {}: {}",
                 request_id, amount_0, symbol_0, message
             ));
-            request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(message));
+            request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
         }
     }
 
@@ -511,7 +509,7 @@ async fn return_tokens(
                     "AddLiq #{} Kong failed to send {} {}: {}",
                     request_id, amount_1, symbol_1, message
                 ));
-                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(message));
+                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
             }
         }
     }

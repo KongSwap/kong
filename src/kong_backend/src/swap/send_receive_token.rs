@@ -71,7 +71,7 @@ pub async fn send_receive_token(
                 receive_token.symbol(),
                 message
             ));
-            request_map::update_status(request_id, StatusCode::SendReceiveTokenFailed, Some(message));
+            request_map::update_status(request_id, StatusCode::SendReceiveTokenFailed, Some(&message));
         }
     }
 

@@ -41,8 +41,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
 
-    // the heavy lifting
-    process_remove_liquidity(
+    match process_remove_liquidity(
         request_id,
         user_id,
         &pool,
@@ -54,6 +53,16 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         ts,
     )
     .await
+    {
+        Ok(reply) => {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        }
+    }
 }
 
 #[update]
@@ -64,9 +73,8 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
 
-    // spawn a task to process the remove liquidity
     ic_cdk::spawn(async move {
-        _ = process_remove_liquidity(
+        match process_remove_liquidity(
             request_id,
             user_id,
             &pool,
@@ -77,7 +85,15 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
             &payout_lp_fee_1,
             ts,
         )
-        .await;
+        .await
+        {
+            Ok(_) => {
+                request_map::update_status(request_id, StatusCode::Success, None);
+            }
+            Err(e) => {
+                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            }
+        }
     });
 
     // return the request_id asynchrounously
@@ -242,7 +258,7 @@ fn remove_lp_token(request_id: u64, lp_token: &StableToken, remove_lp_token_amou
                         "Insufficient LP tokens. {} available, {} required",
                         lp_token.amount, remove_lp_token_amount
                     );
-                    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(message.clone()));
+                    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(&message));
                     Err(message)?
                 }
             };
@@ -257,7 +273,7 @@ fn remove_lp_token(request_id: u64, lp_token: &StableToken, remove_lp_token_amou
         }
         None => {
             let message = format!("Insufficient LP tokens. 0 available, {} required", remove_lp_token_amount);
-            request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(message.clone()));
+            request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(&message));
             Err(message)?
         }
     }
@@ -307,7 +323,7 @@ fn update_liquidity_pool(
         }
         None => {
             let error = format!("Pool id {} not found", pool_id);
-            request_map::update_status(request_id, StatusCode::UpdatePoolAmountsFailed, Some(error.clone()));
+            request_map::update_status(request_id, StatusCode::UpdatePoolAmountsFailed, Some(&error));
             Err(error)
         }
     }
@@ -371,8 +387,8 @@ async fn transfer_token(
                 request_id, amount, symbol, claim_id, e
             ));
             match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(e)),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(e)),
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&e)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&e)),
             };
         }
     }
@@ -481,7 +497,7 @@ async fn return_tokens(
                     lp_token.symbol(),
                     e,
                 ));
-                request_map::update_status(request_id, StatusCode::ReturnUserLPTokenAmountFailed, Some(e));
+                request_map::update_status(request_id, StatusCode::ReturnUserLPTokenAmountFailed, Some(&e));
             }
         }
     }
