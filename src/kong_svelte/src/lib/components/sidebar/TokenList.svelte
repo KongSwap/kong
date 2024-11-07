@@ -3,8 +3,6 @@
   import { tokenStore, formattedTokens } from "$lib/stores/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { onMount } from "svelte";
-  import { walletStore } from "$lib/stores/walletStore";
   import { RefreshCw } from "lucide-svelte";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import Button from "$lib/components/common/Button.svelte";
@@ -17,16 +15,8 @@
   let error = '';
   let balance = 0;
 
-  onMount(async () => {
-    if ($walletStore.isConnected) {
-      await tokenStore.loadTokens();
-      await tokenStore.loadBalances();
-    }
-  });
-
   function handleTokenClick(token: any) {
     selectedToken = token;
-    console.log(selectedToken);
     isModalOpen = true;
   }
 

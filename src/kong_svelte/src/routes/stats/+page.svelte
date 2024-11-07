@@ -11,12 +11,13 @@
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce";
-  import { formatUSD } from "$lib/utils/numberFormatUtils";
+  import { formatTokenAmount, formatToNonZeroDecimal} from "$lib/utils/numberFormatUtils";
   import { ArrowLeftRight } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { poolsList, poolStore } from "$lib/stores/poolStore";
   import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { walletStore } from "$lib/stores/walletStore";
+
 
   const searchQuery = writable("");
 
@@ -180,16 +181,16 @@
                             </div>
                           </div>
                         </td>
-                        <td class="p-2 text-right">${formatUSD(token.price)}</td
+                        <td class="p-2 text-right">${formatToNonZeroDecimal(token.price)}</td
                         >
                         <td class="p-2 text-right"
-                          >${formatUSD(token.total_24h_volume)}</td
+                          >${formatToNonZeroDecimal(formatTokenAmount(token.total_24h_volume, 6))}</td
                         >
                         {#if $walletStore.isConnected}
                           <td class="p-2 text-right">
                             <div class="flex flex-col items-end justify-center">
                               <span class="text-2xl"
-                                >{token.formattedBalance} {token.symbol}</span
+                                >{formatToNonZeroDecimal(token.formattedBalance)} {token.symbol}</span
                               >
                               <span class="text-sm"
                                 >(${token.formattedUsdValue})</span

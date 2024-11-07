@@ -3,11 +3,12 @@ import { writable, derived, get, type Readable } from 'svelte/store';
 import { TokenService } from '$lib/services/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
-import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 interface TokenState {
   readonly tokens: FE.Token[];
   readonly balances: Record<string, FE.TokenBalance>;
+  readonly prices: Record<string, number>;
   readonly isLoading: boolean;
   readonly error: string | null;
   readonly totalValueUsd: string;
@@ -53,6 +54,7 @@ function createTokenStore() {
   const store = writable<TokenState>({
     tokens: [],
     balances: {},
+    prices: {},
     isLoading: false,
     error: null,
     totalValueUsd: '0.00',
@@ -102,7 +104,7 @@ function createTokenStore() {
 
   return {
     subscribe: store.subscribe,
-    loadTokens: async (forceRefresh = false) => {
+    loadTokens: async (forceRefresh = true) => {
       const currentState = getCurrentState();
 
       if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
@@ -113,7 +115,8 @@ function createTokenStore() {
       
       try {
         const baseTokens = await TokenService.fetchTokens();
-        const enrichedTokens = await enrichTokens(baseTokens);
+        const icTokens = baseTokens.filter(token => 'IC' in token);
+        const enrichedTokens = await Promise.all(icTokens.map(token => TokenService.enrichTokenWithMetadata(token.IC)));
 
         const newState: TokenState = {
           ...currentState,
@@ -146,7 +149,7 @@ function createTokenStore() {
       try {
         const [balances, prices] = await Promise.all([
           TokenService.fetchBalances(currentState.tokens),
-          TokenService.fetchPrices(currentState.tokens) // Batch fetch prices
+          TokenService.fetchPrices(currentState.tokens) // Fetch prices
         ]);
 
         const formattedBalances = Object.entries(balances).reduce<Record<string, FE.TokenBalance>>(
@@ -160,8 +163,8 @@ function createTokenStore() {
         const newState: TokenState = {
           ...currentState,
           balances: formattedBalances,
+          prices: prices,
           isLoading: false
-          // Optionally update totalValueUsd here if needed
         };
 
         updateState(newState);
@@ -181,13 +184,18 @@ function createTokenStore() {
       store.set({
         tokens: [],
         balances: {},
+        prices: {},
         isLoading: false,
         error: null,
         totalValueUsd: '0.00',
         lastTokensFetch: null
       });
     },
-    reloadTokensAndBalances
+    reloadTokensAndBalances,
+    getTokenPrices: () => {
+      const currentState = getCurrentState();
+      return currentState.prices;
+    },
   };
 }
 
@@ -206,11 +214,11 @@ const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, toke
           total += actualBalance * prices[canisterId];
         }
       }
-      return formatUSD(total);
+      return formatToNonZeroDecimal(total);
     })
     .catch(error => {
       console.error('Error calculating portfolio value:', error);
-      return formatUSD(0);
+      return formatToNonZeroDecimal(0);
     });
 };
 
@@ -237,10 +245,10 @@ export const formattedTokens = derived(
         return {
           ...token,
           formattedBalance: formatTokenAmount(balance, token.decimals),
-          formattedUsdValue: formatUSD(Number(usdValue)) || '0',
+          formattedUsdValue: formatToNonZeroDecimal(Number(usdValue)) || '0',
         };
       }),
-      portfolioValue: formatUSD(portfolioValue) || '0',
+      portfolioValue: formatToNonZeroDecimal(portfolioValue) || '0',
     };
   }
 );

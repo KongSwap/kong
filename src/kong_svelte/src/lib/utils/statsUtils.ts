@@ -1,4 +1,6 @@
+import { tokenStore } from '$lib/stores/tokenStore';
 import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+import { get } from 'svelte/store';
 
 /**
  * Parses a value by removing unwanted characters and converting to a number if applicable.
@@ -65,10 +67,11 @@ export function sortTableData(pools: any[], column: string, direction: 'asc' | '
  */
 export function formatPoolData(pools: any[]): any[] {
   if (pools.length === 0) return pools;
+  const store = get(tokenStore)
 
-  const decimals1 =  6;
 
   return pools.map((pool, index) => {
+    const decimals1 = store.tokens.find(t => t.canister_id === pool.address_1)?.decimals || 6;
     const balance = Number(pool.balance || 0);
     const apy = formatTokenAmount(Number(pool.rolling_24h_apy || 0), 2);
     const roll24hVolume = formatTokenAmount(

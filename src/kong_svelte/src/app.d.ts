@@ -28,10 +28,24 @@ declare global {
       on_kong: boolean;
       pool_symbol: string;
       logo?: string;
-      total_24h_volume?: number;
+      total_24h_volume?: bigint;
       price?: number;
       tvl?: number;
       balance?: bigint;
+    }
+
+    interface UserPoolBalance {
+      amount_0: bigint;
+      amount_1: bigint;
+      balance: bigint;
+      name: string;
+      symbol: string;
+      symbol_0: string;
+      symbol_1: string;
+      ts: bigint;
+      usd_amount_0: number;
+      usd_amount_1: number;
+      usd_balance: number;
     }
 
     interface Transaction {

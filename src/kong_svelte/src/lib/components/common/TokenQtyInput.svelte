@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { poolStore, poolsList } from '$lib/stores/poolStore';
 	import { createEventDispatcher } from 'svelte';
-	import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 	import { tokenStore } from '$lib/stores/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 
@@ -26,7 +26,9 @@
 
 	function setMax() {
 		const rawBalance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
-		const max = formatTokenAmount(rawBalance, token.decimals);
+		console.log(rawBalance);
+		console.log(token.fee);
+		const max = formatTokenAmount(BigInt(rawBalance) - BigInt(token.fee), token.decimals);
 		value = max.toString();
 		dispatch('input', { value: max.toString() });
 	}
@@ -34,7 +36,7 @@
 	// Use reactive statements to compute derived values
 	$: pool = $poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID);
 	$: poolPrice = pool?.price ? parseFloat(pool.price) : 0;
-	$: usdValue = formatUSD(parseFloat(value || '0') * poolPrice);
+	$: usdValue = formatToNonZeroDecimal(parseFloat(value || '0') * poolPrice);
 </script>
 
 <div class="flex flex-col gap-2 w-full">

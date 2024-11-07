@@ -10,12 +10,16 @@
   import { tokenStore } from "$lib/stores/tokenStore";
   import { poolStore } from "$lib/stores/poolStore";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
+  import { walletStore } from "$lib/stores/walletStore";
 
   let initialized: boolean = false;
 
   onMount(async () => {
     switchLocale("en");
     await Promise.all([restoreWalletConnection(), tokenStore.loadTokens(), poolStore.loadPools()]);
+    if($walletStore.isConnected) {
+      await tokenStore.loadBalances();
+    }
     initialized = true;
   });
 </script>

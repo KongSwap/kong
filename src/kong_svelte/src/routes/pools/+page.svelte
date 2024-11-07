@@ -2,13 +2,12 @@
 <script lang="ts">
   import { t } from "$lib/locales/translations";
   import { writable } from "svelte/store";
-  import { formatUSD } from "$lib/utils/numberFormatUtils";
+  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import { lpTableHeaders } from "$lib/constants/statsConstants";
   import { filterPools, sortTableData } from "$lib/utils/statsUtils";
   import {
     poolsList,
-    poolTotals,
     poolsLoading,
     poolsError,
   } from "$lib/stores/poolStore";
@@ -73,22 +72,18 @@
   }
 </script>
 
-<section class="flex min-h-[94vh] relative w-full justify-center">
+<section class="flex min-h-[94vh] justify-center w-full">
   <!-- Main Content -->
-  <div class="z-10 flex pt-40 justify-center w-11/12 md:w-100 px-2 md:px-0">
+  <div class="z-10 flex pt-40 justify-center max-w-5xl w-full md:w-100 px-2 md:px-0">
     <div class="flex flex-col w-full">
       <div
         class="inner-border bg-emerald-500 bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
       >
         <div class="p-4 w-full max-h-[68vh] overflow-y-auto pb-8">
           <!-- Header and Search Bar -->
-          <div class="flex flex-col md:flex-row items-center mb-2 md:mb-0 pb-2">
-            <!-- Invisible spacer for left side -->
-            <div class="hidden md:block w-[200px]"></div>
-            
-            <!-- Centered title -->
-            <div class="flex-1 flex justify-center">
-              <h2 class="mt-2 font-bold text-3xl text-center text-white mb-4 text-outline-2">
+          <div class="flex flex-col md:flex-row items-center mb-2 md:mb-0 pb-2">            
+            <div class="flex w-full">
+              <h2 class="mt-2 font-black text-3xl text-left text-white mb-4 text-outline-2">
                 {$t("stats.poolsTableTitle")}
               </h2>
             </div>
@@ -164,16 +159,16 @@
                           </div>
                         </td>
                         <td class="p-2 text-right">
-                          ${formatUSD(pool.price)}
+                          ${formatToNonZeroDecimal($tokenMap.get(pool.address_0).price)}
                         </td>
                         <td class="p-2 text-right">
-                          ${formatUSD(pool.tvl)}
+                          ${formatToNonZeroDecimal(pool.tvl)}
                         </td>
                         <td class="p-2 text-right">
-                          ${formatUSD(pool.rolling_24h_volume)}
+                          ${formatToNonZeroDecimal(formatTokenAmount(pool.rolling_24h_volume, 6))}
                         </td>
                         <td class="p-2 text-right">
-                          {formatUSD(pool.rolling_24h_apy)}%
+                          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
                         </td>
                         <td class="p-2">
                           <div
