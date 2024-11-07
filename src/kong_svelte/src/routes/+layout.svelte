@@ -32,7 +32,7 @@
     if(browser) {
     switch($page.url.pathname) {
       case '/pools':
-        document.body.style.background = `#013437 url(${poolsBackground})`;
+        document.body.style.background = `#5BB2CF url(${poolsBackground})`;
         break;
       case '/stats':
         document.body.style.background = "#5BB2CF";

@@ -14,7 +14,8 @@
   let amount = "";
   let error = "";
   let balance = "0";
-
+  let isRefreshing = false;
+  
   function handleTokenClick(token: any) {
     selectedToken = token;
     isModalOpen = true;
@@ -26,7 +27,10 @@
   }
 
   function handleReload() {
-    tokenStore.reloadTokensAndBalances();
+    isRefreshing = true;
+    tokenStore.reloadTokensAndBalances().then(() => {
+      isRefreshing = false;
+    });
   }
 
   function handleInput(event) {
@@ -55,7 +59,11 @@
     >
       <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
       <p class="text-3xl font-bold font-mono">
-        ${$portfolioValue}
+        {#if isRefreshing}
+          <LoadingIndicator />
+        {:else}
+          ${$portfolioValue}
+        {/if}
       </p>
       <div class="refresh-overlay">
         <RefreshCw size={24} />

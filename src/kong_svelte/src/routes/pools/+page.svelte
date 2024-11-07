@@ -18,7 +18,6 @@
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce"; // Import debounce from lodash-es
-  import { onMount } from "svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
 
   /**
@@ -72,7 +71,7 @@
   <div class="z-10 flex pt-40 justify-center max-w-5xl w-full md:w-100 px-2 md:px-0">
     <div class="flex flex-col w-full">
       <div
-        class="inner-border bg-emerald-500 bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
+        class="inner-border bg-sky-400 bg-opacity-60 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
       >
         <div class="p-4 w-full max-h-[68vh] overflow-y-auto pb-8">
           <!-- Header and Search Bar -->

@@ -76,6 +76,7 @@
         try {
             isLoading = true;
             const txs = await TokenService.fetchUserTransactions($walletStore.account.owner);
+            console.log(txs);
             if(txs.Ok) {
                 transactions = txs.Ok;
             } else {
