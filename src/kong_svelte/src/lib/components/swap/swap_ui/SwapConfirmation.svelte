@@ -126,8 +126,6 @@
     {swapStatus}
     currentStep={currentStep || 'Processing...'}
     {error}
-    {onClose}
-    {routeProgress}
   />
 {:else}
   <div class="modal-overlay" on:click|self={onClose}>
@@ -196,7 +194,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: calc(80vh - 140px);
     overflow-y: auto;
     padding-right: 4px;
   }

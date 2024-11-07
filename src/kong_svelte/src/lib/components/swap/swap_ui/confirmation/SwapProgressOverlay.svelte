@@ -51,7 +51,7 @@
 </script>
 
 <div class="overlay">
-  <Panel variant="green" type="main" width="500px">
+  <Panel variant="green" type="main" width="auto">
     <div class="content">
       <!-- Status Header -->
       <div class="status-header">
