@@ -1,4 +1,6 @@
-import { getTokenDecimals, formatNumberCustom } from '$lib/utils/formatNumberCustom';
+import { tokenStore } from '$lib/features/tokens/tokenStore';
+import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+import { get } from 'svelte/store';
 
 /**
  * Parses a value by removing unwanted characters and converting to a number if applicable.
@@ -23,22 +25,37 @@ export function parseValue(value: any): any {
  * @param direction - The sort direction ('asc' or 'desc').
  * @returns A new sorted array of pools.
  */
-export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc'): any[] {
+export function sortTableData(pools: any[], column: string, direction: 'asc' | 'desc'): any[] {
   if (!Array.isArray(pools)) {
-    console.error('sortPools expects an array, but received:', pools);
+    console.error('sortTableData expects an array, but received:', pools);
     return [];
   }
 
-  return pools.slice().sort((a, b) => {
+  const sortedPools = pools.slice().sort((a, b) => {
+    // Special handling for pool name
+    if (column === 'poolName') {
+      const aName = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
+      const bName = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
+      return direction === 'asc' 
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName);
+    }
+
     let aValue = parseValue(a[column]);
     let bValue = parseValue(b[column]);
+
+    // Ensure numeric comparison for "in wallet" column
+    if (column === 'formattedUsdValue' || column === 'total_24h_volume' || column === 'rolling_24h_volume') {
+      aValue = parseFloat(aValue) || 0;
+      bValue = parseFloat(bValue) || 0;
+    }
 
     if (typeof aValue === 'string') {
       aValue = aValue.toLowerCase();
       bValue = bValue.toLowerCase();
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-      return 0;
+      return direction === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     }
 
     if (typeof aValue === 'number' && typeof bValue === 'number') {
@@ -47,6 +64,8 @@ export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc
 
     return 0;
   });
+
+  return sortedPools;
 }
 
 /**
@@ -56,17 +75,18 @@ export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc
  */
 export function formatPoolData(pools: any[]): any[] {
   if (pools.length === 0) return pools;
+  const store = get(tokenStore)
 
-  const decimals1 = getTokenDecimals(pools[0]?.symbol_1) || 6;
 
   return pools.map((pool, index) => {
+    const decimals1 = store.tokens.find(t => t.canister_id === pool.address_1)?.decimals || 6;
     const balance = Number(pool.balance || 0);
-    const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
-    const roll24hVolume = formatNumberCustom(
+    const apy = formatTokenAmount(Number(pool.rolling_24h_apy || 0), 2);
+    const roll24hVolume = formatTokenAmount(
       Number(pool.rolling_24h_volume || 0) / 10 ** decimals1,
       0,
     );
-    const tvl = formatNumberCustom(balance / 10 ** decimals1, 0);
+    const tvl = formatTokenAmount(balance / 10 ** decimals1, 0);
 
     return {
       ...pool,
@@ -91,3 +111,15 @@ export function filterPools(pools: any[], query: string): any[] {
     `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(lowerQuery),
   );
 }
+
+  // $lib/utils/statsUtils.ts
+  export function filterTokens(tokens: any[], searchQuery: string): any[] {
+    if (!searchQuery) {
+      return tokens;
+    }
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    return tokens.filter(token =>
+      token.symbol.toLowerCase().includes(lowerCaseQuery) ||
+      token.name.toLowerCase().includes(lowerCaseQuery)
+    );
+  }

@@ -4,21 +4,25 @@ import {
   canisterId as kongBackendCanisterId,
   idlFactory as kongBackendIDL,
 } from '../../../../declarations/kong_backend'; 
+import {
+  idlFactory as kongFaucetIDL,
+  canisterId as kongFaucetCanisterId,
+} from '../../../../declarations/kong_faucet';
 import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
-import { backendService } from '$lib/services/backendService';
-import { ICRC1_IDL } from "$lib/idls/icrc1.idl.js";
-import { ICRC2_IDL } from "$lib/idls/icrc2.idl.js";
+import { UserService } from '$lib/services/UserService';
+import { ICRC2_IDL } from '$lib/idls/icrc2.idl.js';
+import { browser } from '$app/environment';
 
 // Export the list of available wallets
 export const availableWallets = walletsList;
 
-export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2';
-
 // IDL Mappings
+export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2' | 'kong_faucet';
 export const canisterIDLs = {
-  kong_backend: kongBackendIDL,
-  icrc1: ICRC1_IDL,
-  icrc2: ICRC2_IDL,
+  'kong_backend': kongBackendIDL,
+  'kong_faucet': kongFaucetIDL,
+  'icrc1': ICRC2_IDL,
+  'icrc2': ICRC2_IDL,
 }
 
 // Stores
@@ -41,21 +45,18 @@ export const walletStore = writable<{
 let pnp: ReturnType<typeof createPNP> | null = null;
 
 // Initialize PNP
-function initializePNP() {
-  if (pnp === null && typeof window !== 'undefined') {
+export function initializePNP() {
+  if (pnp === null && browser) {
     const isLocalEnv = process.env.DFX_NETWORK === 'local';
     pnp = createPNP({
       hostUrl: isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app',
-      whitelist: [kongBackendCanisterId],
+      whitelist: [kongBackendCanisterId, kongFaucetCanisterId],
       identityProvider: isLocalEnv
         ? 'http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943'
         : 'https://identity.ic0.app',
     });
   }
 }
-
-// Call initializePNP once when the module is loaded
-initializePNP();
 
 // Update wallet store
 function updateWalletStore(updates: Partial<{ account: any | null; error: Error | null; isConnecting: boolean; isConnected: boolean; }>) {
@@ -70,11 +71,10 @@ function handleConnectionError(error: Error) {
 
 // Connect to a wallet
 export async function connectWallet(walletId: string) {
+  initializePNP();
   updateWalletStore({ isConnecting: true });
-
   try {
     const account = await pnp.connect(walletId);
-
     isReady.set(true);
     updateWalletStore({
       account,
@@ -85,7 +85,7 @@ export async function connectWallet(walletId: string) {
     localStorage.setItem('selectedWalletId', walletId);
     selectedWalletId.set(walletId);
 
-    const user = await backendService.getWhoami();
+    const user = await UserService.getWhoami();
     userStore.set(user);
   } catch (error) {
     handleConnectionError(error);
@@ -94,6 +94,7 @@ export async function connectWallet(walletId: string) {
 
 // Disconnect from a wallet
 export async function disconnectWallet() {
+  initializePNP();
   try {
     await pnp.disconnect();
     updateWalletStore({
@@ -113,33 +114,36 @@ export async function disconnectWallet() {
 
 // Attempt to restore wallet connection on page load
 export async function restoreWalletConnection() {
-  const storedWalletId = localStorage.getItem('selectedWalletId');
-  if (!storedWalletId) return;
+  initializePNP();
+  if(browser) {
+    const storedWalletId = localStorage.getItem('selectedWalletId');
+    if (!storedWalletId) return;
 
-  updateWalletStore({ isConnecting: true });
-  selectedWalletId.set(storedWalletId);
+    updateWalletStore({ isConnecting: true });
+    selectedWalletId.set(storedWalletId);
 
-  try {
-    await connectWallet(storedWalletId);
-  } catch (error) {
-    handleConnectionError(error);
+    try {
+      await connectWallet(storedWalletId);
+    } catch (error) {
+      handleConnectionError(error);
+    }
   }
 }
 
 // Check if wallet is connected
-export async function isConnected(): Promise<boolean> {
-  return pnp.isWalletConnected();
+export function isConnected(): boolean {
+  initializePNP();
+  return pnp ? pnp.isWalletConnected() : false;
 }
 
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
-  // Call initializePNP once when the module is loaded
-initializePNP();
-  const isAuthenticated = await isConnected();
-  const isLocalEnv = window.location.hostname.includes('localhost');
-  const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
-  const agent = HttpAgent.createSync({ host });
-  if (isLocalEnv) {
+  initializePNP();
+    const isAuthenticated = isConnected();
+    const isLocalEnv = process.env.DFX_NETWORK === 'local';
+    const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
+    const agent = new HttpAgent({ host });
+    if (isLocalEnv) {
     await agent.fetchRootKey();
   }
   return isAuthenticated
@@ -149,5 +153,17 @@ initializePNP();
 
 // Export function to get the actor
 export async function getActor(canisterId = kongBackendCanisterId, canisterType: CanisterType = 'kong_backend'): Promise<ActorSubclass<any>> {
-  return await createActor(canisterId, canisterIDLs[canisterType]);
+  const idl = canisterIDLs[canisterType];
+  if (!idl) {
+    throw new Error(`No IDL found for canister type: ${canisterType}`);
+  }
+
+  const actor = await createActor(canisterId, idl);
+  
+  // Verify we got the right type of actor
+  if (canisterType === 'icrc2' && !actor.icrc2_approve) {
+    throw new Error('Created actor does not have ICRC2 methods');
+  }
+
+  return actor;
 }

@@ -1,226 +1,278 @@
 <!-- src/kong_svelte/src/routes/stats/+page.svelte -->
 <script lang="ts">
+	import grassStripeBackground from '$lib/assets/backgrounds/grass.webp';
+  import { writable, derived } from "svelte/store";
   import { t } from "$lib/locales/translations";
-  import { backendService } from "$lib/services/backendService";
-  import { onMount, onDestroy } from "svelte";
-  import Button from "$lib/components/common/Button.svelte";
-  import Tooltip from "$lib/components/common/Tooltip.svelte";
-  import { formatNumberCustom } from "$lib/utils/formatNumberCustom";
-  import Clouds from "$lib/components/stats/Clouds.svelte";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
-  import StatsSignPost from "$lib/components/stats/StatsSignPost.svelte";
-  import { lpTableHeaders } from "$lib/constants/statsConstants";
-  import { filterPools, sortPools } from "$lib/utils/statsUtils";
-  import { fetchPools, poolsInfo, poolsTotals } from "$lib/stores/poolStore";
-  import { writable } from 'svelte/store';
-  import { debounce } from 'lodash-es';
+  import { tokensTableHeaders } from "$lib/constants/statsConstants";
+  import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
   import { goto } from "$app/navigation";
-  import { ArrowLeftRight, Droplets } from "lucide-svelte";
+  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
+  import { flip } from "svelte/animate";
+  import debounce from "lodash-es/debounce";
+  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { ArrowLeftRight } from "lucide-svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { poolStore } from "$lib/features/pools/poolStore";
+  import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { walletStore } from "$lib/stores/walletStore";
+  import Clouds from "$lib/components/stats/Clouds.svelte";
+  import { formattedTokens, tokenStore } from "$lib/features/tokens/tokenStore";
 
-  type PoolsTotalsType = {
-    totalTvl: number | string;
-    totalVolume: number | string;
-    totalFees: number | string;
-  };
+  const searchQuery = writable("");
+  const copyStates = writable<Record<string, string>>({});
 
-  let tokens: Record<string, any> = {};
-  let poolsData: any[] = [];
-  let currentPoolsTotals: PoolsTotalsType = {
-    totalTvl: 0,
-    totalVolume: 0,
-    totalFees: 0,
-  };
-  let sortColumn = "tvl";
-  let sortDirection: "asc" | "desc" = "desc";
-  let searchQuery = "";
-  let debouncedSearchQuery = "";
+  const debouncedSearch = debounce((value: string) => {
+    searchQuery.set(value);
+  }, 300);
 
-  const searchStore = writable("");
+  const sortColumnStore = writable("formattedUsdValue");
+  const sortDirectionStore = writable<"asc" | "desc">("desc");
 
-  const unsubscribePoolsInfo = poolsInfo.subscribe(value => {
-    poolsData = value;
-    console.log('poolsInfo updated:', poolsData);
-  });
+  // Modified filtered tokens store to handle undefined or null values
+  const filteredSortedTokens = derived(
+    [formattedTokens, searchQuery, sortColumnStore, sortDirectionStore],
+    ([$formattedTokens, $searchQuery, $sortColumn, $sortDirection]) => {
+      if (!$formattedTokens) return [];
 
-  const unsubscribePoolsTotals = poolsTotals.subscribe(value => {
-    currentPoolsTotals = value;
-    console.log('poolsTotals updated:', currentPoolsTotals);
-  });
-
-  let unsubscribeSearch: () => void;
-
-  onMount(async () => {
-    try {
-      tokens = await backendService.getTokens();
-      await fetchPools();
-    } catch (error) {
-      console.error("Error during onMount:", error);
+      const filtered = filterTokens($formattedTokens, $searchQuery);
+      return sortTableData(filtered, $sortColumn, $sortDirection);
     }
+  );
 
-    const debouncedFn = debounce((query: string) => {
-      debouncedSearchQuery = query;
-    }, 300);
+  // Loading state
+  const tokensLoading = derived(
+    [tokenStore, poolStore],
+    ([$tokenStore, $poolStore]) => 
+      $tokenStore.isLoading || 
+      $poolStore.isLoading || 
+      !$tokenStore.tokens.length
+  );
 
-    unsubscribeSearch = searchStore.subscribe(value => {
-      debouncedFn(value);
-    });
-  });
+  // Error state with null check
+  const tokensError = derived(
+    [tokenStore, poolStore],
+    ([$tokenStore, $poolStore]) => {
+      if (!$tokenStore || !$poolStore) return null;
+      return $tokenStore.error || $poolStore.error;
+    }
+  );
 
-  onDestroy(() => {
-    if (unsubscribeSearch) unsubscribeSearch();
-    unsubscribePoolsInfo();
-    unsubscribePoolsTotals();
-  });
-
-  function handleSortEvent(event: CustomEvent<{ column: string; direction: "asc" | "desc" }>) {
+  // Handles sorting events triggered by TableHeader components.
+  function handleSortEvent(
+    event: CustomEvent<{ column: string; direction: "asc" | "desc" }>,
+  ) {
     const { column, direction } = event.detail;
-    sortColumn = column;
-    sortDirection = direction;
+    sortColumnStore.set(column);
+    sortDirectionStore.set(direction);
   }
 
-  let sortedFilteredPools: any[] = [];
+  // Function to copy text to clipboard
+  function copyToClipboard(tokenId: string) {
+    navigator.clipboard.writeText(tokenId).then(
+      () => {
+        updateCopyState(tokenId, "Copied!");
+      },
+      (err) => {
+        updateCopyState(tokenId, "Copy Failed!");
+      }
+    );
+  }
 
-  $: sortedFilteredPools = sortPools(filterPools(poolsData, debouncedSearchQuery), sortColumn, sortDirection);
+  // Update the copy state for a specific token
+  function updateCopyState(tokenId: string, text: string) {
+    copyStates.update(states => {
+      return { ...states, [tokenId]: text };
+    });
+    setTimeout(() => {
+      copyStates.update(states => {
+        return { ...states, [tokenId]: "Copy" };
+      });
+    }, 1000);
+  }
 </script>
 
 <Clouds />
+<section class="flex min-h-[94vh] relative w-full justify-center">
+  <!-- Main Content -->
+  <div class="z-10 flex pt-40 justify-center w-full md:w-100 px-2 md:px-0 max-w-5xl">
+    <div class="flex flex-col w-full">
+      <div
+        class="inner-border bg-k-light-blue bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
+      >
+        <div class="p-4 w-full max-h-[68vh] overflow-y-auto pb-8">
+          <!-- Header and Search Bar -->
+          <div class="grid grid-cols-3 items-center mb-2 md:mb-0 pb-2">
+            <h2
+              class="pl-1 mt-2 font-black col-span-3 md:col-span-2 text-3xl text-center md:text-left text-white mb-4 text-outline-2"
+            >
+              {$t("stats.statsTableTitle")}
+            </h2>
 
-<main class="flex min-h-[95vh] bg-sky-100 relative pt-28">
-  <div class="w-1/12 font-alumni z-[2]">
-    <StatsSignPost
-      totalTvl={currentPoolsTotals.totalTvl}
-      totalVolume={currentPoolsTotals.totalVolume}
-      totalFees={currentPoolsTotals.totalFees}
-    />
-  </div>
-
-  <div class="flex-grow z-10 w-10/12 flex items-center mb-20">
-    <!-- Pool Overview Section -->
-    <div
-      class="bg-k-light-blue bg-opacity-70 border-[5px] border-black p-0.5 w-full max-w-5xl mx-auto"
-    >
-      <div class="inner-border p-4 w-full h-full">
-        <div class="grid grid-cols-3 items-center mb-2 md:mb-0">
-          <h2
-            class="pl-1 mt-2 font-black col-span-3 md:col-span-2 text-3xl text-center md:text-left text-white mb-4 text-outline-2"
-          >
-            {$t("stats.overviewOfKongPools")}
-          </h2>
-
-          <!-- Search Input -->
-          <div class="col-span-3 md:col-span-1 flex justify-center md:justify-end">
-            <input
-              type="text"
-              placeholder="Search by symbol"
-              bind:value={$searchStore}
-              class="w-1/2 bg-sky-200/70 text-black border-none rounded-2xl min-w-[160px]"
-            />
+            <div
+              class="col-span-3 md:col-span-1 flex justify-center md:justify-end"
+            >
+              <input
+                type="text"
+                placeholder="Search by symbol or name"
+                on:input={(e) => debouncedSearch(e.currentTarget.value)}
+                class="w-1/2 bg-sky-200/30 placeholder:text-gray-600 font-alumni text-xl text-black border-none rounded-xl min-w-[160px] focus:ring-green-700 focus:ring-2 p-2.5"
+                aria-label="Search Tokens by Symbol or Name"
+              />
+            </div>
           </div>
-        </div>
-        <div class="overflow-x-scroll">
-          <table class="w-full text-black font-alumni">
-            <thead>
-              <tr class="border-b-4 border-black text-3xl uppercase">
-                {#each lpTableHeaders as header}
-                  <TableHeader
-                    label={$t(header.label)}
-                    column={header.column}
-                    textClass={header.textClass}
-                    sortColumn={sortColumn}
-                    sortDirection={sortDirection}
-                    on:sort={handleSortEvent}
-                  />
-                {/each}
-              </tr>
-            </thead>
-            <tbody>
-              {#if sortedFilteredPools.length === 0}
-                <tr class="border-b-2 border-black text-xl md:text-3xl">
-                  <td class="p-2 uppercase font-bold text-center" colspan="50">
-                    No results found
-                  </td>
-                </tr>
-              {:else}
-                {#each sortedFilteredPools as pool (pool.id)}
-                  <tr class="border-b-2 border-black text-xl md:text-3xl">
-                    <td class="uppercase font-bold cursor-pointer" on:click={() => goto(`/stats/pools?id=${pool.id}`)}>
-                      <div class="flex items-center">
-                        <!-- Dynamic Token Logos -->
-                        <div class="isolate flex -space-x-1 overflow-hidden p-2 w-[5rem]">
-                          <img class="relative z-30 inline-block h-8 w-8 rounded-full ring-[3px] ring-sky-500 bg-white" src="/tokens/icp.png" alt={pool.symbol_0}>
-                          <img class="relative z-20 inline-block h-8 w-8 rounded-full ring-[3px] ring-sky-500 bg-white" src="/tokens/icp.png" alt={pool.symbol_1}>
-                        </div>
-                        <span>{pool.symbol_0}/{pool.symbol_1}</span>
-                      </div>
-                    </td>
-                    <td class="p-2 text-right">${formatNumberCustom(pool.price, 2)}</td>
-                    <td class="p-2 text-right">${pool.tvl}</td>
-                    <td class="p-2 text-right">${pool.roll24hVolume}</td>
-                    <td class="p-2 text-right">{pool.apy}%</td>
-                    <td class="p-2 flex justify-center">
-                      <div class="flex flex-col content-center items-center justify-center gap-3.5">
-                        <!-- Wrap each Tooltip in a div -->
-                          <Tooltip text={$t("stats.swap") + " " + pool.symbol_0 + "/" + pool.symbol_1}>
-                            <Button variant="green" size="small">
-                              <ArrowLeftRight size={20} />
-                            </Button>
-                          </Tooltip>
-                          <Tooltip text={$t("stats.addLiquidity") + " " + pool.symbol_0 + "/" + pool.symbol_1}>
-                            <Button variant="green" size="small">
-                              <Droplets size={20} />
-                            </Button>
-                          </Tooltip>
-                      </div>
-                    </td>
+
+          <!-- Table Container -->
+          <div class="overflow-x-scroll">
+            {#if $tokensLoading && $filteredSortedTokens.length === 0}
+              <LoadingIndicator />
+            {:else if $tokensError}
+              <div class="text-center text-red-500 p-4">{$tokensError}</div>
+            {:else}
+              <table class="w-full text-black font-alumni">
+                <thead>
+                  <tr class="border-b-4 border-black text-3xl uppercase">
+                    {#each tokensTableHeaders as header}
+                      <TableHeader
+                        label={header.label}
+                        column={header.column}
+                        textClass={header.textClass}
+                        requiresAuth={header.requiresAuth}
+                        sortColumn={$sortColumnStore}
+                        sortDirection={$sortDirectionStore}
+                        on:sort={handleSortEvent}
+                      />
+                    {/each}
                   </tr>
-                {/each}
-              {/if}
-            </tbody>
-          </table>
+                </thead>
+
+                <tbody>
+                  {#if $filteredSortedTokens && $filteredSortedTokens.length > 0}
+                    {#each $filteredSortedTokens as token, index (token.canister_id + '-' + token.symbol + '-' + index)}
+                      <tr
+                        class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
+                        animate:flip={{ duration: 300 }}
+                        tabindex="0"
+                        aria-label={`View details for token ${token.symbol || 'Unknown'}`}
+                      >
+                        <td class="uppercase font-bold pl-2 focused:ring-0 ring-0 focused:border-none active:border-none">
+                          <div class="flex items-center">
+                            {#if token}
+                              <TokenImages
+                                tokens={[token]}
+                                containerClass="mr-2.5"
+                              />
+                              <div class="flex flex-col">
+                                <span>{token.symbol || 'Unknown'}</span>
+                                <div class="flex items-center font-mono text-xs">
+                                  <span class="text-sm font-normal">{token.canister_id || 'N/A'}</span>
+                                  <button
+                                    class="ml-2 text-xs bg-blue-200/60 hover:bg-yellow-400/90 font-mono rounded px-1"
+                                    on:click={(e) => {
+                                      e.stopPropagation();
+                                      if (token.canister_id) copyToClipboard(token.canister_id);
+                                    }}
+                                    aria-label="Copy Canister ID"
+                                  >
+                                    {$copyStates[token.canister_id] || "Copy"}
+                                  </button>
+                                </div>
+                              </div>
+                            {/if}
+                          </div>
+                        </td>
+                        <td class="p-2 text-right">${formatToNonZeroDecimal(token?.price || 0)}</td>
+                        <td class="p-2 text-right">
+                          ${formatToNonZeroDecimal(formatTokenAmount(token?.total_24h_volume || 0n, 6))}
+                        </td>
+                        {#if $walletStore.isConnected}
+                          <td class="p-2 text-right">
+                            <div class="flex flex-col items-end justify-center">
+                              <span class="text-2xl">
+                                {formatToNonZeroDecimal(token?.formattedBalance || '0')} {token?.symbol || ''}
+                              </span>
+                              <span class="text-sm">(${token?.formattedUsdValue || '0'})</span>
+                            </div>
+                          </td>
+                        {/if}
+                        <td class="p-2">
+                          <div class="flex content-center items-center justify-center gap-x-1">
+                            <button
+                              on:click={(e) => {
+                                e.stopPropagation();
+                                if (token?.canister_id) {
+                                  goto(`/swap?from=${token.canister_id}&to=${CKUSDT_CANISTER_ID}`);
+                                }
+                              }}
+                              class="rounded-full text-nowrap bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                            >
+                              <ArrowLeftRight size={18} class="mr-1" /> Swap
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    {/each}
+                  {:else if !$tokensLoading}
+                    <tr class="border-b-2 border-black text-xl md:text-3xl">
+                      <td class="p-2 uppercase font-bold text-center" colspan="50">
+                        No results found
+                      </td>
+                    </tr>
+                  {/if}
+
+                  {#if $tokensLoading && !$filteredSortedTokens.length}
+                    <!-- Display skeleton loaders or placeholders -->
+                    {#each Array(10) as _, index}
+                      <tr class="border-b-2 border-black text-xl md:text-3xl animate-pulse">
+                        <td class="p-2">
+                          <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+                        </td>
+                        <td class="p-2">
+                          <div class="h-4 bg-gray-300 rounded"></div>
+                        </td>
+                        <td class="p-2">
+                          <div class="h-4 bg-gray-300 rounded"></div>
+                        </td>
+                        <!-- Add more cells as needed -->
+                      </tr>
+                    {/each}
+                  {/if}
+                </tbody>
+              </table>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
   </div>
-  <div class="w-1/12"></div>
-</main>
+</section>
 
-<div
-  style="background-image:url('/backgrounds/grass.webp'); background-repeat: repeat-x; background-size: 100% 100%; z-index: 1000;"
-  class="w-full min-h-[80px] max-h-[80px]"
-></div>
+<div class="absolute bottom-0 left-0 w-full h-[10vh] bg-gradient-to-t from-transparent to-white">
+  <img src={grassStripeBackground} class="w-full h-full object-cover" />
+</div>
 
 <style scoped>
-  main {
-    background-color: #5bb2cf;
-    background-size: cover;
-    background-position: center;
-  }
-
   .inner-border {
     box-shadow: inset 0 0 0 2px white;
   }
 
-  @keyframes wobble {
-    0% {
-      transform: translateX(0%);
-    }
-    15% {
-      transform: rotate(-1deg);
-    }
-    30% {
-      transform: rotate(1deg);
-    }
-    45% {
-      transform: rotate(-1deg);
-    }
-    60% {
-      transform: rotate(1deg);
-    }
-    75% {
-      transform: rotate(-1deg);
-    }
-    100% {
-      transform: translateX(0%);
-    }
+  tr {
+    transition:
+      background-color 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  tbody tr:hover {
+    background-image: linear-gradient(
+      to right,
+      rgba(27, 224, 99, 0.5),
+      rgba(255, 225, 0, 0.509)
+    );
+  }
+
+  /* Accessibility Enhancements */
+  tr:focus {
+    outline: 2px solid #3b82f6; /* Tailwind blue-500 */
+    outline-offset: -2px;
   }
 </style>
