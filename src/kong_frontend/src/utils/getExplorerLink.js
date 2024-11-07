@@ -102,6 +102,9 @@ export const getExplorerLinks = (transferArray) => {
         case "ICVC": 
             link = `https://dashboard.internetcomputer.org/sns/nuywj-oaaaa-aaaaq-aadta-cai/transaction/${blockIndex}`;
           break;
+        case "GLDT":
+            link = `https://dashboard.internetcomputer.org/sns/6c7su-kiaaa-aaaar-qaira-cai/transaction/${blockIndex}`;
+          break;
         default:
             link = `https://dashboard.internetcomputer.org/canister/${canisterId}#get_transactions`;
           break;
