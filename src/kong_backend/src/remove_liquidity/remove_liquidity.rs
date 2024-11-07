@@ -508,3 +508,9 @@ async fn return_tokens(
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
     reply
 }
+
+/// api to validate remove_liquidity for SNS proposals
+#[update]
+fn validate_remove_liquidity() -> Result<String, String> {
+    Ok("remove_liquidity is valid".to_string())
+}

@@ -312,6 +312,7 @@ type RemoveLiquidityReply = record {
 };
 type RemoveLiquidityResult = variant { Ok : RemoveLiquidityReply; Err : text };
 type RemoveLiquidityAsyncResult = variant { Ok : nat64; Err : text };
+type ValidateRemoveLiquidityResult = variant { Ok : text; Err : text };
 
 type SwapAmountsTxReply = record {
     pool_symbol : text;
@@ -453,6 +454,8 @@ service : {
     // asnychronous version of remove_liquidity()
     // request_id will be returned by remove_liquidity_async() and poll requests(request_id) to get updated status
     remove_liquidity_async : (RemoveLiquidityArgs) -> (RemoveLiquidityAsyncResult);
+    // validate remove_liquidity for SNS proposals
+    validate_remove_liquidity : () -> (ValidateRemoveLiquidityResult);
 
     // swap_amounts(pay_token, pay_amount, receive_token)
     // pay_token, receive_token - format Symbol, Chain.Symbol, CanisterId or Chain.CanisterId ie. ckBTC, IC.ckBTC, or IC.ryjl3-tyaaa-aaaaa-aaaba-cai
