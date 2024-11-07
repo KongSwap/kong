@@ -12,10 +12,6 @@
   });
 </script>
 
-<div class="flex justify-center">
-  <Navbar />
-</div>
-
 <svelte:head>
   <title>
     {currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t(
