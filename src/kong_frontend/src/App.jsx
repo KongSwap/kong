@@ -187,8 +187,6 @@ const tokenImages = {
   WTN: tokenWtnImage,
   WUMBO: tokenWumboImage,
   YUGE: tokenYugeImage,
-  KONG1: tokenKongImage,
-  KONG2: tokenKongImage,
 };
 
 const allowedViewTabs = ["swap", "pools", "send", "receive", "remove"];
@@ -239,8 +237,7 @@ export const tokenBalancesSelector = {
   ckPEPE: "ckpepeBalance",
   ckSHIB: "ckshibBalance",
   DOD: "dodBalance",
-  KONG1: "kong1Balance",
-  KONG2: "kong2Balance",
+  KONG: "kongBalance",
 };
 
 const validTokens = Object.keys(tokenBalancesSelector);
@@ -304,8 +301,7 @@ const App = () => {
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
-      kong1_backend,
-      kong2_backend,
+      kong_ledger_backend,
     },
     isInitialized,
   } = useIdentity();
@@ -579,6 +575,7 @@ const App = () => {
       updateBalance(fpl_backend, "FPL"),
       updateBalance(ditto_backend, "DITTO"),
       updateBalance(icvc_backend, "ICVC"),
+      updateBalance(gldt_backend, "GLDT"),
       updateBalance(ghost_backend, "GHOST"),
       updateBalance(ctz_backend, "CTZ"),
       updateBalance(elna_backend, "ELNA"),
@@ -592,9 +589,7 @@ const App = () => {
       updateBalance(ckpepe_backend, "ckPEPE"),
       updateBalance(ckshib_backend, "ckSHIB"),
       updateBalance(dod_backend, "DOD"),
-      updateBalance(gldt_backend, "GLDT"),
-      updateBalance(kong1_backend, "KONG1"),
-      updateBalance(kong2_backend, "KONG2"),
+      updateBalance(kong_ledger_backend, "KONG"),
     ]);
 
     // Convert the Map to an object
@@ -647,6 +642,7 @@ const App = () => {
     ditto_backend,
     icvc_backend,
     userDetails,
+    gldt_backend,
     ghost_backend,
     ctz_backend,
     elna_backend,
@@ -660,9 +656,8 @@ const App = () => {
     ckpepe_backend,
     ckshib_backend,
     dod_backend,
-    gldt_backend,
-    kong1_backend,
-    kong2_backend,
+    kong_backend,
+    kong_ledger_backend,
   ]);
 
   const updateUserPools = useCallback(async () => {
@@ -1433,32 +1428,18 @@ const App = () => {
           ) || 0,
       },
       {
-        symbol: "KONG1",
-        balance: shownBalances.kong1Balance,
-        usdBalance: parseBalance(shownBalances.kong1Balance)
-          .multipliedBy(parsePrice(tokenPrices["KONG1_ckUSDT"]))
+        symbol: "KONG",
+        balance: shownBalances.kongBalance,
+        usdBalance: parseBalance(shownBalances.kongBalance)
+          .multipliedBy(parsePrice(tokenPrices["KONG_ckUSDT"]))
           .toFixed(2),
-        image: tokenImages["KONG1"],
+        image: tokenImages["KONG"],
         price:
           priceRoundedPool(
-            tokenPrices["KONG1_ckUSDT"],
-            tokenPrices["KONG1_ckUSDT"]
+            tokenPrices["KONG_ckUSDT"],
+            tokenPrices["KONG_ckUSDT"]
           ) || 0,
       },
-      {
-        symbol: "KONG2",
-        balance: shownBalances.kong2Balance,
-        usdBalance: parseBalance(shownBalances.kong2Balance)
-          .multipliedBy(parsePrice(tokenPrices["KONG2_ckUSDT"]))
-          .toFixed(2),
-        image: tokenImages["KONG2"],
-        price:
-          priceRoundedPool(
-            tokenPrices["KONG2_ckUSDT"],
-            tokenPrices["KONG2_ckUSDT"]
-          ) || 0,
-      },
-
     ].sort((a, b) => parseFloat(b.usdBalance) - parseFloat(a.usdBalance));
   }, [shownBalances, tokenPrices]);
 
@@ -1561,6 +1542,7 @@ const App = () => {
             tokenPrices={tokenPrices}
             tokenImages={tokenImages}
             accountId={accountId}
+            poolsInfo={poolsInfo}
           />
         </div>
       )}
@@ -1596,6 +1578,7 @@ function MainPage({
   tokenPrices,
   tokenImages,
   accountId,
+  poolsInfo,
 }) {
   const [walletContentView, setWalletContentView] = useState("tokens-table");
   const [slippageDefaultView, setSlippageDefaultView] = useState(true);
@@ -2046,6 +2029,7 @@ function MainPage({
                     principal={principal}
                     initialPool={selectedPool}
                     tokenImages={tokenImages}
+                    poolsInfo={poolsInfo}
                   />
                 ) : viewTab === "remove" ? (
                   <RemoveLiquidityComponent

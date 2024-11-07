@@ -2,18 +2,20 @@ CREATE TYPE request_type AS ENUM ('add_pool', 'add_liquidity', 'remove_liquidity
 
 CREATE TABLE requests (
     request_id BIGINT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id INT REFERENCES users(user_id) NOT NULL,
     request_type request_type NOT NULL,
-    statuses TEXT[],
+    request JSONB NOT NULL,
+    reply JSONB NOT NULL,
+    statuses JSONB,
     ts TIMESTAMP NOT NULL
 );
 
 CREATE TABLE add_pool_args (
-    request_id BIGINT PRIMARY KEY,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
     token_0 TEXT NOT NULL,
     amount_0 DOUBLE PRECISION NOT NULL,
     block_index_0 BIGINT,
-    hash_0 TEXT,
+    tx_hash_0 TEXT,
     token_1 TEXT NOT NULL,
     amount_1 DOUBLE PRECISION NOT NULL,
     block_index_1 BIGINT,
@@ -24,7 +26,7 @@ CREATE TABLE add_pool_args (
 );
 
 CREATE TABLE add_liquidity_args (
-    request_id BIGINT PRIMARY KEY,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
     token_0 TEXT NOT NULL,
     amount_0 DOUBLE PRECISION NOT NULL,
     block_index_0 BIGINT,
@@ -36,14 +38,14 @@ CREATE TABLE add_liquidity_args (
 );
 
 CREATE TABLE remove_liquidity_args (
-    request_id BIGINT PRIMARY KEY,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
     token_0 TEXT NOT NULL,
     token_1 TEXT NOT NULL,
     remove_lp_token_amount DOUBLE PRECISION NOT NULL,
 );
 
 CREATE TABLE swap_args (
-    request_id BIGINT PRIMARY KEY,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
     pay_token TEXT NOT NULL,
     pay_amount DOUBLE PRECISION NOT NULL,
     pay_block_index BIGINT,
@@ -56,20 +58,20 @@ CREATE TABLE swap_args (
 );
 
 CREATE TABLE claim_args (
-    request_id BIGINT PRIMARY KEY,
-    claim_id DOUBLE PRECISION NOT NULL
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
+    claim_id BIGINT REFERENCES claims(claim_id) NOT NULL
 );
 
 CREATE TABLE send_args (
-    request_id BIGINT PRIMARY KEY,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
     token TEXT NOT NULL,
     amount DOUBLE PRECISION NOT NULL,
     to_address TEXT NOT NULL
 );
 
 CREATE TABLE add_pool_reply {
-    request_id BIGINT PRIMARY KEY,
-    tx_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
+    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
     symbol TEXT NOT NULL,
     status TEXT NOT NULL,
     balance DOUBLE PRECISION NOT NULL,
@@ -92,8 +94,8 @@ CREATE TABLE add_pool_reply {
 };
 
 CREATE TABLE add_liquidity_reply {
-    request_id BIGINT PRIMARY KEY,
-    tx_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
+    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
     symbol TEXT NOT NULL,
     status TEXT NOT NULL,
     chain_0 TEXT NOT NULL,
@@ -109,8 +111,8 @@ CREATE TABLE add_liquidity_reply {
 }
 
 CREATE TABLE remove_liquidity_reply {
-    request_id BIGINT PRIMARY KEY,
-    tx_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
+    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
     symbol TEXT NOT NULL,
     status TEXT NOT NULL,
     chain_0 TEXT NOT NULL,
@@ -128,7 +130,7 @@ CREATE TABLE remove_liquidity_reply {
 }
 
 CREATE TABLE swap_reply_txs {
-    request_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) NOT NULL,
     pay_chain TEXT NOT NULL,
     pay_symbol TEXT NOT NULL,
     pay_amount DOUBLE PRECISION NOT NULL,
@@ -142,8 +144,8 @@ CREATE TABLE swap_reply_txs {
 }
 
 CREATE TABLE swap_reply {
-    request_id BIGINT PRIMARY KEY,
-    tx_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
+    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
     symbol TEXT NOT NULL,
     status TEXT NOT NULL,
     pay_chain TEXT NOT NULL,
@@ -161,7 +163,7 @@ CREATE TABLE swap_reply {
 }
 
 CREATE TABLE claim_reply {
-    claim_id BIGINT PRIMARY KEY,
+    claim_id BIGINT REFERENCES claims(claim_id) PRIMARY KEY,
     status TEXT NOT NULL,
     chain TEXT NOT NULL,
     symbol TEXT NOT NULL,
@@ -173,8 +175,8 @@ CREATE TABLE claim_reply {
 }
 
 CREATE TABLE send_reply {
-    request_id BIGINT PRIMARY KEY,
-    tx_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
+    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
     status TEXT NOT NULL,
     chain TEXT NOT NULL,
     symbol TEXT NOT NULL,

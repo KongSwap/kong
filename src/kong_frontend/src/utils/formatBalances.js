@@ -183,13 +183,9 @@ export function formatBalances(userDetails, tokenPrices) {
       tokenPrices["DOD_ckUSDT"], // Assuming the pool symbol is "DOD_ckUSDT"
       userDetails.dodBalance
     ),
-    kong1Balance: priceRoundedAmount(
-      tokenPrices["KONG1_ckUSDT"], // Assuming the pool symbol is "KONG1_ckUSDT"
-      userDetails.kong1Balance
-    ),
-    kong2Balance: priceRoundedAmount(
-      tokenPrices["KONG2_ckUSDT"], // Assuming the pool symbol is "KONG2_ckUSDT"
-      userDetails.kong2Balance
+    kongBalance: priceRoundedAmount(
+      tokenPrices["KONG_ckUSDT"], // Assuming the pool symbol is "KONG_ckUSDT"
+      userDetails.kongBalance
     ),
   };
 }

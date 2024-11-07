@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 pub struct AddPoolTx {
     pub tx_id: u64,
     pub pool_id: u32,
-    pub user_id: u32,
     pub request_id: u64,
+    pub user_id: u32,
     pub status: StatusTx,
     pub amount_0: Nat,
     pub amount_1: Nat,

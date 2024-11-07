@@ -87,7 +87,6 @@ pub fn nat_multiply_rational(n1: &Nat, n2: &BigRational) -> Option<Nat> {
     nat_divide(&numerator, &Nat::from(n2.denom().to_biguint()?))
 }
 
-#[allow(dead_code)]
 pub fn nat_multiply_f64(n1: &Nat, n2: f64) -> Option<Nat> {
     let n2 = BigRational::from_float(n2)?;
     nat_multiply_rational(n1, &n2)

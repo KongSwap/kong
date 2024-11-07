@@ -12,9 +12,11 @@ use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
+use crate::stable_user::user_map;
 
 #[query(guard = "not_in_maintenance_mode_and_caller_is_not_anonymous")]
 pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesReply>, String> {
+    let user_id = user_map::get_by_caller().ok().flatten().ok_or("User not found")?.user_id;
     let mut user_balances = Vec::new();
     let ts = get_time();
 
@@ -29,7 +31,7 @@ pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesRep
 
     tokens.iter().for_each(|token| match token {
         LP(lp_token) => {
-            if let Some(reply) = user_balance_lp_token_reply(lp_token, ts) {
+            if let Some(reply) = user_balance_lp_token_reply(lp_token, user_id, ts) {
                 user_balances.push(reply);
             }
         }
@@ -40,9 +42,9 @@ pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesRep
     Ok(user_balances)
 }
 
-fn user_balance_lp_token_reply(token: &LPToken, ts: u64) -> Option<UserBalancesReply> {
+fn user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option<UserBalancesReply> {
     let lp_token_id = token.token_id;
-    let lp_token = lp_token_ledger::get_by_token_id(lp_token_id)?;
+    let lp_token = lp_token_ledger::get_by_token_id_by_user_id(lp_token_id, user_id)?;
     // user balance and total supply of the LP token
     let user_lp_token_balance = lp_token.amount;
     let lp_token_total_supply = lp_token_ledger::get_total_supply(lp_token_id);

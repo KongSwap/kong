@@ -1,6 +1,7 @@
 use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
 use num_traits::ToPrimitive;
 use postgres_types::{FromSql, ToSql};
+use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -21,6 +22,7 @@ pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
     let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
 
     for (k, v) in tokens_map.iter() {
+        let raw_json = json!(&v);
         let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong) = match v {
             StableToken::IC(token) => {
                 let decimals = 10_u64.pow(token.decimals as u32 - 1) as f64;
@@ -60,8 +62,8 @@ pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
         db_client
             .execute(
                 "INSERT INTO tokens 
-                    (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     ON CONFLICT (token_id) DO UPDATE SET
                         token_type = $2,
                         name = $3,
@@ -73,7 +75,8 @@ pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
                         icrc1 = $9,
                         icrc2 = $10,
                         icrc3 = $11,
-                        on_kong = $12",
+                        on_kong = $12,
+                        raw_json = $13",
                 &[
                     &token_id,
                     &type_type,
@@ -87,6 +90,7 @@ pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
                     &icrc2,
                     &icrc3,
                     &on_kong,
+                    &raw_json,
                 ],
             )
             .await?;

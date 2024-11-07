@@ -80,3 +80,9 @@ pub async fn add_liquidity_async(args: AddLiquidityArgs) -> Result<u64, String> 
         add_liquidity_transfer_async(args).await
     }
 }
+
+/// api to validate add_liquidity for SNS proposals
+#[update]
+fn validate_add_liquidity() -> Result<String, String> {
+    Ok("add_liquidity is valid".to_string())
+}

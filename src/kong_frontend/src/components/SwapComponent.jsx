@@ -54,7 +54,6 @@ const SwapComponent = memo(({
       icp_ledger_backend,
       ckbtc_ledger_backend,
       cketh_ledger_backend,
-      // kong_ledger_backend,
       ckusdc_ledger_backend,
       ckusdt_ledger_backend,
       dkp_ledger_backend,
@@ -97,8 +96,7 @@ const SwapComponent = memo(({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
-      kong1_backend,
-      kong2_backend,
+      kong_ledger_backend,
     },
   } = useIdentity();
 
@@ -133,8 +131,11 @@ const SwapComponent = memo(({
   const [tokenFee, setTokenFee] = useState(undefined);
 
   const [lp_fee_1, setLp_fee_1] = useState(0);
+  const [lp_fee_2, setLp_fee_2] = useState(0);
   const [gas_fee_1, setGas_fee_1] = useState(0);
+  const [gas_fee_2, setGas_fee_2] = useState(0);
   const [tokenFee1, setTokenFee1] = useState(undefined);
+  const [tokenFee2, setTokenFee2] = useState(undefined);
 
   const [gasFee, setGasFee] = useState(0);
 
@@ -298,10 +299,13 @@ const SwapComponent = memo(({
             );
           }
           setLp_fee_1(0);
+          setLp_fee_2(0);
           setGas_fee_1(0);
+          setGas_fee_2(0);
           setTokenFee1(undefined);
+          setTokenFee2(undefined);
         }
-        if (swap_price_result.Ok.txs.length > 1) {
+        if (swap_price_result.Ok.txs.length === 2) {
           const firstTx = swap_price_result.Ok.txs[0];
           const isDoubleGasFee = icrc1Tokens.includes(youPayToken)
             ? false
@@ -352,8 +356,95 @@ const SwapComponent = memo(({
               .toFormat(8)
           );
           setTokenFee1(secondTx.receive_symbol);
+          setLp_fee_2(0);
+          setGas_fee_2(0);
+          setTokenFee2(undefined);
           setGasFee(0);
         }
+        if (swap_price_result.Ok.txs.length === 3) {
+          const firstTx = swap_price_result.Ok.txs[0];
+          const secondTx = swap_price_result.Ok.txs[1];
+          const thirdTx = swap_price_result.Ok.txs[2];
+          const isDoubleGasFee = icrc1Tokens.includes(youPayToken)
+            ? false
+            : true;
+  
+          setLp_fee_0(
+            new BigNumber(firstTx.lp_fee)
+              .dividedBy(
+                new BigNumber(10).pow(
+                  getTokenDecimals(firstTx.receive_symbol).decimals
+                )
+              )
+              .toFormat(8)
+          );
+          setGas_fee_0(
+            new BigNumber(firstTx.gas_fee)
+              .dividedBy(
+                new BigNumber(10).pow(
+                  getTokenDecimals(firstTx.receive_symbol).decimals
+                )
+              )
+              .toFormat(8)
+          );
+          setTokenFee(firstTx.receive_symbol);
+  
+          setLp_fee_1(
+            new BigNumber(secondTx.lp_fee)
+              .dividedBy(
+                new BigNumber(10).pow(
+                  getTokenDecimals(secondTx.receive_symbol).decimals
+                )
+              )
+              .toFormat(8)
+          );
+          setGas_fee_1(
+            new BigNumber(secondTx.gas_fee)
+              .dividedBy(
+                new BigNumber(10).pow(
+                  getTokenDecimals(secondTx.receive_symbol).decimals
+                )
+              )
+              .toFormat(8)
+          );
+          setTokenFee1(secondTx.receive_symbol);
+  
+          setLp_fee_2(
+            new BigNumber(thirdTx.lp_fee)
+              .dividedBy(
+                new BigNumber(10).pow(
+                  getTokenDecimals(thirdTx.receive_symbol).decimals
+                )
+              )
+              .toFormat(8)
+          );
+          setGas_fee_2(
+            new BigNumber(thirdTx.gas_fee)
+              .dividedBy(
+                new BigNumber(10).pow(
+                  getTokenDecimals(thirdTx.receive_symbol).decimals
+                )
+              )
+              .toFormat(8)
+          );
+          setTokenFee2(thirdTx.receive_symbol);
+  
+          if (isDoubleGasFee) {
+            setGasFee(
+              new BigNumber(gasFee)
+                .multipliedBy(2)
+                .dividedBy(new BigNumber(10).pow(youPayDecimals))
+                .toFormat(8)
+            );
+          } else {
+            setGasFee(
+              new BigNumber(gasFee)
+                .dividedBy(new BigNumber(10).pow(youPayDecimals))
+                .toFormat(8)
+            );
+          }
+        }
+
         setIsProcessingOutput(false);
         return {
           receiveAmount,
@@ -579,6 +670,9 @@ const SwapComponent = memo(({
     setLp_fee_1(0);
     setGas_fee_1(0);
     setTokenFee1(undefined);
+    setLp_fee_2(0);
+    setGas_fee_2(0);
+    setTokenFee2(undefined);
     setSendTo("");
     setRequestId(null);
     setTransactionStateObject(null);
@@ -689,10 +783,8 @@ const SwapComponent = memo(({
           return ckshib_backend;
         case "DOD":
           return dod_backend;
-        case "KONG1":
-          return kong1_backend;
-        case "KONG2":
-          return kong2_backend;
+        case "KONG":
+          return kong_ledger_backend;
         default:
           return null;
       }
@@ -746,7 +838,6 @@ const SwapComponent = memo(({
     ckbtc_ledger_backend,
     cketh_ledger_backend,
     icp_ledger_backend,
-    // kong_ledger_backend,
     ckusdt_ledger_backend,
     backendKingKong,
     sendTo,
@@ -791,8 +882,7 @@ const SwapComponent = memo(({
     ckshib_backend,
     dod_backend,
     gldt_backend,
-    kong1_backend,
-    kong2_backend,
+    kong_ledger_backend,
   ]);
 
   const sanitizeInput = useCallback((input) => {
@@ -1674,7 +1764,7 @@ const SwapComponent = memo(({
                 )}
               </>
             )}
-            {lp_fee_1 > 0 && (
+            {lp_fee_1 > 0 && lp_fee_2 === 0 && (
               <>
                 <div className="review-fees-item">
                   <span className="review-fees-item-label">
@@ -1690,6 +1780,42 @@ const SwapComponent = memo(({
                   </span>
                   <span className="review-fees-item-value">
                     {gas_fee_1} {tokenFee1}
+                  </span>
+                </div>
+              </>
+            )}
+             {lp_fee_1 > 0 && lp_fee_2 > 0 && (
+              <>
+                <div className="review-fees-item">
+                  <span className="review-fees-item-label">
+                    Liquidity Pools fee (2nd trade)
+                  </span>
+                  <span className="review-fees-item-value">
+                    {lp_fee_1} {tokenFee1}
+                  </span>
+                </div>
+                <div className="review-fees-item">
+                  <span className="review-fees-item-label">
+                    Gas fee (2nd trade)
+                  </span>
+                  <span className="review-fees-item-value">
+                    {gas_fee_1} {tokenFee1}
+                  </span>
+                </div>
+                <div className="review-fees-item">
+                  <span className="review-fees-item-label">
+                    Liquidity Pools fee (3rd trade)
+                  </span>
+                  <span className="review-fees-item-value">
+                    {lp_fee_2} {tokenFee2}
+                  </span>
+                </div>
+                <div className="review-fees-item">
+                  <span className="review-fees-item-label">
+                    Gas fee (3rd trade)
+                  </span>
+                  <span className="review-fees-item-value">
+                    {gas_fee_2} {tokenFee2}
                   </span>
                 </div>
               </>

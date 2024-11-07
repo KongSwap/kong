@@ -7,17 +7,17 @@ import {
 import {
     canisterId,
     idlFactory,
-} from "../../../declarations/kong2_ledger/index.js";
+} from "../../../declarations/kong_ledger/index.js";
 import React from "react";
 import { useInternetIdentity } from "ic-use-internet-identity";
 import { toast } from "react-toastify";
 
 const HOST = (process.env.DFX_NETWORK !== "ic") ? "http://localhost:4943" : "https://icp-api.io";
 
-const actorKONG2 = createActorContext();
-export const useKONG2Backend = createUseActorHook(actorKONG2);
+const actorKONG = createActorContext();
+export const useKONGBackend = createUseActorHook(actorKONG);
 
-const KONG2Actor = ({ children }) => {
+const KONGActor = ({ children }) => {
     const { identity: iiIdentity, clear } = useInternetIdentity();
 
     const handleRequest = (data) => {
@@ -50,7 +50,7 @@ window.location.reload()
         <ActorProvider
             httpAgentOptions={{ host: HOST }}
             canisterId={canisterId}
-            context={actorKONG2}
+            context={actorKONG}
             identity={iiIdentity}
             idlFactory={idlFactory}
             onRequest={handleRequest}
@@ -63,4 +63,4 @@ window.location.reload()
     );
 }
 
-export default KONG2Actor;
+export default KONGActor;

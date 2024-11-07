@@ -1,7 +1,7 @@
 CREATE TYPE token_type AS ENUM ('IC', 'LP');
 
 CREATE TABLE tokens (
-    token_id INT PRIMARY KEY,
+    token_id INT REFERENCES tokens(token_id) PRIMARY KEY,
     token_type token_type NOT NULL,
     name TEXT,
     symbol TEXT,
@@ -13,5 +13,6 @@ CREATE TABLE tokens (
     icrc2 BOOLEAN,
     icrc3 BOOLEAN,
     on_kong BOOLEAN NOT NULL,
+    raw_json JSONB NOT NULL,
     UNIQUE (canister_id, address)
 );

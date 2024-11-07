@@ -90,8 +90,7 @@ const SendComponent = ({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
-      kong1_backend,
-      kong2_backend,
+      kong_ledger_backend,
     },
   } = useIdentity();
   const navigate = useNavigate();
@@ -302,10 +301,8 @@ const SendComponent = ({
           return ckshib_backend;
         case "DOD":
           return dod_backend;
-        case "KONG1":
-          return kong1_backend;
-        case "KONG2":
-          return kong2_backend;
+        case "KONG":
+          return kong_ledger_backend;
         default:
           return null;
       }
@@ -356,8 +353,7 @@ const SendComponent = ({
       ckshib_backend,
       dod_backend,
       gldt_backend,
-      kong1_backend,
-      kong2_backend,
+      kong_ledger_backend,
     ]
   );
 

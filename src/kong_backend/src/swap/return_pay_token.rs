@@ -56,7 +56,7 @@ pub async fn return_pay_token(
                 "Swap Req #{} Kong failed to return {} {}: {}",
                 request_id, pay_amount, pay_symbol, message
             ));
-            request_map::update_status(request_id, StatusCode::ReturnPayTokenFailed, Some(message));
+            request_map::update_status(request_id, StatusCode::ReturnPayTokenFailed, Some(&message));
         }
     };
 

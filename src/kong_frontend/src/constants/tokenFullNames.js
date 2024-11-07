@@ -30,6 +30,21 @@ const tokenFullNames = {
     FPL: "OpenFPL",
     DITTO: "Ditto",
     ICVC: "ICVC",
+    GLDT: "Gold Token",
+    GHOST: "GHOST",
+    CTX: "CatalyzeDAO",
+    ELNA: "ELNA",
+    DOGMI: "DOGMI",
+    EST: "ESTATE",
+    PANDA: "ICPanda",
+    KINIC: "KINIC",
+    DOLR: "YRAL",
+    TRAX: "TRAX",
+    MOTOKO: "Motoko",
+    CKPEPE: "ckPEPE",
+    CKSHIB: "ckSHIB",
+    DOD: "DOD",
+    KONG: "KongSwap",
 };
 
 export default tokenFullNames;

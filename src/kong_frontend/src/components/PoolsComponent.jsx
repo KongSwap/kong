@@ -34,6 +34,7 @@ const PoolsComponent = ({
   tokenPrices,
   principal,
   tokenImages,
+  poolsInfo,
   initialPool
 }) => {
   const {
@@ -85,8 +86,7 @@ const PoolsComponent = ({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
-      kong1_backend,
-      kong2_backend,
+      kong_ledger_backend,
     },
   } = useIdentity();
 
@@ -97,7 +97,14 @@ const PoolsComponent = ({
   //   ? queryParams.get("pool").split("_")
   //   : ["ICP", "ckUSDT"];
   const initialYouPayToken = initialPool ? initialPool.split("_")[0] : null;
-  const initialYouReceiveToken = initialPool ? initialPool.split("_")[1] : null;
+  // check if pool exists firsts
+  const initialYouReceiveToken = poolsInfo ? poolsInfo.forEach((pool) => {
+    if (pool.symbol_1 === initialPool.split("_")[1]){
+        return pool.symbol_1;
+    } else {
+      return "ckUSDT";
+    }
+  }) : null;
   const [youPayToken, setYouPayToken] = useState(initialYouPayToken);
   const [youReceiveToken, setYouReceiveToken] = useState(initialYouReceiveToken || "ckUSDT");
 
@@ -437,10 +444,8 @@ const PoolsComponent = ({
           return ckshib_backend;
         case "DOD":
           return dod_backend;
-        case "KONG1":
-          return kong1_backend;
-        case "KONG2":
-          return kong2_backend;
+        case "KONG":
+          return kong_ledger_backend;
         default:
           return null;
       }
@@ -566,8 +571,7 @@ const PoolsComponent = ({
     ckshib_backend,
     dod_backend,
     gldt_backend,
-    kong1_backend,
-    kong2_backend,
+    kong_ledger_backend,
   ]);
 
   useEffect(() => {
