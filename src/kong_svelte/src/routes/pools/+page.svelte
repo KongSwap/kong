@@ -129,7 +129,7 @@
                       </td>
                     </tr>
                   {:else}
-                    {#each $filteredSortedPools as pool (pool.id)}
+                    {#each $filteredSortedPools as pool (pool)}
                       <tr
                         class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
                         animate:flip={{ duration: 300 }}

@@ -7,47 +7,41 @@
   import { t } from "$lib/locales/translations";
   import { currentEnvMode } from "$lib/utils/envUtils";
   import { restoreWalletConnection } from "$lib/stores/walletStore";
-  import { switchLocale } from "$lib/stores/localeStore";
+  import { switchLocale, localeStore } from "$lib/stores/localeStore";
   import { tokenStore } from "$lib/stores/tokenStore";
   import { poolStore } from "$lib/stores/poolStore";
-  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { walletStore } from "$lib/stores/walletStore";
   import poolsBackground from "$lib/assets/backgrounds/pools.webp";
   import jungleBackground from "$lib/assets/backgrounds/kong_jungle2.webp";
-    import { browser } from "$app/environment";
+  import { browser } from "$app/environment";
 
   let initialized: boolean = false;
-  let backgroundImage: string = jungleBackground;
 
   onMount(async () => {
-    switchLocale("en");
-    Promise.all([restoreWalletConnection(), tokenStore.loadTokens(), poolStore.loadPools()]);
-    if($walletStore.isConnected) {
-      tokenStore.loadBalances();
+    if (!localeStore) {
+      switchLocale("en");
     }
+    Promise.all([
+      restoreWalletConnection(),
+      tokenStore.loadTokens(),
+      poolStore.loadPools(),
+      $walletStore.isConnected ? tokenStore.loadBalances() : null,
+    ]);
     initialized = true;
   });
 
-  $: {
-    if(browser) {
-    switch($page.url.pathname) {
-      case '/pools':
-        document.body.style.background = `#5BB2CF url(${poolsBackground})`;
-        break;
-      case '/stats':
-        document.body.style.background = "#5BB2CF";
-        break;
-      case '/swap':
-        document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-        break;
-      default:
-        document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-        break;
+  $: if (browser) {
+    if ($page.url.pathname.startsWith("/pools")) {
+      document.body.style.background = `#5BB2CF url(${poolsBackground})`;
+    } else if ($page.url.pathname.startsWith("/stats")) {
+      document.body.style.background = "#5BB2CF";
+    } else if ($page.url.pathname.startsWith("/swap")) {
+      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
+    } else {
+      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
     }
-
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center";
-    }
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
   }
 </script>
 
@@ -59,10 +53,10 @@
 
 <svelte:head>
   <title>
-    {currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t("common.browserSubtitle")}
+    {currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t(
+      "common.browserSubtitle",
+    )}
   </title>
 </svelte:head>
 
-
 <slot />
-
