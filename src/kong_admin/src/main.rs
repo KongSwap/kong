@@ -1,4 +1,6 @@
-use tokio_postgres::{Config, NoTls};
+use config::{Config, FileFormat};
+use serde::Deserialize;
+use tokio_postgres::NoTls;
 
 mod claims;
 mod lp_token_ledger;
@@ -10,14 +12,34 @@ mod transfers;
 mod txs;
 mod users;
 
+#[derive(Debug, Deserialize)]
+struct Database {
+    host: String,
+    user: String,
+    password: String,
+    db_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Settings {
+    database: Database,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut config = Config::new();
-    //config.host("localhost");
-    config.host("100.115.8.145");
-    config.user("kong");
-    config.password("IamKong");
-    config.dbname("kong");
+    let settings = Config::builder()
+        .add_source(config::File::with_name("settings.json").format(FileFormat::Json))
+        .build()?;
+    let config: Settings = settings.try_deserialize()?;
+    let db_host = config.database.host;
+    let db_user = config.database.user;
+    let db_password = config.database.password;
+    let db_name = config.database.db_name;
+    let mut config = tokio_postgres::Config::new();
+    config.host(db_host);
+    config.user(db_user);
+    config.password(db_password);
+    config.dbname(db_name);
     let (client, connection) = config.connect(NoTls).await?;
 
     tokio::spawn(async move {

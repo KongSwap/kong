@@ -21,21 +21,24 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
-    let error = match check_arguments(&args, request_id, ts).await {
+    match check_arguments(&args, request_id, ts).await {
         Ok((pay_token, pay_amount, transfer_id)) => {
             match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
                 Ok(reply) => {
                     request_map::update_status(request_id, StatusCode::Success, None);
-                    return Ok(reply);
+                    Ok(reply)
                 }
-                Err(e) => e,
+                Err(e) => {
+                    request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                    Err(e)
+                }
             }
         }
-        Err(e) => e,
-    };
-
-    request_map::update_status(request_id, StatusCode::Failed, None);
-    Err(error)
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        }
+    }
 }
 
 pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
@@ -44,14 +47,21 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
     ic_cdk::spawn(async move {
-        if let Ok((pay_token, pay_amount, transfer_id)) = check_arguments(&args, request_id, ts).await {
-            if (process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await).is_ok() {
-                request_map::update_status(request_id, StatusCode::Success, None);
-                return;
+        match check_arguments(&args, request_id, ts).await {
+            Ok((pay_token, pay_amount, transfer_id)) => {
+                match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
+                    Ok(_) => {
+                        request_map::update_status(request_id, StatusCode::Success, None);
+                    }
+                    Err(e) => {
+                        request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                    }
+                }
             }
-        };
-
-        request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e) => {
+                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            }
+        }
     });
 
     Ok(request_id)
@@ -65,7 +75,7 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
     let pay_token = match token_map::get_by_token(&args.pay_token) {
         Ok(token) => token,
         Err(e) => {
-            request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(e.clone()));
+            request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(&e));
             return Err(e);
         }
     };
@@ -201,7 +211,7 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
                 let error = format!("Swap #{} failed to verify tx {} #{}: duplicate block id", request_id, symbol, tx_id);
-                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some("Duplicate block id".to_string()));
+                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some("Duplicate block id"));
                 return Err(error);
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
@@ -218,7 +228,7 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
         }
         Err(e) => {
             let error = format!("Swap #{} failed to verify tx {} #{}: {}", request_id, symbol, tx_id, e);
-            request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(e));
+            request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
             Err(error)
         }
     }

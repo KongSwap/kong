@@ -22,7 +22,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
-    let error = match process_swap(
+    match process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -37,13 +37,13 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     {
         Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            return Ok(reply);
+            Ok(reply)
         }
-        Err(e) => e,
-    };
-
-    request_map::update_status(request_id, StatusCode::Failed, None);
-    Err(error)
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        }
+    }
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
@@ -54,7 +54,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
     ic_cdk::spawn(async move {
-        if (process_swap(
+        match process_swap(
             request_id,
             user_id,
             &pay_token,
@@ -65,14 +65,11 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             &to_address,
             ts,
         )
-        .await)
-            .is_ok()
+        .await
         {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            return;
-        }
-
-        request_map::update_status(request_id, StatusCode::Failed, None);
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+        };
     });
 
     Ok(request_id)
@@ -199,7 +196,7 @@ async fn transfer_from_token(request_id: u64, token: &StableToken, amount: &Nat,
         }
         Err(e) => {
             let error = format!("Swap #{} failed transfer_from user {} {}: {}", request_id, amount, symbol, e,);
-            request_map::update_status(request_id, StatusCode::SendPayTokenFailed, Some(e));
+            request_map::update_status(request_id, StatusCode::SendPayTokenFailed, Some(&e));
             Err(error)
         }
     }

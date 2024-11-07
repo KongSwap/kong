@@ -60,8 +60,7 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args.clone()), ts));
 
-    // the heavy lifting
-    process_add_pool(
+    match process_add_pool(
         request_id,
         user_id,
         &token_0,
@@ -77,6 +76,16 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         ts,
     )
     .await
+    {
+        Ok(reply) => {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        }
+    }
 }
 
 /// Check the arguments are valid, create new token_0 if it does not exist and calculate the amounts to be added to the pool
@@ -297,14 +306,14 @@ async fn process_add_pool(
                     Err(e) => {
                         let error = format!("AddPool Req #{}: Failed to add pool: {}", request_id, e);
                         error_log(&error);
-                        request_map::update_status(request_id, StatusCode::AddPoolFailed, Some(e));
+                        request_map::update_status(request_id, StatusCode::AddPoolFailed, Some(&e));
                     }
                 }
             }
             Err(e) => {
                 let error = format!("AddPool Req #{}: Failed to add token: {}", request_id, e);
                 error_log(&error);
-                request_map::update_status(request_id, StatusCode::AddLPTokenFailed, Some(e));
+                request_map::update_status(request_id, StatusCode::AddLPTokenFailed, Some(&e));
             }
         }
 
@@ -370,8 +379,8 @@ async fn verify_transfer_token(
                 );
                 info_log(&info);
                 match token_index {
-                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(message.clone())),
-                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(message.clone())),
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&message)),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&message)),
                 };
                 return Err(message);
             }
@@ -395,8 +404,8 @@ async fn verify_transfer_token(
             let info = format!("AddPool Req #{}: Failed to verify tx {} {}: {}", request_id, amount, symbol, e);
             info_log(&info);
             match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(e.clone())),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(e.clone())),
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
             };
             Err(e)
         }
@@ -449,8 +458,8 @@ async fn transfer_from_token(
             );
             info_log(&info);
             match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(e.clone())),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(e.clone())),
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(&e)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(&e)),
             };
             Err(e)
         }
@@ -488,7 +497,7 @@ fn update_liquidity_pool(
         }
         None => {
             let error = format!("Pool id {} not found", pool_id);
-            request_map::update_status(request_id, StatusCode::UpdatePoolAmountsFailed, Some(error.clone()));
+            request_map::update_status(request_id, StatusCode::UpdatePoolAmountsFailed, Some(&error));
             Err(error)
         }
     }
@@ -628,7 +637,7 @@ async fn return_tokens(
                     "AddPool Req #{}: Failed to return {} {}: {}",
                     request_id, amount_0, symbol_0, message
                 ));
-                request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(message));
+                request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
             }
         }
     }
@@ -668,7 +677,7 @@ async fn return_tokens(
                     "AddPool Req #{}: Failed to return {} {}: {}",
                     request_id, amount_1, symbol_1, message
                 ));
-                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(message));
+                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
             }
         }
     }

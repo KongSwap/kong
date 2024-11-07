@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::Path;
 use tokio_postgres::Client;
 
 use super::math_helpers::round_f64;
@@ -43,7 +44,7 @@ pub async fn dump_txs(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"txs.*.json").unwrap();
-    let files = fs::read_dir(dir_path)?
+    let mut files = fs::read_dir(dir_path)?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
             if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
@@ -52,11 +53,19 @@ pub async fn dump_txs(
                 None
             }
         })
-        .map(|entry| entry.path())
+        .map(|entry| {
+            // sort by the number in the filename
+            let file = entry.path();
+            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
+            let number_str = filename.split('.').nth(1).unwrap();
+            let number = number_str.parse::<u32>().unwrap();
+            (number, file)
+        })
         .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
 
     for file in files {
-        let file = File::open(file)?;
+        let file = File::open(file.1)?;
         let reader = BufReader::new(file);
         let txs_map: BTreeMap<StableTxId, StableTx> = serde_json::from_reader(reader)?;
 

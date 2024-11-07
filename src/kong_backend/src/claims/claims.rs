@@ -48,31 +48,28 @@ pub async fn process_claims() {
 
     let mut consecutive_errors = 0_u8;
     for claim in &claims {
-        match &claim.to_address {
-            Some(to_address) => {
-                let token = match token_map::get_by_token_id(claim.token_id) {
-                    Some(token) => token,
-                    None => continue, // continue to next claim if token not found
-                };
+        if let Some(to_address) = &claim.to_address {
+            let token = match token_map::get_by_token_id(claim.token_id) {
+                Some(token) => token,
+                None => continue, // continue to next claim if token not found
+            };
 
-                // create new request with CLAIMS_TIMER_USER_ID as user_id
-                let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
+            // create new request with CLAIMS_TIMER_USER_ID as user_id
+            let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
 
-                match process_claim(request_id, claim.claim_id, &token, &claim.amount, to_address, ts).await {
-                    Ok(_) => {
-                        consecutive_errors = 0;
-                    }
-                    Err(e) => {
-                        error_log(&format!("Error processing claim #{}: {}", claim.claim_id, e));
-                        consecutive_errors += 1;
-                        if consecutive_errors > 3 {
-                            error_log("Too many consecutive errors, stopping claims processing");
-                            break;
-                        }
+            match process_claim(request_id, claim.claim_id, &token, &claim.amount, to_address, ts).await {
+                Ok(_) => {
+                    consecutive_errors = 0;
+                }
+                Err(e) => {
+                    error_log(&format!("Error processing claim #{}: {}", claim.claim_id, e));
+                    consecutive_errors += 1;
+                    if consecutive_errors > 3 {
+                        error_log("Too many consecutive errors, stopping claims processing");
+                        break;
                     }
                 }
             }
-            None => (),
         };
     }
 }
@@ -179,7 +176,7 @@ async fn send_claim(
             // revert claim status to unclaimed
             update_unclaimed_status(claim_id);
 
-            request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(e));
+            request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
 
             Err(error)
         }

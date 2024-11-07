@@ -15,7 +15,7 @@ CREATE TABLE add_pool_args (
     token_0 TEXT NOT NULL,
     amount_0 DOUBLE PRECISION NOT NULL,
     block_index_0 BIGINT,
-    hash_0 TEXT,
+    tx_hash_0 TEXT,
     token_1 TEXT NOT NULL,
     amount_1 DOUBLE PRECISION NOT NULL,
     block_index_1 BIGINT,
