@@ -3,3 +3,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+body {
+  background-color: #5BB2CF;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+}

@@ -31,7 +31,7 @@ export function sortTableData(pools: any[], column: string, direction: 'asc' | '
     return [];
   }
 
-  return pools.slice().sort((a, b) => {
+  const sortedPools = pools.slice().sort((a, b) => {
     // Special handling for pool name
     if (column === 'poolName') {
       const aName = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
@@ -43,6 +43,12 @@ export function sortTableData(pools: any[], column: string, direction: 'asc' | '
 
     let aValue = parseValue(a[column]);
     let bValue = parseValue(b[column]);
+
+    // Ensure numeric comparison for "in wallet" column
+    if (column === 'formattedUsdValue' || column === 'total_24h_volume' || column === 'rolling_24h_volume') {
+      aValue = parseFloat(aValue) || 0;
+      bValue = parseFloat(bValue) || 0;
+    }
 
     if (typeof aValue === 'string') {
       aValue = aValue.toLowerCase();
@@ -58,6 +64,8 @@ export function sortTableData(pools: any[], column: string, direction: 'asc' | '
 
     return 0;
   });
+
+  return sortedPools;
 }
 
 /**

@@ -11,20 +11,7 @@ dotenv.config({
   override: true 
 });
 
-const canisterIds = {
-  local: {
-    KONG_BACKEND: "l4lgk-raaaa-aaaar-qahpq-cai",
-  },
-  staging: {
-    KONG_BACKEND: "2ipq2-uqaaa-aaaar-qailq-cai",
-  }
-};
-
 const ENV = process.env.DFX_NETWORK || 'local';
-
-Object.entries(canisterIds[ENV]).forEach(([key, value]) => {
-  process.env[`CANISTER_ID_${key}`] = value;
-});
 
 export default defineConfig({
   build: {

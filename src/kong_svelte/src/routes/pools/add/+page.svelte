@@ -10,7 +10,6 @@
   import { parseTokenAmount, formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-    import { walletStore } from "$lib/stores/walletStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -41,8 +40,6 @@
   let previewMode = false;
 
   // Add confirmation modal state
-  let showConfirmModal = false;
-
   let showReview = false;
 
   // Handle URL parameters
@@ -51,8 +48,7 @@
     const token1Id = $page.url.searchParams.get('token1');
 
     if (token0Id || token1Id) {
-      await tokenStore.loadTokens();
-      const allTokens = get(formattedTokens).tokens;
+      const allTokens = get(formattedTokens);
 
       if (token0Id) {
         const foundToken0 = allTokens.find(t => t.canister_id === token0Id);
@@ -72,9 +68,8 @@
 
   onMount(async () => {
     try {
-      await initializeFromParams();
-      await tokenStore.reloadTokensAndBalances();
-      tokens = get(formattedTokens).tokens;
+      await Promise.all([initializeFromParams(), tokenStore.loadBalances()]);
+      tokens = get(formattedTokens);
     } catch (err) {
       console.error("Error initializing:", err);
       error = "Failed to initialize tokens";
@@ -150,7 +145,7 @@
           // If it exceeds, calculate backwards from token1's max balance
           const reverseAmount = await PoolService.addLiquidityAmounts(
             token1.token,
-            BigInt(balance1.in_tokens) - BigInt(token1.fee),
+            Bbalance1.in_tokens - token1.fee,
             token0.token,
           );
           amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals);

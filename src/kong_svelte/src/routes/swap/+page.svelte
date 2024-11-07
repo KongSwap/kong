@@ -8,9 +8,8 @@
   let tokens: any = null;
 
   onMount(async () => {
-    tokenStore.loadTokens();
     try {
-      tokens = await TokenService.fetchTokens();
+      tokens = $tokenStore.tokens;
     } catch (error) {
       console.error('Error fetching tokens:', error);
     }
@@ -22,8 +21,10 @@
   };
 </script>
 
-<section class="flex flex-col items-center">
-  <button class="pt-32" on:click={claimTokens}>Claim Tokens</button>
+<section class="flex flex-col items-center justify-center pt-40">
+  {#if process.env.DFX_NETWORK === 'local'}
+    <button on:click={claimTokens}>Claim Tokens</button>
+  {/if}
   {#if tokens?.Ok}
     {#each tokens?.Ok as token}
       <div class="text-sm uppercase text-gray-500">

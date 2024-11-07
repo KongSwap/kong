@@ -1,6 +1,7 @@
 <script lang="ts">
   import Panel from '$lib/components/common/Panel.svelte';
   import { tokenStore } from '$lib/stores/tokenStore';
+  import TokenImages from '$lib/components/common/TokenImages.svelte';
 
   export let routingPath: string[] = [];
   export let currentRouteIndex: number;
@@ -13,11 +14,6 @@
     success: '#00E676',
     failed: '#FF1744'
   };
-
-  function getTokenLogo(symbol: string): string {
-    const token = $tokenStore.tokens.find(t => t.symbol === symbol);
-    return token?.logo || `/tokens/${symbol.toLowerCase()}.webp`;
-  }
 
   function getStepStatus(index: number) {
     if (swapStatus === 'failed' && index <= currentRouteIndex) {
@@ -68,11 +64,11 @@
       <div class="route">
         {#each routingPath as token, i}
           <div class="token-step" data-status={getStepStatus(i)}>
-            <img 
-              src={getTokenLogo(token)}
-              alt={token}
-              class="token-icon"
-              loading="eager"
+            <TokenImages
+              tokens={[
+                $tokenStore.tokens?.find(t => t.symbol === token) || "/tokens/not_verified.webp"
+              ]}
+              size={28}
             />
             {#if i < routingPath.length - 1}
               <div class="arrow">→</div>

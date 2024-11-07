@@ -1,6 +1,6 @@
 <!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
-  import { tokenStore, formattedTokens } from "$lib/stores/tokenStore";
+  import { tokenStore, formattedTokens, portfolioValue } from "$lib/stores/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import { RefreshCw } from "lucide-svelte";
@@ -8,12 +8,12 @@
   import Button from "$lib/components/common/Button.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
-  
+
   let selectedToken: any = null;
   let isModalOpen = false;
-  let amount = '';
-  let error = '';
-  let balance = 0;
+  let amount = "";
+  let error = "";
+  let balance = "0";
 
   function handleTokenClick(token: any) {
     selectedToken = token;
@@ -32,39 +32,42 @@
   function handleInput(event) {
     const value = event.detail.value;
     // Validate amount
-    if (parseFloat(value) > parseFloat(balance)) {
-      error = 'Insufficient balance';
+    if (parseFloat(value) > parseFloat(balance.toString())) {
+      error = "Insufficient balance";
     } else {
-      error = '';
+      error = "";
     }
   }
+  
 
-  $: balance = $formattedTokens.tokens.find(token => token.canister_id === selectedToken?.canister_id)?.formattedBalance || 0;
+  $: balance =
+    $formattedTokens?.find(
+      (token) => token.canister_id === selectedToken?.canister_id,
+    )?.formattedBalance || "0";
 </script>
 
 <div class="token-list w-full">
-  {#if $tokenStore.isLoading}
+  <div class="portfolio-value">
+    <button
+      class="portfolio-refresh-button"
+      on:click={handleReload}
+      aria-label="Refresh Portfolio Value"
+    >
+      <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
+      <p class="text-3xl font-bold font-mono">
+        ${$portfolioValue}
+      </p>
+      <div class="refresh-overlay">
+        <RefreshCw size={24} />
+      </div>
+    </button>
+  </div>
+  {#if $tokenStore.isLoading && $formattedTokens.tokens?.length === 0}
     <div class="loading"><LoadingIndicator /></div>
   {:else if $tokenStore.error}
     <div class="error">{$tokenStore.error}</div>
   {:else}
-    <div class="portfolio-value">
-      <button
-        class="portfolio-refresh-button"
-        on:click={handleReload}
-        aria-label="Refresh Portfolio Value"
-      >
-        <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-        <p class="text-3xl font-bold font-mono">
-          ${$formattedTokens.portfolioValue}
-        </p>
-        <div class="refresh-overlay">
-          <RefreshCw size={24} />
-        </div>
-      </button>
-    </div>
-
-    {#each $formattedTokens.tokens as token (token.canister_id)}
+    {#each $formattedTokens as token (token.canister_id)}
       <TokenRow {token} onClick={() => handleTokenClick(token)} />
     {/each}
   {/if}
@@ -84,25 +87,30 @@
         class="token-logo"
       />
       <div class="token-info w-full">
-        <h3 class="text-lg font-semibold text-yellow-500">{selectedToken.symbol}</h3>
-        <p class="text-base">{selectedToken.formattedBalance} {selectedToken.symbol}</p>
+        <h3 class="text-lg font-semibold text-yellow-500">
+          {selectedToken.symbol}
+        </h3>
+        <p class="text-base">
+          {selectedToken.formattedBalance}
+          {selectedToken.symbol}
+        </p>
         <p class="text-base">${selectedToken.formattedUsdValue}</p>
       </div>
     </div>
 
     <div class="transfer-section">
       <TokenQtyInput
-    bind:value={amount}
-    token={selectedToken}
-    {error}
-    on:input={handleInput}
-/>
+        bind:value={amount}
+        token={selectedToken}
+        {error}
+        on:input={handleInput}
+      />
       <TextInput
-    id="principal"
-    placeholder="Destination pid"
-    required
-    size="lg"
-/>
+        id="principal"
+        placeholder="Destination pid"
+        required
+        size="lg"
+      />
     </div>
 
     <div class="modal-buttons">

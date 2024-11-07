@@ -278,9 +278,10 @@ export class PoolService {
       }
 
       const result: Record<string, any[]> = await actor.user_balances([]);
+      console.log("result", result)
 
       if (!result || !result.Ok) {
-        throw new Error('Failed to fetch user pool balances');
+        throw new Error('Failed to fetch user pool balances', result);
       }
 
       const balances = result.Ok.map((lpToken) => lpToken.LP);

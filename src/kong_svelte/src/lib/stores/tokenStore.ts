@@ -81,10 +81,6 @@ function createTokenStore() {
 
   const getCurrentState = (): TokenState => get(store);
 
-  const enrichTokens = async (tokens: FE.Token[]): Promise<FE.Token[]> => {
-    return Promise.all(tokens.map(token => TokenService.enrichTokenWithMetadata(token)));
-  };
-
   const updateState = (newState: TokenState) => {
     const currentState = get(store);
     if (serializeState(currentState) !== serializeState(newState)) {
@@ -95,7 +91,6 @@ function createTokenStore() {
 
   const reloadTokensAndBalances = async () => {
     try {
-      await tokenStore.loadTokens(true); // Force refresh
       await tokenStore.loadBalances();
     } catch (error) {
       console.error("Failed to reload tokens and balances:", error);
@@ -104,38 +99,53 @@ function createTokenStore() {
 
   return {
     subscribe: store.subscribe,
-    loadTokens: async (forceRefresh = true) => {
+    loadTokens: async (forceRefresh = false) => {
       const currentState = getCurrentState();
 
       if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
         return currentState.tokens;
       }
 
-      store.update(s => ({ ...s, isLoading: true }));
-      
+      store.update((s) => ({ ...s, isLoading: true, tokens: [] }));
+
       try {
         const baseTokens = await TokenService.fetchTokens();
-        const icTokens = baseTokens.filter(token => 'IC' in token);
-        const enrichedTokens = await Promise.all(icTokens.map(token => TokenService.enrichTokenWithMetadata(token.IC)));
+        const icTokens = baseTokens
+          .filter((token) => 'IC' in token)
+          .map((token) => token.IC);
 
-        const newState: TokenState = {
-          ...currentState,
-          tokens: enrichedTokens,
-          isLoading: false,
-          lastTokensFetch: Date.now()
-        };
+        // Create a map to track tokens by their canister_id
+        const tokenMap = new Map<string, FE.Token>();
 
-        updateState(newState);
-        return enrichedTokens;
+        // Enrich tokens and update the store incrementally
+        await TokenService.enrichTokenWithMetadata(icTokens, (enrichedToken) => {
+          store.update((s) => {
+            // Check if the token already exists
+            const index = s.tokens.findIndex(
+              (t) => t.canister_id === enrichedToken.canister_id
+            );
+
+            if (index >= 0) {
+              // Update the existing token
+              const updatedTokens = [...s.tokens];
+              updatedTokens[index] = { ...updatedTokens[index], ...enrichedToken };
+              return { ...s, tokens: updatedTokens };
+            } else {
+              // Add new token
+              const newTokens = [...s.tokens, enrichedToken];
+              return { ...s, tokens: newTokens, lastTokensFetch: Date.now() };
+            }
+          });
+        });
+
+        store.update((s) => ({ ...s, isLoading: false }));
       } catch (error) {
         console.error('Error loading tokens:', error);
-        this.clearCache();
-        store.update(s => ({
+        store.update((s) => ({
           ...s,
           error: error.message,
-          isLoading: false
+          isLoading: false,
         }));
-        return [];
       }
     },
     getBalance: (canisterId: string) => {
@@ -222,33 +232,33 @@ const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, toke
     });
 };
 
-// Derived stores for better separation
-const balancesStore = derived(tokenStore, $tokenStore => $tokenStore.balances);
-const tokensStore = derived(tokenStore, $tokenStore => $tokenStore.tokens);
-
 export const portfolioValue: Readable<string> = derived(
-  [balancesStore, tokensStore],
-  ([$balances, $tokens], set) => {
-    calculatePortfolioValue($balances, $tokens).then(set);
+  [tokenStore],
+  ([$tokenStore]) => {
+    let totalValue = 0;
+
+    for (const token of $tokenStore.tokens) {
+      const usdValue = parseFloat($tokenStore.balances[token.canister_id]?.in_usd || '0');
+      totalValue += usdValue;
+    }
+
+    return formatToNonZeroDecimal(totalValue);
   }
 );
 
 // Derived store to prepare tokens with formatted values
-export const formattedTokens = derived(
-  [tokenStore, portfolioValue],
-  ([tokenStore, portfolioValue]) => {
-    return {
-      tokens: tokenStore.tokens.map(token => {
-        const balance = tokenStore.balances[token.canister_id]?.in_tokens || 0;
-        const usdValue = tokenStore.balances[token.canister_id]?.in_usd || 0;
- 
-        return {
-          ...token,
-          formattedBalance: formatTokenAmount(balance, token.decimals),
-          formattedUsdValue: formatToNonZeroDecimal(Number(usdValue)) || '0',
-        };
-      }),
-      portfolioValue: formatToNonZeroDecimal(portfolioValue) || '0',
-    };
+export const formattedTokens: Readable<FE.Token[]> = derived(
+  tokenStore,
+  ($tokenStore) => {
+    return $tokenStore.tokens.map((token) => {
+      const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+      const usdValue = $tokenStore.balances[token.canister_id]?.in_usd || '0';
+
+      return {
+        ...token,
+        formattedBalance: formatTokenAmount(balance, token.decimals).toString(),
+        formattedUsdValue: formatToNonZeroDecimal(Number(usdValue)) || '0',
+      };
+    });
   }
 );

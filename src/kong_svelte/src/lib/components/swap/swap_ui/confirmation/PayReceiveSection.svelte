@@ -1,4 +1,5 @@
 <script lang="ts">
+	import  TokenImages from '$lib/components/common/TokenImages.svelte';
   import { tokenStore } from '$lib/stores/tokenStore';
   
   export let payToken: string;
@@ -11,10 +12,11 @@
   <div class="token-amount">
     <span class="label">You Pay</span>
     <div class="amount">
-      <img 
-        src={$tokenStore.tokens?.find(t => t.symbol === payToken)?.logo || "/tokens/not_verified.webp"}
-        alt={payToken}
-        class="token-icon"
+      <TokenImages
+        tokens={[
+          $tokenStore.tokens?.find(t => t.symbol === payToken) || "/tokens/not_verified.webp"
+        ]}
+        size={24}
       />
       <span class="value">{payAmount}</span>
       <span class="token">{payToken}</span>
@@ -24,10 +26,11 @@
   <div class="token-amount">
     <span class="label">You Receive</span>
     <div class="amount">
-      <img 
-        src={$tokenStore.tokens?.find(t => t.symbol === receiveToken)?.logo || "/tokens/not_verified.webp"}
-        alt={receiveToken}
-        class="token-icon"
+      <TokenImages
+        tokens={[
+          $tokenStore.tokens?.find(t => t.symbol === receiveToken) || "/tokens/not_verified.webp"
+        ]}
+        size={24}
       />
       <span class="value">{receiveAmount}</span>
       <span class="token">{receiveToken}</span>
@@ -73,11 +76,5 @@
   .token {
     color: #ffd700;
     font-weight: 500;
-  }
-
-  .token-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
   }
 </style>

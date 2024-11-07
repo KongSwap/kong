@@ -60,21 +60,8 @@ declare global {
 
   namespace BE {
     interface Token {
-      IC: {
-        fee: bigint;
-        decimals: number;
-        token: string;
-        token_id: number;
-        chain: string;
-        name: string;
-        canister_id: string;
-        icrc1: boolean;
-        icrc2: boolean;
-        icrc3: boolean;
-        pool_symbol: string;
-        symbol: string;
-        on_kong: boolean;
-      }
+      IC: BE.ICToken.IC;
+      LP: BE.LPToken.LP;
     }
 
     interface ICToken {

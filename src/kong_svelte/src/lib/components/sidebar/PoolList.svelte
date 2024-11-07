@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { walletStore } from "$lib/stores/walletStore";
-  import { PoolService } from "$lib/services/PoolService";
+    import { poolStore } from "$lib/stores/poolStore";
 
   let loading = true;
   let error: string | null = null;
@@ -11,8 +11,8 @@
     try {
       loading = true;
       error = null;
-      poolBalances = await PoolService.fetchUserPoolBalances();
-      console.log("poolBalances", poolBalances);
+      await poolStore.loadUserPoolBalances();
+      poolBalances = $poolStore.userPoolBalances;
     } catch (err) {
       error = err.message;
       poolBalances = [];

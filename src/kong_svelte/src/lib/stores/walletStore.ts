@@ -142,7 +142,7 @@ async function createActor(canisterId: string, idlFactory: any): Promise<ActorSu
     const isAuthenticated = isConnected();
     const isLocalEnv = process.env.DFX_NETWORK === 'local';
     const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
-    const agent = HttpAgent.createSync({ host });
+    const agent = new HttpAgent({ host });
     if (isLocalEnv) {
     await agent.fetchRootKey();
   }
@@ -157,7 +157,7 @@ export async function getActor(canisterId = kongBackendCanisterId, canisterType:
   if (!idl) {
     throw new Error(`No IDL found for canister type: ${canisterType}`);
   }
-  
+
   const actor = await createActor(canisterId, idl);
   
   // Verify we got the right type of actor

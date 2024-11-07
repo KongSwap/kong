@@ -28,5 +28,8 @@
   },
   "kong2_ledger": {
     "ic": "qht43-xqaaa-aaaar-qajrq-cai"
+  },
+  "kong_svelte": {
+    "ic": "edoy4-liaaa-aaaar-qakha-cai"
   }
 }

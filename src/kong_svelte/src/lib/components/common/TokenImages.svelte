@@ -18,8 +18,8 @@
         z-index: {30 - (i * 10)};
         margin-left: {i === 0 ? 0 : -overlap}px;
       "
-      src={token.logo}
-      alt={token.symbol}
+      src={token?.logo ?? '/tokens/not_verified.webp'}
+      alt={token?.symbol}
       loading="lazy"
     />
   {/each}

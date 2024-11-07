@@ -33,11 +33,6 @@
   let sidebarWidth = 500;
   let dragTimeout: number;
 
-  // Reactive subscription to walletStore
-  $: if ($walletStore.isConnected) {
-    tokenStore.loadBalances();
-  }
-
   // Debounce utility
   function debounce(fn: Function, ms: number) {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -96,18 +91,12 @@
 
   // Combine all onMount logic
   onMount(async () => {
-    await tokenStore.loadBalances();
-    await tokenStore.loadTokens();
-
     if (browser) {
       window.addEventListener("resize", debouncedResize, { passive: true });
     }
 
     // Initialize resize on mount
     debouncedResize();
-
-    // Load user pool balances
-    await poolStore.loadUserPoolBalances();
   });
 
   // Clean up on destroy

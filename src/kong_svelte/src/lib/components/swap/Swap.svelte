@@ -78,13 +78,6 @@
   let maxAllowedSlippage = slippage;
   let isSlippageExceeded = false;
 
-  onMount(async () => {
-    if ($walletStore.isConnected) {
-      await tokenStore.loadTokens();
-      await tokenStore.loadBalances();
-    }
-  });
-
   onDestroy(() => {
     if (intervalId) {
       clearInterval(intervalId);

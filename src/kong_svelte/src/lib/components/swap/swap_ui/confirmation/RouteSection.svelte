@@ -1,4 +1,5 @@
 <script lang="ts">
+	import  TokenImages  from '$lib/components/common/TokenImages.svelte';
   import { tokenStore } from '$lib/stores/tokenStore';
 
   export let routingPath: string[] = [];
@@ -24,10 +25,11 @@
         <div class="token-pair">
           <div class="token-badge-small from {token === payToken ? 'highlight' : ''}">
             <div class="token-icon-wrapper">
-              <img 
-                src={$tokenStore.tokens?.find(t => t.symbol === token)?.logo || "tokens/not_verified.webp"}
-                alt={token}
-                class="token-icon-small"
+              <TokenImages
+                tokens={[
+                  $tokenStore.tokens?.find(t => t.symbol === token) || "/tokens/not_verified.webp"
+                ]}
+                size={24}
               />
             </div>
             <span class="token-symbol">{token}</span>
@@ -38,10 +40,11 @@
           </div>
           <div class="token-badge-small to {routingPath[i + 1] === receiveToken ? 'highlight' : ''}">
             <div class="token-icon-wrapper">
-              <img 
-                src={$tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1])?.logo || "/tokens/not_verified.webp"}
-                alt={routingPath[i + 1]}
-                class="token-icon-small"
+              <TokenImages
+                tokens={[
+                  $tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1]) || "/tokens/not_verified.webp"
+                ]}
+                size={24}
               />
             </div>
             <span class="token-symbol">{routingPath[i + 1]}</span>
@@ -132,13 +135,6 @@
     width: 24px;
     height: 24px;
     flex-shrink: 0;
-  }
-
-  .token-icon-small {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    object-fit: cover;
   }
 
   .token-symbol {

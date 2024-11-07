@@ -36,6 +36,6 @@ export const lpTableHeaders: TableHeader[] = [
 export const tokensTableHeaders: TableHeader[] = [
   { label: 'stats.tokenHeader', column: 'symbol', textClass: 'text-left text-nowrap text-xl md:text-3xl' },
   { label: 'stats.priceHeader', column: 'price', textClass: 'text-right text-nowrap text-xl md:text-3xl' },
-  { label: 'stats.24hVolumeHeader', column: 'rolling_24h_volume', textClass: 'text-right text-nowrap text-xl md:text-3xl' },
+  { label: 'stats.24hVolumeHeader', column: 'total_24h_volume', textClass: 'text-right text-nowrap text-xl md:text-3xl' },
   { label: 'stats.inWalletHeader', column: 'formattedUsdValue', requiresAuth: true, textClass: 'text-right text-nowrap text-xl md:text-3xl' },
 ];

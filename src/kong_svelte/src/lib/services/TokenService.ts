@@ -11,6 +11,13 @@ import { Principal } from '@dfinity/principal';
 
 export class TokenService {
   protected static instance: TokenService;
+  private static logoCache = new Map<string, string>();
+  private static priceCache = new Map<string, { price: number; timestamp: number }>();
+  private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private static readonly DEFAULT_LOGOS = {
+    [ICP_CANISTER_ID]: '/tokens/icp.webp',
+    DEFAULT: '/tokens/not_verified.webp'
+  };
 
   public static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -25,17 +32,106 @@ export class TokenService {
     return result.Ok;
   }
 
-  public static async enrichTokenWithMetadata(token: FE.Token): Promise<FE.Token> {
+  /**
+   * Enrich tokens with price and volume first, then fetch images separately.
+   */
+  public static async enrichTokenWithMetadata(
+    tokens: FE.Token[],
+    onTokenEnriched?: (token: FE.Token) => void
+  ): Promise<void> {
     const poolData = get(poolStore);
+
+    // Enrich tokens with price and volume first
+    for (const token of tokens) {
+      try {
+        const [price, volume24h] = await Promise.all([
+          this.getCachedPrice(token),
+          this.calculate24hVolume(token, poolData.pools),
+        ]);
+
+        const enrichedToken = {
+          ...token,
+          price,
+          total_24h_volume: volume24h,
+          // We'll add 'logo' later
+        };
+
+        if (onTokenEnriched) {
+          onTokenEnriched(enrichedToken);
+        }
+      } catch (error) {
+        console.error(`Error enriching token ${token.symbol}:`, error);
+        if (onTokenEnriched) {
+          onTokenEnriched(token);
+        }
+      }
+    }
+
+    // After all tokens are enriched with price and volume, fetch images
+    for (const token of tokens) {
+      try {
+        const logo = await this.getCachedLogo(token);
+
+        // Update the token with the logo
+        if (onTokenEnriched) {
+          onTokenEnriched({ ...token, logo });
+        }
+      } catch (error) {
+        console.error(`Error fetching logo for token ${token.symbol}:`, error);
+        // Optionally update with default logo
+        if (onTokenEnriched) {
+          onTokenEnriched({ ...token, logo: this.DEFAULT_LOGOS.DEFAULT });
+        }
+      }
+    }
+  }
+
+  private static async getCachedPrice(token: FE.Token): Promise<number> {
+    const cached = this.priceCache.get(token.canister_id);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.price;
+    }
+
     const price = await this.fetchPrice(token);
-    const volume24h = this.calculate24hVolume(token, poolData.pools);
-    
-    return {
-        ...token,
-        price,
-        total_24h_volume: await volume24h,
-        logo: await this.fetchTokenLogo(token),
-    };
+    this.priceCache.set(token.canister_id, {
+      price,
+      timestamp: Date.now()
+    });
+    return price;
+  }
+
+  private static async getCachedLogo(token: FE.Token): Promise<string> {
+    // Check cache first
+    if (this.logoCache.has(token.canister_id)) {
+      return this.logoCache.get(token.canister_id);
+    }
+
+    // Return default logos immediately if applicable
+    if (token.canister_id === ICP_CANISTER_ID) {
+      const logo = this.DEFAULT_LOGOS[ICP_CANISTER_ID];
+      this.logoCache.set(token.canister_id, logo);
+      return logo;
+    }
+
+    try {
+      const actor = await getActor(token.canister_id, 'icrc1');
+      const res = await actor.icrc1_metadata();
+      const logoEntry = res.find(
+        ([key]) => key === 'icrc1:logo' || key === 'icrc1_logo'
+      );
+
+      const logo = logoEntry && logoEntry[1]?.Text 
+        ? logoEntry[1].Text 
+        : this.DEFAULT_LOGOS.DEFAULT;
+
+      this.logoCache.set(token.canister_id, logo);
+      return logo;
+    } catch (error) {
+      console.error('Error fetching token logo:', error);
+      const defaultLogo = this.DEFAULT_LOGOS.DEFAULT;
+      this.logoCache.set(token.canister_id, defaultLogo);
+      return defaultLogo;
+    }
   }
 
   public static async fetchBalances(tokens: FE.Token[], principalId: string = null): Promise<Record<string, FE.TokenBalance>> {
@@ -255,6 +351,7 @@ export class TokenService {
         return '/tokens/not_verified.webp';
       }
     } catch (error) {
+      console.log(error);
       console.error('Error getting icrc1 token metadata:', token);
 
       if (token.canister_id === ICP_CANISTER_ID) {
@@ -274,9 +371,7 @@ export class TokenService {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
       const actor = await getActor(kongFaucetId, 'kong_faucet');
-      const res = await actor.claim();
-      // TODO: Refresh tokens and lps
-      await Promise.all([tokenStore.loadTokens(), poolStore.loadPools(), tokenStore.loadBalances()]);
+      await actor.claim();
     } catch (error) {
       console.error('Error claiming faucet tokens:', error);
     }

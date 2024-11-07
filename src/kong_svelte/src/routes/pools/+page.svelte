@@ -21,15 +21,10 @@
   import { onMount } from "svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
 
-  onMount(async () => {
-    await tokenStore.loadTokens();
-  });
-
   /**
    * Derived store to create a token map for quick lookup.
    * Automatically updates when tokenStore changes.
    */
-  tokenStore.loadTokens();
   const tokenMap = derived(tokenStore, ($tokenStore) => {
     const map = new Map<string, any>();
     $tokenStore.tokens.forEach((token) => {
@@ -159,7 +154,7 @@
                           </div>
                         </td>
                         <td class="p-2 text-right">
-                          ${formatToNonZeroDecimal($tokenMap.get(pool.address_0).price)}
+                          ${formatToNonZeroDecimal($tokenMap.get(pool.address_0)?.price ?? 0)}
                         </td>
                         <td class="p-2 text-right">
                           ${formatToNonZeroDecimal(pool.tvl)}

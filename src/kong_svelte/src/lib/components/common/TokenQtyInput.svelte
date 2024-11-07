@@ -12,8 +12,6 @@
 	export let placeholder: string = '0.00';
 	export let onTokenSelect: () => void;
 
-	poolStore.loadPools();
-
 	const dispatch = createEventDispatcher();
 
 	// Handle input validation and formatting
@@ -35,8 +33,8 @@
 
 	// Use reactive statements to compute derived values
 	$: pool = $poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID);
-	$: poolPrice = pool?.price ? parseFloat(pool.price) : 0;
-	$: usdValue = formatToNonZeroDecimal(parseFloat(value || '0') * poolPrice);
+	$: poolPrice = pool?.price ? parseFloat(pool.price.toString()) : 0;
+	$: usdValue = formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice);
 </script>
 
 <div class="flex flex-col gap-2 w-full">
