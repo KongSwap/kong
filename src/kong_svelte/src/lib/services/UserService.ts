@@ -46,7 +46,6 @@ export class UserService {
     try {
       const actor = await getActor();
       const result = await actor.user_balances([]);
-      console.log("user_balances result", result);
       if (result.Ok) {
         const balances: Record<string, any> = {};
         result.Ok.forEach((lpToken) => {

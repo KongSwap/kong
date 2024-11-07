@@ -2,10 +2,8 @@
 <script lang="ts">
     import Panel from '$lib/components/common/Panel.svelte';
     import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
-    import { TokenService } from '$lib/services/TokenService';
-    import { tokenStore } from '$lib/stores/tokenStore';
-    import { onMount } from 'svelte';
     import { formattedTokens } from '$lib/stores/tokenStore';
+    import { fade } from 'svelte/transition';
 
     export let show = false;
     export let onSelect: (token: string) => void;
@@ -15,17 +13,7 @@
     let searchQuery = '';
     let standardFilter = 'all';
 
-    onMount(async () => {
-        try {
-            // Load balances into tokenStore
-            tokenStore.loadBalances();
-
-        } catch (error) {
-            console.error('Error loading tokens:', error);
-        }
-    });
-
-    $: filteredTokens = $formattedTokens.tokens.filter(token => {
+    $: filteredTokens = $formattedTokens.filter(token => {
         // First check if token matches search query
         const matchesSearch = 
             token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||

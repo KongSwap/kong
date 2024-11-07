@@ -16,12 +16,33 @@ export const formatTokenBalance = (balance = "0", decimals: number): string => {
   return `${integerPart}.${paddedFractionalPart}`;
 };
 
-export const formatUSD = (number: number | string): string => {
+export const formatToNonZeroDecimal = (number: number | string): string => {
+  const num = typeof number === 'string' ? parseFloat(number) : number;
+
+  // If the number is less than 0.01, format with more decimal places
+  if (num < 0.01 && num > 0) {
+    const numberStr = num.toString();
+    const decimalPart = numberStr.split('.')[1] || '';
+    
+    // Find the first non-zero index in the decimal part
+    const firstNonZeroIndex = decimalPart.search(/[1-9]/) + 2;
+
+    // If a non-zero digit is found, format accordingly
+    if (firstNonZeroIndex !== -1) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'decimal',
+        minimumFractionDigits: firstNonZeroIndex,
+        maximumFractionDigits: firstNonZeroIndex
+      }).format(num);
+    }
+  }
+
+  // Default formatting for numbers >= 0.01
   return new Intl.NumberFormat('en-US', {
     style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(Number(number));
+  }).format(num);
 };
 
 export const formatTokenAmount = (amount: bigint | number | string, decimals: number): number => {

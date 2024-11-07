@@ -3,7 +3,7 @@
     import Panel from '$lib/components/common/Panel.svelte';
     
     export let isOpen: boolean = false;
-    export let onClose: () => void;
+    export let onClose: () => void = () => {};
     export let title: string = '';
     export let width: string = 'auto';
     export let height: string = 'auto';

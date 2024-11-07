@@ -1,6 +1,12 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
 declare global {
+  interface CanisterIdIcpLedger {
+    [key: string]: any;
+  }
+  
+  const CANISTER_ID_ICP_LEDGER: CanisterIdIcpLedger;
+  
   namespace FE {
     interface TokenBalance {
       in_tokens: bigint;
@@ -22,6 +28,24 @@ declare global {
       on_kong: boolean;
       pool_symbol: string;
       logo?: string;
+      total_24h_volume?: bigint;
+      price?: number;
+      tvl?: number;
+      balance?: bigint;
+    }
+
+    interface UserPoolBalance {
+      amount_0: bigint;
+      amount_1: bigint;
+      balance: bigint;
+      name: string;
+      symbol: string;
+      symbol_0: string;
+      symbol_1: string;
+      ts: bigint;
+      usd_amount_0: number;
+      usd_amount_1: number;
+      usd_balance: number;
     }
 
     interface Transaction {
@@ -36,21 +60,8 @@ declare global {
 
   namespace BE {
     interface Token {
-      IC: {
-        fee: bigint;
-        decimals: number;
-        token: string;
-        token_id: number;
-        chain: string;
-        name: string;
-        canister_id: string;
-        icrc1: boolean;
-        icrc2: boolean;
-        icrc3: boolean;
-        pool_symbol: string;
-        symbol: string;
-        on_kong: boolean;
-      }
+      IC: BE.ICToken.IC;
+      LP: BE.LPToken.LP;
     }
 
     interface ICToken {

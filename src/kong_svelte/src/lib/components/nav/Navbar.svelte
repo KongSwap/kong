@@ -11,7 +11,7 @@
   import Modal from "../common/Modal.svelte";
     import LanguageSelector from "../common/LanguageSelector.svelte";
 
-  type Tab = "swap" | "pool" | "stats";
+  type Tab = "swap" | "pools" | "stats";
 
   let activeTab: Tab = "swap";
   let sidebarOpen = false;
@@ -19,15 +19,15 @@
   let isSpinning = false;
   let navOpen = false;
   let isModalOpen = false;
-  const tabs: Tab[] = ["swap", "pool", "stats"];
+  const tabs: Tab[] = ["swap", "pools", "stats"];
   const titles = {
     swap: {
       desktop: "/titles/swap_title.webp",
       mobile: "/titles/swap_title.webp",
     },
-    pool: {
-      desktop: "/titles/stats_title.webp",
-      mobile: "/titles/stats_title.webp",
+    pools: {
+      desktop: "/titles/swap_title.webp",
+      mobile: "/titles/swap_title.webp",
     },
     stats: {
       desktop: "/titles/stats_title.webp",
@@ -55,7 +55,7 @@
   }
 
   function determineActiveTab(path: string): Tab {
-    return path.includes("stats") ? "stats" : path.includes("pool") ? "pool" : "swap";
+    return path.includes("stats") ? "stats" : path.includes("pools") ? "pools" : "swap";
   }
 
   onMount(() => {

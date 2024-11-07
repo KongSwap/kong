@@ -7,6 +7,7 @@
   import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
   
   export let title: string;
   export let token: string;
@@ -18,7 +19,7 @@
   export let slippage = 0;
 
   // Get token info and formatted values
-  $: tokenInfo = $formattedTokens.tokens.find(t => t.symbol === token);
+  $: tokenInfo = $formattedTokens.find(t => t.symbol === token);
   $: decimals = tokenInfo?.decimals || 8;
   $: formattedBalance = tokenInfo?.formattedBalance?.toString() || "0";
   $: formattedUsdValue = tokenInfo?.formattedUsdValue || "0";
@@ -118,10 +119,9 @@
     <div class="input-section">
       <div class="amount-container">
         <div class="token-logo">
-          <img
-            src={tokenInfo?.logo || "/tokens/not_verified.webp"}
-            alt={token}
-            class="token-image"
+          <TokenImages
+            tokens={[tokenInfo]}
+            containerClass="mr-1"
             loading="lazy"
           />
         </div>
@@ -445,15 +445,6 @@
 .token-logo {
   display: flex;
   align-items: center;
-}
-
-.token-image {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid var(--color-white-alpha-10);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Balance Display */

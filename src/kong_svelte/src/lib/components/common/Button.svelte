@@ -96,17 +96,19 @@
     }
   }
 
-  function handleClick() {
-    if (!disabled) {
-      onClick();
+  function handleClick(event: MouseEvent) {
+    if (disabled) {
+      event.preventDefault(); // Prevent default action if disabled
+      return;
     }
+    onClick();
   }
 
   $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''} ${className}`;
   $: formattedWidth = formatDimension(width);
 </script>
 
-<button
+<a
   use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
   class={buttonClass}
   on:click={handleClick}
@@ -114,8 +116,9 @@
   on:mouseup={handleMouseUp}
   on:mouseenter={handleMouseEnter}
   on:mouseleave={handleMouseLeave}
-  {disabled}
+  data-sveltekit-preload-code="eager"
   style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
+  aria-disabled={disabled}
 >
   <div class="button-container" class:auto-size={width === 'auto'}>
     <img src={getImagePath('l')} alt="" class="left-part" />
@@ -125,7 +128,7 @@
       <slot>{text}</slot>
     </span>
   </div>
-</button>
+</a>
 
 <style>
   .pixel-button {
@@ -148,7 +151,7 @@
     align-items: stretch;
     width: 100%;
     position: relative;
-}
+  }
 
   .button-container.auto-size {
     width: fit-content;

@@ -1,7 +1,8 @@
 <!-- src/lib/components/sidebar/TokenRow.svelte -->
 <script lang="ts">
+	import TokenImages from '$lib/components/common/TokenImages.svelte';
   export let token: {
-    logo: string;
+    logo?: string;
     symbol: string;
     name: string;
     formattedBalance: string;
@@ -16,9 +17,8 @@
   type="button"
 >
   <div class="token-info">
-    <img
-      src={token.logo || "/tokens/not_verified.webp"}
-      alt={token.name}
+    <TokenImages
+      tokens={[token]}
       class="h-[48px] w-[48px] rounded-full"
       loading="lazy"
     />

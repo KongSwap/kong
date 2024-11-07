@@ -30,9 +30,8 @@ const config = {
       ],
     },
   }),
-  onwarn: (warning, handler) => {
-    // Disable all a11y warnings
-    if (warning.code.startsWith('a11y-')) {
+  onwarn: (warning, handler) => {    
+    if (warning.code.startsWith('a11y_')) {
       return;
     }
     handler(warning);

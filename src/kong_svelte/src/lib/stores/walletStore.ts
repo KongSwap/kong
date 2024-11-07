@@ -10,7 +10,6 @@ import {
 } from '../../../../declarations/kong_faucet';
 import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
 import { UserService } from '$lib/services/UserService';
-import { ICRC1_IDL } from '$lib/idls/icrc1.idl.js';
 import { ICRC2_IDL } from '$lib/idls/icrc2.idl.js';
 import { browser } from '$app/environment';
 
@@ -20,10 +19,10 @@ export const availableWallets = walletsList;
 // IDL Mappings
 export type CanisterType = 'kong_backend' | 'icrc1' | 'icrc2' | 'kong_faucet';
 export const canisterIDLs = {
-  kong_backend: kongBackendIDL,
-  kong_faucet: kongFaucetIDL,
-  icrc1: ICRC1_IDL,
-  icrc2: ICRC2_IDL,
+  'kong_backend': kongBackendIDL,
+  'kong_faucet': kongFaucetIDL,
+  'icrc1': ICRC2_IDL,
+  'icrc2': ICRC2_IDL,
 }
 
 // Stores
@@ -140,21 +139,31 @@ export function isConnected(): boolean {
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
   initializePNP();
-  if(browser) {
     const isAuthenticated = isConnected();
-    const isLocalEnv = window.location.hostname.includes('localhost');
+    const isLocalEnv = process.env.DFX_NETWORK === 'local';
     const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
-    const agent = HttpAgent.createSync({ host });
+    const agent = new HttpAgent({ host });
     if (isLocalEnv) {
     await agent.fetchRootKey();
   }
   return isAuthenticated
     ? await pnp.getActor(canisterId, idlFactory)
     : Actor.createActor(idlFactory, { agent, canisterId });
-  }
 }
 
 // Export function to get the actor
 export async function getActor(canisterId = kongBackendCanisterId, canisterType: CanisterType = 'kong_backend'): Promise<ActorSubclass<any>> {
-  return await createActor(canisterId, canisterIDLs[canisterType]);
+  const idl = canisterIDLs[canisterType];
+  if (!idl) {
+    throw new Error(`No IDL found for canister type: ${canisterType}`);
+  }
+
+  const actor = await createActor(canisterId, idl);
+  
+  // Verify we got the right type of actor
+  if (canisterType === 'icrc2' && !actor.icrc2_approve) {
+    throw new Error('Created actor does not have ICRC2 methods');
+  }
+
+  return actor;
 }

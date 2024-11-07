@@ -1,17 +1,16 @@
 <script lang="ts">
 	import { poolStore, poolsList } from '$lib/stores/poolStore';
 	import { createEventDispatcher } from 'svelte';
-	import { formatUSD, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 	import { tokenStore } from '$lib/stores/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 
-	export let value: string = '';
+	export let value: string | number = '';
 	export let token: FE.Token;
 	export let error: string = '';
 	export let disabled: boolean = false;
 	export let placeholder: string = '0.00';
-
-	poolStore.loadPools();
+	export let onTokenSelect: () => void;
 
 	const dispatch = createEventDispatcher();
 
@@ -25,15 +24,17 @@
 
 	function setMax() {
 		const rawBalance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
-		const max = formatTokenAmount(rawBalance, token.decimals);
+		console.log(rawBalance);
+		console.log(token.fee);
+		const max = formatTokenAmount(BigInt(rawBalance) - BigInt(token.fee), token.decimals);
 		value = max.toString();
 		dispatch('input', { value: max.toString() });
 	}
 
 	// Use reactive statements to compute derived values
 	$: pool = $poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID);
-	$: poolPrice = pool?.price ? parseFloat(pool.price) : 0;
-	$: usdValue = formatUSD(parseFloat(value || '0') * poolPrice);
+	$: poolPrice = pool?.price ? parseFloat(pool.price.toString()) : 0;
+	$: usdValue = formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice);
 </script>
 
 <div class="flex flex-col gap-2 w-full">
@@ -46,7 +47,7 @@
 				bind:value
 				on:input={handleInput}
 				class="
-					w-full px-4 py-4 pr-[4.5rem]
+					w-full px-4 py-4 pr-[8rem]
 					placeholder:text-white/50
 					bg-white/5 
 					border-2 
@@ -61,9 +62,14 @@
 					{error ? 'border-red-500/30 focus:border-red-400' : 'border-white/10 focus:border-yellow-400'}
 				"
 			/>
-			<div class="absolute right-0 inset-y-0 flex items-center pr-4">
+			<button
+				type="button"
+				on:click={onTokenSelect}
+				class="absolute right-0 inset-y-0 flex items-center px-4 gap-2 hover:bg-white/5 rounded-r-lg transition-colors"
+			>
 				<span class="text-white/50 text-lg font-play">{token.symbol}</span>
-			</div>
+				<span class="text-white/50">↓</span>
+			</button>
 		</div>
 	</div>
 

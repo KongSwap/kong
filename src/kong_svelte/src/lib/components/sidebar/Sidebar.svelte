@@ -9,11 +9,11 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-
-  // Lazy-loaded components
-  let SocialSection;
-  let TokenList;
-  let TransactionHistory;
+  import { poolStore } from "$lib/stores/poolStore";
+  import TokenList from "./TokenList.svelte";
+  import SocialSection from "./SocialSection.svelte";
+  import TransactionHistory from "./TransactionHistory.svelte";
+  import PoolList from "./PoolList.svelte";
 
   // Exported props
   export let sidebarOpen: boolean;
@@ -23,18 +23,15 @@
   let isDragging = false;
   let startX: number;
   let startWidth: number;
-  let activeTab: "tokens" | "pools" | "transactions" = 
-      browser ? 
-          (localStorage.getItem('sidebarActiveTab') as "tokens" | "pools" | "transactions") || "tokens" 
-          : "tokens";
+  let activeTab: "tokens" | "pools" | "transactions" = browser
+    ? (localStorage.getItem("sidebarActiveTab") as
+        | "tokens"
+        | "pools"
+        | "transactions") || "tokens"
+    : "tokens";
   let isMobile = false;
   let sidebarWidth = 500;
   let dragTimeout: number;
-
-  // Reactive subscription to walletStore
-  $: if ($walletStore.isConnected) {
-    tokenStore.loadBalances();
-  }
 
   // Debounce utility
   function debounce(fn: Function, ms: number) {
@@ -47,7 +44,9 @@
 
   const debouncedResize = debounce(() => {
     isMobile = window.innerWidth <= 768;
-    sidebarWidth = isMobile ? window.innerWidth : Math.min(500, window.innerWidth - 64);
+    sidebarWidth = isMobile
+      ? window.innerWidth
+      : Math.min(500, window.innerWidth - 64);
   }, 100);
 
   // Drag event handlers
@@ -86,28 +85,16 @@
     return {
       destroy() {
         node.removeEventListener("mousedown", handleMouseDown);
-      }
+      },
     };
   }
 
   // Combine all onMount logic
   onMount(async () => {
-    await tokenStore.loadBalances();
-    await tokenStore.loadTokens();
-
     if (browser) {
       window.addEventListener("resize", debouncedResize, { passive: true });
     }
 
-    // Lazy load components
-    const [tokenListModule, socialSectionModule, transactionHistoryModule] = await Promise.all([
-      import("./TokenList.svelte"),
-      import("./SocialSection.svelte"),
-      import("./TransactionHistory.svelte")
-    ]);
-    TokenList = tokenListModule.default;
-    SocialSection = socialSectionModule.default;
-    TransactionHistory = transactionHistoryModule.default;
     // Initialize resize on mount
     debouncedResize();
   });
@@ -126,7 +113,7 @@
   function setActiveTab(tab: "tokens" | "pools" | "transactions") {
     activeTab = tab;
     if (browser) {
-      localStorage.setItem('sidebarActiveTab', tab);
+      localStorage.setItem("sidebarActiveTab", tab);
     }
   }
 </script>
@@ -152,11 +139,7 @@
       in:fly={{ x: 500, duration: 300, easing: cubicOut }}
       out:fly={{ x: 500, duration: 300, easing: cubicOut }}
     >
-      <div
-        class="resize-handle"
-        use:resizeHandle
-        aria-label="Resize sidebar"
-      >
+      <div class="resize-handle" use:resizeHandle aria-label="Resize sidebar">
         <div class="resize-line" />
         <div class="resize-dots" />
         <div class="resize-line" />
@@ -178,23 +161,19 @@
             <div class="scroll-container p-2">
               {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
-              {:else}
-                {#if activeTab === "tokens" && TokenList}
-                  <TokenList />
-                {:else if activeTab === "pools" && SocialSection  }
-                  <!-- Add your pools component here -->
-                {:else if activeTab === "transactions"}
-                  <TransactionHistory />
-                {/if}
+              {:else if activeTab === "tokens"}
+                <TokenList />
+              {:else if activeTab === "pools"}
+                <PoolList />
+              {:else if activeTab === "transactions"}
+                <TransactionHistory />
               {/if}
             </div>
           </div>
 
           <footer class="sidebar-footer">
             <div class="footer-actions">
-              {#if SocialSection}
-                <SocialSection />
-              {/if}
+              <SocialSection />
             </div>
           </footer>
         </div>
@@ -283,7 +262,6 @@
     position: absolute;
     inset: 0;
     overflow-y: auto;
-
   }
 
   .scroll-container::-webkit-scrollbar {
