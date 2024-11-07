@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import { PoolService } from '$lib/services/PoolService';
-import { TokenService } from '$lib/services/TokenService';
+import { TokenService } from '$lib/features/tokens/TokenService';
 import { parseTokenAmount } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
 import { debounce } from 'lodash-es';

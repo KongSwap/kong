@@ -59,54 +59,46 @@ declare global {
   }
 
   namespace BE {
-    interface Token {
-      IC: BE.ICToken.IC;
-      LP: BE.LPToken.LP;
-    }
-
     interface ICToken {
-      IC: {
-          fee: bigint;
-          decimals: number;
-          token: string;
-          token_id: number;
-          chain: string;
-          name: string;
-          canister_id: string;
-          icrc1: boolean;
-          icrc2: boolean;
-          icrc3: boolean;
-          pool_symbol: string;
-          symbol: string;
-          on_kong: boolean;
-      }
-  }
+      symbol: string;
+      fee: bigint;
+      decimals: number;
+      token: string;
+      token_id: number;
+      chain: string;
+      name: string;
+      canister_id: string;
+      icrc1: boolean;
+      icrc2: boolean;
+      icrc3: boolean;
+      pool_symbol: string;
+      on_kong: boolean;
+    }
   
-   interface LPToken {
-      LP: {
-          ts: bigint;
-          usd_balance: number;
-          balance: number;
-          name: string;
-          amount_0: number;
-          amount_1: number;
-          symbol_0: string;
-          symbol_1: string;
-          usd_amount_0: number;
-          usd_amount_1: number;
-          symbol: string;
-      }
-  }
+    interface LPToken {
+      address: string;
+      chain: string;
+      decimals: number;
+      fee: bigint;
+      name: string;
+      on_kong: boolean;
+      pool_id_of: number;
+      pool_symbol: string;
+      symbol: string;
+      token: string;
+      token_id: number;
+      total_supply: bigint;
+    }
   
-   type Token = ICToken | LPToken;
-  
-  // Pool Types
+    type Token = { IC: ICToken } | { LP: LPToken };
+
+    // Pool Types
   
    type PoolResponse = {
       pools: Pool[];
-      total_tvl: number;
-      total_24h_volume: number;
-      total_24h_lp_fee: number;
+      total_tvl: bigint;
+      total_24h_volume: bigint;
+      total_24h_lp_fee: bigint;
   }
   
    interface Pool {

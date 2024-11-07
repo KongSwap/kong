@@ -13,11 +13,11 @@
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ArrowLeftRight } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { poolStore } from "$lib/stores/poolStore";
+  import { poolStore } from "$lib/features/pools/poolStore";
   import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { walletStore } from "$lib/stores/walletStore";
   import Clouds from "$lib/components/stats/Clouds.svelte";
-  import { formattedTokens, tokenStore } from "$lib/stores/tokenStore";
+  import { formattedTokens, tokenStore } from "$lib/features/tokens/tokenStore";
 
   const searchQuery = writable("");
   const copyStates = writable<Record<string, string>>({});

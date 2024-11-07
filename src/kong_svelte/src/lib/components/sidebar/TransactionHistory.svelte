@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { TokenService } from '$lib/services/TokenService';
-    import { tokenStore } from '$lib/stores/tokenStore';
+    import { TokenService } from '$lib/features/tokens/TokenService';
+    import { tokenStore } from '$lib/features/tokens/tokenStore';
     import { walletStore } from '$lib/stores/walletStore';
     import { fly, fade } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';

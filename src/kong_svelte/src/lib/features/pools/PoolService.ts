@@ -4,6 +4,7 @@ import { walletValidator } from '$lib/validators/walletValidator';
 import { get } from 'svelte/store';
 import { TokenService } from '$lib/features/tokens/TokenService';
 import { walletStore } from '$lib/stores/walletStore';
+import { PoolResponseSchema, UserPoolBalanceSchema } from './poolSchema';
 
 export class PoolService {
   protected static instance: PoolService;
@@ -34,19 +35,16 @@ export class PoolService {
         throw new Error('Invalid response from actor');
       }
 
-      const { pools, total_tvl, total_24h_volume, total_24h_lp_fee } = result.Ok;
+      // Ensure all required properties are present
+      const validatedData = PoolResponseSchema.parse(result.Ok);
 
-      if (!pools) {
-        console.error('Pools data is undefined:', result.Ok);
-        throw new Error('Invalid pools data received');
-      }
+      // Provide default value for lp_token_symbol if missing
+      validatedData.pools = validatedData.pools.map(pool => ({
+        ...pool,
+        lp_token_symbol: pool.lp_token_symbol || 'default_symbol' // Provide a default value
+      }));
 
-      return {
-        pools: pools || [],
-        total_tvl: total_tvl || 0n,
-        total_24h_volume: total_24h_volume || 0n,
-        total_24h_lp_fee: total_24h_lp_fee || 0n
-      };
+      return validatedData as BE.PoolResponse;
     } catch (error) {
       console.error('Error fetching pools:', error);
       throw new Error('Failed to fetch pools data');
@@ -281,12 +279,12 @@ export class PoolService {
       console.log("result", result)
 
       if (!result || !result.Ok) {
-        throw new Error('Failed to fetch user pool balances', result);
+        throw new Error('Failed to fetch user pool balances');
       }
 
-      const balances = result.Ok.map((lpToken) => lpToken.LP);
-      console.log("oool", balances)
-      return balances;
+      // Ensure all required properties are present
+      const validatedBalances = result.Ok.map(lpToken => UserPoolBalanceSchema.parse(lpToken.LP) as FE.UserPoolBalance);
+      return validatedBalances;
     } catch (error) {
       console.error('Error fetching user pool balances:', error);
       throw error;

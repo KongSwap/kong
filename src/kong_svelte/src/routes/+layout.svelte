@@ -8,8 +8,8 @@
   import { currentEnvMode } from "$lib/utils/envUtils";
   import { restoreWalletConnection } from "$lib/stores/walletStore";
   import { switchLocale, localeStore } from "$lib/stores/localeStore";
-  import { tokenStore } from "$lib/stores/tokenStore";
-  import { poolStore } from "$lib/stores/poolStore";
+  import { tokenStore } from "$lib/features/tokens/tokenStore";
+  import { poolStore } from "$lib/features/pools/poolStore";
   import { walletStore } from "$lib/stores/walletStore";
   import poolsBackground from "$lib/assets/backgrounds/pools.webp";
   import jungleBackground from "$lib/assets/backgrounds/kong_jungle2.webp";

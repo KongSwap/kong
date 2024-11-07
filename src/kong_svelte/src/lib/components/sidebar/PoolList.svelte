@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { walletStore } from "$lib/stores/walletStore";
-    import { poolStore } from "$lib/stores/poolStore";
+    import { poolStore } from "$lib/features/pools/poolStore";
 
   let loading = true;
   let error: string | null = null;

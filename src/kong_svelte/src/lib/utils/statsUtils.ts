@@ -1,4 +1,4 @@
-import { tokenStore } from '$lib/stores/tokenStore';
+import { tokenStore } from '$lib/features/tokens/tokenStore';
 import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
 

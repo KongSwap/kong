@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { poolStore, poolsList } from '$lib/stores/poolStore';
+	import { poolStore, poolsList } from '$lib/features/pools/poolStore';
 	import { createEventDispatcher } from 'svelte';
 	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
-	import { tokenStore } from '$lib/stores/tokenStore';
+	import { tokenStore } from '$lib/features/tokens/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 
 	export let value: string | number = '';

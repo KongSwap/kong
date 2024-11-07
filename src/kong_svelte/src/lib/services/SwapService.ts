@@ -2,9 +2,9 @@
 
 import { getActor } from '$lib/stores/walletStore';
 import { walletValidator } from '$lib/validators/walletValidator';
-import { tokenStore } from '$lib/stores/tokenStore';
+import { tokenStore } from '$lib/features/tokens/tokenStore';
 import { toastStore } from '$lib/stores/toastStore';
-import { TokenService } from './TokenService';
+import { TokenService } from '$lib/features/tokens/TokenService';
 import { get } from 'svelte/store';
 import type { Principal } from '@dfinity/principal';
 import BigNumber from 'bignumber.js';

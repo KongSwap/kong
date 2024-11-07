@@ -6,7 +6,7 @@
   import debounce from "lodash/debounce";
   import { SwapService } from "$lib/services/SwapService";
   import { walletStore } from "$lib/stores/walletStore";
-  import { tokenStore } from "$lib/stores/tokenStore";
+  import { tokenStore } from "$lib/features/tokens/tokenStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";

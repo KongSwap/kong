@@ -3,7 +3,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { tokenStore, formattedTokens } from "$lib/stores/tokenStore";
+  import { tokenStore, formattedTokens } from "$lib/features/tokens/tokenStore";
   import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
@@ -21,14 +21,12 @@
   // Get token info and formatted values
   $: tokenInfo = $formattedTokens.find(t => t.symbol === token);
   $: decimals = tokenInfo?.decimals || 8;
-  $: formattedBalance = tokenInfo?.formattedBalance?.toString() || "0";
-  $: formattedUsdValue = tokenInfo?.formattedUsdValue || "0";
+  $: formattedBalance = formatTokenAmount($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || "0", decimals).toString();
+  $: formattedUsdValue = tokenInfo?.price?.toString() || "0";
+  $: console.log("tokenInfo", tokenInfo);
 
   // Calculate USD value for current amount
-  $: calculatedUsdValue = new BigNumber(amount || "0")
-    .times(new BigNumber(formattedUsdValue).div(formattedBalance || "1"))
-    .toFixed(2);
-
+  $: calculatedUsdValue = (parseFloat(amount || "0") * parseFloat(formattedUsdValue)).toFixed(2);
   $: isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance || "0");
 
   const animatedUsdValue = tweened(0, {
@@ -60,22 +58,23 @@
   function handleMaxClick() {
     if (!disabled && title === "You Pay") {
       try {
-        const maxAmount = formattedBalance;
+        const maxAmount = BigInt($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || 0) - BigInt(tokenInfo?.fee || 0);
+        const formattedMaxAmount = formatTokenAmount(maxAmount.toString(), decimals);
         isAnimating = true;
 
         const event = new CustomEvent('input', {
           bubbles: true,
-          detail: { value: maxAmount }
+          detail: { value: formattedMaxAmount.toString() }
         });
         onAmountChange(event);
 
-        animatedAmount.set(parseFloat(maxAmount), {
+        animatedAmount.set(parseFloat(formattedMaxAmount.toString()), {
           duration: 400,
           easing: cubicOut
         }).then(() => {
           isAnimating = false;
           if (inputElement) {
-            inputElement.value = maxAmount;
+            inputElement.value = formattedMaxAmount.toString();
           }
         });
       } catch (error) {
@@ -122,7 +121,6 @@
           <TokenImages
             tokens={[tokenInfo]}
             containerClass="mr-1"
-            loading="lazy"
           />
         </div>
         <input

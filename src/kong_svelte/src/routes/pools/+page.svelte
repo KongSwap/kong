@@ -10,11 +10,11 @@
     poolsList,
     poolsLoading,
     poolsError,
-  } from "$lib/stores/poolStore";
+  } from "$lib/features/pools/poolStore";
   import { derived } from "svelte/store";
   import { goto } from "$app/navigation";
   import { Droplets } from "lucide-svelte";
-  import { tokenStore } from "$lib/stores/tokenStore";
+  import { tokenStore } from "$lib/features/tokens/tokenStore";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce"; // Import debounce from lodash-es

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { tokenStore } from '$lib/stores/tokenStore';
+  import { tokenStore } from '$lib/features/tokens/tokenStore';
   import { SwapService } from '$lib/services/SwapService';
   import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';

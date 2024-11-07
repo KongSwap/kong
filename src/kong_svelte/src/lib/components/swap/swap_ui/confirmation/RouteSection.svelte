@@ -1,6 +1,6 @@
 <script lang="ts">
 	import  TokenImages  from '$lib/components/common/TokenImages.svelte';
-  import { tokenStore } from '$lib/stores/tokenStore';
+  import { tokenStore } from '$lib/features/tokens/tokenStore';
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];
@@ -27,7 +27,7 @@
             <div class="token-icon-wrapper">
               <TokenImages
                 tokens={[
-                  $tokenStore.tokens?.find(t => t.symbol === token) || "/tokens/not_verified.webp"
+                  $tokenStore.tokens?.find(t => t.symbol === token)
                 ]}
                 size={24}
               />
@@ -42,7 +42,7 @@
             <div class="token-icon-wrapper">
               <TokenImages
                 tokens={[
-                  $tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1]) || "/tokens/not_verified.webp"
+                  $tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1])
                 ]}
                 size={24}
               />

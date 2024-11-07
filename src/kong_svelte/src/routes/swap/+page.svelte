@@ -1,9 +1,9 @@
 <script lang="ts">
   import { t } from '$lib/locales/translations';
-  import { TokenService } from '$lib/services/TokenService';
+  import { TokenService } from '$lib/features/tokens/TokenService';
   import { onMount } from 'svelte';
   import Swap from '$lib/components/swap/Swap.svelte';
-  import { tokenStore } from '$lib/stores/tokenStore';
+  import { tokenStore } from '$lib/features/tokens/tokenStore';
 
   let tokens: any = null;
 

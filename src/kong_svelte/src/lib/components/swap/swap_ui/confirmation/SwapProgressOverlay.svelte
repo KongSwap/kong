@@ -1,6 +1,6 @@
 <script lang="ts">
   import Panel from '$lib/components/common/Panel.svelte';
-  import { tokenStore } from '$lib/stores/tokenStore';
+  import { tokenStore } from '$lib/features/tokens/tokenStore';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
 
   export let routingPath: string[] = [];
@@ -66,7 +66,7 @@
           <div class="token-step" data-status={getStepStatus(i)}>
             <TokenImages
               tokens={[
-                $tokenStore.tokens?.find(t => t.symbol === token) || "/tokens/not_verified.webp"
+                $tokenStore.tokens?.find(t => t.symbol === token)
               ]}
               size={28}
             />

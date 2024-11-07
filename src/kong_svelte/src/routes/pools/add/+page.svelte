@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { TokenService } from "$lib/services/TokenService";
+  import { TokenService } from "$lib/features/tokens/TokenService";
   import { PoolService } from "$lib/services/PoolService";
   import { onMount } from "svelte";
-  import { tokenStore, formattedTokens } from "$lib/stores/tokenStore";
+  import { tokenStore, formattedTokens } from "$lib/features/tokens/tokenStore";
   import { get } from "svelte/store";
   import AddLiquidityForm from "$lib/components/liquidity/AddLiquidityForm.svelte";
   import TokenSelectionModal from "$lib/components/liquidity/TokenSelectionModal.svelte";
