@@ -10,4 +10,4 @@ FROM lp_token_ledger ltl
 JOIN tokens t ON ltl.token_id = t.token_id 
 JOIN users u ON ltl.user_id = u.user_id
 WHERE ltl.amount > 0
-ORDER BY t.symbol, ltl.amount 
+ORDER BY t.symbol, ltl.amount desc

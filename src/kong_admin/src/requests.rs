@@ -1,5 +1,7 @@
+use kong_lib::stable_request::reply::Reply;
 use kong_lib::stable_request::request::Request;
 use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
+use kong_lib::transfers::transfer_reply::TransferReply;
 use postgres_types::{FromSql, ToSql};
 use regex::Regex;
 use serde_json::json;
@@ -9,6 +11,9 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use tokio_postgres::Client;
+
+use super::nat_helpers::nat_option_to_string;
+use super::transfers::serialize_option_tx_id;
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "request_type")]
@@ -25,6 +30,209 @@ enum RequestType {
     Claim,
     #[postgres(name = "send")]
     Send,
+}
+
+pub fn serialize_request(request: &Request) -> serde_json::Value {
+    match &request {
+        Request::AddPool(request) => json!({
+            "token_0": request.token_0,
+            "amount_0": request.amount_0.to_string(),
+            "tx_id_0": serialize_option_tx_id(request.tx_id_0.as_ref()),
+            "token_1": request.token_1,
+            "amount_1": request.amount_1.to_string(),
+            "tx_id_1": serialize_option_tx_id(request.tx_id_1.as_ref()),
+            "lp_fee_bps": request.lp_fee_bps,
+            "kong_fee_bps": request.kong_fee_bps,
+            "on_kong": request.on_kong,
+        }),
+        Request::AddLiquidity(request) => json!({
+            "token_0": request.token_0,
+            "amount_0": request.amount_0.to_string(),
+            "tx_id_0": serialize_option_tx_id(request.tx_id_0.as_ref()),
+            "token_1": request.token_1,
+            "amount_1": request.amount_1.to_string(),
+            "tx_id_1": serialize_option_tx_id(request.tx_id_1.as_ref()),
+        }),
+        Request::RemoveLiquidity(request) => json!({
+            "token_0": request.token_0,
+            "token_1": request.token_1,
+            "remove_lp_token_amount": request.remove_lp_token_amount.to_string(),
+        }),
+        Request::Swap(request) => json!({
+            "pay_token": request.pay_token,
+            "pay_amount": request.pay_amount.to_string(),
+            "pay_tx_id": serialize_option_tx_id(request.pay_tx_id.as_ref()),
+            "receive_token": request.receive_token,
+            "receive_amount": nat_option_to_string(request.receive_amount.as_ref()),
+            "receive_address": request.receive_address,
+            "max_slippage": request.max_slippage,
+            "referred_by": request.referred_by,
+        }),
+        Request::Claim(claim_id) => json!({
+            "claim_id": claim_id,
+        }),
+        Request::Send(request) => json!({
+            "token": request.token,
+            "amount": request.amount.to_string(),
+            "to_address": request.to_address,
+        }),
+    }
+}
+
+pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
+    match &reply {
+        Reply::Pending => json!("Pending"),
+        Reply::AddPool(reply) => json!({
+            "tx_id": reply.tx_id,
+            "symbol": reply.symbol,
+            "balance": reply.balance.to_string(),
+            "chain_0": reply.chain_0,
+            "symbol_0": reply.symbol_0,
+            "amount_0": reply.amount_0.to_string(),
+            "balance_0": reply.balance_0.to_string(),
+            "chain_1": reply.chain_1,
+            "symbol_1": reply.symbol_1,
+            "amount_1": reply.amount_1.to_string(),
+            "balance_1": reply.balance_1.to_string(),
+            "add_lp_token_amount": reply.add_lp_token_amount.to_string(),
+            "lp_fee_bps": reply.lp_fee_bps,
+            "lp_token_symbol": reply.lp_token_symbol,
+            "lp_token_supply": reply.lp_token_supply.to_string(),
+            "transfer_ids": reply.transfer_ids.iter().map(|id| json!({
+                "transfer_id": id.transfer_id,
+                "transfer": match &id.transfer {
+                    TransferReply::IC(transfer_reply) => json!({
+                        "chain": transfer_reply.chain,
+                        "symbol": transfer_reply.symbol,
+                        "is_send": transfer_reply.is_send,
+                        "amount": transfer_reply.amount.to_string(),
+                        "canister_id": transfer_reply.canister_id,
+                        "block_index": transfer_reply.block_index.to_string(),
+                    }),
+                },
+            })).collect::<Vec<_>>(),
+            "claim_ids": reply.claim_ids,
+            "on_kong": reply.on_kong,
+            "ts": reply.ts,
+        }),
+        Reply::AddLiquidity(reply) => json!({
+            "tx_id": reply.tx_id,
+            "symbol": reply.symbol,
+            "chain_0": reply.chain_0,
+            "symbol_0": reply.symbol_0,
+            "amount_0": reply.amount_0.to_string(),
+            "chain_1": reply.chain_1,
+            "symbol_1": reply.symbol_1,
+            "amount_1": reply.amount_1.to_string(),
+            "add_lp_token_amount": reply.add_lp_token_amount.to_string(),
+            "transfer_ids": reply.transfer_ids,
+            "claim_ids": reply.claim_ids,
+            "ts": reply.ts,
+        }),
+        Reply::RemoveLiquidity(reply) => json!({
+            "tx_id": reply.tx_id,
+            "symbol": reply.symbol,
+            "chain_0": reply.chain_0,
+            "symbol_0": reply.symbol_0,
+            "amount_0": reply.amount_0.to_string(),
+            "lp_fee_0": reply.lp_fee_0.to_string(),
+            "chain_1": reply.chain_1,
+            "symbol_1": reply.symbol_1,
+            "amount_1": reply.amount_1.to_string(),
+            "lp_fee_1": reply.lp_fee_1.to_string(),
+            "remove_lp_token_amount": reply.remove_lp_token_amount.to_string(),
+            "transfer_ids": reply.transfer_ids.iter().map(|id| json!({
+                "transfer_id": id.transfer_id,
+                "transfer": match &id.transfer {
+                    TransferReply::IC(transfer_reply) => json!({
+                        "chain": transfer_reply.chain,
+                        "symbol": transfer_reply.symbol,
+                        "is_send": transfer_reply.is_send,
+                        "amount": transfer_reply.amount.to_string(),
+                        "canister_id": transfer_reply.canister_id,
+                        "block_index": transfer_reply.block_index.to_string(),
+                    }),
+                },
+            })).collect::<Vec<_>>(),
+            "claim_ids": reply.claim_ids,
+            "ts": reply.ts,
+        }),
+        Reply::Swap(reply) => json!({
+            "tx_id": reply.tx_id,
+            "request_id": reply.request_id,
+            "status": reply.status,
+            "pay_chain": reply.pay_chain,
+            "pay_symbol": reply.pay_symbol,
+            "pay_amount": reply.pay_amount.to_string(),
+            "receive_chain": reply.receive_chain,
+            "receive_symbol": reply.receive_symbol,
+            "receive_amount": reply.receive_amount.to_string(),
+            "mid_price": reply.mid_price,
+            "price": reply.price,
+            "slippage": reply.slippage,
+            "txs": reply.txs.iter().map(|tx| json!({
+                "pool_symbol": tx.pool_symbol,
+                "pay_chain": tx.pay_chain,
+                "pay_symbol": tx.pay_symbol,
+                "pay_amount": tx.pay_amount.to_string(),
+                "receive_chain": tx.receive_chain,
+                "receive_symbol": tx.receive_symbol,
+                "receive_amount": tx.receive_amount.to_string(),
+                "price": tx.price,
+                "lp_fee": tx.lp_fee.to_string(),
+                "gas_fee": tx.gas_fee.to_string(),
+                "ts": tx.ts,
+            })).collect::<Vec<_>>(),
+            "transfer_ids": reply.transfer_ids.iter().map(|id| json!({
+                "transfer_id": id.transfer_id,
+                "transfer": match &id.transfer {
+                    TransferReply::IC(transfer_reply) => json!({
+                        "chain": transfer_reply.chain,
+                        "symbol": transfer_reply.symbol,
+                        "is_send": transfer_reply.is_send,
+                        "amount": transfer_reply.amount.to_string(),
+                        "canister_id": transfer_reply.canister_id,
+                        "block_index": transfer_reply.block_index.to_string(),
+                    }),
+                },
+            })).collect::<Vec<_>>(),
+            "claim_ids": reply.claim_ids,
+            "ts": reply.ts,
+        }),
+        Reply::Claim(reply) => json!({
+            "claim_id": reply.claim_id,
+            "status": reply.status,
+            "chain": reply.chain,
+            "symbol": reply.symbol,
+            "amount": reply.amount.to_string(),
+            "fee": reply.fee.to_string(),
+            "to_address": reply.to_address,
+            "transfer_ids": reply.transfer_ids.iter().map(|id| json!({
+                "transfer_id": id.transfer_id,
+                "transfer": match &id.transfer {
+                    TransferReply::IC(transfer_reply) => json!({
+                        "chain": transfer_reply.chain,
+                        "symbol": transfer_reply.symbol,
+                        "is_send": transfer_reply.is_send,
+                        "amount": transfer_reply.amount.to_string(),
+                        "canister_id": transfer_reply.canister_id,
+                        "block_index": transfer_reply.block_index.to_string(),
+                    }),
+                },
+            })).collect::<Vec<_>>(),
+            "ts": reply.ts,
+        }),
+        Reply::Send(reply) => json!({
+            "tx_id": reply.tx_id,
+            "request_id": reply.request_id,
+            "status": reply.status,
+            "chain": reply.chain,
+            "symbol": reply.symbol,
+            "amount": reply.amount.to_string(),
+            "to_address": reply.to_address,
+            "ts": reply.ts,
+        }),
+    }
 }
 
 pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
@@ -61,8 +269,8 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
                     let request_type = RequestType::AddPool;
-                    let request = json!(&v.request);
-                    let reply = json!(&v.reply);
+                    let request = serialize_request(&v.request);
+                    let reply = serialize_reply(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
@@ -87,8 +295,8 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
                     let request_type = RequestType::AddLiquidity;
-                    let request = json!(&v.request);
-                    let reply = json!(&v.reply);
+                    let request = serialize_request(&v.request);
+                    let reply = serialize_reply(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
@@ -113,8 +321,8 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
                     let request_type = RequestType::RemoveLiquidity;
-                    let request = json!(&v.request);
-                    let reply = json!(&v.reply);
+                    let request = serialize_request(&v.request);
+                    let reply = serialize_reply(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
@@ -139,8 +347,8 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
                     let request_type = RequestType::Swap;
-                    let request = json!(&v.request);
-                    let reply = json!(&v.reply);
+                    let request = serialize_request(&v.request);
+                    let reply = serialize_reply(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
@@ -165,8 +373,8 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
                     let request_type = RequestType::Claim;
-                    let request = json!(&v.request);
-                    let reply = json!(&v.reply);
+                    let request = serialize_request(&v.request);
+                    let reply = serialize_reply(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
@@ -191,8 +399,8 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
                     let request_type = RequestType::Send;
-                    let request = json!(&v.request);
-                    let reply = json!(&v.reply);
+                    let request = serialize_request(&v.request);
+                    let reply = serialize_reply(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
