@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { poolStore, poolsList } from '$lib/features/pools/poolStore';
+	import { poolsList } from '$lib/services/pools/poolStore';
 	import { createEventDispatcher } from 'svelte';
 	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
-	import { tokenStore } from '$lib/features/tokens/tokenStore';
+	import { tokenStore } from '$lib/services/tokens/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 
 	export let value: string | number = '';
@@ -23,18 +23,17 @@
 	}
 
 	function setMax() {
-		const rawBalance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
-		console.log(rawBalance);
-		console.log(token.fee);
 		const max = formatTokenAmount(BigInt(rawBalance) - BigInt(token.fee), token.decimals);
 		value = max.toString();
 		dispatch('input', { value: max.toString() });
 	}
 
 	// Use reactive statements to compute derived values
+	$: rawBalance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
 	$: pool = $poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID);
 	$: poolPrice = pool?.price ? parseFloat(pool.price.toString()) : 0;
 	$: usdValue = formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice);
+	$: formattedBalance = formatTokenAmount(BigInt(rawBalance) - BigInt(token.fee), token.decimals);
 </script>
 
 <div class="flex flex-col gap-2 w-full">
@@ -76,8 +75,8 @@
 	<!-- Balance and USD value row -->
 	<div class="flex justify-between items-center px-1 text-sm">
 		<div class="flex items-center gap-2">
-			<span class="text-white/50">Balance: {token.formattedBalance} {token.symbol}</span>
-			{#if parseFloat(token.formattedUsdValue) > 0}
+			<span class="text-white/50">Balance: {formattedBalance}</span>
+			{#if formattedBalance > 0}
 				<button
 					type="button"
 					class="text-yellow-400 hover:text-yellow-300 text-xs uppercase font-play"

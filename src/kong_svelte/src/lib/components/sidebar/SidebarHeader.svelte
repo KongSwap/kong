@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { walletStore, disconnectWallet } from "$lib/stores/walletStore";
+  import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
   import "./colors.css";
 
   export let onClose: () => void;

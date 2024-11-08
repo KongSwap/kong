@@ -1,4 +1,4 @@
-import { isConnected } from '$lib/stores/walletStore';
+import { isConnected } from '$lib/services/wallet/walletStore';
 
 class WalletValidator {
   public static async requireWalletConnection(): Promise<void> {

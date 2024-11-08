@@ -1,10 +1,11 @@
 // services/PoolService.ts
-import { getActor } from '$lib/stores/walletStore';
-import { walletValidator } from '$lib/validators/walletValidator';
+import { getActor, walletStore } from '$lib/services/wallet/walletStore';
+import { walletValidator } from '$lib/services/wallet/walletValidator';
 import { get } from 'svelte/store';
-import { TokenService } from '$lib/features/tokens/TokenService';
-import { walletStore } from '$lib/stores/walletStore';
+import { TokenService } from '$lib/services/tokens/TokenService';
 import { PoolResponseSchema, UserPoolBalanceSchema } from './poolSchema';
+import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
+import { Principal } from '@dfinity/principal';
 
 export class PoolService {
   protected static instance: PoolService;
@@ -144,8 +145,8 @@ export class PoolService {
       
       // Check current allowances
       const [allowance0, allowance1] = await Promise.all([
-        TokenService.checkIcrc2Allowance(token0.canister_id, owner),
-        TokenService.checkIcrc2Allowance(token1.canister_id, owner)
+        TokenService.checkIcrc2Allowance(token0.canister_id, owner, Principal.fromText(KONG_BACKEND_PRINCIPAL)),
+        TokenService.checkIcrc2Allowance(token1.canister_id, owner, Principal.fromText(KONG_BACKEND_PRINCIPAL))
       ]);
 
       const amount0BigInt = amount0 + token0.fee;

@@ -90,7 +90,7 @@ declare global {
       total_supply: bigint;
     }
   
-    type Token = { IC: ICToken } | { LP: LPToken };
+    type Token = { IC?: ICToken, LP?: LPToken };
 
     // Pool Types
   
@@ -102,6 +102,7 @@ declare global {
   }
   
    interface Pool {
+      id: string;
       lp_token_symbol: string;
       balance: bigint;
       total_lp_fee: bigint;

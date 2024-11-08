@@ -1,10 +1,11 @@
 // src/kong_svelte/src/lib/features/tokens/tokenStore.ts
 import { writable, derived, get, type Readable } from 'svelte/store';
-import { TokenService } from '$lib/features/tokens/TokenService';
+import { TokenService } from '$lib/services/tokens/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
 import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
-import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { toastStore } from '$lib/stores/toastStore';
+
 interface TokenState {
   readonly tokens: FE.Token[];
   readonly balances: Record<string, FE.TokenBalance>;
@@ -99,7 +100,7 @@ function createTokenStore() {
 
   return {
     subscribe: store.subscribe,
-    loadTokens: async (forceRefresh = false) => {
+    loadTokens: async (forceRefresh = true) => {
       const currentState = getCurrentState();
 
       if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
@@ -110,47 +111,66 @@ function createTokenStore() {
 
       try {
         const baseTokens = await TokenService.fetchTokens();
-        const icTokens = baseTokens
-          .filter((token) => 'IC' in token)
-          .map((token) => token.IC);
+        console.log(baseTokens);
 
-        // Create a map to track tokens by their canister_id
-        const tokenMap = new Map<string, FE.Token>();
+        // Extract IC tokens and map them to FE.Token[]
+        const icTokens: FE.Token[] = baseTokens
+            .filter((token): token is { IC: BE.ICToken } => token.IC !== undefined)
+            .map((token) => {
+                const icToken = token.IC;
+                return {
+                    canister_id: icToken.canister_id,
+                    name: icToken.name,
+                    symbol: icToken.symbol,
+                    fee: icToken.fee,
+                    decimals: icToken.decimals,
+                    token: icToken.token,
+                    token_id: icToken.token_id,
+                    chain: icToken.chain,
+                    icrc1: icToken.icrc1,
+                    icrc2: icToken.icrc2,
+                    icrc3: icToken.icrc3,
+                    on_kong: icToken.on_kong,
+                    pool_symbol: icToken.pool_symbol ?? "Pool not found",
+                    // Optional fields
+                    logo: undefined,
+                    total_24h_volume: undefined,
+                    price: undefined,
+                    tvl: undefined,
+                    balance: undefined,
+                } as FE.Token;
+            });
 
-        // Enrich tokens and update the store incrementally
-        await TokenService.enrichTokenWithMetadata(icTokens, (enrichedToken) => {
-          store.update((s) => {
-            // Check if the token already exists
-            const index = s.tokens.findIndex(
-              (t) => t.canister_id === enrichedToken.canister_id
-            );
+        const enrichedTokens = await TokenService.enrichTokenWithMetadata(icTokens);
 
-            if (index >= 0) {
-              // Update the existing token
-              const updatedTokens = [...s.tokens];
-              updatedTokens[index] = { ...updatedTokens[index], ...enrichedToken };
-              return { ...s, tokens: updatedTokens };
-            } else {
-              // Add new token
-              const newTokens = [...s.tokens, enrichedToken];
-              return { ...s, tokens: newTokens, lastTokensFetch: Date.now() };
-            }
-          });
+        updateState({
+            ...currentState,  // Preserve existing state
+            tokens: enrichedTokens,
+            isLoading: false,
+            lastTokensFetch: Date.now(),
+            error: null,
         });
 
-        store.update((s) => ({ ...s, isLoading: false }));
-      } catch (error) {
+        return enrichedTokens;
+      } catch (error: any) {
         console.error('Error loading tokens:', error);
-        store.update((s) => ({
-          ...s,
-          error: error.message,
-          isLoading: false,
-        }));
+        updateState({
+            ...currentState,  // Preserve existing state
+            error: error.message,
+            isLoading: false,
+            tokens: []
+        });
+        toastStore.error('Failed to load tokens');
       }
     },
     getBalance: (canisterId: string) => {
       const currentState = getCurrentState();
-      return currentState.balances[canisterId] || '0';
+      return currentState.balances[canisterId] || { in_tokens: BigInt(0), in_usd: '0' };
+    },
+    refreshBalance: async (token: FE.Token) => {
+      const currentState = getCurrentState();
+      const balance = await TokenService.fetchBalance(token);
+      updateState({ ...currentState, balances: { ...currentState.balances, [token.canister_id]: { in_tokens: BigInt(balance), in_usd: '0' } } });
     },
     loadBalances: async () => {
       const currentState = getCurrentState();
@@ -220,8 +240,8 @@ const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, toke
       for (const [canisterId, balance] of Object.entries(balances)) {
         const token = tokens.find(t => t.canister_id === canisterId);
         if (token && prices[canisterId]) {
-          const actualBalance = formatTokenAmount(balance.in_tokens, token.decimals);
-          total += actualBalance * prices[canisterId];
+          const actualBalance = formatTokenAmount(balance.in_tokens.toString(), token.decimals);
+          total += parseFloat(actualBalance) * prices[canisterId];
         }
       }
       return formatToNonZeroDecimal(total);
@@ -256,7 +276,7 @@ export const formattedTokens: Readable<FE.Token[]> = derived(
 
       return {
         ...token,
-        formattedBalance: formatTokenAmount(balance, token.decimals).toString(),
+        formattedBalance: formatTokenAmount(balance.toString(), token.decimals),
         formattedUsdValue: formatToNonZeroDecimal(Number(usdValue)) || '0',
       };
     });

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { TokenService } from "$lib/features/tokens/TokenService";
-  import { PoolService } from "$lib/services/PoolService";
+  import { TokenService } from "$lib/services/tokens/TokenService";
+  import { PoolService } from "$lib/services/pools/PoolService";
   import { onMount } from "svelte";
-  import { tokenStore, formattedTokens } from "$lib/features/tokens/tokenStore";
+  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
   import { get } from "svelte/store";
   import AddLiquidityForm from "$lib/components/liquidity/AddLiquidityForm.svelte";
   import TokenSelectionModal from "$lib/components/liquidity/TokenSelectionModal.svelte";
@@ -145,13 +145,13 @@
           // If it exceeds, calculate backwards from token1's max balance
           const reverseAmount = await PoolService.addLiquidityAmounts(
             token1.token,
-            Bbalance1.in_tokens - token1.fee,
+            balance1.in_tokens - token1.fee,
             token0.token,
           );
-          amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals);
-          amount1 = formatTokenAmount(balance1.in_tokens - token1.fee, token1.decimals);
+          amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals).toString();
+          amount1 = formatTokenAmount(balance1.in_tokens - token1.fee, token1.decimals).toString();
         } else {
-          amount1 = formatTokenAmount(requiredAmount1 - token1.fee, token1.decimals);
+          amount1 = formatTokenAmount(requiredAmount1 - token1.fee, token1.decimals).toString();
         }
       } else {
         const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -170,10 +170,10 @@
             balance0.in_tokens - token0.fee,
             token1.token,
           );
-          amount0 = formatTokenAmount(balance0.in_tokens - token0.fee, token0.decimals);
-          amount1 = formatTokenAmount(reverseAmount.Ok.amount_1, token1.decimals);
+          amount0 = formatTokenAmount(balance0.in_tokens - token0.fee, token0.decimals).toString();
+          amount1 = formatTokenAmount(reverseAmount.Ok.amount_1, token1.decimals).toString();
         } else {
-          amount0 = formatTokenAmount(requiredAmount0 - token0.fee, token0.decimals);
+          amount0 = formatTokenAmount(requiredAmount0 - token0.fee, token0.decimals).toString();
         }
       }
     } catch (err) {
@@ -372,7 +372,6 @@
         {loading}
         {previewMode}
         {error}
-        {poolShare}
         {statusSteps}
         {showReview}
         {token0Balance}

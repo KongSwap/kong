@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Us, Es } from "svelte-flags";
-  import { localeStore, switchLocale } from "$lib/stores/localeStore";
+  import { localeStore, switchLocale } from "$lib/services/translations";
   import { fly } from "svelte/transition";
   import Button from './Button.svelte';
   import { clickOutside } from '$lib/actions/clickOutside';

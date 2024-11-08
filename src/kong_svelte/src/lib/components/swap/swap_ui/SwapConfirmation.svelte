@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { tokenStore } from '$lib/features/tokens/tokenStore';
-  import { SwapService } from '$lib/services/SwapService';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { SwapService } from '$lib/services/swap/SwapService';
   import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
@@ -93,7 +93,7 @@
       const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
       const decimals = token?.decimals || 8;
       const gasFeeValue = typeof gasFees[i] === 'string' ? Number(gasFees[i]) : gasFees[i] || 0;
-      const stepGasFee = SwapService.getInstance().fromBigInt(
+      const stepGasFee = SwapService.fromBigInt(
         scaleDecimalToBigInt(gasFeeValue, decimals),
         decimals
       );
@@ -105,7 +105,7 @@
       const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
       const decimals = token?.decimals || 8;
       const lpFeeValue = typeof lpFees[i] === 'string' ? Number(lpFees[i]) : lpFees[i] || 0;
-      const stepLPFee = SwapService.getInstance().fromBigInt(
+      const stepLPFee = SwapService.fromBigInt(
         scaleDecimalToBigInt(lpFeeValue, decimals),
         decimals
       );

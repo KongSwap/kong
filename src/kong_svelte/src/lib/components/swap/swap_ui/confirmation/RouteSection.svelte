@@ -1,6 +1,6 @@
 <script lang="ts">
 	import  TokenImages  from '$lib/components/common/TokenImages.svelte';
-  import { tokenStore } from '$lib/features/tokens/tokenStore';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];

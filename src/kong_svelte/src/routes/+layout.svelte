@@ -1,48 +1,50 @@
 <script lang="ts">
   import "../app.css";
-  import { onMount } from "svelte";
-  import { page } from "$app/stores"; // Import the $page store
+  import { onMount, beforeUpdate } from "svelte";
+  import { page } from "$app/stores";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
-  import { t } from "$lib/locales/translations";
-  import { currentEnvMode } from "$lib/utils/envUtils";
-  import { restoreWalletConnection } from "$lib/stores/walletStore";
-  import { switchLocale, localeStore } from "$lib/stores/localeStore";
-  import { tokenStore } from "$lib/features/tokens/tokenStore";
-  import { poolStore } from "$lib/features/pools/poolStore";
-  import { walletStore } from "$lib/stores/walletStore";
+  import { switchLocale, localeStore, t } from "$lib/services/translations";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { poolStore } from "$lib/services/pools/poolStore";
+  import {
+    isConnected,
+    restoreWalletConnection,
+  } from "$lib/services/wallet/walletStore";
   import poolsBackground from "$lib/assets/backgrounds/pools.webp";
   import jungleBackground from "$lib/assets/backgrounds/kong_jungle2.webp";
-  import { browser } from "$app/environment";
 
   let initialized: boolean = false;
+  let pageTitle: string = "";
 
   onMount(async () => {
-    if (!localeStore) {
+    pageTitle =
+      process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
+    if (!$localeStore) {
       switchLocale("en");
     }
-    Promise.all([
+    await Promise.all([
       restoreWalletConnection(),
       tokenStore.loadTokens(),
-      poolStore.loadPools(),
-      $walletStore.isConnected ? tokenStore.loadBalances() : null,
+      poolStore.loadPools()
     ]);
+    isConnected() ? setInterval(tokenStore.loadBalances, 10000) : null,
     initialized = true;
   });
 
-  $: if (browser) {
-    if ($page.url.pathname.startsWith("/pools")) {
-      document.body.style.background = `#5BB2CF url(${poolsBackground})`;
-    } else if ($page.url.pathname.startsWith("/stats")) {
-      document.body.style.background = "#5BB2CF";
-    } else if ($page.url.pathname.startsWith("/swap")) {
-      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-    } else {
-      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-    }
-    document.body.style.backgroundSize = "cover";
-    document.body.style.backgroundPosition = "center";
-  }
+  beforeUpdate(() => {
+      if ($page.url.pathname.startsWith("/pools")) {
+        document.body.style.background = `#5BB2CF url(${poolsBackground})`;
+      } else if ($page.url.pathname.startsWith("/stats")) {
+        document.body.style.background = "#5BB2CF";
+      } else if ($page.url.pathname.startsWith("/swap")) {
+        document.body.style.background = `#5BB2CF url(${jungleBackground})`;
+      } else {
+        document.body.style.background = `#5BB2CF url(${jungleBackground})`;
+      }
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+  });
 </script>
 
 <div class="flex justify-center">
@@ -53,9 +55,7 @@
 
 <svelte:head>
   <title>
-    {currentEnvMode() ? `[${currentEnvMode()}] KongSwap` : `KongSwap`} - {$t(
-      "common.browserSubtitle",
-    )}
+    {`${pageTitle}`} - {$t("common.browserSubtitle")}
   </title>
 </svelte:head>
 

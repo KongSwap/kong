@@ -8,10 +8,10 @@
     disconnectWallet,
     availableWallets,
     selectedWalletId,
-  } from "$lib/stores/walletStore";
-  import { t } from "$lib/locales/translations";
+  } from "$lib/services/wallet/walletStore";
+  import { t } from "$lib/services/translations";
   import { uint8ArrayToHexString } from "@dfinity/utils";
-  import { UserService } from "$lib/services/UserService";
+  import { WalletService } from "$lib/services/wallet/WalletService";
 
   const dispatch = createEventDispatcher();
 
@@ -32,7 +32,7 @@
 
   async function loadUser() {
     try {
-      user = await UserService.getWhoami();
+      user = await WalletService.getWhoami();
     } catch (error) {
       console.error("Error loading user data:", error);
     }

@@ -2,11 +2,11 @@
   import { fade } from "svelte/transition";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import debounce from "lodash/debounce";
-  import { SwapService } from "$lib/services/SwapService";
-  import { walletStore } from "$lib/stores/walletStore";
-  import { tokenStore } from "$lib/features/tokens/tokenStore";
+  import { SwapService } from "$lib/services/swap/SwapService";
+  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
@@ -17,9 +17,9 @@
   import { flip } from 'svelte/animate';
   import { quintOut } from 'svelte/easing';
   import SwapSettings from './swap_ui/SwapSettings.svelte';
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
-  const swapService = SwapService.getInstance();
 
   export let slippage = 2;
   export let initialPool: string | null = null;
@@ -160,9 +160,9 @@
 
     try {
       const payDecimals = getTokenDecimals(payToken);
-      const payAmountBigInt = swapService.toBigInt(amount, payDecimals);
+      const payAmountBigInt = SwapService.toBigInt(amount, payDecimals);
 
-      const quote = await swapService.swap_amounts(
+      const quote = await SwapService.swap_amounts(
         payToken,
         payAmountBigInt,
         receiveToken,
@@ -170,7 +170,7 @@
 
       if ("Ok" in quote) {
         const receiveDecimals = getTokenDecimals(receiveToken);
-        const receivedAmount = swapService.fromBigInt(
+        const receivedAmount = SwapService.fromBigInt(
           quote.Ok.receive_amount,
           receiveDecimals,
         );
@@ -201,8 +201,8 @@
           
           quote.Ok.txs.forEach(tx => {
             const receiveDecimals = getTokenDecimals(tx.receive_symbol);
-            gasFees.push(swapService.fromBigInt(tx.gas_fee, receiveDecimals));
-            lpFees.push(swapService.fromBigInt(tx.lp_fee, receiveDecimals));
+            gasFees.push(SwapService.fromBigInt(tx.gas_fee, receiveDecimals));
+            lpFees.push(SwapService.fromBigInt(tx.lp_fee, receiveDecimals));
           });
 
           if (gasFees.length > 0) {
@@ -302,9 +302,10 @@
     
     intervalId = setInterval(async () => {
       try {
-        const status = await swapService.requests([reqId]);
+        const status = await SwapService.requests([reqId]);
         
         if (status.Ok?.[0]?.reply && !hasCompleted) {
+          console.log("status", status)
           const reply = status.Ok[0].reply;
           
           if ('Swap' in reply) {
@@ -325,7 +326,7 @@
               if (swapStatus.status === "Success") {
                 hasCompleted = true;
                 clearInterval(intervalId);
-                handleSwapSuccess(swapStatus);
+                await handleSwapSuccess(swapStatus);
               } else if (swapStatus.status === "Failed") {
                 hasCompleted = true;
                 clearInterval(intervalId);
@@ -342,7 +343,7 @@
           handleSwapFailure(null);
         }
       }
-    }, 100);
+    }, 250);
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -354,7 +355,7 @@
     error = null;
 
     try {
-      const requestId = await swapService.executeSwap({
+      const requestId = await SwapService.executeSwap({
         payToken,
         payAmount,
         receiveToken,
@@ -362,10 +363,10 @@
         slippage,
         backendPrincipal: KONG_BACKEND_PRINCIPAL,
       });
+      console.log('requestId', requestId);
 
       if (requestId) {
         startPolling(requestId);
-        return true;
       } else {
         throw new Error("Failed to execute swap - no requestId returned");
       }
@@ -378,21 +379,24 @@
     }
   }
 
-  function handleSwapSuccess(reply: any) {
+  async function handleSwapSuccess(reply: any) {
     isProcessing = false;
     showConfirmation = false; // Instant close
     
     if (reply.receive_amount) {
       const receiveDecimals = getTokenDecimals(receiveToken);
-      const finalAmount = swapService.fromBigInt(reply.receive_amount, receiveDecimals);
+      const finalAmount = SwapService.fromBigInt(reply.receive_amount, receiveDecimals);
       setReceiveAmount(finalAmount);
       setDisplayAmount(new BigNumber(finalAmount).toFixed(receiveDecimals));
     }
 
-    clearInputs();
+    const token = $tokenStore.tokens.find(t => t.symbol === payToken);
+    const token1 = $tokenStore.tokens.find(t => t.symbol === receiveToken);
+    await tokenStore.refreshBalance(token);
+    await tokenStore.refreshBalance(token1);
+        clearInputs();
     slippage = 2;
     toastStore.success("Swap successful");
-    tokenStore.loadBalances();
   }
 
   function handleSwapFailure(reply: any) {
@@ -423,8 +427,36 @@
     showConfirmation = true;
   }
 
-  function closeConfirmation() {
-    showConfirmation = false;
+  async function handleMaxButtonClick() {
+    const tokens = $tokenStore.tokens;
+    const payTokenObj = tokens.find(t => t.symbol === payToken);
+    if (!payTokenObj) {
+        toastStore.error('Pay token not found');
+        return;
+    }
+
+    // Get the user's balance
+    const balanceBigInt = await IcrcService.getIcrc1Balance(
+        payTokenObj,
+        $walletStore.account.owner
+    );
+    const balance = SwapService.fromBigInt(balanceBigInt, payTokenObj.decimals);
+
+    // Get the fee
+    const feeBigInt = payTokenObj.fee ?? BigInt(10000); // Ensure fee is set
+    const fee = SwapService.fromBigInt(feeBigInt, payTokenObj.decimals);
+
+    // Calculate max amount by subtracting fee from balance
+    const maxAmount = new BigNumber(balance).minus(fee);
+
+    if (maxAmount.isNegative() || maxAmount.isZero()) {
+        toastStore.error('Insufficient balance to cover the transaction fee.');
+        return;
+    }
+
+    // Set the payAmount to maxAmount
+    payAmount = maxAmount.toFixed(payTokenObj.decimals);
+    debouncedGetQuote(payAmount);
   }
 </script>
 

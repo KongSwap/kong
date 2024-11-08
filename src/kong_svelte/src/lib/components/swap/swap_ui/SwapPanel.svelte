@@ -1,34 +1,51 @@
-<!-- Description: This is the SwapPanel component that displays the swap input fields and token selector. -->
+<!-- Description: Optimized SwapPanel component for better performance and maintainability. -->
 <script lang="ts">
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { tokenStore, formattedTokens } from "$lib/features/tokens/tokenStore";
+  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
   import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  
+  import { debounce } from 'lodash-es'; // Ensure lodash is installed
+  import { createEventDispatcher } from 'svelte';
+
+  const dispatch = createEventDispatcher();
+
+  // Props with default values and strong typing
   export let title: string;
   export let token: string;
   export let amount: string = "0";
   export let onTokenSelect: () => void;
   export let onAmountChange: (event: Event) => void;
-  export let disabled = false;
-  export let showPrice = false;
-  export let slippage = 0;
+  export let disabled: boolean = false;
+  export let showPrice: boolean = false;
+  export let slippage: number = 0;
 
-  // Get token info and formatted values
-  $: tokenInfo = $formattedTokens.find(t => t.symbol === token);
-  $: decimals = tokenInfo?.decimals || 8;
-  $: formattedBalance = formatTokenAmount($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || "0", decimals).toString();
-  $: formattedUsdValue = tokenInfo?.price?.toString() || "0";
-  $: console.log("tokenInfo", tokenInfo);
+  // Reactive variables with consolidated updates
+  let tokenInfo: FE.Token | undefined;
+  let decimals: number;
+  let formattedBalance: string;
+  let formattedUsdValue: string;
+  let calculatedUsdValue: string;
+  let isOverBalance: boolean;
 
-  // Calculate USD value for current amount
-  $: calculatedUsdValue = (parseFloat(amount || "0") * parseFloat(formattedUsdValue)).toFixed(2);
-  $: isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance || "0");
+  $: {
+    tokenInfo = $formattedTokens.find(t => t.symbol === token);
+    decimals = tokenInfo?.decimals || 8;
+    formattedBalance = formatTokenAmount($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString() || "0", decimals);
+    formattedUsdValue = tokenInfo?.price?.toString() || "0";
 
+    calculatedUsdValue = (parseFloat(amount || "0") * parseFloat(formattedUsdValue)).toFixed(2);
+    isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance || "0");
+
+    animatedUsdValue.set(parseFloat(calculatedUsdValue));
+    animatedAmount.set(parseFloat(amount || "0"));
+    animatedSlippage.set(slippage);
+  }
+
+  // Animations
   const animatedUsdValue = tweened(0, {
     duration: 400,
     easing: cubicOut,
@@ -41,32 +58,27 @@
 
   const animatedSlippage = tweened(0, {
     duration: 400,
-    easing: cubicOut
+    easing: cubicOut,
   });
 
-  // Update animated values
-  $: {
-    animatedUsdValue.set(parseFloat(calculatedUsdValue));
-    animatedAmount.set(parseFloat(amount || "0"));
-    animatedSlippage.set(slippage);
-  }
+  // Input management
+  let inputFocused: boolean = false;
+  let isAnimating: boolean = false;
+  let inputElement: HTMLInputElement | null = null;
 
-  let inputFocused = false;
-  let isAnimating = false;
-  let inputElement: HTMLInputElement;
-
-  function handleMaxClick() {
+  // Handlers
+  const handleMaxClick = () => {
     if (!disabled && title === "You Pay") {
       try {
-        const maxAmount = BigInt($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || 0) - BigInt(tokenInfo?.fee || 0);
-        const formattedMaxAmount = formatTokenAmount(maxAmount.toString(), decimals);
+        const toSub = tokenInfo?.fee + 10n;
+        const maxAmount = BigNumber($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString() || "0")
+          .minus(toSub.toString() || "0")
+          .toFixed();
+        const formattedMaxAmount = formatTokenAmount(maxAmount, decimals);
         isAnimating = true;
 
-        const event = new CustomEvent('input', {
-          bubbles: true,
-          detail: { value: formattedMaxAmount.toString() }
-        });
-        onAmountChange(event);
+        // Dispatch a custom 'input' event mimicking the native structure
+        onAmountChange({ target: { value: formattedMaxAmount.toString() } });
 
         animatedAmount.set(parseFloat(formattedMaxAmount.toString()), {
           duration: 400,
@@ -79,25 +91,27 @@
         });
       } catch (error) {
         console.error("Error in handleMaxClick:", error);
+        toastStore.error("Failed to set max amount");
       }
     }
-  }
+  };
 
-  function handleInput(event: Event) {
+  const handleInput = debounce((event: Event) => {
     if (title === "You Receive") return;
-    
+
+    const input = event.target as HTMLInputElement;
+    const newValue = input.value;
+
     try {
-      const input = event.target as HTMLInputElement;
-      const newValue = input.value;
-      
       isAnimating = false;
       onAmountChange(event);
-      animatedAmount.set(parseFloat(newValue || "0"), { duration: 0 });
+      animatedAmount.set(parseFloat(newValue) || 0, { duration: 0 });
     } catch (error) {
       console.error("Error in handleInput:", error);
       toastStore.error("Invalid input amount");
     }
-  }
+  }, 300);
+
 </script>
 
 <Panel variant="green" width="auto" className="token-panel">
@@ -118,23 +132,24 @@
     <div class="input-section">
       <div class="amount-container">
         <div class="token-logo">
-          <TokenImages
-            tokens={[tokenInfo]}
-            containerClass="mr-1"
-          />
+          {#key token}
+            <TokenImages
+              tokens={[tokenInfo]}
+              containerClass="mr-1"
+            />
+          {/key}
         </div>
         <input
           bind:this={inputElement}
           type="text"
-          class="amount-input"
-          class:error={isOverBalance && title === "You Pay"}
-          value={isAnimating ? $animatedAmount.toFixed(decimals) : amount}
+          class="amount-input {isOverBalance && title === 'You Pay' ? 'error' : ''}"
+          value="{isAnimating ? $animatedAmount.toFixed(decimals) : amount}"
           on:input={handleInput}
           on:focus={() => inputFocused = true}
           on:blur={() => inputFocused = false}
           placeholder="0"
-          disabled={disabled || title === "You Receive"}
-          readonly={title === "You Receive"}
+          disabled="{disabled || title === 'You Receive'}"
+          readonly="{title === 'You Receive'}"
         />
         {#if title === "You Pay"}
           <button class="max-button" on:click={handleMaxClick}>MAX</button>
@@ -250,38 +265,7 @@
   letter-spacing: 0.02em;
 }
 
-/* Settings Button */
-.settings-button {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-  opacity: 0.7;
-  transition: all var(--transition-fast);
-}
-
-.settings-button:hover {
-  opacity: 1;
-  transform: rotate(45deg);
-}
-
-.settings-icon {
-  font-size: 1.25rem;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
-}
-
-/* Input Section */
-.input-section {
-  position: relative;
-  flex-grow: 1;
-  margin-bottom: -1px;
-  height: 68px;
-}
-.token-selector {
-  display: flex;
-  align-items: center;
-}
-
+/* Token Button Styles */
 .token-button {
   background: var(--color-black-alpha-25);
   border: 1px solid var(--color-white-alpha-10);
@@ -298,23 +282,12 @@
   min-width: 85px;
   height: 42px;
   box-sizing: border-box;
-  margin-right: 0;
-  border-top-right-radius: var(--border-radius-medium);
-  border-bottom-right-radius: var(--border-radius-medium);
 }
 
 .token-button:hover:not(:disabled) {
   background: var(--color-black-alpha-45);
   border-color: rgba(100, 173, 59, 0.8);
   transform: translateY(-1px);
-}
-
-.token-button.warning {
-  background: var(--color-warning-alpha-10);
-  border: 2px solid var(--color-warning-alpha-30);
-  box-shadow: 
-    0 0 0 1px rgba(0, 0, 0, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .token-text {
@@ -368,6 +341,15 @@
   transform: none;
   box-shadow: none;
 }
+
+/* Input Section */
+.input-section {
+  position: relative;
+  flex-grow: 1;
+  margin-bottom: -1px;
+  height: 68px;
+}
+
 .amount-container {
   display: flex;
   align-items: center;
@@ -376,8 +358,6 @@
   background: var(--color-black-alpha-25);
   border: 1px solid var(--border-success);
   border-radius: var(--border-radius-medium);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
   box-shadow: 
     inset 0 1px 2px rgba(0, 0, 0, 0.2),
     0 1px 0 #368D00,
@@ -414,35 +394,8 @@
   opacity: 1;
 }
 
-/* Token Button */
-.token-button {
-  background: var(--color-black-alpha-25);
-  border: 1px solid var(--color-white-alpha-10);
-  border-radius: var(--border-radius-medium);
-  padding: 0.1rem 0.25rem;
-  color: var(--color-white);
-  font-size: 1.5rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  transition: all var(--transition-fast);
-  cursor: pointer;
-  min-width: 85px;
-  height: 42px;
-  box-sizing: border-box;
-}
-
-.token-button:hover:not(:disabled) {
-  background: var(--color-black-alpha-45);
-  border-color: rgba(100, 173, 59, 0.8);
-  transform: translateY(-1px);
-}
-
-/* Token Display */
-.token-logo {
-  display: flex;
-  align-items: center;
+.amount-input.error {
+  border: 1px solid var(--color-warning); /* Example error styling */
 }
 
 /* Balance Display */
@@ -486,20 +439,28 @@
   color: #FFD700;
   opacity: 0.8;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.network-fee {
+.slippage-display {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--color-white-alpha-10);
-  font-size: 0.9rem;
-  color: var(--color-white-alpha-20);
+  gap: 0.5rem;
+  transition: all var(--transition-fast);
 }
 
+.slippage-value {
+  font-size: 2.25rem;
+  font-weight: 600;
+  color: #FFB74D;
+  text-shadow: var(--shadow-text);
+  transition: color 0.2s ease;
+}
+
+.slippage-value.high {
+  color: var(--color-warning);
+  animation: pulse-warning 2s infinite;
+}
 
 /* Warning States */
 .warning {
@@ -523,58 +484,6 @@
   20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
-.balance-label, .fee-label {
-  color: #FFD700;
-  font-weight: 500;
-}
-
-.token-amount, .fee-amount {
-  color: #FFFFFF;
-  font-weight: 600;
-}
-
-.network-fee {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--color-white-alpha-10);
-}
-
-.slippage-display {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all var(--transition-fast);
-}
-
-.slippage-icon {
-  font-size: 1.25rem;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
-}
-
-.slippage-value {
-  font-size: 2.25rem;
-  font-weight: 600;
-  color: #FFB74D;
-  text-shadow: var(--shadow-text);
-  transition: color 0.2s ease;
-}
-
-.slippage-value.high {
-  color: var(--color-warning);
-  animation: pulse-warning 2s infinite;
-}
-
-/* Add styles for the USD fee display */
-.fee-usd {
-  font-size: 0.85em;
-  opacity: 0.7;
-  margin-left: 0.5rem;
-}
-
-/* Add a subtle glow effect when value changes */
 .fiat-amount:not(:hover) {
   animation: value-update 0.4s ease-out;
 }
@@ -593,5 +502,4 @@
     transform: scale(1);
   }
 }
-
 </style>

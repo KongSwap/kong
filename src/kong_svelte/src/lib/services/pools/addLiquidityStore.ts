@@ -1,9 +1,9 @@
 import { writable, derived } from 'svelte/store';
-import { PoolService } from '$lib/services/PoolService';
-import { TokenService } from '$lib/features/tokens/TokenService';
+import { PoolService } from '$lib/services/pools/PoolService';
+import { TokenService } from '$lib/services/tokens/TokenService';
 import { parseTokenAmount } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
-import { debounce } from 'lodash-es';
+import debounce from 'lodash-es/debounce';
 
 interface AddLiquidityState {
   token0: FE.Token | null;
