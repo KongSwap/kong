@@ -70,8 +70,9 @@
   const handleMaxClick = () => {
     if (!disabled && title === "You Pay") {
       try {
+        const toSub = tokenInfo?.fee + 10n;
         const maxAmount = BigNumber($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString() || "0")
-          .minus(tokenInfo?.fee.toString() || "0")
+          .minus(toSub.toString() || "0")
           .toFixed();
         const formattedMaxAmount = formatTokenAmount(maxAmount, decimals);
         isAnimating = true;

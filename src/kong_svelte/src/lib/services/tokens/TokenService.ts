@@ -2,12 +2,12 @@ import { getActor, walletStore } from '$lib/services/wallet/walletStore';
 import { PoolService } from '../../services/pools/PoolService';
 import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { poolStore } from '$lib/services/pools/poolStore';
 import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
 import { Principal } from '@dfinity/principal';
 import { TokenSchema, BETokenSchema, BETokenArraySchema } from './tokenSchema';
+import { IcrcService } from '$lib/services/icrc/IcrcService';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -33,51 +33,49 @@ export class TokenService {
   }
 
   public static async enrichTokenWithMetadata(
-    tokens: FE.Token[],
-    onTokenEnriched?: (token: FE.Token) => void
-  ): Promise<void> {
+    tokens: FE.Token[]
+  ): Promise<FE.Token[]> {
+    const enrichedTokens: FE.Token[] = [];
     const poolData = get(poolStore);
 
     for (const token of tokens) {
       try {
+        // Validate the base token
         TokenSchema.parse(token);
+
+        const fee = await this.fetchTokenFee(token);
 
         const [price, volume24h] = await Promise.all([
           this.getCachedPrice(token),
           this.calculate24hVolume(token, poolData.pools),
         ]);
 
-        const enrichedToken = {
-          ...token,
-          price,
-          total_24h_volume: volume24h,
-        };
-
-        if (onTokenEnriched) {
-          onTokenEnriched(enrichedToken);
-        }
-      } catch (error) {
-        console.error(`Error enriching token ${token.symbol}:`, error);
-        if (onTokenEnriched) {
-          onTokenEnriched(token);
-        }
-      }
-    }
-
-    for (const token of tokens) {
-      try {
         const logo = await this.getCachedLogo(token);
 
-        if (onTokenEnriched) {
-          onTokenEnriched({ ...token, logo });
-        }
+        const enrichedToken: FE.Token = {
+          ...token,
+          fee,
+          price,
+          total_24h_volume: volume24h,
+          logo,
+        };
+
+        enrichedTokens.push(enrichedToken);
       } catch (error) {
-        console.error(`Error fetching logo for token ${token.symbol}:`, error);
-        if (onTokenEnriched) {
-          onTokenEnriched({ ...token, logo: this.DEFAULT_LOGOS.DEFAULT });
-        }
+        console.error(`Error enriching token ${token.symbol}:`, error);
+
+        // Even if enrichment fails, include the token with defaults
+        enrichedTokens.push({
+          ...token,
+          fee: BigInt(10000),
+          logo: this.DEFAULT_LOGOS.DEFAULT,
+          price: token.price || 0,
+          total_24h_volume: token.total_24h_volume || 0n,
+        });
       }
     }
+
+    return enrichedTokens;
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
@@ -126,50 +124,61 @@ export class TokenService {
     }
   }
 
-  public static async fetchBalances(tokens: FE.Token[], principalId: string = null): Promise<Record<string, FE.TokenBalance>> {
+  public static async fetchBalances(
+    tokens: FE.Token[],
+    principalId: string = null
+  ): Promise<Record<string, FE.TokenBalance>> {
     const wallet = get(walletStore);
     if (!wallet.isConnected) return {};
 
     if (!principalId) {
-      principalId = wallet.account.owner;
+      principalId = wallet.account.owner.toString();
     }
-    
+
     const balances: Record<string, FE.TokenBalance> = {};
-    
+
     for (const token of tokens) {
       try {
-        const actor = await getActor(token.canister_id, 'icrc1');
-        const owner = wallet.account.owner;
-        const balance = await actor.icrc1_balance_of({
-          owner,
-          subaccount: [],
-        });
-        
+        let balance: bigint;
+
+        if (token.icrc1) {
+          balance = await IcrcService.getIcrc1Balance(
+            token,
+            Principal.fromText(principalId)
+          );
+        } else {
+          // Handle other token types if necessary
+          balance = BigInt(0); // Default fallback or handle appropriately
+        }
+
         const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
         const price = await this.fetchPrice(token);
         const usdValue = parseFloat(actualBalance) * price;
 
         balances[token.canister_id] = {
-          in_tokens: BigInt(balance) || BigInt(0),
-          in_usd: formatToNonZeroDecimal(usdValue)
-        }
+          in_tokens: balance || BigInt(0),
+          in_usd: formatToNonZeroDecimal(usdValue),
+        };
       } catch (err) {
-        console.error(`Error fetching balance for ${token.canister_id}:`, token);
-        balances[token.canister_id] = {in_tokens: 0n, in_usd: formatToNonZeroDecimal(0)}
+        console.error(`Error fetching balance for ${token.canister_id}:`, err);
+        // Optionally provide more details from 'err'
+        balances[token.canister_id] = {
+          in_tokens: BigInt(0),
+          in_usd: formatToNonZeroDecimal(0),
+        };
       }
     }
-    
+
     return balances;
   }
 
   public static async fetchBalance(token: FE.Token): Promise<string> {
     const wallet = get(walletStore);
-    const actor = await getActor(token.canister_id, 'icrc2');
-    const balance = actor.icrc1_balance_of({
-      owner: wallet.account.owner,
-      subaccount: [],
-    });
-    return balance;
+    const balance = await IcrcService.getIcrc1Balance(
+      token,
+      wallet.account.owner
+    );
+    return balance.toString();
   }
 
   public static async fetchPrices(tokens: FE.Token[]): Promise<Record<string, number>> {
@@ -369,74 +378,21 @@ export class TokenService {
     return total24hVolume;
   }
 
-  public static async requestIcrc2Approve(
-    canisterId: string, 
-    payAmount: bigint,
-    gasAmount: bigint = BigInt(0)
-  ): Promise<boolean> {
+  private static async fetchTokenFee(token: FE.Token): Promise<bigint> {
     try {
-      const actor = await getActor(canisterId, 'icrc2');
-
-      if (!actor.icrc2_approve) {
-        throw new Error('ICRC2 methods not available - wrong IDL loaded');
+      if (token.canister_id === ICP_CANISTER_ID) {
+        // For ICP, use the standard transaction fee
+        // ICP's fee is typically 10,000 e8s (0.0001 ICP)
+        return BigInt(10000);
+      } else {
+        const actor = await getActor(token.canister_id, 'icrc1');
+        const fee = await actor.icrc1_fee();
+        return fee;
       }
-
-      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
-      
-      const totalAmount = payAmount + gasAmount;
-      console.log("totalAmount", totalAmount);
-      
-      const approveArgs = {
-        fee: [],
-        memo: [],
-        from_subaccount: [],
-        created_at_time: [],
-        amount: BigInt(totalAmount),
-        expected_allowance: [],
-        expires_at: [expiresAt],
-        spender: { 
-          owner: Principal.fromText(kongBackendCanisterId), 
-          subaccount: [] 
-        }
-      };
-
-      const result = await actor.icrc2_approve(approveArgs);
-      
-      if ('Err' in result) {
-        throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
-      }
-      
-      return true;
     } catch (error) {
-      console.error('Error in ICRC2 approve:', error);
-      throw error;
-    }
-  }
-
-  public static async checkIcrc2Allowance(
-    canisterId: string,
-    owner: Principal,
-    spender: Principal
-  ): Promise<bigint> {
-    try {
-      const actor = await getActor(canisterId, 'icrc2');
-
-      if (!actor.icrc2_allowance) {
-        throw new Error('ICRC2 methods not available - wrong IDL loaded');
-      }
-
-      const result = await actor.icrc2_allowance({
-        account: { owner, subaccount: [] },
-        spender: { 
-          owner: spender, 
-          subaccount: [] 
-        }
-      });
-
-      return BigInt(result.allowance);
-    } catch (error) {
-      console.error('Error checking ICRC2 allowance:', error);
-      throw error;
+      console.error(`Error fetching fee for ${token.symbol}:`, error);
+      // Provide a default fee if necessary
+      return BigInt(10000); // Adjust default fee as appropriate
     }
   }
 } 

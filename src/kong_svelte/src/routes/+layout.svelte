@@ -26,9 +26,9 @@
     await Promise.all([
       restoreWalletConnection(),
       tokenStore.loadTokens(),
-      poolStore.loadPools(),
-      isConnected() ? tokenStore.loadBalances() : null,
+      poolStore.loadPools()
     ]);
+    isConnected() ? setInterval(tokenStore.loadBalances, 10000) : null,
     initialized = true;
   });
 

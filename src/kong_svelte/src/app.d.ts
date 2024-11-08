@@ -90,7 +90,7 @@ declare global {
       total_supply: bigint;
     }
   
-    type Token = { IC: ICToken } | { LP: LPToken };
+    type Token = { IC?: ICToken, LP?: LPToken };
 
     // Pool Types
   

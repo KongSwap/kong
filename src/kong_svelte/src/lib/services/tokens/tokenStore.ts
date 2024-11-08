@@ -4,6 +4,7 @@ import { TokenService } from '$lib/services/tokens/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
 import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+import { toastStore } from '$lib/stores/toastStore';
 
 interface TokenState {
   readonly tokens: FE.Token[];
@@ -99,7 +100,7 @@ function createTokenStore() {
 
   return {
     subscribe: store.subscribe,
-    loadTokens: async (forceRefresh = false) => {
+    loadTokens: async (forceRefresh = true) => {
       const currentState = getCurrentState();
 
       if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
@@ -110,42 +111,56 @@ function createTokenStore() {
 
       try {
         const baseTokens = await TokenService.fetchTokens();
-        const icTokens = baseTokens
-          .filter((token) => 'IC' in token)
-          .map((token) => token.IC);
+        console.log(baseTokens);
 
-        // Create a map to track tokens by their canister_id
-        const tokenMap = new Map<string, FE.Token>();
+        // Extract IC tokens and map them to FE.Token[]
+        const icTokens: FE.Token[] = baseTokens
+            .filter((token): token is { IC: BE.ICToken } => token.IC !== undefined)
+            .map((token) => {
+                const icToken = token.IC;
+                return {
+                    canister_id: icToken.canister_id,
+                    name: icToken.name,
+                    symbol: icToken.symbol,
+                    fee: icToken.fee,
+                    decimals: icToken.decimals,
+                    token: icToken.token,
+                    token_id: icToken.token_id,
+                    chain: icToken.chain,
+                    icrc1: icToken.icrc1,
+                    icrc2: icToken.icrc2,
+                    icrc3: icToken.icrc3,
+                    on_kong: icToken.on_kong,
+                    pool_symbol: icToken.pool_symbol ?? "Pool not found",
+                    // Optional fields
+                    logo: undefined,
+                    total_24h_volume: undefined,
+                    price: undefined,
+                    tvl: undefined,
+                    balance: undefined,
+                } as FE.Token;
+            });
 
-        // Enrich tokens and update the store incrementally
-        await TokenService.enrichTokenWithMetadata(icTokens, (enrichedToken) => {
-          store.update((s) => {
-            // Check if the token already exists
-            const index = s.tokens.findIndex(
-              (t) => t.canister_id === enrichedToken.canister_id
-            );
+        const enrichedTokens = await TokenService.enrichTokenWithMetadata(icTokens);
 
-            if (index >= 0) {
-              // Update the existing token
-              const updatedTokens = [...s.tokens];
-              updatedTokens[index] = { ...updatedTokens[index], ...enrichedToken };
-              return { ...s, tokens: updatedTokens };
-            } else {
-              // Add new token
-              const newTokens = [...s.tokens, enrichedToken];
-              return { ...s, tokens: newTokens, lastTokensFetch: Date.now() };
-            }
-          });
+        updateState({
+            ...currentState,  // Preserve existing state
+            tokens: enrichedTokens,
+            isLoading: false,
+            lastTokensFetch: Date.now(),
+            error: null,
         });
 
-        store.update((s) => ({ ...s, isLoading: false }));
-      } catch (error) {
+        return enrichedTokens;
+      } catch (error: any) {
         console.error('Error loading tokens:', error);
-        store.update((s) => ({
-          ...s,
-          error: error.message,
-          isLoading: false,
-        }));
+        updateState({
+            ...currentState,  // Preserve existing state
+            error: error.message,
+            isLoading: false,
+            tokens: []
+        });
+        toastStore.error('Failed to load tokens');
       }
     },
     getBalance: (canisterId: string) => {

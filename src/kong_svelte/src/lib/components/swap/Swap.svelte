@@ -17,6 +17,7 @@
   import { flip } from 'svelte/animate';
   import { quintOut } from 'svelte/easing';
   import SwapSettings from './swap_ui/SwapSettings.svelte';
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
   const swapService = SwapService.getInstance();
@@ -312,8 +313,14 @@
             const swapStatus = reply.Swap;
             
             if (showConfirmation) {
-              console.log("swaptx", swapStatus.txs)
-             
+              const txIndex = swapStatus.txs?.findIndex(tx => !tx.completed);
+              if (txIndex !== -1 && txIndex !== undefined) {
+                const currentTx = swapStatus.txs[txIndex];
+                currentStep = `Swapping ${currentTx.pay_symbol} → ${currentTx.receive_symbol}`;
+                currentRouteIndex = txIndex;
+              } else {
+                currentStep = 'Processing...';
+              }
             }
             
             if (!hasCompleted) {
@@ -337,7 +344,7 @@
           handleSwapFailure(null);
         }
       }
-    }, 100);
+    }, 250);
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -357,10 +364,10 @@
         slippage,
         backendPrincipal: KONG_BACKEND_PRINCIPAL,
       });
+      console.log('requestId', requestId);
 
       if (requestId) {
         startPolling(requestId);
-        return true;
       } else {
         throw new Error("Failed to execute swap - no requestId returned");
       }
@@ -423,6 +430,38 @@
 
   function closeConfirmation() {
     showConfirmation = false;
+  }
+
+  async function handleMaxButtonClick() {
+    const tokens = $tokenStore.tokens;
+    const payTokenObj = tokens.find(t => t.symbol === payToken);
+    if (!payTokenObj) {
+        toastStore.error('Pay token not found');
+        return;
+    }
+
+    // Get the user's balance
+    const balanceBigInt = await IcrcService.getIcrc1Balance(
+        payTokenObj,
+        $walletStore.account.owner
+    );
+    const balance = swapService.fromBigInt(balanceBigInt, payTokenObj.decimals);
+
+    // Get the fee
+    const feeBigInt = payTokenObj.fee ?? BigInt(10000); // Ensure fee is set
+    const fee = swapService.fromBigInt(feeBigInt, payTokenObj.decimals);
+
+    // Calculate max amount by subtracting fee from balance
+    const maxAmount = new BigNumber(balance).minus(fee);
+
+    if (maxAmount.isNegative() || maxAmount.isZero()) {
+        toastStore.error('Insufficient balance to cover the transaction fee.');
+        return;
+    }
+
+    // Set the payAmount to maxAmount
+    payAmount = maxAmount.toFixed(payTokenObj.decimals);
+    debouncedGetQuote(payAmount);
   }
 </script>
 

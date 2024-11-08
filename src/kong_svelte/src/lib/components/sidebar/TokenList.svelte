@@ -75,7 +75,7 @@
   {:else if $tokenStore.error}
     <div class="error">{$tokenStore.error}</div>
   {:else}
-    {#each $formattedTokens as token (token.canister_id)}
+    {#each $formattedTokens as token (token)}
       <TokenRow {token} onClick={() => handleTokenClick(token)} />
     {/each}
   {/if}
