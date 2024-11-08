@@ -23,9 +23,7 @@ interface SwapExecuteParams {
 }
 
 export class SwapService {
-    private static instance: SwapService;
-
-    public toBigInt(amount: string, decimals: number): bigint {
+    public static toBigInt(amount: string, decimals: number): bigint {
         if (!amount || isNaN(Number(amount))) return BigInt(0);
         return BigInt(
             new BigNumber(amount)
@@ -34,7 +32,7 @@ export class SwapService {
         );
     }
 
-    public fromBigInt(amount: bigint, decimals: number): string {
+    public static fromBigInt(amount: bigint, decimals: number): string {
         try {
             const result = new BigNumber(amount.toString())
                 .div(new BigNumber(10).pow(decimals))
@@ -45,17 +43,10 @@ export class SwapService {
         }
     }
 
-    public static getInstance(): SwapService {
-        if (!SwapService.instance) {
-            SwapService.instance = new SwapService();
-        }
-        return SwapService.instance;
-    }
-
     /**
      * Gets swap quote from backend
      */
-    public async swap_amounts(
+    public static async swap_amounts(
         payToken: string,
         payAmount: bigint,
         receiveToken: string
@@ -72,7 +63,7 @@ export class SwapService {
     /**
      * Gets quote details including price, fees, etc.
      */
-    public async getQuoteDetails(params: {
+    public static async getQuoteDetails(params: {
         payToken: string;
         payAmount: bigint;
         receiveToken: string;
@@ -85,7 +76,7 @@ export class SwapService {
         tokenFee?: string;
         slippage: number;
     }> {
-        const quote = await this.swap_amounts(
+        const quote = await SwapService.swap_amounts(
             params.payToken,
             params.payAmount,
             params.receiveToken
@@ -99,7 +90,7 @@ export class SwapService {
         const receiveToken = tokens.find(t => t.symbol === params.receiveToken);
         if (!receiveToken) throw new Error('Receive token not found');
 
-        const receiveAmount = this.fromBigInt(
+        const receiveAmount = SwapService.fromBigInt(
             quote.Ok.receive_amount,
             receiveToken.decimals
         );
@@ -110,8 +101,8 @@ export class SwapService {
 
         if (quote.Ok.txs.length > 0) {
             const tx = quote.Ok.txs[0];
-            lpFee = this.fromBigInt(tx.lp_fee, receiveToken.decimals);
-            gasFee = this.fromBigInt(tx.gas_fee, receiveToken.decimals);
+            lpFee = SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals);
+            gasFee = SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals);
             tokenFee = tx.receive_symbol;
         }
 
@@ -131,7 +122,7 @@ export class SwapService {
     /**
      * Executes swap asynchronously
      */
-    public async swap_async(params: {
+    public static async swap_async(params: {
         pay_token: string;
         pay_amount: bigint;
         receive_token: string;
@@ -153,7 +144,7 @@ export class SwapService {
     /**
      * Gets request status
      */
-    public async requests(requestIds: bigint[]): Promise<BE.RequestResponse> {
+    public static async requests(requestIds: bigint[]): Promise<BE.RequestResponse> {
         try {
             const actor = await getActor();
             return await actor.requests(requestIds);
@@ -166,58 +157,39 @@ export class SwapService {
     /**
      * Executes complete swap flow
      */
-    public async executeSwap(params: SwapExecuteParams): Promise<bigint | false> {
+    public static async executeSwap(params: SwapExecuteParams): Promise<bigint | false> {
         try {
             await walletValidator.requireWalletConnection();
             console.log('params', params);
             const tokens = get(tokenStore).tokens;
+            await tokenStore.loadBalances();
             const payToken = tokens.find(t => t.symbol === params.payToken);
             if (!payToken) throw new Error('Pay token not found');
 
-            const payAmount = this.toBigInt(params.payAmount, payToken.decimals);
+            const payAmount = SwapService.toBigInt(params.payAmount, payToken.decimals);
             const receiveToken = tokens.find(t => t.symbol === params.receiveToken);
             if (!receiveToken) throw new Error('Receive token not found');
 
-            const receiveAmount = this.toBigInt(params.receiveAmount, receiveToken.decimals);
+            const receiveAmount = SwapService.toBigInt(params.receiveAmount, receiveToken.decimals);
 
             console.log('Processing transfer/approval for amount:', payAmount.toString());
 
-            // **Convert token.fee to bigint in minimal units**
-            const feeBigInt = payToken.fee ?? BigInt(10000); // Ensure fee is set
+            const feeBigInt = payToken.fee;
             const totalCost = payAmount + feeBigInt;
             const balance = await IcrcService.getIcrc1Balance(payToken, get(walletStore).account.owner);
-
-            // Validate total cost against balance
-            if (balance < totalCost) {
-                const formattedBalance = this.fromBigInt(balance, payToken.decimals);
-                const formattedNeeded = this.fromBigInt(totalCost, payToken.decimals);
-                throw new Error(
-                    `Insufficient balance. Need ${formattedNeeded} ${payToken.symbol}, have ${formattedBalance} ${payToken.symbol}`
-                );
-            }
-
             let txId: bigint | false;
             
             if (payToken.icrc2) {
                 console.log('Using ICRC2 approval');
                 
-                // Calculate the required allowance
                 const requiredAllowance = payAmount + feeBigInt;
 
-                const allowance = await IcrcService.checkIcrc2Allowance(
+                const approval = await SwapService.requestIcrc2Approve(
                     payToken.canister_id,
-                    get(walletStore).account.owner,
-                    params.backendPrincipal
+                    requiredAllowance
                 );
-
-                if (allowance < requiredAllowance) {
-                    const approval = await IcrcService.requestIcrc2Approve(
-                        payToken.canister_id,
-                        requiredAllowance
-                    );
-                    txId = approval ? approval : 0n;
-                    console.log('Approval:', txId);
-                }
+                txId = approval ? approval : 0n;
+                console.log('Approval:', txId);
             } else if (payToken.icrc1) {
                 console.log('Using ICRC1 transfer');
                 const result = await IcrcService.icrc1Transfer(
@@ -250,10 +222,10 @@ export class SwapService {
                 pay_tx_id: []
             };
 
-            const result = await this.swap_async(swapParams);
+            const result = await SwapService.swap_async(swapParams);
 
-                console.log('Tokens:', result.Ok);
-                return result.Ok;
+            console.log('Tokens:', result.Ok);
+            return result.Ok;
         } catch (error) {
             console.error('Swap execution failed:', error);
             toastStore.error(error instanceof Error ? error.message : 'Swap failed');
@@ -279,11 +251,11 @@ export class SwapService {
                 memo: [],
                 from_subaccount: [],
                 created_at_time: [],
-                amount, // Use the passed amount directly, which includes fee
+                amount,
                 expected_allowance: [],
                 expires_at: [expiresAt],
                 spender: { 
-                    owner: Principal.fromText(kongBackendCanisterId), 
+                    owner: Principal.fromText(KONG_BACKEND_PRINCIPAL), 
                     subaccount: [] 
                 }
             };

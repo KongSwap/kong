@@ -20,7 +20,6 @@
   import { IcrcService } from "$lib/services/icrc/IcrcService";
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
-  const swapService = SwapService.getInstance();
 
   export let slippage = 2;
   export let initialPool: string | null = null;
@@ -161,9 +160,9 @@
 
     try {
       const payDecimals = getTokenDecimals(payToken);
-      const payAmountBigInt = swapService.toBigInt(amount, payDecimals);
+      const payAmountBigInt = SwapService.toBigInt(amount, payDecimals);
 
-      const quote = await swapService.swap_amounts(
+      const quote = await SwapService.swap_amounts(
         payToken,
         payAmountBigInt,
         receiveToken,
@@ -171,7 +170,7 @@
 
       if ("Ok" in quote) {
         const receiveDecimals = getTokenDecimals(receiveToken);
-        const receivedAmount = swapService.fromBigInt(
+        const receivedAmount = SwapService.fromBigInt(
           quote.Ok.receive_amount,
           receiveDecimals,
         );
@@ -202,8 +201,8 @@
           
           quote.Ok.txs.forEach(tx => {
             const receiveDecimals = getTokenDecimals(tx.receive_symbol);
-            gasFees.push(swapService.fromBigInt(tx.gas_fee, receiveDecimals));
-            lpFees.push(swapService.fromBigInt(tx.lp_fee, receiveDecimals));
+            gasFees.push(SwapService.fromBigInt(tx.gas_fee, receiveDecimals));
+            lpFees.push(SwapService.fromBigInt(tx.lp_fee, receiveDecimals));
           });
 
           if (gasFees.length > 0) {
@@ -303,7 +302,7 @@
     
     intervalId = setInterval(async () => {
       try {
-        const status = await swapService.requests([reqId]);
+        const status = await SwapService.requests([reqId]);
         
         if (status.Ok?.[0]?.reply && !hasCompleted) {
           console.log("status", status)
@@ -356,7 +355,7 @@
     error = null;
 
     try {
-      const requestId = await swapService.executeSwap({
+      const requestId = await SwapService.executeSwap({
         payToken,
         payAmount,
         receiveToken,
@@ -386,7 +385,7 @@
     
     if (reply.receive_amount) {
       const receiveDecimals = getTokenDecimals(receiveToken);
-      const finalAmount = swapService.fromBigInt(reply.receive_amount, receiveDecimals);
+      const finalAmount = SwapService.fromBigInt(reply.receive_amount, receiveDecimals);
       setReceiveAmount(finalAmount);
       setDisplayAmount(new BigNumber(finalAmount).toFixed(receiveDecimals));
     }
@@ -428,10 +427,6 @@
     showConfirmation = true;
   }
 
-  function closeConfirmation() {
-    showConfirmation = false;
-  }
-
   async function handleMaxButtonClick() {
     const tokens = $tokenStore.tokens;
     const payTokenObj = tokens.find(t => t.symbol === payToken);
@@ -445,11 +440,11 @@
         payTokenObj,
         $walletStore.account.owner
     );
-    const balance = swapService.fromBigInt(balanceBigInt, payTokenObj.decimals);
+    const balance = SwapService.fromBigInt(balanceBigInt, payTokenObj.decimals);
 
     // Get the fee
     const feeBigInt = payTokenObj.fee ?? BigInt(10000); // Ensure fee is set
-    const fee = swapService.fromBigInt(feeBigInt, payTokenObj.decimals);
+    const fee = SwapService.fromBigInt(feeBigInt, payTokenObj.decimals);
 
     // Calculate max amount by subtracting fee from balance
     const maxAmount = new BigNumber(balance).minus(fee);

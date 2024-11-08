@@ -93,7 +93,7 @@
       const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
       const decimals = token?.decimals || 8;
       const gasFeeValue = typeof gasFees[i] === 'string' ? Number(gasFees[i]) : gasFees[i] || 0;
-      const stepGasFee = SwapService.getInstance().fromBigInt(
+      const stepGasFee = SwapService.fromBigInt(
         scaleDecimalToBigInt(gasFeeValue, decimals),
         decimals
       );
@@ -105,7 +105,7 @@
       const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
       const decimals = token?.decimals || 8;
       const lpFeeValue = typeof lpFees[i] === 'string' ? Number(lpFees[i]) : lpFees[i] || 0;
-      const stepLPFee = SwapService.getInstance().fromBigInt(
+      const stepLPFee = SwapService.fromBigInt(
         scaleDecimalToBigInt(lpFeeValue, decimals),
         decimals
       );
