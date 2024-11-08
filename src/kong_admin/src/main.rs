@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //pools::dump_pools(&client, &tokens_map).await?;
     let pools_map = pools::load_pools(&client).await?;
     //lp_token_ledger::dump_lp_token_ledger(&client, &tokens_map).await?;
-    //requests::dump_requests(&client, &tokens_map).await?;
+    requests::dump_requests(&client).await?;
     //transfers::dump_transfers(&client, &tokens_map).await?;
     txs::dump_txs(&client, &tokens_map, &pools_map).await?;
 

@@ -1,7 +1,5 @@
 use kong_lib::stable_request::request::Request;
 use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
-use kong_lib::tokens;
-use num_traits::ToPrimitive;
 use postgres_types::{FromSql, ToSql};
 use regex::Regex;
 use serde_json::json;
@@ -29,7 +27,7 @@ enum RequestType {
     Send,
 }
 
-pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"requests.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?
@@ -62,38 +60,7 @@ pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -
                 Request::AddPool(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
-                    let request_type = match &v.request {
-                        Request::AddPool(a) => {
-                            /*
-                            db_client
-                                .execute(
-                                    "INSERT INTO add_pool_args
-                                        (request_id, token_0, amount_0, block_index_0, tx_hash_0, token_1, amount_1, block_index_1, tx_hash_1, lp_fee_bps, kong_fee_bps, on_kong)
-                                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                                        ON CONFLICT (request_id) DO UPDATE SET
-                                            token_0 = $2,
-                                            amount_0 = $3,
-                                            block_index_0 = $4,
-                                            tx_hash_0 = $5,
-                                            token_1 = $6,
-                                            amount_1 = $7,
-                                            block_index_1 = $8,
-                                            tx_hash_1 = $9,
-                                            lp_fee_bps = $10,
-                                            kong_fee_bps = $11,
-                                            on_kong = $12",
-                                    &[&request_id, &a.token_0, &amount_0, &v.request.block_index_0, &v.request.tx_hash_0, &v.request.token_1, &v.request.amount_1, &v.request.block_index_1, &v.request.tx_hash_1, &v.request.lp_fee_bps, &v.request.kong_fee_bps, &v.request.on_kong],
-                                )
-                                .await?;
-                            */
-                            RequestType::AddPool
-                        }
-                        Request::AddLiquidity(_) => RequestType::AddLiquidity,
-                        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
-                        Request::Swap(_) => RequestType::Swap,
-                        Request::Claim(_) => RequestType::Claim,
-                        Request::Send(_) => RequestType::Send,
-                    };
+                    let request_type = RequestType::AddPool;
                     let request = json!(&v.request);
                     let reply = json!(&v.reply);
                     let statuses = json!(&v.statuses);
@@ -119,20 +86,12 @@ pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -
                 Request::AddLiquidity(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
-                    let request_type = match &v.request {
-                        Request::AddPool(_) => RequestType::AddPool,
-                        Request::AddLiquidity(_) => RequestType::AddLiquidity,
-                        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
-                        Request::Swap(_) => RequestType::Swap,
-                        Request::Claim(_) => RequestType::Claim,
-                        Request::Send(_) => RequestType::Send,
-                    };
+                    let request_type = RequestType::AddLiquidity;
                     let request = json!(&v.request);
                     let reply = json!(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
-                    // insert or update
                     db_client
                         .execute(
                             "INSERT INTO requests
@@ -153,20 +112,12 @@ pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -
                 Request::RemoveLiquidity(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
-                    let request_type = match &v.request {
-                        Request::AddPool(_) => RequestType::AddPool,
-                        Request::AddLiquidity(_) => RequestType::AddLiquidity,
-                        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
-                        Request::Swap(_) => RequestType::Swap,
-                        Request::Claim(_) => RequestType::Claim,
-                        Request::Send(_) => RequestType::Send,
-                    };
+                    let request_type = RequestType::RemoveLiquidity;
                     let request = json!(&v.request);
                     let reply = json!(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
-                    // insert or update
                     db_client
                         .execute(
                             "INSERT INTO requests
@@ -187,20 +138,12 @@ pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -
                 Request::Swap(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
-                    let request_type = match &v.request {
-                        Request::AddPool(_) => RequestType::AddPool,
-                        Request::AddLiquidity(_) => RequestType::AddLiquidity,
-                        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
-                        Request::Swap(_) => RequestType::Swap,
-                        Request::Claim(_) => RequestType::Claim,
-                        Request::Send(_) => RequestType::Send,
-                    };
+                    let request_type = RequestType::Swap;
                     let request = json!(&v.request);
                     let reply = json!(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
-                    // insert or update
                     db_client
                         .execute(
                             "INSERT INTO requests
@@ -221,20 +164,12 @@ pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -
                 Request::Claim(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
-                    let request_type = match &v.request {
-                        Request::AddPool(_) => RequestType::AddPool,
-                        Request::AddLiquidity(_) => RequestType::AddLiquidity,
-                        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
-                        Request::Swap(_) => RequestType::Swap,
-                        Request::Claim(_) => RequestType::Claim,
-                        Request::Send(_) => RequestType::Send,
-                    };
+                    let request_type = RequestType::Claim;
                     let request = json!(&v.request);
                     let reply = json!(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
-                    // insert or update
                     db_client
                         .execute(
                             "INSERT INTO requests
@@ -255,20 +190,12 @@ pub async fn dump_requests(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -
                 Request::Send(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
-                    let request_type = match &v.request {
-                        Request::AddPool(_) => RequestType::AddPool,
-                        Request::AddLiquidity(_) => RequestType::AddLiquidity,
-                        Request::RemoveLiquidity(_) => RequestType::RemoveLiquidity,
-                        Request::Swap(_) => RequestType::Swap,
-                        Request::Claim(_) => RequestType::Claim,
-                        Request::Send(_) => RequestType::Send,
-                    };
+                    let request_type = RequestType::Send;
                     let request = json!(&v.request);
                     let reply = json!(&v.reply);
                     let statuses = json!(&v.statuses);
                     let ts = v.ts as f64 / 1_000_000_000.0;
 
-                    // insert or update
                     db_client
                         .execute(
                             "INSERT INTO requests
