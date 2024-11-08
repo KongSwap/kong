@@ -102,6 +102,7 @@ declare global {
   }
   
    interface Pool {
+      id: string;
       lp_token_symbol: string;
       balance: bigint;
       total_lp_fee: bigint;

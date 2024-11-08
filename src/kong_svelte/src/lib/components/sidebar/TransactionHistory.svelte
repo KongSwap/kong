@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { TokenService } from '$lib/features/tokens/TokenService';
-    import { tokenStore } from '$lib/features/tokens/tokenStore';
-    import { walletStore } from '$lib/stores/walletStore';
+    import { TokenService } from '$lib/services/tokens/TokenService';
+    import { tokenStore } from '$lib/services/tokens/tokenStore';
+    import { walletStore } from '$lib/services/wallet/walletStore';
     import { fly, fade } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';

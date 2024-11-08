@@ -1,11 +1,10 @@
-import { getActor } from '$lib/stores/walletStore';
-import { PoolService } from '../pools/PoolService';
+import { getActor, walletStore } from '$lib/services/wallet/walletStore';
+import { PoolService } from '../../services/pools/PoolService';
 import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
-import { walletStore } from '$lib/stores/walletStore';
 import { get } from 'svelte/store';
-import { tokenStore } from '$lib/features/tokens/tokenStore';
+import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
-import { poolStore } from '$lib/features/pools/poolStore';
+import { poolStore } from '$lib/services/pools/poolStore';
 import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
 import { Principal } from '@dfinity/principal';
 import { TokenSchema, BETokenSchema, BETokenArraySchema } from './tokenSchema';
@@ -30,11 +29,7 @@ export class TokenService {
   public static async fetchTokens(): Promise<BE.Token[]> {
     const actor = await getActor();
     const result = await actor.tokens(['all'])
-    console.log("res", result);
-
-    const validatedTokens: BE.Token[] = result.Ok
-    
-    return validatedTokens;
+    return result.Ok
   }
 
   public static async enrichTokenWithMetadata(
@@ -150,9 +145,9 @@ export class TokenService {
           subaccount: [],
         });
         
-        const actualBalance = formatTokenAmount(balance, token.decimals);
+        const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
         const price = await this.fetchPrice(token);
-        const usdValue = actualBalance * price;
+        const usdValue = parseFloat(actualBalance) * price;
 
         balances[token.canister_id] = {
           in_tokens: BigInt(balance) || BigInt(0),
@@ -167,12 +162,11 @@ export class TokenService {
     return balances;
   }
 
-  public static async fetchBalance(principalId: string, token: string): Promise<string> {
-    const tokens = get(tokenStore);
-    const canisterId = tokens.tokens.find(t => t.symbol === token)?.canister_id;
-    const actor = await getActor(canisterId, 'icrc1');
+  public static async fetchBalance(token: FE.Token): Promise<string> {
+    const wallet = get(walletStore);
+    const actor = await getActor(token.canister_id, 'icrc2');
     const balance = actor.icrc1_balance_of({
-      owner: principalId,
+      owner: wallet.account.owner,
       subaccount: [],
     });
     return balance;
@@ -421,7 +415,8 @@ export class TokenService {
 
   public static async checkIcrc2Allowance(
     canisterId: string,
-    owner: string
+    owner: Principal,
+    spender: Principal
   ): Promise<bigint> {
     try {
       const actor = await getActor(canisterId, 'icrc2');
@@ -433,7 +428,7 @@ export class TokenService {
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
         spender: { 
-          owner, 
+          owner: spender, 
           subaccount: [] 
         }
       });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
-  import { tokenStore } from '$lib/features/tokens/tokenStore';
-  import { SwapService } from '$lib/services/SwapService';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { SwapService } from '$lib/services/swap/SwapService';
   import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';

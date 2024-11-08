@@ -2,11 +2,11 @@
   import { fade } from "svelte/transition";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import debounce from "lodash/debounce";
-  import { SwapService } from "$lib/services/SwapService";
-  import { walletStore } from "$lib/stores/walletStore";
-  import { tokenStore } from "$lib/features/tokens/tokenStore";
+  import { SwapService } from "$lib/services/swap/SwapService";
+  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
@@ -305,27 +305,22 @@
         const status = await swapService.requests([reqId]);
         
         if (status.Ok?.[0]?.reply && !hasCompleted) {
+          console.log("status", status)
           const reply = status.Ok[0].reply;
           
           if ('Swap' in reply) {
             const swapStatus = reply.Swap;
             
             if (showConfirmation) {
-              const txIndex = swapStatus.txs?.findIndex(tx => !tx.completed);
-              if (txIndex !== -1 && txIndex !== undefined) {
-                const currentTx = swapStatus.txs[txIndex];
-                currentStep = `Swapping ${currentTx.pay_symbol} → ${currentTx.receive_symbol}`;
-                currentRouteIndex = txIndex;
-              } else {
-                currentStep = 'Processing...';
-              }
+              console.log("swaptx", swapStatus.txs)
+             
             }
             
             if (!hasCompleted) {
               if (swapStatus.status === "Success") {
                 hasCompleted = true;
                 clearInterval(intervalId);
-                handleSwapSuccess(swapStatus);
+                await handleSwapSuccess(swapStatus);
               } else if (swapStatus.status === "Failed") {
                 hasCompleted = true;
                 clearInterval(intervalId);
@@ -378,7 +373,7 @@
     }
   }
 
-  function handleSwapSuccess(reply: any) {
+  async function handleSwapSuccess(reply: any) {
     isProcessing = false;
     showConfirmation = false; // Instant close
     
@@ -389,10 +384,13 @@
       setDisplayAmount(new BigNumber(finalAmount).toFixed(receiveDecimals));
     }
 
-    clearInputs();
+    const token = $tokenStore.tokens.find(t => t.symbol === payToken);
+    const token1 = $tokenStore.tokens.find(t => t.symbol === receiveToken);
+    await tokenStore.refreshBalance(token);
+    await tokenStore.refreshBalance(token1);
+        clearInputs();
     slippage = 2;
     toastStore.success("Swap successful");
-    tokenStore.loadBalances();
   }
 
   function handleSwapFailure(reply: any) {

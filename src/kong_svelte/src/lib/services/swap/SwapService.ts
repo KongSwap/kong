@@ -1,13 +1,16 @@
 // src/lib/services/SwapService.ts
 
-import { getActor } from '$lib/stores/walletStore';
-import { walletValidator } from '$lib/validators/walletValidator';
-import { tokenStore } from '$lib/features/tokens/tokenStore';
+import { getActor } from '$lib/services/wallet/walletStore';
+import { walletValidator } from '$lib/services/wallet/walletValidator';
+import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { toastStore } from '$lib/stores/toastStore';
-import { TokenService } from '$lib/features/tokens/TokenService';
+import { TokenService } from '$lib/services/tokens/TokenService';
 import { get } from 'svelte/store';
-import type { Principal } from '@dfinity/principal';
+import { Principal } from '@dfinity/principal';
 import BigNumber from 'bignumber.js';
+import { PoolService } from '../pools';
+import { walletStore } from '$lib/services/wallet/walletStore';
+import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 
 interface SwapExecuteParams {
     payToken: string;
@@ -170,41 +173,6 @@ export class SwapService {
     }
 
     /**
-     * Handles token approval for non-ICRC tokens
-     */
-    private async approveToken(
-        token: FE.Token,
-        amount: bigint,
-        gasFee: bigint,
-        spender: Principal
-    ): Promise<number | false> {
-        try {
-            const actor = await this.getTokenActor(token, 'icrc2');
-            const expires_at = Date.now() * 1000000 + 60000000000;
-
-            const result = await actor.icrc2_approve({
-                amount: amount + gasFee,
-                spender: { owner: spender, subaccount: [] },
-                expires_at: [expires_at],
-                fee: [],
-                memo: [],
-                from_subaccount: [],
-                created_at_time: []
-            });
-
-            if ('Err' in result) {
-                toastStore.error(result.Err);
-                return false;
-            }
-
-            return result.Ok;
-        } catch (error) {
-            toastStore.error(error instanceof Error ? error.message : 'Approval failed');
-            return false;
-        }
-    }
-
-    /**
      * Handles direct transfer for ICRC tokens
      */
     private async transferToken(
@@ -236,20 +204,86 @@ export class SwapService {
     }
 
     /**
+     * Check and Request ICRC2 Allowance for a single token
+     */
+
+    private async approveIcrc2(
+        token: FE.Token,
+        amount: bigint,
+        to: Principal,
+        fee: bigint,
+    ): Promise<boolean> {
+        const expiresAt = BigInt(Date.now()) * 2_000_000n + 60_000_000_000n;
+
+        const totalAmount = amount + fee;
+        console.log("totalAmount", totalAmount);
+
+        const approveArgs = {
+            fee: [],
+            memo: [],
+            from_subaccount: [],
+            created_at_time: [],
+            amount: totalAmount * 2n,
+            expected_allowance: [],
+            expires_at: [expiresAt],
+            spender: { 
+                owner: Principal.fromText(KONG_BACKEND_PRINCIPAL), 
+                subaccount: [] 
+            }
+        };
+
+        const actor = await getActor(token.canister_id, 'icrc2');
+        const result = await actor.icrc2_approve(approveArgs);
+        console.log("result", result);
+        return 'Ok' in result;
+    }
+
+    private async checkAndRequestIcrc2Allowance(
+        token: FE.Token,
+        amount: bigint,
+        to: Principal,
+        fee: bigint,
+        spender_subaccount: [],
+        memo: [],
+        created_at_time: []
+    ): Promise<boolean> {
+        try {
+            const wallet = get(walletStore);
+            if (!wallet.isConnected) {
+                throw new Error('Wallet not connected');
+            }
+
+            const owner = wallet.account.owner;
+            const allowance = await TokenService.checkIcrc2Allowance(token.canister_id, owner, to);
+            console.log("allowance", allowance);
+            const requiredAmount = amount + BigInt(token.fee);
+            console.log("requiredAmount", requiredAmount);
+
+            if (allowance < requiredAmount) {
+                const result = await this.approveIcrc2(token, requiredAmount, to, token.fee);
+                if (!result) {
+                    throw new Error('Failed to approve token');
+                }
+                return result;
+            }
+            return true;
+        } catch (error) {
+            console.error('Error in checking/requesting ICRC2 allowance:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Executes complete swap flow
      */
     public async executeSwap(params: SwapExecuteParams): Promise<bigint | false> {
         try {
-            console.log('Starting swap execution with params:', params);
-
             await walletValidator.requireWalletConnection();
             const tokens = get(tokenStore).tokens;
-            
             const payToken = tokens.find(t => t.symbol === params.payToken);
             if (!payToken) throw new Error('Pay token not found');
 
             const payAmount = this.toBigInt(params.payAmount, payToken.decimals);
-
             const receiveToken = tokens.find(t => t.symbol === params.receiveToken);
             if (!receiveToken) throw new Error('Receive token not found');
 
@@ -258,29 +292,31 @@ export class SwapService {
             console.log('Processing transfer/approval for amount:', payAmount.toString());
 
             let txId: number | false;
-
-            if (payToken.icrc1) {
+            
+            if (payToken.icrc2) {
+                console.log('Using ICRC2 approval');
+                const approved = await this.checkAndRequestIcrc2Allowance(
+                    payToken,
+                    payAmount,
+                    params.backendPrincipal,
+                    payToken.fee,
+                    [],
+                    [],
+                    []
+                );
+                if (!approved) {
+                    throw new Error('ICRC2 approval failed');
+                }
+                txId = 0; // or some appropriate value since ICRC2 approval doesn't return a txId
+            } else if (payToken.icrc1) {
                 console.log('Using ICRC1 transfer');
                 txId = await this.transferToken(
                     payToken,
                     payAmount,
                     params.backendPrincipal
                 );
-            } else if (payToken.icrc2) {
-                console.log('Using ICRC2 approval');
-                txId = await this.approveToken(
-                    payToken,
-                    payAmount,
-                    payToken.fee,
-                    params.backendPrincipal
-                );
             } else {
                 throw new Error(`Token ${payToken.symbol} does not support ICRC1 or ICRC2`);
-            }
-
-            if (!txId) {
-                console.error('Transaction failed - no txId returned');
-                throw new Error('Transaction failed');
             }
 
             console.log('Transaction successful, txId:', txId);
@@ -293,7 +329,7 @@ export class SwapService {
                 max_slippage: [params.slippage],
                 receive_address: [],
                 referred_by: [],
-                pay_tx_id: payToken.icrc1 ? [{ BlockIndex: txId }] : []
+                pay_tx_id: []
             };
 
             console.log('Calling swap_async with params:', swapParams);

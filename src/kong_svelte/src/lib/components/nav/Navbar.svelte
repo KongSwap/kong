@@ -5,8 +5,8 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
-  import { t } from "$lib/locales/translations";
-  import { walletStore } from "$lib/stores/walletStore";
+  import { t } from "$lib/services/translations";
+  import { walletStore } from "$lib/services/wallet/walletStore";
   import { fade } from 'svelte/transition';
   import Modal from "../common/Modal.svelte";
     import LanguageSelector from "../common/LanguageSelector.svelte";

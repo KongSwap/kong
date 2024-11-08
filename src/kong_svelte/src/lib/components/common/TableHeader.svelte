@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { t } from "$lib/locales/translations";
-  import { walletStore } from "$lib/stores/walletStore";
+  import { t } from "$lib/services/translations";
+  import { walletStore } from "$lib/services/wallet/walletStore";
 
   export let variant: "default" | "stats" = "default";
   export let textClass: string = "text-left";

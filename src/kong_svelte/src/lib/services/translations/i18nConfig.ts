@@ -31,4 +31,5 @@ const config = {
   ],
 };
 
-export const { t, locale, locales, loading, loadTranslations } = new i18n(config);
+const i18nInstance = new i18n(config);
+export const { t, locale, locales, loading, loadTranslations } = i18nInstance; 

@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 import { browser } from "$app/environment";
-import { locale as i18nLocale, loadTranslations } from "$lib/locales/translations";
+import { locale, loadTranslations } from "./i18nConfig";
 
 const supportedLocales = ["en", "es"];
 const defaultLocale = "en";
@@ -24,7 +24,7 @@ export const localeStore = writable<string>(initialLocale);
 
 // Sync with sveltekit-i18n's locale store and load translations
 localeStore.subscribe(async (value) => {
-  i18nLocale.set(value);
+  locale.set(value);
   await loadTranslations(value);
 });
 

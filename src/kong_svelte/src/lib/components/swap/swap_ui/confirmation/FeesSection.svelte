@@ -3,11 +3,6 @@
   export let totalLPFee: number;
   export let slippage: number;
   export let receiveToken: string;
-
-  const formatNumber = (num: number) => num.toFixed(8);
-  let isExpanded = false;
-
-  $: totalFees = totalGasFee + totalLPFee;
 </script>
 
 <div class="section">

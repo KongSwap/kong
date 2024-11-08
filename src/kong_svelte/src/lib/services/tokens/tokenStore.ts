@@ -1,10 +1,10 @@
 // src/kong_svelte/src/lib/features/tokens/tokenStore.ts
 import { writable, derived, get, type Readable } from 'svelte/store';
-import { TokenService } from '$lib/features/tokens/TokenService';
+import { TokenService } from '$lib/services/tokens/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
 import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
-import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
+
 interface TokenState {
   readonly tokens: FE.Token[];
   readonly balances: Record<string, FE.TokenBalance>;
@@ -150,7 +150,12 @@ function createTokenStore() {
     },
     getBalance: (canisterId: string) => {
       const currentState = getCurrentState();
-      return currentState.balances[canisterId] || '0';
+      return currentState.balances[canisterId] || { in_tokens: BigInt(0), in_usd: '0' };
+    },
+    refreshBalance: async (token: FE.Token) => {
+      const currentState = getCurrentState();
+      const balance = await TokenService.fetchBalance(token);
+      updateState({ ...currentState, balances: { ...currentState.balances, [token.canister_id]: { in_tokens: BigInt(balance), in_usd: '0' } } });
     },
     loadBalances: async () => {
       const currentState = getCurrentState();
@@ -220,8 +225,8 @@ const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, toke
       for (const [canisterId, balance] of Object.entries(balances)) {
         const token = tokens.find(t => t.canister_id === canisterId);
         if (token && prices[canisterId]) {
-          const actualBalance = formatTokenAmount(balance.in_tokens, token.decimals);
-          total += actualBalance * prices[canisterId];
+          const actualBalance = formatTokenAmount(balance.in_tokens.toString(), token.decimals);
+          total += parseFloat(actualBalance) * prices[canisterId];
         }
       }
       return formatToNonZeroDecimal(total);
@@ -256,7 +261,7 @@ export const formattedTokens: Readable<FE.Token[]> = derived(
 
       return {
         ...token,
-        formattedBalance: formatTokenAmount(balance, token.decimals).toString(),
+        formattedBalance: formatTokenAmount(balance.toString(), token.decimals),
         formattedUsdValue: formatToNonZeroDecimal(Number(usdValue)) || '0',
       };
     });

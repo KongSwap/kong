@@ -1,8 +1,9 @@
 import { derived, writable, type Readable } from 'svelte/store';
-import { PoolService } from '$lib/features/pools/PoolService';
+import { PoolService } from './PoolService';
 import { formatPoolData } from '$lib/utils/statsUtils';
-import { tokenStore } from '$lib/features/tokens/tokenStore';
+import { tokenStore } from '$lib/services/tokens/tokenStore';
 import BigNumber from 'bignumber.js';
+import { UserPoolBalanceSchema } from './poolSchema';
 
 interface PoolState {
   pools: BE.Pool[];
@@ -15,15 +16,6 @@ interface PoolState {
   isLoading: boolean;
   error: string | null;
   lastUpdate: number | null;
-}
-
-interface UserPoolBalance {
-  name: string;
-  balance: string;
-  amount_0: string;
-  amount_1: string;
-  symbol_0: string;
-  symbol_1: string;
 }
 
 function createPoolStore() {

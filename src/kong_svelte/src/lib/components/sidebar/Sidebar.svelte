@@ -4,12 +4,12 @@
   import { cubicOut } from "svelte/easing";
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
-  import { walletStore } from "$lib/stores/walletStore";
-  import { tokenStore } from "$lib/features/tokens/tokenStore";
+  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-  import { poolStore } from "$lib/features/pools/poolStore";
+  import { poolStore } from "$lib/services/pools/poolStore";
   import TokenList from "./TokenList.svelte";
   import SocialSection from "./SocialSection.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";

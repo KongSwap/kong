@@ -2,7 +2,7 @@
 <script lang="ts">
     import Panel from '$lib/components/common/Panel.svelte';
     import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
-    import { formattedTokens } from '$lib/features/tokens/tokenStore';
+    import { formattedTokens } from '$lib/services/tokens/tokenStore';
     import { fade } from 'svelte/transition';
 
     export let show = false;

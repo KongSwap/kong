@@ -1,6 +1,6 @@
 <script lang="ts">
   import Panel from '$lib/components/common/Panel.svelte';
-  import { tokenStore } from '$lib/features/tokens/tokenStore';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
 
   export let routingPath: string[] = [];

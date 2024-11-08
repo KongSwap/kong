@@ -2,7 +2,7 @@
 <script lang="ts">
 	import grassStripeBackground from '$lib/assets/backgrounds/grass.webp';
   import { writable, derived } from "svelte/store";
-  import { t } from "$lib/locales/translations";
+  import { t } from "$lib/services/translations";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import { tokensTableHeaders } from "$lib/constants/statsConstants";
   import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
@@ -13,11 +13,11 @@
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ArrowLeftRight } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { poolStore } from "$lib/features/pools/poolStore";
+  import { poolStore } from "$lib/services/pools/poolStore";
   import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
-  import { walletStore } from "$lib/stores/walletStore";
+  import { walletStore } from "$lib/services/wallet/walletStore";
   import Clouds from "$lib/components/stats/Clouds.svelte";
-  import { formattedTokens, tokenStore } from "$lib/features/tokens/tokenStore";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
 
   const searchQuery = writable("");
   const copyStates = writable<Record<string, string>>({});

@@ -5,11 +5,11 @@
     disconnectWallet,
     availableWallets,
     selectedWalletId,
-  } from "$lib/stores/walletStore";
-  import { t } from "$lib/locales/translations";
+  } from "$lib/services/wallet/walletStore";
+  import { t } from "$lib/translations/translationstions";
   import { onMount } from "svelte";
   import { uint8ArrayToHexString } from "@dfinity/utils";
-  import { UserService } from "$lib/services/UserService";
+  import { WalletService } from "$lib/services/wallet/WalletService";
 
   let user: any;
 
@@ -30,7 +30,7 @@
 
   async function loadUser() {
     try {
-      user = await UserService.getWhoami();
+      user = await WalletService.getWhoami();
     } catch (error) {
       console.error("Error loading user data:", error);
     }

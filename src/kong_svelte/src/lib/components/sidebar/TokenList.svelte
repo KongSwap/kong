@@ -1,6 +1,6 @@
 <!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
-  import { tokenStore, formattedTokens, portfolioValue } from "$lib/features/tokens/tokenStore";
+  import { tokenStore, formattedTokens, portfolioValue } from "$lib/services/tokens/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import { RefreshCw } from "lucide-svelte";

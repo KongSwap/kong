@@ -1,6 +1,6 @@
 <!-- src/kong_svelte/src/routes/pools/+page.svelte -->
 <script lang="ts">
-  import { t } from "$lib/locales/translations";
+  import { t } from "$lib/services/translations";
   import { writable } from "svelte/store";
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
@@ -10,11 +10,11 @@
     poolsList,
     poolsLoading,
     poolsError,
-  } from "$lib/features/pools/poolStore";
+  } from "$lib/services/pools/poolStore";
   import { derived } from "svelte/store";
   import { goto } from "$app/navigation";
   import { Droplets } from "lucide-svelte";
-  import { tokenStore } from "$lib/features/tokens/tokenStore";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce"; // Import debounce from lodash-es

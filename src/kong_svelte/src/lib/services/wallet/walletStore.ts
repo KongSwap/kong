@@ -3,13 +3,13 @@ import { walletsList, createPNP } from '@windoge98/plug-n-play';
 import {
   canisterId as kongBackendCanisterId,
   idlFactory as kongBackendIDL,
-} from '../../../../declarations/kong_backend'; 
+} from '../../../../../declarations/kong_backend'; 
 import {
   idlFactory as kongFaucetIDL,
   canisterId as kongFaucetCanisterId,
-} from '../../../../declarations/kong_faucet';
+} from '../../../../../declarations/kong_faucet';
 import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
-import { UserService } from '$lib/services/UserService';
+import { WalletService } from '$lib/services/wallet/WalletService';
 import { ICRC2_IDL } from '$lib/idls/icrc2.idl.js';
 import { browser } from '$app/environment';
 
@@ -85,7 +85,7 @@ export async function connectWallet(walletId: string) {
     localStorage.setItem('selectedWalletId', walletId);
     selectedWalletId.set(walletId);
 
-    const user = await UserService.getWhoami();
+    const user = await WalletService.getWhoami();
     userStore.set(user);
   } catch (error) {
     handleConnectionError(error);
