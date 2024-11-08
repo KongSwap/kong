@@ -16,14 +16,36 @@ enum TokenType {
     LP,
 }
 
+pub fn serialize_token(token: &StableToken) -> serde_json::Value {
+    match token {
+        StableToken::IC(token) => json!({
+            "token_id": token.token_id,
+            "name": token.name,
+            "symbol": token.symbol,
+            "canister_id": token.canister_id.to_string(),
+            "decimals": token.decimals,
+            "fee": token.fee.to_string(),
+            "icrc1": token.icrc1,
+            "icrc2": token.icrc2,
+            "icrc3": token.icrc3,
+            "on_kong": token.on_kong,
+        }),
+        StableToken::LP(token) => json!({
+            "token_id": token.token_id,
+            "symbol": token.symbol,
+            "address": token.address,
+            "decimals": token.decimals,
+            "on_kong": token.on_kong,
+        }),
+    }
+}
 pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
     let file = File::open("./backups/tokens.json")?;
     let reader = BufReader::new(file);
     let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
 
     for (k, v) in tokens_map.iter() {
-        let raw_json = json!(&v);
-        let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong) = match v {
+        let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json) = match v {
             StableToken::IC(token) => {
                 let decimals = 10_u64.pow(token.decimals as u32 - 1) as f64;
                 let fee = token.fee.0.to_f64().unwrap() / decimals;
@@ -40,6 +62,7 @@ pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
                     Some(token.icrc2),
                     Some(token.icrc3),
                     token.on_kong,
+                    json!(serialize_token(v)),
                 )
             }
             StableToken::LP(token) => (
@@ -55,10 +78,10 @@ pub async fn dump_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
                 None,
                 None,
                 token.on_kong,
+                json!(serialize_token(v)),
             ),
         };
 
-        // insert or update
         db_client
             .execute(
                 "INSERT INTO tokens 

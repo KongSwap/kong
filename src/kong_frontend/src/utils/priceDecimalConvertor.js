@@ -10,14 +10,22 @@ export function priceRoundedPool(poolPrice, amount) {
   let decimals;
 
   // Determine number of decimals based on the pool price value
-  if (priceF64 < 0.000001) {
+  if (priceF64 < 0.00001) {
     decimals = 8;  // 8 decimal places for extremely low prices
-  } else if (priceF64 < 0.0001) {
-    decimals = 6;  // 6 decimal places
+  } else if (priceF64 < 0.001) {
+    decimals = 7;  // 7 decimal places for extremely low prices
   } else if (priceF64 < 0.01) {
+    decimals = 6;  // 6 decimal places
+  } else if (priceF64 < 2) {
+    decimals = 5;  // 5 decimal places
+  } else if (priceF64 < 200) {
     decimals = 4;  // 4 decimal places
+  } else if (priceF64 < 2000) {
+    decimals = 3;  // 3 decimal places
   } else if (priceF64 < 10000) {
-    decimals = 2;  // 2 decimal places for regular prices
+    decimals = 2;  // 2 decimal places
+  } else if (priceF64 < 50000) {
+    decimals = 1;  // 2 decimal places
   } else {
     decimals = 0;  // No decimals for large prices
   }

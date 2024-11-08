@@ -10,12 +10,13 @@ CREATE TABLE requests (
     ts TIMESTAMP NOT NULL
 );
 
+/*
 CREATE TABLE add_pool_args (
     request_id BIGINT REFERENCES requests(request_id) PRIMARY KEY,
     token_0 TEXT NOT NULL,
     amount_0 DOUBLE PRECISION NOT NULL,
     block_index_0 BIGINT,
-    tx_hash_0 TEXT,
+    hash_0 TEXT,
     token_1 TEXT NOT NULL,
     amount_1 DOUBLE PRECISION NOT NULL,
     block_index_1 BIGINT,
@@ -184,3 +185,4 @@ CREATE TABLE send_reply {
     to_address TEXT NOT NULL,
     ts TIMESTAMP NOT NULL
 }
+*/
