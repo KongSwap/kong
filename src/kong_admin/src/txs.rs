@@ -37,6 +37,87 @@ enum TxStatus {
     Failed,
 }
 
+pub fn serialize_tx(tx: &StableTx) -> serde_json::Value {
+    match tx {
+        StableTx::AddPool(tx) => json!({
+            "tx_id": tx.tx_id,
+            "pool_id": tx.pool_id,
+            "request_id": tx.request_id,
+            "user_id": tx.user_id,
+            "status": tx.status,
+            "amount_0": tx.amount_0.to_string(),
+            "amount_1": tx.amount_1.to_string(),
+            "add_lp_token_amount": tx.add_lp_token_amount.to_string(),
+            "transfer_ids": tx.transfer_ids,
+            "claim_ids": tx.claim_ids,
+            "on_kong": tx.on_kong,
+            "ts": tx.ts,
+        }),
+        StableTx::AddLiquidity(tx) => json!({
+            "tx_id": tx.tx_id,
+            "pool_id": tx.pool_id,
+            "request_id": tx.request_id,
+            "user_id": tx.user_id,
+            "status": tx.status,
+            "amount_0": tx.amount_0.to_string(),
+            "amount_1": tx.amount_1.to_string(),
+            "add_lp_token_amount": tx.add_lp_token_amount.to_string(),
+            "transfer_ids": tx.transfer_ids,
+            "claim_ids": tx.claim_ids,
+            "ts": tx.ts,
+        }),
+        StableTx::RemoveLiquidity(tx) => json!({
+            "tx_id": tx.tx_id,
+            "pool_id": tx.pool_id,
+            "request_id": tx.request_id,
+            "user_id": tx.user_id,
+            "status": tx.status,
+            "amount_0": tx.amount_0.to_string(),
+            "lp_fee_0": tx.lp_fee_0.to_string(),
+            "amount_1": tx.amount_1.to_string(),
+            "lp_fee_1": tx.lp_fee_1.to_string(),
+            "remove_lp_token_amount": tx.remove_lp_token_amount.to_string(),
+            "transfer_ids": tx.transfer_ids,
+            "claim_ids": tx.claim_ids,
+            "ts": tx.ts,
+        }),
+        StableTx::Swap(tx) => json!({
+            "tx_id": tx.tx_id,
+            "request_id": tx.request_id,
+            "user_id": tx.user_id,
+            "status": tx.status,
+            "pay_token_id": tx.pay_token_id,
+            "pay_amount": tx.pay_amount.to_string(),
+            "receive_token_id": tx.receive_token_id,
+            "receive_amount": tx.receive_amount.to_string(),
+            "price": tx.price,
+            "mid_price": tx.mid_price,
+            "slippage": tx.slippage,
+            "txs": tx.txs.iter().map(|x| json!({
+                "pay_token_id": x.pay_token_id,
+                "pay_amount": x.pay_amount.to_string(),
+                "receive_token_id": x.receive_token_id,
+                "receive_amount": x.receive_amount.to_string(),
+                "lp_fee": x.lp_fee.to_string(),
+                "gas_fee": x.gas_fee.to_string(),
+            })).collect::<Vec<serde_json::Value>>(),
+            "transfer_ids": tx.transfer_ids,
+            "claim_ids": tx.claim_ids,
+            "ts": tx.ts,
+        }),
+        StableTx::Send(tx) => json!({
+            "tx_id": tx.tx_id,
+            "token_id": tx.token_id,
+            "request_id": tx.request_id,
+            "user_id": tx.user_id,
+            "status": tx.status,
+            "amount": tx.amount,
+            "to_user_id": tx.to_user_id,
+            "ts": tx.ts,
+        }),
+    }
+}
+
 pub async fn dump_txs(
     db_client: &Client,
     tokens_map: &BTreeMap<u32, u8>,
@@ -70,7 +151,8 @@ pub async fn dump_txs(
         let txs_map: BTreeMap<StableTxId, StableTx> = serde_json::from_reader(reader)?;
 
         for (k, v) in txs_map.iter() {
-            match &v {
+            let raw_json = serialize_tx(v);
+            match v {
                 StableTx::AddPool(v) => {
                     let tx_id = v.tx_id as i64;
                     let pool_id = v.pool_id as i32;
@@ -96,7 +178,6 @@ pub async fn dump_txs(
                     let claims_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let on_kong = v.on_kong;
                     let ts = v.ts as f64 / 1_000_000_000.0;
-                    let raw_json = json!(&v);
 
                     db_client
                         .execute(
@@ -160,7 +241,6 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claims_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
-                    let raw_json = json!(&v);
 
                     db_client
                         .execute(
@@ -225,7 +305,6 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claims_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
-                    let raw_json = json!(&v);
 
                     db_client
                         .execute(
@@ -311,7 +390,6 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claim_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
-                    let raw_json = json!(&v);
 
                     db_client
                         .execute(
@@ -428,7 +506,6 @@ pub async fn dump_txs(
                     let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
                     let to_user_id = v.to_user_id as i32;
                     let ts = v.ts as f64 / 1_000_000_000.0;
-                    let raw_json = json!(&v);
 
                     db_client
                         .execute(

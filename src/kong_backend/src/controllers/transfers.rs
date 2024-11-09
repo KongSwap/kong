@@ -1,4 +1,4 @@
-use ic_cdk::query;
+use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
@@ -58,4 +58,20 @@ fn get_transfers(transfer_id: Option<u64>) -> Result<Vec<TransferIdReply>, Strin
     };
 
     Ok(transfers.iter().filter_map(|v| to_transfer_id(v.transfer_id)).collect())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_transfers(start_transfer_id: u64, end_transfer_id: u64) -> Result<String, String> {
+    TRANSFER_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map
+            .iter()
+            .filter(|(transfer_id, _)| transfer_id.0 >= start_transfer_id && transfer_id.0 <= end_transfer_id)
+            .map(|(transfer_id, _)| transfer_id)
+            .collect();
+        keys_to_remove.iter().for_each(|transfer_id| {
+            map.remove(transfer_id);
+        });
+    });
+    Ok("transfers removed".to_string())
 }
