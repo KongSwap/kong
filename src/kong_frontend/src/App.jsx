@@ -400,7 +400,7 @@ const App = () => {
       setPrincipal(null);
       initializeUserData();
       setIsDrawerOpen(false);
-    } else if (plugPrincipal && !principal) {
+    } else if (plugPrincipal && localStorage.getItem('last_wallet_connected') === 'plug') {
       setPrincipal(plugPrincipal);
     } else if (
       !principal &&

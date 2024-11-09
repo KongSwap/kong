@@ -15,6 +15,10 @@ export const PlugWalletProvider = ({ children }) => {
   const verifyConnection = async () => {
     if (window.ic && window.ic.plug) {
     const connected = await window.ic.plug.isConnected();
+    if(!connected) {
+      localStorage.removeItem('last_wallet_connected');
+      connectPlugWallet();
+    }
     if (connected) {
       setIsConnected(true);
       setEnablePlug(true);
@@ -22,22 +26,23 @@ export const PlugWalletProvider = ({ children }) => {
       setPrincipal(userPrincipal.toString());
     }
     } else {
+      localStorage.removeItem('last_wallet_connected');
       console.log('Plug Wallet is not installed.');
     }
   };
   
   useEffect(() => {
-    if (!iiIdentity && !isInitializing) {
+    if (!iiIdentity && !isInitializing && localStorage.getItem('last_wallet_connected') === 'plug') {
       verifyConnection();
     }
   }, [iiIdentity, isInitializing]);
 
   const connectPlugWallet = async () => {
-    // console.log('connecting...');
     if (window.ic && window.ic.plug) {
       try {
         const result = await window.ic.plug.requestConnect({
           whitelist,
+          timeout: 1000 * 60 * 60 * 1, // 1 hours
           host,
         });
         if (result && window.ic.plug.agent) {
@@ -45,11 +50,15 @@ export const PlugWalletProvider = ({ children }) => {
           setEnablePlug(true);
           const userPrincipal = await window.ic.plug.agent.getPrincipal();
           setPrincipal(userPrincipal.toString());
+          localStorage.setItem('last_wallet_connected', 'plug');
+
         }
       } catch (error) {
+        localStorage.removeItem('last_wallet_connected');
         console.error('Failed to connect to Plug Wallet:', error);
       }
     } else {
+      localStorage.removeItem('last_wallet_connected');
       console.error('Plug Wallet is not installed.');
     }
   };
@@ -61,8 +70,10 @@ export const PlugWalletProvider = ({ children }) => {
         setPrincipal(null);
         setEnablePlug(false);
         const result = await window.ic.plug.disconnect()
+        localStorage.removeItem('last_wallet_connected');
       } catch (error) {
         console.error('Failed to disconnect from Plug Wallet:', error);
+        localStorage.setItem('last_wallet_connected', 'plug');
       }
     }
   };
