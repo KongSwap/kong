@@ -11,4 +11,14 @@ impl Tx for StableTx {
             StableTx::Send(tx) => tx.user_id,
         }
     }
+
+    fn ts(&self) -> u64 {
+        match self {
+            StableTx::AddPool(tx) => tx.ts,
+            StableTx::AddLiquidity(tx) => tx.ts,
+            StableTx::RemoveLiquidity(tx) => tx.ts,
+            StableTx::Swap(tx) => tx.ts,
+            StableTx::Send(tx) => tx.ts,
+        }
+    }
 }

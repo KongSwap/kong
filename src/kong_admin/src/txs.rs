@@ -182,6 +182,22 @@ pub async fn dump_txs(
 
                     db_client
                         .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
+
+                    db_client
+                        .execute(
                             "INSERT INTO add_pool_tx
                                 (tx_id, pool_id, request_id, user_id, status, amount_0, amount_1, add_lp_token_amount, transfer_ids, claim_ids, on_kong, ts)
                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12))
@@ -201,21 +217,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::AddLiquidity(v) => {
@@ -245,6 +246,22 @@ pub async fn dump_txs(
 
                     db_client
                         .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
+
+                    db_client
+                        .execute(
                             "INSERT INTO add_liquidity_tx
                                 (tx_id, pool_id, request_id, user_id, status, amount_0, amount_1, add_lp_token_amount, transfer_ids, claim_ids, ts)
                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11))
@@ -263,21 +280,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::RemoveLiquidity(v) => {
@@ -306,6 +308,22 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claims_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
+
+                    db_client
+                        .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
 
                     db_client
                         .execute(
@@ -343,21 +361,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::Swap(v) => {
@@ -391,6 +394,22 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claim_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
+
+                    db_client
+                        .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
 
                     db_client
                         .execute(
@@ -476,21 +495,6 @@ pub async fn dump_txs(
                             .await?;
                     }
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::Send(v) => {
@@ -510,6 +514,22 @@ pub async fn dump_txs(
 
                     db_client
                         .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
+
+                    db_client
+                        .execute(
                             "INSERT INTO send_tx
                             (tx_id, token_id, request_id, user_id, status, amount, to_user_id, ts)
                             VALUES ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8))
@@ -525,21 +545,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
             };
