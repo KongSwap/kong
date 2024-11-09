@@ -5,6 +5,7 @@ use tokio_postgres::NoTls;
 mod claims;
 mod lp_token_ledger;
 mod math_helpers;
+mod nat_helpers;
 mod pools;
 mod requests;
 mod tokens;
@@ -53,8 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tokens_map = tokens::load_tokens(&client).await?;
     //pools::dump_pools(&client, &tokens_map).await?;
     let pools_map = pools::load_pools(&client).await?;
-    //lp_token_ledger::dump_lp_token_ledger(&client, &tokens_map).await?;
-    //requests::dump_requests(&client, &tokens_map).await?;
+    //p_token_ledger::dump_lp_token_ledger(&client, &tokens_map).await?;
+    //requests::dump_requests(&client).await?;
     //transfers::dump_transfers(&client, &tokens_map).await?;
     txs::dump_txs(&client, &tokens_map, &pools_map).await?;
 

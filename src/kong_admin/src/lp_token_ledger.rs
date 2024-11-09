@@ -8,6 +8,16 @@ use tokio_postgres::Client;
 
 use super::math_helpers::round_f64;
 
+pub fn serialize_lp_token_ledger(lp_token_ledger: &StableLPTokenLedger) -> serde_json::Value {
+    json!({
+        "lp_token_id": lp_token_ledger.lp_token_id,
+        "user_id": lp_token_ledger.user_id,
+        "token_id": lp_token_ledger.token_id,
+        "amount": lp_token_ledger.amount.to_string(),
+        "ts": lp_token_ledger.ts,
+    })
+}
+
 pub async fn dump_lp_token_ledger(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open("./backups/lp_token_ledger.json")?;
     let reader = BufReader::new(file);
@@ -20,9 +30,8 @@ pub async fn dump_lp_token_ledger(db_client: &Client, tokens_map: &BTreeMap<u32,
         let decimals = tokens_map.get(&v.token_id).ok_or(format!("token_id={} not found", v.token_id))?;
         let amount = round_f64(v.amount.0.to_f64().unwrap() / 10_u64.pow(*decimals as u32) as f64, *decimals);
         let ts = v.ts as f64 / 1_000_000_000.0;
-        let raw_json = json!(&v);
+        let raw_json = serialize_lp_token_ledger(v);
 
-        // insert or update
         db_client
             .execute(
                 "INSERT INTO lp_token_ledger 

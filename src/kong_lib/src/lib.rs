@@ -21,7 +21,7 @@ pub mod stable_user;
 mod swap;
 mod swap_amounts;
 pub mod tokens;
-mod transfers;
+pub mod transfers;
 mod txs;
 pub mod user;
 mod user_balances;
