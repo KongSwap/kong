@@ -102,6 +102,7 @@ pub async fn archive_users(kong_data: &KongData) -> Result<(), Box<dyn std::erro
     files.sort_by(|a, b| a.0.cmp(&b.0));
 
     for file in files {
+        println!("processing: {:?}", file.1.file_name().unwrap());
         let file = File::open(file.1)?;
         let mut reader = BufReader::new(file);
         let mut contents = String::new();

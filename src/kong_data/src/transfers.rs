@@ -2,13 +2,12 @@ use ic_cdk::{query, update};
 use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use std::collections::BTreeMap;
 
-use super::guards::caller_is_kong_backend;
+use super::guards::caller_is_kingkong;
 use super::stable_memory::TRANSFER_MAP;
 
 const MAX_TRANSFERS: usize = 1_000;
 
-//#[query(hidden = true, guard = "caller_is_kingkong")]
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
     TRANSFER_MAP.with(|m| {
         let map = m.borrow();
@@ -28,8 +27,7 @@ fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Resu
     })
 }
 
-//#[update(guard = "caller_is_kong_backend")]
-#[update(hidden = true)]
+#[update(hidden = true, guard = "caller_is_kingkong")]
 fn archive_transfers(stable_transfers_json: String) -> Result<String, String> {
     let transfers: BTreeMap<StableTransferId, StableTransfer> = match serde_json::from_str(&stable_transfers_json) {
         Ok(transfers) => transfers,

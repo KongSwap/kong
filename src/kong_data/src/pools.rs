@@ -2,13 +2,12 @@ use ic_cdk::{query, update};
 use kong_lib::stable_pool::stable_pool::{StablePool, StablePoolId};
 use std::collections::BTreeMap;
 
-use super::guards::caller_is_kong_backend;
+use super::guards::caller_is_kingkong;
 use super::stable_memory::POOL_MAP;
 
 const MAX_POOLS: usize = 1_000;
 
-//#[query(hidden = true, guard = "caller_is_kingkong")]
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, String> {
     POOL_MAP.with(|m| {
         let map = m.borrow();
@@ -28,8 +27,7 @@ fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, 
     })
 }
 
-//#[update(guard = "caller_is_kong_backend")]
-#[update(hidden = true)]
+#[update(hidden = true, guard = "caller_is_kingkong")]
 fn archive_pools(tokens: String) -> Result<String, String> {
     let pools: BTreeMap<StablePoolId, StablePool> = match serde_json::from_str(&tokens) {
         Ok(pools) => pools,

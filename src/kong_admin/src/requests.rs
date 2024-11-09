@@ -453,6 +453,7 @@ pub async fn archive_requests(kong_data: &KongData) -> Result<(), Box<dyn std::e
     files.sort_by(|a, b| a.0.cmp(&b.0));
 
     for file in files {
+        println!("processing: {:?}", file.1.file_name().unwrap());
         let file = File::open(file.1)?;
         let mut reader = BufReader::new(file);
         let mut contents = String::new();

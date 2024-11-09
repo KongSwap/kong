@@ -2,13 +2,12 @@ use ic_cdk::{query, update};
 use kong_lib::stable_user::stable_user::{StableUser, StableUserId};
 use std::collections::BTreeMap;
 
-use super::guards::caller_is_kong_backend;
+use super::guards::caller_is_kingkong;
 use super::stable_memory::USER_MAP;
 
 const MAX_USERS: usize = 2_000;
 
-//#[query(hidden = true, guard = "caller_is_kingkong")]
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
     USER_MAP.with(|m| {
         let map = m.borrow();
@@ -28,8 +27,7 @@ fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, 
     })
 }
 
-//#[update(guard = "caller_is_kong_backend")]
-#[update(hidden = true)]
+#[update(hidden = true, guard = "caller_is_kingkong")]
 fn archive_users(stable_users_json: String) -> Result<String, String> {
     let users: BTreeMap<StableUserId, StableUser> = match serde_json::from_str(&stable_users_json) {
         Ok(users) => users,

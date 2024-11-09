@@ -1,4 +1,4 @@
-use agent::{create_agent, create_random_identity};
+use agent::{create_agent, create_identity_from_pem_file};
 use config::{Config, FileFormat};
 use kong_data::KongData;
 use serde::Deserialize;
@@ -32,6 +32,7 @@ struct Database {
 
 #[derive(Debug, Deserialize)]
 struct Settings {
+    dfx_pem_file: String,
     database: Database,
 }
 
@@ -42,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_source(config::File::with_name("settings.json").format(FileFormat::Json))
         .build()?;
     let config: Settings = settings.try_deserialize()?;
+    let dfx_pem_file = config.dfx_pem_file;
     let db_host = config.database.host;
     let db_user = config.database.user;
     let db_password = config.database.password;
@@ -64,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         (LOCAL_REPLICA, false)
     };
-    let identity = create_random_identity();
+    let identity = create_identity_from_pem_file(&dfx_pem_file);
     let agent = create_agent(replica_url, identity, is_mainnet).await?;
     let kong_data = KongData::new(&agent, is_mainnet).await;
 
@@ -80,12 +82,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
 
     // Dump to kong_data
-    kong_settings::archive_kong_settings(&kong_data).await?;
+    // kong_settings::archive_kong_settings(&kong_data).await?;
     // users::archive_users(&kong_data).await?;
     // tokens::archive_tokens(&kong_data).await?;
     // pools::archive_pools(&kong_data).await?;
     // lp_token_ledger::archive_lp_token_ledger(&kong_data).await?;
-    // requests::archive_requests(&kong_data).await?;
+    requests::archive_requests(&kong_data).await?;
     // transfers::archive_transfers(&kong_data).await?;
     // txs::archive_txs(&kong_data).await?;
 

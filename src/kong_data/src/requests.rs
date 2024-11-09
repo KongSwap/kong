@@ -2,13 +2,12 @@ use ic_cdk::{query, update};
 use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
 use std::collections::BTreeMap;
 
-use super::guards::caller_is_kong_backend;
+use super::guards::caller_is_kingkong;
 use super::stable_memory::REQUEST_MAP;
 
 const MAX_REQUESTS: usize = 1_000;
 
-//#[query(hidden = true, guard = "caller_is_kingkong")]
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
     REQUEST_MAP.with(|m| {
         let map = m.borrow();
@@ -28,8 +27,7 @@ fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result
     })
 }
 
-//#[update(guard = "caller_is_kong_backend")]
-#[update(hidden = true)]
+#[update(hidden = true, guard = "caller_is_kingkong")]
 fn archive_requests(stable_requests_json: String) -> Result<String, String> {
     let requests: BTreeMap<StableRequestId, StableRequest> = match serde_json::from_str(&stable_requests_json) {
         Ok(requests) => requests,
