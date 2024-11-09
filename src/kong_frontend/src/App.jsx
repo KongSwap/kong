@@ -479,8 +479,10 @@ const App = () => {
   );
 
   const getUserProfile = useCallback(
-    async (retryCount = 0, maxRetries = 5) => {
-      if (!principal || !isInitialized) {
+    async (retryCount = 0, maxRetries = 1) => {
+      const lastWallet = localStorage.getItem('last_wallet_connected');
+      console.log("lastWallet=", lastWallet);
+      if (!principal || !isInitialized || !lastWallet) {
         return;
       }
 
