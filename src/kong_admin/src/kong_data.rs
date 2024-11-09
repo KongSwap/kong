@@ -3,7 +3,7 @@ use candid::{Decode, Encode, Principal};
 use ic_agent::Agent;
 
 const KONG_BACKEND_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
-const KONG_BACKEND_PROD: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
+const KONG_BACKEND_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
 
 #[derive(Clone)]
 pub struct KongData {
