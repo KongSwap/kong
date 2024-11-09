@@ -68,6 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let agent = create_agent(replica_url, identity, is_mainnet).await?;
     let kong_data = KongData::new(&agent, is_mainnet).await;
 
+    // Dump to database
     //users::dump_users(&db_client).await?;
     //let tokens_map = tokens::dump_tokens(&db_client).await?;
     //let tokens_map = tokens::load_tokens(&db_client).await?;
@@ -78,14 +79,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //transfers::dump_transfers(&db_client, &tokens_map).await?;
     //txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
 
-    //kong_settings::archive_kong_settings(&kong_data).await?;
-    users::archive_users(&kong_data).await?;
-    tokens::archive_tokens(&kong_data).await?;
-    pools::archive_pools(&kong_data).await?;
-    lp_token_ledger::archive_lp_token_ledger(&kong_data).await?;
-    requests::archive_requests(&kong_data).await?;
-    transfers::archive_transfers(&kong_data).await?;
-    txs::archive_txs(&kong_data).await?;
+    // Dump to kong_data
+    kong_settings::archive_kong_settings(&kong_data).await?;
+    // users::archive_users(&kong_data).await?;
+    // tokens::archive_tokens(&kong_data).await?;
+    // pools::archive_pools(&kong_data).await?;
+    // lp_token_ledger::archive_lp_token_ledger(&kong_data).await?;
+    // requests::archive_requests(&kong_data).await?;
+    // transfers::archive_transfers(&kong_data).await?;
+    // txs::archive_txs(&kong_data).await?;
 
     Ok(())
 }
