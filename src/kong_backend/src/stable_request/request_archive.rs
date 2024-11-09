@@ -1,3 +1,4 @@
+use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 
@@ -15,8 +16,7 @@ pub fn archive_request_map() {
         }
     });
 
-    // remove requests older than 1 hour
-    let one_hour_ago = ic_cdk::api::time() - 60 * 60_000_000_000;
+    let one_hour_ago = get_time() - 3_600_000_000_000; // 1 hour
     let mut remove_list = Vec::new();
     REQUEST_MAP.with(|request_map| {
         request_map.borrow().iter().for_each(|(request_id, request)| {

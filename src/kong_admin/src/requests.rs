@@ -264,7 +264,7 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
         let request_map: BTreeMap<StableRequestId, StableRequest> = serde_json::from_reader(reader)?;
 
         for (k, v) in request_map.iter() {
-            match &v.request {
+            match v.request {
                 Request::AddPool(_) => {
                     let request_id = v.request_id as i64;
                     let user_id = v.user_id as i32;
