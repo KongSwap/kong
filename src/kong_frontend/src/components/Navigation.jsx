@@ -98,6 +98,7 @@ const Navigation = React.memo(
 
     const loginWithInternetIdentity = useCallback(() => {
       login();
+      localStorage.setItem('last_wallet_connected', "ii");
       setIsDrawerOpen(false);
     }, [login, setIsDrawerOpen]);
 
