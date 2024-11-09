@@ -1,6 +1,7 @@
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
+use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
 use kong_lib::stable_claim::stable_claim::{StableClaim, StableClaimId};
+use kong_lib::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use kong_lib::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
 use kong_lib::stable_message::stable_message::{StableMessage, StableMessageId};
 use kong_lib::stable_pool::stable_pool::{StablePool, StablePoolId};
@@ -29,6 +30,11 @@ thread_local! {
     // return a memory that can be used by stable structures
     pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
         RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+
+    // stable memory for storing Kong settings
+    pub static KONG_SETTINGS: RefCell<StableCell<StableKongSettings, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableCell::init(memory_manager.get(KONG_SETTINGS_ID), StableKongSettings::default()).expect("Failed to initialize Kong settings"))
+    });
 
     // stable memory for storing user profiles
     pub static USER_MAP: RefCell<StableBTreeMap<StableUserId, StableUser, Memory>> = with_memory_manager(|memory_manager| {

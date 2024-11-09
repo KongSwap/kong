@@ -416,6 +416,14 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Vec(UserBalancesReply),
     'Err' : IDL.Text,
   });
+  const ValidateAddLiquidityResult = IDL.Variant({
+    'Ok' : IDL.Text,
+    'Err' : IDL.Text,
+  });
+  const ValidateRemoveLiquidityResult = IDL.Variant({
+    'Ok' : IDL.Text,
+    'Err' : IDL.Text,
+  });
   return IDL.Service({
     'add_liquidity' : IDL.Func([AddLiquidityArgs], [AddLiquidityResult], []),
     'add_liquidity_amounts' : IDL.Func(
@@ -481,6 +489,12 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(IDL.Text)],
         [UserBalancesResult],
         ['query'],
+      ),
+    'validate_add_liquidity' : IDL.Func([], [ValidateAddLiquidityResult], []),
+    'validate_remove_liquidity' : IDL.Func(
+        [],
+        [ValidateRemoveLiquidityResult],
+        [],
       ),
   });
 };
