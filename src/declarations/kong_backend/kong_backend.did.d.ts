@@ -390,6 +390,10 @@ export interface UserReply {
 }
 export type UserResult = { 'Ok' : UserReply } |
   { 'Err' : string };
+export type ValidateAddLiquidityResult = { 'Ok' : string } |
+  { 'Err' : string };
+export type ValidateRemoveLiquidityResult = { 'Ok' : string } |
+  { 'Err' : string };
 export interface _SERVICE {
   'add_liquidity' : ActorMethod<[AddLiquidityArgs], AddLiquidityResult>,
   'add_liquidity_amounts' : ActorMethod<
@@ -431,6 +435,8 @@ export interface _SERVICE {
   'tokens' : ActorMethod<[[] | [string]], TokensResult>,
   'txs' : ActorMethod<[[] | [boolean]], TxsResult>,
   'user_balances' : ActorMethod<[[] | [string]], UserBalancesResult>,
+  'validate_add_liquidity' : ActorMethod<[], ValidateAddLiquidityResult>,
+  'validate_remove_liquidity' : ActorMethod<[], ValidateRemoveLiquidityResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

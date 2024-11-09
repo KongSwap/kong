@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
 use crate::stable_tx::stable_tx::StableTxId;
+use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_tx::tx_map;
 use crate::txs::txs_reply::TxsReply;
@@ -80,5 +81,20 @@ fn remove_txs(start_tx_id: u64, end_tx_id: u64) -> Result<String, String> {
             map.remove(tx_id);
         });
     });
+
+    Ok("txs removed".to_string())
+}
+
+/// remove txs before the timestamp
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_txs_by_ts(ts: u64) -> Result<String, String> {
+    TX_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(_, tx)| tx.ts() < ts).map(|(tx_id, _)| tx_id).collect();
+        keys_to_remove.iter().for_each(|tx_id| {
+            map.remove(tx_id);
+        });
+    });
+
     Ok("txs removed".to_string())
 }

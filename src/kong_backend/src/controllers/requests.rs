@@ -1,4 +1,4 @@
-use ic_cdk::query;
+use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
@@ -58,4 +58,17 @@ fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<Req
     };
 
     Ok(requests.iter().map(to_request_reply).collect())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_requests_by_ts(ts: u64) -> Result<String, String> {
+    REQUEST_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("requests removed".to_string())
 }

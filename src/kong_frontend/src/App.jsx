@@ -393,6 +393,9 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    console.log("activeIdentity=", activeIdentity);
+    console.log("plugPrincipal=", plugPrincipal);
+    console.log("isAuthenticated=", isAuthenticated);
     if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
       setPrincipal(null);
       initializeUserData();
