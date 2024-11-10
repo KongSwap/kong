@@ -222,7 +222,7 @@
     0 pxrm(2) 0 #000,
     0 pxrm(-2) 0 #000;
   @media (min-aspect-ratio: 2/3) {
-    margin-bottom: pxrm(41);
+    margin-bottom: pxrm(16);
   }
   h2,
   span {
@@ -246,26 +246,50 @@
   }
 }
 .stats-table-head-pool {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: pxrm(2);
   width: 25%;
   padding-left: pxrm(5);
 }
 .stats-table-head-tvl {
-  width: 15%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: pxrm(2);
+  width: 20%;
   text-align: right;
 }
 .stats-table-head-totalvol {
-  width: 15%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: pxrm(2);
+  width: 20%;
   text-align: right;
 }
 .stats-table-head-apr {
-  width: 15%;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: pxrm(2);
+  width: 15% !important;
+  text-align: right !important;
 }
 .stats-table-head-controls {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: pxrm(2);
   width: 15%;
 }
 .stats-table-head-price {
-  width: 15%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: pxrm(2);
+  width: 20%;
   text-align: right;
 }
 
@@ -334,7 +358,7 @@
 }
 .stats-table-cell-pool {
   display: flex;
-  gap: pxrm(16);
+  gap: pxrm(8);
   align-items: center;
   @media (min-aspect-ratio: 2/3) {
     width: 25%;
@@ -344,7 +368,7 @@
 .stats-table-cell-tvl {
   padding: 0 pxrm(5);
   @media (min-aspect-ratio: 2/3) {
-    width: 15%;
+    width: 20%;
     padding: 0;
     text-align: right;
     justify-content: end;
@@ -353,7 +377,7 @@
 .stats-table-cell-totalvol {
   padding: 0 pxrm(5);
   @media (min-aspect-ratio: 2/3) {
-    width: 15%;
+    width: 20%;
     padding: 0;
     text-align: right;
     justify-content: end;
@@ -371,7 +395,7 @@
 .stats-table-cell-price {
   padding: 0 pxrm(5);
   @media (min-aspect-ratio: 2/3) {
-    width: 15%;
+    width: 20%;
     padding: 0;
     text-align: right;
     justify-content: end;
@@ -563,7 +587,7 @@
 }
 
 .stats-table-expanded {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.07);
   width: 100%;
   font-size: pxrm(20);
   overflow-x: scroll;
@@ -575,7 +599,7 @@
   width: 100%;
   align-items: center;
   padding: pxrm(8) pxrm(12);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
 
   @media (min-aspect-ratio: 2/3) {
     gap: 0;
@@ -584,7 +608,7 @@
   // Add specific sizing for the token images in expanded rows
   .stats-table-logos {
     display: flex;
-    gap: pxrm(4);
+    gap: pxrm(2);
 
     img {
       width: pxrm(24);
@@ -604,7 +628,6 @@
   display: flex;
   align-items: center;
   gap: pxrm(16);
-
   @media (max-width: 1000px) {
     width: 100%;
   }
@@ -668,7 +691,95 @@
 
 .clickable {
   cursor: pointer;
+}
+
+
+
+.stats-table-tokenname-subtitle {
   display: flex;
-  align-items: center;
-  gap: 0.2rem;
+  flex-direction: column;
+  font-size: 16px;
+  font-family: "lores-12", sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.stats-table-expanded-header {
+  padding: 1rem;
+}
+
+.stats-search-wrapper {
+  margin-top: 8px;
+  padding-bottom: 16px;
+}
+
+.stats-search {
+  width: 100%;
+  padding: 10px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--c-black);
+  font-size: 16px;
+  font-family: "lores-12", sans-serif;
+  transition: all 0.2s ease;
+
+  &::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+    font-family: "lores-12", sans-serif;
+  }
+
+  &:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(0, 0, 0, 0.25);
+  }
+}
+
+// Update the stats-table-body to accommodate the search
+.stats-table-body {
+  margin-top: 0.5rem;
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+}
+
+.stats-table-subrow-header {
+  font-family: "lores-12", sans-serif;
+  font-weight: bold;
+  font-size: 0.9em;
+  color: rgba(0, 0, 0, 0.75);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.11);
+  padding: 8px 12px;
+}
+
+.stats-table-expanded-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.stats-table-tokenname-subtitle {
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  font-family: "lores-12", sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+// Update existing styles to align with header
+.stats-table-subrow {
+  .stats-table-cell {
+    &:nth-child(2),
+    &:nth-child(3),
+    &:nth-child(4),
+    &:nth-child(5) {
+      justify-content: flex-end;
+      text-align: right;
+    }
+  }
 }
