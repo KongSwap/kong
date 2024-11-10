@@ -88,11 +88,28 @@
                     <header class="modal-header">
                         <h2 id="modal-title">Select Token</h2>
                         <button 
-                            class="close-button" 
+                            class="action-button close-button !border-0 !shadow-none group relative"
                             on:click={onClose}
                             aria-label="Close token selector"
                         >
-                            ×
+                            <span class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100">
+                                Close
+                            </span>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="#ff4444"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
                         </button>
                     </header>
                     
@@ -200,18 +217,39 @@
         margin: 0;
     }
 
-    .close-button {
-        background: transparent;
-        border: none;
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 1.875rem;
+    .action-button {
+        border: 1px solid var(--sidebar-border);
+        padding: 6px;
+        border-radius: 4px;
+        color: white;
         cursor: pointer;
-        transition: color 200ms, transform 200ms;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+    }
+
+    .action-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-button:focus-visible {
+        outline: 2px solid var(--sidebar-border);
+        outline-offset: 2px;
+    }
+
+    .close-button {
+        background: rgba(186, 49, 49, 0.4);
+        color: #ffffff;
     }
 
     .close-button:hover {
-        color: white;
-        transform: rotate(-90deg);
+        background: rgba(255, 68, 68, 0.5);
     }
 
     .search-container {

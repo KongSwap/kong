@@ -81,6 +81,7 @@
     box-shadow: var(--panel-shadow);
     overflow: hidden;
     height: auto;
+
   }
 
   .panel-container {

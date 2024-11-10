@@ -203,11 +203,11 @@
 }
 
 .panel-title {
-  font-size: 2.25rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
   color: var(--c-white);
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
 }
 
 .input-section {
@@ -237,9 +237,9 @@
   background: transparent;
   border: none;
   color: white;
-  font-size: 2rem;
-  font-weight: bold;
-  letter-spacing: 0.03em;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   width: 100%;
   position: relative;
   z-index: 1;
@@ -262,7 +262,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.1rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .balance-values {
@@ -272,12 +273,15 @@
 }
 
 .balance-label {
-  opacity: 0.8;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 .token-amount {
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .token-amount.clickable {
@@ -294,14 +298,15 @@
 }
 
 .fiat-amount {
-  opacity: 0.8;
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .slippage-value {
-  font-size: 2.25rem;
-  font-weight: 600;
-  transition: color 0.2s ease;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .slippage-value.high {
@@ -314,24 +319,9 @@
   align-items: center;
 }
 
-.max-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  border-radius: 4px;
-  color: var(--c-white);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  transition: background-color 0.2s ease;
-}
-
 .input-wrapper:hover .amount-input:not(:focus) {
-  opacity: 0;
-}
-
-.input-wrapper:hover .max-overlay {
   opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 @media (max-width: 768px) {
@@ -374,10 +364,12 @@
 
   .panel-title {
     font-size: 1.25rem;
+    letter-spacing: -0.005em;
   }
 
   .amount-input {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
+    letter-spacing: -0.01em;
   }
 
   .slippage-value {
@@ -386,6 +378,7 @@
 
   .balance-info {
     font-size: 0.75rem;
+    line-height: 1.3;
   }
 
   :global(.token-panel .button-group) {
