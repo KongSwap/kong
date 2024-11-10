@@ -249,11 +249,16 @@
         direction: i === 0 ? 'topLeft' : 'bottomRight'
     })).reverse();
     
+    const oldPayAmount = payAmount;
+    const oldReceiveAmount = receiveAmount;
+    
     [payToken, receiveToken] = [receiveToken, payToken];
-    payAmount = "";
-    setReceiveAmount("0");
-    payUsdValue = "0";
-    usdValue = "0";
+    
+    payAmount = oldReceiveAmount;
+    
+    if (oldReceiveAmount !== "0") {
+        await debouncedGetQuote(oldReceiveAmount);
+    }
     
     setTimeout(() => {
         isAnimating = false;

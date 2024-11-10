@@ -160,7 +160,6 @@
   .left-part,
   .right-part {
     flex-shrink: 0;
-    height: 100%;
     object-fit: contain;
     pointer-events: none;
   }
@@ -171,14 +170,14 @@
     background-position: center;
     background-size: auto 100%;
     pointer-events: none;
-    min-width: 20px; /* Minimum width to ensure button doesn't collapse */
+    min-width: 24px; 
   }
 
   .button-text {
     font-family: theme('fontFamily.alumni');
     font-size: 24px;
     text-transform: uppercase;
-    padding: 0 16px;
+    padding: 0 14px;
     user-select: none;
     white-space: nowrap;
     position: absolute;

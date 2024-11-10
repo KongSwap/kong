@@ -28,6 +28,28 @@
   let calculatedUsdValue: string;
   let isOverBalance: boolean;
 
+  let pendingAnimation: any = null;
+
+  const handleInput = debounce((event: Event) => {
+    if (title === "You Receive") return;
+
+    const input = event.target as HTMLInputElement;
+    const newValue = input.value;
+
+    try {
+      const estimatedUsdValue = (parseFloat(newValue || "0") * parseFloat(formattedUsdValue)).toFixed(2);
+      animatedUsdValue.set(parseFloat(estimatedUsdValue), { duration: 400 });
+      animatedAmount.set(parseFloat(newValue) || 0, { duration: 400 });
+      
+      pendingAnimation = animatedAmount.set(parseFloat(newValue) || 0);
+      
+      onAmountChange(event);
+    } catch (error) {
+      console.error("Error in handleInput:", error);
+      toastStore.error("Invalid input amount");
+    }
+  }, 300);
+
   $: {
     tokenInfo = $formattedTokens.find(t => t.symbol === token);
     decimals = tokenInfo?.decimals || 8;
@@ -37,23 +59,33 @@
     calculatedUsdValue = (parseFloat(amount || "0") * parseFloat(formattedUsdValue)).toFixed(2);
     isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance || "0");
 
-    animatedUsdValue.set(parseFloat(calculatedUsdValue));
-    animatedAmount.set(parseFloat(amount || "0"));
-    animatedSlippage.set(slippage);
+    if (pendingAnimation && amount === "0") {
+      pendingAnimation.cancel();
+      pendingAnimation = null;
+    }
+
+    if (amount === "0") {
+      animatedUsdValue.set(parseFloat(calculatedUsdValue), { duration: 0 });
+      animatedAmount.set(parseFloat(amount || "0"), { duration: 0 });
+    } else {
+      animatedUsdValue.set(parseFloat(calculatedUsdValue), { duration: 400 });
+    }
+    
+    animatedSlippage.set(slippage, { duration: 0 });
   }
 
   const animatedUsdValue = tweened(0, {
-    duration: 400,
+    duration: 200,
     easing: cubicOut,
   });
 
   const animatedAmount = tweened(0, {
-    duration: 400,
+    duration: 200,
     easing: cubicOut,
   });
 
   const animatedSlippage = tweened(0, {
-    duration: 400,
+    duration: 200,
     easing: cubicOut,
   });
 
@@ -64,22 +96,18 @@
   const handleMaxClick = () => {
     if (!disabled && title === "You Pay") {
       try {
-        const toSub = tokenInfo?.fee + 10n;
-        const maxAmount = BigNumber($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString() || "0")
-          .minus(toSub.toString() || "0")
-          .toFixed();
-        const formattedMaxAmount = formatTokenAmount(maxAmount, decimals);
+        const formattedMaxAmount = formattedBalance;
         isAnimating = true;
 
-        onAmountChange({ target: { value: formattedMaxAmount.toString() } });
+        onAmountChange({ target: { value: formattedMaxAmount } });
 
-        animatedAmount.set(parseFloat(formattedMaxAmount.toString()), {
+        animatedAmount.set(parseFloat(formattedMaxAmount), {
           duration: 400,
           easing: cubicOut
         }).then(() => {
           isAnimating = false;
           if (inputElement) {
-            inputElement.value = formattedMaxAmount.toString();
+            inputElement.value = formattedMaxAmount;
           }
         });
       } catch (error) {
@@ -88,22 +116,6 @@
       }
     }
   };
-
-  const handleInput = debounce((event: Event) => {
-    if (title === "You Receive") return;
-
-    const input = event.target as HTMLInputElement;
-    const newValue = input.value;
-
-    try {
-      isAnimating = false;
-      onAmountChange(event);
-      animatedAmount.set(parseFloat(newValue) || 0, { duration: 0 });
-    } catch (error) {
-      console.error("Error in handleInput:", error);
-      toastStore.error("Invalid input amount");
-    }
-  }, 300);
 
 </script>
 
@@ -124,18 +136,20 @@
 
     <div class="input-section">
       <div class="amount-container">
-        <input
-          bind:this={inputElement}
-          type="text"
-          class="amount-input {isOverBalance && title === 'You Pay' ? 'error' : ''}"
-          value="{isAnimating ? $animatedAmount.toFixed(decimals) : amount}"
-          on:input={handleInput}
-          on:focus={() => inputFocused = true}
-          on:blur={() => inputFocused = false}
-          placeholder="0"
-          disabled="{disabled || title === 'You Receive'}"
-          readonly="{title === 'You Receive'}"
-        />
+        <div class="input-wrapper">
+          <input
+            bind:this={inputElement}
+            type="text"
+            class="amount-input {isOverBalance && title === 'You Pay' ? 'error' : ''}"
+            value="{isAnimating ? $animatedAmount.toFixed(decimals) : amount}"
+            on:input={handleInput}
+            on:focus={() => inputFocused = true}
+            on:blur={() => inputFocused = false}
+            placeholder="0"
+            disabled="{disabled || title === 'You Receive'}"
+            readonly="{title === 'You Receive'}"
+          />
+        </div>
         <div class="button-group">
           <TokenSelectorButton
             {token}
@@ -150,10 +164,18 @@
       <div class="balance-info">
         <span class="balance-label">Available</span>
         <div class="balance-values">
-          <span class="token-amount">{formattedBalance} {token}</span>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <span 
+            class="token-amount" 
+            class:clickable={title === "You Pay" && !disabled}
+            on:click={handleMaxClick}
+          >
+            {formattedBalance} {token}
+          </span>
           <span class="separator">|</span>
           <span class="fiat-amount">
-            ${$animatedUsdValue}
+            ${$animatedUsdValue.toFixed(2)}
           </span>
         </div>
       </div>
@@ -204,6 +226,11 @@
   border-radius: 4px;
 }
 
+.input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
 .amount-input {
   flex: 1;
   min-width: 0;
@@ -214,6 +241,8 @@
   font-weight: bold;
   letter-spacing: 0.03em;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .amount-input:focus {
@@ -251,6 +280,15 @@
   font-weight: 600;
 }
 
+.token-amount.clickable {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.token-amount.clickable:hover {
+  color: var(--c-yellow, #FFD700);
+}
+
 .separator {
   color: rgba(255, 255, 255, 0.1);
 }
@@ -276,9 +314,33 @@
   align-items: center;
 }
 
+.max-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  color: var(--c-white);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  transition: background-color 0.2s ease;
+}
+
+.input-wrapper:hover .amount-input:not(:focus) {
+  opacity: 0;
+}
+
+.input-wrapper:hover .max-overlay {
+  opacity: 1;
+}
+
 @media (max-width: 768px) {
+  .panel-content {
+    min-height: 145px;
+  }
+
   .panel-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
 
   .amount-input {
@@ -286,29 +348,90 @@
   }
 
   .slippage-value {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
 
   .balance-info {
     font-size: 0.9rem;
   }
+
+  :global(.token-panel .button-group) {
+    transform: scale(0.9);
+    transform-origin: right center;
+  }
 }
 
 @media (max-width: 480px) {
-  .panel-title {
-    font-size: 1.5rem;
+  .panel-content {
+    min-height: 135px;
+    padding: 0.75rem;
   }
 
-  .amount-input {
+  .title-container {
+    min-height: 2rem;
+    gap: 0.5rem;
+  }
+
+  .panel-title {
     font-size: 1.25rem;
   }
 
+  .amount-input {
+    font-size: 1.125rem;
+  }
+
   .slippage-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
 
   .balance-info {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+  }
+
+  :global(.token-panel .button-group) {
+    transform: scale(0.8);
+  }
+
+  .amount-container {
+    gap: 0.125rem;
+  }
+
+  .balance-values {
+    gap: 0.25rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .panel-content {
+    min-height: 125px;
+  }
+
+  :global(.token-panel .button-group) {
+    transform: scale(0.75);
+  }
+
+  .balance-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .balance-values {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.input-section {
+  @media (max-width: 480px) {
+    height: 58px;
+    margin-bottom: 0;
+  }
+}
+
+.amount-container {
+  @media (max-width: 480px) {
+    height: 75%;
   }
 }
 </style>

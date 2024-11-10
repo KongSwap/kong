@@ -28,7 +28,6 @@
       }}
     />
     <span class="token-symbol">{token}</span>
-    <span class="selector-icon">▼</span>
   </div>
 </Button>
 
