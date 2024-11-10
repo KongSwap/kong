@@ -53,6 +53,33 @@
     box-sizing: border-box;
 }
 
+.tokenwallet-search-wrapper {
+    display: flex;
+    border-bottom:  pxrm(0.1) solid var(--c-second-2);
+    width: 100%;
+}
+
+.tokenwallet-search {
+    line-height: pxrm(36);
+    background: var(--c-second-3);
+    font-size: pxrm(16);
+    font-style: normal;
+    color: var(--c-white);
+    border: none;
+    outline: none;
+    padding: 0 pxrm(42) 0 pxrm(16);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tokenwallet-search::placeholder {
+    color: var(--c-white);
+}
+
+.tokenwallet-search:focus {
+    color: var(--c-white);
+}
+
 .copy-button {
     position: absolute;
     top: 0;
