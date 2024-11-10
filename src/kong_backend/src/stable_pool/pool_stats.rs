@@ -5,8 +5,10 @@ use super::pool_map;
 
 use crate::helpers::math_helpers::round_f64;
 use crate::helpers::nat_helpers::{nat_add, nat_divide_as_f64, nat_zero};
+use crate::ic::ckusdt::ckusdt_amount;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::TX_24H_MAP;
+use crate::stable_token::token_map;
 use crate::stable_tx::stable_tx::StableTx;
 
 pub fn update_pool_stats() {
@@ -22,12 +24,16 @@ pub fn update_pool_stats() {
             if let StableTx::Swap(swap_tx) = tx {
                 for swap in swap_tx.txs.iter() {
                     let pool_id = swap.pool_id;
-                    let stats = pool_24h_stats.entry(pool_id).or_insert((nat_zero(), nat_zero(), nat_zero()));
-                    *stats = (
-                        nat_add(&stats.0, &one),
-                        nat_add(&stats.1, &swap.receive_amount),
-                        nat_add(&stats.2, &swap.lp_fee),
-                    );
+                    if let Some(receive_token) = token_map::get_by_token_id(swap.receive_token_id) {
+                        let receive_amount = ckusdt_amount(&receive_token, &swap.receive_amount).unwrap_or(nat_zero());
+                        let lp_fee = ckusdt_amount(&receive_token, &swap.lp_fee).unwrap_or(nat_zero());
+                        let stats = pool_24h_stats.entry(pool_id).or_insert((nat_zero(), nat_zero(), nat_zero()));
+                        *stats = (
+                            nat_add(&stats.0, &one),
+                            nat_add(&stats.1, &receive_amount),
+                            nat_add(&stats.2, &lp_fee),
+                        );
+                    }
                 }
             }
         }
