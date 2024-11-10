@@ -2,13 +2,12 @@ use ic_cdk::{query, update};
 use kong_lib::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
 use std::collections::BTreeMap;
 
-use super::guards::caller_is_kong_backend;
+use super::guards::caller_is_kingkong;
 use super::stable_memory::LP_TOKEN_LEDGER;
 
 const MAX_LP_TOKEN_LEDGER: usize = 1_000;
 
-//#[query(hidden = true, guard = "caller_is_kingkong")]
-#[query(hidden = true)]
+#[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_lp_token_ledger(lp_token_id: Option<u64>, num_lp_token_ledger: Option<u16>) -> Result<String, String> {
     LP_TOKEN_LEDGER.with(|m| {
         let map = m.borrow();
@@ -28,8 +27,7 @@ fn backup_lp_token_ledger(lp_token_id: Option<u64>, num_lp_token_ledger: Option<
     })
 }
 
-//#[update(guard = "caller_is_kong_backend")]
-#[update(hidden = true)]
+#[update(hidden = true, guard = "caller_is_kingkong")]
 fn archive_lp_token_ledger(stable_lp_token_ledger: String) -> Result<String, String> {
     let lp_token_ledgers: BTreeMap<StableLPTokenLedgerId, StableLPTokenLedger> = match serde_json::from_str(&stable_lp_token_ledger) {
         Ok(lp_token_ledgers) => lp_token_ledgers,
