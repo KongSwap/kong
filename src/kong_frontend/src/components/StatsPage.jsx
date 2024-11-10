@@ -13,9 +13,13 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
   const [pools, setPools] = useState([]);
   const [expandedToken, setExpandedToken] = useState(null);
   const [viewTab, setViewTab] = useState("stats");
-  const [sortConfig, setSortConfig] = useState({ key: "symbol", direction: "ascending" });
+  const [sortConfig, setSortConfig] = useState({
+    key: "tvl",
+    direction: "descending",
+  });
   const queryParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
+  const [tokenSearchTerm, setTokenSearchTerm] = useState("");
 
   const onTabClick = (tab, pool) => {
     queryParams.set("viewtab", tab);
@@ -80,12 +84,12 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
     const ckusdtDecimals = getTokenDecimals("ckUSDT");
 
     // Adjust balances for decimals
-    const ckusdcBalance = new BigNumber(ckusdtCkusdcPool.balance_0).dividedBy(
-      new BigNumber(10).pow(ckusdcDecimals)
-    );
-    const ckusdtBalance = new BigNumber(ckusdtCkusdcPool.balance_1).dividedBy(
-      new BigNumber(10).pow(ckusdtDecimals)
-    );
+    const ckusdcBalance = new BigNumber(
+      ckusdtCkusdcPool?.balance_0 || 0
+    ).dividedBy(new BigNumber(10).pow(ckusdcDecimals));
+    const ckusdtBalance = new BigNumber(
+      ckusdtCkusdcPool?.balance_1 || 0
+    ).dividedBy(new BigNumber(10).pow(ckusdtDecimals));
 
     // Calculate ckUSDT price (ckUSDC/ckUSDT)
     const ckusdtPrice = ckusdcBalance.dividedBy(ckusdtBalance);
@@ -207,6 +211,17 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
         ].weightedApy.plus(tvl.multipliedBy(apy));
         groupedPools[symbol].total24hVolume =
           groupedPools[symbol].total24hVolume.plus(volume24h);
+
+        groupedPools[symbol].name = tokenDetails.find(
+          (token) => token.symbol === symbol
+        )?.[symbol]?.name;
+        groupedPools[symbol].symbol = symbol;
+
+        if (pool.symbol_0 === symbol) {
+          groupedPools[symbol].canisterId = pool.address_0;
+        } else if (pool.symbol_1 === symbol) {
+          groupedPools[symbol].canisterId = pool.address_1;
+        }
       });
     }
 
@@ -224,6 +239,8 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
         2
       );
     });
+
+    console.log("groupedPools", groupedPools);
 
     return groupedPools;
   };
@@ -258,25 +275,31 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
       symbol: ({ symbol }) => symbol,
       price: ({ priceInUSD }) => new BigNumber(priceInUSD),
       tvl: ({ totalTvl }) => new BigNumber(totalTvl.replace(/,/g, "")),
-      volume: ({ total24hVolume }) => new BigNumber(total24hVolume.replace(/,/g, "")),
-      apy: ({ weightedApy }) => new BigNumber(weightedApy)
+      volume: ({ total24hVolume }) =>
+        new BigNumber(total24hVolume.replace(/,/g, "")),
+      apy: ({ weightedApy }) => new BigNumber(weightedApy),
     };
 
     const getValue = valueGetters[sortConfig.key] || (() => 0);
     const direction = sortConfig.direction === "ascending" ? 1 : -1;
-    
+
     return Object.values(pools).sort((a, b) => {
       const [aVal, bVal] = [getValue(a), getValue(b)];
-      return (aVal instanceof BigNumber ? aVal.comparedTo(bVal) : aVal > bVal ? 1 : aVal < bVal ? -1 : 0) * direction;
+      return (
+        (aVal instanceof BigNumber
+          ? aVal.comparedTo(bVal)
+          : aVal > bVal
+            ? 1
+            : aVal < bVal
+              ? -1
+              : 0) * direction
+      );
     });
   }, [pools, sortConfig.key, sortConfig.direction]);
 
   const requestSort = (key) => {
     let direction = "ascending";
-    if (
-      sortConfig.key === key &&
-      sortConfig.direction === "ascending"
-    ) {
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
       direction = "descending";
     }
     setSortConfig({ key, direction });
@@ -293,7 +316,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
           Number(pool.rolling_24h_volume || 0) / 10 ** decimals1,
           0
         );
-        const tvl = formatNumberCustom(balance / 10 ** decimals1, 0);
+        const tvl = formatNumberCustom(balance / 10 ** 6, 0);
 
         return {
           ...pool,
@@ -389,21 +412,13 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
               <text x="90%" y="65" dominantBaseline="right" textAnchor="end">
                 ${formatNumberCustom(poolsTotals.totalTvl, 0)}
               </text>
-              <text
-                x="10%"
-                y="107"
-                dominantBaseline="left"
-                textAnchor="start">
+              <text x="10%" y="107" dominantBaseline="left" textAnchor="start">
                 24H VOLUME
               </text>
               <text x="90%" y="107" dominantBaseline="right" textAnchor="end">
                 ${formatNumberCustom(poolsTotals.totalVolume, 0)}
               </text>
-              <text
-                x="10%"
-                y="150"
-                dominantBaseline="left"
-                textAnchor="start">
+              <text x="10%" y="150" dominantBaseline="left" textAnchor="start">
                 24H FEES
               </text>
               <text x="90%" y="150" dominantBaseline="right" textAnchor="end">
@@ -420,12 +435,22 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
               <h2>Overview of Kong Tokens</h2>
               <span> ***</span>
             </div>
+
+            <div className="stats-search-wrapper">
+              <input
+                type="text"
+                className="stats-search"
+                placeholder="Search tokens by symbol"
+                value={tokenSearchTerm}
+                onChange={(e) => setTokenSearchTerm(e.target.value)}
+              />
+            </div>
+
             <div className="stats-table-head">
               <div className="stats-table-head__content">
                 <div
                   className="stats-table-head-pool clickable"
-                  onClick={() => requestSort("symbol")}
-                >
+                  onClick={() => requestSort("symbol")}>
                   TOKEN
                   {sortConfig.key === "symbol" ? (
                     sortConfig.direction === "ascending" ? (
@@ -437,8 +462,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                 </div>
                 <div
                   className="stats-table-head-price clickable"
-                  onClick={() => requestSort("price")}
-                >
+                  onClick={() => requestSort("price")}>
                   PRICE
                   {sortConfig.key === "price" ? (
                     sortConfig.direction === "ascending" ? (
@@ -450,8 +474,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                 </div>
                 <div
                   className="stats-table-head-tvl clickable"
-                  onClick={() => requestSort("tvl")}
-                >
+                  onClick={() => requestSort("tvl")}>
                   TOTAL TVL
                   {sortConfig.key === "tvl" ? (
                     sortConfig.direction === "ascending" ? (
@@ -463,8 +486,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                 </div>
                 <div
                   className="stats-table-head-totalvol clickable"
-                  onClick={() => requestSort("volume")}
-                >
+                  onClick={() => requestSort("volume")}>
                   24H VOLUME
                   {sortConfig.key === "volume" ? (
                     sortConfig.direction === "ascending" ? (
@@ -476,8 +498,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                 </div>
                 <div
                   className="stats-table-head-apr clickable"
-                  onClick={() => requestSort("apy")}
-                >
+                  onClick={() => requestSort("apy")}>
                   AVG APY
                   {sortConfig.key === "apy" ? (
                     sortConfig.direction === "ascending" ? (
@@ -487,197 +508,238 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                     )
                   ) : null}
                 </div>
-                <div className="stats-table-head-apr">Expand</div>
               </div>
             </div>
             <div className="stats-table-body">
-              {sortedPools.map((tokenGroup) => (
-                <React.Fragment key={tokenGroup.symbol}>
-                  <div
-                    className="stats-table-row clickable"
-                    onClick={() =>
-                      setExpandedToken(
-                        expandedToken === tokenGroup.symbol
-                          ? null
-                          : tokenGroup.symbol
-                      )
-                    }>
-                    <div className="stats-table-cell stats-table-cell-pool">
-                      <div className="stats-table-logos">
-                        <img
-                          src={tokenImages[tokenGroup.symbol]}
-                          className="stats-table-token"
-                          alt={tokenGroup.symbol}
-                        />
+              {sortedPools
+                .filter(
+                  (tokenGroup) =>
+                    tokenGroup.symbol
+                      ?.toLowerCase()
+                      ?.includes(tokenSearchTerm?.toLowerCase()) ||
+                    tokenGroup.canisterId
+                      ?.toLowerCase()
+                      ?.includes(tokenSearchTerm?.toLowerCase()) ||
+                    tokenGroup.name
+                      ?.toLowerCase()
+                      ?.includes(tokenSearchTerm?.toLowerCase())
+                )
+                .map((tokenGroup) => (
+                  <React.Fragment key={tokenGroup.symbol}>
+                    <div
+                      className="stats-table-row clickable"
+                      onClick={() =>
+                        setExpandedToken(
+                          expandedToken === tokenGroup.symbol
+                            ? null
+                            : tokenGroup.symbol
+                        )
+                      }>
+                      <div className="stats-table-cell stats-table-cell-pool">
+                        <div className="stats-table-logos">
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              paddingRight: "8px",
+                            }}>
+                            {expandedToken !== tokenGroup.symbol ? (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="1.5"
+                                stroke="currentColor"
+                                style={{ width: "12px", height: "12px" }}>
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m4.5 15.75 7.5-7.5 7.5 7.5"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="1.5"
+                                stroke="currentColor"
+                                style={{ width: "12px", height: "12px" }}>
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m19.5 8.25-7.5 7.5-7.5-7.5"
+                                />
+                              </svg>
+                            )}
+                          </div>
+                          <img
+                            src={tokenImages[tokenGroup.symbol]}
+                            className="stats-table-token"
+                            alt={tokenGroup.symbol}
+                          />
+                        </div>
+                        <span className="stats-table-tokenname">
+                          {tokenGroup.symbol}
+                        </span>
                       </div>
-                      <span className="stats-table-tokenname">
-                        {tokenGroup.symbol}
-                      </span>
+                      <div className="stats-table-cell stats-table-cell-price">
+                        <span className="stats-table-cell-value">
+                          ${firstNonZeroDecimals(tokenGroup.weightedPrice, 6)}
+                        </span>
+                      </div>
+                      <div className="stats-table-cell stats-table-cell-tvl">
+                        <span className="stats-table-cell-value">
+                          ${tokenGroup.totalTvl}
+                        </span>
+                      </div>
+                      <div className="stats-table-cell stats-table-cell-totalvol">
+                        <span className="stats-table-cell-value">
+                          ${tokenGroup.total24hVolume}
+                        </span>
+                      </div>
+                      <div className="stats-table-cell stats-table-cell-apr">
+                        <span className="stats-table-cell-value">
+                          {tokenGroup.weightedApy}
+                          <span className="percentage-symbol">%</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className="stats-table-cell stats-table-cell-price">
-                      <span className="stats-table-cell-value">
-                        ${firstNonZeroDecimals(tokenGroup.weightedPrice, 6)}
-                      </span>
-                    </div>
-                    <div className="stats-table-cell stats-table-cell-tvl">
-                      <span className="stats-table-cell-value">
-                        ${tokenGroup.totalTvl}
-                      </span>
-                    </div>
-                    <div className="stats-table-cell stats-table-cell-totalvol">
-                      <span className="stats-table-cell-value">
-                        ${tokenGroup.total24hVolume}
-                      </span>
-                    </div>
-                    <div className="stats-table-cell stats-table-cell-apr">
-                      <span className="stats-table-cell-value">
-                        {tokenGroup.weightedApy}
-                        <span className="percentage-symbol">%</span>
-                      </span>
-                    </div>
-                    <div className="stats-table-cell stats-table-cell-controls">
-                      {expandedToken === tokenGroup.symbol ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth="1.5"
-                          stroke="currentColor"
-                          style={{ width: "12px", height: "12px" }}>
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m4.5 15.75 7.5-7.5 7.5 7.5"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth="1.5"
-                          stroke="currentColor"
-                          style={{ width: "12px", height: "12px" }}>
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m19.5 8.25-7.5 7.5-7.5-7.5"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
 
-                  {expandedToken === tokenGroup.symbol && (
-                    <div className="stats-table-expanded">
-                      {tokenGroup.pools.map((pool, index) => (
-                        <div className="stats-table-subrow" key={index}>
+                    {expandedToken === tokenGroup.symbol && (
+                      <div className="stats-table-expanded">
+                        <div className="stats-table-expanded-header">
+                          <span className="stats-table-tokenname-subtitle">
+                            <strong style={{ fontWeight: "bold" }}>
+                              {tokenGroup.symbol} Canister ID
+                            </strong>
+                            {tokenGroup.pools?.at(0)?.address_0}
+                          </span>
+                        </div>
+
+                        {/* Add header row for the expanded section */}
+                        <div className="stats-table-subrow stats-table-subrow-header">
                           <div className="stats-table-cell stats-table-cell-pool-expanded">
-                            <div className="stats-table-logos">
-                              <img
-                                src={tokenImages[pool.symbol_0]}
-                                alt={pool.symbol_0}
-                                style={{ zIndex: 2 }}
-                              />
-                              <img
-                                src={tokenImages[pool.symbol_1]}
-                                alt={pool.symbol_1}
-                                style={{ marginLeft: "-12px", zIndex: 1 }}
-                              />
-                            </div>
-                            <span style={{ width: "100%" }}>
-                              {pool.symbol_0}/{pool.symbol_1}
-                            </span>
+                            Pool
                           </div>
-                          <div className="stats-table-cell">
-                            {(() => {
-                              let displayPriceUsd;
-                              if (pool.symbol_0 === "ckUSDT") {
-                                displayPriceUsd = pool.priceUsd1; // Price of symbol_1 (the other token)
-                              } else if (pool.symbol_1 === "ckUSDT") {
-                                displayPriceUsd = pool.priceUsd0; // Price of symbol_0 (the other token)
-                              } else {
-                                // If neither token is ckUSDT, display the price of the token that matches the token group symbol
-                                displayPriceUsd =
-                                  tokenGroup.symbol === pool.symbol_0
-                                    ? pool.priceUsd0
-                                    : pool.priceUsd1;
-                              }
-
-                              return (
-                                <span>
-                                  ${firstNonZeroDecimals(displayPriceUsd, 6)}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                          <div className="stats-table-cell">
-                            <span>${formatNumberCustom(pool.tvl, 0)}</span>
-                          </div>
-                          <div className="stats-table-cell">
-                            <span>
-                              ${pool.rolling_24h_volume_calc.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="stats-table-cell">
-                            <span>{formatNumberCustom(pool.apy, 2)}%</span>
-                          </div>
+                          <div className="stats-table-cell">Price</div>
+                          <div className="stats-table-cell">TVL</div>
+                          <div className="stats-table-cell">Volume</div>
+                          <div className="stats-table-cell">APY</div>
                           <div className="stats-table-cell stats-table-cell-controls">
-                            <span
-                              onClick={() =>
-                                onTabClick("swap", pool.lp_token_symbol)
-                              }
-                              className="buttonsmall-green stats-table-controlbtn">
-                              <span className="buttonsmall-green__pressed">
-                                <span className="buttonsmall-green__pressed__l"></span>
-                                <span className="buttonsmall-green__pressed__mid"></span>
-                                <span className="buttonsmall-green__pressed__r"></span>
-                              </span>
-                              <span className="buttonsmall-green__selected">
-                                <span className="buttonsmall-green__selected__l"></span>
-                                <span className="buttonsmall-green__selected__mid"></span>
-                                <span className="buttonsmall-green__selected__r"></span>
-                              </span>
-                              <span className="buttonsmall-green__default">
-                                <span className="buttonsmall-green__default__l"></span>
-                                <span className="buttonsmall-green__default__mid"></span>
-                                <span className="buttonsmall-green__default__r"></span>
-                              </span>
-                              <span className="buttonsmall-green__text">
-                                Swap
-                              </span>
-                            </span>
-                            <span
-                              onClick={() =>
-                                onTabClick("pools", pool.lp_token_symbol)
-                              }
-                              className="buttonsmall-green stats-table-controlbtn">
-                              <span className="buttonsmall-green__pressed">
-                                <span className="buttonsmall-green__pressed__l"></span>
-                                <span className="buttonsmall-green__pressed__mid"></span>
-                                <span className="buttonsmall-green__pressed__r"></span>
-                              </span>
-                              <span className="buttonsmall-green__selected">
-                                <span className="buttonsmall-green__selected__l"></span>
-                                <span className="buttonsmall-green__selected__mid"></span>
-                                <span className="buttonsmall-green__selected__r"></span>
-                              </span>
-                              <span className="buttonsmall-green__default">
-                                <span className="buttonsmall-green__default__l"></span>
-                                <span className="buttonsmall-green__default__mid"></span>
-                                <span className="buttonsmall-green__default__r"></span>
-                              </span>
-                              <span className="buttonsmall-green__text">
-                                Add Liquidity
-                              </span>
-                            </span>
+                            Actions
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </React.Fragment>
-              ))}
+
+                        {/* Existing pool rows */}
+                        {tokenGroup.pools.map((pool, index) => (
+                          <div className="stats-table-subrow" key={index}>
+                            <div className="stats-table-cell stats-table-cell-pool-expanded">
+                              <div className="stats-table-logos">
+                                <img
+                                  src={tokenImages[pool.symbol_0]}
+                                  alt={pool.symbol_0}
+                                  style={{ zIndex: 2 }}
+                                />
+                                <img
+                                  src={tokenImages[pool.symbol_1]}
+                                  alt={pool.symbol_1}
+                                  style={{ marginLeft: "-12px", zIndex: 1 }}
+                                />
+                              </div>
+                              <span style={{ width: "100%" }}>
+                                {pool.symbol_0}/{pool.symbol_1}
+                              </span>
+                            </div>
+                            <div className="stats-table-cell">
+                              {(() => {
+                                let displayPriceUsd;
+                                if (pool.symbol_0 === "ckUSDT") {
+                                  displayPriceUsd = pool.priceUsd1; // Price of symbol_1 (the other token)
+                                } else if (pool.symbol_1 === "ckUSDT") {
+                                  displayPriceUsd = pool.priceUsd0; // Price of symbol_0 (the other token)
+                                } else {
+                                  // If neither token is ckUSDT, display the price of the token that matches the token group symbol
+                                  displayPriceUsd =
+                                    tokenGroup.symbol === pool.symbol_0
+                                      ? pool.priceUsd0
+                                      : pool.priceUsd1;
+                                }
+
+                                return (
+                                  <span>
+                                    ${firstNonZeroDecimals(displayPriceUsd, 6)}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                            <div className="stats-table-cell">
+                              <span>${pool.tvl}</span>
+                            </div>
+                            <div className="stats-table-cell">
+                              <span>
+                                ${pool.rolling_24h_volume_calc.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="stats-table-cell">
+                              <span>{formatNumberCustom(pool.apy, 2)}%</span>
+                            </div>
+                            <div className="stats-table-cell stats-table-cell-controls">
+                              <span
+                                onClick={() =>
+                                  onTabClick("swap", pool.lp_token_symbol)
+                                }
+                                className="buttonsmall-green stats-table-controlbtn">
+                                <span className="buttonsmall-green__pressed">
+                                  <span className="buttonsmall-green__pressed__l"></span>
+                                  <span className="buttonsmall-green__pressed__mid"></span>
+                                  <span className="buttonsmall-green__pressed__r"></span>
+                                </span>
+                                <span className="buttonsmall-green__selected">
+                                  <span className="buttonsmall-green__selected__l"></span>
+                                  <span className="buttonsmall-green__selected__mid"></span>
+                                  <span className="buttonsmall-green__selected__r"></span>
+                                </span>
+                                <span className="buttonsmall-green__default">
+                                  <span className="buttonsmall-green__default__l"></span>
+                                  <span className="buttonsmall-green__default__mid"></span>
+                                  <span className="buttonsmall-green__default__r"></span>
+                                </span>
+                                <span className="buttonsmall-green__text">
+                                  Swap
+                                </span>
+                              </span>
+                              <span
+                                onClick={() =>
+                                  onTabClick("pools", pool.lp_token_symbol)
+                                }
+                                className="buttonsmall-green stats-table-controlbtn">
+                                <span className="buttonsmall-green__pressed">
+                                  <span className="buttonsmall-green__pressed__l"></span>
+                                  <span className="buttonsmall-green__pressed__mid"></span>
+                                  <span className="buttonsmall-green__pressed__r"></span>
+                                </span>
+                                <span className="buttonsmall-green__selected">
+                                  <span className="buttonsmall-green__selected__l"></span>
+                                  <span className="buttonsmall-green__selected__mid"></span>
+                                  <span className="buttonsmall-green__selected__r"></span>
+                                </span>
+                                <span className="buttonsmall-green__default">
+                                  <span className="buttonsmall-green__default__l"></span>
+                                  <span className="buttonsmall-green__default__mid"></span>
+                                  <span className="buttonsmall-green__default__r"></span>
+                                </span>
+                                <span className="buttonsmall-green__text">
+                                  Add Liquidity
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
             </div>
           </div>
         ) : viewTab === "tokens" ? (
