@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import kongImage from "../../../assets/kong.png";
 import cloud1 from "../../../assets/cloud-1.png";
@@ -251,51 +251,25 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
   };
 
   // Sorting function
-  const sortedPools = () => {
-    const pooledArray = Object.values(pools);
-    console.log(pools)
+  const sortedPools = useMemo(() => {
+    if (!sortConfig.key) return Object.values(pools);
 
-    if (!sortConfig.key) return pooledArray;
+    const valueGetters = {
+      symbol: ({ symbol }) => symbol,
+      price: ({ priceInUSD }) => new BigNumber(priceInUSD),
+      tvl: ({ totalTvl }) => new BigNumber(totalTvl.replace(/,/g, "")),
+      volume: ({ total24hVolume }) => new BigNumber(total24hVolume.replace(/,/g, "")),
+      apy: ({ weightedApy }) => new BigNumber(weightedApy)
+    };
 
-    return [...pooledArray].sort((a, b) => {
-      let aValue, bValue;
-
-      switch (sortConfig.key) {
-        case "symbol":
-          aValue = a.symbol;
-          bValue = b.symbol;
-          break;
-        case "price":
-          aValue = new BigNumber(a.priceInUSD);
-          bValue = new BigNumber(b.priceInUSD);
-          break;
-        case "tvl":
-          aValue = new BigNumber(a.totalTvl.replace(/,/g, ""));
-          bValue = new BigNumber(b.totalTvl.replace(/,/g, ""));
-          break;
-        case "volume":
-          aValue = new BigNumber(a.total24hVolume.replace(/,/g, ""));
-          bValue = new BigNumber(b.total24hVolume.replace(/,/g, ""));
-          break;
-        case "apy":
-          aValue = new BigNumber(a.weightedApy);
-          bValue = new BigNumber(b.weightedApy);
-          break;
-        default:
-          return 0;
-      }
-
-      if (aValue instanceof BigNumber && bValue instanceof BigNumber) {
-        if (aValue.isGreaterThan(bValue)) return sortConfig.direction === "ascending" ? 1 : -1;
-        if (aValue.isLessThan(bValue)) return sortConfig.direction === "ascending" ? -1 : 1;
-        return 0;
-      } else {
-        if (aValue > bValue) return sortConfig.direction === "ascending" ? 1 : -1;
-        if (aValue < bValue) return sortConfig.direction === "ascending" ? -1 : 1;
-        return 0;
-      }
+    const getValue = valueGetters[sortConfig.key] || (() => 0);
+    const direction = sortConfig.direction === "ascending" ? 1 : -1;
+    
+    return Object.values(pools).sort((a, b) => {
+      const [aVal, bVal] = [getValue(a), getValue(b)];
+      return (aVal instanceof BigNumber ? aVal.comparedTo(bVal) : aVal > bVal ? 1 : aVal < bVal ? -1 : 0) * direction;
     });
-  };
+  }, [pools, sortConfig.key, sortConfig.direction]);
 
   const requestSort = (key) => {
     let direction = "ascending";
@@ -517,7 +491,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
               </div>
             </div>
             <div className="stats-table-body">
-              {sortedPools().map((tokenGroup) => (
+              {sortedPools.map((tokenGroup) => (
                 <React.Fragment key={tokenGroup.symbol}>
                   <div
                     className="stats-table-row clickable"
