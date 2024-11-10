@@ -69,12 +69,36 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
     // Pre-calculate decimals map to avoid repeated calls
     const decimalsMap = new Map();
     const groupedPools = {};
-    const tokenUsdPrices = new Map([["ckUSDT", new BigNumber(1)]]);
-    
+    // Find the ckUSDC/ckUSDT pool
+    const ckusdtCkusdcPool = poolsData.find(
+      (pool) => pool.symbol_1 === "ckUSDT" && pool.symbol_0 === "ckUSDC"
+    );
+
+    // Get decimals for both tokens
+    const ckusdcDecimals = getTokenDecimals("ckUSDC");
+    const ckusdtDecimals = getTokenDecimals("ckUSDT");
+
+    // Adjust balances for decimals
+    const ckusdcBalance = new BigNumber(ckusdtCkusdcPool.balance_0).dividedBy(
+      new BigNumber(10).pow(ckusdcDecimals)
+    );
+    const ckusdtBalance = new BigNumber(ckusdtCkusdcPool.balance_1).dividedBy(
+      new BigNumber(10).pow(ckusdtDecimals)
+    );
+
+    // Calculate ckUSDT price (ckUSDC/ckUSDT)
+    const ckusdtPrice = ckusdcBalance.dividedBy(ckusdtBalance);
+
+    // Initialize price map (ckUSDC is pegged to 1 USD)
+    const tokenUsdPrices = new Map([
+      ["ckUSDC", new BigNumber(1)],
+      ["ckUSDT", ckusdtPrice],
+    ]);
+
     // Pre-calculate common BigNumber values
     const TEN = new BigNumber(10);
     const USD_DECIMALS = TEN.pow(6);
-    
+
     // Helper function to get/cache decimals
     const getDecimalsCached = (symbol) => {
       if (!decimalsMap.has(symbol)) {
@@ -94,29 +118,33 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
       foundNewPrice = false;
       for (const pool of poolsData) {
         const { symbol_0, symbol_1, balance_0, balance_1 } = pool;
-        
+
         // Skip if both prices are known
-        if (tokenUsdPrices.has(symbol_0) && tokenUsdPrices.has(symbol_1)) continue;
-        
+        if (tokenUsdPrices.has(symbol_0) && tokenUsdPrices.has(symbol_1))
+          continue;
+
         // Get cached decimals
         const decimals0 = getDecimalsCached(symbol_0);
         const decimals1 = getDecimalsCached(symbol_1);
-        
+
         // Calculate price once
         const balance0Adjusted = getAdjustedBalance(balance_0, decimals0);
         const balance1Adjusted = getAdjustedBalance(balance_1, decimals1);
         const price = balance1Adjusted.dividedBy(balance0Adjusted);
-        
+
         // Update prices if possible
         if (!tokenUsdPrices.has(symbol_0) && tokenUsdPrices.has(symbol_1)) {
           tokenUsdPrices.set(
-            symbol_0, 
+            symbol_0,
             tokenUsdPrices.get(symbol_1).multipliedBy(price)
           );
           foundNewPrice = true;
-        } else if (tokenUsdPrices.has(symbol_0) && !tokenUsdPrices.has(symbol_1)) {
+        } else if (
+          tokenUsdPrices.has(symbol_0) &&
+          !tokenUsdPrices.has(symbol_1)
+        ) {
           tokenUsdPrices.set(
-            symbol_1, 
+            symbol_1,
             tokenUsdPrices.get(symbol_0).dividedBy(price)
           );
           foundNewPrice = true;
@@ -129,25 +157,34 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
       const poolWithUsdPrice = { ...pool };
       const decimals0 = getDecimalsCached(pool.symbol_0);
       const decimals1 = getDecimalsCached(pool.symbol_1);
-      
+
       // Calculate adjusted balances and price once
       const balance0Adjusted = getAdjustedBalance(pool.balance_0, decimals0);
       const balance1Adjusted = getAdjustedBalance(pool.balance_1, decimals1);
       const price = balance1Adjusted.dividedBy(balance0Adjusted);
       poolWithUsdPrice.price = price.toString();
-      
+
       // Calculate volume once
-      const volume24h = new BigNumber(pool.rolling_24h_volume).dividedBy(USD_DECIMALS).toNumber();
+      const volume24h = new BigNumber(pool.rolling_24h_volume)
+        .dividedBy(USD_DECIMALS)
+        .toNumber();
       poolWithUsdPrice.rolling_24h_volume_calc = volume24h;
 
       // Add USD prices if available
-      if (tokenUsdPrices.has(pool.symbol_0) && tokenUsdPrices.has(pool.symbol_1)) {
-        poolWithUsdPrice.priceUsd0 = tokenUsdPrices.get(pool.symbol_0).toString();
-        poolWithUsdPrice.priceUsd1 = tokenUsdPrices.get(pool.symbol_1).toString();
+      if (
+        tokenUsdPrices.has(pool.symbol_0) &&
+        tokenUsdPrices.has(pool.symbol_1)
+      ) {
+        poolWithUsdPrice.priceUsd0 = tokenUsdPrices
+          .get(pool.symbol_0)
+          .toString();
+        poolWithUsdPrice.priceUsd1 = tokenUsdPrices
+          .get(pool.symbol_1)
+          .toString();
       }
 
       // Process both tokens
-      [pool.symbol_0, pool.symbol_1].forEach(symbol => {
+      [pool.symbol_0, pool.symbol_1].forEach((symbol) => {
         if (!groupedPools[symbol]) {
           groupedPools[symbol] = {
             symbol,
@@ -164,13 +201,16 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
 
         groupedPools[symbol].pools.push(poolWithUsdPrice);
         groupedPools[symbol].totalTvl = groupedPools[symbol].totalTvl.plus(tvl);
-        groupedPools[symbol].weightedApy = groupedPools[symbol].weightedApy.plus(tvl.multipliedBy(apy));
-        groupedPools[symbol].total24hVolume = groupedPools[symbol].total24hVolume.plus(volume24h);
+        groupedPools[symbol].weightedApy = groupedPools[
+          symbol
+        ].weightedApy.plus(tvl.multipliedBy(apy));
+        groupedPools[symbol].total24hVolume =
+          groupedPools[symbol].total24hVolume.plus(volume24h);
       });
     }
 
     // Final calculations
-    Object.values(groupedPools).forEach(group => {
+    Object.values(groupedPools).forEach((group) => {
       group.weightedPrice = group.priceInUSD
         ? formatNumberCustom(group.priceInUSD.toNumber(), 6)
         : "N/A";
@@ -178,7 +218,10 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
         ? group.weightedApy.dividedBy(group.totalTvl).toFixed(2)
         : "0.00";
       group.totalTvl = formatNumberCustom(group.totalTvl.toNumber(), 0);
-      group.total24hVolume = formatNumberCustom(group.total24hVolume.toNumber(), 2);
+      group.total24hVolume = formatNumberCustom(
+        group.total24hVolume.toNumber(),
+        2
+      );
     });
 
     return groupedPools;
@@ -186,23 +229,23 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
 
   const firstNonZeroDecimals = (number, maxDecimals) => {
     if (!number) return "0.00";
-    
+
     // Convert to string once and handle integer part
     const numStr = number.toString();
     const [integerPart, decimalPart = ""] = numStr.split(".");
     const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    
+
     // Early return for no decimals
     if (!decimalPart) return `${formattedInteger}.00`;
-    
+
     // Use regex to find first non-zero and the digit after it
     const nonZeroMatch = decimalPart.match(/^0*([1-9]\d?)/);
-    
+
     if (!nonZeroMatch) {
       // No non-zero digits found
       return `${formattedInteger}.00`;
     }
-    
+
     return `${formattedInteger}.${nonZeroMatch[0]}`;
   };
 
