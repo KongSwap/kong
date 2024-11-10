@@ -31,14 +31,42 @@ pub fn swap_amounts(
     // Receive token
     let receive_token_id = receive_token.token_id();
 
-    let mut txs = Vec::new();
-
     // if tokens are the same return the same amount
     if pay_token_id == receive_token_id {
-        return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, txs));
+        return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, Vec::new()));
     }
 
-    // check if direct pool exists
+    // swaps stores all the swap permutations
+    let mut swaps: Vec<(Nat, f64, f64, f64, Vec<SwapCalc>)> = Vec::new();
+
+    // 1-step swap permutations
+    if let Some(swap) = one_step_swaps(pay_token_id, pay_amount, receive_token_id)? {
+        swaps.push(swap)
+    }
+
+    // 2-step swap permutations
+    if let Some(swap) = two_step_swaps(pay_token_id, pay_amount, receive_token_id)? {
+        swaps.push(swap)
+    }
+
+    // 3-step swap permutations
+    if let Some(swap) = three_step_swaps(pay_token_id, pay_amount, receive_token_id)? {
+        swaps.push(swap)
+    }
+
+    if swaps.is_empty() {
+        return Err("Pool not found".to_string());
+    }
+
+    let max_swap = swaps.iter().max_by(|a, b| a.0.cmp(&b.0)).ok_or("Invalid swap")?;
+    Ok(max_swap.clone())
+}
+
+fn one_step_swaps(
+    pay_token_id: u32,
+    pay_amount: &Nat,
+    receive_token_id: u32,
+) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
     if let Some(pool) = pool_map::get_by_token_ids(pay_token_id, receive_token_id) {
         let swap = swap_amount_0(&pool, pay_amount, None, None)?;
         let receive_amount = swap.receive_amount_with_fees_and_gas();
@@ -47,11 +75,8 @@ pub fn swap_amounts(
         let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
-    };
-
-    if let Some(pool) = pool_map::get_by_token_ids(receive_token_id, pay_token_id) {
+        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, vec![swap])));
+    } else if let Some(pool) = pool_map::get_by_token_ids(receive_token_id, pay_token_id) {
         let swap = swap_amount_1(&pool, pay_amount, None, None)?;
         let receive_amount = swap.receive_amount_with_fees_and_gas();
         let price = swap.get_price().ok_or("Invalid price")?;
@@ -59,10 +84,17 @@ pub fn swap_amounts(
         let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
+        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, vec![swap])));
     };
+    Ok(None)
+}
 
+fn two_step_swaps(
+    pay_token_id: u32,
+    pay_amount: &Nat,
+    receive_token_id: u32,
+) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
+    let mut txs = Vec::new();
     // test for 2-step swap via ckUSDT or ICP
     let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
     let icp_token_id = token_map::get_icp()?.token_id();
@@ -148,7 +180,7 @@ pub fn swap_amounts(
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap1);
         txs.push(swap2);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
+        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
     }
 
     // special case where pay token is ckUSDT and token0/ckUSDT pool does not exist so need to use token0/ICP pool
@@ -180,7 +212,7 @@ pub fn swap_amounts(
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap1);
         txs.push(swap2);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
+        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
     };
 
     // special case where receieve token is ckUSDT and token0/ckUSDT pool does not exist so need to use token0/ICP pool
@@ -212,62 +244,24 @@ pub fn swap_amounts(
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap1);
         txs.push(swap2);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
+        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
     };
 
-    // test for 3-step swap via token0/ckUSDT, ICP/ckUSDT and token1/ICP
-    let pool3_icp = pool2_icp;
-    if pool1_ckusdt.is_some() && pool2_icp_ckusdt.is_some() && pool3_icp.is_some() {
-        let pool1 = match pool1_ckusdt {
-            Some(ref pool) => pool,
-            None => return Err("Pool not found".to_string()),
-        };
-        let pool2 = match pool2_icp_ckusdt {
-            Some(ref pool) => pool,
-            None => return Err("Pool not found".to_string()),
-        };
-        let pool3 = match pool3_icp {
-            Some(ref pool) => pool,
-            None => return Err("Pool not found".to_string()),
-        };
-        let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 3;
-        // swap token0 to ckUSDT
-        let swap1 = swap_amount_0(
-            pool1,
-            pay_amount,
-            Some(swap1_lp_fee),
-            Some(&nat_zero()), // swap1 do not take gas fees
-        )?;
-        let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 3;
-        // swap ckUSDT to ICP (reverse order of pool)
-        let swap2 = swap_amount_1(
-            pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
-            Some(swap2_lp_fee),
-            Some(&nat_zero()), // swap2 do not take gas fees
-        )?;
-        let swap3_lp_fee = (pool3.lp_fee_bps + 1) / 3;
-        // swap ICP to token1 (reverse order of pool)
-        let swap3 = swap_amount_1(pool3, &swap2.receive_amount_with_fees_and_gas(), Some(swap3_lp_fee), None)?;
-        let receive_amount = swap3.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
-        let swap3_price = swap3.get_price().ok_or("Invalid swap3 price")?;
-        let price = swap1_price * swap2_price * swap3_price;
-        let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
-        let swap3_mid_price = swap3.get_mid_price().ok_or("Invalid swap3 mid price")?;
-        let mid_price = swap1_mid_price * swap2_mid_price * swap3_mid_price;
-        let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap1);
-        txs.push(swap2);
-        txs.push(swap3);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
-    };
+    Ok(None)
+}
 
+fn three_step_swaps(
+    pay_token_id: u32,
+    pay_amount: &Nat,
+    receive_token_id: u32,
+) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
+    let mut txs = Vec::new();
     // test for 3-step swap via token0/ICP, ICP/ckUSDT and token1/ckUSDT
+    let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
+    let icp_token_id = token_map::get_icp()?.token_id();
+    let pool2_ckusdt = pool_map::get_by_token_ids(receive_token_id, ckusdt_token_id);
+    let pool1_icp = pool_map::get_by_token_ids(pay_token_id, icp_token_id);
+    let pool2_icp_ckusdt = pool_map::get_by_token_ids(icp_token_id, ckusdt_token_id);
     let pool3_ckusdt = pool2_ckusdt;
     if pool1_icp.is_some() && pool2_icp_ckusdt.is_some() && pool3_ckusdt.is_some() {
         let pool1 = match pool1_icp {
@@ -316,10 +310,9 @@ pub fn swap_amounts(
         txs.push(swap1);
         txs.push(swap2);
         txs.push(swap3);
-        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
+        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
     };
-
-    Err("Pool not found".to_string())
+    Ok(None)
 }
 
 /// Swap amount 0 of a given pool
