@@ -661,3 +661,14 @@
 .stats-table-subrow .stats-table-controlbtn {
   min-width: pxrm(92);
 }
+
+.sort-direction {
+  font-size: 0.65rem;
+}
+
+.clickable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}

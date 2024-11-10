@@ -13,6 +13,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
   const [pools, setPools] = useState([]);
   const [expandedToken, setExpandedToken] = useState(null);
   const [viewTab, setViewTab] = useState("stats");
+  const [sortConfig, setSortConfig] = useState({ key: "symbol", direction: "ascending" });
   const queryParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
 
@@ -249,6 +250,64 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
     return `${formattedInteger}.${nonZeroMatch[0]}`;
   };
 
+  // Sorting function
+  const sortedPools = () => {
+    const pooledArray = Object.values(pools);
+    console.log(pools)
+
+    if (!sortConfig.key) return pooledArray;
+
+    return [...pooledArray].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.key) {
+        case "symbol":
+          aValue = a.symbol;
+          bValue = b.symbol;
+          break;
+        case "price":
+          aValue = new BigNumber(a.priceInUSD);
+          bValue = new BigNumber(b.priceInUSD);
+          break;
+        case "tvl":
+          aValue = new BigNumber(a.totalTvl.replace(/,/g, ""));
+          bValue = new BigNumber(b.totalTvl.replace(/,/g, ""));
+          break;
+        case "volume":
+          aValue = new BigNumber(a.total24hVolume.replace(/,/g, ""));
+          bValue = new BigNumber(b.total24hVolume.replace(/,/g, ""));
+          break;
+        case "apy":
+          aValue = new BigNumber(a.weightedApy);
+          bValue = new BigNumber(b.weightedApy);
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue instanceof BigNumber && bValue instanceof BigNumber) {
+        if (aValue.isGreaterThan(bValue)) return sortConfig.direction === "ascending" ? 1 : -1;
+        if (aValue.isLessThan(bValue)) return sortConfig.direction === "ascending" ? -1 : 1;
+        return 0;
+      } else {
+        if (aValue > bValue) return sortConfig.direction === "ascending" ? 1 : -1;
+        if (aValue < bValue) return sortConfig.direction === "ascending" ? -1 : 1;
+        return 0;
+      }
+    });
+  };
+
+  const requestSort = (key) => {
+    let direction = "ascending";
+    if (
+      sortConfig.key === key &&
+      sortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
   useEffect(() => {
     if (poolInfo && tokenDetails.length > 0) {
       const updatedPools = poolInfo.map((pool) => {
@@ -308,22 +367,22 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
             y="0px"
             viewBox="0 0 320 125"
             style={{ enableBackground: "new 0 0 320 125" }}>
-            <text x="10%" y="50" dominant-baseline="left" text-anchor="start">
+            <text x="10%" y="50" dominantBaseline="left" textAnchor="start">
               TOTAL TVL
             </text>
-            <text x="90%" y="50" dominant-baseline="right" text-anchor="end">
+            <text x="90%" y="50" dominantBaseline="right" textAnchor="end">
               ${formatNumberCustom(poolsTotals.totalTvl, 0)}
             </text>
-            <text x="10%" y="66" dominant-baseline="left" text-anchor="start">
+            <text x="10%" y="66" dominantBaseline="left" textAnchor="start">
               24H VOLUME
             </text>
-            <text x="90%" y="66" dominant-baseline="right" text-anchor="end">
+            <text x="90%" y="66" dominantBaseline="right" textAnchor="end">
               ${formatNumberCustom(poolsTotals.totalVolume, 0)}
             </text>
-            <text x="10%" y="83" dominant-baseline="left" text-anchor="start">
+            <text x="10%" y="83" dominantBaseline="left" textAnchor="start">
               24H FEES
             </text>
-            <text x="90%" y="83" dominant-baseline="right" text-anchor="end">
+            <text x="90%" y="83" dominantBaseline="right" textAnchor="end">
               ${formatNumberCustom(poolsTotals.totalFees, 0)}
             </text>
           </svg>
@@ -350,30 +409,30 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
               y="0px"
               viewBox="0 0 320 375"
               style={{ enableBackground: "new 0 0 320 375" }}>
-              <text x="10%" y="65" dominant-baseline="left" text-anchor="start">
+              <text x="10%" y="65" dominantBaseline="left" textAnchor="start">
                 TOTAL TVL
               </text>
-              <text x="90%" y="65" dominant-baseline="right" text-anchor="end">
+              <text x="90%" y="65" dominantBaseline="right" textAnchor="end">
                 ${formatNumberCustom(poolsTotals.totalTvl, 0)}
               </text>
               <text
                 x="10%"
                 y="107"
-                dominant-baseline="left"
-                text-anchor="start">
+                dominantBaseline="left"
+                textAnchor="start">
                 24H VOLUME
               </text>
-              <text x="90%" y="107" dominant-baseline="right" text-anchor="end">
+              <text x="90%" y="107" dominantBaseline="right" textAnchor="end">
                 ${formatNumberCustom(poolsTotals.totalVolume, 0)}
               </text>
               <text
                 x="10%"
                 y="150"
-                dominant-baseline="left"
-                text-anchor="start">
+                dominantBaseline="left"
+                textAnchor="start">
                 24H FEES
               </text>
-              <text x="90%" y="150" dominant-baseline="right" text-anchor="end">
+              <text x="90%" y="150" dominantBaseline="right" textAnchor="end">
                 ${formatNumberCustom(poolsTotals.totalFees, 0)}
               </text>
             </svg>
@@ -389,16 +448,76 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
             </div>
             <div className="stats-table-head">
               <div className="stats-table-head__content">
-                <div className="stats-table-head-pool">TOKEN</div>
-                <div className="stats-table-head-price">PRICE</div>
-                <div className="stats-table-head-tvl">TOTAL TVL</div>
-                <div className="stats-table-head-totalvol">24H VOLUME</div>
-                <div className="stats-table-head-apr">AVG APY</div>
+                <div
+                  className="stats-table-head-pool clickable"
+                  onClick={() => requestSort("symbol")}
+                >
+                  TOKEN
+                  {sortConfig.key === "symbol" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <span className="sort-direction"> ▲</span>
+                    ) : (
+                      <span className="sort-direction"> ▼</span>
+                    )
+                  ) : null}
+                </div>
+                <div
+                  className="stats-table-head-price clickable"
+                  onClick={() => requestSort("price")}
+                >
+                  PRICE
+                  {sortConfig.key === "price" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <span className="sort-direction"> ▲</span>
+                    ) : (
+                      <span className="sort-direction"> ▼</span>
+                    )
+                  ) : null}
+                </div>
+                <div
+                  className="stats-table-head-tvl clickable"
+                  onClick={() => requestSort("tvl")}
+                >
+                  TOTAL TVL
+                  {sortConfig.key === "tvl" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <span className="sort-direction"> ▲</span>
+                    ) : (
+                      <span className="sort-direction"> ▼</span>
+                    )
+                  ) : null}
+                </div>
+                <div
+                  className="stats-table-head-totalvol clickable"
+                  onClick={() => requestSort("volume")}
+                >
+                  24H VOLUME
+                  {sortConfig.key === "volume" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <span className="sort-direction"> ▲</span>
+                    ) : (
+                      <span className="sort-direction"> ▼</span>
+                    )
+                  ) : null}
+                </div>
+                <div
+                  className="stats-table-head-apr clickable"
+                  onClick={() => requestSort("apy")}
+                >
+                  AVG APY
+                  {sortConfig.key === "apy" ? (
+                    sortConfig.direction === "ascending" ? (
+                      <span className="sort-direction"> ▲</span>
+                    ) : (
+                      <span className="sort-direction"> ▼</span>
+                    )
+                  ) : null}
+                </div>
                 <div className="stats-table-head-apr">Expand</div>
               </div>
             </div>
             <div className="stats-table-body">
-              {Object.values(pools).map((tokenGroup) => (
+              {sortedPools().map((tokenGroup) => (
                 <React.Fragment key={tokenGroup.symbol}>
                   <div
                     className="stats-table-row clickable"
@@ -448,12 +567,12 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24"
-                          stroke-width="1.5"
+                          strokeWidth="1.5"
                           stroke="currentColor"
                           style={{ width: "12px", height: "12px" }}>
                           <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                             d="m4.5 15.75 7.5-7.5 7.5 7.5"
                           />
                         </svg>
@@ -462,12 +581,12 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24"
-                          stroke-width="1.5"
+                          strokeWidth="1.5"
                           stroke="currentColor"
                           style={{ width: "12px", height: "12px" }}>
                           <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                             d="m19.5 8.25-7.5 7.5-7.5-7.5"
                           />
                         </svg>
