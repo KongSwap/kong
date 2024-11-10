@@ -156,10 +156,6 @@
     .edge.vertical {
       width: 24px;
     }
-
-    .center-content {
-      padding: 12px;
-    }
   }
 
   .panel.main {

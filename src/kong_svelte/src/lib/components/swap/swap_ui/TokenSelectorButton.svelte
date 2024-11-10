@@ -24,7 +24,7 @@
       class="token-logo"
       on:error={(e) => {
         // Fallback to default logo if image fails to load
-        e.currentTarget.src = "/tokens/default.svg";
+        e.currentTarget.src = "tokens/default.svg";
       }}
     />
     <span class="token-symbol">{token}</span>

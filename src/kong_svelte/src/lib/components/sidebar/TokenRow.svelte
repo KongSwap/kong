@@ -23,13 +23,19 @@
       loading="lazy"
     />
     <div class="flex flex-col text-left">
-      <span class="symbol">{token.symbol}</span>
-      <span class="name text-nowrap text-ellipsis text-xs">{token.name}</span>
+      <span class="symbol min-w-[96px]">{token.symbol}</span>
+      <span class="name hide-on-small text-nowrap text-ellipsis text-xs">{token.name}</span>
     </div>
   </div>
   <div class="token-values">
-    <span>{token.formattedBalance} {token.symbol}</span>
-    <span>${token.formattedUsdValue}</span>
+    <span>
+      {#if token.formattedBalance.includes('.') && token.formattedBalance.split('.')[1].length > 5}
+        {token.formattedBalance.split('.')[0]}.{token.formattedBalance.split('.')[1].slice(0, 5)}...
+      {:else}
+        {token.formattedBalance}
+      {/if}
+    </span>
+    <span class="hide-on-small">${token.formattedUsdValue}</span>
   </div>
 </button>
 
@@ -71,10 +77,25 @@
     color: #fbbf24; /* Tailwind's yellow-300 */
     font-size: 1rem; /* 16px */
     font-weight: bold;
+    min-width: 96px; /* Reserves space for ~8 characters */
+    display: inline-block;
   }
 
   .name {
     font-size: 0.875rem; /* 14px */
     opacity: 0.7;
+  }
+
+  @media (max-width: 400px) {
+    .hide-on-small {
+      display: none;
+    }
+    
+    .token-values {
+      font-size: 0.75rem; /* Slightly smaller font on mobile */
+    }
+    .symbol {
+      min-width: 72px; /* Slightly smaller on mobile but still fits 8 chars */
+    }
   }
 </style>

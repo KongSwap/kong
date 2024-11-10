@@ -504,37 +504,21 @@
 </div>
 
 {#if showPayTokenSelector}
-  <div
-    class="modal-overlay"
-    transition:fade={{ duration: 100 }}
-    on:click|self={() => (showPayTokenSelector = false)}
-  >
-    <div class="modal-content token-selector">
-      <TokenSelector
+    <TokenSelector
         show={true}
         onSelect={(token) => handleSelectToken("pay", token)}
         onClose={() => (showPayTokenSelector = false)}
         currentToken={receiveToken}
-      />
-    </div>
-  </div>
+    />
 {/if}
 
 {#if showReceiveTokenSelector}
-  <div
-    class="modal-overlay"
-    transition:fade={{ duration: 100 }}
-    on:click|self={() => (showReceiveTokenSelector = false)}
-  >
-    <div class="modal-content token-selector">
-      <TokenSelector
+    <TokenSelector
         show={true}
         onSelect={(token) => handleSelectToken("receive", token)}
         onClose={() => (showReceiveTokenSelector = false)}
         currentToken={payToken}
-      />
-    </div>
-  </div>
+    />
 {/if}
 
 {#if showConfirmation}
@@ -639,69 +623,19 @@
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
     z-index: 50;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
-  }
-
-  .modal-content {
-    position: relative;
-    margin: 1rem;
-    border-radius: 1rem;
-    overflow: hidden;
-    z-index: 10000;
-  }
-
-  .modal-content.token-selector {
-    max-height: 90vh;
-  }
-
-  .modal-content.confirmation {
-    max-height: 90vh;
-    margin: 1rem;
   }
 
   @media (max-width: 480px) {
     .swap-wrapper {
-      padding: 0.5rem;
-    }
-
-    .modal-content {
-      width: 100vw;
-      height: 100vh;
-      margin: 0;
-      border-radius: 0;
-    }
-
-    .modal-content.token-selector,
-    .modal-content.confirmation {
-      width: 100vw;
-      height: 100vh;
-      margin: 0;
-      border-radius: 0;
-    }
-
-    .modal-overlay {
-      padding: 0;
+      padding: 0 0.5rem;
     }
 
     .switch-button {
       width: 32px;
       height: 32px;
       padding: 6px;
-    }
-
-    .modal-content {
-      margin: 0.5rem;
-    }
-
-    .modal-content.confirmation {
-      max-width: calc(100% - 1rem);
-      margin: 0.5rem;
-      height: auto;
     }
 
     .swap-footer {
@@ -738,17 +672,5 @@
     to {
       transform: translate(-50%, -50%) rotate(180deg);
     }
-  }
-
-  .slippage-warning {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-    background: rgba(255, 23, 68, 0.1);
-    border: 1px solid #FF1744;
-    border-radius: 8px;
-    color: #FF1744;
-    font-family: 'Aeonik Mono', monospace;
-    font-size: 0.75rem;
-    text-align: center;
   }
 </style>

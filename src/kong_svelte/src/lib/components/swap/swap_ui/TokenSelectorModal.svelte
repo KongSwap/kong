@@ -4,6 +4,8 @@
     import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
     import { formattedTokens } from '$lib/services/tokens/tokenStore';
     import { fade } from 'svelte/transition';
+    import { browser } from "$app/environment";
+    import { onMount } from "svelte";
 
     export let show = false;
     export let onSelect: (token: string) => void;
@@ -12,6 +14,29 @@
 
     let searchQuery = '';
     let standardFilter = 'all';
+
+    let isMobile = false;
+
+    let panelWidth = "600px";
+
+    onMount(() => {
+        if (browser) {
+            const updateWidth = () => {
+                const width = window.innerWidth;
+                if (width <= 768) {
+                    // Calculate responsive width between 300px and 600px
+                    const calculatedWidth = Math.max(300, Math.min(width - 50, 600));
+                    panelWidth = `${calculatedWidth}px`;
+                } else {
+                    panelWidth = "600px";
+                }
+                isMobile = width <= 768;
+            };
+            
+            updateWidth();
+            window.addEventListener('resize', updateWidth);
+        }
+    });
 
     $: filteredTokens = $formattedTokens.filter(token => {
         // First check if token matches search query
@@ -49,8 +74,16 @@
         transition:fade={{ duration: 200 }}
     >
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="modal-container" on:click|stopPropagation>
-            <Panel variant="green" width="600px" height="80vh" className="token-modal">
+        <div 
+            class="modal-container" 
+            on:click|stopPropagation
+        >
+            <Panel 
+                variant="green" 
+                width={panelWidth}
+                height="80vh"
+                className="token-modal"
+            >
                 <div class="modal-content">
                     <header class="modal-header">
                         <h2 id="modal-title">Select Token</h2>
@@ -112,11 +145,14 @@
     </div>
 {/if}
 
-<style lang="postcss">
+<style>
     /* Modal Layout */
     .modal-overlay {
         position: fixed;
-        inset: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
         background-color: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(4px);
         z-index: 50;
@@ -126,7 +162,8 @@
     }
 
     .modal-container {
-        @apply relative w-full h-full max-w-[600px] max-h-[80vh] transform;
+        position: relative;
+        transform: translateY(0);
         animation: modalSlideIn 200ms ease-out;
     }
 
@@ -142,54 +179,111 @@
     }
 
     .modal-content {
-        @apply p-6 h-full flex flex-col;
+        padding: 1.5rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 
     /* Header Styles */
     .modal-header {
-        @apply flex justify-between items-center mb-6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
     }
 
     .modal-header h2 {
-        @apply text-3xl font-bold text-white m-0;
+        font-size: 1.875rem;
+        font-weight: bold;
+        color: white;
+        margin: 0;
     }
 
     .close-button {
-        @apply bg-transparent border-none text-white/60 text-3xl cursor-pointer 
-               hover:text-white transition-colors duration-200 hover:rotate-90;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 1.875rem;
+        cursor: pointer;
+        transition: color 200ms, transform 200ms;
     }
 
-    /* Search Input */
+    .close-button:hover {
+        color: white;
+        transform: rotate(-90deg);
+    }
+
     .search-container {
-        @apply mb-6 space-y-4;
+        margin-bottom: 1.5rem;
     }
 
     .search-input {
-        @apply w-full bg-black/30 border-2 border-white/10 rounded-xl p-4 
-               text-white text-lg font-medium focus:border-yellow-300/50 focus:outline-none
-               transition-all duration-200 hover:border-white/20 placeholder:text-white/60;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.3);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        color: white;
+        font-size: 1.125rem;
+        font-weight: 500;
+        transition: all 200ms;
     }
 
-    /* Filter Buttons */
+    .search-input:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .search-input:focus {
+        border-color: rgba(253, 224, 71, 0.5);
+        outline: none;
+    }
+
+    .search-input::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
     .filter-buttons {
-        @apply flex flex-wrap gap-2 justify-start;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-start;
         margin-top: 1rem;
     }
 
     .filter-btn {
-        @apply px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80
-               hover:border-white/20 hover:text-white transition-all duration-200 text-sm font-medium;
+        padding: 0.375rem 0.75rem;
+        border-radius: 0.5rem;
+        background-color: rgba(0, 0, 0, 0.3);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 200ms;
+    }
+
+    .filter-btn:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        color: white;
     }
 
     .filter-btn.active {
-        @apply border-yellow-300/50 text-yellow-300 bg-black/50;
+        border-color: rgba(253, 224, 71, 0.5);
+        color: rgb(253, 224, 71);
+        background-color: rgba(0, 0, 0, 0.5);
     }
 
     /* Token List */
     .token-list {
-        @apply flex-1 overflow-y-auto -mx-6 px-6 space-y-3 py-2;
+        flex: 1;
+        overflow-y: auto;
+        margin: 0 -1.5rem;
+        padding: 0.5rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
         scrollbar-width: thin;
-        scrollbar-color: rgba(255,255,255,0.2) transparent;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     }
 
     .token-list::-webkit-scrollbar {
@@ -197,36 +291,57 @@
     }
 
     .token-list::-webkit-scrollbar-track {
-        @apply bg-transparent;
+        background: transparent;
     }
 
     .token-list::-webkit-scrollbar-thumb {
-        @apply bg-white/20 rounded-full hover:bg-white/30;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 9999px;
+    }
+
+    .token-list::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(255, 255, 255, 0.3);
     }
 
     /* Token Button */
     .token-button {
-        @apply w-full p-0 bg-transparent border-none cursor-pointer 
-               transition-all duration-200 hover:translate-x-2 hover:scale-[1.02] hover:bg-black/20
-               focus:outline-none focus:ring-2 focus:ring-yellow-300/50 rounded-lg;
+        width: 100%;
+        padding: 0;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 200ms;
+        border-radius: 0.5rem;
+    }
+
+    .token-button:hover {
+        transform: translateX(0.5rem) scale(1.02);
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .token-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(253, 224, 71, 0.5);
     }
 
     .token-button.active {
-        @apply opacity-50 cursor-not-allowed hover:translate-x-0 hover:scale-100;
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-        .modal-container {
-            @apply max-w-full max-h-[90vh] m-4;
-        }
-        
-        .modal-content {
-            @apply p-4;
-        }
-        
-        .token-list {
-            @apply -mx-4 px-4;
-        }
+    .token-button.active:hover {
+        transform: none;
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 </style>
