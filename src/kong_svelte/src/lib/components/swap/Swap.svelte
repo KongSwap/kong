@@ -491,11 +491,11 @@
         on:click={handleTokenSwitch}
         disabled={isProcessing || isAnimating} 
       >
-        <img src="/pxcomponents/arrow.svg" alt="swap" class="swap-arrow" />
+        <img src="/pxcomponents/arrow.svg" alt="swap" />
       </button>
     </div>
 
-    <div class="swap-footer mt-3">
+    <div class="swap-footer">
       <Button
         variant={swapSlippage > maxAllowedSlippage ? "blue" : "yellow"}
         disabled={!isValidInput || isProcessing || isAnimating || !$walletStore.isConnected}
@@ -594,25 +594,11 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(45deg, #ffcd1f, #ffe077);
-    border: 3px solid #368d00;
-    border-radius: 50%;
     cursor: pointer;
     z-index: 1;
-    padding: 8px;
-    transition: all 0.2s ease;
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.15),
-      inset 0 2px 4px rgba(255, 255, 255, 0.3);
-  }
-
-  .switch-button:hover:not(:disabled) {
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow: 
-      0 6px 16px rgba(0, 0, 0, 0.2),
-      inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    background: none;
+    border: none;
+    padding: 0;
   }
 
   .switch-button:disabled {
@@ -620,9 +606,32 @@
     cursor: not-allowed;
   }
 
-  .swap-arrow {
-    width: 100%;
-    height: 100%;
+  .rotating {
+    animation: rotate 0.2s ease-in-out;
+  }
+
+  @keyframes rotate {
+    from {
+      transform: translate(-50%, -50%) rotate(0deg);
+    }
+    to {
+      transform: translate(-50%, -50%) rotate(180deg);
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .switch-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #2a5a3c;
   }
 
   .modal-overlay {
@@ -644,7 +653,7 @@
     }
 
     .swap-footer {
-      margin-top: 0.5rem;
+      margin-top: 2rem;
     }
 
     .panels-container {
@@ -658,7 +667,7 @@
   }
 
   :global(.swap-footer) {
-    margin-top: 0.75rem;
+    margin-top: 2.5rem;
   }
 
   .panel-content {
@@ -666,16 +675,45 @@
     backface-visibility: hidden;
   }
 
-  .rotating {
-    animation: rotate 0.2s ease-in-out;
+  @keyframes slideUpFade {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(-6px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideDownFade {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(6px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   @keyframes rotate {
     from {
-      transform: translate(-50%, -50%) rotate(0deg);
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.1);
     }
     to {
-      transform: translate(-50%, -50%) rotate(180deg);
+      transform: translate(-50%, -50%) scale(1);
     }
   }
 </style>

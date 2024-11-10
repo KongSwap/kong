@@ -77,11 +77,8 @@
   .panel {
     position: relative;
     border-radius: 1rem;
-    background: var(--panel-bg);
-    box-shadow: var(--panel-shadow);
     overflow: hidden;
     height: auto;
-
   }
 
   .panel-container {
