@@ -247,7 +247,8 @@
 }
 .stats-table-head-pool {
   display: flex;
-  align-items: start;
+  align-items: center;
+  justify-content: start;
   gap: pxrm(2);
   width: 25%;
   padding-left: pxrm(5);

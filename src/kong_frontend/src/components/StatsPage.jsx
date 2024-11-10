@@ -240,8 +240,6 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
       );
     });
 
-    console.log("groupedPools", groupedPools);
-
     return groupedPools;
   };
 
