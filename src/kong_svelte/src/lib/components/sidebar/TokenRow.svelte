@@ -43,7 +43,7 @@
   .token-row {
     width: 100%;
     text-align: left;
-    border: none;
+    border: 2px solid transparent;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -54,10 +54,9 @@
   }
 
   .token-row:hover {
-    border: 2px solid #f7bf26c8;
-    background: rgba(0, 0, 0, 0.2);
-    padding: 10px;
-    transform: scale(1.02);
+    border-color: rgba(247, 191, 38, 0.5);
+    background: rgba(0, 0, 0, 0.1);
+    transform: scale(1.005);
   }
 
   .token-info {
