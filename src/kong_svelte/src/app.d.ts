@@ -32,6 +32,8 @@ declare global {
       price?: number;
       tvl?: number;
       balance?: bigint;
+      formattedBalance?: string;
+      formattedUsdValue?: string;
     }
 
     interface UserPoolBalance {

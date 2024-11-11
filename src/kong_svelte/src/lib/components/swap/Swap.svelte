@@ -605,7 +605,16 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    backdrop-filter: blur(8px);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
   .rotating {
     animation: rotate 0.2s ease-in-out;
   }
@@ -634,13 +643,6 @@
     border-color: #2a5a3c;
   }
 
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    backdrop-filter: blur(8px);
-    z-index: 50;
-  }
-
   @media (max-width: 480px) {
     .swap-wrapper {
       padding: 0 0.5rem;
@@ -663,7 +665,19 @@
 
   :global(.token-modal) {
     max-height: 80vh;
+    max-width: 90vw;
+    width: 480px;
     overflow-y: auto;
+    margin: 1rem;
+    border-radius: 1rem;
+    position: relative;
+  }
+
+  @media (max-width: 480px) {
+    :global(.token-modal) {
+      max-height: 90vh;
+      margin: 0.5rem;
+    }
   }
 
   :global(.swap-footer) {

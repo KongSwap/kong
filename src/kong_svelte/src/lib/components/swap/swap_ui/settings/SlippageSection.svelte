@@ -3,20 +3,30 @@
   export let onSlippageChange: (value: number) => void;
 
   const slippageOptions = [0.5, 1, 2, 3];
-  let customSlippage = "";
+  let customSlippage: number | null = null;
+
+  $: {
+    if (slippage && !slippageOptions.includes(slippage) && customSlippage === null) {
+      customSlippage = slippage;
+    }
+  }
 
   function handleCustomSlippage(event: Event) {
     const input = (event.target as HTMLInputElement).value;
-    if (!input) return;
+    if (!input) {
+      customSlippage = null;
+      return;
+    }
 
     const value = Number(input);
     if (!isNaN(value) && value >= 0 && value <= 100) {
+      customSlippage = value;
       onSlippageChange(value);
     }
   }
 
   function handleSlippageSelect(value: number) {
-    customSlippage = "";
+    customSlippage = null;
     onSlippageChange(value);
   }
 
@@ -42,13 +52,13 @@
     {#each slippageOptions as option}
       <button
         class="slippage-button"
-        class:active={slippage === option && !customSlippage}
+        class:active={slippage === option && customSlippage === null}
         on:click={() => handleSlippageSelect(option)}
       >
         {option}%
       </button>
     {/each}
-    <div class="custom-input">
+    <div class="custom-input" class:active={customSlippage !== null}>
       <input
         type="number"
         bind:value={customSlippage}
@@ -146,6 +156,17 @@
   .custom-input {
     position: relative;
     width: 100px;
+    transition: all 0.2s;
+  }
+
+  .custom-input.active input {
+    background: #ffcd1f;
+    color: black;
+    border-color: #ffcd1f;
+  }
+
+  .custom-input.active .percentage-symbol {
+    color: black;
   }
 
   .custom-input input {
@@ -156,6 +177,7 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0.25rem;
     color: white;
+    transition: all 0.2s;
   }
 
   .percentage-symbol {
@@ -164,11 +186,20 @@
     top: 50%;
     transform: translateY(-50%);
     color: rgba(255, 255, 255, 0.5);
+    transition: all 0.2s;
   }
 
   .warning-message {
     color: #ffcd1f;
     font-size: 0.875rem;
     margin-top: 0.5rem;
+  }
+
+  .custom-input input::placeholder {
+    color: white;
+  }
+
+  .custom-input.active input::placeholder {
+    color: black;
   }
 </style>

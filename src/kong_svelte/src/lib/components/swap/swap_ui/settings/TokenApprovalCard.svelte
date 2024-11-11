@@ -1,13 +1,22 @@
 <script lang="ts">
-  import type { Token } from '$lib/types/token';
   import Button from '$lib/components/common/Button.svelte';
+  import { tokenStore, formattedTokens } from '$lib/services/tokens/tokenStore';
+  import { derived } from 'svelte/store';
 
-  export let token: Token;
   export let isApproved: boolean;
+  export let tokenId: string;
   export let onApprove: () => Promise<void>;
   export let onRevoke: () => Promise<void>;
 
   let loading = false;
+
+  const token = derived(tokenStore, $tokenStore => {
+    return $tokenStore.tokens.find(t => t.canister_id === tokenId);
+  });
+
+  const formattedToken = derived(formattedTokens, $formattedTokens => {
+    return $formattedTokens.find(t => t.canister_id === tokenId);
+  });
 
   async function handleAction(action: 'approve' | 'revoke') {
     if (loading) return;
@@ -26,23 +35,27 @@
 <div class="token-card" class:approved={isApproved}>
   <div class="token-info">
     <div class="token-logo-wrapper">
-      <img 
-        src={token.logo || "/tokens/not_verified.webp"} 
-        alt={token.symbol} 
-        class="token-logo"
-        loading="lazy"
-      />
+      {#if $token}
+        <img 
+          src={$token.logo || "/tokens/not_verified.webp"} 
+          alt={$token.symbol} 
+          class="token-logo"
+          loading="lazy"
+        />
+      {/if}
     </div>
     <div class="token-details">
-      <span class="token-symbol">{token.symbol}</span>
-      <div class="token-meta">
-        <span class="token-balance" title={`${token.formattedBalance} ${token.symbol}`}>
-          {token.formattedBalance} {token.symbol}
-        </span>
-        <span class="token-value" title={`$${token.formattedUsdValue}`}>
-          ${token.formattedUsdValue}
-        </span>
-      </div>
+      {#if $formattedToken}
+        <span class="token-symbol">{$formattedToken.symbol}</span>
+        <div class="token-meta">
+          <span class="token-balance" title={`${$formattedToken.formattedBalance} ${$formattedToken.symbol}`}>
+            {$formattedToken.formattedBalance} {$formattedToken.symbol}
+          </span>
+          <span class="token-value" title={`$${$formattedToken.formattedUsdValue}`}>
+            ${$formattedToken.formattedUsdValue}
+          </span>
+        </div>
+      {/if}
     </div>
   </div>
   
@@ -57,10 +70,9 @@
       {/if}
     </div>
     <Button
-      variant={isApproved ? "red" : "green"}
+      variant={isApproved ? "yellow" : "blue"}
       text={isApproved ? "Revoke" : "Approve"}
       onClick={() => handleAction(isApproved ? 'revoke' : 'approve')}
-      {loading}
       width="120px"
       disabled={loading}
     />
@@ -96,7 +108,6 @@
     flex: 1;
     min-width: 0;
   }
-
   .token-logo-wrapper {
     flex-shrink: 0;
   }
@@ -190,3 +201,4 @@
     }
   }
 </style>
+
