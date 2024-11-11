@@ -12,7 +12,9 @@ use crate::ic::{
 };
 use crate::stable_claim::claim_map;
 use crate::stable_claim::{
-    claim_map::{insert_attempt_request_id, update_claimed_status, update_claiming_status, update_unclaimed_status},
+    claim_map::{
+        insert_attempt_request_id, update_claimed_status, update_claiming_status, update_too_many_attempts_status, update_unclaimed_status,
+    },
     stable_claim::{ClaimStatus, StableClaim},
 };
 use crate::stable_memory::CLAIM_MAP;
@@ -53,6 +55,11 @@ pub async fn process_claims() {
                 Some(token) => token,
                 None => continue, // continue to next claim if token not found
             };
+
+            if claim.attempt_request_id.len() > 20 {
+                update_too_many_attempts_status(claim.claim_id);
+                continue;
+            }
 
             // create new request with CLAIMS_TIMER_USER_ID as user_id
             let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));

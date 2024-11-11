@@ -12,6 +12,7 @@ impl std::fmt::Display for ClaimStatus {
             ClaimStatus::Unclaimed => write!(f, "Unclaimed"),
             ClaimStatus::Claiming => write!(f, "Claiming"),
             ClaimStatus::Claimed => write!(f, "Success"),
+            ClaimStatus::TooManyAttempts => write!(f, "TooManyAttempts"),
         }
     }
 }
