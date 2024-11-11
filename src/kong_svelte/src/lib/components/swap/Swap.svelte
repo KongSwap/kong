@@ -14,8 +14,6 @@
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
   import BigNumber from "bignumber.js";
-  import { flip } from 'svelte/animate';
-  import { quintOut } from 'svelte/easing';
   import SwapSettings from './swap_ui/SwapSettings.svelte';
   import { IcrcService } from "$lib/services/icrc/IcrcService";
 
@@ -60,7 +58,6 @@
     easing: cubicOut,
   });
 
-  let isAnimating = false;
   let panels = [
     { id: 'pay', type: 'pay', title: 'You Pay' },
     { id: 'receive', type: 'receive', title: 'You Receive' }
@@ -240,30 +237,14 @@
   }
 
   async function handleTokenSwitch() {
-    if (isAnimating) return;
-    
-    isAnimating = true;
-    
-    panels = panels.map((panel, i) => ({
-        ...panel,
-        direction: i === 0 ? 'topLeft' : 'bottomRight'
-    })).reverse();
-    
-    const oldPayAmount = payAmount;
-    const oldReceiveAmount = receiveAmount;
-    
+    if (isProcessing) return;
     [payToken, receiveToken] = [receiveToken, payToken];
+    const oldPayAmount = payAmount;
+    payAmount = receiveAmount;
     
-    payAmount = oldReceiveAmount;
-    
-    if (oldReceiveAmount !== "0") {
-        await debouncedGetQuote(oldReceiveAmount);
+    if (receiveAmount !== "0") {
+      await debouncedGetQuote(receiveAmount);
     }
-    
-    setTimeout(() => {
-        isAnimating = false;
-        panels = panels.reverse();
-    }, 200);
   }
 
   function handleInputChange(event: Event | CustomEvent) {
@@ -469,13 +450,7 @@
   <div class="swap-container" in:fade={{ duration: 420 }}>
     <div class="panels-container">
       {#each panels as panel (panel.id)}
-        <div 
-          animate:flip={{
-            duration: 169,
-            easing: quintOut
-          }}
-          class="panel-wrapper"
-        >
+        <div class="panel-wrapper">
           <div class="panel-content">
             <SwapPanel
               title={panel.title}
@@ -487,18 +462,32 @@
       {/each}
 
       <button 
-        class="switch-button {isAnimating ? 'rotating' : ''}"
+        class="switch-button"
         on:click={handleTokenSwitch}
-        disabled={isProcessing || isAnimating} 
+        disabled={isProcessing}
+        aria-label="Switch tokens"
       >
-        <img src="/pxcomponents/arrow.svg" alt="swap" />
+        <svg
+          width="56" 
+          height="64"
+          viewBox="0 0 35 42"
+          xmlns="http://www.w3.org/2000/svg"
+          class="swap-arrow"
+        >
+          <path
+            d="M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
+            stroke="#000000"
+            stroke-width="1"
+            fill="#ffcd1f"
+          />
+        </svg>
       </button>
     </div>
 
     <div class="swap-footer">
       <Button
         variant={swapSlippage > maxAllowedSlippage ? "blue" : "yellow"}
-        disabled={!isValidInput || isProcessing || isAnimating || !$walletStore.isConnected}
+        disabled={!isValidInput || isProcessing || !$walletStore.isConnected}
         onClick={handleSwapClick}
         width="100%"
       >
@@ -585,8 +574,6 @@
 
   .panel-wrapper {
     position: relative;
-    transition: all 0.15s ease;
-    transform-style: preserve-3d;
   }
 
   .switch-button {
@@ -596,15 +583,37 @@
     transform: translate(-50%, -50%);
     cursor: pointer;
     z-index: 1;
-    background: none;
+    background: transparent;
     border: none;
-    padding: 0;
+    padding: 22px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .switch-button:hover:not(:disabled) {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+
+  .switch-button:active:not(:disabled) {
+    transform: translate(-50%, -50%) scale(0.95);
   }
 
   .switch-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  .switch-button:disabled .swap-arrow path {
+    fill: #666;
+  }
+
+  .swap-arrow {
+    width: 56px;
+    height: 64px;
+  }
+
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -615,33 +624,6 @@
     justify-content: center;
     background-color: rgba(0, 0, 0, 0.5);
   }
-  .rotating {
-    animation: rotate 0.2s ease-in-out;
-  }
-
-  @keyframes rotate {
-    from {
-      transform: translate(-50%, -50%) rotate(0deg);
-    }
-    to {
-      transform: translate(-50%, -50%) rotate(180deg);
-    }
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .switch-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #2a5a3c;
-  }
 
   @media (max-width: 480px) {
     .swap-wrapper {
@@ -649,9 +631,14 @@
     }
 
     .switch-button {
-      width: 32px;
-      height: 32px;
-      padding: 6px;
+      width: 64px;
+      height: 64px;
+      padding: 14px;
+    }
+
+    .swap-arrow {
+      width: 48px;
+      height: 56px;
     }
 
     .swap-footer {
@@ -687,47 +674,5 @@
   .panel-content {
     transform-origin: center center;
     backface-visibility: hidden;
-  }
-
-  @keyframes slideUpFade {
-    0% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-    50% {
-      transform: translateY(-6px);
-      opacity: 0;
-    }
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideDownFade {
-    0% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-    50% {
-      transform: translateY(6px);
-      opacity: 0;
-    }
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes rotate {
-    from {
-      transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-      transform: translate(-50%, -50%) scale(1.1);
-    }
-    to {
-      transform: translate(-50%, -50%) scale(1);
-    }
   }
 </style>
