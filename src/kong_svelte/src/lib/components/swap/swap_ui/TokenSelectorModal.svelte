@@ -81,7 +81,7 @@
             <Panel 
                 variant="green" 
                 width={panelWidth}
-                height="80vh"
+                height="100vh"
                 className="token-modal"
             >
                 <div class="modal-content">
@@ -196,7 +196,10 @@
     }
 
     .modal-content {
-        padding: 1.5rem;
+        padding: 1rem;
+        @media (max-width: 768px) {
+            padding: 0.5rem;
+        }
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -207,7 +210,10 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        @media (max-width: 768px) {
+            margin-bottom: 0.5rem;
+        }
     }
 
     .modal-header h2 {
@@ -253,7 +259,10 @@
     }
 
     .search-container {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        @media (max-width: 768px) {
+            margin-bottom: 0.5rem;
+        }
     }
 
     .search-input {
@@ -261,7 +270,7 @@
         background-color: rgba(0, 0, 0, 0.3);
         border: 2px solid rgba(255, 255, 255, 0.1);
         border-radius: 0.75rem;
-        padding: 1rem;
+        padding: 0.5rem;
         color: white;
         font-size: 1.125rem;
         font-weight: 500;
@@ -284,9 +293,9 @@
     .filter-buttons {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: 0.25rem;
         justify-content: flex-start;
-        margin-top: 1rem;
+        margin-top: 0.5rem;
     }
 
     .filter-btn {
@@ -315,13 +324,18 @@
     .token-list {
         flex: 1;
         overflow-y: auto;
-        margin: 0 -1.5rem;
-        padding: 0.5rem 1.5rem;
+        margin: 0 -1rem;
+        padding: 0.25rem 1rem;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.5rem;
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        @media (max-width: 768px) {
+            margin: 0 -0.5rem;
+            padding: 0.25rem 0.5rem;
+            gap: 0.25rem;
+        }
     }
 
     .token-list::-webkit-scrollbar {

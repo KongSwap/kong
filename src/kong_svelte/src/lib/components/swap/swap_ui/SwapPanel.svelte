@@ -115,6 +115,24 @@
     }
   };
 
+  function formatDisplayValue(value: string, decimals: number = 8): string {
+    const [whole, fraction = ''] = value.split('.');
+    if (!fraction) return whole;
+    
+    const formattedFraction = fraction.slice(0, decimals);
+    const hasMoreDecimals = fraction.length > decimals;
+    
+    return `${whole}.${formattedFraction}${hasMoreDecimals ? '...' : ''}`;
+  }
+
+  $: formattedBalance = formatDisplayValue(
+    formatTokenAmount($tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString() || "0", decimals)
+  );
+
+  $: displayAmount = title === "You Receive" ? 
+    formatDisplayValue(amount) :
+    isAnimating ? $animatedAmount.toFixed(decimals) : amount;
+
 </script>
 
 
@@ -156,7 +174,7 @@
             bind:this={inputElement}
             type="text"
             class="amount-input {isOverBalance && title === 'You Pay' ? 'error' : ''}"
-            value="{isAnimating ? $animatedAmount.toFixed(decimals) : amount}"
+            value={displayAmount}
             on:input={handleInput}
             on:focus={() => inputFocused = true}
             on:blur={() => inputFocused = false}
@@ -215,14 +233,16 @@
   justify-content: space-between;
   gap: 1rem;
   min-height: 2.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .panel-title {
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--c-white);
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .input-section {
@@ -251,13 +271,16 @@
   min-width: 0;
   background: transparent;
   border: none;
-  color: white;
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 2.5rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
   width: 100%;
   position: relative;
   z-index: 1;
+  padding: 0;
+  margin-top: -0.25rem;
+  opacity: 0.85;
 }
 
 .amount-input:focus {
@@ -265,7 +288,7 @@
 }
 
 .amount-input::placeholder {
-  color: var(--c-white);
+  color: rgba(255, 255, 255, 0.65);
   opacity: 1;
 }
 
@@ -363,11 +386,12 @@
   }
 
   .panel-title {
-    font-size: 1.5rem;
+    font-size: 1rem;
   }
 
   .amount-input {
-    font-size: 1.5rem;
+    font-size: 2rem;
+    margin-top: -0.2rem;
   }
 
   .slippage-indicator {
@@ -400,13 +424,13 @@
   }
 
   .panel-title {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     letter-spacing: -0.005em;
   }
 
   .amount-input {
-    font-size: 1.25rem;
-    letter-spacing: -0.01em;
+    font-size: 1.75rem;
+    margin-top: -0.15rem;
   }
 
   .slippage-indicator {
@@ -477,14 +501,16 @@
 .settings-button {
   background: none;
   border: none;
-  padding: 0.25rem;
+  padding: 0.5rem;
+  height: 2.5rem;
+  width: 2.5rem;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .settings-button:hover {
@@ -492,14 +518,49 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.settings-button svg {
+  width: 24px;
+  height: 24px;
+}
+
 @media (max-width: 480px) {
   .settings-button {
-    padding: 0.2rem;
+    padding: 0.375rem;
+    height: 2rem;
+    width: 2rem;
   }
   
   .settings-button svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Add new styles for the arrow between panels */
+:global(.token-panel) {
+  position: relative;
+}
+
+:global(.token-panel:first-of-type::after) {
+  content: '';
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 48px;
+  background-image: url('/assets/yellow-arrow-down.png'); /* Make sure to add this asset */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 2;
+}
+
+@media (max-width: 480px) {
+  :global(.token-panel:first-of-type::after) {
+    width: 36px;
+    height: 36px;
+    bottom: -18px;
   }
 }
 </style>
