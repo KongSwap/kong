@@ -56,9 +56,20 @@ pub async fn process_claims() {
                 None => continue, // continue to next claim if token not found
             };
 
-            if claim.attempt_request_id.len() > 20 {
+            if claim.attempt_request_id.len() > 50 {
+                // if claim has more than 50 attempts, update status to too_many_attempts and investigate manually
                 update_too_many_attempts_status(claim.claim_id);
                 continue;
+            } else if claim.attempt_request_id.len() > 20 {
+                let last_attempt_request_id = claim.attempt_request_id.last().unwrap();
+                if let Some(request) = request_map::get_by_request_and_user_id(*last_attempt_request_id, None) {
+                    if request.ts + 3_600_000_000_000 > ts {
+                        // if last attempt was less than 1 hour ago, skip this claim
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
             }
 
             // create new request with CLAIMS_TIMER_USER_ID as user_id
