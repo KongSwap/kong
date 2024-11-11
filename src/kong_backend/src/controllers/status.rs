@@ -83,7 +83,6 @@ async fn status() -> Result<String, String> {
             "# of transfers (archive)": get_number_of_transfers_archive(),
             "# of transfers (1h)": get_number_of_transfers_1h(),
             "# of unclaimed claims": get_number_of_unclaimed_claims(),
-            "# of claiming claims": get_number_of_claiming_claims(),
             "# of LP positions": get_number_of_lp_positions(),
             "# of LP positions (archive)": get_number_of_lp_positions_archive(),
         }
@@ -136,11 +135,12 @@ pub fn get_number_of_transfers_1h() -> u64 {
 }
 
 pub fn get_number_of_unclaimed_claims() -> usize {
-    CLAIM_MAP.with(|m| m.borrow().iter().filter(|(_, v)| v.status == ClaimStatus::Unclaimed).count())
-}
-
-pub fn get_number_of_claiming_claims() -> usize {
-    CLAIM_MAP.with(|m| m.borrow().iter().filter(|(_, v)| v.status == ClaimStatus::Claiming).count())
+    CLAIM_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .filter(|(_, v)| v.status == ClaimStatus::Unclaimed || v.status == ClaimStatus::TooManyAttempts)
+            .count()
+    })
 }
 
 pub fn get_number_of_lp_positions() -> u64 {

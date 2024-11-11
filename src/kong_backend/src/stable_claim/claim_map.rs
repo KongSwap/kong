@@ -119,3 +119,17 @@ pub fn update_claimed_status(claim_id: u64, request_id: u64, transfer_id: u64) -
         }
     })
 }
+
+pub fn update_too_many_attempts_status(claim_id: u64) -> Option<StableClaim> {
+    CLAIM_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        match map.iter().find(|(k, _)| k.0 == claim_id) {
+            Some((k, mut v)) => {
+                v.status = ClaimStatus::TooManyAttempts;
+                map.insert(k, v.clone());
+                Some(v)
+            }
+            None => None,
+        }
+    })
+}
