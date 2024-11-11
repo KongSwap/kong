@@ -73,9 +73,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Dump to database
     //users::dump_users(&db_client).await?;
     //let tokens_map = tokens::dump_tokens(&db_client).await?;
-    //let tokens_map = tokens::load_tokens(&db_client).await?;
+    let tokens_map = tokens::load_tokens(&db_client).await?;
     //let pools_map = pools::dump_pools(&db_client, &tokens_map).await?;
-    //let pools_map = pools::load_pools(&db_client).await?;
+    let pools_map = pools::load_pools(&db_client).await?;
     //lp_token_ledger::dump_lp_token_ledger(&db_client, &tokens_map).await?;
     //requests::dump_requests(&db_client).await?;
     //transfers::dump_transfers(&db_client, &tokens_map).await?;
@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // tokens::archive_tokens(&kong_data).await?;
     // pools::archive_pools(&kong_data).await?;
     // lp_token_ledger::archive_lp_token_ledger(&kong_data).await?;
-    requests::archive_requests(&kong_data).await?;
+    // requests::archive_requests(&kong_data).await?;
     // transfers::archive_transfers(&kong_data).await?;
     // txs::archive_txs(&kong_data).await?;
 

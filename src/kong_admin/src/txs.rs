@@ -469,11 +469,11 @@ pub async fn dump_txs(
                             *receive_decimal,
                         );
                         let lp_fee = round_f64(
-                            swap.lp_fee.0.to_f64().unwrap() / 10_u64.pow(*pay_decimal as u32) as f64,
+                            swap.lp_fee.0.to_f64().unwrap() / 10_u64.pow(*receive_decimal as u32) as f64,
                             *pay_decimal,
                         );
                         let gas_fee = round_f64(
-                            swap.gas_fee.0.to_f64().unwrap() / 10_u64.pow(*pay_decimal as u32) as f64,
+                            swap.gas_fee.0.to_f64().unwrap() / 10_u64.pow(*receive_decimal as u32) as f64,
                             *pay_decimal,
                         );
 
