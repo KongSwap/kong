@@ -539,7 +539,7 @@
 {/if}
 
 {#if showConfirmation}
-  <div class="modal-overlay" transition:fade={{ duration: 200 }}>
+  <div transition:fade={{ duration: 200 }}>
     <SwapConfirmation
       {payToken}
       {payAmount}
@@ -559,7 +559,7 @@
 {/if}
 
 {#if showSettings}
-  <div class="modal-overlay" transition:fade={{ duration: 200 }}>
+  <div transition:fade={{ duration: 200 }}>
     <SwapSettings
       show={showSettings}
       onClose={() => showSettings = false}
@@ -617,7 +617,6 @@
     justify-content: center;
     min-width: 64px;
     min-height: 64px;
-    /* border: 1px solid red; */
   }
 
   .switch-button:hover:not(:disabled) {
@@ -643,17 +642,6 @@
     pointer-events: none;
   }
 
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    backdrop-filter: blur(8px);
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5);
-  }
-
   @media (max-width: 480px) {
     .swap-wrapper {
       padding: 0 0.5rem;
@@ -676,23 +664,6 @@
 
     .panels-container {
       gap: 0.2rem;
-    }
-  }
-
-  :global(.token-modal) {
-    max-height: 80vh;
-    max-width: 90vw;
-    width: 480px;
-    overflow-y: auto;
-    margin: 1rem;
-    border-radius: 1rem;
-    position: relative;
-  }
-
-  @media (max-width: 480px) {
-    :global(.token-modal) {
-      max-height: 90vh;
-      margin: 0.5rem;
     }
   }
 

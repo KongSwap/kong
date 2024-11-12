@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
+  import Modal from '$lib/components/common/Modal.svelte';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { SwapService } from '$lib/services/swap/SwapService';
-  import Panel from '$lib/components/common/Panel.svelte';
   import Button from '$lib/components/common/Button.svelte';
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
   import RouteSection from './confirmation/RouteSection.svelte';
@@ -35,12 +34,6 @@
   });
 
   $: isLastRoute = currentRouteIndex === routingPath.length - 1;
-
-  function handleOverlayClick(event: MouseEvent) {
-    if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
-      onClose();
-    }
-  }
 
   async function handleConfirm() {
     isLoading = true;
@@ -128,68 +121,51 @@
     {error}
   />
 {:else}
-  <div class="modal-overlay" on:click|self={onClose}>
-    <div 
-      class="modal-content confirmation-modal" 
-      transition:fade={{ duration: 200 }}
-    >
-      <Panel variant="green" type="main" width="auto">
-        <div class="modal-content">
-          <div class="header">
-            <h2>Review Swap</h2>
-            <button class="close" on:click={onClose}>×</button>
-          </div>
+  <Modal
+    show={!showLoadingScreen}
+    title="Review Swap"
+    onClose={onClose}
+    variant="green"
+    height="80vh"
+  >
+    <div class="sections-container">
+      <PayReceiveSection
+        {payToken}
+        {payAmount}
+        {receiveToken}
+        {receiveAmount}
+      />
 
-          <div class="sections-container">
-            <PayReceiveSection
-              {payToken}
-              {payAmount}
-              {receiveToken}
-              {receiveAmount}
-            />
+      <RouteSection
+        {routingPath}
+        {gasFees}
+        {lpFees}
+        {payToken}
+        {receiveToken}
+      />
 
-            <RouteSection
-              {routingPath}
-              {gasFees}
-              {lpFees}
-              {payToken}
-              {receiveToken}
-            />
+      <FeesSection
+        {totalGasFee}
+        {totalLPFee}
+        {slippage}
+        {receiveToken}
+      />
 
-            <FeesSection
-              {totalGasFee}
-              {totalLPFee}
-              {slippage}
-              {receiveToken}
-            />
-
-            <div class="mt-4">
-              <Button
-                text={isLoading ? 'Confirming...' : 'CONFIRM SWAP'}
-                variant="yellow"
-                size="big"
-                disabled={isLoading}
-                onClick={handleConfirm}
-                width="100%"
-              />
-            </div>
-          </div>
-        </div>
-      </Panel>
+      <div class="mt-4">
+        <Button
+          text={isLoading ? 'Confirming...' : 'CONFIRM SWAP'}
+          variant="yellow"
+          size="big"
+          disabled={isLoading}
+          onClick={handleConfirm}
+          width="100%"
+        />
+      </div>
     </div>
-  </div>
+  </Modal>
 {/if}
 
 <style lang="postcss">
-  .modal-content {
-    width: 100%;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-
   .sections-container {
     display: flex;
     flex-direction: column;
@@ -207,58 +183,7 @@
     border-radius: 4px;
   }
 
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 12px;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-  }
-
-  h2 {
-    font-size: 1rem;
-    color: #fff;
-    margin: 0;
-  }
-
-  .close {
-    background: none;
-    border: none;
-    color: #ff4444;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 2px;
-    line-height: 1;
-    transition: transform 0.2s;
-  }
-
-  .close:hover {
-    transform: scale(1.1);
-  }
-
-  @media (max-width: 480px) {
-    .modal-content {
-      padding: 12px;
-    }
-  }
-
-  .section {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 12px;
-  }
-
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-  }
-
-  Button.mt-4 {
+  .mt-4 {
     margin-top: 1rem;
   }
 </style>

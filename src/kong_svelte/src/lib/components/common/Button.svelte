@@ -5,7 +5,7 @@
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
   export let size: 'small' | 'medium' | 'big' = 'big';
-  export let state: 'default' | 'pressed' | 'selected' = 'default';
+  export let state: 'default' | 'disabled' | 'pressed' | 'selected' = 'default';
   export let text: string = '';
   export let onClick: () => void = () => {};
   export let disabled: boolean = false;
