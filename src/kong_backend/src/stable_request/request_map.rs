@@ -26,8 +26,7 @@ pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRe
     REQUEST_MAP.with(|m| {
         m.borrow()
             .iter()
-            .collect::<BTreeMap<_, _>>()
-            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 if let Some(user_id) = user_id {
                     if v.user_id != user_id {
@@ -36,7 +35,6 @@ pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRe
                 }
                 Some(v.clone())
             })
-            .rev()
             .take(num_requests)
             .collect()
     })

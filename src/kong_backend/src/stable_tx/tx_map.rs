@@ -33,8 +33,7 @@ pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max
     TX_MAP.with(|m| {
         m.borrow()
             .iter()
-            .collect::<BTreeMap<_, _>>()
-            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 if let Some(user_id) = user_id {
                     if v.user_id() != user_id {
@@ -84,7 +83,6 @@ pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max
                 }
                 Some(v.clone())
             })
-            .rev()
             .take(max_txs)
             .collect::<Vec<StableTx>>()
     })

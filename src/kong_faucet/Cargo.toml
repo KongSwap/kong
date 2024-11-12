@@ -5,6 +5,7 @@ edition = "2021"
 description = "Kong Swap faucet canister"
 
 [lib]
+name = "kong_faucet"
 crate-type = ["cdylib"]
 
 [dependencies]

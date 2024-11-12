@@ -27,15 +27,13 @@ pub fn get(num_messages: usize) -> Vec<StableMessage> {
     MESSAGE_MAP.with(|m| {
         m.borrow()
             .iter()
-            .collect::<BTreeMap<_, _>>()
-            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 if v.to_user_id == user_id || v.to_user_id == ALL_USERS_USER_ID {
                     return Some(v.clone());
                 }
                 None
             })
-            .rev()
             .take(num_messages)
             .collect()
     })

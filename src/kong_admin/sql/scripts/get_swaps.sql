@@ -18,7 +18,7 @@ BEGIN
       CASE WHEN t0.symbol = token_0 THEN txs.receive_amount ELSE txs.pay_amount END AS receive_amount,
       CASE WHEN t0.symbol = token_0 THEN txs.receive_amount / txs.pay_amount ELSE txs.pay_amount / txs.receive_amount END AS price,
       tx.ts AS ts
-  FROM swap_tx_txs txs
+  FROM swap_pool_tx txs
   JOIN tokens t0 ON txs.pay_token_id = t0.token_id
   JOIN tokens t1 ON txs.receive_token_id = t1.token_id
   JOIN swap_tx tx ON txs.tx_id = tx.tx_id

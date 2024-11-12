@@ -35,8 +35,7 @@ pub fn get() -> Vec<StableClaim> {
     CLAIM_MAP.with(|m| {
         m.borrow()
             .iter()
-            .collect::<BTreeMap<_, _>>()
-            .iter()
+            .rev()
             .filter_map(|(_, v)| {
                 // only unclaimed claims of caller
                 if user_id == v.user_id && (v.status == ClaimStatus::Unclaimed) {
@@ -44,7 +43,6 @@ pub fn get() -> Vec<StableClaim> {
                 }
                 None
             })
-            .rev()
             .collect()
     })
 }
