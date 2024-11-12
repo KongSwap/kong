@@ -19,7 +19,7 @@
   let isSpinning = false;
   let navOpen = false;
   let isModalOpen = false;
-  const tabs: Tab[] = ["swap", "pools", "stats"];
+  const tabs: Tab[] = ["swap", "pools"];
   const titles = {
     swap: {
       desktop: "/titles/swap_title.webp",
@@ -29,19 +29,19 @@
       desktop: "/titles/swap_title.webp",
       mobile: "/titles/swap_title.webp",
     },
-    stats: {
-      desktop: "/titles/stats_title.webp",
-      mobile: "/titles/stats_title.webp",
-    },
   };
 
   function handleTabChange(tab: Tab) {
-    // Always navigate to the tab's root path, even if it's already active
-    if (activeTab !== tab || $page.url.pathname !== `/${tab}`) {
-      activeTab = tab;
-      goto(`/${tab}`);
+    // If we're already on the current tab, just close the nav
+    if (activeTab === tab && $page.url.pathname === `/${tab}`) {
       navOpen = false;
+      return;
     }
+    
+    // Otherwise proceed with navigation
+    activeTab = tab;
+    goto(`/${tab}`);
+    navOpen = false;
   }
 
   function handleConnect() {
@@ -50,7 +50,7 @@
 
   function handleResize() {
     if (browser) {
-      isMobile = window.innerWidth <= 768;
+      isMobile = window.innerWidth <= 1024;
     }
   }
 
@@ -81,11 +81,11 @@
   $: titleImage = isMobile ? titles[activeTab].mobile : titles[activeTab].desktop;
 </script>
 
-<nav class="absolute w-full z-50 md:px-10 pt-4">
-  <div class="grid grid-cols-12 px-2 md:px-10">
-    <div class="flex col-span-3 items-center justify-center gap-x-4 mb-2">
+<nav>
+  <div class="nav-grid">
+    <div class="nav-left">
       {#if isMobile}
-        <div class="flex justify-between w-full mb-4 items-center">
+        <div class="mobile-controls gap-x-4">
           <button class="hamburger" on:click={() => (navOpen = !navOpen)}>
             ☰
           </button>
@@ -93,32 +93,34 @@
           <Button
             text={$walletStore.isConnected ? $t("common.open") : $t("common.connect")}
             variant="yellow"
-            size="small"
+            size="medium"
             state={sidebarOpen ? "selected" : "default"}
             onClick={handleConnect}
           />
         </div>
       {/if}
       {#if !isMobile}
-        {#each tabs as tab}
-          <Button
-            text={tab.toUpperCase()}
-            variant="blue"
-            size="medium"
-            state={activeTab === tab ? "selected" : "default"}
-            onClick={() => handleTabChange(tab)}
-          />
-        {/each}
+        <div class="flex gap-x-4">
+          {#each tabs as tab}
+            <Button
+              text={tab.toUpperCase()}
+              variant="blue"
+              size="medium"
+              state={activeTab === tab ? "selected" : "default"}
+              onClick={() => handleTabChange(tab)}
+            />
+          {/each}
+        </div>
       {/if}
     </div>
 
-    <div class="col-span-6 flex justify-center items-end">
+    <div class="nav-center">
       <div class="title-image-container">
         <img src={titleImage} alt={activeTab} class="title-image" />
       </div>
     </div>
 
-    <div class="col-span-3 flex justify-end items-center gap-x-4 mb-2">
+    <div class="flex col-span-3 items-center justify-end gap-x-4 mb-2">
       {#if !isMobile}
         <button
           class="settings-button"
@@ -136,6 +138,7 @@
             fill="none"
             stroke="currentColor"
             stroke-width="2"
+            class="settings-icon"
           >
             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
             <path
@@ -143,6 +146,15 @@
             />
           </svg>
         </button>
+
+        <Button
+          text="STATS"
+          variant="blue"
+          size="medium"
+          state={activeTab === "stats" ? "selected" : "default"}
+          onClick={() => handleTabChange("stats")}
+        />
+
         <Button
           text={$walletStore.isConnected ? $t("common.open") : $t("common.connect")}
           variant="yellow"
@@ -166,7 +178,7 @@
       <h2 class="text-white text-2xl font-bold font-alumni uppercase border-b-2 border-b-sky-300">
         {$t("common.navigation")}
       </h2>
-      {#each tabs as tab}
+      {#each [...tabs, "stats"] as tab}
         <Button
           text={tab.toUpperCase()}
           variant="blue"
@@ -191,6 +203,7 @@
           fill="none"
           stroke="currentColor"
           stroke-width="2"
+          class="settings-icon"
         >
           <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
           <path
@@ -214,9 +227,70 @@
 </Modal>
 
 <style lang="postcss" scoped>
+  nav {
+    position: absolute;
+    width: 100%;
+    z-index: 50;
+    padding: 1rem 2.5rem 0;
+  }
+
+  .nav-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    padding: 0 0.5rem;
+  }
+
+  .nav-left {
+    grid-column: span 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .nav-center {
+    grid-column: span 6;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .mobile-controls {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+  }
+
+  .mobile-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    z-index: 100;
+  }
+
+  .mobile-menu h2 {
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: 'Alumni Sans', sans-serif;
+    text-transform: uppercase;
+    border-bottom: 2px solid rgb(125, 211, 252);
+  }
+
   .title-image-container {
     width: 100%;
-    height: 66px; /* Set a fixed height */
+    height: 66px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -224,60 +298,76 @@
 
   .title-image {
     max-height: 100%;
-    object-fit: contain; /* Ensure the image fits within the container */
+    object-fit: contain;
   }
 
   .settings-button {
-    background: none;
-    border: none;
     cursor: pointer;
     padding: 8px;
-    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s ease;
+    transition: transform 0.2s ease;
   }
 
-  .settings-button.spinning {
-    animation: spin 2s linear infinite;
+  .settings-button:hover {
+    transform: scale(1.05);
   }
 
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
+  .settings-button:active {
+    transform: scale(0.95);
   }
 
+  .settings-icon,
   .hamburger {
-    background: none;
-    border: none;
-    font-size: 24px;
+    font-size: 42px;
     cursor: pointer;
-    color: #fff;
+    color: white;
+    align-items: center;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+  }
+  
+  .hamburger {
+    margin-top: -0.5rem;
   }
 
-  .mobile-menu {
-    @apply fixed top-0 left-0 w-full h-full bg-black bg-opacity-60 backdrop-blur-lg flex flex-col items-center justify-center;
-    z-index: 100;
+  .hamburger:hover {
+    transform: scale(1.05);
   }
 
-  .mobile-menu button {
-    @apply my-2;
+  .hamburger:active {
+    transform: scale(0.95);
   }
 
   .close-button {
-    @apply absolute top-5 right-5 bg-none border-none text-white text-2xl cursor-pointer;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
   }
 
-  @media (max-width: 768px) {
+  .close-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  @media (max-width: 1024px) {
     nav {
-      padding: 8px 0;
+      padding: 0.5rem 0;
     }
-    .grid {
+    
+    .nav-grid {
       grid-template-columns: 1fr;
     }
   }

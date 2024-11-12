@@ -75,6 +75,8 @@
   let maxAllowedSlippage = slippage;
   let isSlippageExceeded = false;
 
+  let swapMode = 'normal';
+
   onDestroy(() => {
     if (intervalId) {
       clearInterval(intervalId);
@@ -448,6 +450,27 @@
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
+    <div class="mode-selector">
+      <Button
+        variant="yellow"
+        size="medium"
+        state={swapMode === 'normal' ? 'selected' : 'default'}
+        onClick={() => swapMode = 'normal'}
+        width="50%"
+      >
+        Normal
+      </Button>
+      <Button
+        variant="yellow" 
+        size="medium"
+        state="disabled"
+        onClick={() => {}}
+        width="50%"
+      >
+        Pro (Soon)
+      </Button>
+    </div>
+
     <div class="panels-container">
       {#each panels as panel (panel.id)}
         <div class="panel-wrapper">
@@ -570,10 +593,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    z-index: 0;
   }
 
   .panel-wrapper {
     position: relative;
+    z-index: 0;
   }
 
   .switch-button {
@@ -582,14 +607,17 @@
     top: 50%;
     transform: translate(-50%, -50%);
     cursor: pointer;
-    z-index: 1;
+    z-index: 2;
     background: transparent;
     border: none;
-    padding: 22px;
+    padding: 1.5rem;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 64px;
+    min-height: 64px;
+    /* border: 1px solid red; */
   }
 
   .switch-button:hover:not(:disabled) {
@@ -612,6 +640,7 @@
   .swap-arrow {
     width: 56px;
     height: 64px;
+    pointer-events: none;
   }
 
   .modal-overlay {
@@ -668,11 +697,17 @@
   }
 
   :global(.swap-footer) {
-    margin-top: 2.5rem;
+    margin-top: 2rem;
   }
 
   .panel-content {
     transform-origin: center center;
     backface-visibility: hidden;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
   }
 </style>
