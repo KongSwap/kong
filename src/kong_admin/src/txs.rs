@@ -449,9 +449,10 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client.execute("DELETE FROM swap_tx_txs WHERE tx_id = $1", &[&tx_id]).await?;
+                    db_client.execute("DELETE FROM swap_pool_tx WHERE tx_id = $1", &[&tx_id]).await?;
 
                     for swap in v.txs.iter() {
+                        let pool_id = swap.pool_id as i32;
                         let pay_token_id = swap.pay_token_id as i32;
                         let pay_decimal = tokens_map
                             .get(&swap.pay_token_id)
@@ -479,11 +480,12 @@ pub async fn dump_txs(
 
                         db_client
                             .execute(
-                                "INSERT INTO swap_tx_txs
-                                (tx_id, pay_token_id, pay_amount, receive_token_id, receive_amount, lp_fee, gas_fee)
-                                VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                                "INSERT INTO swap_pool_tx
+                                (tx_id, pool_id, pay_token_id, pay_amount, receive_token_id, receive_amount, lp_fee, gas_fee)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                                 &[
                                     &tx_id,
+                                    &pool_id,
                                     &pay_token_id,
                                     &pay_amount,
                                     &receive_token_id,

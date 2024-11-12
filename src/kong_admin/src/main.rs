@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //lp_token_ledger::dump_lp_token_ledger(&db_client, &tokens_map).await?;
     //requests::dump_requests(&db_client).await?;
     //transfers::dump_transfers(&db_client, &tokens_map).await?;
-    //txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
+    txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
 
     // Dump to kong_data
     // kong_settings::archive_kong_settings(&kong_data).await?;
