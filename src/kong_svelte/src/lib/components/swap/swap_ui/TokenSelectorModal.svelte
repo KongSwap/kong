@@ -38,7 +38,6 @@
     title="Select Token"
     onClose={onClose}
     variant="green"
-    height="100vh"
 >
     <div class="search-container">
         <label for="token-search" class="sr-only">Search tokens</label>
@@ -148,13 +147,13 @@
     .token-list {
         flex: 1;
         overflow-y: auto;
-        margin: 0 -1rem;
-        padding: 0.25rem 1rem;
+        overflow-x: hidden;
+        margin: 0;
+        padding: 0.25rem 0;
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
         scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     }
 
     .token-list::-webkit-scrollbar {
@@ -176,17 +175,17 @@
 
     .token-button {
         width: 100%;
-        padding: 0;
+        padding: 0 1rem;
         background: transparent;
         border: none;
         cursor: pointer;
         transition: all 200ms;
         border-radius: 0.5rem;
+        min-width: 0;
     }
 
     .token-button:hover {
-        transform: translateX(0.5rem) scale(1.02);
-        background-color: rgba(0, 0, 0, 0.2);
+        transform: translateX(0.25rem) scale(1.01);
     }
 
     .token-button:focus {

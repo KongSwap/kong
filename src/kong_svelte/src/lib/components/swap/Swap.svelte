@@ -539,40 +539,36 @@
 {/if}
 
 {#if showConfirmation}
-  <div transition:fade={{ duration: 200 }}>
-    <SwapConfirmation
-      {payToken}
-      {payAmount}
-      {receiveToken}
-      {receiveAmount}
-      {gasFees}
-      {lpFees}
-      {slippage}
-      {routingPath}
-      onConfirm={handleSwap}
-      onClose={() => {
-        showConfirmation = false;
-        isProcessing = false;
-      }}
-    />
-  </div>
+  <SwapConfirmation
+    {payToken}
+    {payAmount}
+    {receiveToken}
+    {receiveAmount}
+    {gasFees}
+    {lpFees}
+    {slippage}
+    {routingPath}
+    onConfirm={handleSwap}
+    onClose={() => {
+      showConfirmation = false;
+      isProcessing = false;
+    }}
+  />
 {/if}
 
 {#if showSettings}
-  <div transition:fade={{ duration: 200 }}>
-    <SwapSettings
-      show={showSettings}
-      onClose={() => showSettings = false}
-      slippage={slippage}
-      onSlippageChange={(value) => {
-        slippage = value;
-        maxAllowedSlippage = value;
-        if (payAmount) debouncedGetQuote(payAmount);
-      }}
-      onApproveToken={async () => {}}
-      onRevokeToken={async () => {}}
-    />
-  </div>
+  <SwapSettings
+    show={showSettings}
+    onClose={() => showSettings = false}
+    slippage={slippage}
+    onSlippageChange={(value) => {
+      slippage = value;
+      maxAllowedSlippage = value;
+      if (payAmount) debouncedGetQuote(payAmount);
+    }}
+    onApproveToken={async () => {}}
+    onRevokeToken={async () => {}}
+  />
 {/if}
 
 <style lang="postcss">
@@ -592,8 +588,9 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 8px;
     z-index: 0;
+    margin-bottom: 16px;
   }
 
   .panel-wrapper {
@@ -659,16 +656,17 @@
     }
 
     .swap-footer {
-      margin-top: 2rem;
+      margin-top: 1.5rem;
     }
 
     .panels-container {
-      gap: 0.2rem;
+      gap: 6px;
+      margin-bottom: 12px;
     }
   }
 
   :global(.swap-footer) {
-    margin-top: 2rem;
+    margin-top: 0;
   }
 
   .panel-content {

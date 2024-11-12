@@ -39,7 +39,7 @@
 
 <div class="settings-section">
   <div class="section-header">
-    <h3 class="section-title">Slippage Tolerance</h3>
+    <h1 class="section-title">Slippage Tolerance</h1>
     <div class="info-tooltip">
       <span class="tooltip-icon">ℹ️</span>
       <div class="tooltip-content">
@@ -93,10 +93,11 @@
   }
 
   .section-title {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 1rem;
-    color: #ffcd1f;
+    font-size: 1.5rem;
+    color: #FFE15D;
     margin: 0;
+    font-family: 'Alumni Sans', sans-serif;
+    font-weight: 600;
   }
 
   .info-tooltip {
@@ -115,12 +116,13 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0.25rem;
     width: 200px;
     font-size: 0.875rem;
     z-index: 10;
+    color: #FFFFFF;
   }
 
   .info-tooltip:hover .tooltip-content {
@@ -138,9 +140,10 @@
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0.25rem;
-    color: white;
+    color: #FFFFFF;
     cursor: pointer;
     transition: all 0.2s;
+    font-weight: 500;
   }
 
   .slippage-button:hover {
@@ -176,8 +179,9 @@
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0.25rem;
-    color: white;
+    color: #FFFFFF;
     transition: all 0.2s;
+    font-weight: 500;
   }
 
   .percentage-symbol {
@@ -185,18 +189,19 @@
     right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.8);
     transition: all 0.2s;
   }
 
   .warning-message {
-    color: #ffcd1f;
+    color: #FFE15D;
     font-size: 0.875rem;
     margin-top: 0.5rem;
+    font-weight: 500;
   }
 
   .custom-input input::placeholder {
-    color: white;
+    color: rgba(255, 255, 255, 0.7);
   }
 
   .custom-input.active input::placeholder {

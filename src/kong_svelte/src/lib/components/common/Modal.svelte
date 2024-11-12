@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
   import Panel from './Panel.svelte';
@@ -8,30 +7,33 @@
   export let title: string;
   export let onClose: () => void;
   export let variant: "green" | "yellow" | "red" = "green";
-  let width = "600px";
-  let height = "80vh";
+  export let width = "600px";
+  export let height = "80vh";
 
   let isMobile = false;
   let modalWidth = width;
+  let modalHeight = height;
 
   onMount(() => {
     if (browser) {
-      const updateWidth = () => {
+      const updateDimensions = () => {
         const windowWidth = window.innerWidth;
         if (windowWidth <= 768) {
-          const calculatedWidth = Math.max(300, Math.min(windowWidth - 50, 600));
+          const calculatedWidth = Math.max(300, Math.min(windowWidth - 25, 600));
           modalWidth = `${calculatedWidth}px`;
+          modalHeight = "90vh";
         } else {
           modalWidth = width;
+          modalHeight = height;
         }
         isMobile = windowWidth <= 768;
       };
       
-      updateWidth();
-      window.addEventListener('resize', updateWidth);
+      updateDimensions();
+      window.addEventListener('resize', updateDimensions);
       
       return () => {
-        window.removeEventListener('resize', updateWidth);
+        window.removeEventListener('resize', updateDimensions);
       };
     }
   });
@@ -46,7 +48,6 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
-    transition:fade={{ duration: 200 }}
   >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div 
@@ -54,9 +55,9 @@
       on:click|stopPropagation
     >
       <Panel 
-        {variant}
+        variant={variant === "red" ? "blue" : variant}
         width={modalWidth}
-        {height}
+        height={modalHeight}
         className="modal-panel"
       >
         <div class="modal-content">
@@ -104,7 +105,7 @@
     left: 0;
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 50;
+    z-index: 9999;
     display: grid;
     place-items: center;
     overflow: hidden;
@@ -112,19 +113,6 @@
 
   .modal-container {
     position: relative;
-    transform: translateY(0);
-    animation: modalSlideIn 200ms ease-out;
-  }
-
-  @keyframes modalSlideIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 
   .modal-content {
@@ -142,11 +130,12 @@
   }
 
   .modal-title {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 1.875rem;
-    font-weight: bold;
-    color: #ffcd1f;
+    font-family: 'Alumni Sans', sans-serif;
+    font-size: 2rem;
+    font-weight: 500;
+    color: white;
     margin: 0;
+    letter-spacing: 0.02em;
   }
 
   .modal-body {
@@ -214,11 +203,11 @@
 
   @media (max-width: 768px) {
     .modal-content {
-      padding: 1rem;
+      padding: 0.5rem;
     }
 
     .modal-title {
-      font-size: 1.5rem;
+      font-size: 1.75rem;
     }
   }
 </style>
