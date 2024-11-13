@@ -14,16 +14,14 @@ use crate::stable_pool::pool_map;
 /// None returns pools only listed on Kong
 #[query(guard = "not_in_maintenance_mode")]
 fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
-    let pools = to_pools_reply(match symbol.as_deref() {
+    let mut pools = to_pools_reply(match symbol.as_deref() {
         Some("all") => pool_map::get().iter().map(to_pool_reply).collect(),
         Some(symbol) => pool_map::get_by_token_wildcard(symbol).iter().map(to_pool_reply).collect(),
         None => pool_map::get_on_kong().iter().map(to_pool_reply).collect(),
     });
-    /*
     // order by TVL in reverse order
     pools
         .pools
         .sort_by(|a, b| b.balance.partial_cmp(&a.balance).unwrap_or(std::cmp::Ordering::Equal));
-    */
     Ok(pools)
 }
