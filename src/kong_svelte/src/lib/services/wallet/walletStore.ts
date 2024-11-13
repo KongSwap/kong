@@ -12,7 +12,7 @@ import { HttpAgent, Actor, type ActorSubclass } from '@dfinity/agent';
 import { WalletService } from '$lib/services/wallet/WalletService';
 import { ICRC2_IDL } from '$lib/idls/icrc2.idl.js';
 import { browser } from '$app/environment';
-
+import { clearUserData } from '$lib/services/tokens/tokenStore';
 // Export the list of available wallets
 export const availableWallets = walletsList;
 
@@ -103,6 +103,7 @@ export async function disconnectWallet() {
       isConnecting: false,
       isConnected: false,
     });
+    clearUserData();
     localStorage.removeItem('selectedWalletId');
     selectedWalletId.set('');
     isReady.set(false);
@@ -125,6 +126,7 @@ export async function restoreWalletConnection() {
     try {
       await connectWallet(storedWalletId);
     } catch (error) {
+      localStorage.removeItem('selectedWalletId');
       handleConnectionError(error);
     }
   }

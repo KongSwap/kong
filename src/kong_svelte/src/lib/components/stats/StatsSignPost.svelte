@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { t } from "$lib/translations/translationstions";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { t } from "$lib/services/translations";
   import { onMount } from "svelte";
 
   export let totalTvl: string | number;

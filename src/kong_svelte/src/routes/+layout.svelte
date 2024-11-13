@@ -16,6 +16,7 @@
 
   let pageTitle: string = $state("");
   let { children } = $props();
+  let interval: NodeJS.Timeout | null = $state(null);
 
   onMount(() => {
     pageTitle = process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
@@ -23,7 +24,7 @@
       switchLocale("en");
     }
     const init = async () => {
-      await Promise.all([
+      await Promise.allSettled([
         restoreWalletConnection(),
         tokenStore.loadTokens(),
         poolStore.loadPools()
@@ -32,7 +33,6 @@
         interval = setInterval(tokenStore.loadBalances, 5000);
       }
     };
-    let interval: NodeJS.Timeout | null = null;
     init();
     return () => {
       if (interval) {
@@ -43,7 +43,10 @@
 
   $effect(() => {
     if (isConnected()) {
+      if (interval) return;
+
       tokenStore.loadBalances();
+      interval = setInterval(tokenStore.loadBalances, 5000);
     }
   });
 

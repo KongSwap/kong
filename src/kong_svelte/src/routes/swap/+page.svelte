@@ -1,23 +1,25 @@
 <script lang="ts">
   import { t } from '$lib/services/translations';
-  import { TokenService, tokenStore } from '$lib/services/tokens';
+  import { getTokenByCanisterId, tokenStore } from '$lib/services/tokens/tokenStore';
   import { onMount, onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
+  import { page } from '$app/stores';
+  import { isConnected } from '$lib/services/wallet/walletStore';
 
-  let tokens: any = null;
+  let fromToken: FE.Token | null = null;
+  let toToken: FE.Token | null = null;
 
-  onMount(async () => {
-    try {
-      tokens = $tokenStore.tokens;
-    } catch (error) {
-      console.error('Error fetching tokens:', error);
-    }
+  onMount(() => {
+    const unsubscribe = page.subscribe(($page) => {
+      fromToken = getTokenByCanisterId($page.url.searchParams.get('from'));
+      toToken = getTokenByCanisterId($page.url.searchParams.get('to'));
+    });
+    return () => unsubscribe();
   });
 
   const claimTokens = async () => {
-    console.log('Claiming tokens');
-    const result = await TokenService.claimFaucetTokens();
+    const result = await tokenStore.claimFaucetTokens();
     console.log('Claim result', result);
     tokenStore.loadBalances();
   };
@@ -27,19 +29,11 @@
   });
 </script>
 
-<section class="flex flex-col items-center justify-center pt-40">
-  {#if process.env.DFX_NETWORK === 'local'}
-    <button on:click={claimTokens}>Claim Tokens</button>
-  {/if}
-  {#if tokens?.Ok}
-    {#each tokens?.Ok as token}
-      <div class="text-sm uppercase text-gray-500">
-        {token?.IC?.name}
-      </div>
-    {/each}
-  {:else if tokens}
-    <div class="flex justify-center">
-      <Swap />
+<section class="flex flex-col items-center justify-center">
+
+  {#if $tokenStore.tokens}
+    <div class="flex justify-center mt-8 md:mt-12">
+      <Swap initialFromToken={fromToken?.symbol} initialToToken={toToken?.symbol} />
     </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>

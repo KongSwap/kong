@@ -47,7 +47,7 @@
   class="panel {variant} {type} {className}"
   style="width: {formattedWidth}; height: {formattedHeight};"
 >
-  <div class="panel-container" class:auto-size={isAutoSize}>
+  <div class="panel-container min-w-full" class:auto-size={isAutoSize}>
       <!-- Top -->
       <div class="panel-row top">
           <img src={imagePaths.tl} alt="" class="corner top-left" />

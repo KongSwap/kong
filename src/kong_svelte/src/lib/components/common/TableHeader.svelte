@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
   import { t } from "$lib/services/translations";
   import { walletStore } from "$lib/services/wallet/walletStore";
 
@@ -10,31 +9,25 @@
   export let sortColumn: string | null = null;
   export let sortDirection: "asc" | "desc" | null = null;
   export let requiresAuth: boolean = false;
-  const dispatch = createEventDispatcher();
+  export let onSort: (data: { column: string, direction: "asc" | "desc" }) => void;
 
   function handleSort() {
     let newDirection: "asc" | "desc" = "asc";
     if (sortColumn === column) {
       newDirection = sortDirection === "asc" ? "desc" : "asc";
     }
-    dispatch("sort", { column, direction: newDirection });
+    onSort({ column, direction: newDirection });
   }
 
-  function getVariantClass() {
-    switch (variant) {
-      case "stats":
-        return "font-alumni text-3xl uppercase";
-      default:
-        return "";
-    }
-  }
-
+  $: variantClass = variant === "stats" ? "font-alumni text-3xl uppercase" : "";
   $: showHeader = requiresAuth ? $walletStore.isConnected : true;
-  $: className = getVariantClass();
 </script>
 
 {#if showHeader}
-  <th class="p-2 cursor-pointer {className} {textClass}" on:click={handleSort}>
+  <th 
+    class="p-2 cursor-pointer {textClass} {variantClass}"
+    on:click={handleSort}
+  >
     {$t(label)}
     <span>
       {#if sortColumn === column}

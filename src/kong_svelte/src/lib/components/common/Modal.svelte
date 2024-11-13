@@ -43,16 +43,18 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div 
-    class="modal-overlay" 
+    class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 grid place-items-center overflow-hidden" 
     on:click={onClose}
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
   >
+    <!-- svelte-ignore a11y_unknown_aria_attribute -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div 
-      class="modal-container"
+      class="relative"
       on:click|stopPropagation
+      role="dialog"
     >
       <Panel 
         variant={variant === "red" ? "blue" : variant}
@@ -60,15 +62,15 @@
         height={modalHeight}
         className="modal-panel"
       >
-        <div class="modal-content">
-          <header class="modal-header">
-            <h2 id="modal-title" class="modal-title">{title}</h2>
+        <div class="p-6 h-full flex flex-col">
+          <header class="flex justify-between items-center mb-6">
+            <h2 id="modal-title" class="font-sans text-2xl font-medium text-white m-0 tracking-wide">{title}</h2>
             <button 
-              class="action-button close-button !border-0 !shadow-none group relative"
+              class="border border-gray-700 p-1.5 rounded text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease-in-out shadow-sm w-10 h-10 flex-shrink-0 bg-red-600 bg-opacity-40 hover:bg-red-500 hover:translate-y-[-1px] relative group"
               on:click={onClose}
               aria-label="Close modal"
             >
-              <span class="tooltip">Close</span>
+              <span class="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white p-1 rounded text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100">Close</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -87,7 +89,7 @@
             </button>
           </header>
 
-          <div class="modal-body">
+          <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-transparent">
             <slot />
           </div>
         </div>
@@ -97,110 +99,6 @@
 {/if}
 
 <style>
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 9999;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
-  }
-
-  .modal-container {
-    position: relative;
-  }
-
-  .modal-content {
-    padding: 1.5rem;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-  }
-
-  .modal-title {
-    font-family: 'Alumni Sans', sans-serif;
-    font-size: 2rem;
-    font-weight: 500;
-    color: white;
-    margin: 0;
-    letter-spacing: 0.02em;
-  }
-
-  .modal-body {
-    flex: 1;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
-
-  .action-button {
-    border: 1px solid var(--sidebar-border);
-    padding: 6px;
-    border-radius: 4px;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-  }
-
-  .close-button {
-    background: rgba(186, 49, 49, 0.4);
-    color: #ffffff;
-  }
-
-  .close-button:hover {
-    background: rgba(255, 68, 68, 0.5);
-    transform: translateY(-1px);
-  }
-
-  .tooltip {
-    pointer-events: none;
-    position: absolute;
-    top: -2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    background: #1f2937;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  .tooltip::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    bottom: -0.375rem;
-    transform: translateX(-50%) rotate(180deg);
-    border: 0.25rem solid transparent;
-    border-bottom-color: #1f2937;
-  }
-
-  .action-button:hover .tooltip {
-    opacity: 1;
-  }
-
   @media (max-width: 768px) {
     .modal-content {
       padding: 0.5rem;

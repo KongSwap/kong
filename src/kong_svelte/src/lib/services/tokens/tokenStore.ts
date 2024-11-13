@@ -42,8 +42,8 @@ const toTokenDecimals = (amount: BigNumber | string | number, decimals: number):
   return new BigNumber(amount).dividedBy(new BigNumber(10 ** decimals));
 };
 
-const fromTokenDecimals = (amount: BigNumber | string | number, decimals: number): BigNumber => {
-  return new BigNumber(amount).times(new BigNumber(10).pow(decimals));
+export const fromTokenDecimals = (amount: BigNumber | string | number, decimals: number): BigNumber => {
+  return new BigNumber(amount).multipliedBy(new BigNumber(10 ** decimals));
 };
 
 // Add BigInt serialization handler
@@ -235,6 +235,19 @@ function createTokenStore() {
         }));
       }
     },
+    clearUserData: () => {
+      const currentState = getCurrentState();
+      const newState = {
+        ...currentState,
+        balances: {},
+        isLoading: false,
+        error: null,
+        totalValueUsd: '0.00',
+        activeSwaps: {}
+      };
+      store.set(newState);
+      saveToCache(newState);
+    },
     clearCache: () => {
       if (browser) localStorage.removeItem('tokenStore');
       store.set({
@@ -252,6 +265,9 @@ function createTokenStore() {
       const currentState = getCurrentState();
       return currentState.prices;
     },
+    claimFaucetTokens: async () => {
+      return await TokenService.claimFaucetTokens();
+    }
   };
 }
 
@@ -297,6 +313,10 @@ export const tokenPrices = derived(
   ($tokenStore) => $tokenStore.prices
 );
 
+export const getTokenByCanisterId = (canisterId: string): FE.Token | undefined => {
+  return get(tokenStore).tokens.find((token) => token.canister_id === canisterId);
+};
+
 export const getTokenDecimals = (symbol: string): number => {
   const token = get(tokenStore).tokens?.find((t) => t.symbol === symbol);
   return token?.decimals || 8;
@@ -305,6 +325,10 @@ export const getTokenDecimals = (symbol: string): number => {
 export const getTokenBalance = (canisterId: string): FE.TokenBalance => {
   const balance = get(tokenStore).balances[canisterId] || { in_tokens: BigInt(0), in_usd: '0' };
   return balance;
+};
+
+export const clearUserData = () => {
+  tokenStore.clearUserData();
 };
 
 export const getTokenPrice = (canisterId: string): number => {

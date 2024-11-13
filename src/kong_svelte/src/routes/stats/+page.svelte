@@ -195,21 +195,6 @@
                             </div>
                           </td>
                         {/if}
-                        <td class="p-2">
-                          <div class="flex content-center items-center justify-center gap-x-1">
-                            <button
-                              on:click={(e) => {
-                                e.stopPropagation();
-                                if (token?.canister_id) {
-                                  goto(`/swap?from=${token.canister_id}&to=${CKUSDT_CANISTER_ID}`);
-                                }
-                              }}
-                              class="rounded-full text-nowrap bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
-                            >
-                              <ArrowLeftRight size={18} class="mr-1" /> Swap
-                            </button>
-                          </div>
-                        </td>
                       </tr>
                     {/each}
                   {:else if !$tokensLoading}
