@@ -68,7 +68,6 @@
               on:click={onClose}
               aria-label="Close modal"
             >
-              <span class="tooltip">Close</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -116,7 +115,6 @@
   }
 
   .modal-content {
-    padding: 1.5rem;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -169,36 +167,6 @@
   .close-button:hover {
     background: rgba(255, 68, 68, 0.5);
     transform: translateY(-1px);
-  }
-
-  .tooltip {
-    pointer-events: none;
-    position: absolute;
-    top: -2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    background: #1f2937;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  .tooltip::before {
-    content: '';
-    position: absolute;
-    left: 50%;
-    bottom: -0.375rem;
-    transform: translateX(-50%) rotate(180deg);
-    border: 0.25rem solid transparent;
-    border-bottom-color: #1f2937;
-  }
-
-  .action-button:hover .tooltip {
-    opacity: 1;
   }
 
   @media (max-width: 768px) {
