@@ -16,6 +16,10 @@ const config = {
     files: {
       assets: "static",
     },
+    alias: {
+      $lib: 'src/lib',
+      "$lib/*": 'src/lib/*',
+    },
   },
   preprocess: vitePreprocess({
     typescript: true,
@@ -26,14 +30,10 @@ const config = {
       ],
     },
   }),
-  onwarn: (warning, handler) => {
-    // suppress warnings on `vite dev` and `vite build`
-    if (warning.code === "a11y-click-events-have-key-events") return;
-    if (warning.code === "a11y-no-static-element-interactions") return;
-    if (warning.code === "a11y-missing-attribute") return;
-    if (warning.code === "a11y-no-noninteractive-element-interactions") return;
-    if (warning.code === "a11y-no-noninteractive-element-to-interactive-role") return;
-    if (warning.code === "a11y_consider_explicit_label") return;
+  onwarn: (warning, handler) => {    
+    if (warning.code.startsWith('a11y_')) {
+      return;
+    }
     handler(warning);
   },
 };

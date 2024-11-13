@@ -1,15 +1,17 @@
 <script lang="ts">
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
+  import { tooltip } from '$lib/actions/tooltip';
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
   export let size: 'small' | 'medium' | 'big' = 'big';
-  export let state: 'default' | 'pressed' | 'selected' = 'default';
+  export let state: 'default' | 'disabled' | 'pressed' | 'selected' = 'default';
   export let text: string = '';
   export let onClick: () => void = () => {};
   export let disabled: boolean = false;
   export let className: string = '';
   export let width: number | string | 'auto' = 'auto';
+  export let tooltipText: string | null = null;
 
   $: {
     if (size === 'small' && variant === 'blue') {
@@ -94,35 +96,39 @@
     }
   }
 
-  function handleClick() {
-    if (!disabled) {
-      onClick();
+  function handleClick(event: MouseEvent) {
+    if (disabled) {
+      event.preventDefault(); // Prevent default action if disabled
+      return;
     }
+    onClick();
   }
 
   $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''} ${className}`;
   $: formattedWidth = formatDimension(width);
 </script>
 
-<button
+<a
+  use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
   class={buttonClass}
   on:click={handleClick}
   on:mousedown={handleMouseDown}
   on:mouseup={handleMouseUp}
   on:mouseenter={handleMouseEnter}
   on:mouseleave={handleMouseLeave}
-  {disabled}
+  data-sveltekit-preload-code="eager"
   style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
+  aria-disabled={disabled}
 >
   <div class="button-container" class:auto-size={width === 'auto'}>
     <img src={getImagePath('l')} alt="" class="left-part" />
     <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
     <img src={getImagePath('r')} alt="" class="right-part" />
-    <span class="button-text">
+    <span class="button-text {state === 'selected' ? 'text-white' : ''}">
       <slot>{text}</slot>
     </span>
   </div>
-</button>
+</a>
 
 <style>
   .pixel-button {
@@ -145,7 +151,7 @@
     align-items: stretch;
     width: 100%;
     position: relative;
-}
+  }
 
   .button-container.auto-size {
     width: fit-content;
@@ -154,7 +160,6 @@
   .left-part,
   .right-part {
     flex-shrink: 0;
-    height: 100%;
     object-fit: contain;
     pointer-events: none;
   }
@@ -165,14 +170,14 @@
     background-position: center;
     background-size: auto 100%;
     pointer-events: none;
-    min-width: 20px; /* Minimum width to ensure button doesn't collapse */
+    min-width: 24px; 
   }
 
   .button-text {
     font-family: theme('fontFamily.alumni');
     font-size: 24px;
     text-transform: uppercase;
-    padding: 0 16px;
+    padding: 0 14px;
     user-select: none;
     white-space: nowrap;
     position: absolute;
@@ -205,9 +210,16 @@
     pointer-events: none;
   }
 
-  .blue .button-text {
+  .blue {
+    color: #000;
+    font-weight: 600;
+  }
+
+  .blue:hover {
     color: #fff;
-    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.5);
+    .button-text {
+      color: #fff;
+    }
   }
 
   .green .button-text {

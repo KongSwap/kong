@@ -1,189 +1,215 @@
 <script lang="ts">
-    import Panel from '$lib/components/common/Panel.svelte';
-    import { fade, fly } from 'svelte/transition';
-    import { backendService } from '$lib/services/backendService';
-    import { onMount } from 'svelte';
+  import Modal from "$lib/components/common/Modal.svelte";
+  import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
 
-    export let show = false;
-    export let onSelect: (token: string) => void;
-    export let onClose: () => void;
+  export let show = false;
+  export let onSelect: (token: string) => void;
+  export let onClose: () => void;
+  export let currentToken: string;
 
-    let tokens: any[] = [];
-    let searchQuery = '';
+  let searchQuery = "";
+  let standardFilter = "all";
 
-    onMount(async () => {
-        try {
-            const result = await backendService.getTokens();
-            tokens = result;
-        } catch (error) {
-            console.error('Error loading tokens:', error);
-        }
+  $: filteredTokens = $formattedTokens
+    .filter((token) => {
+      const matchesSearch =
+        token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        token.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      switch (standardFilter) {
+        case "ck":
+          return token.symbol.toLowerCase().startsWith("ck");
+        case "all":
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => {
+      // Get balances, default to 0n if undefined
+      const balanceA = Number($tokenStore.balances[a.canister_id]?.in_usd || 0);
+      const balanceB = Number($tokenStore.balances[b.canister_id]?.in_usd || 0);
+      // Sort in descending order (highest balance first)
+      return balanceB < balanceA ? -1 : balanceB > balanceA ? 1 : 0;
     });
 
-    $: filteredTokens = tokens.filter(token => 
-        token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        token.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    function handleSelect(token: string) {
-        onSelect(token);
-        onClose();
-    }
+  function handleSelect(token: string) {
+    onSelect(token);
+    onClose();
+  }
 </script>
 
-{#if show}
-    <div class="modal-overlay" transition:fade={{duration: 200}} on:click={onClose}>
-        <div class="modal-container" on:click|stopPropagation>
-            <Panel variant="green" width="400px" height="auto" className="token-modal">
-                <div class="modal-content">
-                    <header class="modal-header">
-                        <h2>Select Token</h2>
-                        <button class="close-button" on:click={onClose}>×</button>
-                    </header>
-                    
-                    <div class="search-container">
-                        <input
-                            type="text"
-                            bind:value={searchQuery}
-                            placeholder="Search tokens..."
-                            class="search-input"
-                        />
-                    </div>
-
-                    <div class="token-list">
-                        {#each filteredTokens as token}
-                            <button
-                                class="token-option"
-                                on:click={() => handleSelect(token.symbol)}
-                            >
-                                <div class="token-info">
-                                    <span class="token-symbol">{token.symbol}</span>
-                                    <span class="token-name">{token.name}</span>
-                                </div>
-                            </button>
-                        {/each}
-                    </div>
-                </div>
-            </Panel>
-        </div>
+<Modal {show} title="Select Token" {onClose} variant="green">
+  <div class="search-container">
+    <label for="token-search" class="sr-only">Search tokens</label>
+    <input
+      id="token-search"
+      type="text"
+      bind:value={searchQuery}
+      placeholder="Search tokens..."
+      class="search-input"
+      aria-label="Search tokens"
+    />
+    <div class="filter-buttons">
+      <button
+        class="filter-btn {standardFilter === 'all' ? 'active' : ''}"
+        on:click={() => (standardFilter = "all")}
+      >
+        All
+      </button>
+      <button
+        class="filter-btn {standardFilter === 'ck' ? 'active' : ''}"
+        on:click={() => (standardFilter = "ck")}
+      >
+        ckTokens
+      </button>
     </div>
-{/if}
+  </div>
+
+  <div class="token-list" role="listbox" aria-label="Token list">
+    {#each filteredTokens as token}
+      <button
+        class="token-button"
+        class:active={token.symbol === currentToken}
+        on:click={() => handleSelect(token.symbol)}
+        role="option"
+        aria-selected={token.symbol === currentToken}
+      >
+        <TokenRow {token} />
+      </button>
+    {/each}
+  </div>
+</Modal>
 
 <style>
-    * {
-        font-family: 'Alumni Sans', sans-serif;
-    }
+  .search-container {
+    margin-bottom: 1rem;
+  }
 
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
+  .search-input {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    color: white;
+    font-size: 1.125rem;
+    font-weight: 500;
+    transition: all 100ms;
+  }
 
-    .modal-container {
-        position: relative;
-        max-width: 90vw;
-        min-width: 320px;
-        max-height: 90vh;
-    }
+  .search-input:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
 
-    .modal-content {
-        padding: 1rem;
-    }
+  .search-input:focus {
+    border-color: rgba(253, 224, 71, 0.5);
+    outline: none;
+  }
 
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
+  .search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
 
-    .modal-header h2 {
-        font-size: 1.5rem;
-        color: white;
-        margin: 0;
-    }
+  .filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-start;
+    margin-top: 0.5rem;
+  }
 
-    .close-button {
-        background: none;
-        border: none;
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 1.5rem;
-        cursor: pointer;
-        padding: 0.5rem;
-        line-height: 1;
-        transition: color 0.2s ease;
-    }
+  .filter-btn {
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 100ms;
+  }
 
-    .close-button:hover {
-        color: white;
-    }
+  .filter-btn:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
 
-    .search-container {
-        margin-bottom: 1rem;
-    }
+  .filter-btn.active {
+    border-color: rgba(253, 224, 71, 0.5);
+    color: rgb(253, 224, 71);
+    background-color: rgba(0, 0, 0, 0.5);
+  }
 
-    .search-input {
-        width: 100%;
-        background: rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 0.75rem;
-        color: white;
-        font-size: 1rem;
-        transition: border-color 0.2s ease;
-    }
+  .token-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0.25rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    scrollbar-width: thin;
+  }
 
-    .search-input:focus {
-        outline: none;
-        border-color: rgba(255, 255, 255, 0.2);
-    }
+  .token-list::-webkit-scrollbar {
+    width: 6px;
+  }
 
-    .token-list {
-        max-height: 300px;
-        overflow-y: auto;
-        margin: 0 -1rem;
-        padding: 0 1rem;
-    }
+  .token-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-    .token-option {
-        width: 100%;
-        padding: 0.75rem;
-        background: transparent;
-        border: none;
-        border-radius: 8px;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-        text-align: left;
-        margin-bottom: 0.25rem;
-    }
+  .token-list::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+  }
 
-    .token-option:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
+  .token-list::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
 
-    .token-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
+  .token-button {
+    width: 100%;
+    padding: 0 1rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 100ms;
+    border-radius: 0.5rem;
+    min-width: 0;
+  }
 
-    .token-symbol {
-        font-size: 1.125rem;
-        font-weight: 500;
-    }
+  .token-button:hover {
+    transform: translateX(0.25rem) scale(1.01);
+  }
 
-    .token-name {
-        font-size: 0.875rem;
-        color: rgba(255, 255, 255, 0.5);
-    }
+  .token-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(253, 224, 71, 0.5);
+  }
+
+  .token-button.active {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .token-button.active:hover {
+    transform: none;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 </style>

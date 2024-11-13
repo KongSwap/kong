@@ -4,26 +4,14 @@ import { defineConfig } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import path from "path";
+import { VitePWA } from 'vite-plugin-pwa';
 
 dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
   override: true 
 });
 
-const canisterIds = {
-  local: {
-    KONG_BACKEND: "l4lgk-raaaa-aaaar-qahpq-cai",
-  },
-  staging: {
-    KONG_BACKEND: "2ipq2-uqaaa-aaaar-qailq-cai",
-  }
-};
-
 const ENV = process.env.DFX_NETWORK || 'local';
-
-Object.entries(canisterIds[ENV]).forEach(([key, value]) => {
-  process.env[`CANISTER_ID_${key}`] = value;
-});
 
 export default defineConfig({
   build: {
@@ -46,9 +34,32 @@ export default defineConfig({
   },
   plugins: [
     sveltekit(),
-    // Ensure the prefixes match your .env variables
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'KongSwap',
+        short_name: 'KongSwap',
+        description: 'KongSwap is a decentralized exchange for the Internet Computer',
+        theme_color: '#ffffff',
+        icons: [
+          {
+            src: '/icons/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/icons/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff,woff2,ttf,json}'],
+      },
+    }),
   ],
   resolve: {
     alias: [
@@ -56,6 +67,12 @@ export default defineConfig({
         find: "@declarations",
         replacement: fileURLToPath(
           new URL("../declarations", import.meta.url)
+        ),
+      },
+      {
+        find: "$lib",
+        replacement: fileURLToPath(
+          new URL("../src/lib", import.meta.url)
         ),
       },
     ],
@@ -66,6 +83,5 @@ export default defineConfig({
   },
   define: {
     'process.env.DFX_NETWORK': JSON.stringify(ENV),
-    // Add any other environment variables you need
   }
 });

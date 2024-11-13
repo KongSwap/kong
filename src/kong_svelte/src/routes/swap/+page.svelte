@@ -1,23 +1,36 @@
 <script lang="ts">
-  import { t } from '$lib/locales/translations';
-  import { backendService } from '$lib/services/backendService';
-  import { onMount } from 'svelte';
+  import { t } from '$lib/services/translations';
+  import { TokenService, tokenStore } from '$lib/services/tokens';
+  import { onMount, onDestroy } from 'svelte';
+  import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
-  import { tokenStore } from '$lib/stores/tokenStore';
 
   let tokens: any = null;
 
   onMount(async () => {
-    tokenStore.loadTokens();
     try {
-      tokens = await backendService.getTokens();
+      tokens = $tokenStore.tokens;
     } catch (error) {
       console.error('Error fetching tokens:', error);
     }
   });
+
+  const claimTokens = async () => {
+    console.log('Claiming tokens');
+    const result = await TokenService.claimFaucetTokens();
+    console.log('Claim result', result);
+    tokenStore.loadBalances();
+  };
+
+  onDestroy(() => {
+    SwapService.cleanup();
+  });
 </script>
 
-<main class="flex flex-col items-center">
+<section class="flex flex-col items-center justify-center pt-40">
+  {#if process.env.DFX_NETWORK === 'local'}
+    <button on:click={claimTokens}>Claim Tokens</button>
+  {/if}
   {#if tokens?.Ok}
     {#each tokens?.Ok as token}
       <div class="text-sm uppercase text-gray-500">
@@ -25,17 +38,11 @@
       </div>
     {/each}
   {:else if tokens}
-    <div class="swap-container">
+    <div class="flex justify-center">
       <Swap />
     </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>
   {/if}
-</main>
+</section>
 
-<style>
-  .swap-container {
-    display: flex;
-    justify-content: center;
-  }
-</style>

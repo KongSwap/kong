@@ -1,146 +1,201 @@
 <script lang="ts">
-    import { fade } from 'svelte/transition';
-    import Button from '$lib/components/common/Button.svelte';
-    import { formatNumberCustom } from '$lib/utils/formatNumberCustom';
+  import Modal from '$lib/components/common/Modal.svelte';
+  import { tokenStore, getTokenDecimals } from '$lib/services/tokens/tokenStore';
+  import { SwapService } from '$lib/services/swap/SwapService';
+  import Button from '$lib/components/common/Button.svelte';
+  import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
+  import RouteSection from './confirmation/RouteSection.svelte';
+  import FeesSection from './confirmation/FeesSection.svelte';
+  import { onMount } from 'svelte';
+
+  export let payToken: string;
+  export let payAmount: string;
+  export let receiveToken: string;
+  export let receiveAmount: string;
+  export let routingPath: string[] = [];
+  export let userMaxSlippage: number;
+  export let onClose: () => void;
+  export let onConfirm: () => Promise<boolean>;
+  export let gasFees: string[] = [];
+  export let lpFees: string[] = [];
+
+  let isVisible = true;
+  let isLoading = false;
+  let error = '';
+  let isInitializing = true;
+
+  onMount(async () => {
+    try {
+      isInitializing = true;
+      const payDecimals = getTokenDecimals(payToken);
+      const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
+      
+      const quote = await SwapService.swap_amounts(
+        payToken,
+        payAmountBigInt,
+        receiveToken,
+      );
+
+      if ("Ok" in quote) {
+        const receiveDecimals = getTokenDecimals(receiveToken);
+        receiveAmount = SwapService.fromBigInt(
+          quote.Ok.receive_amount,
+          receiveDecimals,
+        );
+        
+        if (quote.Ok.txs.length > 0) {
+          routingPath = [
+            payToken,
+            ...quote.Ok.txs.map((tx) => tx.receive_symbol),
+          ];
+
+          gasFees = [];
+          lpFees = [];
+
+          quote.Ok.txs.forEach((tx) => {
+            const receiveDecimals = getTokenDecimals(tx.receive_symbol);
+            gasFees.push(SwapService.fromBigInt(tx.gas_fee, receiveDecimals));
+            lpFees.push(SwapService.fromBigInt(tx.lp_fee, receiveDecimals));
+          });
+        }
+      } else {
+        error = quote.Err;
+        setTimeout(() => onClose(), 2000);
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to get quote';
+      setTimeout(() => onClose(), 2000);
+    } finally {
+      isInitializing = false;
+    }
+  });
+
+  async function handleConfirm() {
+    if (isLoading) return;
     
-    export let payToken: string;
-    export let payAmount: string;
-    export let receiveToken: string;
-    export let receiveAmount: string;
-    export let onConfirm: () => void;
-    export let onClose: () => void;
+    isLoading = true;
+    error = '';
     
-    // Calculated values
-    const exchangeRate = Number(receiveAmount) / Number(payAmount);
-    const impact = 0.5; // Example - should be calculated based on actual market data
-    const fee = Number(payAmount) * 0.003; // Example - should use actual fee calculation
-    </script>
-    
-    <div class="confirmation-container" transition:fade>
-      <div class="summary-section">
-        <div class="summary-row">
-          <span>You Pay</span>
-          <div class="token-amount">
-            <img src="/tokens/{payToken}.svg" alt={payToken} />
-            <span>{formatNumberCustom(payAmount, 6)} {payToken}</span>
-          </div>
-        </div>
-    
-        <div class="arrow">↓</div>
-    
-        <div class="summary-row">
-          <span>You Receive</span>
-          <div class="token-amount">
-            <img src="/tokens/{receiveToken}.svg" alt={receiveToken} />
-            <span>{formatNumberCustom(receiveAmount, 6)} {receiveToken}</span>
-          </div>
-        </div>
+    try {
+      const success = await onConfirm();
+      if (!success) throw new Error('Swap failed');
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Swap failed';
+      return;
+    } finally {
+      isLoading = false;
+      isVisible = false; 
+      onClose();
+    }
+  }
+
+  $: totalGasFee = routingPath.length > 0 ? 
+    routingPath.slice(1).reduce((acc, _, i) => {
+      const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
+      const decimals = token?.decimals || 8;
+      const gasFeeValue = typeof gasFees[i] === 'string' ? Number(gasFees[i]) : gasFees[i] || 0;
+      const stepGasFee = SwapService.fromBigInt(
+        scaleDecimalToBigInt(gasFeeValue, decimals),
+        decimals
+      );
+      return acc + Number(stepGasFee);
+    }, 0) : 0;
+
+  $: totalLPFee = routingPath.length > 0 ?
+    routingPath.slice(1).reduce((acc, _, i) => {
+      const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
+      const decimals = token?.decimals || 8;
+      const lpFeeValue = typeof lpFees[i] === 'string' ? Number(lpFees[i]) : lpFees[i] || 0;
+      const stepLPFee = SwapService.fromBigInt(
+        scaleDecimalToBigInt(lpFeeValue, decimals),
+        decimals
+      );
+      return acc + Number(stepLPFee);
+    }, 0) : 0;
+
+  function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
+    const scaleFactor = 10n ** BigInt(decimals);
+    const scaledValue = decimal * Number(scaleFactor);
+    return BigInt(Math.floor(scaledValue));
+  }
+</script>
+
+<Modal show={isVisible} title="Review Swap" {onClose} variant="green">
+  {#if isInitializing}
+    <div class="loading-container">
+      <span class="loading-text">Getting latest price...</span>
+    </div>
+  {:else if error}
+    <div class="error-container">
+      <p class="error-text">{error}</p>
+    </div>
+  {:else}
+    <div class="modal-content">
+      <div class="sections-container">
+        <PayReceiveSection {payToken} {payAmount} {receiveToken} {receiveAmount} />
+        <RouteSection {routingPath} {gasFees} {lpFees} {payToken} {receiveToken} />
+        <FeesSection {totalGasFee} {totalLPFee} {userMaxSlippage} {receiveToken} />
       </div>
-    
-      <div class="details-section">
-        <div class="detail-row">
-          <span>Exchange Rate</span>
-          <span>1 {payToken} = {formatNumberCustom(exchangeRate, 6)} {receiveToken}</span>
-        </div>
-    
-        <div class="detail-row">
-          <span>Price Impact</span>
-          <span class="impact">{impact}%</span>
-        </div>
-    
-        <div class="detail-row">
-          <span>Fee</span>
-          <span>{formatNumberCustom(fee, 6)} {payToken}</span>
-        </div>
-      </div>
-    
-      <div class="buttons-container">
+      
+      <div class="button-container">
         <Button
+          text={isLoading ? 'Processing...' : 'CONFIRM SWAP'}
           variant="yellow"
-          text="Confirm Swap"
-          onClick={onConfirm}
-          className="confirm-button"
-        />
-    
-        <Button
-          variant="blue"
-          text="Cancel"
-          onClick={onClose}
-          className="cancel-button"
+          size="big"
+          onClick={handleConfirm}
+          disabled={isLoading}
+          width="100%"
         />
       </div>
     </div>
-    
-    <style>
-      .confirmation-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-        padding: 1rem;
-      }
-    
-      .summary-section {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        background: rgba(0, 0, 0, 0.2);
-        padding: 1rem;
-        border-radius: 0.5rem;
-      }
-    
-      .summary-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-    
-      .token-amount {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-    
-      .token-amount img {
-        width: 1.5rem;
-        height: 1.5rem;
-      }
-    
-      .arrow {
-        text-align: center;
-        font-size: 1.5rem;
-        opacity: 0.5;
-      }
-    
-      .details-section {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 0.5rem;
-      }
-    
-      .detail-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.9rem;
-        opacity: 0.8;
-      }
-    
-      .impact {
-        color: #ffd700;
-      }
-    
-      .buttons-container {
-        display: flex;
-        gap: 1rem;
-      }
-    
-      :global(.confirm-button) {
-        flex: 2;
-      }
-    
-      :global(.cancel-button) {
-        flex: 1;
-      }
-    </style>
+  {/if}
+</Modal>
+
+<style lang="postcss">
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .sections-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-bottom: 16px;
+  }
+
+  .button-container {
+    margin-top: auto;
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+  }
+
+  .loading-text {
+    color: var(--c-white);
+    font-size: 1.1rem;
+    opacity: 0.8;
+  }
+
+  .error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    padding: 1rem;
+  }
+
+  .error-text {
+    color: var(--c-error, #ff4444);
+    font-size: 1rem;
+    text-align: center;
+  }
+</style>

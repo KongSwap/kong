@@ -32,6 +32,21 @@
 				}
 			]
     },
+    "kong_svelte": {
+      "dependencies": [
+        "kong_backend"
+      ],
+      "source": [
+        "src/kong_svelte/dist"
+      ],
+      "type": "assets",
+      "workspace": "kong_svelte",
+			"metadata": [
+				{
+					"name": "candid:service"
+				}
+			]
+    },
     "kong_frontend": {
       "dependencies": [
         "kong_backend"
