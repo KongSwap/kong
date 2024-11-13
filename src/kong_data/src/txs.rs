@@ -7,7 +7,7 @@ use super::guards::caller_is_kingkong;
 use super::pools::get_by_pool_id;
 use super::stable_memory::TX_MAP;
 
-const MAX_TXS: usize = 100;
+const MAX_TXS: usize = 20;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_txs(tx_id: Option<u64>, num_txs: Option<u16>) -> Result<String, String> {
@@ -59,7 +59,7 @@ pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max
         m.borrow()
             .iter()
             .rev()
-            .take(5_000)
+            .take(1_000)
             .filter_map(|(_, v)| {
                 if let Some(user_id) = user_id {
                     if v.user_id() != user_id {
@@ -109,7 +109,7 @@ pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max
                 }
                 Some(v.clone())
             })
-            .take(max_txs)
+            //.take(max_txs)
             .collect::<Vec<StableTx>>()
         /*
         m.borrow()

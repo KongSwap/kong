@@ -7,7 +7,7 @@ use crate::ic::{
     address::Address::{self, AccountId, PrincipalId},
     get_time::get_time,
     guards::not_in_maintenance_mode,
-    logging::{error_log, info_log},
+    logging::error_log,
     transfer::{icp_transfer, icrc1_transfer},
 };
 use crate::stable_claim::claim_map;
@@ -36,17 +36,15 @@ pub async fn process_claims() {
     }
 
     let ts = get_time();
-    info_log(format!("Processing {} claims", num_claims).as_str());
 
     // get all unclaimed claims
-    let mut claims: Vec<StableClaim> = CLAIM_MAP.with(|m| {
+    let claims: Vec<StableClaim> = CLAIM_MAP.with(|m| {
         m.borrow()
             .iter()
+            .rev()
             .filter_map(|(_, v)| if v.status == ClaimStatus::Unclaimed { Some(v) } else { None })
             .collect()
     });
-    // order by timestamp
-    claims.sort_by_key(|claim| claim.ts);
 
     let mut consecutive_errors = 0_u8;
     for claim in &claims {

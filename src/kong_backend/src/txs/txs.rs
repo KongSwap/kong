@@ -7,7 +7,7 @@ use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_tx::tx_map;
 use crate::stable_user::user_map;
 
-const MAX_TXS: usize = 50;
+const MAX_TXS: usize = 20;
 
 #[query(guard = "not_in_maintenance_mode")]
 //fn txs(my_txs: Option<bool>, token_id: Option<u32>) -> Result<Vec<TxsReply>, String> {

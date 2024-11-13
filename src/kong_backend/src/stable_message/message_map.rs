@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::stable_message::{StableMessage, StableMessageId};
 
 use crate::stable_kong_settings::kong_settings;

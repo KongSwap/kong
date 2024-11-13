@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
