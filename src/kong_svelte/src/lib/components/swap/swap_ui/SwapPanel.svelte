@@ -8,6 +8,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { debounce } from 'lodash-es';
   import TokenSelectorButton from "./TokenSelectorButton.svelte";
+  import { SwapService } from "$lib/services/swap/SwapService";
 
   export let title: string;
   export let token: string;
@@ -58,7 +59,6 @@
     isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance || "0");
 
     if (pendingAnimation && amount === "0") {
-      pendingAnimation.cancel();
       pendingAnimation = null;
     }
 
@@ -93,25 +93,53 @@
 
   const handleMaxClick = () => {
     if (!disabled && title === "You Pay") {
-      try {
-        const formattedMaxAmount = formattedBalance;
-        isAnimating = true;
+        try {
+            const tokenInfo = $formattedTokens.find(t => t.symbol === token);
+            if (!tokenInfo) {
+                toastStore.error('Token not found');
+                return;
+            }
 
-        onAmountChange({ target: { value: formattedMaxAmount } } as unknown as Event);
+            // Get balance in tokens
+            const balanceInTokens = parseFloat(formattedBalance);
+            
+            // Get fee in tokens (multiply by 2 to ensure enough for fees)
+            const feeInTokens = tokenInfo.fee ? 
+                parseFloat(SwapService.fromBigInt(tokenInfo.fee, tokenInfo.decimals)) * 2 : 
+                0;
 
-        animatedAmount.set(parseFloat(formattedMaxAmount), {
-          duration: 400,
-          easing: cubicOut
-        }).then(() => {
-          isAnimating = false;
-          if (inputElement) {
-            inputElement.value = formattedMaxAmount;
-          }
-        });
-      } catch (error) {
-        console.error("Error in handleMaxClick:", error);
-        toastStore.error("Failed to set max amount");
-      }
+            // Calculate max amount (balance - 2*fee to be safe)
+            const maxAmount = Math.max(0, balanceInTokens - feeInTokens);
+            
+            if (maxAmount <= 0) {
+                toastStore.error('Insufficient balance to cover the transaction fees');
+                return;
+            }
+
+            isAnimating = true;
+
+            // Format the max amount to the correct number of decimals
+            const formattedMaxAmount = maxAmount.toFixed(tokenInfo.decimals);
+
+            const customEvent = new CustomEvent('input', {
+                detail: { value: formattedMaxAmount }
+            });
+
+            onAmountChange(customEvent);
+
+            animatedAmount.set(parseFloat(formattedMaxAmount), {
+                duration: 400,
+                easing: cubicOut
+            }).then(() => {
+                isAnimating = false;
+                if (inputElement) {
+                    inputElement.value = formattedMaxAmount;
+                }
+            });
+        } catch (error) {
+            console.error("Error in handleMaxClick:", error);
+            toastStore.error("Failed to set max amount");
+        }
     }
   };
 

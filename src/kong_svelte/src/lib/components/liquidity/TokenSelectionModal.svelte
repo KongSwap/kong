@@ -1,6 +1,7 @@
 <script lang="ts">
     import { fade } from 'svelte/transition';
     import { Search } from 'lucide-svelte';
+    import { tokenStore } from '$lib/services/tokens/tokenStore';
 
     export let show: boolean = false;
     export let tokens: FE.Token[] = [];
@@ -8,6 +9,12 @@
     export let searchQuery: string = '';
     export let onClose: () => void;
     export let onSelect: (token: FE.Token) => void;
+
+    $: sortedTokens = tokens.sort((a, b) => {
+        const balanceA = Number($tokenStore.balances[a.canister_id]?.in_usd || 0);
+        const balanceB = Number($tokenStore.balances[b.canister_id]?.in_usd || 0);
+        return balanceB < balanceA ? -1 : balanceB > balanceA ? 1 : 0;
+    });
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -45,7 +52,7 @@
         </div>
         
         <div class="max-h-96 overflow-y-auto space-y-2">
-            {#each tokens as token}
+            {#each sortedTokens as token}
                 <button
                     class="w-full p-3 flex items-center space-x-3 hover:bg-gray-50 
                            dark:hover:bg-gray-700/50 rounded-xl transition-colors"

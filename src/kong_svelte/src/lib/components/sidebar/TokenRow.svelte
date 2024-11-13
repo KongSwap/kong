@@ -1,18 +1,12 @@
-<script lang="ts">
+<script lang="ts">  
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { fade } from 'svelte/transition';
 
-  // Proper interface definition
-  interface Token {
-    logo?: string;
-    symbol: string;
-    name: string;
-    formattedBalance: string;
-    formattedUsdValue: string;
+  interface TokenRowProps {
+    token: FE.Token;
+    onClick?: () => void;
   }
-
-  export let token: Token;
-  export let onClick: () => void;
+  let { token, onClick }: TokenRowProps = $props();
 
   // Helper function for number formatting
   function formatBalance(value: string): string {
@@ -34,8 +28,6 @@
   <div class="token-info">
     <TokenImages
       tokens={[token]}
-      class="h-[48px] w-[48px] rounded-full"
-      loading="lazy"
     />
     <div class="flex flex-col text-left overflow-hidden">
       <span class="symbol">{token.symbol}</span>

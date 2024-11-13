@@ -1,7 +1,8 @@
 <script lang="ts">
   import { t } from '$lib/services/translations';
   import { TokenService, tokenStore } from '$lib/services/tokens';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
 
   let tokens: any = null;
@@ -15,9 +16,15 @@
   });
 
   const claimTokens = async () => {
-    await TokenService.claimFaucetTokens();
-    tokenStore.loadTokens();
+    console.log('Claiming tokens');
+    const result = await TokenService.claimFaucetTokens();
+    console.log('Claim result', result);
+    tokenStore.loadBalances();
   };
+
+  onDestroy(() => {
+    SwapService.cleanup();
+  });
 </script>
 
 <section class="flex flex-col items-center justify-center pt-40">

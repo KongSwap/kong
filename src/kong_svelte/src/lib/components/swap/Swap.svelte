@@ -6,7 +6,7 @@
   import debounce from "lodash/debounce";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { walletStore } from "$lib/services/wallet/walletStore";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { getTokenBalance, getTokenDecimals } from "$lib/services/tokens/tokenStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
@@ -14,18 +14,18 @@
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
   import BigNumber from "bignumber.js";
-  import SwapSettings from './swap_ui/SwapSettings.svelte';
-  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import SwapSettings from "./swap_ui/SwapSettings.svelte";
+  import { swapStatusStore } from "$lib/services/swap/swapStore";
+    import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
-  export let slippage = 2;
   export let initialPool: string | null = null;
 
   // Core state
   let payToken = initialPool?.split("_")[0] || "ICP";
   let receiveToken = initialPool?.split("_")[1] || "ckBTC";
-  let payAmount = "";
+  let payAmount = "0";
   let receiveAmount = "0";
   let displayReceiveAmount = "0";
 
@@ -38,55 +38,48 @@
   let isConfirmationOpen = false;
 
   // Swap details
-  let price = "0";
   let usdValue = "0";
   let payUsdValue = "0";
   let swapSlippage = 0;
-  let gasFee = "0";
-  let lpFee = "0";
-  let tokenFee: string | undefined;
   let gasFees: string[] = [];
   let lpFees: string[] = [];
-
-  // Transaction state
-  let requestId: bigint | null = null;
-  let transactionStateObject: any = null;
   let intervalId: any = null;
-
   let tweenedReceiveAmount = tweened(0, {
     duration: 420,
     easing: cubicOut,
   });
 
   let panels = [
-    { id: 'pay', type: 'pay', title: 'You Pay' },
-    { id: 'receive', type: 'receive', title: 'You Receive' }
+    { id: "pay", type: "pay", title: "You Pay" },
+    { id: "receive", type: "receive", title: "You Receive" },
   ];
 
   let routingPath: string[] = [];
-
   let showSettings = false;
-
   let showConfirmation = false;
-
-  let currentStep = '';
+  let currentStep = "";
   let currentRouteIndex = 0;
-
-  let maxAllowedSlippage = slippage;
+  let userMaxSlippage = 2;
   let isSlippageExceeded = false;
 
-  let swapMode = 'normal';
+  let swapMode = "normal";
+
+  let currentSwapId: string | null = null;
 
   onDestroy(() => {
     if (intervalId) {
       clearInterval(intervalId);
     }
+    if (currentSwapId) {
+      swapStatusStore.removeSwap(currentSwapId);
+    }
   });
 
-  $: isValidInput = payAmount && 
-                    Number(payAmount) > 0 && 
-                    !isCalculating && 
-                    swapSlippage <= maxAllowedSlippage;
+  $: isValidInput =
+    payAmount &&
+    Number(payAmount) > 0 &&
+    !isCalculating &&
+    swapSlippage <= userMaxSlippage;
   $: buttonText = getButtonText(
     isCalculating,
     isValidInput,
@@ -128,21 +121,11 @@
     if (!$walletStore.isConnected) return "Connect Wallet";
     if (isCalculating) return "Calculating...";
     if (isProcessing) return "Processing...";
-    if (swapSlippage > maxAllowedSlippage) return `High Slippage: ${swapSlippage.toFixed(2)}%`;
+    if (swapSlippage > userMaxSlippage)
+      return `High Slippage: ${swapSlippage.toFixed(2)}%`;
     if (!isValidInput) return "Enter Amount";
     if (error) return error;
     return "Swap";
-  }
-
-  function getTokenBalance(symbol: string): string {
-    const token = $tokenStore.tokens?.find((t) => t.symbol === symbol);
-    if (!token?.canister_id) return "0";
-    return $tokenStore.balances[token.canister_id]?.toString() || "0";
-  }
-
-  function getTokenDecimals(symbol: string): number {
-    const token = $tokenStore.tokens?.find((t) => t.symbol === symbol);
-    return token?.decimals || 8;
   }
 
   async function getSwapQuote(amount: string) {
@@ -158,72 +141,30 @@
     error = null;
 
     try {
-      const payDecimals = getTokenDecimals(payToken);
-      const payAmountBigInt = SwapService.toBigInt(amount, payDecimals);
-
-      const quote = await SwapService.swap_amounts(
+      console.log('Getting quote for', payAmount, payToken, receiveToken);
+      const formattedPayAmount = parseTokenAmount(payAmount, getTokenDecimals(payToken));
+      console.log('Formatted pay amount:', formattedPayAmount);
+      const quote = await SwapService.getQuoteDetails({
         payToken,
-        payAmountBigInt,
+        payAmount: formattedPayAmount,
         receiveToken,
-      );
-
-      if ("Ok" in quote) {
-        const receiveDecimals = getTokenDecimals(receiveToken);
-        const receivedAmount = SwapService.fromBigInt(
-          quote.Ok.receive_amount,
-          receiveDecimals,
-        );
-
-        setReceiveAmount(receivedAmount);
-        setDisplayAmount(new BigNumber(receivedAmount).toFixed(receiveDecimals));
-
-        const quotePrice = new BigNumber(quote.Ok.price || 0);
-        price = quotePrice.toString();
-        
-        payUsdValue = new BigNumber(amount)
-          .times(quotePrice)
-          .toFixed(2);
-        
-        usdValue = new BigNumber(receivedAmount)
-          .times(quotePrice)
-          .toFixed(2);
-
-        swapSlippage = quote.Ok.slippage;
-        
-        isSlippageExceeded = swapSlippage > maxAllowedSlippage;
-        
-        if (quote.Ok.txs.length > 0) {
-          routingPath = [payToken, ...quote.Ok.txs.map(tx => tx.receive_symbol)];
-          
-          gasFees = [];
-          lpFees = [];
-          
-          quote.Ok.txs.forEach(tx => {
-            const receiveDecimals = getTokenDecimals(tx.receive_symbol);
-            gasFees.push(SwapService.fromBigInt(tx.gas_fee, receiveDecimals));
-            lpFees.push(SwapService.fromBigInt(tx.lp_fee, receiveDecimals));
-          });
-
-          if (gasFees.length > 0) {
-            gasFee = gasFees[gasFees.length - 1];
-            lpFee = lpFees[lpFees.length - 1];
-            tokenFee = routingPath[routingPath.length - 1];
-          }
-        }
-      } else {
-        toastStore.error(quote.Err);
-        setReceiveAmount("0");
-      }
+      });
+      console.log('Quote:', quote);
+      
+      // Update the receive amount and other values
+      setReceiveAmount(quote.receiveAmount);
+      swapSlippage = quote.slippage;
+      usdValue = quote.usdValue;
+      
     } catch (err) {
-      toastStore.error(
-        err instanceof Error ? err.message : "An error occurred",
-      );
+      console.error("Error fetching swap quote:", err);
+      error = err instanceof Error ? err.message : "Failed to get quote";
       setReceiveAmount("0");
       payUsdValue = "0";
       usdValue = "0";
     } finally {
       isCalculating = false;
-    } 
+    }
   }
 
   const debouncedGetQuote = debounce(getSwapQuote, 500);
@@ -233,17 +174,12 @@
     tweenedReceiveAmount.set(Number(amount));
   }
 
-  function setDisplayAmount(amount: string) {
-    displayReceiveAmount = amount;
-    tweenedReceiveAmount.set(Number(amount));
-  }
-
   async function handleTokenSwitch() {
     if (isProcessing) return;
     [payToken, receiveToken] = [receiveToken, payToken];
     const oldPayAmount = payAmount;
     payAmount = receiveAmount;
-    
+
     if (receiveAmount !== "0") {
       await debouncedGetQuote(receiveAmount);
     }
@@ -252,7 +188,7 @@
   function handleInputChange(event: Event | CustomEvent) {
     let input: string;
 
-    if ("detail" in event && event.detail?.value) {
+    if (event instanceof CustomEvent && event.detail?.value) {
       input = event.detail.value;
     } else {
       input = (event.target as HTMLInputElement).value;
@@ -285,55 +221,6 @@
     if (payAmount) debouncedGetQuote(payAmount);
   }
 
-  function startPolling(reqId: bigint) {
-    let hasCompleted = false;
-    
-    intervalId = setInterval(async () => {
-      try {
-        const status = await SwapService.requests([reqId]);
-        
-        if (status.Ok?.[0]?.reply && !hasCompleted) {
-          console.log("status", status)
-          const reply = status.Ok[0].reply;
-          
-          if ('Swap' in reply) {
-            const swapStatus = reply.Swap;
-            
-            if (showConfirmation) {
-              const txIndex = swapStatus.txs?.findIndex(tx => !tx.completed);
-              if (txIndex !== -1 && txIndex !== undefined) {
-                const currentTx = swapStatus.txs[txIndex];
-                currentStep = `Swapping ${currentTx.pay_symbol} → ${currentTx.receive_symbol}`;
-                currentRouteIndex = txIndex;
-              } else {
-                currentStep = 'Processing...';
-              }
-            }
-            
-            if (!hasCompleted) {
-              if (swapStatus.status === "Success") {
-                hasCompleted = true;
-                clearInterval(intervalId);
-                await handleSwapSuccess(swapStatus);
-              } else if (swapStatus.status === "Failed") {
-                hasCompleted = true;
-                clearInterval(intervalId);
-                handleSwapFailure(swapStatus);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        if (!hasCompleted) {
-          hasCompleted = true;
-          console.error('Polling error:', err);
-          clearInterval(intervalId);
-          handleSwapFailure(null);
-        }
-      }
-    }, 250);
-  }
-
   async function handleSwap(): Promise<boolean> {
     if (!isValidInput || isProcessing) {
       return false;
@@ -343,108 +230,74 @@
     error = null;
 
     try {
+      // Create new swap entry and store its ID
+      currentSwapId = swapStatusStore.addSwap({
+        expectedReceiveAmount: receiveAmount,
+        lastPayAmount: payAmount,
+        payToken: payToken,
+        receiveToken: receiveToken,
+        payDecimals: getTokenDecimals(payToken)
+      });
+
       const requestId = await SwapService.executeSwap({
         payToken,
         payAmount,
         receiveToken,
         receiveAmount,
-        slippage,
+        userMaxSlippage,
         backendPrincipal: KONG_BACKEND_PRINCIPAL,
       });
-      console.log('requestId', requestId);
 
       if (requestId) {
-        startPolling(requestId);
+        SwapService.monitorTransaction(requestId, currentSwapId);
+        return true;
       } else {
         throw new Error("Failed to execute swap - no requestId returned");
       }
     } catch (err) {
-      console.error('Swap execution error:', err);
+      console.error("Swap execution error:", err);
       toastStore.error(err instanceof Error ? err.message : "Swap failed");
+      return false;
+    } finally {
       isProcessing = false;
       isConfirmationOpen = false;
-      return false;
     }
   }
 
-  async function handleSwapSuccess(reply: any) {
-    isProcessing = false;
-    showConfirmation = false; // Instant close
-    
-    if (reply.receive_amount) {
-      const receiveDecimals = getTokenDecimals(receiveToken);
-      const finalAmount = SwapService.fromBigInt(reply.receive_amount, receiveDecimals);
-      setReceiveAmount(finalAmount);
-      setDisplayAmount(new BigNumber(finalAmount).toFixed(receiveDecimals));
+  // Subscribe to quote updates for this specific swap
+  $: {
+    async function refreshQuote() {
+      console.log('Refreshing quote display');
+      const quote = await getSwapQuote(payAmount);
+      // Update only this specific swap's quote
+      if (currentSwapId) {
+        swapStatusStore.updateSwap(currentSwapId, {
+          shouldRefreshQuote: false,
+          lastQuote: quote
+        });
+      }
     }
 
-    const token = $tokenStore.tokens.find(t => t.symbol === payToken);
-    const token1 = $tokenStore.tokens.find(t => t.symbol === receiveToken);
-    await tokenStore.refreshBalance(token);
-    await tokenStore.refreshBalance(token1);
-        clearInputs();
-    slippage = 2;
-    toastStore.success("Swap successful");
+    // Check if current swap needs a quote refresh
+    if (currentSwapId && $swapStatusStore[currentSwapId]?.shouldRefreshQuote) {
+      refreshQuote();
+    }
   }
 
-  function handleSwapFailure(reply: any) {
-    isProcessing = false;
-    showConfirmation = false; // Instant close
-    toastStore.error(reply?.error || "Swap failed");
-  }
-
-  function clearInputs() {
-    payAmount = "";
-    setReceiveAmount("0");
-    setDisplayAmount("0");
-    price = "0";
-    usdValue = "0";
-    payUsdValue = "0";
-    swapSlippage = 0;
-    lpFee = "0";
-    gasFee = "0";
-    tokenFee = undefined;
-    requestId = null;
-    transactionStateObject = null;
-    currentStep = '';
-    currentRouteIndex = 0;
-  }
-
-  function handleSwapClick() {
+  async function handleSwapClick() {
     if (!isValidInput || isProcessing) return;
+    
+    // Refresh quote before showing confirmation
+    isProcessing = true;
+    const quote = await getSwapQuote(payAmount);
+    console.log('Quote:', quote);
+    swapStatusStore.updateSwap(currentSwapId, {
+      lastQuote: quote,
+      shouldRefreshQuote: true
+    });
+    isProcessing = false;
+    
     showConfirmation = true;
-  }
-
-  async function handleMaxButtonClick() {
-    const tokens = $tokenStore.tokens;
-    const payTokenObj = tokens.find(t => t.symbol === payToken);
-    if (!payTokenObj) {
-        toastStore.error('Pay token not found');
-        return;
-    }
-
-    // Get the user's balance
-    const balanceBigInt = await IcrcService.getIcrc1Balance(
-        payTokenObj,
-        $walletStore.account.owner
-    );
-    const balance = SwapService.fromBigInt(balanceBigInt, payTokenObj.decimals);
-
-    // Get the fee
-    const feeBigInt = payTokenObj.fee ?? BigInt(10000); // Ensure fee is set
-    const fee = SwapService.fromBigInt(feeBigInt, payTokenObj.decimals);
-
-    // Calculate max amount by subtracting fee from balance
-    const maxAmount = new BigNumber(balance).minus(fee);
-
-    if (maxAmount.isNegative() || maxAmount.isZero()) {
-        toastStore.error('Insufficient balance to cover the transaction fee.');
-        return;
-    }
-
-    // Set the payAmount to maxAmount
-    payAmount = maxAmount.toFixed(payTokenObj.decimals);
-    debouncedGetQuote(payAmount);
   }
 </script>
 
@@ -454,14 +307,14 @@
       <Button
         variant="yellow"
         size="medium"
-        state={swapMode === 'normal' ? 'selected' : 'default'}
-        onClick={() => swapMode = 'normal'}
+        state={swapMode === "normal" ? "selected" : "default"}
+        onClick={() => (swapMode = "normal")}
         width="50%"
       >
         Normal
       </Button>
       <Button
-        variant="yellow" 
+        variant="yellow"
         size="medium"
         state="disabled"
         onClick={() => {}}
@@ -478,20 +331,20 @@
             <SwapPanel
               title={panel.title}
               {...panelData[panel.type]}
-              onSettingsClick={() => showSettings = true}
+              onSettingsClick={() => (showSettings = true)}
             />
           </div>
         </div>
       {/each}
 
-      <button 
+      <button
         class="switch-button"
         on:click={handleTokenSwitch}
         disabled={isProcessing}
         aria-label="Switch tokens"
       >
         <svg
-          width="56" 
+          width="56"
           height="64"
           viewBox="0 0 35 42"
           xmlns="http://www.w3.org/2000/svg"
@@ -509,7 +362,7 @@
 
     <div class="swap-footer">
       <Button
-        variant={swapSlippage > maxAllowedSlippage ? "blue" : "yellow"}
+        variant={swapSlippage > userMaxSlippage ? "blue" : "yellow"}
         disabled={!isValidInput || isProcessing || !$walletStore.isConnected}
         onClick={handleSwapClick}
         width="100%"
@@ -521,21 +374,21 @@
 </div>
 
 {#if showPayTokenSelector}
-    <TokenSelector
-        show={true}
-        onSelect={(token) => handleSelectToken("pay", token)}
-        onClose={() => (showPayTokenSelector = false)}
-        currentToken={receiveToken}
-    />
+  <TokenSelector
+    show={true}
+    onSelect={(token) => handleSelectToken("pay", token)}
+    onClose={() => (showPayTokenSelector = false)}
+    currentToken={receiveToken}
+  />
 {/if}
 
 {#if showReceiveTokenSelector}
-    <TokenSelector
-        show={true}
-        onSelect={(token) => handleSelectToken("receive", token)}
-        onClose={() => (showReceiveTokenSelector = false)}
-        currentToken={payToken}
-    />
+  <TokenSelector
+    show={true}
+    onSelect={(token) => handleSelectToken("receive", token)}
+    onClose={() => (showReceiveTokenSelector = false)}
+    currentToken={payToken}
+  />
 {/if}
 
 {#if showConfirmation}
@@ -546,7 +399,7 @@
     {receiveAmount}
     {gasFees}
     {lpFees}
-    {slippage}
+    {userMaxSlippage}
     {routingPath}
     onConfirm={handleSwap}
     onClose={() => {
@@ -559,11 +412,10 @@
 {#if showSettings}
   <SwapSettings
     show={showSettings}
-    onClose={() => showSettings = false}
-    slippage={slippage}
+    onClose={() => (showSettings = false)}
+    {userMaxSlippage}
     onSlippageChange={(value) => {
-      slippage = value;
-      maxAllowedSlippage = value;
+      userMaxSlippage = value;
       if (payAmount) debouncedGetQuote(payAmount);
     }}
     onApproveToken={async () => {}}

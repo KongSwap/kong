@@ -1,14 +1,31 @@
-import { getActor } from '$lib/services/wallet/walletStore';
+import { getActor, type CanisterType } from '$lib/services/wallet/walletStore';
 import { Principal } from '@dfinity/principal';
 import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
 
 export class IcrcService {
+  private static async getActorWithCheck(canisterId: string, interfaceName: CanisterType) {
+    const actor = await getActor(canisterId, interfaceName);
+    if (!actor) {
+      throw new Error(`Actor for ${interfaceName} not available`);
+    }
+    return actor;
+  }
+
+  private static handleError(methodName: string, error: any) {
+    console.error(`Error in ${methodName}:`, error);
+    throw error;
+  }
+
   public static async getIcrc1Balance(token: FE.Token, principal: Principal): Promise<bigint> {
-    const actor = await getActor(token.canister_id, 'icrc1');
-    return actor.icrc1_balance_of({
-      owner: principal,
-      subaccount: [],
-    });
+    try {
+      const actor = await this.getActorWithCheck(token.canister_id, 'icrc1');
+      return actor.icrc1_balance_of({
+        owner: principal,
+        subaccount: [],
+      });
+    } catch (error) {
+      this.handleError('getIcrc1Balance', error);
+    }
   }
 
   public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
@@ -16,27 +33,20 @@ export class IcrcService {
       const actor = await getActor(canisterId, 'icrc1');
       return await actor.icrc1_metadata();
     } catch (error) {
-      console.error('Error getting icrc1 token metadata:', error);
-      throw error;
+      this.handleError('getIcrc1TokenMetadata', error);
     }
   }
 
-  public static async requestIcrc2Approve(
-    canisterId: string, 
+  public static async checkAndRequestIcrc2Allowances(
+    token: FE.Token, 
     payAmount: bigint,
     gasAmount: bigint = BigInt(0)
   ): Promise<bigint> {
     try {
-      const actor = await getActor(canisterId, 'icrc2');
+      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
+      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000); // 1 minute from now
+      const totalAmount = payAmount + gasAmount + token.fee + BigInt(100000000);
 
-      if (!actor.icrc2_approve) {
-        throw new Error('ICRC2 methods not available - wrong IDL loaded');
-      }
-
-      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
-      
-      const totalAmount = payAmount + gasAmount;
-      
       const approveArgs = {
         fee: [],
         memo: [],
@@ -52,30 +62,22 @@ export class IcrcService {
       };
 
       const result = await actor.icrc2_approve(approveArgs);
-      
       if ('Err' in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
       }
-      console.log('Approval:', result.Ok)
       return result.Ok;
     } catch (error) {
-      console.error('Error in ICRC2 approve:', error);
-      throw error;
+      this.handleError('checkAndRequestIcrc2Allowances', error);
     }
   }
 
   public static async checkIcrc2Allowance(
-    canisterId: string,
+    token: FE.Token,
     owner: Principal,
     spender: Principal
   ): Promise<bigint> {
     try {
-      const actor = await getActor(canisterId, 'icrc2');
-
-      if (!actor.icrc2_allowance) {
-        throw new Error('ICRC2 methods not available - wrong IDL loaded');
-      }
-
+      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
         spender: { 
@@ -83,11 +85,9 @@ export class IcrcService {
           subaccount: [] 
         }
       });
-
       return BigInt(result.allowance);
     } catch (error) {
-      console.error('Error checking ICRC2 allowance:', error);
-      throw error;
+      this.handleError('checkIcrc2Allowance', error);
     }
   }
 
@@ -103,9 +103,7 @@ export class IcrcService {
     } = {}
   ): Promise<{ Ok?: bigint; Err?: any }> {
     try {
-      const actor = await getActor(token.canister_id, 'icrc1');
-      
-      // Convert string principal to Principal if necessary
+      const actor = await this.getActorWithCheck(token.canister_id, 'icrc1');
       const toPrincipal = typeof to === 'string' ? Principal.fromText(to) : to;
 
       const transferArgs = {
@@ -121,16 +119,12 @@ export class IcrcService {
       };
 
       const result = await actor.icrc1_transfer(transferArgs);
-      
       if ('Err' in result) {
-        console.error('Transfer failed:', result.Err);
         throw new Error(`Transfer failed: ${JSON.stringify(result.Err)}`);
       }
-
       return result;
     } catch (error) {
-      console.error('Error transferring token:', error);
-      throw error;
+      this.handleError('icrc1Transfer', error);
     }
   }
 
@@ -147,12 +141,7 @@ export class IcrcService {
     } = {}
   ): Promise<{ Ok?: bigint; Err?: any }> {
     try {
-      const actor = await getActor(canisterId, 'icrc2');
-
-      if (!actor.icrc2_transfer_from) {
-        throw new Error('ICRC2 transfer_from method not available');
-      }
-
+      const actor = await this.getActorWithCheck(canisterId, 'icrc2');
       const transferArgs = {
         from: {
           owner: from,
@@ -169,15 +158,12 @@ export class IcrcService {
       };
 
       const result = await actor.icrc2_transfer_from(transferArgs);
-      
       if ('Err' in result) {
         throw new Error(`ICRC2 transfer_from error: ${JSON.stringify(result.Err)}`);
       }
-
       return result;
     } catch (error) {
-      console.error('Error in ICRC2 transfer_from:', error);
-      throw error;
+      this.handleError('icrc2TransferFrom', error);
     }
   }
 }

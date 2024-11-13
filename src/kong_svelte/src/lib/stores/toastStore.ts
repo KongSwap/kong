@@ -19,7 +19,7 @@ function createToastStore() {
         type: ToastType = 'info',
         duration: number = 3000,
         title?: string
-    ) => {
+    ): string => {
         const id = uuidv4();
         const toast: Toast = {
             id,
@@ -31,7 +31,7 @@ function createToastStore() {
 
         update(toasts => [...toasts, toast]);
 
-        if (duration > 0) {
+        if (duration && duration > 0) {
             setTimeout(() => {
                 removeToast(id);
             }, duration);

@@ -1,39 +1,40 @@
+<svelte:options customElement="token-qty-input" />
+
 <script lang="ts">
 	import { poolsList } from '$lib/services/pools/poolStore';
-	import { createEventDispatcher } from 'svelte';
 	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 	import { tokenStore } from '$lib/services/tokens/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 
-	export let value: string | number = '';
-	export let token: FE.Token;
-	export let error: string = '';
-	export let disabled: boolean = false;
-	export let placeholder: string = '0.00';
-	export let onTokenSelect: () => void;
+	interface TokenQtyInputProps {
+		value: string | number;
+		token: FE.Token;
+		error: string;
+		disabled?: boolean;
+		placeholder?: string;
+		onTokenSelect?: () => void | null;
+		onInput?: (value: string) => void | null;
+	}
 
-	const dispatch = createEventDispatcher();
+	let { value = $bindable(0), token, error, disabled = false, placeholder = 'Enter amount', onTokenSelect = null, onInput = null }: TokenQtyInputProps = $props();
 
-	// Handle input validation and formatting
-	function handleInput(event: Event) {
-		const input = event.target as HTMLInputElement;
-		const newValue = input.value.replace(/[^0-9.]/g, '');
-		value = newValue;
-		dispatch('input', { value: newValue });
+	// Use reactive statements to compute derived values
+	let rawBalance = $derived($tokenStore.balances[token.canister_id]?.in_tokens || 0n);
+	let pool = $derived($poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID));
+	let poolPrice = $derived(pool?.price ? parseFloat(pool.price.toString()) : 0);
+	let usdValue = $derived(formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice));
+	let formattedBalance = $derived(formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee)).toString(), token.decimals));
+
+	// Replace dispatch creation with $host
+	function dispatchInput(value: string) {
+		$host().dispatchEvent(new CustomEvent('input', { detail: { value } }));
 	}
 
 	function setMax() {
-		const max = formatTokenAmount(BigInt(rawBalance) - BigInt(token.fee), token.decimals);
+		const max = formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee)).toString(), token.decimals);
 		value = max.toString();
-		dispatch('input', { value: max.toString() });
+		dispatchInput(max.toString());
 	}
-
-	// Use reactive statements to compute derived values
-	$: rawBalance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
-	$: pool = $poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID);
-	$: poolPrice = pool?.price ? parseFloat(pool.price.toString()) : 0;
-	$: usdValue = formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice);
-	$: formattedBalance = formatTokenAmount(BigInt(rawBalance) - BigInt(token.fee), token.decimals);
 </script>
 
 <div class="flex flex-col gap-2 w-full">
@@ -44,7 +45,7 @@
 				{placeholder}
 				{disabled}
 				bind:value
-				on:input={handleInput}
+				oninput={(e) => onInput(e.currentTarget.value)}
 				class="
 					w-full px-4 py-4 pr-[8rem]
 					placeholder:text-white/50
@@ -63,7 +64,7 @@
 			/>
 			<button
 				type="button"
-				on:click={onTokenSelect}
+				onclick={onTokenSelect}
 				class="absolute right-0 inset-y-0 flex items-center px-4 gap-2 hover:bg-white/5 rounded-r-lg transition-colors"
 			>
 				<span class="text-white/50 text-lg font-play">{token.symbol}</span>
@@ -76,11 +77,11 @@
 	<div class="flex justify-between items-center px-1 text-sm">
 		<div class="flex items-center gap-2">
 			<span class="text-white/50">Balance: {formattedBalance}</span>
-			{#if formattedBalance > 0}
+			{#if Number(formattedBalance) > 0}
 				<button
 					type="button"
 					class="text-yellow-400 hover:text-yellow-300 text-xs uppercase font-play"
-					on:click={setMax}
+					onclick={setMax}
 				>
 					Max
 				</button>

@@ -2,27 +2,36 @@
 
 import { getActor } from '$lib/services/wallet/walletStore';
 import { walletValidator } from '$lib/services/wallet/walletValidator';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
+import { tokenStore, getTokenDecimals, getTokenPrice } from '$lib/services/tokens/tokenStore';
 import { toastStore } from '$lib/stores/toastStore';
-import { TokenService } from '$lib/services/tokens/TokenService';
 import { get } from 'svelte/store';
 import { Principal } from '@dfinity/principal';
 import BigNumber from 'bignumber.js';
-import { PoolService } from '../pools';
-import { walletStore } from '$lib/services/wallet/walletStore';
-import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 import { IcrcService } from '$lib/services/icrc/IcrcService';
+import { swapStatusStore } from './swapStore';
 
 interface SwapExecuteParams {
     payToken: string;
     payAmount: string;
     receiveToken: string;
     receiveAmount: string;
-    slippage: number;
+    userMaxSlippage: number;
     backendPrincipal: Principal;
 }
 
+// Base BigNumber configuration for internal calculations
+// Set this high enough to handle intermediate calculations without loss of precision
+BigNumber.config({
+    DECIMAL_PLACES: 36, // High enough for internal calculations
+    ROUNDING_MODE: BigNumber.ROUND_DOWN,
+    EXPONENTIAL_AT: [-50, 50]
+  });
+
 export class SwapService {
+    private static pollingInterval: ReturnType<typeof setInterval> | null = null;
+    private static readonly POLLING_INTERVAL = 500; // 1 second
+    private static readonly MAX_ATTEMPTS = 30; // 1 minute maximum
+
     public static toBigInt(amount: string, decimals: number): bigint {
         if (!amount || isNaN(Number(amount))) return BigInt(0);
         return BigInt(
@@ -71,9 +80,9 @@ export class SwapService {
         receiveAmount: string;
         price: string;
         usdValue: string;
-        lpFee: string;
-        gasFee: string;
-        tokenFee?: string;
+        lpFee: String;
+        gasFee: String;
+        tokenFee?: String;
         slippage: number;
     }> {
         const quote = await SwapService.swap_amounts(
@@ -88,6 +97,7 @@ export class SwapService {
 
         const tokens = get(tokenStore).tokens;
         const receiveToken = tokens.find(t => t.symbol === params.receiveToken);
+        const payToken = tokens.find(t => t.symbol === params.payToken);
         if (!receiveToken) throw new Error('Receive token not found');
 
         const receiveAmount = SwapService.fromBigInt(
@@ -97,13 +107,13 @@ export class SwapService {
 
         let lpFee = '0';
         let gasFee = '0';
-        let tokenFee: string | undefined;
+        let tokenFee= '0';
 
         if (quote.Ok.txs.length > 0) {
             const tx = quote.Ok.txs[0];
             lpFee = SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals);
             gasFee = SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals);
-            tokenFee = tx.receive_symbol;
+            tokenFee = payToken.fee.toString();
         }
 
         return {
@@ -134,9 +144,13 @@ export class SwapService {
     }): Promise<BE.SwapAsyncResponse> {
         try {
             const actor = await getActor();
-            return await actor.swap_async(params);
+            console.log('Sending swap_async params:', JSON.stringify(params, (_, v) => 
+                typeof v === 'bigint' ? v.toString() : v));
+            const result = await actor.swap_async(params);
+            console.log('swap_async response:', result);
+            return result;
         } catch (error) {
-            console.error('Error executing swap:', error);
+            console.error('Error in swap_async:', error);
             throw error;
         }
     }
@@ -158,11 +172,19 @@ export class SwapService {
      * Executes complete swap flow
      */
     public static async executeSwap(params: SwapExecuteParams): Promise<bigint | false> {
+        // Create a new swap entry and get its ID
+        const swapId = swapStatusStore.addSwap({
+            payToken: params.payToken,
+            lastPayAmount: params.payAmount,
+            payDecimals: getTokenDecimals(params.payToken),
+        });
+
         try {
-            await walletValidator.requireWalletConnection();
-            console.log('params', params);
+            await Promise.allSettled([
+                walletValidator.requireWalletConnection(),
+                tokenStore.loadBalances()
+            ]);
             const tokens = get(tokenStore).tokens;
-            await tokenStore.loadBalances();
             const payToken = tokens.find(t => t.symbol === params.payToken);
             if (!payToken) throw new Error('Pay token not found');
 
@@ -174,31 +196,24 @@ export class SwapService {
 
             console.log('Processing transfer/approval for amount:', payAmount.toString());
 
-            const feeBigInt = payToken.fee;
-            const totalCost = payAmount + feeBigInt;
-            const balance = await IcrcService.getIcrc1Balance(payToken, get(walletStore).account.owner);
             let txId: bigint | false;
+            let approvalId: bigint | false;
             
-            if (payToken.icrc2) {
-                console.log('Using ICRC2 approval');
-                
-                const requiredAllowance = payAmount + feeBigInt;
-
-                const approval = await SwapService.requestIcrc2Approve(
-                    payToken.canister_id,
+            if (payToken.icrc2) {                
+                const requiredAllowance = payAmount;
+                approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
+                    payToken,
                     requiredAllowance
                 );
-                txId = approval ? approval : 0n;
-                console.log('Approval:', txId);
             } else if (payToken.icrc1) {
-                console.log('Using ICRC1 transfer');
                 const result = await IcrcService.icrc1Transfer(
                     payToken,
                     params.backendPrincipal,
                     payAmount,
-                    { fee: feeBigInt }
+                    { fee: BigInt(payToken.fee) }
                 );
-                if (typeof result.Ok === 'number') {
+
+                if (result?.Ok) {
                     txId = result.Ok;
                 } else {
                     txId = false;
@@ -207,7 +222,12 @@ export class SwapService {
                 throw new Error(`Token ${payToken.symbol} does not support ICRC1 or ICRC2`);
             }
 
-            if (txId === false) {
+            if (txId === false || approvalId === false) {
+                swapStatusStore.updateSwap(swapId, {
+                    status: 'Failed',
+                    isProcessing: false,
+                    error: 'Transaction failed during transfer/approval'
+                });
                 throw new Error('Transaction failed during transfer/approval');
             }
 
@@ -216,60 +236,173 @@ export class SwapService {
                 pay_amount: payAmount,
                 receive_token: params.receiveToken,
                 receive_amount: [receiveAmount],
-                max_slippage: [params.slippage],
+                max_slippage: [params.userMaxSlippage],
                 receive_address: [],
                 referred_by: [],
-                pay_tx_id: []
+                pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : []
             };
-
             const result = await SwapService.swap_async(swapParams);
+            if ('Err' in result) {
+                throw new Error(result.Err);
+            }
 
-            console.log('Tokens:', result.Ok);
             return result.Ok;
         } catch (error) {
+            swapStatusStore.updateSwap(swapId, {
+                status: 'Failed',
+                isProcessing: false,
+                error: error instanceof Error ? error.message : 'Swap failed'
+            });
             console.error('Swap execution failed:', error);
             toastStore.error(error instanceof Error ? error.message : 'Swap failed');
             return false;
         }
     }
 
-    public static async requestIcrc2Approve(
-        canisterId: string, 
-        amount: bigint
-    ): Promise<bigint> {
-        try {
-            const actor = await getActor(canisterId, 'icrc2');
+    public static async monitorTransaction(requestId: bigint, swapId: string) {
+        this.stopPolling();
+        
+        let attempts = 0;
+        let swapStatus = swapStatusStore.getSwap(swapId);
+        const toastId = toastStore.info(`Confirming swap of ${swapStatus?.lastPayAmount} ${swapStatus?.payToken} to ${swapStatus?.expectedReceiveAmount} ${swapStatus?.receiveToken}...`, 0);
+        this.pollingInterval = setInterval(async () => {
+            try {
+                const status = await this.requests([requestId]);
+                console.log('requests result', status);
+                
+                if (status.Ok?.[0]?.reply) {
+                    const reply = status.Ok[0].reply;
+                    
+                    if ('Swap' in reply) {
+                        const swapStatus = reply.Swap;
+                        console.log('swapStatus', swapStatus);
+                        
+                        swapStatusStore.updateSwap(swapId, {
+                            status: swapStatus.status,
+                            isProcessing: true,
+                            error: null
+                        });
 
-            if (!actor.icrc2_approve) {
-                throw new Error('ICRC2 methods not available - wrong IDL loaded');
-            }
-
-            const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
-
-            const approveArgs = {
-                fee: [],
-                memo: [],
-                from_subaccount: [],
-                created_at_time: [],
-                amount,
-                expected_allowance: [],
-                expires_at: [expiresAt],
-                spender: { 
-                    owner: Principal.fromText(KONG_BACKEND_PRINCIPAL), 
-                    subaccount: [] 
+                        if (swapStatus.status === "Success") {
+                            swapStatusStore.updateSwap(swapId, {
+                                status: 'Success',
+                                isProcessing: false,
+                                shouldRefreshQuote: true,
+                                lastQuote: null
+                            });
+                            this.stopPolling();
+                            toastStore.success('Swap completed successfully');  
+                            const tokens = get(tokenStore).tokens;
+                            const swap = swapStatusStore.getSwap(swapId);      
+                            await Promise.all([
+                                tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.receiveToken)),
+                                tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.payToken))
+                            ]);
+                        } else if (swapStatus.status === "Failed") {
+                            this.stopPolling();
+                            console.log('Swap failed', reply);
+                            console.log('Swap status', swapStatus);
+                            console.log('Swap', status);
+                            swapStatusStore.updateSwap(swapId, {
+                                status: 'Failed',
+                                isProcessing: false,
+                                error: 'Swap failed'
+                            });
+                            toastStore.error('Swap failed');
+                        }
+                    }
                 }
-            };
 
-            const result = await actor.icrc2_approve(approveArgs);
+                if (attempts >= this.MAX_ATTEMPTS) {
+                    this.stopPolling();
+                    swapStatusStore.updateSwap(swapId, {
+                        status: 'Timeout',
+                        isProcessing: false,
+                        error: 'Swap timed out'
+                    });
+                    toastStore.error('Swap timed out');
+                }
 
-            if ('Err' in result) {
-                throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
+                attempts++;
+            } catch (error) {
+                console.error('Error monitoring swap:', error);
+                this.stopPolling();
+                swapStatusStore.updateSwap(swapId, {
+                    status: 'Error',
+                    isProcessing: false,
+                    error: 'Failed to monitor swap status'
+                });
+                toastStore.error('Failed to monitor swap status');
+            } finally {
+                toastStore.dismiss(toastId);
             }
-            console.log('Approval:', result.Ok)
-            return result.Ok;
-        } catch (error) {
-            console.error('Error in ICRC2 approve:', error);
-            throw error;
+        }, this.POLLING_INTERVAL);
+    }
+
+    private static stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval as any);
+            this.pollingInterval = null;
+        }
+    }
+
+    // Clean up method to be called when component unmounts
+    public static cleanup() {
+        this.stopPolling();
+    }
+
+    /**
+     * Fetches the swap quote based on the provided amount and tokens.
+     */
+    public static async getSwapQuote(
+        payToken: string,
+        receiveToken: string,
+        amount: string
+    ): Promise<{
+        receiveAmount: string;
+        slippage: number;
+        usdValue: string;
+    }> {
+        if (!amount || Number(amount) <= 0 || isNaN(Number(amount))) {
+            return {
+                receiveAmount: "0",
+                slippage: 0,
+                usdValue: "0",
+            };
+        }
+
+        try {
+            const payDecimals = getTokenDecimals(payToken);
+            const payAmountBigInt = this.toBigInt(amount, payDecimals);
+
+            const quote = await this.swap_amounts(
+                payToken,
+                payAmountBigInt,
+                receiveToken,
+            );
+
+            if ("Ok" in quote) {
+                const receiveDecimals = getTokenDecimals(receiveToken);
+                const receivedAmount = this.fromBigInt(
+                    quote.Ok.receive_amount,
+                    receiveDecimals,
+                );
+
+                // Assuming you have a method to get the price
+                const price = getTokenPrice(receiveToken);
+                const usdValueNumber = parseFloat(receivedAmount) * parseFloat(price.toString());
+
+                return {
+                    receiveAmount: receivedAmount,
+                    slippage: quote.Ok.slippage,
+                    usdValue: usdValueNumber.toString(),
+                };
+            } else if ("Err" in quote) {
+                throw new Error(quote.Err);
+            }
+        } catch (err) {
+            console.error("Error fetching swap quote:", err);
+            throw err;
         }
     }
 }

@@ -6,7 +6,7 @@
 
   export let show = false;
   export let onClose: () => void;
-  export let slippage: number;
+  export let userMaxSlippage: number;
   export let onSlippageChange: (value: number) => void;
 
   let activeTab: "slippage" | "approvals" = browser
@@ -47,7 +47,7 @@
         <!-- Mobile View -->
         <div class="mobile-view">
           {#if activeTab === "slippage"}
-            <SlippageSection {slippage} {onSlippageChange} />
+            <SlippageSection {userMaxSlippage} {onSlippageChange} />
           {:else}
             <div class="approvals-section">
               <!-- Add Approvals component here -->
@@ -59,7 +59,7 @@
         <!-- Desktop View -->
         <div class="desktop-view">
           <div class="column">
-            <SlippageSection {slippage} {onSlippageChange} />
+            <SlippageSection {userMaxSlippage} {onSlippageChange} />
           </div>
           <div class="divider" />
           <div class="column">

@@ -1,13 +1,13 @@
 <script lang="ts">
-  export let slippage: number;
+  export let userMaxSlippage: number;
   export let onSlippageChange: (value: number) => void;
 
   const slippageOptions = [0.5, 1, 2, 3];
   let customSlippage: number | null = null;
 
   $: {
-    if (slippage && !slippageOptions.includes(slippage) && customSlippage === null) {
-      customSlippage = slippage;
+    if (userMaxSlippage && !slippageOptions.includes(userMaxSlippage) && customSlippage === null) {
+      customSlippage = userMaxSlippage;
     }
   }
 
@@ -30,9 +30,9 @@
     onSlippageChange(value);
   }
 
-  $: warningMessage = slippage > 5 
+  $: warningMessage = userMaxSlippage > 5 
     ? "⚠️ High slippage can lead to unexpected results."
-    : slippage < 0.1
+    : userMaxSlippage < 0.1
     ? "⚠️ Very low slippage may cause failed transactions." 
     : null;
 </script>
@@ -52,7 +52,7 @@
     {#each slippageOptions as option}
       <button
         class="slippage-button"
-        class:active={slippage === option && customSlippage === null}
+        class:active={userMaxSlippage === option && customSlippage === null}
         on:click={() => handleSlippageSelect(option)}
       >
         {option}%

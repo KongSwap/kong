@@ -7,7 +7,7 @@
   export let disabled: boolean = false;
 
   $: tokenInfo = $formattedTokens.find(t => t.symbol === token);
-  $: logoUrl = tokenInfo?.logo || "/tokens/default.svg";
+  $: logoUrl = tokenInfo?.logo || "/tokens/not_verified.webp";
 </script>
 
 <Button
@@ -24,7 +24,7 @@
       class="token-logo"
       on:error={(e) => {
         // Fallback to default logo if image fails to load
-        e.currentTarget.src = "tokens/default.svg";
+        e.currentTarget.src = "/tokens/not_verified.webp";
       }}
     />
     <span class="token-symbol">{token}</span>

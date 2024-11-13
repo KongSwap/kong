@@ -4,7 +4,6 @@ import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberForm
 import { get } from 'svelte/store';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { poolStore } from '$lib/services/pools/poolStore';
-import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
 import { Principal } from '@dfinity/principal';
 import { TokenSchema, BETokenSchema, BETokenArraySchema } from './tokenSchema';
 import { IcrcService } from '$lib/services/icrc/IcrcService';
@@ -34,48 +33,47 @@ export class TokenService {
 
   public static async enrichTokenWithMetadata(
     tokens: FE.Token[]
-  ): Promise<FE.Token[]> {
+  ): Promise<PromiseSettledResult<FE.Token>[]> {
     const enrichedTokens: FE.Token[] = [];
     const poolData = get(poolStore);
 
-    for (const token of tokens) {
+    // Create an array of promises for all tokens
+    const tokenPromises = tokens.map(async (token) => {
       try {
         // Validate the base token
         TokenSchema.parse(token);
 
-        const fee = await this.fetchTokenFee(token);
-
-        const [price, volume24h] = await Promise.all([
+        // Fetch all data in parallel
+        const [fee, price, volume24h, logo] = await Promise.allSettled([
+          this.fetchTokenFee(token),
           this.getCachedPrice(token),
           this.calculate24hVolume(token, poolData.pools),
+          this.getCachedLogo(token)
         ]);
 
-        const logo = await this.getCachedLogo(token);
-
-        const enrichedToken: FE.Token = {
+        return {
           ...token,
-          fee,
-          price,
-          total_24h_volume: volume24h,
-          logo,
+          fee: fee.status === 'fulfilled' ? fee.value : 0n,
+          price: price.status === 'fulfilled' ? price.value : 0,
+          total_24h_volume: volume24h.status === 'fulfilled' ? volume24h.value : 0n,
+          logo: logo.status === 'fulfilled' ? logo.value : '/tokens/not_verified.webp',
         };
-
-        enrichedTokens.push(enrichedToken);
       } catch (error) {
         console.error(`Error enriching token ${token.symbol}:`, error);
 
         // Even if enrichment fails, include the token with defaults
-        enrichedTokens.push({
+        return {
           ...token,
           fee: BigInt(10000),
           logo: this.DEFAULT_LOGOS.DEFAULT,
           price: token.price || 0,
           total_24h_volume: token.total_24h_volume || 0n,
-        });
+        };
       }
-    }
+    });
 
-    return enrichedTokens;
+    // Wait for all token promises to resolve
+    return await Promise.allSettled(tokenPromises);
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
@@ -135,9 +133,8 @@ export class TokenService {
       principalId = wallet.account.owner.toString();
     }
 
-    const balances: Record<string, FE.TokenBalance> = {};
-
-    for (const token of tokens) {
+    // Create an array of promises for all tokens
+    const balancePromises = tokens.map(async (token) => {
       try {
         let balance: bigint;
 
@@ -155,19 +152,37 @@ export class TokenService {
         const price = await this.fetchPrice(token);
         const usdValue = parseFloat(actualBalance) * price;
 
-        balances[token.canister_id] = {
-          in_tokens: balance || BigInt(0),
-          in_usd: formatToNonZeroDecimal(usdValue),
+        return {
+          canister_id: token.canister_id,
+          balance: {
+            in_tokens: balance || BigInt(0),
+            in_usd: formatToNonZeroDecimal(usdValue),
+          }
         };
       } catch (err) {
         console.error(`Error fetching balance for ${token.canister_id}:`, err);
         // Optionally provide more details from 'err'
-        balances[token.canister_id] = {
-          in_tokens: BigInt(0),
-          in_usd: formatToNonZeroDecimal(0),
+        return {
+          canister_id: token.canister_id,
+          balance: {
+            in_tokens: BigInt(0),
+            in_usd: formatToNonZeroDecimal(0),
+          }
         };
       }
-    }
+    });
+
+    // Wait for all balance promises to resolve
+    const resolvedBalances = await Promise.allSettled(balancePromises);
+
+    // Convert the array of results into a record
+    const balances: Record<string, FE.TokenBalance> = {};
+    resolvedBalances.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const { canister_id, balance } = result.value;
+        balances[canister_id] = balance;
+      }
+    });
 
     return balances;
   }
@@ -183,16 +198,16 @@ export class TokenService {
 
   public static async fetchPrices(tokens: FE.Token[]): Promise<Record<string, number>> {
     const poolData = await PoolService.fetchPoolsData();
-    const prices: Record<string, number> = {};
 
-    for (const token of tokens) {
+    // Create an array of promises for all tokens
+    const pricePromises = tokens.map(async (token) => {
       const usdtPool = poolData.pools.find(pool => 
         (pool.address_0 === token.canister_id && pool.symbol_1 === "ckUSDT") ||
         (pool.address_1 === token.canister_id && pool.symbol_0 === "ckUSDT")
       );
 
       if (usdtPool) {
-        prices[token.canister_id] = usdtPool.price;
+        return { canister_id: token.canister_id, price: usdtPool.price };
       } else {
         const icpPool = poolData.pools.find(pool => 
           (pool.address_0 === token.canister_id && pool.symbol_1 === "ICP")
@@ -200,12 +215,24 @@ export class TokenService {
 
         if (icpPool) {
           const icpUsdtPrice = await this.getUsdtPriceForToken("ICP", poolData.pools);
-          prices[token.canister_id] = icpUsdtPrice * icpPool.price;
+          return { canister_id: token.canister_id, price: icpUsdtPrice * icpPool.price };
         } else {
-          prices[token.canister_id] = 0;
+          return { canister_id: token.canister_id, price: 0 };
         }
       }
-    }
+    });
+
+    // Wait for all price promises to resolve
+    const resolvedPrices = await Promise.allSettled(pricePromises);
+
+    // Convert the array of results into a record
+    const prices: Record<string, number> = {};
+    resolvedPrices.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const { canister_id, price } = result.value;
+        prices[canister_id] = price;
+      }
+    });
 
     return prices;
   }
@@ -354,11 +381,11 @@ export class TokenService {
     return await actor.txs([true]);
   }
 
-  public static async claimFaucetTokens(): Promise<void> {
+  public static async claimFaucetTokens(): Promise<any> {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
       const actor = await getActor(kongFaucetId, 'kong_faucet');
-      await actor.claim();
+      return await actor.claim();
     } catch (error) {
       console.error('Error claiming faucet tokens:', error);
     }

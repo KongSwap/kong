@@ -1,7 +1,7 @@
 <script lang="ts">
     import Modal from '$lib/components/common/Modal.svelte';
     import TokenRow from '$lib/components/sidebar/TokenRow.svelte';
-    import { formattedTokens } from '$lib/services/tokens/tokenStore';
+    import { formattedTokens, tokenStore } from '$lib/services/tokens/tokenStore';
 
     export let show = false;
     export let onSelect: (token: string) => void;
@@ -11,21 +11,29 @@
     let searchQuery = '';
     let standardFilter = 'all';
 
-    $: filteredTokens = $formattedTokens.filter(token => {
-        const matchesSearch = 
-            token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            token.name.toLowerCase().includes(searchQuery.toLowerCase());
+    $: filteredTokens = $formattedTokens
+        .filter(token => {
+            const matchesSearch = 
+                token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                token.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-        if (!matchesSearch) return false;
+            if (!matchesSearch) return false;
 
-        switch (standardFilter) {
-            case 'ck':
-                return token.symbol.toLowerCase().startsWith('ck');
-            case 'all':
-            default:
-                return true;
-        }
-    });
+            switch (standardFilter) {
+                case 'ck':
+                    return token.symbol.toLowerCase().startsWith('ck');
+                case 'all':
+                default:
+                    return true;
+            }
+        })
+        .sort((a, b) => {
+            // Get balances, default to 0n if undefined
+            const balanceA = Number($tokenStore.balances[a.canister_id]?.in_usd || 0);
+            const balanceB = Number($tokenStore.balances[b.canister_id]?.in_usd || 0);
+            // Sort in descending order (highest balance first)
+            return balanceB < balanceA ? -1 : balanceB > balanceA ? 1 : 0;
+        });
 
     function handleSelect(token: string) {
         onSelect(token);

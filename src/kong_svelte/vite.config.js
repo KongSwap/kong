@@ -39,9 +39,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Kong Svelte App',
-        short_name: 'Kong',
-        description: 'A SvelteKit application with PWA capabilities',
+        name: 'KongSwap',
+        short_name: 'KongSwap',
+        description: 'KongSwap is a decentralized exchange for the Internet Computer',
         theme_color: '#ffffff',
         icons: [
           {

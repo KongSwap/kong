@@ -28,7 +28,7 @@
 
   function handleReload() {
     isRefreshing = true;
-    tokenStore.reloadTokensAndBalances().then(() => {
+    tokenStore.loadBalances().then(() => {
       isRefreshing = false;
     });
   }
@@ -48,6 +48,12 @@
     $formattedTokens?.find(
       (token) => token.canister_id === selectedToken?.canister_id,
     )?.formattedBalance || "0";
+
+  $: sortedTokens = [...($formattedTokens || [])].sort((a, b) => {
+    const aValue = parseFloat(a.formattedUsdValue.replace(/[^0-9.-]+/g, ''));
+    const bValue = parseFloat(b.formattedUsdValue.replace(/[^0-9.-]+/g, ''));
+    return bValue - aValue; // Sort in descending order
+  });
 </script>
 
 <div class="token-list w-full">
@@ -70,21 +76,21 @@
       </div>
     </button>
   </div>
-  {#if $tokenStore.isLoading && $formattedTokens.tokens?.length === 0}
+  {#if $tokenStore.isLoading && $formattedTokens.length === 0}
     <div class="loading"><LoadingIndicator /></div>
   {:else if $tokenStore.error}
     <div class="error">{$tokenStore.error}</div>
   {:else}
-    {#each $formattedTokens as token (token)}
+    {#each sortedTokens as token (token.canister_id)}
       <TokenRow {token} onClick={() => handleTokenClick(token)} />
     {/each}
   {/if}
 </div>
 
 <Modal
-  isOpen={isModalOpen}
+  show={isModalOpen}
   onClose={handleCloseModal}
-  title={"Send " + selectedToken?.symbol || "Token Details"}
+  title={"Send " + (selectedToken?.symbol || "Token Details")}
   width="480px"
 >
   {#if selectedToken}
@@ -99,8 +105,7 @@
           {selectedToken.symbol}
         </h3>
         <p class="text-base">
-          {selectedToken.formattedBalance}
-          {selectedToken.symbol}
+          {selectedToken.formattedBalance} {selectedToken.symbol}
         </p>
         <p class="text-base">${selectedToken.formattedUsdValue}</p>
       </div>
@@ -111,7 +116,7 @@
         bind:value={amount}
         token={selectedToken}
         {error}
-        on:input={handleInput}
+        onInput={handleInput}
       />
       <TextInput
         id="principal"
@@ -122,8 +127,8 @@
     </div>
 
     <div class="modal-buttons">
-      <Button text="Close" onClick={handleCloseModal} />
-      <Button text="Send" variant="green" onClick={handleCloseModal} />
+      <Button text="Close" on:click={handleCloseModal} />
+      <Button text="Send" variant="green" on:click={handleCloseModal} />
     </div>
   {/if}
 </Modal>

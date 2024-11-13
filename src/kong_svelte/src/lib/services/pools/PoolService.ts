@@ -2,10 +2,8 @@
 import { getActor, walletStore } from '$lib/services/wallet/walletStore';
 import { walletValidator } from '$lib/services/wallet/walletValidator';
 import { get } from 'svelte/store';
-import { TokenService } from '$lib/services/tokens/TokenService';
 import { PoolResponseSchema, UserPoolBalanceSchema } from './poolSchema';
-import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
-import { Principal } from '@dfinity/principal';
+import { IcrcService } from '../icrc/IcrcService';
 
 export class PoolService {
   protected static instance: PoolService;
@@ -127,59 +125,6 @@ export class PoolService {
   }
 
   /**
-   * Check and Request ICRC2 Allowances
-   */
-  public static async checkAndRequestIcrc2Allowances(
-    token0: FE.Token,
-    token1: FE.Token,
-    amount0: bigint,
-    amount1: bigint
-  ): Promise<void> {
-    try {
-      const wallet = get(walletStore);
-      if (!wallet.isConnected) {
-        throw new Error('Wallet not connected');
-      }
-
-      const owner = wallet.account.owner;
-      
-      // Check current allowances
-      const [allowance0, allowance1] = await Promise.all([
-        TokenService.checkIcrc2Allowance(token0.canister_id, owner, Principal.fromText(KONG_BACKEND_PRINCIPAL)),
-        TokenService.checkIcrc2Allowance(token1.canister_id, owner, Principal.fromText(KONG_BACKEND_PRINCIPAL))
-      ]);
-
-      const amount0BigInt = amount0 + token0.fee;
-      const amount1BigInt = amount1 + token1.fee;
-
-      // Request allowances if needed
-      const approvalPromises = [];
-
-      if (allowance0 < amount0BigInt) {
-        approvalPromises.push(
-          TokenService.requestIcrc2Approve(token0.canister_id, amount0BigInt)
-        );
-      }
-
-      if (allowance1 < amount1BigInt) {
-        approvalPromises.push(
-          TokenService.requestIcrc2Approve(token1.canister_id, amount1BigInt)
-        );
-      }
-
-      if (approvalPromises.length > 0) {
-        const results = await Promise.all(approvalPromises);
-        if (results.some(result => !result)) {
-          throw new Error('Failed to approve one or more tokens');
-        }
-      }
-    } catch (error) {
-      console.error('Error in checking/requesting ICRC2 allowances:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Add liquidity to a pool with ICRC2 approval
    */
   public static async addLiquidity(params: {
@@ -196,15 +141,19 @@ export class PoolService {
       if (!params.token_0 || !params.token_1) {
         throw new Error('Invalid token configuration');
       }
+      
+      const [_approval0, _approval1, actor] = await Promise.all([
+        IcrcService.checkAndRequestIcrc2Allowances(
+          params.token_0,
+          params.amount_0,
+        ),
+        IcrcService.checkAndRequestIcrc2Allowances(
+          params.token_1,
+          params.amount_1,
+        ),
+        getActor()
+      ]);
 
-      await this.checkAndRequestIcrc2Allowances(
-        params.token_0,
-        params.token_1,
-        params.amount_0,
-        params.amount_1
-      );
-
-      const actor = await getActor();
       const result = await actor.add_liquidity_async({
         token_0: params.token_0.token,
         amount_0: params.amount_0,

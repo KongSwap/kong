@@ -5,6 +5,7 @@ import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
 import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 import { toastStore } from '$lib/stores/toastStore';
+import BigNumber from 'bignumber.js';
 
 interface TokenState {
   readonly tokens: FE.Token[];
@@ -14,9 +15,36 @@ interface TokenState {
   readonly error: string | null;
   readonly totalValueUsd: string;
   readonly lastTokensFetch: number | null;
+  readonly activeSwaps: Record<string, {
+    payToken: string;
+    receiveToken: string;
+    amount: BigNumber;
+    expectedOutput?: BigNumber;
+    minReceived?: BigNumber;
+    priceImpact?: BigNumber;
+    route?: string[];
+    timestamp: number;
+  }>;
 }
 
-const CACHE_DURATION = 1000 * 60 * 1; // 1 minute in milliseconds
+const CACHE_DURATION = 1000 * 60 * 3; // 3 minutes in milliseconds
+
+// Base BigNumber configuration for internal calculations
+// Set this high enough to handle intermediate calculations without loss of precision
+BigNumber.config({
+  DECIMAL_PLACES: 36, // High enough for internal calculations
+  ROUNDING_MODE: BigNumber.ROUND_DOWN,
+  EXPONENTIAL_AT: [-50, 50]
+});
+
+// Helper functions to handle token-specific decimal precision
+const toTokenDecimals = (amount: BigNumber | string | number, decimals: number): BigNumber => {
+  return new BigNumber(amount).dividedBy(new BigNumber(10).pow(decimals));
+};
+
+const fromTokenDecimals = (amount: BigNumber | string | number, decimals: number): BigNumber => {
+  return new BigNumber(amount).times(new BigNumber(10).pow(decimals));
+};
 
 // Add BigInt serialization handler
 const serializeState = (state: TokenState): string => {
@@ -59,7 +87,8 @@ function createTokenStore() {
     isLoading: false,
     error: null,
     totalValueUsd: '0.00',
-    lastTokensFetch: null
+    lastTokensFetch: null,
+    activeSwaps: {}
   });
 
   // Load cached state on initialization
@@ -90,17 +119,9 @@ function createTokenStore() {
     }
   };
 
-  const reloadTokensAndBalances = async () => {
-    try {
-      await tokenStore.loadBalances();
-    } catch (error) {
-      console.error("Failed to reload tokens and balances:", error);
-    }
-  };
-
   return {
     subscribe: store.subscribe,
-    loadTokens: async (forceRefresh = true) => {
+    loadTokens: async (forceRefresh = false) => {
       const currentState = getCurrentState();
 
       if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
@@ -133,7 +154,7 @@ function createTokenStore() {
                     on_kong: icToken.on_kong,
                     pool_symbol: icToken.pool_symbol ?? "Pool not found",
                     // Optional fields
-                    logo: undefined,
+                    logo: "/tokens/not_verified.webp",
                     total_24h_volume: undefined,
                     price: undefined,
                     tvl: undefined,
@@ -145,7 +166,7 @@ function createTokenStore() {
 
         updateState({
             ...currentState,  // Preserve existing state
-            tokens: enrichedTokens,
+            tokens: enrichedTokens.map(result => result.status === 'fulfilled' ? result.value : null).filter(Boolean) as FE.Token[],
             isLoading: false,
             lastTokensFetch: Date.now(),
             error: null,
@@ -172,17 +193,22 @@ function createTokenStore() {
       const balance = await TokenService.fetchBalance(token);
       updateState({ ...currentState, balances: { ...currentState.balances, [token.canister_id]: { in_tokens: BigInt(balance), in_usd: '0' } } });
     },
+    loadBalance: async (token: FE.Token) => {
+      const currentState = getCurrentState();
+      const balance = await TokenService.fetchBalance(token);
+      updateState({ ...currentState, balances: { ...currentState.balances, [token.canister_id]: { in_tokens: BigInt(balance), in_usd: '0' } } });
+    },
     loadBalances: async () => {
       const currentState = getCurrentState();
       store.update(s => ({ ...s, isLoading: true }));
 
       try {
-        const [balances, prices] = await Promise.all([
+        const [balances, prices] = await Promise.allSettled([
           TokenService.fetchBalances(currentState.tokens),
           TokenService.fetchPrices(currentState.tokens) // Fetch prices
         ]);
 
-        const formattedBalances = Object.entries(balances).reduce<Record<string, FE.TokenBalance>>(
+        const formattedBalances = Object.entries(balances.status === 'fulfilled' ? balances.value : {}).reduce<Record<string, FE.TokenBalance>>(
           (acc, [key, value]) => ({
             ...acc,
             [key]: value
@@ -193,7 +219,7 @@ function createTokenStore() {
         const newState: TokenState = {
           ...currentState,
           balances: formattedBalances,
-          prices: prices,
+          prices: prices.status === 'fulfilled' ? prices.value : {},
           isLoading: false
         };
 
@@ -218,10 +244,10 @@ function createTokenStore() {
         isLoading: false,
         error: null,
         totalValueUsd: '0.00',
-        lastTokensFetch: null
+        lastTokensFetch: null,
+        activeSwaps: {}
       });
     },
-    reloadTokensAndBalances,
     getTokenPrices: () => {
       const currentState = getCurrentState();
       return currentState.prices;
@@ -230,28 +256,6 @@ function createTokenStore() {
 }
 
 export const tokenStore = createTokenStore();
-
-// Memoize the portfolio value calculation
-const calculatePortfolioValue = (balances: Record<string, FE.TokenBalance>, tokens: FE.Token[]) => {
-  let total = 0;
-  // Assuming TokenService.fetchPrices is optimized for batch processing
-  return TokenService.fetchPrices(tokens)
-    .then(prices => {
-      for (const [canisterId, balance] of Object.entries(balances)) {
-        const token = tokens.find(t => t.canister_id === canisterId);
-        if (token && prices[canisterId]) {
-          const actualBalance = formatTokenAmount(balance.in_tokens.toString(), token.decimals);
-          total += parseFloat(actualBalance) * prices[canisterId];
-        }
-      }
-      return formatToNonZeroDecimal(total);
-    })
-    .catch(error => {
-      console.error('Error calculating portfolio value:', error);
-      return formatToNonZeroDecimal(0);
-    });
-};
-
 export const portfolioValue: Readable<string> = derived(
   [tokenStore],
   ([$tokenStore]) => {
@@ -272,13 +276,53 @@ export const formattedTokens: Readable<FE.Token[]> = derived(
   ($tokenStore) => {
     return $tokenStore.tokens.map((token) => {
       const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-      const usdValue = $tokenStore.balances[token.canister_id]?.in_usd || '0';
+      const price = $tokenStore.prices[token.canister_id] || new BigNumber(0);
+      const amount = toTokenDecimals(balance.toString(), token.decimals);
+      
+      // Format with token-specific decimal places
+      const formattedBalance = amount.toFormat(token.decimals);
+      const usdValue = amount.times(price);
 
       return {
         ...token,
-        formattedBalance: formatTokenAmount(balance.toString(), token.decimals),
-        formattedUsdValue: formatToNonZeroDecimal(Number(usdValue)) || '0',
+        formattedBalance,
+        formattedUsdValue: usdValue.toFormat(2),
       };
     });
   }
+);
+
+export const getTokenDecimals = (symbol: string): number => {
+  const token = get(tokenStore).tokens?.find((t) => t.symbol === symbol);
+  return token?.decimals || 8;
+};
+
+export const getTokenBalance = (canisterId: string): bigint => {
+  const balance = get(tokenStore).balances[canisterId]?.in_tokens || BigInt(0);
+  return balance;
+};
+
+export const getTokenPrice = (canisterId: string): number => {
+  const price = get(tokenStore).prices[canisterId] || new BigNumber(0);
+  return new BigNumber(price).toNumber();
+};
+
+export const activeSwaps = derived(
+  tokenStore,
+  ($tokenStore) => Object.entries($tokenStore.activeSwaps).map(([id, swap]) => {
+    const payTokenInfo = $tokenStore.tokens.find(t => t.symbol === swap.payToken);
+    if (!payTokenInfo) return null;
+
+    const price = $tokenStore.prices[swap.payToken] || new BigNumber(0);
+    const formattedAmount = toTokenDecimals(swap.amount, payTokenInfo.decimals);
+    const valueUsd = formattedAmount.times(price);
+
+    return {
+      id,
+      ...swap,
+      age: Date.now() - swap.timestamp,
+      formattedAmount: formattedAmount.toFormat(payTokenInfo.decimals),
+      valueUsd: valueUsd.toFormat(2)
+    };
+  }).filter(Boolean)
 );

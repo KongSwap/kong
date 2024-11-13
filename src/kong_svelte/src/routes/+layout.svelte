@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../app.css";
-  import { onMount, beforeUpdate } from "svelte";
+  import { onMount } from "svelte";
   import { page } from "$app/stores";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
@@ -14,44 +14,53 @@
   import poolsBackground from "$lib/assets/backgrounds/pools.webp";
   import jungleBackground from "$lib/assets/backgrounds/kong_jungle2.webp";
 
-  let initialized: boolean = false;
-  let pageTitle: string = "";
+  let pageTitle: string = $state("");
+  let { children } = $props();
 
-  onMount(async () => {
-    pageTitle =
-      process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
+  onMount(() => {
+    pageTitle = process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
     if (!$localeStore) {
       switchLocale("en");
     }
-    await Promise.all([
-      restoreWalletConnection(),
-      tokenStore.loadTokens(),
-      poolStore.loadPools()
-    ]);
-    isConnected() ? setInterval(tokenStore.loadBalances, 10000) : null,
-    initialized = true;
+    const init = async () => {
+      await Promise.all([
+        restoreWalletConnection(),
+        tokenStore.loadTokens(),
+        poolStore.loadPools()
+      ]);
+      if (isConnected()) {
+        interval = setInterval(tokenStore.loadBalances, 5000);
+      }
+    };
+    let interval: NodeJS.Timeout | null = null;
+    init();
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   });
 
-  beforeUpdate(() => {
-      if ($page.url.pathname.startsWith("/pools")) {
-        document.body.style.background = `#5BB2CF url(${poolsBackground})`;
-      } else if ($page.url.pathname.startsWith("/stats")) {
-        document.body.style.background = "#5BB2CF";
-      } else if ($page.url.pathname.startsWith("/swap")) {
-        document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-      } else {
-        document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-      }
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundPosition = "center";
+  $effect(() => {
+    if (isConnected()) {
+      tokenStore.loadBalances();
+    }
+  });
+
+  $effect.pre(() => {
+    if ($page.url.pathname.startsWith("/pools")) {
+      document.body.style.background = `#5BB2CF url(${poolsBackground})`;
+    } else if ($page.url.pathname.startsWith("/stats")) {
+      document.body.style.background = "#5BB2CF";
+    } else if ($page.url.pathname.startsWith("/swap")) {
+      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
+    } else {
+      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
+    }
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
   });
 </script>
-
-<div class="flex justify-center">
-  <Navbar />
-</div>
-
-<Toast />
 
 <svelte:head>
   <title>
@@ -59,4 +68,10 @@
   </title>
 </svelte:head>
 
-<slot />
+<div class="flex justify-center">
+  <Navbar />
+</div>
+
+<Toast />
+
+{@render children?.()}

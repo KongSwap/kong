@@ -58,6 +58,16 @@ export const formatToNonZeroDecimal = (number: number | string): string => {
 };
 
 export const parseTokenAmount = (formattedAmount: number | string, decimals: number): bigint => {
-  const amountNumber = Number(formattedAmount);
-  return BigInt(Math.round(amountNumber * Math.pow(10, decimals)));
+  // Convert to string and handle scientific notation
+  const amountStr = typeof formattedAmount === 'number' 
+    ? formattedAmount.toString() 
+    : formattedAmount;
+
+  // Use BigNumber to handle the conversion accurately
+  const amount = new BigNumber(amountStr)
+    .multipliedBy(new BigNumber(10).pow(decimals))
+    .integerValue(BigNumber.ROUND_DOWN);
+
+  // Convert to bigint
+  return BigInt(amount.toString());
 };

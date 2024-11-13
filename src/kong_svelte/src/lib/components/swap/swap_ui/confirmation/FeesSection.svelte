@@ -1,7 +1,7 @@
 <script lang="ts">
   export let totalGasFee: number;
   export let totalLPFee: number;
-  export let slippage: number;
+  export let userMaxSlippage: number;
   export let receiveToken: string;
 </script>
 
@@ -23,7 +23,7 @@
   <div class="fee-row">
     <span class="label">Max Slippage</span>
     <div class="amount">
-      <span class="value">{slippage}</span>
+      <span class="value">{userMaxSlippage}</span>
       <span class="token">%</span>
     </div>
   </div>

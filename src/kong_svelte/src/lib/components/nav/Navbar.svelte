@@ -29,7 +29,13 @@
       desktop: "/titles/swap_title.webp",
       mobile: "/titles/swap_title.webp",
     },
+    stats: {
+      desktop: "/titles/stats_title.webp",
+      mobile: "/titles/stats_title.webp",
+    },
   };
+
+  $: activeTab = determineActiveTab($page.url.pathname);
 
   function handleTabChange(tab: Tab) {
     // If we're already on the current tab, just close the nav
@@ -39,7 +45,6 @@
     }
     
     // Otherwise proceed with navigation
-    activeTab = tab;
     goto(`/${tab}`);
     navOpen = false;
   }
