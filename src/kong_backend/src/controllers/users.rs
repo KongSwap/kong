@@ -5,7 +5,7 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::USER_MAP;
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
-const MAX_USERS: usize = 2_000;
+const MAX_USERS: usize = 1_000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
