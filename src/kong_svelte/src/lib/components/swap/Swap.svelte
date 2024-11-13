@@ -45,7 +45,7 @@
   let lpFees: string[] = [];
   let intervalId: any = null;
   let tweenedReceiveAmount = tweened(0, {
-    duration: 420,
+    duration: 120,
     easing: cubicOut,
   });
 
@@ -246,6 +246,7 @@
         receiveAmount,
         userMaxSlippage,
         backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        lpFees
       });
 
       if (requestId) {

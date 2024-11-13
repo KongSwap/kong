@@ -19,7 +19,7 @@
     };
 
     let recipientAddress = '';
-    let amount = '';
+    let amount;
     let maxAmount = parseFloat(token.amount);
     let isValidating = false;
     let errorMessage = '';

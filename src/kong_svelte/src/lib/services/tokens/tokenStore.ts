@@ -39,7 +39,7 @@ BigNumber.config({
 
 // Helper functions to handle token-specific decimal precision
 const toTokenDecimals = (amount: BigNumber | string | number, decimals: number): BigNumber => {
-  return new BigNumber(amount).dividedBy(new BigNumber(10).pow(decimals));
+  return new BigNumber(amount).dividedBy(new BigNumber(10 ** decimals));
 };
 
 const fromTokenDecimals = (amount: BigNumber | string | number, decimals: number): BigNumber => {
@@ -292,19 +292,31 @@ export const formattedTokens: Readable<FE.Token[]> = derived(
   }
 );
 
+export const tokenPrices = derived(
+  tokenStore,
+  ($tokenStore) => $tokenStore.prices
+);
+
 export const getTokenDecimals = (symbol: string): number => {
   const token = get(tokenStore).tokens?.find((t) => t.symbol === symbol);
   return token?.decimals || 8;
 };
 
-export const getTokenBalance = (canisterId: string): bigint => {
-  const balance = get(tokenStore).balances[canisterId]?.in_tokens || BigInt(0);
+export const getTokenBalance = (canisterId: string): FE.TokenBalance => {
+  const balance = get(tokenStore).balances[canisterId] || { in_tokens: BigInt(0), in_usd: '0' };
   return balance;
 };
 
 export const getTokenPrice = (canisterId: string): number => {
-  const price = get(tokenStore).prices[canisterId] || new BigNumber(0);
-  return new BigNumber(price).toNumber();
+  const price = get(tokenStore).prices[canisterId] || 0;
+  const tokens = get(tokenStore).tokens;
+  // update the token store tokens with the price
+  tokens.forEach((token) => {
+    if (token.canister_id === canisterId) {
+      token.price = price;
+    }
+  });
+  return price;
 };
 
 export const activeSwaps = derived(
@@ -314,14 +326,16 @@ export const activeSwaps = derived(
     if (!payTokenInfo) return null;
 
     const price = $tokenStore.prices[swap.payToken] || new BigNumber(0);
+    console.log("price", price);
     const formattedAmount = toTokenDecimals(swap.amount, payTokenInfo.decimals);
     const valueUsd = formattedAmount.times(price);
+    console.log("valueUsd", valueUsd);
 
     return {
       id,
       ...swap,
       age: Date.now() - swap.timestamp,
-      formattedAmount: formattedAmount.toFormat(payTokenInfo.decimals),
+      formattedAmount: formattedAmount.toNumber(),
       valueUsd: valueUsd.toFormat(2)
     };
   }).filter(Boolean)

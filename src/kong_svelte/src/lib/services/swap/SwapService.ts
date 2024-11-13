@@ -17,6 +17,7 @@ interface SwapExecuteParams {
     receiveAmount: string;
     userMaxSlippage: number;
     backendPrincipal: Principal;
+    lpFees: any[];
 }
 
 // Base BigNumber configuration for internal calculations
@@ -405,5 +406,42 @@ export class SwapService {
             throw err;
         }
     }
+
+    /**
+     * Calculates the maximum transferable amount of a token, considering fees.
+     *
+     * @param tokenInfo - Information about the token, including fees and canister ID.
+     * @param formattedBalance - The user's available balance of the token as a string.
+     * @param decimals - Number of decimal places the token supports.
+     * @param isIcrc1 - Boolean indicating if the token follows the ICRC1 standard.
+     * @returns A BigNumber representing the maximum transferable amount.
+     */
+    public static calculateMaxAmount(
+        tokenInfo: {
+        canister_id: string;
+        fee?: bigint;
+        icrc1?: boolean;
+        icrc2?: boolean;
+        // Add other relevant properties if needed
+        },
+        formattedBalance: string,
+        decimals: number = 8,
+        isIcrc1: boolean = false
+    ): BigNumber {
+        const SCALE_FACTOR = new BigNumber(10).pow(decimals);
+        const balance = new BigNumber(formattedBalance);
+        
+        // Calculate base fee. If fee is undefined, default to 0.
+        const baseFee = tokenInfo.fee
+        ? new BigNumber(tokenInfo.fee.toString()).dividedBy(SCALE_FACTOR)
+        : new BigNumber(0);
+        
+        // Calculate gas fee based on token standard
+        const gasFee = isIcrc1 ? baseFee : baseFee.multipliedBy(2);
+        
+        // Ensure that the max amount is not negative
+        const maxAmount = balance.minus(gasFee);
+        return BigNumber.maximum(maxAmount, new BigNumber(0));
+  }
 }
 
