@@ -2,48 +2,20 @@
   import { fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
+  import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import "./colors.css";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "transactions";
   export let setActiveTab: (tab: "tokens" | "pools" | "transactions") => void;
 
-  let showCopied = false;
-
-  // Function to format address with variable truncation based on screen width
-  function formatAddress(address: string, isMobile: boolean): string {
-    if (!address) return "";
-    if (isMobile) {
-      // More truncated for mobile (show fewer characters)
-      const start = address.slice(0, 4);
-      const end = address.slice(-3);
-      return `${start}...${end}`;
-    } else {
-      // Show more characters on desktop
-      const start = address.slice(0, 8);
-      const end = address.slice(-6);
-      return `${start}...${end}`;
-    }
-  }
+  let showAccountDetails = false;
 
   let windowWidth: number;
 
   $: walletAddress = $walletStore.account?.owner.toString() || "";
   $: isMobile = windowWidth < 768; // Define mobile breakpoint
-  $: displayAddress = formatAddress(walletAddress, isMobile);
   $: isLoggedIn = $walletStore.isConnected;
-
-  const handleCopy = async () => {
-    if (!showCopied && $walletStore.account?.owner) {
-      await navigator.clipboard.writeText(
-        $walletStore.account.owner.toString(),
-      );
-      showCopied = true;
-      setTimeout(() => {
-        showCopied = false;
-      }, 1500);
-    }
-  };
 
   const tabs: ("tokens" | "pools" | "transactions")[] = [
     "tokens",
@@ -62,60 +34,26 @@
     {#if isLoggedIn}
       <div class="wallet-info" role="group" aria-label="Wallet information">
         <div class="wallet-section">
-          <div
-            class="wallet-address-container"
-            class:mobile={isMobile}
-            title={walletAddress}
-          >
-            <span class="wallet-address" aria-label="Wallet address">
-              {displayAddress}
-            </span>
-          </div>
           <button
-            class="copy-button group relative"
-            class:copied={showCopied}
-            on:click={handleCopy}
-            aria-label={showCopied ? "Principal copied" : "Copy principal"}
+            class="account-button"
+            on:click={() => showAccountDetails = true}
+            aria-label="View account details"
           >
-            <span
-              class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100"
-            >
-              {showCopied ? "Principal copied!" : "Copy principal"}
+            <span class="button-content">
+              Account Details
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="ml-2"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
             </span>
-            {#if showCopied}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            {:else}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path
-                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                ></path>
-              </svg>
-            {/if}
           </button>
         </div>
         <div class="action-buttons">
@@ -218,6 +156,11 @@
     {/if}
   </div>
 </header>
+
+<AccountDetails 
+  show={showAccountDetails} 
+  onClose={() => showAccountDetails = false}
+/>
 
 <style>
   /* Sidebar Header Styles */
@@ -432,5 +375,33 @@
 
   .tab-button.active::after {
     transform: scaleX(1);
+  }
+
+  .account-button {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--sidebar-border);
+    width: 100%;
+    height: 40px;
+    color: white;
+    font-family: monospace;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .account-button:hover {
+    background: rgba(0, 0, 0, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .button-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
   }
 </style>

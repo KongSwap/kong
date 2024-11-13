@@ -17,9 +17,11 @@
     "src/kong_svelte"
   ],
   "dependencies": {
-    "@dfinity/ledger-icp": "^2.6.2"
+    "@dfinity/ledger-icp": "^2.6.2",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.5",
     "vite-plugin-pwa": "^0.20.5"
   }
 }
