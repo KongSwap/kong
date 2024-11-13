@@ -14,4 +14,4 @@ mod user_map;
 mod users;
 
 pub const APP_NAME: &str = "Kong Data";
-pub const APP_VERSION: &str = "v0.0.9";
+pub const APP_VERSION: &str = "v0.0.10";
