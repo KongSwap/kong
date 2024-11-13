@@ -47,3 +47,19 @@ fn archive_pools(tokens: String) -> Result<String, String> {
 pub fn get_by_pool_id(pool_id: u32) -> Option<StablePool> {
     POOL_MAP.with(|m| m.borrow().get(&StablePoolId(pool_id)))
 }
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn pools(symbol: Option<String>) -> Result<String, String> {
+    let symbols = get_on_kong().iter().map(|p| p.clone()).collect::<Vec<_>>();
+    Ok(serde_json::to_string(&symbols).map_err(|e| format!("Failed to serialize pools: {}", e))?)
+}
+
+/// get all pools listed on Kong
+pub fn get_on_kong() -> Vec<StablePool> {
+    POOL_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .filter_map(|(_, v)| if v.on_kong { Some(v) } else { None })
+            .collect()
+    })
+}

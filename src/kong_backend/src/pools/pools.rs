@@ -17,7 +17,7 @@ fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
     let pools = to_pools_reply(match symbol.as_deref() {
         Some("all") => pool_map::get().iter().map(to_pool_reply).collect(),
         Some(symbol) => pool_map::get_by_token_wildcard(symbol).iter().map(to_pool_reply).collect(),
-        None => pool_map::get_on_kong().iter().take(40).map(to_pool_reply).collect(),
+        None => pool_map::get_on_kong().iter().map(to_pool_reply).collect(),
     });
     /*
     // order by TVL in reverse order

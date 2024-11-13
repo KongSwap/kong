@@ -20,7 +20,8 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
         pool_id: pool.pool_id,
         name: pool.name(),
         symbol: pool.symbol(),
-        balance: pool.get_balance(),
+        //balance: pool.get_balance(),
+        balance: nat_zero(),
         chain_0: match &token_0 {
             Some(token) => token.chain().to_string(),
             None => "Chain_0 not found".to_string(),
