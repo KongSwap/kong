@@ -124,111 +124,77 @@
     <img src={getImagePath('l')} alt="" class="left-part" />
     <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
     <img src={getImagePath('r')} alt="" class="right-part" />
-    <span class="button-text {state === 'selected' ? 'text-white' : ''}">
+    <span class="button-text {state === 'selected' ? 'text-white font-semibold' : ''}">
       <slot>{text}</slot>
     </span>
   </div>
 </a>
 
-<style>
+<style scoped lang="postcss">
   .pixel-button {
-    position: relative;
-    border: none;
-    background: none;
-    padding: 0;
-    cursor: pointer;
+    @apply relative border-none bg-none p-0 cursor-pointer inline-flex items-center justify-center transition-transform duration-100 ease-out min-w-fit;
+  }
+
+  .image-rendering-pixelated {
     image-rendering: pixelated;
-    transform-origin: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.1s ease-out, filter 0.1s ease-out;
-    min-width: fit-content;
   }
 
   .button-container {
-    display: flex;
-    align-items: stretch;
-    width: 100%;
-    position: relative;
+    @apply flex items-stretch w-full relative;
   }
 
   .button-container.auto-size {
-    width: fit-content;
+    @apply w-fit;
   }
 
   .left-part,
   .right-part {
-    flex-shrink: 0;
-    object-fit: contain;
-    pointer-events: none;
+    @apply flex-shrink-0 object-contain pointer-events-none image-rendering-pixelated;
   }
 
   .middle-part {
-    flex: 1;
-    background-repeat: repeat-x;
-    background-position: center;
-    background-size: auto 100%;
-    pointer-events: none;
-    min-width: 24px; 
+    @apply flex-1 bg-repeat-x bg-center bg-auto pointer-events-none min-w-[24px];
   }
 
   .button-text {
-    font-family: theme('fontFamily.alumni');
-    font-size: 24px;
-    text-transform: uppercase;
-    padding: 0 14px;
-    user-select: none;
-    white-space: nowrap;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    width: auto;
-    min-width: max-content;
+    @apply font-alumni text-2xl uppercase px-3.5 select-none whitespace-nowrap absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center w-auto min-w-max;
   }
 
   .small {
-    height: 24px;
-    font-size: 8px;
+    @apply h-6 text-xs;
   }
 
   .medium {
-    height: 32px;
-    font-size: 10px;
+    @apply h-8 text-sm;
   }
 
   .big {
-    height: 48px;
-    font-size: 12px;
+    @apply h-12 text-base;
   }
 
   .disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    pointer-events: none;
+    @apply cursor-not-allowed opacity-50 pointer-events-none;
   }
 
   .blue {
-    color: #000;
-    font-weight: 600;
+    @apply text-black;
+  }
+
+  .yellow {
+    @apply text-black;
   }
 
   .blue:hover {
-    color: #fff;
-    .button-text {
-      color: #fff;
-    }
+    @apply text-white font-semibold;
   }
 
   .green .button-text {
-    color: #fff;
+    @apply text-white;
     text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.5);
   }
 
   .yellow .button-text {
-    color: #000;
+    @apply text-black;
     text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
   }
 </style>

@@ -180,6 +180,15 @@ export class SwapService {
             payDecimals: getTokenDecimals(params.payToken),
         });
 
+         // Create new swap entry and store its ID
+        let currentSwapId = swapStatusStore.addSwap({
+            expectedReceiveAmount: params.receiveAmount,
+            lastPayAmount: params.payAmount,
+            payToken: params.payToken,
+            receiveToken: params.receiveToken,
+            payDecimals: getTokenDecimals(params.payToken),
+        });
+
         try {
             await Promise.allSettled([
                 walletValidator.requireWalletConnection(),
@@ -243,9 +252,12 @@ export class SwapService {
                 pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : []
             };
             const result = await SwapService.swap_async(swapParams);
+
             if ('Err' in result) {
                 throw new Error(result.Err);
             }
+
+            this.monitorTransaction(result.Ok, currentSwapId);
 
             return result.Ok;
         } catch (error) {

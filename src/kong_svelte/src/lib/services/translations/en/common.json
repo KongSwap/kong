@@ -5,7 +5,7 @@
   "tokenName": "Token Name",
   "connecting": "Connecting to wallet...",
   "connectedTo": "Connected to",
-  "open": "Open",
+  "openDrawer": "Wallet",
   "connect": "Connect",
   "navigation": "Go To",
   "disconnectWallet": "Disconnect Wallet",
