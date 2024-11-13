@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
 use crate::stable_kong_settings::kong_settings;
@@ -34,8 +32,6 @@ pub fn get() -> Vec<StableClaim> {
     };
     CLAIM_MAP.with(|m| {
         m.borrow()
-            .iter()
-            .collect::<BTreeMap<_, _>>()
             .iter()
             .rev()
             .filter_map(|(_, v)| {

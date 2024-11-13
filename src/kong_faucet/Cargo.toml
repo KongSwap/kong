@@ -1,19 +1,20 @@
 [package]
 name = "kong_faucet"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2021"
 description = "Kong Swap faucet canister"
 
 [lib]
+name = "kong_faucet"
 crate-type = ["cdylib"]
 
 [dependencies]
 kong_lib = { path = "../kong_lib" }
 candid = "0.10.10"
 futures = "0.3.30"
-ic-cdk = "0.16.0"
-ic-stable-structures = "0.6.5"
-ic-ledger-types = "0.13.0"
+ic-cdk = "0.17.0"
+ic-stable-structures = "0.6.6"
+ic-ledger-types = "0.14.0"
 icrc-ledger-types = "0.1.6"
 serde = "1.0.210"
 serde_json = "1.0.128"

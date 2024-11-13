@@ -57,16 +57,6 @@ CREATE TABLE remove_liquidity_tx (
     ts TIMESTAMP NOT NULL
 );
 
-CREATE TABLE swap_tx_txs (
-    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
-    pay_token_id INT REFERENCES tokens(token_id) NOT NULL,
-    pay_amount DOUBLE PRECISION NOT NULL,
-    receive_token_id INT REFERENCES tokens(token_id) NOT NULL,
-    receive_amount DOUBLE PRECISION NOT NULL,
-    lp_fee DOUBLE PRECISION NOT NULL,
-    gas_fee DOUBLE PRECISION NOT NULL
-);
-
 CREATE TABLE swap_tx (
     tx_id BIGINT REFERENCES txs(tx_id) PRIMARY KEY,
     request_id BIGINT REFERENCES requests(request_id) NOT NULL,    
@@ -82,6 +72,17 @@ CREATE TABLE swap_tx (
     transfer_ids BIGINT[],
     claim_ids BIGINT[],
     ts TIMESTAMP NOT NULL
+);
+
+CREATE TABLE swap_pool_tx (
+    tx_id BIGINT REFERENCES txs(tx_id) NOT NULL,
+    pool_id INT REFERENCES pools(pool_id) NOT NULL,
+    pay_token_id INT REFERENCES tokens(token_id) NOT NULL,
+    pay_amount DOUBLE PRECISION NOT NULL,
+    receive_token_id INT REFERENCES tokens(token_id) NOT NULL,
+    receive_amount DOUBLE PRECISION NOT NULL,
+    lp_fee DOUBLE PRECISION NOT NULL,
+    gas_fee DOUBLE PRECISION NOT NULL
 );
 
 CREATE TABLE send_tx (

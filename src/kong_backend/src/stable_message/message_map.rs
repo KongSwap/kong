@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::stable_message::{StableMessage, StableMessageId};
 
 use crate::stable_kong_settings::kong_settings;
@@ -26,8 +24,6 @@ pub fn get(num_messages: usize) -> Vec<StableMessage> {
     };
     MESSAGE_MAP.with(|m| {
         m.borrow()
-            .iter()
-            .collect::<BTreeMap<_, _>>()
             .iter()
             .rev()
             .filter_map(|(_, v)| {

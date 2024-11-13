@@ -43,3 +43,7 @@ fn archive_pools(tokens: String) -> Result<String, String> {
 
     Ok("Pools archived".to_string())
 }
+
+pub fn get_by_pool_id(pool_id: u32) -> Option<StablePool> {
+    POOL_MAP.with(|m| m.borrow().get(&StablePoolId(pool_id)))
+}
