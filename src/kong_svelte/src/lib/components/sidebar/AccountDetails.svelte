@@ -53,7 +53,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    padding: 1rem;
   }
 
   .content-wrapper {
@@ -94,7 +93,7 @@
     padding: 0.75rem 0.5rem;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.8);
     font-size: clamp(0.75rem, 2vw, 0.875rem);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -103,7 +102,7 @@
   }
 
   .tab-button.active {
-    background: rgba(255, 255, 255, 0.15);
+    background-color: rgba(0, 0, 0, 0.48);
     color: white;
   }
 </style>

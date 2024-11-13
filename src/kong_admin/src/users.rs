@@ -5,9 +5,11 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
+
+use super::kong_data::KongData;
 
 pub async fn dump_users(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
@@ -71,6 +73,41 @@ pub async fn dump_users(db_client: &Client) -> Result<(), Box<dyn std::error::Er
                 .await?;
             println!("user_id={} saved", k.0);
         }
+    }
+
+    Ok(())
+}
+
+pub async fn archive_users(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
+    let dir_path = "./backups";
+    let re_pattern = Regex::new(r"users.*.json").unwrap();
+    let mut files = fs::read_dir(dir_path)?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
+                Some(entry)
+            } else {
+                None
+            }
+        })
+        .map(|entry| {
+            // sort by the number in the filename
+            let file = entry.path();
+            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
+            let number_str = filename.split('.').nth(1).unwrap();
+            let number = number_str.parse::<u32>().unwrap();
+            (number, file)
+        })
+        .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for file in files {
+        println!("processing: {:?}", file.1.file_name().unwrap());
+        let file = File::open(file.1)?;
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_data.archive_users(&contents).await?;
     }
 
     Ok(())

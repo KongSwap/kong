@@ -5,11 +5,9 @@
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
   import { walletStore } from "$lib/services/wallet/walletStore";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-  import { poolStore } from "$lib/services/pools/poolStore";
   import TokenList from "./TokenList.svelte";
   import SocialSection from "./SocialSection.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";
@@ -23,11 +21,11 @@
   let isDragging = false;
   let startX: number;
   let startWidth: number;
-  let activeTab: "tokens" | "pools" | "transactions" = browser
+  let activeTab: "tokens" | "pools" | "history" = browser
     ? (localStorage.getItem("sidebarActiveTab") as
         | "tokens"
         | "pools"
-        | "transactions") || "tokens"
+        | "history") || "tokens"
     : "tokens";
   let isMobile = false;
   let sidebarWidth = 500;
@@ -110,7 +108,7 @@
     }
   });
 
-  function setActiveTab(tab: "tokens" | "pools" | "transactions") {
+  function setActiveTab(tab: "tokens" | "pools" | "history") {
     activeTab = tab;
     if (browser) {
       localStorage.setItem("sidebarActiveTab", tab);
@@ -158,14 +156,14 @@
           </header>
 
           <div class="sidebar-content">
-            <div class="scroll-container p-2">
+            <div class="scroll-container">
               {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
               {:else if activeTab === "tokens"}
                 <TokenList />
               {:else if activeTab === "pools"}
                 <PoolList />
-              {:else if activeTab === "transactions"}
+              {:else if activeTab === "history"}
                 <TransactionHistory />
               {/if}
             </div>
@@ -182,179 +180,80 @@
   </div>
 {/if}
 
-<style scoped>
+<style scoped lang="postcss">
   .sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 50;
-    display: grid;
-    place-items: center;
-    overflow: hidden;
+    @apply fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 grid place-items-center overflow-hidden;
   }
 
   .overlay-button {
-    position: absolute;
-    inset: 0;
-    background: transparent;
-    border: none;
-    cursor: pointer;
+    @apply absolute inset-0 bg-transparent border-none cursor-pointer;
   }
 
   .sidebar-wrapper {
-    position: absolute;
-    top: 5vh;
-    right: 32px;
-    height: 90vh; /* Default height */
-    min-width: 420px;
-    max-width: min(800px, calc(100vw - 50px));
-    transform-origin: right center;
-    background-color: transparent;
-    display: flex;
-    flex-direction: column;
-    grid-template-rows: auto 1fr auto;
-    box-sizing: border-box;
-    padding: 0 8px;
-  }
-
-  @media (max-width: 768px) {
-    .sidebar-wrapper {
-      top: 0; /* Align to the very top */
-      right: 0;
-      width: 100% !important;
-      min-width: 100%;
-      max-width: 100%;
-      height: 100vh; /* Full viewport height */
-    }
-
-    .resize-handle {
-      display: none;
-    }
+    @apply absolute top-[5vh] right-8 h-[90vh] min-w-[420px] max-w-[min(800px,calc(100vw-50px))] origin-right bg-transparent flex flex-col grid-rows-[auto_1fr_auto] box-border p-2;
   }
 
   .sidebar-layout {
-    display: flex;
-    flex-direction: column;
-    height: 100%; /* Ensure layout fills the sidebar */
+    @apply flex flex-col h-full;
   }
 
   .sidebar-header {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 100%;
-    max-width: 100%;
+    @apply flex flex-col gap-4 w-full max-w-full;
   }
 
   .sidebar-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    width: 100%;
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    margin-bottom: 4px;
+    @apply flex flex-col flex-1 w-full relative mb-1;
   }
 
   .scroll-container {
-    position: absolute;
-    inset: 0;
-    overflow-y: auto;
+    @apply absolute inset-0 overflow-y-auto;
   }
 
   .scroll-container::-webkit-scrollbar {
-    width: 6px;
+    @apply w-1.5;
   }
 
   .scroll-container::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    @apply bg-white bg-opacity-20 rounded;
   }
 
   .resize-handle {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 12px;
-    height: 120px;
-    cursor: ew-resize;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    z-index: 51;
-    padding: 0 4px;
-    transition: background-color 0.2s;
-    border-radius: 0 4px 4px 0;
+    @apply absolute left-0 top-1/2 transform -translate-y-1/2 w-3 h-32 cursor-ew-resize flex flex-col items-center justify-center gap-1 z-50 p-1 transition-colors duration-200 rounded-r;
   }
 
   .resize-handle:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    @apply bg-white bg-opacity-10;
   }
 
   .resize-line {
-    width: 1px;
-    height: 16px;
-    background-color: rgba(255, 255, 255, 0.3);
-    transition: background-color 0.2s;
+    @apply w-px h-4 bg-white bg-opacity-30 transition-colors duration-200;
   }
 
   .resize-dots {
-    width: 2px;
-    height: 12px;
-    background-image: radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0.5) 1px,
-      transparent 1px
-    );
+    @apply w-0.5 h-3 bg-center bg-no-repeat opacity-50 transition-opacity duration-200;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
     background-size: 2px 2px;
-    background-position: center;
-    opacity: 0.5;
-    transition: opacity 0.2s;
   }
 
   .resize-handle:hover .resize-dots {
-    opacity: 1;
+    @apply opacity-100;
   }
 
   .resize-handle:hover .resize-line {
-    background-color: rgba(255, 255, 255, 0.5);
+    @apply bg-opacity-50;
   }
 
   .sidebar-footer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 12px;
-    margin-top: auto;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
-    background: rgba(0, 0, 0, 0.1);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    @apply flex justify-center items-center p-3 mt-auto rounded w-full box-border bg-black bg-opacity-10 border-t border-white border-opacity-10;
   }
 
   .footer-actions {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
+    @apply flex justify-center items-center rounded w-full box-border;
   }
 
   @media (max-width: 768px) {
     .sidebar-wrapper {
-      top: 0;
-      right: 0;
-      width: 100% !important;
-      min-width: 100%;
-      max-width: 100%;
-      height: 100vh; /* Full viewport height */
+      @apply top-0 right-0 w-full min-w-full max-w-full h-screen;
     }
 
     .resize-handle {

@@ -7,7 +7,7 @@ use crate::ic::guards::not_in_maintenance_mode_and_caller_is_not_anonymous;
 use crate::stable_request::request_map;
 use crate::stable_user::user_map;
 
-const MAX_REQUESTS: usize = 50;
+const MAX_REQUESTS: usize = 20;
 
 #[query(guard = "not_in_maintenance_mode_and_caller_is_not_anonymous")]
 pub async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> {

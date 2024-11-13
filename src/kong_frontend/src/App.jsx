@@ -334,6 +334,7 @@ const App = () => {
   });
   const [accountId, setAccountId] = useState(null);
   const previousPoolBalances = useRef([]);
+  const [tokenSearchTerm, setTokenSearchTerm] = useState('');
 
   const smallerPrincipal = useMemo(() => {
     if (principal) {
@@ -393,11 +394,14 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    console.log("activeIdentity=", activeIdentity);
+    console.log("plugPrincipal=", plugPrincipal);
+    console.log("isAuthenticated=", isAuthenticated);
     if (!activeIdentity && !plugPrincipal && !isAuthenticated) {
       setPrincipal(null);
       initializeUserData();
       setIsDrawerOpen(false);
-    } else if (plugPrincipal && !principal) {
+    } else if (plugPrincipal && localStorage.getItem('last_wallet_connected') === 'plug') {
       setPrincipal(plugPrincipal);
     } else if (
       !principal &&
@@ -476,8 +480,10 @@ const App = () => {
   );
 
   const getUserProfile = useCallback(
-    async (retryCount = 0, maxRetries = 5) => {
-      if (!principal || !isInitialized) {
+    async (retryCount = 0, maxRetries = 1) => {
+      const lastWallet = localStorage.getItem('last_wallet_connected');
+      console.log("lastWallet=", lastWallet);
+      if (!principal || !isInitialized || !lastWallet) {
         return;
       }
 
@@ -1582,6 +1588,13 @@ function MainPage({
 }) {
   const [walletContentView, setWalletContentView] = useState("tokens-table");
   const [slippageDefaultView, setSlippageDefaultView] = useState(true);
+  const [tokenSearchTerm, setTokenSearchTerm] = useState('');
+  const filteredTokens = useMemo(() => {
+    return sortedTokens.filter(token => 
+      token.symbol.toLowerCase().includes(tokenSearchTerm.toLowerCase()) 
+    );
+  }, [sortedTokens, tokenSearchTerm]);
+
 
   return (
     <>
@@ -1709,6 +1722,7 @@ function MainPage({
                     </div>
                     {walletContentView === "tokens-table" ? (
                       <>
+                  
                         <div class="tokenwallet-table-head">
                           <span class="tokenwallet-table-head__itemtokens">
                             Tokens
@@ -1720,9 +1734,19 @@ function MainPage({
                             Amount
                           </span>
                         </div>
+                       
                         <div class="tokenwallet-table-container">
+                          <div className="tokenwallet-search-wrapper">
+                        <input 
+                          type="text" 
+                          className="tokenwallet-search"
+                          placeholder="Search tokens" 
+                          value={tokenSearchTerm}
+                          onChange={(e) => setTokenSearchTerm(e.target.value)}
+                        />
+                        </div>
                           <ul className="tokenwallet-table-list">
-                            {sortedTokens.map((token) => (
+                            {filteredTokens.map((token) => (
                               <li
                                 className="tokenwallet-table-item"
                                 onClick={() =>

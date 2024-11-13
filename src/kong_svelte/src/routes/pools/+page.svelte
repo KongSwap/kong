@@ -19,7 +19,7 @@
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce"; // Import debounce from lodash-es
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-
+  import { ArrowLeftRight } from "lucide-svelte";
   /**
    * Derived store to create a token map for quick lookup.
    * Automatically updates when tokenStore changes.
@@ -68,7 +68,7 @@
 
 <section class="flex min-h-[94vh] justify-center w-full">
   <!-- Main Content -->
-  <div class="z-10 flex pt-40 justify-center max-w-5xl w-full md:w-100 px-2 md:px-0">
+  <div class="z-10 flex pt-10 justify-center max-w-5xl w-full md:w-100 px-2 md:px-0">
     <div class="flex flex-col w-full">
       <div
         class="inner-border bg-sky-400 bg-opacity-60 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
@@ -112,7 +112,10 @@
                         requiresAuth={header.requiresAuth}
                         sortColumn={$sortColumnStore}
                         sortDirection={$sortDirectionStore}
-                        on:sort={handleSortEvent}
+                        onsort={({ column, direction }) => {
+                          sortColumnStore.set(column);
+                          sortDirectionStore.set(direction);
+                        }}
                       />
                     {/each}
                   </tr>
@@ -177,6 +180,17 @@
                             >
                               <Droplets size={18} class="mr-1" /> Add LP
                             </button>
+                            <button
+                            on:click={(e) => {
+                              e.stopPropagation();
+                              if (pool.address_0 && pool.address_1) {
+                                goto(`/swap?from=${pool.address_0}&to=${pool.address_1}`);
+                              }
+                            }}
+                            class="rounded-full text-nowrap bg-[#6ebd40] border-2 border-black px-2 py-1 flex items-center justify-center text-xl hover:bg-[#498625] hover:text-white"
+                          >
+                            <ArrowLeftRight size={18} class="mr-1" /> Swap
+                          </button>
                           </div>
                         </td>
                       </tr>

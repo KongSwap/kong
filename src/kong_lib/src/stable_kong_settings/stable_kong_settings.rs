@@ -4,6 +4,12 @@ use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
+use crate::ic::{
+    ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
+    icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
+    id::{kong_account, kong_backend_id},
+};
+
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct StableKongSettings {
     pub kong_backend_id: String,
@@ -38,6 +44,53 @@ pub struct StableKongSettings {
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
     pub lp_token_ledger_archive_interval_secs: u64,
+}
+
+impl Default for StableKongSettings {
+    fn default() -> Self {
+        let user_map_idx = 0;
+        let token_map_idx = 0;
+        let pool_map_idx = 0;
+        let claim_map_idx = 0;
+        let message_map_idx = 0;
+        let request_map_idx = 0;
+        let transfer_map_idx = 0;
+        let tx_map_idx = 0;
+        Self {
+            kong_backend_id: kong_backend_id(),
+            kong_backend_account: kong_account(),
+            maintenance_mode: false,
+            kingkong: vec![100, 101], // default kingkong users
+            ckusdt_token_id: CKUSDT_TOKEN_ID,
+            ckusdt_symbol: CKUSDT_SYMBOL.to_string(),
+            ckusdt_symbol_with_chain: CKUSDT_SYMBOL_WITH_CHAIN.to_string(),
+            ckusdt_address: CKUSDT_ADDRESS.to_string(),
+            ckusdt_address_with_chain: CKUSDT_ADDRESS_WITH_CHAIN.to_string(),
+            icp_token_id: ICP_TOKEN_ID,
+            icp_symbol: ICP_SYMBOL.to_string(),
+            icp_symbol_with_chain: ICP_SYMBOL_WITH_CHAIN.to_string(),
+            icp_address: ICP_ADDRESS.to_string(),
+            icp_address_with_chain: ICP_ADDRESS_WITH_CHAIN.to_string(),
+            default_max_slippage: 2.0_f64,
+            default_lp_fee_bps: 30,
+            default_kong_fee_bps: 0,
+            user_map_idx,
+            token_map_idx,
+            pool_map_idx,
+            claim_map_idx,
+            message_map_idx,
+            request_map_idx,
+            transfer_map_idx,
+            tx_map_idx,
+            claims_interval_secs: 300,                   // claims every 5 minutes
+            transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
+            stats_interval_secs: 3600,                   // stats every hour
+            requests_archive_interval_secs: 3600,        // archive requests every hour
+            txs_archive_interval_secs: 3600,             // archive txs every hour
+            transfers_archive_interval_secs: 3600,       // archive transfers every hour
+            lp_token_ledger_archive_interval_secs: 3600, // archive lp_positions every hour
+        }
+    }
 }
 
 impl Storable for StableKongSettings {

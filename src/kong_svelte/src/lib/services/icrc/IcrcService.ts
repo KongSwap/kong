@@ -45,7 +45,7 @@ export class IcrcService {
     try {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
       const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000); // 1 minute from now
-      const totalAmount = payAmount + gasAmount + token.fee + BigInt(100000000);
+      const totalAmount = payAmount + token.fee;
 
       const approveArgs = {
         fee: [],

@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
 use crate::stable_kong_settings::kong_settings;
@@ -34,8 +32,6 @@ pub fn get() -> Vec<StableClaim> {
     };
     CLAIM_MAP.with(|m| {
         m.borrow()
-            .iter()
-            .collect::<BTreeMap<_, _>>()
             .iter()
             .rev()
             .filter_map(|(_, v)| {
@@ -112,6 +108,20 @@ pub fn update_claimed_status(claim_id: u64, request_id: u64, transfer_id: u64) -
                 v.status = ClaimStatus::Claimed;
                 v.attempt_request_id.push(request_id);
                 v.transfer_ids.push(transfer_id);
+                map.insert(k, v.clone());
+                Some(v)
+            }
+            None => None,
+        }
+    })
+}
+
+pub fn update_too_many_attempts_status(claim_id: u64) -> Option<StableClaim> {
+    CLAIM_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        match map.iter().find(|(k, _)| k.0 == claim_id) {
+            Some((k, mut v)) => {
+                v.status = ClaimStatus::TooManyAttempts;
                 map.insert(k, v.clone());
                 Some(v)
             }

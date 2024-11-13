@@ -1,5 +1,4 @@
 use candid::Nat;
-use std::collections::BTreeMap;
 
 use super::tx_id::TxId;
 
@@ -12,16 +11,7 @@ pub fn get_by_transfer_id(transfer_id: u64) -> Option<StableTransfer> {
 }
 
 pub fn get(max_requests: usize) -> Vec<StableTransfer> {
-    TRANSFER_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .collect::<BTreeMap<_, _>>()
-            .iter()
-            .rev()
-            .take(max_requests)
-            .map(|(_, v)| v.clone())
-            .collect()
-    })
+    TRANSFER_MAP.with(|m| m.borrow().iter().rev().take(max_requests).map(|(_, v)| v.clone()).collect())
 }
 
 /// check if a transfer is already in the map. If so, used to detect if double recieve/spend where system already processed the transfer

@@ -20,7 +20,7 @@
 
 <button 
   class="token-row"
-  on:click={onClick}
+  onclick={onClick}
   type="button"
   aria-label="Select {token.name} ({token.symbol})"
   transition:fade
@@ -49,86 +49,60 @@
   </div>
 </button>
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .token-row {
-    width: 100%;
-    text-align: left;
-    border: 2px solid transparent;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: transparent;
+    @apply w-full text-left border-2 border-transparent flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all duration-200 ease-in-out bg-transparent;
   }
 
   .token-row:hover {
-    background: rgba(255, 255, 255, 0.05);
+    @apply bg-opacity-5 border-opacity-30;
+    background-color: rgba(255, 255, 255, 0.05);
     border-color: rgba(251, 191, 36, 0.3);
   }
 
   .token-row:active {
-    transform: scale(0.98);
+    @apply transform scale-95;
   }
   
   .token-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    min-width: 0; /* Enables text truncation */
+    @apply flex items-center gap-3 flex-1 min-w-0;
   }
 
   .token-values {
-    text-align: right;
-    display: flex;
-    flex-direction: column;
-    font-size: 0.875rem;
-    gap: 2px;
+    @apply text-right flex flex-col text-sm gap-0.5;
   }
 
   .symbol {
-    color: #fbbf24;
-    font-size: 1rem;
-    font-weight: bold;
-    min-width: 96px;
-    display: inline-block;
+    @apply text-yellow-400 text-base font-bold min-w-[96px] inline-block;
   }
 
   .name {
-    font-size: 0.875rem;
-    opacity: 0.7;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
+    @apply text-sm opacity-70 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px];
   }
 
   .balance {
-    font-weight: 500;
+    @apply font-medium;
   }
 
   .usd-value {
-    opacity: 0.7;
+    @apply opacity-70;
   }
 
   @media (max-width: 400px) {
     .hide-on-small {
-      display: none;
+      @apply hidden;
     }
     
     .token-values {
-      font-size: 0.75rem;
+      @apply text-xs;
     }
 
     .symbol {
-      min-width: 72px;
+      @apply min-w-[72px];
     }
 
     .token-row {
-      padding: 8px;
+      @apply p-2;
     }
   }
 </style>

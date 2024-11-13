@@ -69,6 +69,7 @@ const Navigation = React.memo(
     const previousPrincipalRef = useRef();
     const [transactions, setTransactions] = useState([]);
     const [isCopied, setIsCopied] = useState(false);
+    const [tokenSearchTerm, setTokenSearchTerm] = useState('');
 
     const smallerPrincipal = useMemo(() => {
       if (principal) {
@@ -98,12 +99,14 @@ const Navigation = React.memo(
 
     const loginWithInternetIdentity = useCallback(() => {
       login();
+      localStorage.setItem('last_wallet_connected', "ii");
       setIsDrawerOpen(false);
     }, [login, setIsDrawerOpen]);
 
     const toggleDrawer = useCallback(
       (specificState) => {
         setIsDrawerOpen(specificState ? specificState : !isDrawerOpen);
+        setTokenSearchTerm('');
       },
       [setIsDrawerOpen, isDrawerOpen]
     );
@@ -360,7 +363,7 @@ const Navigation = React.memo(
             }
           >
             <>
-              <div className="tabs">
+              <div className="tabs" style={{ marginBottom: "8px" }}>
                 <span
                   onClick={() => changeDrawerContent("tokens")}
                   className={`tab ${showDrowerTokens && "tab-active"}`}
@@ -381,7 +384,54 @@ const Navigation = React.memo(
                 </span>
               </div>
               <div className="tokens-list">
-                {showDrowerPools ? (
+                {showDrowerTokens ? (
+                  <>
+                    <div className="tokenwallet-search-wrapper">
+                      <input 
+                        type="text" 
+                        className="tokenwallet-search"
+                        placeholder="Search tokens" 
+                        value={tokenSearchTerm}
+                        onChange={(e) => setTokenSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <div className="tokens-list">
+                      {sortedTokens
+                        .filter(token => 
+                          token.symbol.toLowerCase().includes(tokenSearchTerm.toLowerCase())
+                        )
+                        .map((token) => (
+                          <div className="tokens-item" key={token.symbol}>
+                            <span className="tokens-logo-wrapper">
+                              <img src={token.image} className="tokens-logo" />
+                            </span>
+                            <span className="tokens-details">
+                              <span className="tokens-toprow">
+                                <span className="tokens-name">{token.symbol}</span>
+                              </span>
+                              <span className="tokenlist-amount">
+                                {token.balance || "-"} {token.symbol}
+                              </span>
+                              <span className="tokenlist-usd-value">
+                                (${token.usdBalance || "0.00"})
+                              </span>
+                            </span>
+                            <div className="token-controls-for-pools">
+                              <span
+                                onClick={() => {
+                                  onTabClick("swap", `${token.symbol}_ckUSDC`);
+                                  toggleDrawer(false);
+                                }}
+                                className="token-control"
+                              >
+                                Swap
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                ) : showDrowerPools ? (
                   poolBalances.length > 0 ? (
                   poolBalances.map((pool) => (
                     <div className="tokens-item" key={pool.name}>
@@ -429,13 +479,6 @@ const Navigation = React.memo(
                       <p>No pools available</p>
                     </div>
                   )
-                ) : showDrawerClaims ? (
-                  <TransactionList
-                    transactions={transactions}
-                    tokenDetails={tokenDetails}
-                    tokenImages={tokenImages}
-                    tokenPrices={tokenPrices}
-                  />
                 ) : (
                   sortedTokens.map((token) => (
                     <div className="tokens-item" key={token.symbol}>

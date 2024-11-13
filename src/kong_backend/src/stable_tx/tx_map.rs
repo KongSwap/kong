@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::add_liquidity_tx::AddLiquidityTx;
 use super::add_pool_tx::AddPoolTx;
 use super::remove_liquidity_tx::RemoveLiquidityTx;
@@ -32,8 +30,6 @@ pub fn get_by_tx_and_user_id(tx_id: u64, user_id: Option<u32>) -> Option<StableT
 pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max_txs: usize) -> Vec<StableTx> {
     TX_MAP.with(|m| {
         m.borrow()
-            .iter()
-            .collect::<BTreeMap<_, _>>()
             .iter()
             .rev()
             .filter_map(|(_, v)| {

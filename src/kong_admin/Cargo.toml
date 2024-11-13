@@ -1,6 +1,6 @@
 [package]
 name = "kong_admin"
-version = "0.0.9"
+version = "0.0.10"
 edition = "2021"
 
 [dependencies]
@@ -15,3 +15,7 @@ postgres-types = { version = "0.2.8", features = ["derive"] }
 regex = "1.11.1"
 config = "0.14.1"
 candid = "0.10.10"
+ic-agent = "0.39.1"
+rand = "0.8.5"
+ed25519-consensus = "2.1.0"
+anyhow = "1.0.93"

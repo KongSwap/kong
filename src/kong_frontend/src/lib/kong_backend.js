@@ -25,6 +25,7 @@ export async function getAuthActor() {
   const isAuthenticated = await authClient.isAuthenticated();
   if (!isAuthenticated) {
     await login();
+    localStorage.setItem('last_wallet_connected', 'ii');
   }
   const identity = authClient.getIdentity();
   const agent = new HttpAgent({ identity });

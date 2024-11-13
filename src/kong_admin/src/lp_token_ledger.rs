@@ -3,9 +3,10 @@ use num_traits::ToPrimitive;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use tokio_postgres::Client;
 
+use super::kong_data::KongData;
 use super::math_helpers::round_f64;
 
 pub fn serialize_lp_token_ledger(lp_token_ledger: &StableLPTokenLedger) -> serde_json::Value {
@@ -48,6 +49,16 @@ pub async fn dump_lp_token_ledger(db_client: &Client, tokens_map: &BTreeMap<u32,
             .await?;
         println!("lp_token_id={} saved", k.0);
     }
+
+    Ok(())
+}
+
+pub async fn archive_lp_token_ledger(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
+    let file = File::open("./backups/lp_token_ledger.json")?;
+    let mut reader = BufReader::new(file);
+    let mut contents = String::new();
+    reader.read_to_string(&mut contents)?;
+    kong_data.archive_lp_token_ledger(&contents).await?;
 
     Ok(())
 }

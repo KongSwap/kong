@@ -7,10 +7,11 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
 
+use super::kong_data::KongData;
 use super::math_helpers::round_f64;
 
 #[derive(Debug, ToSql, FromSql)]
@@ -181,6 +182,22 @@ pub async fn dump_txs(
 
                     db_client
                         .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
+
+                    db_client
+                        .execute(
                             "INSERT INTO add_pool_tx
                                 (tx_id, pool_id, request_id, user_id, status, amount_0, amount_1, add_lp_token_amount, transfer_ids, claim_ids, on_kong, ts)
                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12))
@@ -200,21 +217,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::AddLiquidity(v) => {
@@ -244,6 +246,22 @@ pub async fn dump_txs(
 
                     db_client
                         .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
+
+                    db_client
+                        .execute(
                             "INSERT INTO add_liquidity_tx
                                 (tx_id, pool_id, request_id, user_id, status, amount_0, amount_1, add_lp_token_amount, transfer_ids, claim_ids, ts)
                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11))
@@ -262,21 +280,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::RemoveLiquidity(v) => {
@@ -305,6 +308,22 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claims_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
+
+                    db_client
+                        .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
 
                     db_client
                         .execute(
@@ -342,21 +361,6 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::Swap(v) => {
@@ -390,6 +394,22 @@ pub async fn dump_txs(
                     let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let claim_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
                     let ts = v.ts as f64 / 1_000_000_000.0;
+
+                    db_client
+                        .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
 
                     db_client
                         .execute(
@@ -429,9 +449,10 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client.execute("DELETE FROM swap_tx_txs WHERE tx_id = $1", &[&tx_id]).await?;
+                    db_client.execute("DELETE FROM swap_pool_tx WHERE tx_id = $1", &[&tx_id]).await?;
 
                     for swap in v.txs.iter() {
+                        let pool_id = swap.pool_id as i32;
                         let pay_token_id = swap.pay_token_id as i32;
                         let pay_decimal = tokens_map
                             .get(&swap.pay_token_id)
@@ -449,21 +470,22 @@ pub async fn dump_txs(
                             *receive_decimal,
                         );
                         let lp_fee = round_f64(
-                            swap.lp_fee.0.to_f64().unwrap() / 10_u64.pow(*pay_decimal as u32) as f64,
+                            swap.lp_fee.0.to_f64().unwrap() / 10_u64.pow(*receive_decimal as u32) as f64,
                             *pay_decimal,
                         );
                         let gas_fee = round_f64(
-                            swap.gas_fee.0.to_f64().unwrap() / 10_u64.pow(*pay_decimal as u32) as f64,
+                            swap.gas_fee.0.to_f64().unwrap() / 10_u64.pow(*receive_decimal as u32) as f64,
                             *pay_decimal,
                         );
 
                         db_client
                             .execute(
-                                "INSERT INTO swap_tx_txs
-                                (tx_id, pay_token_id, pay_amount, receive_token_id, receive_amount, lp_fee, gas_fee)
-                                VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                                "INSERT INTO swap_pool_tx
+                                (tx_id, pool_id, pay_token_id, pay_amount, receive_token_id, receive_amount, lp_fee, gas_fee)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
                                 &[
                                     &tx_id,
+                                    &pool_id,
                                     &pay_token_id,
                                     &pay_amount,
                                     &receive_token_id,
@@ -475,21 +497,6 @@ pub async fn dump_txs(
                             .await?;
                     }
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
                 StableTx::Send(v) => {
@@ -509,6 +516,22 @@ pub async fn dump_txs(
 
                     db_client
                         .execute(
+                            "INSERT INTO txs
+                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
+                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
+                                ON CONFLICT (tx_id) DO UPDATE SET
+                                    request_id = $2,
+                                    user_id = $3,
+                                    tx_type = $4,
+                                    status = $5,
+                                    ts = to_timestamp($6),
+                                    raw_json = $7",
+                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
+                        )
+                        .await?;
+
+                    db_client
+                        .execute(
                             "INSERT INTO send_tx
                             (tx_id, token_id, request_id, user_id, status, amount, to_user_id, ts)
                             VALUES ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8))
@@ -524,25 +547,45 @@ pub async fn dump_txs(
                         )
                         .await?;
 
-                    db_client
-                        .execute(
-                            "INSERT INTO txs
-                                (tx_id, request_id, user_id, tx_type, status, ts, raw_json)
-                                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7)
-                                ON CONFLICT (tx_id) DO UPDATE SET
-                                    request_id = $2,
-                                    user_id = $3,
-                                    tx_type = $4,
-                                    status = $5,
-                                    ts = to_timestamp($6),
-                                    raw_json = $7",
-                            &[&tx_id, &request_id, &user_id, &tx_type, &status, &ts, &raw_json],
-                        )
-                        .await?;
                     println!("tx_id={} saved", k.0);
                 }
             };
         }
+    }
+
+    Ok(())
+}
+
+pub async fn archive_txs(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
+    let dir_path = "./backups";
+    let re_pattern = Regex::new(r"txs.*.json").unwrap();
+    let mut files = fs::read_dir(dir_path)?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
+                Some(entry)
+            } else {
+                None
+            }
+        })
+        .map(|entry| {
+            // sort by the number in the filename
+            let file = entry.path();
+            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
+            let number_str = filename.split('.').nth(1).unwrap();
+            let number = number_str.parse::<u32>().unwrap();
+            (number, file)
+        })
+        .collect::<Vec<_>>();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for file in files {
+        println!("processing: {:?}", file.1.file_name().unwrap());
+        let file = File::open(file.1)?;
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_data.archive_txs(&contents).await?;
     }
 
     Ok(())

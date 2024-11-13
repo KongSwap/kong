@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
@@ -25,8 +23,6 @@ pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Opti
 pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRequest> {
     REQUEST_MAP.with(|m| {
         m.borrow()
-            .iter()
-            .collect::<BTreeMap<_, _>>()
             .iter()
             .rev()
             .filter_map(|(_, v)| {

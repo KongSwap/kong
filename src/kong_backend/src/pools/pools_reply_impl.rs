@@ -13,7 +13,8 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
     let lp_token = pool.lp_token();
     let lp_token_symbol = lp_token.symbol().to_string();
     let lp_token_id = lp_token.token_id();
-    let lp_token_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    //let lp_token_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    let lp_token_supply = nat_zero();
 
     PoolReply {
         pool_id: pool.pool_id,
@@ -63,6 +64,7 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
 }
 
 pub fn to_pools_reply(pools: Vec<PoolReply>) -> PoolsReply {
+    /*
     let (total_tvl, total_24h_volume, total_24h_lp_fee, total_24h_num_swaps) = pools.iter().fold(
         (nat_zero(), nat_zero(), nat_zero(), nat_zero()),
         |acc, pool| -> (Nat, Nat, Nat, Nat) {
@@ -74,11 +76,21 @@ pub fn to_pools_reply(pools: Vec<PoolReply>) -> PoolsReply {
             )
         },
     );
+    */
+    /*
     PoolsReply {
         pools,
         total_tvl,
         total_24h_volume,
         total_24h_lp_fee,
         total_24h_num_swaps,
+    }
+    */
+    PoolsReply {
+        pools,
+        total_tvl: nat_zero(),
+        total_24h_volume: nat_zero(),
+        total_24h_lp_fee: nat_zero(),
+        total_24h_num_swaps: nat_zero(),
     }
 }

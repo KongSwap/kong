@@ -9,7 +9,7 @@ const config = {
     adapter: adapter({
       pages: "dist",
       assets: "dist",
-      fallback: undefined,
+      fallback: "index.html",
       precompress: true,
       strict: true,
     }),
@@ -19,6 +19,19 @@ const config = {
     alias: {
       $lib: 'src/lib',
       "$lib/*": 'src/lib/*',
+    },
+    prerender: {
+      handleHttpError: ({ path, referrer, message }) => {
+        // ignore deliberate link to shiny 404 page
+        if (path === '/404') {
+          return;
+        }
+        if (path.startsWith('/pxcomponents/')) {
+          return;
+        }
+        // otherwise fail the build
+        throw new Error(message);
+      }
     },
   },
   preprocess: vitePreprocess({

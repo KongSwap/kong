@@ -33,6 +33,7 @@ cd ..
 dfx identity use kong
 
 ./deploy_kong_backend.sh
+./deploy_kong_data.sh
 ./deploy_internet_identity.sh
 ./deploy_icp_ledger.sh
 ./deploy_ckusdc_ledger.sh

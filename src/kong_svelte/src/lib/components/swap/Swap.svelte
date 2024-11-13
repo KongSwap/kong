@@ -2,30 +2,36 @@
   import { fade } from "svelte/transition";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import debounce from "lodash/debounce";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { walletStore } from "$lib/services/wallet/walletStore";
-  import { getTokenBalance, getTokenDecimals } from "$lib/services/tokens/tokenStore";
+  import {
+    getTokenBalance,
+    getTokenDecimals,
+  } from "$lib/services/tokens/tokenStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
   import Button from "$lib/components/common/Button.svelte";
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
-  import BigNumber from "bignumber.js";
   import SwapSettings from "./swap_ui/SwapSettings.svelte";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
-    import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import BananaRain from '$lib/components/common/BananaRain.svelte';
+  import SwapSuccessModal from './swap_ui/SwapSuccessModal.svelte';
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
   export let initialPool: string | null = null;
+  export let initialFromToken: string | null = null;
+  export let initialToToken: string | null = null;
 
   // Core state
-  let payToken = initialPool?.split("_")[0] || "ICP";
-  let receiveToken = initialPool?.split("_")[1] || "ckBTC";
-  let payAmount = "0";
+  let payToken = initialFromToken || "ICP";
+  let receiveToken = initialToToken || "ckBTC";
+  let payAmount;
   let receiveAmount = "0";
   let displayReceiveAmount = "0";
 
@@ -45,7 +51,7 @@
   let lpFees: string[] = [];
   let intervalId: any = null;
   let tweenedReceiveAmount = tweened(0, {
-    duration: 420,
+    duration: 120,
     easing: cubicOut,
   });
 
@@ -57,14 +63,18 @@
   let routingPath: string[] = [];
   let showSettings = false;
   let showConfirmation = false;
-  let currentStep = "";
-  let currentRouteIndex = 0;
   let userMaxSlippage = 2;
   let isSlippageExceeded = false;
-
   let swapMode = "normal";
-
   let currentSwapId: string | null = null;
+  let showBananaRain = false;
+  let showSuccessModal = false;
+  let successDetails = {
+    payAmount: '',
+    payToken: '',
+    receiveAmount: '',
+    receiveToken: ''
+  };
 
   onDestroy(() => {
     if (intervalId) {
@@ -141,21 +151,23 @@
     error = null;
 
     try {
-      console.log('Getting quote for', payAmount, payToken, receiveToken);
-      const formattedPayAmount = parseTokenAmount(payAmount, getTokenDecimals(payToken));
-      console.log('Formatted pay amount:', formattedPayAmount);
+      console.log("Getting quote for", payAmount, payToken, receiveToken);
+      const formattedPayAmount = parseTokenAmount(
+        payAmount,
+        getTokenDecimals(payToken),
+      );
+      console.log("Formatted pay amount:", formattedPayAmount);
       const quote = await SwapService.getQuoteDetails({
         payToken,
         payAmount: formattedPayAmount,
         receiveToken,
       });
-      console.log('Quote:', quote);
-      
+      console.log("Quote:", quote);
+
       // Update the receive amount and other values
       setReceiveAmount(quote.receiveAmount);
       swapSlippage = quote.slippage;
       usdValue = quote.usdValue;
-      
     } catch (err) {
       console.error("Error fetching swap quote:", err);
       error = err instanceof Error ? err.message : "Failed to get quote";
@@ -221,44 +233,49 @@
     if (payAmount) debouncedGetQuote(payAmount);
   }
 
+  onMount(() => {
+    const handleSwapSuccess = (event: CustomEvent) => {
+      // Update success details with the actual swap values
+      successDetails = {
+        payAmount: event.detail.payAmount,
+        payToken: event.detail.payToken,
+        receiveAmount: event.detail.receiveAmount,
+        receiveToken: event.detail.receiveToken
+      };
+      showSuccessModal = true;
+    };
+
+    window.addEventListener('swapSuccess', handleSwapSuccess);
+
+    return () => {
+      window.removeEventListener('swapSuccess', handleSwapSuccess);
+    };
+  });
+
   async function handleSwap(): Promise<boolean> {
     if (!isValidInput || isProcessing) {
       return false;
     }
-
     isProcessing = true;
     error = null;
-
     try {
-      // Create new swap entry and store its ID
-      currentSwapId = swapStatusStore.addSwap({
-        expectedReceiveAmount: receiveAmount,
-        lastPayAmount: payAmount,
-        payToken: payToken,
-        receiveToken: receiveToken,
-        payDecimals: getTokenDecimals(payToken)
-      });
-
-      const requestId = await SwapService.executeSwap({
+      await SwapService.executeSwap({
         payToken,
         payAmount,
         receiveToken,
         receiveAmount,
         userMaxSlippage,
         backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        lpFees,
       });
-
-      if (requestId) {
-        SwapService.monitorTransaction(requestId, currentSwapId);
-        return true;
-      } else {
-        throw new Error("Failed to execute swap - no requestId returned");
-      }
+      return true;
     } catch (err) {
       console.error("Swap execution error:", err);
       toastStore.error(err instanceof Error ? err.message : "Swap failed");
       return false;
     } finally {
+      payAmount = null;
+      receiveAmount = null;
       isProcessing = false;
       isConfirmationOpen = false;
     }
@@ -267,13 +284,13 @@
   // Subscribe to quote updates for this specific swap
   $: {
     async function refreshQuote() {
-      console.log('Refreshing quote display');
+      console.log("Refreshing quote display");
       const quote = await getSwapQuote(payAmount);
       // Update only this specific swap's quote
       if (currentSwapId) {
         swapStatusStore.updateSwap(currentSwapId, {
           shouldRefreshQuote: false,
-          lastQuote: quote
+          lastQuote: quote,
         });
       }
     }
@@ -286,18 +303,29 @@
 
   async function handleSwapClick() {
     if (!isValidInput || isProcessing) return;
-    
+
     // Refresh quote before showing confirmation
     isProcessing = true;
     const quote = await getSwapQuote(payAmount);
-    console.log('Quote:', quote);
+    console.log("Quote:", quote);
     swapStatusStore.updateSwap(currentSwapId, {
       lastQuote: quote,
-      shouldRefreshQuote: true
+      shouldRefreshQuote: true,
     });
     isProcessing = false;
-    
     showConfirmation = true;
+  }
+
+  // Add this effect to handle URL updates
+  $: {
+    if (initialFromToken && initialFromToken !== payToken) {
+      payToken = initialFromToken;
+      if (payAmount) debouncedGetQuote(payAmount);
+    }
+    if (initialToToken && initialToToken !== receiveToken) {
+      receiveToken = initialToToken;
+      if (payAmount) debouncedGetQuote(payAmount);
+    }
   }
 </script>
 
@@ -326,8 +354,8 @@
 
     <div class="panels-container">
       {#each panels as panel (panel.id)}
-        <div class="panel-wrapper">
-          <div class="panel-content">
+        <div class="panel-wrapper w-full">
+          <div class="panel-content w-full">
             <SwapPanel
               title={panel.title}
               {...panelData[panel.type]}
@@ -422,6 +450,18 @@
     onRevokeToken={async () => {}}
   />
 {/if}
+
+{#if showBananaRain}
+  <BananaRain />
+{/if}
+
+<SwapSuccessModal
+  show={showSuccessModal}
+  {...successDetails}
+  onClose={() => {
+    showSuccessModal = false;
+  }}
+/>
 
 <style lang="postcss">
   .swap-wrapper {

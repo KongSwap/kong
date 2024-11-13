@@ -3,9 +3,10 @@ use num_traits::ToPrimitive;
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use tokio_postgres::Client;
 
+use super::kong_data::KongData;
 use super::math_helpers::round_f64;
 
 pub fn serialize_pool(pool: &StablePool) -> serde_json::Value {
@@ -32,7 +33,10 @@ pub fn serialize_pool(pool: &StablePool) -> serde_json::Value {
     })
 }
 
-pub async fn dump_pools(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn dump_pools(
+    db_client: &Client,
+    tokens_map: &BTreeMap<u32, u8>,
+) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
     let file = File::open("./backups/pools.json")?;
     let reader = BufReader::new(file);
     let pools_map: BTreeMap<StablePoolId, StablePool> = serde_json::from_reader(reader)?;
@@ -105,7 +109,7 @@ pub async fn dump_pools(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> R
         println!("pool_id={} saved", k.0);
     }
 
-    Ok(())
+    load_pools(db_client).await
 }
 
 pub async fn load_pools(db_client: &Client) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
@@ -118,4 +122,14 @@ pub async fn load_pools(db_client: &Client) -> Result<BTreeMap<u32, (u32, u32)>,
         pools_map.insert(pool_id as u32, (token_id_0 as u32, token_id_1 as u32));
     }
     Ok(pools_map)
+}
+
+pub async fn archive_pools(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
+    let file = File::open("./backups/pools.json")?;
+    let mut reader = BufReader::new(file);
+    let mut contents = String::new();
+    reader.read_to_string(&mut contents)?;
+    kong_data.archive_pools(&contents).await?;
+
+    Ok(())
 }

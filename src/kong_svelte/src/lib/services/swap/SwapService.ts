@@ -17,6 +17,7 @@ interface SwapExecuteParams {
     receiveAmount: string;
     userMaxSlippage: number;
     backendPrincipal: Principal;
+    lpFees: any[];
 }
 
 // Base BigNumber configuration for internal calculations
@@ -179,6 +180,15 @@ export class SwapService {
             payDecimals: getTokenDecimals(params.payToken),
         });
 
+         // Create new swap entry and store its ID
+        let currentSwapId = swapStatusStore.addSwap({
+            expectedReceiveAmount: params.receiveAmount,
+            lastPayAmount: params.payAmount,
+            payToken: params.payToken,
+            receiveToken: params.receiveToken,
+            payDecimals: getTokenDecimals(params.payToken),
+        });
+
         try {
             await Promise.allSettled([
                 walletValidator.requireWalletConnection(),
@@ -242,9 +252,12 @@ export class SwapService {
                 pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : []
             };
             const result = await SwapService.swap_async(swapParams);
+
             if ('Err' in result) {
                 throw new Error(result.Err);
             }
+
+            this.monitorTransaction(result.Ok, currentSwapId);
 
             return result.Ok;
         } catch (error) {
@@ -265,6 +278,7 @@ export class SwapService {
         let attempts = 0;
         let swapStatus = swapStatusStore.getSwap(swapId);
         const toastId = toastStore.info(`Confirming swap of ${swapStatus?.lastPayAmount} ${swapStatus?.payToken} to ${swapStatus?.expectedReceiveAmount} ${swapStatus?.receiveToken}...`, 0);
+        
         this.pollingInterval = setInterval(async () => {
             try {
                 const status = await this.requests([requestId]);
@@ -291,13 +305,33 @@ export class SwapService {
                                 lastQuote: null
                             });
                             this.stopPolling();
-                            toastStore.success('Swap completed successfully');  
+                            
+                            const formattedPayAmount = SwapService.fromBigInt(
+                                swapStatus.pay_amount, 
+                                getTokenDecimals(swapStatus.pay_symbol)
+                            );
+                            const formattedReceiveAmount = SwapService.fromBigInt(
+                                swapStatus.receive_amount, 
+                                getTokenDecimals(swapStatus.receive_symbol)
+                            );
+                            toastStore.success(`Successfully swaped ${formattedPayAmount} ${swapStatus.pay_symbol} to ${formattedReceiveAmount} ${swapStatus.receive_symbol}!`);
+                            // Dispatch custom event with swap details
+                            window.dispatchEvent(new CustomEvent('swapSuccess', {
+                                detail: {
+                                    payAmount: formattedPayAmount,
+                                    payToken: swapStatus.pay_symbol,
+                                    receiveAmount: formattedReceiveAmount,
+                                    receiveToken: swapStatus.receive_symbol
+                                }
+                            }));
+                            
                             const tokens = get(tokenStore).tokens;
                             const swap = swapStatusStore.getSwap(swapId);      
                             await Promise.all([
                                 tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.receiveToken)),
                                 tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.payToken))
                             ]);
+                            toastStore.dismiss(toastId);
                         } else if (swapStatus.status === "Failed") {
                             this.stopPolling();
                             console.log('Swap failed', reply);
@@ -309,6 +343,7 @@ export class SwapService {
                                 error: 'Swap failed'
                             });
                             toastStore.error('Swap failed');
+                            toastStore.dismiss(toastId);
                         }
                     }
                 }
@@ -333,7 +368,6 @@ export class SwapService {
                     error: 'Failed to monitor swap status'
                 });
                 toastStore.error('Failed to monitor swap status');
-            } finally {
                 toastStore.dismiss(toastId);
             }
         }, this.POLLING_INTERVAL);
@@ -405,5 +439,42 @@ export class SwapService {
             throw err;
         }
     }
+
+    /**
+     * Calculates the maximum transferable amount of a token, considering fees.
+     *
+     * @param tokenInfo - Information about the token, including fees and canister ID.
+     * @param formattedBalance - The user's available balance of the token as a string.
+     * @param decimals - Number of decimal places the token supports.
+     * @param isIcrc1 - Boolean indicating if the token follows the ICRC1 standard.
+     * @returns A BigNumber representing the maximum transferable amount.
+     */
+    public static calculateMaxAmount(
+        tokenInfo: {
+        canister_id: string;
+        fee?: bigint;
+        icrc1?: boolean;
+        icrc2?: boolean;
+        // Add other relevant properties if needed
+        },
+        formattedBalance: string,
+        decimals: number = 8,
+        isIcrc1: boolean = false
+    ): BigNumber {
+        const SCALE_FACTOR = new BigNumber(10).pow(decimals);
+        const balance = new BigNumber(formattedBalance);
+        
+        // Calculate base fee. If fee is undefined, default to 0.
+        const baseFee = tokenInfo.fee
+        ? new BigNumber(tokenInfo.fee.toString()).dividedBy(SCALE_FACTOR)
+        : new BigNumber(0);
+        
+        // Calculate gas fee based on token standard
+        const gasFee = isIcrc1 ? baseFee : baseFee.multipliedBy(2);
+        
+        // Ensure that the max amount is not negative
+        const maxAmount = balance.minus(gasFee);
+        return BigNumber.maximum(maxAmount, new BigNumber(0));
+  }
 }
 

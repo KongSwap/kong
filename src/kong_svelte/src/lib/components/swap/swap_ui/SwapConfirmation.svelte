@@ -89,29 +89,22 @@
     }
   }
 
-  $: totalGasFee = routingPath.length > 0 ? 
-    routingPath.slice(1).reduce((acc, _, i) => {
-      const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
-      const decimals = token?.decimals || 8;
-      const gasFeeValue = typeof gasFees[i] === 'string' ? Number(gasFees[i]) : gasFees[i] || 0;
-      const stepGasFee = SwapService.fromBigInt(
-        scaleDecimalToBigInt(gasFeeValue, decimals),
-        decimals
-      );
-      return acc + Number(stepGasFee);
-    }, 0) : 0;
+  $: totalGasFee = calculateTotalFee(gasFees);
+  $: totalLPFee = calculateTotalFee(lpFees);
 
-  $: totalLPFee = routingPath.length > 0 ?
-    routingPath.slice(1).reduce((acc, _, i) => {
-      const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
-      const decimals = token?.decimals || 8;
-      const lpFeeValue = typeof lpFees[i] === 'string' ? Number(lpFees[i]) : lpFees[i] || 0;
-      const stepLPFee = SwapService.fromBigInt(
-        scaleDecimalToBigInt(lpFeeValue, decimals),
-        decimals
-      );
-      return acc + Number(stepLPFee);
-    }, 0) : 0;
+  function calculateTotalFee(fees: string[]): number {
+    return routingPath.length > 0 ? 
+      routingPath.slice(1).reduce((acc, _, i) => {
+        const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
+        const decimals = token?.decimals || 8;
+        const feeValue = typeof fees[i] === 'string' ? Number(fees[i]) : fees[i] || 0;
+        const stepFee = SwapService.fromBigInt(
+          scaleDecimalToBigInt(feeValue, decimals),
+          decimals
+        );
+        return acc + Number(stepFee);
+      }, 0) : 0;
+  }
 
   function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
     const scaleFactor = 10n ** BigInt(decimals);
@@ -122,22 +115,22 @@
 
 <Modal show={isVisible} title="Review Swap" {onClose} variant="green">
   {#if isInitializing}
-    <div class="loading-container">
-      <span class="loading-text">Getting latest price...</span>
+    <div class="flex justify-center items-center min-h-[200px]">
+      <span class="text-white text-lg opacity-80">Getting latest price...</span>
     </div>
   {:else if error}
-    <div class="error-container">
-      <p class="error-text">{error}</p>
+    <div class="flex justify-center items-center min-h-[200px] p-4">
+      <p class="text-red-500 text-base text-center">{error}</p>
     </div>
   {:else}
-    <div class="modal-content">
-      <div class="sections-container">
+    <div class="flex flex-col h-full">
+      <div class="flex flex-col gap-2 overflow-y-auto pr-1 mb-4">
         <PayReceiveSection {payToken} {payAmount} {receiveToken} {receiveAmount} />
         <RouteSection {routingPath} {gasFees} {lpFees} {payToken} {receiveToken} />
         <FeesSection {totalGasFee} {totalLPFee} {userMaxSlippage} {receiveToken} />
       </div>
       
-      <div class="button-container">
+      <div class="mt-auto">
         <Button
           text={isLoading ? 'Processing...' : 'CONFIRM SWAP'}
           variant="yellow"
@@ -150,52 +143,3 @@
     </div>
   {/if}
 </Modal>
-
-<style lang="postcss">
-  .modal-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .sections-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow-y: auto;
-    padding-right: 4px;
-    margin-bottom: 16px;
-  }
-
-  .button-container {
-    margin-top: auto;
-  }
-
-  .loading-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-  }
-
-  .loading-text {
-    color: var(--c-white);
-    font-size: 1.1rem;
-    opacity: 0.8;
-  }
-
-  .error-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-    padding: 1rem;
-  }
-
-  .error-text {
-    color: var(--c-error, #ff4444);
-    font-size: 1rem;
-    text-align: center;
-  }
-</style>

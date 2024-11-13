@@ -144,6 +144,15 @@ const PoolsComponent = ({
   const [isProcessingOutput, setIsProcessingOutput] = useState(false);
   const inputProcess = useRef(null);
 
+  const [tokenSelectSearchTerm, setTokenSelectSearchTerm] = useState('');
+
+  const filteredSelectTokens = useMemo(() => {
+    return Object.keys(tokenBalancesSelector).filter(token => {
+      if (isModalLimited && token !== "ICP" && token !== "ckUSDT") return false;
+      return token.toLowerCase().includes(tokenSelectSearchTerm.toLowerCase());
+    });
+  }, [tokenSelectSearchTerm, isModalLimited]);
+
   useEffect(() => {
     addLiquiditySoundPlayed = new Audio(addLiquiditySound);
   }, []);  
@@ -1186,17 +1195,32 @@ const PoolsComponent = ({
       ) : isModalOpen ? (
         <Modal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setTokenSelectSearchTerm(''); // Clear search when closing
+          }}
           headTitle={"Select a token"}
         >
-          <div className="token-select-list">
-            {Object.keys(tokenBalancesSelector).map((token) => {
-              if (isModalLimited && token !== "ICP" && token !== "ckUSDT") return;
-              return (
+          <div className="token-select-container">
+            <div className="tokenwallet-search-wrapper">
+              <input 
+                type="text" 
+                className="tokenwallet-search"
+                placeholder="Search tokens by symbol" 
+                value={tokenSelectSearchTerm}
+                onChange={(e) => setTokenSelectSearchTerm(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="token-select-list">
+              {filteredSelectTokens.map((token) => (
                 <div
                   className="token-select-item"
                   key={token}
-                  onClick={() => handleTokenChange(token)}
+                  onClick={() => {
+                    handleTokenChange(token);
+                    setTokenSelectSearchTerm(''); // Clear search after selection
+                  }}
                 >
                   <img
                     src={tokenImages[token]}
@@ -1208,8 +1232,8 @@ const PoolsComponent = ({
                     <span className="token-select-name">{token}</span>
                   </span>
                 </div>
-              )
-            })}
+              ))}
+            </div>
           </div>
         </Modal>
       ) : isAddLiquidityConfirmationModalOpen ? (

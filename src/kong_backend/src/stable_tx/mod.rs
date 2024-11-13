@@ -14,5 +14,4 @@ pub mod swap_tx;
 pub mod swap_tx_impl;
 pub mod tx;
 pub mod tx_archive;
-pub mod tx_impl;
 pub mod tx_map;

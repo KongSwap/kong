@@ -6,6 +6,7 @@
     import { fly, fade } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
+    import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
 
     interface TransactionData {
         ts: bigint;
@@ -36,7 +37,7 @@
         const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
         if (diffInHours < 24) {
-            return `${Math.round(diffInHours)} hours ago`;
+            return `${Math.round(diffInHours)} hr ago`;
         } else if (diffInHours < 48) {
             return 'Yesterday';
         } else {
@@ -44,23 +45,10 @@
         }
     }
 
-    function formatAmount(amount: string, symbol: string): string {
-        const token = $tokenStore.tokens.find(t => t.symbol === symbol);
-        if (!token) return amount;
-
-        const decimals = token.decimals || 8; // Default to 8 if not specified
-        const amountBigInt = BigInt(amount);
-        const divisor = BigInt(10) ** BigInt(decimals);
-        const wholePart = amountBigInt / divisor;
-        const fractionalPart = amountBigInt % divisor;
-
-        let formattedFraction = fractionalPart.toString().padStart(decimals, '0');
-        // Trim trailing zeros
-        formattedFraction = formattedFraction.replace(/0+$/, '');
-
-        return formattedFraction ? 
-            `${wholePart}.${formattedFraction}` : 
-            wholePart.toString();
+    function formatAmount(data: TransactionData, type: "pay" | "receive"): string {
+        const token = $tokenStore.tokens.find(t => t.symbol === data[type === "pay" ? "pay_symbol" : "receive_symbol"]);
+        if (!token) return data[type === "pay" ? "pay_amount" : "receive_amount"] || '0';
+        return formatTokenAmount(data[type === "pay" ? "pay_amount" : "receive_amount"] || '0', token.decimals || 8);
     }
 
     function getTransactionIcon(type: string): string {
@@ -141,10 +129,10 @@
                     
                     <div class="flex flex-col text-left">
                         <span class="symbol">{type}</span>
-                        <span class="name text-nowrap text-ellipsis text-xs">
+                        <span class="name text-ellipsis text-xs">
                             {#if type === "Swap"}
-                                {formatAmount(data.pay_amount || '0', data.pay_symbol || '')} {data.pay_symbol} → 
-                                {formatAmount(data.receive_amount || '0', data.receive_symbol || '')} {data.receive_symbol}
+                                {formatAmount(data, "pay")} {data.pay_symbol} → 
+                                {formatAmount(data, "receive")} {data.receive_symbol}
                             {/if}
                         </span>
                     </div>

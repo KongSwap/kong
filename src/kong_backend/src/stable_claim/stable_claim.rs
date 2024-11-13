@@ -31,6 +31,7 @@ pub enum ClaimStatus {
     Unclaimed,
     Claiming, // used as a caller guard to prevent reentrancy
     Claimed,
+    TooManyAttempts,
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]

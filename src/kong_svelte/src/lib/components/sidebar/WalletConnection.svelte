@@ -6,7 +6,7 @@
     availableWallets,
     selectedWalletId,
   } from "$lib/services/wallet/walletStore";
-  import { t } from "$lib/translations/translationstions";
+  import { t } from "$lib/services/translations";
   import { onMount } from "svelte";
   import { uint8ArrayToHexString } from "@dfinity/utils";
   import { WalletService } from "$lib/services/wallet/WalletService";

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import QRCode from 'qrcode';
-  import { WalletService } from "$lib/services/wallet/WalletService";
   import { userStore } from "$lib/services/wallet/walletStore";
+    import { toastStore } from "$lib/stores/toastStore";
 
   let showCopied = false;
   let showAccountCopied = false;
@@ -36,7 +36,7 @@
   async function generateQR(text: string) {
     try {
       return await QRCode.toDataURL(text, {
-        width: 200,
+        width: 300,
         margin: 1,
         color: {
           dark: '#ffffff',
@@ -52,6 +52,7 @@
   const handleCopy = async (text: string, setter: (value: boolean) => void) => {
     try {
       await navigator.clipboard.writeText(text);
+      toastStore.success('Copied to clipboard');
       setter(true);
       setTimeout(() => setter(false), 1500);
     } catch (error) {
@@ -62,10 +63,10 @@
 
 <div class="tab-panel">
   <!-- Sub-tabs Navigation -->
-  <div class="sub-tabs">
+  <div class="flex gap-1 bg-white/10 rounded-md mb-4">
     {#each subTabs as tab}
       <button
-        class="sub-tab-button"
+        class="flex-1 p-3 bg-transparent border-none text-white/70 text-sm cursor-pointer transition-all duration-200 ease-in-out rounded-md"
         class:active={activeSubTab === tab.id}
         on:click={() => activeSubTab = tab.id}
       >
@@ -76,21 +77,23 @@
 
   <!-- Principal ID Section -->
   {#if activeSubTab === 'principal'}
-    <div class="detail-section">
-      <div class="info-tooltip">
+    <div class="pb-4">
+      <div class="text-white/70 text-xs mb-2 italic">
         Used for authentication and canister control
       </div>
-      <div class="id-container">
-        <div class="id-content">
-          <div class="id-details">
-            <span class="address">{principalId}</span>
+      <div class="bg-black/20 p-4 rounded-lg border border-white/10 w-full">
+        <div class="grid gap-4 w-full">
+          <div class="grid grid-cols-[1fr_auto] gap-3 items-center w-full">
+            <span class="font-mono text-sm text-white/90 p-2 bg-black/20 rounded-md break-words min-w-0 max-w-full">
+              {principalId}
+            </span>
             <button
-              class="copy-button group relative"
+              class="p-2 h-full min-w-[40px] bg-white/10 border border-white/20 rounded-md text-white flex items-center justify-center transition-all duration-200 ease-in-out relative"
               class:copied={showCopied}
               on:click={() => handleCopy(principalId, (value) => showCopied = value)}
               aria-label={showCopied ? "Principal ID copied" : "Copy Principal ID"}
             >
-              <span class="tooltip">
+              <span class="absolute top-[-30px] left-1/2 transform -translate-x-1/2 bg-[#1a1a1a] p-1 rounded-md text-xs opacity-0 pointer-events-none transition-opacity duration-200 ease-in-out">
                 {showCopied ? "Copied!" : "Copy"}
               </span>
               {#if showCopied}
@@ -106,8 +109,8 @@
             </button>
           </div>
           {#if principalQR}
-            <div class="qr-container">
-              <img src={principalQR} alt="Principal ID QR Code" />
+            <div class="w-full max-w-[300px] aspect-square mx-auto bg-black/30 p-3 rounded-md border border-white/10">
+              <img src={principalQR} alt="Principal ID QR Code" class="w-full h-full object-contain" />
             </div>
           {/if}
         </div>
@@ -117,21 +120,23 @@
 
   <!-- Account ID Section -->
   {#if activeSubTab === 'account'}
-    <div class="detail-section">
-      <div class="info-tooltip">
+    <div class="pb-4">
+      <div class="text-white/70 text-xs mb-2 italic">
         Used for ICP token transactions and ledger operations
       </div>
-      <div class="id-container">
-        <div class="id-content">
-          <div class="id-details">
-            <span class="address">{accountId}</span>
+      <div class="bg-black/20 p-4 rounded-lg border border-white/10 w-full">
+        <div class="grid gap-4 w-full">
+          <div class="grid grid-cols-[1fr_auto] gap-3 items-center w-full">
+            <span class="font-mono text-sm text-white/90 p-2 bg-black/20 rounded-md break-words min-w-0 max-w-full">
+              {accountId}
+            </span>
             <button
-              class="copy-button group relative"
+              class="p-2 h-full min-w-[40px] bg-white/10 border border-white/20 rounded-md text-white flex items-center justify-center transition-all duration-200 ease-in-out relative"
               class:copied={showAccountCopied}
               on:click={() => handleCopy(accountId, (value) => showAccountCopied = value)}
               aria-label={showAccountCopied ? "Account ID copied" : "Copy Account ID"}
             >
-              <span class="tooltip">
+              <span class="absolute top-[-30px] left-1/2 transform -translate-x-1/2 bg-[#1a1a1a] p-1 rounded-md text-xs opacity-0 pointer-events-none transition-opacity duration-200 ease-in-out">
                 {showAccountCopied ? "Copied!" : "Copy"}
               </span>
               {#if showAccountCopied}
@@ -147,156 +152,18 @@
             </button>
           </div>
           {#if accountQR}
-            <div class="qr-container">
-              <img src={accountQR} alt="Account ID QR Code" />
+            <div class="w-full max-w-[300px] aspect-square mx-auto bg-black/30 p-3 rounded-md border border-white/10">
+              <img src={accountQR} alt="Account ID QR Code" class="w-full h-full object-contain" />
             </div>
           {/if}
         </div>
       </div>
     </div>
   {/if}
-</div>
+</div> 
 
-<style>
-  .tab-panel {
-    /* animation: fadeIn 0.3s ease; - removed */
+<style scoped>
+  .active {
+    background-color: rgba(0, 0, 0, 0.48);
   }
-
-  .sub-tabs {
-    display: flex;
-    gap: 1px;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-  }
-
-  .sub-tab-button {
-    flex: 1;
-    padding: 0.5rem;
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 4px;
-  }
-
-  .sub-tab-button.active {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-  }
-
-  .detail-section {
-    padding-bottom: 1rem;
-  }
-
-  .detail-section h3 {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-  }
-
-  .info-tooltip {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.75rem;
-    margin-bottom: 0.5rem;
-    font-style: italic;
-  }
-
-  .id-container {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    width: 100%;
-  }
-
-  .id-content {
-    display: grid;
-    gap: 1rem;
-    width: 100%;
-  }
-
-  .id-details {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.75rem;
-    align-items: center;
-    width: 100%;
-  }
-
-  .address {
-    font-family: monospace;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.9);
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    overflow-wrap: break-word;
-    word-break: break-all;
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  .copy-button {
-    padding: 0.5rem;
-    height: 100%;
-    min-width: 40px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    position: relative;
-  }
-
-  .copy-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-
-  .copy-button.copied {
-    background: rgba(76, 175, 80, 0.3);
-    border-color: rgba(76, 175, 80, 0.5);
-  }
-
-  .tooltip {
-    position: absolute;
-    top: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1a1a1a;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-  }
-
-  .copy-button:hover .tooltip {
-    opacity: 1;
-  }
-
-  .qr-container {
-    width: 100%;
-    max-width: 200px;
-    aspect-ratio: 1;
-    margin: 0 auto;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 0.75rem;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .qr-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-</style> 
+</style>

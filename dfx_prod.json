@@ -18,6 +18,24 @@
 				}
 			]
     },
+    "kong_data": {
+      "candid": "src/kong_data/kong_data.did",
+      "declarations": {
+        "node_compatibility": true
+      },
+      "package": "kong_data",
+      "type": "custom",
+      "build": "cargo build --features \"prod\" --target wasm32-unknown-unknown --release -p kong_data --locked",
+      "wasm": "target/wasm32-unknown-unknown/release/kong_data.wasm",
+      "optimize": "cycles",
+      "gzip": true,
+      "specified_id": "cbefx-hqaaa-aaaar-qakrq-cai",
+			"metadata": [
+				{
+					"name": "candid:service"
+				}
+			]
+    },
     "kong_frontend": {
       "dependencies": [
         "kong_backend"

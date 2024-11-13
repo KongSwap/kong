@@ -7,12 +7,14 @@ use crate::ic::{
     address::Address::{self, AccountId, PrincipalId},
     get_time::get_time,
     guards::not_in_maintenance_mode,
-    logging::{error_log, info_log},
+    logging::error_log,
     transfer::{icp_transfer, icrc1_transfer},
 };
 use crate::stable_claim::claim_map;
 use crate::stable_claim::{
-    claim_map::{insert_attempt_request_id, update_claimed_status, update_claiming_status, update_unclaimed_status},
+    claim_map::{
+        insert_attempt_request_id, update_claimed_status, update_claiming_status, update_too_many_attempts_status, update_unclaimed_status,
+    },
     stable_claim::{ClaimStatus, StableClaim},
 };
 use crate::stable_memory::CLAIM_MAP;
@@ -34,17 +36,15 @@ pub async fn process_claims() {
     }
 
     let ts = get_time();
-    info_log(format!("Processing {} claims", num_claims).as_str());
 
     // get all unclaimed claims
-    let mut claims: Vec<StableClaim> = CLAIM_MAP.with(|m| {
+    let claims: Vec<StableClaim> = CLAIM_MAP.with(|m| {
         m.borrow()
             .iter()
+            .rev()
             .filter_map(|(_, v)| if v.status == ClaimStatus::Unclaimed { Some(v) } else { None })
             .collect()
     });
-    // order by timestamp
-    claims.sort_by_key(|claim| claim.ts);
 
     let mut consecutive_errors = 0_u8;
     for claim in &claims {
@@ -53,6 +53,22 @@ pub async fn process_claims() {
                 Some(token) => token,
                 None => continue, // continue to next claim if token not found
             };
+
+            if claim.attempt_request_id.len() > 50 {
+                // if claim has more than 50 attempts, update status to too_many_attempts and investigate manually
+                update_too_many_attempts_status(claim.claim_id);
+                continue;
+            } else if claim.attempt_request_id.len() > 20 {
+                let last_attempt_request_id = claim.attempt_request_id.last().unwrap();
+                if let Some(request) = request_map::get_by_request_and_user_id(*last_attempt_request_id, None) {
+                    if request.ts + 3_600_000_000_000 > ts {
+                        // if last attempt was less than 1 hour ago, skip this claim
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
 
             // create new request with CLAIMS_TIMER_USER_ID as user_id
             let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
