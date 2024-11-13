@@ -13,7 +13,8 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
     let lp_token = pool.lp_token();
     let lp_token_symbol = lp_token.symbol().to_string();
     let lp_token_id = lp_token.token_id();
-    let lp_token_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    //let lp_token_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    let lp_token_supply = nat_zero();
 
     PoolReply {
         pool_id: pool.pool_id,
