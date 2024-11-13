@@ -31,127 +31,45 @@ pub fn swap_amounts(
     // Receive token
     let receive_token_id = receive_token.token_id();
 
+    let mut txs = Vec::new();
+
     // if tokens are the same return the same amount
     if pay_token_id == receive_token_id {
-        return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, Vec::new()));
+        return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, txs));
     }
 
-    // swaps stores all the swap permutations
-    let mut swaps: Vec<(Nat, f64, f64, f64, Vec<SwapCalc>)> = Vec::new();
+    // if called from swap_mid_price, no need to check user's fee level
+    let user_fee_level = if nat_is_zero(pay_amount) {
+        0
+    } else {
+        user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level
+    };
 
-    // 1-step swap permutations
-    if let Some(swap) = one_step_swaps(pay_token_id, pay_amount, receive_token_id)? {
-        swaps.push(swap)
-    }
-
-    // 2-step swap permutations
-    if let Some(swap) = two_step_swaps(pay_token_id, pay_amount, receive_token_id)? {
-        swaps.push(swap)
-    }
-
-    // 3-step swap permutations
-    if let Some(swap) = three_step_swaps(pay_token_id, pay_amount, receive_token_id)? {
-        swaps.push(swap)
-    }
-
-    // test for 3-step swap via token0/ICP, ICP/ckUSDT and token1/ckUSDT
-    let mut txs = Vec::new();
-    // test for 2-step swap via ckUSDT or ICP
-    let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
-    let icp_token_id = token_map::get_icp()?.token_id();
-    let pool1_ckusdt = pool_map::get_by_token_ids(pay_token_id, ckusdt_token_id);
-    let pool2_ckusdt = pool_map::get_by_token_ids(receive_token_id, ckusdt_token_id);
-    let pool1_icp = pool_map::get_by_token_ids(pay_token_id, icp_token_id);
-    let pool2_icp = pool_map::get_by_token_ids(receive_token_id, icp_token_id);
-    let pool1_icp_ckusdt = pool_map::get_by_token_ids(icp_token_id, ckusdt_token_id);
-    let pool2_icp_ckusdt = pool_map::get_by_token_ids(icp_token_id, ckusdt_token_id);
-    let pool3_ckusdt = pool2_ckusdt;
-    if pool1_icp.is_some() && pool2_icp_ckusdt.is_some() && pool3_ckusdt.is_some() {
-        let pool1 = match pool1_icp {
-            Some(ref pool) => pool,
-            None => return Err("Pool not found".to_string()),
-        };
-        let pool2 = match pool2_icp_ckusdt {
-            Some(ref pool) => pool,
-            None => return Err("Pool not found".to_string()),
-        };
-        let pool3 = match pool3_ckusdt {
-            Some(ref pool) => pool,
-            None => return Err("Pool not found".to_string()),
-        };
-        let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 3;
-        // swap token0 to ICP
-        let swap1 = swap_amount_0(
-            pool1,
-            pay_amount,
-            Some(swap1_lp_fee),
-            Some(&nat_zero()), // swap1 do not take gas fees
-        )?;
-        let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 3;
-        // swap ICP to ckUSDT
-        let swap2 = swap_amount_0(
-            pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
-            Some(swap2_lp_fee),
-            Some(&nat_zero()), // swap2 do not take gas fees
-        )?;
-        let swap3_lp_fee = (pool3.lp_fee_bps + 1) / 3;
-        // swap ckUSDT to token1 (reverse order of pool)
-        let swap3 = swap_amount_1(pool3, &swap2.receive_amount_with_fees_and_gas(), Some(swap3_lp_fee), None)?;
-        let receive_amount = swap3.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
-        let swap3_price = swap3.get_price().ok_or("Invalid swap3 price")?;
-        let price = swap1_price * swap2_price * swap3_price;
+    // check if direct pool exists
+    if let Some(pool) = pool_map::get_by_token_ids(pay_token_id, receive_token_id) {
+        let swap = swap_amount_0(&pool, pay_amount, Some(user_fee_level), None, None)?;
+        let receive_amount = swap.receive_amount_with_fees_and_gas();
+        let price = swap.get_price().ok_or("Invalid price")?;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
-        let swap3_mid_price = swap3.get_mid_price().ok_or("Invalid swap3 mid price")?;
-        let mid_price = swap1_mid_price * swap2_mid_price * swap3_mid_price;
+        let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        txs.push(swap1);
-        txs.push(swap2);
-        txs.push(swap3);
+        txs.push(swap);
         return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
     };
 
-    Err("Pool not found".to_string())
-}
-
-fn one_step_swaps(
-    pay_token_id: u32,
-    pay_amount: &Nat,
-    receive_token_id: u32,
-) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
-    if let Some(pool) = pool_map::get_by_token_ids(pay_token_id, receive_token_id) {
-        let swap = swap_amount_0(&pool, pay_amount, None, None)?;
+    if let Some(pool) = pool_map::get_by_token_ids(receive_token_id, pay_token_id) {
+        let swap = swap_amount_1(&pool, pay_amount, Some(user_fee_level), None, None)?;
         let receive_amount = swap.receive_amount_with_fees_and_gas();
         let price = swap.get_price().ok_or("Invalid price")?;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
         let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, vec![swap])));
-    } else if let Some(pool) = pool_map::get_by_token_ids(receive_token_id, pay_token_id) {
-        let swap = swap_amount_1(&pool, pay_amount, None, None)?;
-        let receive_amount = swap.receive_amount_with_fees_and_gas();
-        let price = swap.get_price().ok_or("Invalid price")?;
-        let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
-        let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
-        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, vec![swap])));
+        txs.push(swap);
+        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
     };
-    Ok(None)
-}
 
-fn two_step_swaps(
-    pay_token_id: u32,
-    pay_amount: &Nat,
-    receive_token_id: u32,
-) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
-    let mut txs = Vec::new();
     // test for 2-step swap via ckUSDT or ICP
     let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
     let icp_token_id = token_map::get_icp()?.token_id();
@@ -176,10 +94,16 @@ fn two_step_swaps(
             };
             let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2;
             // swap token0 to ckUSDT
-            let swap1 = swap_amount_0(pool1, pay_amount, Some(swap1_lp_fee), Some(&nat_zero()))?;
+            let swap1 = swap_amount_0(pool1, pay_amount, Some(user_fee_level), Some(swap1_lp_fee), Some(&nat_zero()))?;
             let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 2;
             // swap ckUSDT to token1 (reverse order of pool)
-            let swap2 = swap_amount_1(pool2, &swap1.receive_amount_with_fees_and_gas(), Some(swap2_lp_fee), None)?;
+            let swap2 = swap_amount_1(
+                pool2,
+                &swap1.receive_amount_with_fees_and_gas(),
+                Some(user_fee_level),
+                Some(swap2_lp_fee),
+                None,
+            )?;
             Some((swap1, swap2))
         } else {
             None
@@ -197,10 +121,16 @@ fn two_step_swaps(
             };
             let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2;
             // swap token0 to ICP
-            let swap1 = swap_amount_0(pool1, pay_amount, Some(swap1_lp_fee), Some(&nat_zero()))?;
+            let swap1 = swap_amount_0(pool1, pay_amount, Some(user_fee_level), Some(swap1_lp_fee), Some(&nat_zero()))?;
             let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 2;
             // swap ICP to token1 (reverse order of pool)
-            let swap2 = swap_amount_1(pool2, &swap1.receive_amount_with_fees_and_gas(), Some(swap2_lp_fee), None)?;
+            let swap2 = swap_amount_1(
+                pool2,
+                &swap1.receive_amount_with_fees_and_gas(),
+                Some(user_fee_level),
+                Some(swap2_lp_fee),
+                None,
+            )?;
             Some((swap1, swap2))
         } else {
             None
@@ -237,7 +167,7 @@ fn two_step_swaps(
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap1);
         txs.push(swap2);
-        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
+        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
     }
 
     // special case where pay token is ckUSDT and token0/ckUSDT pool does not exist so need to use token0/ICP pool
@@ -253,10 +183,16 @@ fn two_step_swaps(
         };
         let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2;
         // swap ckUSDT to ICP (reverse order of pool)
-        let swap1 = swap_amount_1(pool1, pay_amount, Some(swap1_lp_fee), Some(&nat_zero()))?;
+        let swap1 = swap_amount_1(pool1, pay_amount, Some(user_fee_level), Some(swap1_lp_fee), Some(&nat_zero()))?;
         let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 2;
         // swap ICP to token1 (reverse order of pool)
-        let swap2 = swap_amount_1(pool2, &swap1.receive_amount_with_fees_and_gas(), Some(swap2_lp_fee), None)?;
+        let swap2 = swap_amount_1(
+            pool2,
+            &swap1.receive_amount_with_fees_and_gas(),
+            Some(user_fee_level),
+            Some(swap2_lp_fee),
+            None,
+        )?;
         let receive_amount = swap2.receive_amount_with_fees_and_gas();
         let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
         let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
@@ -269,7 +205,7 @@ fn two_step_swaps(
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap1);
         txs.push(swap2);
-        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
+        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
     };
 
     // special case where receieve token is ckUSDT and token0/ckUSDT pool does not exist so need to use token0/ICP pool
@@ -285,10 +221,16 @@ fn two_step_swaps(
         };
         let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 2;
         // swap token0 to ICP
-        let swap1 = swap_amount_0(pool1, pay_amount, Some(swap1_lp_fee), Some(&nat_zero()))?;
+        let swap1 = swap_amount_0(pool1, pay_amount, Some(user_fee_level), Some(swap1_lp_fee), Some(&nat_zero()))?;
         let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 2;
         // swap ICP to ckUSDT
-        let swap2 = swap_amount_0(pool2, &swap1.receive_amount_with_fees_and_gas(), Some(swap2_lp_fee), None)?;
+        let swap2 = swap_amount_0(
+            pool2,
+            &swap1.receive_amount_with_fees_and_gas(),
+            Some(user_fee_level),
+            Some(swap2_lp_fee),
+            None,
+        )?;
         let receive_amount = swap2.receive_amount_with_fees_and_gas();
         let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
         let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
@@ -301,24 +243,70 @@ fn two_step_swaps(
         let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
         txs.push(swap1);
         txs.push(swap2);
-        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
+        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
     };
 
-    Ok(None)
-}
+    // test for 3-step swap via token0/ckUSDT, ICP/ckUSDT and token1/ICP
+    let pool3_icp = pool2_icp;
+    if pool1_ckusdt.is_some() && pool2_icp_ckusdt.is_some() && pool3_icp.is_some() {
+        let pool1 = match pool1_ckusdt {
+            Some(ref pool) => pool,
+            None => return Err("Pool not found".to_string()),
+        };
+        let pool2 = match pool2_icp_ckusdt {
+            Some(ref pool) => pool,
+            None => return Err("Pool not found".to_string()),
+        };
+        let pool3 = match pool3_icp {
+            Some(ref pool) => pool,
+            None => return Err("Pool not found".to_string()),
+        };
+        let swap1_lp_fee = (pool1.lp_fee_bps + 1) / 3;
+        // swap token0 to ckUSDT
+        let swap1 = swap_amount_0(
+            pool1,
+            pay_amount,
+            Some(user_fee_level),
+            Some(swap1_lp_fee),
+            Some(&nat_zero()), // swap1 do not take gas fees
+        )?;
+        let swap2_lp_fee = (pool2.lp_fee_bps + 1) / 3;
+        // swap ckUSDT to ICP (reverse order of pool)
+        let swap2 = swap_amount_1(
+            pool2,
+            &swap1.receive_amount_with_fees_and_gas(),
+            Some(user_fee_level),
+            Some(swap2_lp_fee),
+            Some(&nat_zero()), // swap2 do not take gas fees
+        )?;
+        let swap3_lp_fee = (pool3.lp_fee_bps + 1) / 3;
+        // swap ICP to token1 (reverse order of pool)
+        let swap3 = swap_amount_1(
+            pool3,
+            &swap2.receive_amount_with_fees_and_gas(),
+            Some(user_fee_level),
+            Some(swap3_lp_fee),
+            None,
+        )?;
+        let receive_amount = swap3.receive_amount_with_fees_and_gas();
+        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
+        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
+        let swap3_price = swap3.get_price().ok_or("Invalid swap3 price")?;
+        let price = swap1_price * swap2_price * swap3_price;
+        let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
+        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
+        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
+        let swap3_mid_price = swap3.get_mid_price().ok_or("Invalid swap3 mid price")?;
+        let mid_price = swap1_mid_price * swap2_mid_price * swap3_mid_price;
+        let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        txs.push(swap1);
+        txs.push(swap2);
+        txs.push(swap3);
+        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
+    };
 
-fn three_step_swaps(
-    pay_token_id: u32,
-    pay_amount: &Nat,
-    receive_token_id: u32,
-) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
-    let mut txs = Vec::new();
     // test for 3-step swap via token0/ICP, ICP/ckUSDT and token1/ckUSDT
-    let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
-    let icp_token_id = token_map::get_icp()?.token_id();
-    let pool2_ckusdt = pool_map::get_by_token_ids(receive_token_id, ckusdt_token_id);
-    let pool1_icp = pool_map::get_by_token_ids(pay_token_id, icp_token_id);
-    let pool2_icp_ckusdt = pool_map::get_by_token_ids(icp_token_id, ckusdt_token_id);
     let pool3_ckusdt = pool2_ckusdt;
     if pool1_icp.is_some() && pool2_icp_ckusdt.is_some() && pool3_ckusdt.is_some() {
         let pool1 = match pool1_icp {
@@ -338,6 +326,7 @@ fn three_step_swaps(
         let swap1 = swap_amount_0(
             pool1,
             pay_amount,
+            Some(user_fee_level),
             Some(swap1_lp_fee),
             Some(&nat_zero()), // swap1 do not take gas fees
         )?;
@@ -346,12 +335,19 @@ fn three_step_swaps(
         let swap2 = swap_amount_0(
             pool2,
             &swap1.receive_amount_with_fees_and_gas(),
+            Some(user_fee_level),
             Some(swap2_lp_fee),
             Some(&nat_zero()), // swap2 do not take gas fees
         )?;
         let swap3_lp_fee = (pool3.lp_fee_bps + 1) / 3;
         // swap ckUSDT to token1 (reverse order of pool)
-        let swap3 = swap_amount_1(pool3, &swap2.receive_amount_with_fees_and_gas(), Some(swap3_lp_fee), None)?;
+        let swap3 = swap_amount_1(
+            pool3,
+            &swap2.receive_amount_with_fees_and_gas(),
+            Some(user_fee_level),
+            Some(swap3_lp_fee),
+            None,
+        )?;
         let receive_amount = swap3.receive_amount_with_fees_and_gas();
         let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
         let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
@@ -367,9 +363,10 @@ fn three_step_swaps(
         txs.push(swap1);
         txs.push(swap2);
         txs.push(swap3);
-        return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
+        return Ok((receive_amount, price_f64, mid_price_f64, slippage_f64, txs));
     };
-    Ok(None)
+
+    Err("Pool not found".to_string())
 }
 
 /// Swap amount 0 of a given pool
@@ -377,8 +374,9 @@ fn three_step_swaps(
 fn swap_amount_0(
     pool: &StablePool,
     amount_0: &Nat,
-    use_lp_fee: Option<u8>,    // overwrite for LP fee in case of 2-legged synthetic swaps
-    use_gas_fee: Option<&Nat>, // overwrite for gas fee in case of synethetic swaps
+    user_fee_level: Option<u8>, // user specific fee level, 0 = 100% fee (no discount), 100 = 0% fee (max discount)
+    use_lp_fee: Option<u8>,     // overwrite for LP fee in case of 2-legged synthetic swaps
+    use_gas_fee: Option<&Nat>,  // overwrite for gas fee in case of synethetic swaps
 ) -> Result<SwapCalc, String> {
     // Token 0
     let token_0 = pool.token_0();
@@ -407,8 +405,6 @@ fn swap_amount_0(
         });
     }
 
-    let user_fee_level = user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level;
-
     // convert amount_0 and pool balances to the max_decimals precision
     let max_decimals = std::cmp::max(token_0.decimals(), token_1.decimals());
     let reserve_0_in_max_decimals = nat_to_decimal_precision(&reserve_0, token_0.decimals(), max_decimals);
@@ -423,7 +419,7 @@ fn swap_amount_0(
     // calculate the LP fees
     // any user fee discount. user.fee_level is 0 = 100% fee (no discount), 100 = 0% fee (max discount)
     // user_lp_fee_pct = 100 - user.fee_level
-    let user_lp_fee_pct = nat_subtract(&Nat::from(100_u8), &Nat::from(user_fee_level)).unwrap_or(Nat::from(100_u8));
+    let user_lp_fee_pct = nat_subtract(&Nat::from(100_u8), &Nat::from(user_fee_level.unwrap_or(0_u8))).unwrap_or(Nat::from(100_u8));
     // user_lp_fee_bps = (user_lp_fee * user_lp_fee_pct) / 100 - user's fee level in bps with discount
     let user_lp_fee_bps = nat_divide(
         &nat_multiply(&user_lp_fee_pct, &Nat::from(use_lp_fee.unwrap_or(pool.lp_fee_bps))),
@@ -456,7 +452,13 @@ fn swap_amount_0(
 
 /// Swap amount 1 of a given pool
 /// use_lp_fee and use_gas_fee are used to overwrite the default LP and gas fees, if None, then use the pool's default
-fn swap_amount_1(pool: &StablePool, amount_1: &Nat, use_lp_fee: Option<u8>, use_gas_fee: Option<&Nat>) -> Result<SwapCalc, String> {
+fn swap_amount_1(
+    pool: &StablePool,
+    amount_1: &Nat,
+    user_fee_level: Option<u8>,
+    use_lp_fee: Option<u8>,
+    use_gas_fee: Option<&Nat>,
+) -> Result<SwapCalc, String> {
     // Token 0
     let token_0 = pool.token_0();
     let token_id_0 = token_0.token_id();
@@ -484,8 +486,6 @@ fn swap_amount_1(pool: &StablePool, amount_1: &Nat, use_lp_fee: Option<u8>, use_
         });
     }
 
-    let user_fee_level = user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level;
-
     // convert amount_1 and pool balances to the max_decimals precision
     let max_decimals = std::cmp::max(token_0.decimals(), token_1.decimals());
     let reserve_0_in_max_decimals = nat_to_decimal_precision(&reserve_0, token_0.decimals(), max_decimals);
@@ -499,7 +499,7 @@ fn swap_amount_1(pool: &StablePool, amount_1: &Nat, use_lp_fee: Option<u8>, use_
 
     // calculate the LP fees
     // user_lp_fee_pct = 100 - user.fee_level
-    let user_lp_fee_pct = nat_subtract(&Nat::from(100_u8), &Nat::from(user_fee_level)).unwrap_or(Nat::from(100_u8));
+    let user_lp_fee_pct = nat_subtract(&Nat::from(100_u8), &Nat::from(user_fee_level.unwrap_or(0_u8))).unwrap_or(Nat::from(100_u8));
     let user_lp_fee_bps = nat_divide(
         &nat_multiply(&user_lp_fee_pct, &Nat::from(use_lp_fee.unwrap_or(pool.lp_fee_bps))),
         &Nat::from(100_u8),
