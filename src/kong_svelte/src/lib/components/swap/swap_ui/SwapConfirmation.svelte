@@ -132,7 +132,7 @@
   }
 </script>
 
-<Modal show={isVisible} title="Review Swap" {onClose} variant="green" height="100%">
+<Modal show={isVisible} title="Review Swap" {onClose} variant="green" height="auto">
   {#if isInitializing}
     <div class="flex justify-center items-center max-h-[100px]">
       <span class="text-white text-lg opacity-80">Getting latest price...</span>
