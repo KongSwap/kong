@@ -12,11 +12,11 @@
   export let receiveToken: string;
   export let onClose: () => void;
 
-  let countdown = 5;
+  let countdown = 3;
   let countdownInterval: ReturnType<typeof setInterval>;
+  let isCountdownActive = true;
 
   function startCountdown() {
-    countdown = 5;
     countdownInterval = setInterval(() => {
       countdown--;
       if (countdown <= 0) {
@@ -26,7 +26,17 @@
     }, 1000);
   }
 
+  function handleClick() {
+    if (isCountdownActive) {
+      clearInterval(countdownInterval);
+      isCountdownActive = false;
+    } else {
+      onClose();
+    }
+  }
+
   $: if (show) {
+    isCountdownActive = true;
     startCountdown();
   }
 
@@ -39,7 +49,7 @@
   <div 
     class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center"
     transition:fade={{ duration: 200 }}
-    on:click={onClose}
+    on:click={handleClick}
   >
     <div 
       class="bg-gradient-to-br from-yellow-400/90 to-lime-400/90 p-8 rounded-2xl max-w-md w-full mx-4 shadow-2xl relative"
@@ -76,10 +86,10 @@
 
         <Button
           variant="yellow"
-          onClick={onClose}
+          onClick={handleClick}
           width="100%"
         >
-          Close ({countdown}s)
+          {isCountdownActive ? `Closing in ${countdown}... ` : 'Close'}
         </Button>
       </div>
     </div>

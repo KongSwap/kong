@@ -89,7 +89,7 @@
     : titles[activeTab].desktop;
 </script>
 
-<nav class="w-full z-50 p-4 md:max-w-6xl">
+<nav class="w-full z-50 p-4 max-w-6xl">
   <div class="grid grid-cols-12 gap-2">
     <div class="col-span-2 flex items-center gap-2">
       {#if isMobile}
@@ -127,7 +127,7 @@
       </div>
     </div>
 
-    <div class="col-span-2 flex items-center justify-end gap-4 mb-2">
+    <div class="col-span-2 flex gap-4 items-center">
       {#if !isMobile}
         <button
           class="p-2 flex items-center justify-center transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95"
@@ -244,6 +244,8 @@
   onClose={handleCloseModal}
   title="Settings"
   width="550px"
+  height="100%"
+  
 >
   <LanguageSelector />
 </Modal>

@@ -115,7 +115,7 @@
 
 <Modal show={isVisible} title="Review Swap" {onClose} variant="green">
   {#if isInitializing}
-    <div class="flex justify-center items-center min-h-[200px]">
+    <div class="flex justify-center items-center max-h-[100px]">
       <span class="text-white text-lg opacity-80">Getting latest price...</span>
     </div>
   {:else if error}

@@ -7,13 +7,14 @@
   import Button from "$lib/components/common/Button.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
+  import {IcrcService} from "$lib/services/icrc/icrcService";
 
   let selectedToken: any = null;
   let isModalOpen = false;
   let amount = "";
   let error = "";
   let balance = "0";
-  let isRefreshing = false;
+  let destinationPid;
   
   function handleTokenClick(token: any) {
     selectedToken = token;
@@ -33,6 +34,11 @@
     } else {
       error = "";
     }
+  }
+
+  const sendToken = async () => {
+    const tx = await IcrcService.icrc1Transfer(selectedToken, destinationPid, BigInt(amount));
+    console.log(tx);
   }
   
 
@@ -65,6 +71,7 @@
   onClose={handleCloseModal}
   title={"Send " + (selectedToken?.symbol || "Token Details")}
   width="480px"
+  height="100%"
 >
   {#if selectedToken}
     <div class="token-details w-[380px]">
@@ -94,6 +101,7 @@
       <TextInput
         id="principal"
         placeholder="Destination pid"
+        bind:value={destinationPid}
         required
         size="lg"
       />
@@ -101,7 +109,7 @@
 
     <div class="modal-buttons">
       <Button text="Close" on:click={handleCloseModal} />
-      <Button text="Send" variant="green" on:click={handleCloseModal} />
+      <Button text="Send" variant="green" on:click={() => sendToken()} />
     </div>
   {/if}
 </Modal>

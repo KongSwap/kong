@@ -19,8 +19,8 @@
   import SwapSettings from "./swap_ui/SwapSettings.svelte";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
-  import BananaRain from '$lib/components/common/BananaRain.svelte';
-  import SwapSuccessModal from './swap_ui/SwapSuccessModal.svelte';
+  import BananaRain from "$lib/components/common/BananaRain.svelte";
+  import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
@@ -70,10 +70,10 @@
   let showBananaRain = false;
   let showSuccessModal = false;
   let successDetails = {
-    payAmount: '',
-    payToken: '',
-    receiveAmount: '',
-    receiveToken: ''
+    payAmount: "",
+    payToken: "",
+    receiveAmount: "",
+    receiveToken: "",
   };
 
   onDestroy(() => {
@@ -156,13 +156,11 @@
         payAmount,
         getTokenDecimals(payToken),
       );
-      console.log("Formatted pay amount:", formattedPayAmount);
       const quote = await SwapService.getQuoteDetails({
         payToken,
         payAmount: formattedPayAmount,
         receiveToken,
       });
-      console.log("Quote:", quote);
 
       // Update the receive amount and other values
       setReceiveAmount(quote.receiveAmount);
@@ -193,7 +191,7 @@
     payAmount = receiveAmount;
 
     if (receiveAmount !== "0") {
-      await debouncedGetQuote(receiveAmount);
+      debouncedGetQuote(receiveAmount);
     }
   }
 
@@ -240,15 +238,15 @@
         payAmount: event.detail.payAmount,
         payToken: event.detail.payToken,
         receiveAmount: event.detail.receiveAmount,
-        receiveToken: event.detail.receiveToken
+        receiveToken: event.detail.receiveToken,
       };
       showSuccessModal = true;
     };
 
-    window.addEventListener('swapSuccess', handleSwapSuccess);
+    window.addEventListener("swapSuccess", handleSwapSuccess);
 
     return () => {
-      window.removeEventListener('swapSuccess', handleSwapSuccess);
+      window.removeEventListener("swapSuccess", handleSwapSuccess);
     };
   });
 
@@ -259,7 +257,17 @@
     isProcessing = true;
     error = null;
     try {
-      await SwapService.executeSwap({
+      // Create new swap entry and store its ID
+      let swapId = swapStatusStore.addSwap({
+        expectedReceiveAmount: receiveAmount,
+        lastPayAmount: payAmount,
+        payToken: payToken,
+        receiveToken: receiveToken,
+        payDecimals: getTokenDecimals(payToken),
+      });
+
+      SwapService.executeSwap({
+        swapId,
         payToken,
         payAmount,
         receiveToken,

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { isConnected, disconnectWallet } from "$lib/services/wallet/walletStore";
+  import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import "./colors.css";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
@@ -16,9 +16,10 @@
   let showAccountDetails = false;
   let windowWidth: number;
   let isRefreshing = false;
+  $: isLoggedIn = $walletStore.isConnected;
 
-  onMount(() => {
-    tokenStore.loadBalances();
+  onMount(async () => {
+    await handleReload();
   });
 
   const tabs: ("tokens" | "pools" | "history")[] = [
@@ -27,9 +28,9 @@
     "history",
   ];
 
-  function handleReload() {
+  async function handleReload() {
     isRefreshing = true;
-    tokenStore.loadBalances().then(() => {
+    await tokenStore.loadBalances().then(() => {
       isRefreshing = false;
     });
   }
@@ -42,7 +43,7 @@
     class="flex flex-col gap-3 p-3"
     in:fly={{ x: 400, duration: 300, easing: cubicOut }}
   >
-    {#if isConnected()}
+    {#if isLoggedIn}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
         <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-96px)]">
           <button
