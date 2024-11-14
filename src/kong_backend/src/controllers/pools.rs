@@ -16,7 +16,7 @@ fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, 
         let map = m.borrow();
         let pools: BTreeMap<_, _> = match pool_id {
             Some(pool_id) => {
-                let start_id = StablePoolId(pool_id);                
+                let start_id = StablePoolId(pool_id);
                 let num_pools = num_pools.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_pools).collect()
             }
@@ -39,7 +39,6 @@ fn update_pools(tokens: String) -> Result<String, String> {
 
     POOL_MAP.with(|user_map| {
         let mut map = user_map.borrow_mut();
-        map.clear_new();
         for (k, v) in pools {
             map.insert(k, v);
         }

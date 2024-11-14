@@ -17,7 +17,7 @@ fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result
         let map = m.borrow();
         let requests: BTreeMap<_, _> = match request_id {
             Some(request_id) => {
-                let start_id = StableRequestId(request_id);                
+                let start_id = StableRequestId(request_id);
                 let num_requests = num_requests.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_requests).collect()
             }
@@ -40,7 +40,6 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
 
     REQUEST_MAP.with(|request_map| {
         let mut map = request_map.borrow_mut();
-        map.clear_new();
         for (k, v) in requests {
             map.insert(k, v);
         }
@@ -55,7 +54,7 @@ fn backup_archive_requests(request_id: Option<u64>, num_requests: Option<u16>) -
         let map = m.borrow();
         let requests: BTreeMap<_, _> = match request_id {
             Some(request_id) => {
-                let start_id = StableRequestId(request_id);                
+                let start_id = StableRequestId(request_id);
                 let num_requests = num_requests.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_requests).collect()
             }

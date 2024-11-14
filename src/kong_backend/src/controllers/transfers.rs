@@ -40,7 +40,6 @@ fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
 
     TRANSFER_MAP.with(|transfer_map| {
         let mut map = transfer_map.borrow_mut();
-        map.clear_new();
         for (k, v) in transfers {
             map.insert(k, v);
         }

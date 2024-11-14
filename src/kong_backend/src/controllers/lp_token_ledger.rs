@@ -14,7 +14,7 @@ fn backup_lp_token_ledger(lp_token_id: Option<u64>, num_lp_token_ledger: Option<
         let map = m.borrow();
         let lp_tokens: BTreeMap<_, _> = match lp_token_id {
             Some(lp_token_id) => {
-                let start_id = StableLPTokenLedgerId(lp_token_id);                
+                let start_id = StableLPTokenLedgerId(lp_token_id);
                 let num_lp_token_ledger = num_lp_token_ledger.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_lp_token_ledger).collect()
             }
@@ -37,7 +37,6 @@ fn update_lp_token_ledger(stable_lp_token_ledger: String) -> Result<String, Stri
 
     LP_TOKEN_LEDGER.with(|user_map| {
         let mut map = user_map.borrow_mut();
-        map.clear_new();
         for (k, v) in lp_token_ledgers {
             map.insert(k, v);
         }

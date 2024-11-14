@@ -14,7 +14,7 @@ fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, 
         let map = m.borrow();
         let users: BTreeMap<_, _> = match user_id {
             Some(user_id) => {
-                let start_id = StableUserId(user_id);                
+                let start_id = StableUserId(user_id);
                 let num_users = num_users.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_users).collect()
             }
@@ -36,7 +36,6 @@ fn update_users(stable_users_json: String) -> Result<String, String> {
 
     USER_MAP.with(|user_map| {
         let mut map = user_map.borrow_mut();
-        map.clear_new();
         for (k, v) in users {
             map.insert(k, v);
         }

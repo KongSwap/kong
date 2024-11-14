@@ -41,7 +41,6 @@ fn update_messages(stable_messages: String) -> Result<String, String> {
 
     MESSAGE_MAP.with(|message_map| {
         let mut map = message_map.borrow_mut();
-        map.clear_new();
         for (k, v) in messages {
             map.insert(k, v);
         }

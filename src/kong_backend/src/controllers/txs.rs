@@ -41,7 +41,6 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
 
     TX_MAP.with(|tx_map| {
         let mut map = tx_map.borrow_mut();
-        map.clear_new();
         for (k, v) in txs {
             map.insert(k, v);
         }

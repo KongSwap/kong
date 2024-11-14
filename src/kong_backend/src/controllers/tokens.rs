@@ -37,7 +37,6 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
 
     TOKEN_MAP.with(|user_map| {
         let mut map = user_map.borrow_mut();
-        map.clear_new();
         for (k, v) in tokens {
             map.insert(k, v);
         }

@@ -2,8 +2,8 @@ use anyhow::Result;
 use candid::{Decode, Encode, Principal};
 use ic_agent::Agent;
 
-const KONG_BACKEND_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
-const KONG_BACKEND_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
+const KONG_DATA_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
+const KONG_DATA_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
 
 #[derive(Clone)]
 pub struct KongData {
@@ -14,9 +14,9 @@ pub struct KongData {
 impl KongData {
     pub async fn new(agent: &Agent, is_mainnet: bool) -> Self {
         let canister_id = if is_mainnet {
-            Principal::from_text(KONG_BACKEND_PROD).unwrap()
+            Principal::from_text(KONG_DATA_PROD).unwrap()
         } else {
-            Principal::from_text(KONG_BACKEND_STAGING).unwrap()
+            Principal::from_text(KONG_DATA_STAGING).unwrap()
         };
         KongData {
             agent: agent.clone(),

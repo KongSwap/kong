@@ -14,7 +14,7 @@ fn backup_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<Strin
         let map = m.borrow();
         let claims: BTreeMap<_, _> = match claim_id {
             Some(claim_id) => {
-                let start_id = StableClaimId(claim_id);                
+                let start_id = StableClaimId(claim_id);
                 let num_claims = num_claims.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_claims).collect()
             }
@@ -37,7 +37,6 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
 
     CLAIM_MAP.with(|claim_map| {
         let mut map = claim_map.borrow_mut();
-        map.clear_new();
         for (k, v) in claims {
             map.insert(k, v);
         }
