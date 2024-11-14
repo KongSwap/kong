@@ -45,8 +45,9 @@
     if (isConnected()) {
       if (interval) return;
 
-      tokenStore.loadBalances();
-      interval = setInterval(tokenStore.loadBalances, 5000);
+      tokenStore.loadBalances().then(() => {
+        interval = setInterval(tokenStore.loadBalances, 5000);
+      });
     }
   });
 

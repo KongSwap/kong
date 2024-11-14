@@ -68,7 +68,7 @@
 
 <section class="flex min-h-[94vh] justify-center w-full">
   <!-- Main Content -->
-  <div class="z-10 flex pt-40 justify-center max-w-5xl w-full md:w-100 px-2 md:px-0">
+  <div class="z-10 flex pt-10 justify-center max-w-5xl w-full md:w-100 px-2 md:px-0">
     <div class="flex flex-col w-full">
       <div
         class="inner-border bg-sky-400 bg-opacity-60 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
@@ -112,7 +112,10 @@
                         requiresAuth={header.requiresAuth}
                         sortColumn={$sortColumnStore}
                         sortDirection={$sortDirectionStore}
-                        on:sort={handleSortEvent}
+                        onsort={({ column, direction }) => {
+                          sortColumnStore.set(column);
+                          sortDirectionStore.set(direction);
+                        }}
                       />
                     {/each}
                   </tr>

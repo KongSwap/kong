@@ -2,7 +2,7 @@
   import { fade } from "svelte/transition";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import debounce from "lodash/debounce";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { walletStore } from "$lib/services/wallet/walletStore";
@@ -19,6 +19,8 @@
   import SwapSettings from "./swap_ui/SwapSettings.svelte";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import BananaRain from "$lib/components/common/BananaRain.svelte";
+  import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
@@ -65,6 +67,14 @@
   let isSlippageExceeded = false;
   let swapMode = "normal";
   let currentSwapId: string | null = null;
+  let showBananaRain = false;
+  let showSuccessModal = false;
+  let successDetails = {
+    payAmount: "",
+    payToken: "",
+    receiveAmount: "",
+    receiveToken: "",
+  };
 
   onDestroy(() => {
     if (intervalId) {
@@ -146,13 +156,11 @@
         payAmount,
         getTokenDecimals(payToken),
       );
-      console.log("Formatted pay amount:", formattedPayAmount);
       const quote = await SwapService.getQuoteDetails({
         payToken,
         payAmount: formattedPayAmount,
         receiveToken,
       });
-      console.log("Quote:", quote);
 
       // Update the receive amount and other values
       setReceiveAmount(quote.receiveAmount);
@@ -183,7 +191,7 @@
     payAmount = receiveAmount;
 
     if (receiveAmount !== "0") {
-      await debouncedGetQuote(receiveAmount);
+      debouncedGetQuote(receiveAmount);
     }
   }
 
@@ -223,6 +231,25 @@
     if (payAmount) debouncedGetQuote(payAmount);
   }
 
+  onMount(() => {
+    const handleSwapSuccess = (event: CustomEvent) => {
+      // Update success details with the actual swap values
+      successDetails = {
+        payAmount: event.detail.payAmount,
+        payToken: event.detail.payToken,
+        receiveAmount: event.detail.receiveAmount,
+        receiveToken: event.detail.receiveToken,
+      };
+      showSuccessModal = true;
+    };
+
+    window.addEventListener("swapSuccess", handleSwapSuccess);
+
+    return () => {
+      window.removeEventListener("swapSuccess", handleSwapSuccess);
+    };
+  });
+
   async function handleSwap(): Promise<boolean> {
     if (!isValidInput || isProcessing) {
       return false;
@@ -230,7 +257,17 @@
     isProcessing = true;
     error = null;
     try {
-      await SwapService.executeSwap({
+      // Create new swap entry and store its ID
+      let swapId = swapStatusStore.addSwap({
+        expectedReceiveAmount: receiveAmount,
+        lastPayAmount: payAmount,
+        payToken: payToken,
+        receiveToken: receiveToken,
+        payDecimals: getTokenDecimals(payToken),
+      });
+
+      SwapService.executeSwap({
+        swapId,
         payToken,
         payAmount,
         receiveToken,
@@ -239,6 +276,7 @@
         backendPrincipal: KONG_BACKEND_PRINCIPAL,
         lpFees,
       });
+      return true;
     } catch (err) {
       console.error("Swap execution error:", err);
       toastStore.error(err instanceof Error ? err.message : "Swap failed");
@@ -420,6 +458,18 @@
     onRevokeToken={async () => {}}
   />
 {/if}
+
+{#if showBananaRain}
+  <BananaRain />
+{/if}
+
+<SwapSuccessModal
+  show={showSuccessModal}
+  {...successDetails}
+  onClose={() => {
+    showSuccessModal = false;
+  }}
+/>
 
 <style lang="postcss">
   .swap-wrapper {

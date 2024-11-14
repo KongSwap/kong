@@ -2,125 +2,75 @@
   import { fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
+  import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import "./colors.css";
+  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
+  import { RefreshCw } from "lucide-svelte";
+  import { tokenStore, portfolioValue } from "$lib/services/tokens/tokenStore";
+  import { onMount } from "svelte";
 
   export let onClose: () => void;
-  export let activeTab: "tokens" | "pools" | "transactions";
-  export let setActiveTab: (tab: "tokens" | "pools" | "transactions") => void;
+  export let activeTab: "tokens" | "pools" | "history";
+  export let setActiveTab: (tab: "tokens" | "pools" | "history") => void;
 
-  let showCopied = false;
-
-  // Function to format address with variable truncation based on screen width
-  function formatAddress(address: string, isMobile: boolean): string {
-    if (!address) return "";
-    if (isMobile) {
-      // More truncated for mobile (show fewer characters)
-      const start = address.slice(0, 4);
-      const end = address.slice(-3);
-      return `${start}...${end}`;
-    } else {
-      // Show more characters on desktop
-      const start = address.slice(0, 8);
-      const end = address.slice(-6);
-      return `${start}...${end}`;
-    }
-  }
-
+  let showAccountDetails = false;
   let windowWidth: number;
-
-  $: walletAddress = $walletStore.account?.owner.toString() || "";
-  $: isMobile = windowWidth < 768; // Define mobile breakpoint
-  $: displayAddress = formatAddress(walletAddress, isMobile);
+  let isRefreshing = false;
   $: isLoggedIn = $walletStore.isConnected;
 
-  const handleCopy = async () => {
-    if (!showCopied && $walletStore.account?.owner) {
-      await navigator.clipboard.writeText(
-        $walletStore.account.owner.toString(),
-      );
-      showCopied = true;
-      setTimeout(() => {
-        showCopied = false;
-      }, 1500);
-    }
-  };
+  onMount(async () => {
+    await handleReload();
+  });
 
-  const tabs: ("tokens" | "pools" | "transactions")[] = [
+  const tabs: ("tokens" | "pools" | "history")[] = [
     "tokens",
     "pools",
-    "transactions",
+    "history",
   ];
+
+  async function handleReload() {
+    isRefreshing = true;
+    await tokenStore.loadBalances().then(() => {
+      isRefreshing = false;
+    });
+  }
 </script>
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<header class="sidebar-header">
+<header class="min-w-[250px] backdrop-blur-md">
   <div
-    class="header-content"
+    class="flex flex-col gap-3 p-3"
     in:fly={{ x: 400, duration: 300, easing: cubicOut }}
   >
     {#if isLoggedIn}
-      <div class="wallet-info" role="group" aria-label="Wallet information">
-        <div class="wallet-section">
-          <div
-            class="wallet-address-container"
-            class:mobile={isMobile}
-            title={walletAddress}
-          >
-            <span class="wallet-address" aria-label="Wallet address">
-              {displayAddress}
-            </span>
-          </div>
+      <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
+        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-96px)]">
           <button
-            class="copy-button group relative"
-            class:copied={showCopied}
-            on:click={handleCopy}
-            aria-label={showCopied ? "Principal copied" : "Copy principal"}
+            class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-white font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
+            on:click={() => showAccountDetails = true}
+            aria-label="View account details"
           >
-            <span
-              class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100"
-            >
-              {showCopied ? "Principal copied!" : "Copy principal"}
+            <span class="flex items-center justify-between w-full">
+              Account Details
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="ml-2"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
             </span>
-            {#if showCopied}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            {:else}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path
-                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                ></path>
-              </svg>
-            {/if}
           </button>
         </div>
-        <div class="action-buttons">
+        <div class="flex gap-2">
           <button
-            class="action-button disconnect-button group relative"
+            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
             on:click={disconnectWallet}
             aria-label="Disconnect wallet"
           >
@@ -131,12 +81,12 @@
             </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
+              width="22"
+              height="22"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2"
+              stroke-width="1"
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
@@ -146,7 +96,7 @@
             </svg>
           </button>
           <button
-            class="action-button close-button !border-0 !shadow-none group relative"
+            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
             on:click={onClose}
             aria-label="Close sidebar"
           >
@@ -157,12 +107,11 @@
             </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
               fill="#b53f3f"
               stroke="currentColor"
-              stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
@@ -173,34 +122,60 @@
           </button>
         </div>
       </div>
-      <nav class="tab-navigation" role="tablist" aria-label="Content sections">
-        {#each tabs as tab}
+      <div class="portfolio-value mt-4">
+        <button
+          class="portfolio-refresh-button"
+          on:click={handleReload}
+          aria-label="Refresh Portfolio Value"
+        >
+          <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
+          <p class="text-3xl font-bold font-mono">
+            {#if isRefreshing}
+              <LoadingIndicator />
+            {:else}
+              ${$portfolioValue}
+            {/if}
+          </p>
+          <div class="refresh-overlay glow-box">
+            <RefreshCw size={24} class="text-lime-400 glow" />
+          </div>
+        </button>
+      </div>
+      <nav class="grid grid-cols-3 gap-2 p-1">
+        {#each tabs as tab (tab)}
           <button
-            class="tab-button"
-            class:active={activeTab === tab}
+            class="self-center text-center justify-center bg-transparent w-full flex items-center border-none p-2 text-gray-100 font-alumni text-xl font-semibold cursor-pointer transition-all duration-200 ease-in-out relative"
+            class:bg-black={activeTab === tab}
+            class:text-lime-300={activeTab === tab}
             on:click={() => setActiveTab(tab)}
             role="tab"
             aria-selected={activeTab === tab}
             aria-controls={`${tab}-panel`}
             id={`${tab}-tab`}
           >
+            {#if activeTab === tab}
+                <img src={`/stats/banana.webp`} class="w-5 h-5 mr-1.5 object-contain" />
+            {/if}
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {#if activeTab === tab}
+                <img src={`/stats/banana.webp`} class="w-5 h-5 ml-1.5 object-contain" />
+            {/if}
           </button>
         {/each}
       </nav>
     {:else}
-      <div class="wallet-info" role="group" aria-label="Wallet selection">
-        <h1 id="wallet-select-title" class="wallet-title">Select Wallet</h1>
-        <div class="action-buttons">
+      <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet selection">
+        <h1 id="wallet-select-title" class="font-mono text-lg text-gray-500 m-0 font-semibold py-1.5">Select Wallet</h1>
+        <div class="flex gap-2">
           <button
-            class="action-button close-button"
+            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={onClose}
             aria-label="Close sidebar"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
               fill="#ff4444"
               stroke="currentColor"
@@ -219,218 +194,111 @@
   </div>
 </header>
 
-<style>
-  /* Sidebar Header Styles */
-  .sidebar-header {
-    min-width: 250px;
-    backdrop-filter: blur(8px);
-  }
+<AccountDetails 
+  show={showAccountDetails} 
+  onClose={() => showAccountDetails = false}
+/>
 
-  /* Header Content Layout */
-  .header-content {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-  }
 
-  /* Wallet Information Section */
-  .wallet-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    flex-wrap: nowrap;
-  }
-
-  .wallet-section {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    max-width: calc(100% - 96px);
-  }
-
-  .wallet-title {
-    font-family: monospace;
-    font-size: 20px;
-    color: var(--sidebar-wallet-button-text);
-    margin: 0;
-    font-weight: 600;
-    padding: 6px 0;
-  }
-
-  /* Wallet Address Display */
-  .wallet-address-container {
-    display: flex;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.25);
-    padding: 4px 4px;
-    border-radius: 6px;
-    border: 1px solid var(--sidebar-border);
-    flex: 1;
-    min-width: 110px;
-    max-width: 100%;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-    height: 40px;
-  }
-
-  .wallet-address-container.mobile {
-    padding: 4px 8px;
-    min-width: 90px;
-  }
-
-  .wallet-address {
-    font-family: monospace;
-    font-size: 14px;
-    color: white;
-    letter-spacing: 0.5px;
-    user-select: all;
-    font-weight: 500;
-  }
-
-  @media (max-width: 767px) {
-    .wallet-address {
-      font-size: 13px;
-      letter-spacing: 0.3px;
-    }
-
-    .wallet-section {
-      max-width: calc(100% - 88px);
+<style scoped>
+    .portfolio-value {
+    position: relative;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+    :hover {
+      backdrop-filter: blur(10px);
     }
   }
 
-  /* Copy Button Styles */
-  .copy-button {
-    background: var(--sidebar-border-dark);
-    border: 1px solid var(--sidebar-border);
-    padding: 8px;
-    color: white;
-    cursor: pointer;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    height: 40px;
-    width: 40px;
-    flex-shrink: 0;
+  .portfolio-value:hover {
+    transform: scale(1.02);
   }
 
-  .copy-button.copied {
-    background: #4caf50;
-    transform: scale(1.05);
-  }
-
-  .copy-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-    filter: brightness(1.1);
-  }
-
-  .copy-button:focus-visible {
-    outline: 2px solid var(--sidebar-border);
-    outline-offset: 2px;
-  }
-
-  /* Action Buttons Styles */
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-  }
-
-  .close-button {
-    background: rgba(186, 49, 49, 0.4);
-    color: #b43d3d;
-  }
-
-  .close-button:hover {
-    background: rgba(255, 68, 68, 0.5);
-  }
-
-  .disconnect-button {
-    background: var(--sidebar-disconnect-button-bg);
-  }
-
-  .action-button {
-    border: 1px solid var(--sidebar-border);
-    padding: 6px;
-    border-radius: 4px;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-  }
-
-  .action-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  }
-
-  .action-button:focus-visible {
-    outline: 2px solid var(--sidebar-border);
-    outline-offset: 2px;
-  }
-
-  /* Tab Navigation Styles */
-  .tab-navigation {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+  .portfolio-refresh-button {
     width: 100%;
-    gap: 8px;
-    padding: 0 4px;
-  }
-
-  .tab-button {
     background: transparent;
     border: none;
-    padding: 8px 4px;
-    color: var(--sidebar-border);
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-    opacity: 0.7;
     position: relative;
+    overflow: hidden;
+    padding: 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    z-index: 0;
   }
 
-  .tab-button::after {
-    content: "";
+  .portfolio-refresh-button:active {
+    transform: scale(0.98);
+  }
+
+  .refresh-overlay {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: white;
-    transform: scaleX(0);
-    transition: transform 0.2s ease;
-  }
-
-  .tab-button:hover {
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(7px);
+    opacity: 0;
+    transition: all 0.3s ease;
     color: white;
-    opacity: 0.9;
+    gap: 8px;
+    z-index: 1;
   }
 
-  .tab-button:focus-visible {
-    outline: 2px solid var(--sidebar-border);
-    outline-offset: 2px;
+  .refresh-overlay :global(svg) {
+    transition: transform 0.3s ease;
   }
 
-  .tab-button.active {
-    color: white;
-    opacity: 1;
+  .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
+    transform: rotate(180deg);
   }
 
-  .tab-button.active::after {
-    transform: scaleX(1);
+  .portfolio-refresh-button:hover .refresh-overlay,
+  .portfolio-refresh-button:focus-visible .refresh-overlay {
+    opacity: 0.85;
+    backdrop-filter: blur(7px);
+  }
+
+
+  @keyframes glow {
+    0% {
+      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
+                  0 0 20px rgba(163, 230, 53, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(163, 230, 53, 0.6),
+                  0 0 40px rgba(163, 230, 53, 0.4);
+    }
+    100% {
+      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
+                  0 0 20px rgba(163, 230, 53, 0.2);
+    }
+  }
+
+  .glow-box {
+    animation: glow 2s ease-in-out infinite;
+    border-radius: 6px;
+    z-index: 2;
+  }
+
+  .portfolio-refresh-button:hover .refresh-overlay {
+    opacity: 0.85;
+  }
+
+  .glow {
+    animation: glow-animation 2s infinite alternate;
+  }
+
+  @keyframes glow-animation {
+    from {
+      filter: drop-shadow(0 0 5px #a3e635) drop-shadow(0 0 10px #a3e635);
+    }
+    to {
+      filter: drop-shadow(0 0 15px #a3e635) drop-shadow(0 0 20px #a3e635);
+    }
   }
 </style>

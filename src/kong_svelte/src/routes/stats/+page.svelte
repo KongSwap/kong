@@ -95,7 +95,7 @@
 <Clouds />
 <section class="flex min-h-[94vh] relative w-full justify-center">
   <!-- Main Content -->
-  <div class="z-10 flex pt-40 justify-center w-full md:w-100 px-2 md:px-0 max-w-5xl">
+  <div class="z-10 flex pt-10 justify-center w-full md:w-100 px-2 md:px-0 max-w-5xl">
     <div class="flex flex-col w-full">
       <div
         class="inner-border bg-k-light-blue bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
@@ -140,7 +140,10 @@
                         requiresAuth={header.requiresAuth}
                         sortColumn={$sortColumnStore}
                         sortDirection={$sortDirectionStore}
-                        on:sort={handleSortEvent}
+                        onsort={({ column, direction }) => {
+                          sortColumnStore.set(column);
+                          sortDirectionStore.set(direction);
+                        }}
                       />
                     {/each}
                   </tr>

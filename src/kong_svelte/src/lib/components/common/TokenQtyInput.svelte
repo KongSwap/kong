@@ -5,6 +5,8 @@
 	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
 	import { tokenStore } from '$lib/services/tokens/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
+	import BigNumber from 'bignumber.js';
+	import { createEventDispatcher } from 'svelte';
 
 	interface TokenQtyInputProps {
 		value: string | number;
@@ -25,16 +27,19 @@
 	let usdValue = $derived(formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice));
 	let formattedBalance = $derived(formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee)).toString(), token.decimals));
 
-	// Replace dispatch creation with $host
+	const dispatch = createEventDispatcher();
+
 	function dispatchInput(value: string) {
-		$host().dispatchEvent(new CustomEvent('input', { detail: { value } }));
+		dispatch('input', { value });
 	}
 
 	function setMax() {
-		const max = formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee)).toString(), token.decimals);
-		value = max.toString();
-		dispatchInput(max.toString());
+		const maxBn = new BigNumber(rawBalance.toString()).minus(token.fee.toString()).toString();
+		const formattedMax = formatTokenAmount(maxBn, token.decimals);
+		value = formattedMax;
+		dispatchInput(formattedMax);
 	}
+
 </script>
 
 <div class="flex flex-col gap-2 w-full">

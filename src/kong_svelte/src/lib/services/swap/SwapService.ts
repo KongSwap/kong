@@ -11,6 +11,7 @@ import { IcrcService } from '$lib/services/icrc/IcrcService';
 import { swapStatusStore } from './swapStore';
 
 interface SwapExecuteParams {
+    swapId: string;
     payToken: string;
     payAmount: string;
     receiveToken: string;
@@ -173,22 +174,7 @@ export class SwapService {
      * Executes complete swap flow
      */
     public static async executeSwap(params: SwapExecuteParams): Promise<bigint | false> {
-        // Create a new swap entry and get its ID
-        const swapId = swapStatusStore.addSwap({
-            payToken: params.payToken,
-            lastPayAmount: params.payAmount,
-            payDecimals: getTokenDecimals(params.payToken),
-        });
-
-         // Create new swap entry and store its ID
-        let currentSwapId = swapStatusStore.addSwap({
-            expectedReceiveAmount: params.receiveAmount,
-            lastPayAmount: params.payAmount,
-            payToken: params.payToken,
-            receiveToken: params.receiveToken,
-            payDecimals: getTokenDecimals(params.payToken),
-        });
-
+        const swapId = params.swapId;
         try {
             await Promise.allSettled([
                 walletValidator.requireWalletConnection(),
@@ -205,6 +191,7 @@ export class SwapService {
             const receiveAmount = SwapService.toBigInt(params.receiveAmount, receiveToken.decimals);
 
             console.log('Processing transfer/approval for amount:', payAmount.toString());
+            const toastId = toastStore.info(`Swapping ${params.payAmount} ${params.payToken} to ${params.receiveAmount} ${params.receiveToken}...`, 0);
 
             let txId: bigint | false;
             let approvalId: bigint | false;
@@ -238,7 +225,9 @@ export class SwapService {
                     isProcessing: false,
                     error: 'Transaction failed during transfer/approval'
                 });
-                throw new Error('Transaction failed during transfer/approval');
+                toastStore.error('Transaction failed during transfer/approval');
+                toastStore.dismiss(toastId);
+                return false;
             }
 
             const swapParams = {
@@ -252,13 +241,8 @@ export class SwapService {
                 pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : []
             };
             const result = await SwapService.swap_async(swapParams);
-
-            if ('Err' in result) {
-                throw new Error(result.Err);
-            }
-
-            this.monitorTransaction(result.Ok, currentSwapId);
-
+            this.monitorTransaction(result?.Ok, swapId);
+            toastStore.dismiss(toastId);
             return result.Ok;
         } catch (error) {
             swapStatusStore.updateSwap(swapId, {
@@ -278,16 +262,29 @@ export class SwapService {
         let attempts = 0;
         let swapStatus = swapStatusStore.getSwap(swapId);
         const toastId = toastStore.info(`Confirming swap of ${swapStatus?.lastPayAmount} ${swapStatus?.payToken} to ${swapStatus?.expectedReceiveAmount} ${swapStatus?.receiveToken}...`, 0);
+        
         this.pollingInterval = setInterval(async () => {
             try {
                 const status = await this.requests([requestId]);
-                console.log('requests result', status);
-                
+
                 if (status.Ok?.[0]?.reply) {
-                    const reply = status.Ok[0].reply;
+                    const res = status.Ok[0];
+
+
+                if(res.statuses.find(s => s.includes('Failed'))) {
+                    this.stopPolling();
+                    swapStatusStore.updateSwap(swapId, {
+                        status: 'Error',
+                        isProcessing: false,
+                        error: res.statuses.find(s => s.includes('Failed'))
+                    });
+                    toastStore.error(res.statuses.find(s => s.includes('Failed')));
+                    toastStore.dismiss(toastId);
+                }
+                
                     
-                    if ('Swap' in reply) {
-                        const swapStatus = reply.Swap;
+                    if ('Swap' in res.reply) {
+                        const swapStatus = res.reply.Swap;
                         console.log('swapStatus', swapStatus);
                         
                         swapStatusStore.updateSwap(swapId, {
@@ -304,24 +301,42 @@ export class SwapService {
                                 lastQuote: null
                             });
                             this.stopPolling();
-                            toastStore.success('Swap completed successfully');  
+                            
+                            const formattedPayAmount = SwapService.fromBigInt(
+                                swapStatus.pay_amount, 
+                                getTokenDecimals(swapStatus.pay_symbol)
+                            );
+                            const formattedReceiveAmount = SwapService.fromBigInt(
+                                swapStatus.receive_amount, 
+                                getTokenDecimals(swapStatus.receive_symbol)
+                            );
+                            toastStore.success(`Successfully swaped ${formattedPayAmount} ${swapStatus.pay_symbol} to ${formattedReceiveAmount} ${swapStatus.receive_symbol}!`);
+                            // Dispatch custom event with swap details
+                            window.dispatchEvent(new CustomEvent('swapSuccess', {
+                                detail: {
+                                    payAmount: formattedPayAmount,
+                                    payToken: swapStatus.pay_symbol,
+                                    receiveAmount: formattedReceiveAmount,
+                                    receiveToken: swapStatus.receive_symbol
+                                }
+                            }));
+                            
                             const tokens = get(tokenStore).tokens;
                             const swap = swapStatusStore.getSwap(swapId);      
-                            await Promise.all([
+                            await Promise.allSettled([
                                 tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.receiveToken)),
                                 tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.payToken))
                             ]);
+                            toastStore.dismiss(toastId);
                         } else if (swapStatus.status === "Failed") {
                             this.stopPolling();
-                            console.log('Swap failed', reply);
-                            console.log('Swap status', swapStatus);
-                            console.log('Swap', status);
                             swapStatusStore.updateSwap(swapId, {
                                 status: 'Failed',
                                 isProcessing: false,
                                 error: 'Swap failed'
                             });
                             toastStore.error('Swap failed');
+                            toastStore.dismiss(toastId);
                         }
                     }
                 }
@@ -334,6 +349,7 @@ export class SwapService {
                         error: 'Swap timed out'
                     });
                     toastStore.error('Swap timed out');
+                    toastStore.dismiss(toastId);
                 }
 
                 attempts++;
@@ -346,7 +362,6 @@ export class SwapService {
                     error: 'Failed to monitor swap status'
                 });
                 toastStore.error('Failed to monitor swap status');
-            } finally {
                 toastStore.dismiss(toastId);
             }
         }, this.POLLING_INTERVAL);

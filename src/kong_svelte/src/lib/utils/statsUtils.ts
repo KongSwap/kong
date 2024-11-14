@@ -31,36 +31,61 @@ export function parseValue(value: any): any {
  * @param direction - The sort direction ('asc' or 'desc').
  * @returns A new sorted array of pools.
  */
-export function sortTableData(pools: BE.Pool[], column: string, direction: 'asc' | 'desc'): BE.Pool[] {
-  if (!Array.isArray(pools)) {
-    console.error('sortTableData expects an array, but received:', pools);
+export function sortTableData<T extends Record<string, any>>(
+  data: T[],
+  column: string,
+  direction: 'asc' | 'desc'
+): T[] {
+  if (!Array.isArray(data)) {
+    console.error('sortTableData expects an array, but received:', data);
     return [];
   }
 
-  const isAscending = direction === 'asc';
-  return pools.slice().sort((a, b) => {
-    if (column === 'poolName') {
-      const aName = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
-      const bName = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
-      return isAscending ? aName.localeCompare(bName) : bName.localeCompare(aName);
+  return [...data].sort((a, b) => {
+    let aValue = a[column];
+    let bValue = b[column];
+
+    // Handle special cases for different columns
+    switch (column) {
+      case 'total_24h_volume':
+      case 'rolling_24h_volume':
+        // Convert BigInt to number
+        aValue = Number(aValue || 0n);
+        bValue = Number(bValue || 0n);
+        break;
+
+      case 'formattedUsdValue':
+      case 'price':
+      case 'tvl':
+        // Remove $ and , from string numbers and convert to float
+        aValue = parseFloat(String(aValue || '0').replace(/[$,]/g, ''));
+        bValue = parseFloat(String(bValue || '0').replace(/[$,]/g, ''));
+        break;
+
+      case 'rolling_24h_apy':
+        // Remove % and convert to float
+        aValue = parseFloat(String(aValue || '0').replace(/%/g, ''));
+        bValue = parseFloat(String(bValue || '0').replace(/%/g, ''));
+        break;
+
+      case 'symbol':
+      case 'name':
+        // Case-insensitive string comparison
+        aValue = String(aValue || '').toLowerCase();
+        bValue = String(bValue || '').toLowerCase();
+        break;
+
+      default:
+        // Handle compound columns (like pool names)
+        if (column === 'poolName') {
+          aValue = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
+          bValue = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
+        }
     }
 
-    let aValue = parseValue(a[column]);
-    let bValue = parseValue(b[column]);
-
-    if (['formattedUsdValue', 'total_24h_volume', 'rolling_24h_volume'].includes(column)) {
-      aValue = parseFloat(aValue) || 0;
-      bValue = parseFloat(bValue) || 0;
-    }
-
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-    }
-
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return isAscending ? aValue - bValue : bValue - aValue;
-    }
-
+    // Perform the comparison
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
     return 0;
   });
 }

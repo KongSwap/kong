@@ -43,6 +43,7 @@ export const walletStore = writable<{
 
 // PNP instance
 let pnp: ReturnType<typeof createPNP> | null = null;
+let actorCache: { [key: string]: Actor } = {};
 
 // Initialize PNP
 export function initializePNP() {
@@ -58,6 +59,8 @@ export function initializePNP() {
   }
 }
 
+initializePNP();
+
 // Update wallet store
 function updateWalletStore(updates: Partial<{ account: any | null; error: Error | null; isConnecting: boolean; isConnected: boolean; }>) {
   walletStore.update((store) => ({ ...store, ...updates }));
@@ -71,7 +74,6 @@ function handleConnectionError(error: Error) {
 
 // Connect to a wallet
 export async function connectWallet(walletId: string) {
-  initializePNP();
   updateWalletStore({ isConnecting: true });
   try {
     const account = await pnp.connect(walletId);
@@ -94,7 +96,6 @@ export async function connectWallet(walletId: string) {
 
 // Disconnect from a wallet
 export async function disconnectWallet() {
-  initializePNP();
   try {
     await pnp.disconnect();
     updateWalletStore({
@@ -115,7 +116,6 @@ export async function disconnectWallet() {
 
 // Attempt to restore wallet connection on page load
 export async function restoreWalletConnection() {
-  initializePNP();
   if(browser) {
     const storedWalletId = localStorage.getItem('selectedWalletId');
     if (!storedWalletId) return;
@@ -134,24 +134,26 @@ export async function restoreWalletConnection() {
 
 // Check if wallet is connected
 export function isConnected(): boolean {
-  initializePNP();
   return pnp ? pnp.isWalletConnected() : false;
 }
 
 // Create actor
 async function createActor(canisterId: string, idlFactory: any): Promise<ActorSubclass<any>> {
-  initializePNP();
     const isAuthenticated = isConnected();
+    const cacheKey = `${canisterId}-${idlFactory}-${isAuthenticated}`;
+    if (actorCache[cacheKey]) {
+      return actorCache[cacheKey];
+    }
     const isLocalEnv = process.env.DFX_NETWORK === 'local';
     const host = isLocalEnv ? 'http://localhost:4943' : 'https://ic0.app';
-    const agent = new HttpAgent({ host });
+    const agent = HttpAgent.createSync({ host });
     if (isLocalEnv) {
-    await agent.fetchRootKey();
+      await agent.fetchRootKey();
+    }
+    return isAuthenticated
+      ? await pnp.getActor(canisterId, idlFactory)
+      : Actor.createActor(idlFactory, { agent, canisterId });
   }
-  return isAuthenticated
-    ? await pnp.getActor(canisterId, idlFactory)
-    : Actor.createActor(idlFactory, { agent, canisterId });
-}
 
 // Export function to get the actor
 export async function getActor(canisterId = kongBackendCanisterId, canisterType: CanisterType = 'kong_backend'): Promise<ActorSubclass<any>> {

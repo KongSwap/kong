@@ -1,20 +1,20 @@
 <!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
-  import { tokenStore, formattedTokens, portfolioValue } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { RefreshCw } from "lucide-svelte";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import Button from "$lib/components/common/Button.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
+  import {IcrcService} from "$lib/services/icrc/icrcService";
 
   let selectedToken: any = null;
   let isModalOpen = false;
   let amount = "";
   let error = "";
   let balance = "0";
-  let isRefreshing = false;
+  let destinationPid;
   
   function handleTokenClick(token: any) {
     selectedToken = token;
@@ -26,13 +26,6 @@
     selectedToken = null;
   }
 
-  function handleReload() {
-    isRefreshing = true;
-    tokenStore.loadBalances().then(() => {
-      isRefreshing = false;
-    });
-  }
-
   function handleInput(event) {
     const value = event.detail.value;
     // Validate amount
@@ -41,6 +34,11 @@
     } else {
       error = "";
     }
+  }
+
+  const sendToken = async () => {
+    const tx = await IcrcService.icrc1Transfer(selectedToken, destinationPid, BigInt(amount));
+    console.log(tx);
   }
   
 
@@ -57,25 +55,6 @@
 </script>
 
 <div class="token-list w-full">
-  <div class="portfolio-value">
-    <button
-      class="portfolio-refresh-button"
-      on:click={handleReload}
-      aria-label="Refresh Portfolio Value"
-    >
-      <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-      <p class="text-3xl font-bold font-mono">
-        {#if isRefreshing}
-          <LoadingIndicator />
-        {:else}
-          ${$portfolioValue}
-        {/if}
-      </p>
-      <div class="refresh-overlay">
-        <RefreshCw size={24} />
-      </div>
-    </button>
-  </div>
   {#if $tokenStore.isLoading && $formattedTokens.length === 0}
     <div class="loading"><LoadingIndicator /></div>
   {:else if $tokenStore.error}
@@ -92,6 +71,7 @@
   onClose={handleCloseModal}
   title={"Send " + (selectedToken?.symbol || "Token Details")}
   width="480px"
+  height="100%"
 >
   {#if selectedToken}
     <div class="token-details w-[380px]">
@@ -121,6 +101,7 @@
       <TextInput
         id="principal"
         placeholder="Destination pid"
+        bind:value={destinationPid}
         required
         size="lg"
       />
@@ -128,7 +109,7 @@
 
     <div class="modal-buttons">
       <Button text="Close" on:click={handleCloseModal} />
-      <Button text="Send" variant="green" on:click={handleCloseModal} />
+      <Button text="Send" variant="green" on:click={() => sendToken()} />
     </div>
   {/if}
 </Modal>
@@ -144,63 +125,6 @@
   .error {
     text-align: center;
     padding: 16px;
-  }
-
-  .portfolio-value {
-    position: relative;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    margin-bottom: 16px;
-    transition: transform 0.2s ease;
-  }
-
-  .portfolio-value:hover {
-    transform: scale(1.02);
-  }
-
-  .portfolio-refresh-button {
-    width: 100%;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    padding: 12px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-  }
-
-  .portfolio-refresh-button:active {
-    transform: scale(0.98);
-  }
-
-  .refresh-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(2px);
-    opacity: 0;
-    transition: all 0.3s ease;
-    color: white;
-    gap: 8px;
-  }
-
-  .refresh-overlay :global(svg) {
-    transition: transform 0.3s ease;
-  }
-
-  .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
-    transform: rotate(180deg);
-  }
-
-  .portfolio-refresh-button:hover .refresh-overlay,
-  .portfolio-refresh-button:focus-visible .refresh-overlay {
-    opacity: 0.69;
   }
 
   .token-details {

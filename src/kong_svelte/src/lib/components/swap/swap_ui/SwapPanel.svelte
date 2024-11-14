@@ -60,7 +60,8 @@
   let formattedBalance = $derived.by(() => {
     const balance = getTokenBalance(tokenInfo?.canister_id)?.in_tokens || 0;
     const feesInTokens = tokenInfo?.fee ? BigInt(tokenInfo.fee) * (isIcrc1 ? 1n : 2n) : 0n;
-    return formatTokenAmount(
+    const isZero = balance.toString() === "0";
+    return isZero ? "0" : formatTokenAmount(
       new BigNumber(balance.toString())
         .minus(fromTokenDecimals(amount || "0", decimals))
         .minus(feesInTokens.toString())

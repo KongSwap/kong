@@ -21,11 +21,11 @@
   let isDragging = false;
   let startX: number;
   let startWidth: number;
-  let activeTab: "tokens" | "pools" | "transactions" = browser
+  let activeTab: "tokens" | "pools" | "history" = browser
     ? (localStorage.getItem("sidebarActiveTab") as
         | "tokens"
         | "pools"
-        | "transactions") || "tokens"
+        | "history") || "tokens"
     : "tokens";
   let isMobile = false;
   let sidebarWidth = 500;
@@ -108,7 +108,7 @@
     }
   });
 
-  function setActiveTab(tab: "tokens" | "pools" | "transactions") {
+  function setActiveTab(tab: "tokens" | "pools" | "history") {
     activeTab = tab;
     if (browser) {
       localStorage.setItem("sidebarActiveTab", tab);
@@ -156,14 +156,14 @@
           </header>
 
           <div class="sidebar-content">
-            <div class="scroll-container p-2">
+            <div class="scroll-container">
               {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
               {:else if activeTab === "tokens"}
                 <TokenList />
               {:else if activeTab === "pools"}
                 <PoolList />
-              {:else if activeTab === "transactions"}
+              {:else if activeTab === "history"}
                 <TransactionHistory />
               {/if}
             </div>

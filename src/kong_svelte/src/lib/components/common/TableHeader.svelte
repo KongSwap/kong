@@ -9,14 +9,14 @@
   export let sortColumn: string | null = null;
   export let sortDirection: "asc" | "desc" | null = null;
   export let requiresAuth: boolean = false;
-  export let onSort: (data: { column: string, direction: "asc" | "desc" }) => void;
+  export let onsort: (data: { column: string, direction: "asc" | "desc" }) => void;
 
   function handleSort() {
     let newDirection: "asc" | "desc" = "asc";
     if (sortColumn === column) {
       newDirection = sortDirection === "asc" ? "desc" : "asc";
     }
-    onSort({ column, direction: newDirection });
+    onsort({ column, direction: newDirection });
   }
 
   $: variantClass = variant === "stats" ? "font-alumni text-3xl uppercase" : "";

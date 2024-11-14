@@ -66,19 +66,20 @@
           <header class="flex justify-between items-center mb-6">
             <h2 id="modal-title" class="font-sans text-2xl font-medium text-white m-0 tracking-wide">{title}</h2>
             <button 
-              class="border border-gray-700 p-1.5 rounded text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease-in-out shadow-sm w-10 h-10 flex-shrink-0 bg-red-600 bg-opacity-40 hover:bg-red-500 hover:translate-y-[-1px] relative group"
+              class="rounded text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease-in-out w-10 h-10 flex-shrink-0 bg-opacity-40 hover:text-rose-700 hover:stroke-2 hover:translate-y-[-1px] relative group"
               on:click={onClose}
               aria-label="Close modal"
             >
-              <span class="absolute top-[-2rem] left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white p-1 rounded text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100">Close</span>
+              <span class="hover:stroke-2 absolute top-[-2rem] left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white p-1 rounded text-xs opacity-0 transition-opacity duration-200 group-hover:opacity-100">Close</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
+                width="32"
+                height="32"
                 viewBox="0 0 24 24"
                 fill="#ff4444"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1"
+                class="hover:stroke-2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 aria-hidden="true"
