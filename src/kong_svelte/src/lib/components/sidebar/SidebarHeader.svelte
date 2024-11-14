@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { fly } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
   import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import "./colors.css";
@@ -43,7 +41,6 @@
 <header class="min-w-[250px] backdrop-blur-md">
   <div
     class="flex flex-col gap-3 p-3"
-    in:fly={{ x: 400, duration: 300, easing: cubicOut }}
   >
     {#if isLoggedIn}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">

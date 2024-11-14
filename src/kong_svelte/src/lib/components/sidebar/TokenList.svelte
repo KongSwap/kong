@@ -1,13 +1,13 @@
 <!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
-  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, formattedTokens, toggleFavoriteToken, isTokenFavorite } from "$lib/services/tokens/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import Button from "$lib/components/common/Button.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
-  import {IcrcService} from "$lib/services/icrc/icrcService";
+  import { IcrcService } from "$lib/services/icrc/icrcService";
 
   let selectedToken: any = null;
   let isModalOpen = false;
@@ -28,7 +28,6 @@
 
   function handleInput(event) {
     const value = event.detail.value;
-    // Validate amount
     if (parseFloat(value) > parseFloat(balance.toString())) {
       error = "Insufficient balance";
     } else {
@@ -36,22 +35,19 @@
     }
   }
 
+  function handleFavoriteClick(event: MouseEvent, token: any) {
+    event.stopPropagation(); // Prevent modal from opening
+    toggleFavoriteToken(token.canister_id);
+  }
+
   const sendToken = async () => {
     const tx = await IcrcService.icrc1Transfer(selectedToken, destinationPid, BigInt(amount));
     console.log(tx);
   }
-  
 
-  $: balance =
-    $formattedTokens?.find(
-      (token) => token.canister_id === selectedToken?.canister_id,
-    )?.formattedBalance || "0";
-
-  $: sortedTokens = [...($formattedTokens || [])].sort((a, b) => {
-    const aValue = parseFloat(a.formattedUsdValue.replace(/[^0-9.-]+/g, ''));
-    const bValue = parseFloat(b.formattedUsdValue.replace(/[^0-9.-]+/g, ''));
-    return bValue - aValue; // Sort in descending order
-  });
+  $: balance = $formattedTokens?.find(
+    (token) => token.canister_id === selectedToken?.canister_id,
+  )?.formattedBalance || "0";
 </script>
 
 <div class="token-list w-full">
@@ -60,8 +56,23 @@
   {:else if $tokenStore.error}
     <div class="error">{$tokenStore.error}</div>
   {:else}
-    {#each sortedTokens as token (token.canister_id)}
-      <TokenRow {token} onClick={() => handleTokenClick(token)} />
+    {#each $formattedTokens as token (token.canister_id)}
+      <div class="token-row-wrapper">
+        <div class="flex-grow" on:click={() => handleTokenClick(token)}>
+          <TokenRow {token} />
+        </div>
+        <button
+          class="favorite-button"
+          on:click={(e) => handleFavoriteClick(e, token)}
+          aria-label={isTokenFavorite(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+        >
+          {#if isTokenFavorite(token.canister_id)}
+            <span class="star filled">★</span>
+          {:else}
+            <span class="star outline">☆</span>
+          {/if}
+        </button>
+      </div>
     {/each}
   {/if}
 </div>
@@ -114,11 +125,52 @@
   {/if}
 </Modal>
 
-<style lang="postcss" scoped>
+<style scoped lang="postcss">
   .token-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .token-row-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    cursor: pointer;
+  }
+
+  .token-row-wrapper:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .favorite-button {
+    background: transparent;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.5);
+    transition: all 100ms;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .favorite-button:hover {
+    color: rgb(253, 224, 71);
+    transform: scale(1.1);
+  }
+
+  .star {
+    font-size: 1.25rem;
+    border: none;
+    outline: none;
+    line-height: 1;
+  }
+
+  .star.filled {
+    color: rgb(253, 224, 71);
   }
 
   .loading,

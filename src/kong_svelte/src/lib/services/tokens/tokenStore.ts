@@ -2,29 +2,21 @@
 import { writable, derived, get, type Readable } from 'svelte/store';
 import { TokenService } from '$lib/services/tokens/TokenService';
 import { browser } from '$app/environment';
-import { debounce } from 'lodash-es';
 import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 import { toastStore } from '$lib/stores/toastStore';
 import BigNumber from 'bignumber.js';
+import { walletStore } from '$lib/services/wallet/walletStore';
 
 interface TokenState {
-  readonly tokens: FE.Token[];
-  readonly balances: Record<string, FE.TokenBalance>;
-  readonly prices: Record<string, number>;
-  readonly isLoading: boolean;
-  readonly error: string | null;
-  readonly totalValueUsd: string;
-  readonly lastTokensFetch: number | null;
-  readonly activeSwaps: Record<string, {
-    payToken: string;
-    receiveToken: string;
-    amount: BigNumber;
-    expectedOutput?: BigNumber;
-    minReceived?: BigNumber;
-    priceImpact?: BigNumber;
-    route?: string[];
-    timestamp: number;
-  }>;
+  tokens: FE.Token[];
+  balances: Record<string, FE.TokenBalance>;
+  prices: Record<string, number>;
+  isLoading: boolean;
+  error: string | null;
+  totalValueUsd: string;
+  lastTokensFetch: number | null;
+  activeSwaps: Record<string, any>;
+  favoriteTokens: Record<string, string[]>;
 }
 
 const CACHE_DURATION = 1000 * 60 * 3; // 3 minutes in milliseconds
@@ -69,7 +61,7 @@ const deserializeState = (cachedData: string): TokenState => {
 };
 
 // Debounced save to cache with a longer delay to reduce frequency
-const saveToCache = debounce((state: TokenState) => {
+const saveToCache = (state: TokenState) => {
   if (browser) {
     try {
       localStorage.setItem('tokenStore', serializeState(state));
@@ -77,10 +69,10 @@ const saveToCache = debounce((state: TokenState) => {
       console.error('Error saving token data to cache:', error);
     }
   }
-}, 3500); // Increased debounce delay
+};
 
 function createTokenStore() {
-  const store = writable<TokenState>({
+  const initialState: TokenState = {
     tokens: [],
     balances: {},
     prices: {},
@@ -88,15 +80,23 @@ function createTokenStore() {
     error: null,
     totalValueUsd: '0.00',
     lastTokensFetch: null,
-    activeSwaps: {}
-  });
+    activeSwaps: {},
+    favoriteTokens: {} as Record<string, string[]>,
+  };
+
+  const store = writable<TokenState>(initialState);
 
   // Load cached state on initialization
   if (browser) {
     try {
       const cached = localStorage.getItem('tokenStore');
+      const wallet = get(walletStore);
       if (cached) {
         const cachedData = deserializeState(cached);
+        if (!cachedData.favoriteTokens[wallet?.account?.owner?.toString() || 'anonymous']) {
+          cachedData.favoriteTokens[wallet?.account?.owner?.toString() || 'anonymous'] = [];
+        }
+        console.log('Loaded cached token data:', cachedData);
         store.set(cachedData);
       }
     } catch (error) {
@@ -111,12 +111,20 @@ function createTokenStore() {
 
   const getCurrentState = (): TokenState => get(store);
 
+  const getCurrentWalletId = (): string => {
+    const wallet = get(walletStore);
+    return wallet?.account?.owner?.toString() || 'anonymous';
+  };
+
+  const getFavoritesForCurrentWallet = (): string[] => {
+    const currentState = getCurrentState();
+    const walletId = getCurrentWalletId();
+    return currentState.favoriteTokens[walletId] || [];
+  };
+
   const updateState = (newState: TokenState) => {
-    const currentState = get(store);
-    if (serializeState(currentState) !== serializeState(newState)) {
-      store.set(newState);
-      saveToCache(newState);
-    }
+    store.set(newState);
+    saveToCache(newState);
   };
 
   return {
@@ -237,13 +245,20 @@ function createTokenStore() {
     },
     clearUserData: () => {
       const currentState = getCurrentState();
+      const walletId = getCurrentWalletId();
+      
+      // Only clear favorites for current wallet
+      const newFavorites = { ...currentState.favoriteTokens };
+      delete newFavorites[walletId];
+
       const newState = {
         ...currentState,
         balances: {},
         isLoading: false,
         error: null,
         totalValueUsd: '0.00',
-        activeSwaps: {}
+        activeSwaps: {},
+        favoriteTokens: newFavorites,
       };
       store.set(newState);
       saveToCache(newState);
@@ -258,7 +273,8 @@ function createTokenStore() {
         error: null,
         totalValueUsd: '0.00',
         lastTokensFetch: null,
-        activeSwaps: {}
+        activeSwaps: {},
+        favoriteTokens: {},
       });
     },
     getTokenPrices: () => {
@@ -267,18 +283,66 @@ function createTokenStore() {
     },
     claimFaucetTokens: async () => {
       return await TokenService.claimFaucetTokens();
+    },
+    toggleFavorite: (canisterId: string) => {
+      const currentState = getCurrentState();
+      const walletId = getCurrentWalletId();
+      
+      // Initialize favorites for the current wallet if they don't exist
+      const currentFavorites = currentState.favoriteTokens[walletId] || [];
+      
+      // Toggle the favorite status
+      const newFavorites = currentFavorites.includes(canisterId)
+        ? currentFavorites.filter(id => id !== canisterId)
+        : [...currentFavorites, canisterId];
+
+      // Update the state with the new favorites for the current wallet
+      const newState = {
+        ...currentState,
+        favoriteTokens: {
+          ...currentState.favoriteTokens,
+          [walletId]: newFavorites
+        }
+      };
+      
+      console.log(`Saving favorites for wallet ${walletId}:`, newFavorites);
+      updateState(newState);
+    },
+
+    isFavorite: (canisterId: string) => {
+      const currentState = getCurrentState();
+      const walletId = getCurrentWalletId();
+      return currentState.favoriteTokens[walletId]?.includes(canisterId) ?? false;
     }
   };
 }
 
 export const tokenStore = createTokenStore();
-export const portfolioValue: Readable<string> = derived(
-  [tokenStore],
-  ([$tokenStore]) => {
+
+// Export convenience functions
+export const toggleFavoriteToken = (canisterId: string) => tokenStore.toggleFavorite(canisterId);
+export const isTokenFavorite = (canisterId: string) => tokenStore.isFavorite(canisterId);
+
+export const favoriteTokens = derived(
+  tokenStore,
+  ($store) => {
+    const wallet = get(walletStore);
+    const walletId = wallet?.account?.owner?.toString() || 'anonymous';
+    return $store?.tokens?.filter(token => 
+      $store.favoriteTokens[walletId]?.includes(token.canister_id)
+    ) ?? [];
+  }
+);
+
+// Other derived stores
+export const portfolioValue = derived(
+  tokenStore,
+  ($store) => {
+    if (!$store?.tokens) return '0.00';
     let totalValue = 0;
 
-    for (const token of $tokenStore.tokens) {
-      const usdValue = parseFloat($tokenStore.balances[token.canister_id]?.in_usd || '0');
+    for (const token of $store.tokens) {
+      const usdValue = parseFloat($store.balances[token.canister_id]?.in_usd || '0');
       totalValue += usdValue;
     }
 
@@ -290,27 +354,46 @@ export const portfolioValue: Readable<string> = derived(
 export const formattedTokens: Readable<FE.Token[]> = derived(
   tokenStore,
   ($tokenStore) => {
-    return $tokenStore.tokens.map((token) => {
-      const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-      const price = $tokenStore.prices[token.canister_id] || new BigNumber(0);
-      const amount = toTokenDecimals(balance.toString(), token.decimals);
-      
-      // Format with token-specific decimal places
-      const formattedBalance = amount.toFormat(token.decimals);
-      const usdValue = amount.times(price);
+    if (!$tokenStore?.tokens) return [];
+    
+    const wallet = get(walletStore);
+    const walletId = wallet?.account?.owner?.toString() || 'anonymous';
+    
+    return $tokenStore.tokens
+      .map((token) => {
+        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        const price = $tokenStore.prices[token.canister_id] || new BigNumber(0);
+        const amount = toTokenDecimals(balance.toString(), token.decimals);
+        
+        // Format with token-specific decimal places
+        const formattedBalance = amount.toFormat(token.decimals);
+        const usdValue = amount.times(price);
 
-      return {
-        ...token,
-        formattedBalance,
-        formattedUsdValue: usdValue.toFormat(2),
-      };
-    });
+        return {
+          ...token,
+          formattedBalance,
+          formattedUsdValue: usdValue.toFormat(2),
+        };
+      })
+      .sort((a, b) => {
+        // First sort by favorite status
+        const aFavorite = $tokenStore.favoriteTokens[walletId]?.includes(a.canister_id) ?? false;
+        const bFavorite = $tokenStore.favoriteTokens[walletId]?.includes(b.canister_id) ?? false;
+        
+        if (aFavorite && !bFavorite) return -1;
+        if (!aFavorite && bFavorite) return 1;
+
+        // Then sort by USD value
+        const aValue = parseFloat(a.formattedUsdValue.replace(/[^0-9.-]+/g, ''));
+        const bValue = parseFloat(b.formattedUsdValue.replace(/[^0-9.-]+/g, ''));
+        return bValue - aValue;
+      });
   }
 );
 
 export const tokenPrices = derived(
   tokenStore,
-  ($tokenStore) => $tokenStore.prices
+  ($store) => $store?.prices ?? {}
 );
 
 export const getTokenByCanisterId = (canisterId: string): FE.Token | undefined => {
@@ -345,24 +428,37 @@ export const getTokenPrice = (canisterId: string): number => {
 
 export const activeSwaps = derived(
   tokenStore,
-  ($tokenStore) => Object.entries($tokenStore.activeSwaps).map(([id, swap]) => {
-    const payTokenInfo = $tokenStore.tokens.find(t => t.symbol === swap.payToken);
-    if (!payTokenInfo) return null;
+  ($store) => {
+    if (!$store?.activeSwaps) return [];
+    
+    return Object.entries($store.activeSwaps)
+      .map(([id, swap]) => {
+        const payTokenInfo = $store.tokens?.find(t => t.symbol === swap.payToken);
+        if (!payTokenInfo) return null;
 
-    const price = $tokenStore.prices[swap.payToken] || new BigNumber(0);
-    console.log("price", price);
-    const formattedAmount = toTokenDecimals(swap.amount, payTokenInfo.decimals);
-    const valueUsd = formattedAmount.times(price);
-    console.log("valueUsd", valueUsd);
+        const price = $store.prices[swap.payToken] || new BigNumber(0);
+        const formattedAmount = toTokenDecimals(swap.amount, payTokenInfo.decimals);
+        const valueUsd = formattedAmount.times(price);
 
-    return {
-      id,
-      ...swap,
-      age: Date.now() - swap.timestamp,
-      formattedAmount: formattedAmount.toNumber(),
-      valueUsd: valueUsd.toFormat(2)
-    };
-  }).filter(Boolean)
+        return {
+          id,
+          ...swap,
+          age: Date.now() - swap.timestamp,
+          formattedAmount: formattedAmount.toNumber(),
+          valueUsd: valueUsd.toFormat(2)
+        };
+      })
+      .filter(Boolean);
+  }
+);
+
+export const getFavoritesForWallet = derived(
+  tokenStore,
+  ($store) => {
+    const wallet = get(walletStore);
+    const walletId = wallet?.account?.owner?.toString() || 'anonymous';
+    return $store?.favoriteTokens[walletId] || [];
+  }
 );
 
 export const tokenLogos = writable<Record<string, string>>({});

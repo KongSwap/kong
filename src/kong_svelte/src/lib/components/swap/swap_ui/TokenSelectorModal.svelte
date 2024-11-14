@@ -1,7 +1,8 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, tokenStore, isTokenFavorite, toggleFavoriteToken, getFavoritesForWallet } from "$lib/services/tokens/tokenStore";
+  import { walletStore } from '$lib/services/wallet/walletStore';
 
   export let show = false;
   export let onSelect: (token: string) => void;
@@ -10,6 +11,9 @@
 
   let searchQuery = "";
   let standardFilter = "all";
+
+  // Get current wallet ID for favorites
+  $: walletId = $walletStore?.account?.owner?.toString() || 'anonymous';
 
   $: filteredTokens = $formattedTokens
     .filter((token) => {
@@ -22,23 +26,25 @@
       switch (standardFilter) {
         case "ck":
           return token.symbol.toLowerCase().startsWith("ck");
+        case "favorites":
+          return isTokenFavorite(token.canister_id);
         case "all":
         default:
           return true;
       }
-    })
-    .sort((a, b) => {
-      // Get balances, default to 0n if undefined
-      const balanceA = Number($tokenStore.balances[a.canister_id]?.in_usd || 0);
-      const balanceB = Number($tokenStore.balances[b.canister_id]?.in_usd || 0);
-      // Sort in descending order (highest balance first)
-      return balanceB < balanceA ? -1 : balanceB > balanceA ? 1 : 0;
     });
 
   function handleSelect(token: string) {
     onSelect(token);
     onClose();
   }
+
+  function handleFavoriteClick(event: MouseEvent, canisterId: string) {
+    event.stopPropagation();
+    toggleFavoriteToken(canisterId);
+  }
+
+  $: favoriteCount = $getFavoritesForWallet.length;
 </script>
 
 <Modal {show} title="Select Token" {onClose} variant="green">
@@ -60,6 +66,12 @@
         All
       </button>
       <button
+        class="filter-btn {standardFilter === 'favorites' ? 'active' : ''}"
+        on:click={() => (standardFilter = "favorites")}
+      >
+        Favorites {favoriteCount > 0 ? `(${favoriteCount})` : ''}
+      </button>
+      <button
         class="filter-btn {standardFilter === 'ck' ? 'active' : ''}"
         on:click={() => (standardFilter = "ck")}
       >
@@ -70,15 +82,28 @@
 
   <div class="token-list" role="listbox" aria-label="Token list">
     {#each filteredTokens as token}
-      <button
-        class="token-button"
-        class:active={token.symbol === currentToken}
-        on:click={() => handleSelect(token.symbol)}
-        role="option"
-        aria-selected={token.symbol === currentToken}
-      >
-        <TokenRow {token} />
-      </button>
+      <div class="token-row-container">
+        <button
+          class="token-button"
+          class:active={token.symbol === currentToken}
+          on:click={() => handleSelect(token.symbol)}
+          role="option"
+          aria-selected={token.symbol === currentToken}
+        >
+          <TokenRow {token} />
+        </button>
+        <button
+          class="favorite-button"
+          on:click={(e) => handleFavoriteClick(e, token.canister_id)}
+          aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+        >
+          {#if $tokenStore.favoriteTokens[walletId]?.includes(token.canister_id)}
+            <span class="star filled">★</span>
+          {:else}
+            <span class="star outline">☆</span>
+          {/if}
+        </button>
+      </div>
     {/each}
   </div>
 </Modal>
@@ -172,24 +197,62 @@
     background-color: rgba(255, 255, 255, 0.3);
   }
 
-  .token-button {
-    width: 100%;
+  .token-row-container {
+    display: flex;
+    align-items: center;
     padding: 0 1rem;
+    border-radius: 0.5rem;
+    transition: all 100ms;
+  }
+
+  .token-row-container:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .token-button {
+    flex: 1;
+    padding: 0.5rem 0;
     background: transparent;
     border: none;
     cursor: pointer;
     transition: all 100ms;
-    border-radius: 0.5rem;
     min-width: 0;
+    text-align: left;
   }
 
   .token-button:hover {
-    transform: translateX(0.25rem) scale(1.01);
+    transform: translateX(0.25rem);
   }
 
-  .token-button:focus {
+  .favorite-button {
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.5);
+    transition: all 100ms;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .favorite-button:hover {
+    color: rgb(253, 224, 71);
+    transform: scale(1.1);
+  }
+
+  .star {
+    font-size: 1.25rem;
+    line-height: 1;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(253, 224, 71, 0.5);
+  }
+
+  .star.filled {
+    color: rgb(253, 224, 71);
+  }
+
+  .star.outline {
+    opacity: 0.7;
   }
 
   .token-button.active {
@@ -211,5 +274,11 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .favorite-indicator {
+    color: rgb(253, 224, 71);
+    margin-right: 0.5rem;
+    outline: none;
   }
 </style>

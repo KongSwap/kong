@@ -2,6 +2,8 @@
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
   import Panel from './Panel.svelte';
+  import { fade, scale } from "svelte/transition";
+  import { backOut } from "svelte/easing";
 
   export let show = false;
   export let title: string;
@@ -37,24 +39,26 @@
       };
     }
   });
+    function handleBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  }
 </script>
 
 {#if show}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div 
-    class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 grid place-items-center overflow-hidden" 
-    on:click={onClose}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="modal-title"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center"
+    transition:fade={{ duration: 200 }}
+    on:click={handleBackdropClick}
   >
-    <!-- svelte-ignore a11y_unknown_aria_attribute -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div 
-      class="relative"
+      class="rounded-2xl max-w-md w-full mx-4 shadow-2xl relative z-40"
+      style="width: {width}; height: {height};"
+      transition:scale={{ duration: 400, easing: backOut }}
       on:click|stopPropagation
-      role="dialog"
     >
       <Panel 
         variant={variant === "red" ? "blue" : variant}

@@ -4,7 +4,7 @@
   import { page } from "$app/stores";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
-  import { switchLocale, localeStore, t } from "$lib/services/translations";
+  import { t } from "$lib/services/translations";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools/poolStore";
   import {
@@ -20,10 +20,6 @@
 
   onMount(async () => {
     pageTitle = process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
-    
-    if (!$localeStore) {
-      switchLocale("en");
-    }
 
     // Preload all pxcomponents
     const pxComponents = import.meta.glob("/pxcomponents/*.svg", {
