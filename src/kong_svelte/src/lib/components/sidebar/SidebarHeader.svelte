@@ -16,10 +16,20 @@
   let showAccountDetails = false;
   let windowWidth: number;
   let isRefreshing = false;
-  $: isLoggedIn = $walletStore.isConnected;
+  let isLoggedIn = false;
+
+  walletStore.subscribe(async value => {
+    isLoggedIn = value.isConnected;
+    if (isLoggedIn) {
+      await tokenStore.loadBalances()
+    }
+  });
+
 
   onMount(async () => {
-    await handleReload();
+    if (isLoggedIn) {
+      await tokenStore.loadBalances();
+    }
   });
 
   const tabs: ("tokens" | "pools" | "history")[] = [
@@ -30,9 +40,8 @@
 
   async function handleReload() {
     isRefreshing = true;
-    await tokenStore.loadBalances().then(() => {
-      isRefreshing = false;
-    });
+    await tokenStore.loadBalances();
+    isRefreshing = false;
   }
 </script>
 

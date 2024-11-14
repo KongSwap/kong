@@ -21,12 +21,21 @@
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
-
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
   export let initialPool: string | null = null;
   export let initialFromToken: string | null = null;
   export let initialToToken: string | null = null;
+
+  let isLoggedIn = false;
+
+  walletStore.subscribe(async value => {
+    isLoggedIn = value.isConnected;
+    if (isLoggedIn) {
+      await tokenStore.loadBalances();
+    }
+  });
 
   // Core state
   let payToken = initialFromToken || "ICP";
@@ -91,6 +100,7 @@
     !isCalculating &&
     swapSlippage <= userMaxSlippage;
   $: buttonText = getButtonText(
+    isLoggedIn,
     isCalculating,
     isValidInput,
     isProcessing,
@@ -123,12 +133,13 @@
   };
 
   function getButtonText(
+    isLoggedIn: boolean,
     isCalculating: boolean,
     isValidInput: boolean,
     isProcessing: boolean,
     error: string | null,
   ): string {
-    if (!$walletStore.isConnected) return "Connect Wallet";
+    if (!isLoggedIn) return "Connect Wallet";
     if (isCalculating) return "Calculating...";
     if (isProcessing) return "Processing...";
     if (swapSlippage > userMaxSlippage)

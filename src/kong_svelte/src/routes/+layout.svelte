@@ -23,17 +23,24 @@
     if (!$localeStore) {
       switchLocale("en");
     }
+    
     const init = async () => {
-      await Promise.allSettled([
+      const basePromises = [
         restoreWalletConnection(),
         tokenStore.loadTokens(),
-        poolStore.loadPools()
-      ]);
+        poolStore.loadPools(),
+      ];
+
       if (isConnected()) {
-        interval = setInterval(tokenStore.loadBalances, 5000);
+        interval = setInterval(tokenStore.loadBalances, 4000);
+        basePromises.push(tokenStore.loadBalances() as unknown as Promise<void>);
       }
+
+      await Promise.allSettled(basePromises);
     };
+
     init();
+
     return () => {
       if (interval) {
         clearInterval(interval);
@@ -64,12 +71,30 @@
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundPosition = "center";
   });
+
+  // Import all images from pxcomponents folder
+  const pxComponents = import.meta.glob('/pxcomponents/*.svg', {
+    eager: true,
+    as: 'url'
+  });
+
+  onMount(() => {
+    // Preload all pxcomponents
+    Object.values(pxComponents).forEach(url => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = url;
+      document.head.appendChild(link);
+    });
+  });
 </script>
 
 <svelte:head>
-  <title>
-    {`${pageTitle}`} - {$t("common.browserSubtitle")}
-  </title>
+  <title>{`${pageTitle}`} - {$t("common.browserSubtitle")}</title>
+  <link rel="preload" as="image" href={jungleBackground} />
+  <link rel="preload" as="image" href={poolsBackground} />
+  <!-- Individual preloads will be added dynamically -->
 </svelte:head>
 
 <div class="flex justify-center">
