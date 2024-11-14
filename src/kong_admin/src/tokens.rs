@@ -5,9 +5,10 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::path::Path;
 use tokio_postgres::Client;
 
-use super::kong_data::KongData;
+use super::kong_update::KongUpdate;
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "token_type")]
@@ -136,12 +137,14 @@ pub async fn load_tokens(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dy
     Ok(tokens_map)
 }
 
-pub async fn archive_tokens(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backups/tokens.json")?;
+pub async fn update_tokens<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
+    let path = Path::new("./backups/tokens.json");
+    let file = File::open(path)?;
+    println!("processing: {:?}", path.file_name().unwrap());
     let mut reader = BufReader::new(file);
     let mut contents = String::new();
     reader.read_to_string(&mut contents)?;
-    kong_data.archive_tokens(&contents).await?;
+    kong_data.update_tokens(&contents).await?;
 
     Ok(())
 }
