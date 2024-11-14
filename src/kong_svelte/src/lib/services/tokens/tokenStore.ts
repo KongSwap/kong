@@ -364,3 +364,5 @@ export const activeSwaps = derived(
     };
   }).filter(Boolean)
 );
+
+export const tokenLogos = writable<Record<string, string>>({});

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { SwapService } from "$lib/services/swap/SwapService";
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
@@ -70,16 +69,18 @@
     );
   });
 
+  let tokenBalance = $derived(getTokenBalance(tokenInfo?.canister_id));
+
   // Use $: for reactive statements to avoid unnecessary re-renders
   $effect(() => {
-    const balance = getTokenBalance(tokenInfo?.canister_id)?.in_tokens || 0;
+    const balance = tokenBalance?.in_tokens || 0n;
     balancePlusAmount = formatTokenAmount(
       new BigNumber(balance.toString())
         .plus(fromTokenDecimals(amount || "0", decimals))
         .toString(),
       decimals,
     );
-    formattedUsdValue = getTokenBalance(tokenInfo?.canister_id)?.in_usd || "0";
+    formattedUsdValue = tokenBalance?.in_usd || "0";
     calculatedUsdValue = parseFloat(formattedUsdValue);
     isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance.toString() || "0");
   });
@@ -299,9 +300,13 @@
             class:clickable={title === "You Pay" && !disabled}
             onclick={handleMaxClick}
           >
-            {title === "You Pay"
-              ? formattedBalance.toString()
-              : balancePlusAmount}
+            {#if title === "You Pay"}
+                {formattedBalance.toString()}
+            {:else}
+                {getTokenBalance(tokenInfo?.canister_id)?.in_tokens 
+                    ? formatTokenAmount(getTokenBalance(tokenInfo?.canister_id)?.in_tokens.toString(), decimals)
+                    : "0"}
+            {/if}
             {token}
           </span>
         </div>

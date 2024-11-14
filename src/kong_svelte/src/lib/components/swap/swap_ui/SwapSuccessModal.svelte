@@ -17,13 +17,15 @@
   let isCountdownActive = false;
 
   function startCountdown() {
+    if(isCountdownActive) {
     countdownInterval = setInterval(() => {
       countdown--;
       if (countdown <= 0) {
         clearInterval(countdownInterval);
         onClose();
       }
-    }, 1000);
+      }, 1000);
+    }
   }
 
   function handleClick() {

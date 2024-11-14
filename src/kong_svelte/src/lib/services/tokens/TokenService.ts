@@ -8,6 +8,64 @@ import { Principal } from '@dfinity/principal';
 import { TokenSchema, BETokenSchema, BETokenArraySchema } from './tokenSchema';
 import { IcrcService } from '$lib/services/icrc/IcrcService';
 
+class TokenImageDB {
+  private static DB_NAME = 'TokenImageCache';
+  private static STORE_NAME = 'images';
+  private static DB_VERSION = 1;
+
+  private static async openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+          db.createObjectStore(this.STORE_NAME, { keyPath: 'canisterId' });
+        }
+      };
+    });
+  }
+
+  static async saveImage(canisterId: string, imageUrl: string): Promise<void> {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.STORE_NAME, 'readwrite');
+      const store = tx.objectStore(this.STORE_NAME);
+      
+      const request = store.put({
+        canisterId,
+        imageUrl,
+        timestamp: Date.now()
+      });
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  static async getImage(canisterId: string): Promise<string | null> {
+    const db = await this.openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.STORE_NAME, 'readonly');
+      const store = tx.objectStore(this.STORE_NAME);
+      const request = store.get(canisterId);
+
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result) {
+          resolve(result.imageUrl);
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+}
+
 export class TokenService {
   protected static instance: TokenService;
   private static logoCache = new Map<string, string>();
@@ -64,7 +122,7 @@ export class TokenService {
         // Even if enrichment fails, include the token with defaults
         return {
           ...token,
-          fee: BigInt(10000),
+          fee: BigInt(0),
           logo: this.DEFAULT_LOGOS.DEFAULT,
           price: token.price || 0,
           total_24h_volume: token.total_24h_volume || 0n,
@@ -100,16 +158,31 @@ export class TokenService {
   }
 
   private static async getCachedLogo(token: FE.Token): Promise<string> {
+    // First check memory cache
     if (this.logoCache.has(token.canister_id)) {
       return this.logoCache.get(token.canister_id);
     }
 
+    // Then check IndexedDB
+    try {
+      const cachedImage = await TokenImageDB.getImage(token.canister_id);
+      if (cachedImage) {
+        this.logoCache.set(token.canister_id, cachedImage);
+        return cachedImage;
+      }
+    } catch (error) {
+      console.warn('Error accessing IndexedDB:', error);
+    }
+
+    // Handle ICP special case
     if (token.canister_id === ICP_CANISTER_ID) {
       const logo = this.DEFAULT_LOGOS[ICP_CANISTER_ID];
       this.logoCache.set(token.canister_id, logo);
+      await TokenImageDB.saveImage(token.canister_id, logo);
       return logo;
     }
 
+    // Fetch from network if not cached
     try {
       const actor = await getActor(token.canister_id, 'icrc1');
       const res = await actor.icrc1_metadata();
@@ -121,12 +194,15 @@ export class TokenService {
         ? logoEntry[1].Text 
         : this.DEFAULT_LOGOS.DEFAULT;
 
+      // Cache in both memory and IndexedDB
       this.logoCache.set(token.canister_id, logo);
+      await TokenImageDB.saveImage(token.canister_id, logo);
       return logo;
     } catch (error) {
       console.error('Error fetching token logo:', error);
       const defaultLogo = this.DEFAULT_LOGOS.DEFAULT;
       this.logoCache.set(token.canister_id, defaultLogo);
+      await TokenImageDB.saveImage(token.canister_id, defaultLogo);
       return defaultLogo;
     }
   }
@@ -242,6 +318,8 @@ export class TokenService {
         prices[canister_id] = price;
       }
     });
+
+    prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
 
     return prices;
   }

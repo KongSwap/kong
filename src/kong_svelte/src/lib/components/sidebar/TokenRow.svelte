@@ -1,12 +1,19 @@
 <script lang="ts">  
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { fade } from 'svelte/transition';
+  import { tokenLogos } from '$lib/services/tokens/tokenStore';
 
   interface TokenRowProps {
     token: FE.Token;
     onClick?: () => void;
   }
   let { token, onClick }: TokenRowProps = $props();
+  let logoUrl = '/tokens/not_verified.webp';  
+
+  // Subscribe to the logo store
+  $effect(() => {
+    logoUrl = globalThis.$tokenLogos[token.canister_id] || token.logo || '/tokens/not_verified.webp';
+  });
 
   // Helper function for number formatting
   function formatBalance(value: string): string {
