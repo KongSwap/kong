@@ -64,12 +64,30 @@
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundPosition = "center";
   });
+
+  // Import all images from pxcomponents folder
+  const pxComponents = import.meta.glob('/pxcomponents/*.svg', {
+    eager: true,
+    as: 'url'
+  });
+
+  onMount(() => {
+    // Preload all pxcomponents
+    Object.values(pxComponents).forEach(url => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = url;
+      document.head.appendChild(link);
+    });
+  });
 </script>
 
 <svelte:head>
-  <title>
-    {`${pageTitle}`} - {$t("common.browserSubtitle")}
-  </title>
+  <title>{`${pageTitle}`} - {$t("common.browserSubtitle")}</title>
+  <link rel="preload" as="image" href={jungleBackground} />
+  <link rel="preload" as="image" href={poolsBackground} />
+  <!-- Individual preloads will be added dynamically -->
 </svelte:head>
 
 <div class="flex justify-center">
