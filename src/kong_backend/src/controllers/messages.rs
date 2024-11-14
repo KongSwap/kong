@@ -31,6 +31,25 @@ fn backup_messages(message_id: Option<u64>, num_messages: Option<u16>) -> Result
     })
 }
 
+/// deserialize MESSAGE_MAP and update stable memory
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_messages(stable_messages: String) -> Result<String, String> {
+    let messages: BTreeMap<StableMessageId, StableMessage> = match serde_json::from_str(&stable_messages) {
+        Ok(tokens) => tokens,
+        Err(e) => return Err(format!("Invalid messages: {}", e)),
+    };
+
+    MESSAGE_MAP.with(|message_map| {
+        let mut map = message_map.borrow_mut();
+        map.clear_new();
+        for (k, v) in messages {
+            map.insert(k, v);
+        }
+    });
+
+    Ok("Messages updated".to_string())
+}
+
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct AddMessageArgs {
     pub to_user_id: u32,
