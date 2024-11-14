@@ -9,7 +9,7 @@
   import { walletStore } from "$lib/services/wallet/walletStore";
   import { fade } from "svelte/transition";
   import Modal from "../common/Modal.svelte";
-  import LanguageSelector from "../common/LanguageSelector.svelte";
+  import Settings from "../settings/Settings.svelte";
 
   type Tab = "swap" | "pools" | "stats";
 
@@ -89,7 +89,7 @@
     : titles[activeTab].desktop;
 </script>
 
-<nav class="w-full z-50 p-4 max-w-6xl">
+<nav class="w-full z-5 p-4 max-w-6xl">
   <div class="grid grid-cols-12 gap-2">
     <div class="col-span-2 flex items-center gap-2">
       {#if isMobile}
@@ -244,8 +244,11 @@
   onClose={handleCloseModal}
   title="Settings"
   width="550px"
-  height="100%"
-  
+  height="auto"
 >
-  <LanguageSelector />
+  <Settings />
 </Modal>
+
+<style lang="postcss">
+  /* Remove all settings-related styles */
+</style>

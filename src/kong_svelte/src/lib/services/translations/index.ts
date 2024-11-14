@@ -1,4 +1,4 @@
 import { t, locale, locales, loading, loadTranslations } from './i18nConfig';
-import { localeStore, switchLocale } from './localeStore';
+import { settingsStore } from '$lib/services/settings/settingsStore';
 
-export { t, locale, locales, loading, loadTranslations, localeStore, switchLocale };
+export { t, locale, locales, loading, loadTranslations, settingsStore };
