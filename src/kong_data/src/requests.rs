@@ -28,7 +28,7 @@ fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_requests(stable_requests_json: String) -> Result<String, String> {
+fn update_requests(stable_requests_json: String) -> Result<String, String> {
     let requests: BTreeMap<StableRequestId, StableRequest> = match serde_json::from_str(&stable_requests_json) {
         Ok(requests) => requests,
         Err(e) => return Err(format!("Invalid requests: {}", e)),
@@ -41,5 +41,5 @@ fn archive_requests(stable_requests_json: String) -> Result<String, String> {
         }
     });
 
-    Ok("Requests archived".to_string())
+    Ok("Requests updated".to_string())
 }

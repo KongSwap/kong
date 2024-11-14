@@ -28,7 +28,7 @@ fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, 
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_pools(tokens: String) -> Result<String, String> {
+fn update_pools(tokens: String) -> Result<String, String> {
     let pools: BTreeMap<StablePoolId, StablePool> = match serde_json::from_str(&tokens) {
         Ok(pools) => pools,
         Err(e) => return Err(format!("Invalid pools: {}", e)),
@@ -41,25 +41,5 @@ fn archive_pools(tokens: String) -> Result<String, String> {
         }
     });
 
-    Ok("Pools archived".to_string())
-}
-
-pub fn get_by_pool_id(pool_id: u32) -> Option<StablePool> {
-    POOL_MAP.with(|m| m.borrow().get(&StablePoolId(pool_id)))
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn pools(symbol: Option<String>) -> Result<String, String> {
-    let symbols = get_on_kong().iter().map(|p| p.clone()).collect::<Vec<_>>();
-    Ok(serde_json::to_string(&symbols).map_err(|e| format!("Failed to serialize pools: {}", e))?)
-}
-
-/// get all pools listed on Kong
-pub fn get_on_kong() -> Vec<StablePool> {
-    POOL_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .filter_map(|(_, v)| if v.on_kong { Some(v) } else { None })
-            .collect()
-    })
+    Ok("Pools updated".to_string())
 }

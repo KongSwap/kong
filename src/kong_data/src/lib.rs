@@ -1,8 +1,10 @@
 mod canister;
+mod claims;
 mod guards;
 mod kong_settings;
 mod lp_token_ledger;
 mod math_helpers;
+mod messages;
 mod pools;
 mod requests;
 mod stable_memory;
