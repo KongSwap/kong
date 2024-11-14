@@ -56,7 +56,12 @@ class TokenImageDB {
       request.onsuccess = () => {
         const result = request.result;
         if (result) {
-          resolve(result.imageUrl);
+          const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+          if (Date.now() - result.timestamp < CACHE_DURATION) {
+            resolve(result.imageUrl);
+          } else {
+            resolve(null);
+          }
         } else {
           resolve(null);
         }
@@ -64,7 +69,37 @@ class TokenImageDB {
       request.onerror = () => reject(request.error);
     });
   }
+
+  static async cleanup(): Promise<void> {
+    const db = await this.openDB();
+    const tx = db.transaction(this.STORE_NAME, 'readwrite');
+    const store = tx.objectStore(this.STORE_NAME);
+    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+    return new Promise((resolve, reject) => {
+      const request = store.openCursor();
+      
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          if (Date.now() - cursor.value.timestamp > CACHE_DURATION) {
+            cursor.delete();
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
 }
+
+// Call cleanup periodically
+setInterval(() => {
+  TokenImageDB.cleanup().catch(console.error);
+}, 60 * 60 * 1000); // Every hour
 
 export class TokenService {
   protected static instance: TokenService;
@@ -157,21 +192,34 @@ export class TokenService {
     return price;
   }
 
+  private static async validateImageUrl(url: string): Promise<boolean> {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      return response.ok && response.headers.get('content-type')?.startsWith('image/');
+    } catch {
+      return false;
+    }
+  }
+
   private static async getCachedLogo(token: FE.Token): Promise<string> {
     // First check memory cache
     if (this.logoCache.has(token.canister_id)) {
-      return this.logoCache.get(token.canister_id);
+        const cachedUrl = this.logoCache.get(token.canister_id);
+        if (await this.validateImageUrl(cachedUrl)) {
+            return cachedUrl;
+        }
+        this.logoCache.delete(token.canister_id); // Invalid cache
     }
 
     // Then check IndexedDB
     try {
-      const cachedImage = await TokenImageDB.getImage(token.canister_id);
-      if (cachedImage) {
-        this.logoCache.set(token.canister_id, cachedImage);
-        return cachedImage;
-      }
+        const cachedImage = await TokenImageDB.getImage(token.canister_id);
+        if (cachedImage && await this.validateImageUrl(cachedImage)) {
+            this.logoCache.set(token.canister_id, cachedImage);
+            return cachedImage;
+        }
     } catch (error) {
-      console.warn('Error accessing IndexedDB:', error);
+        console.warn('Error accessing IndexedDB:', error);
     }
 
     // Handle ICP special case

@@ -17,7 +17,7 @@
   let isCountdownActive = false;
 
   function startCountdown() {
-    if(isCountdownActive) {
+    if(isCountdownActive && show) {
     countdownInterval = setInterval(() => {
       countdown--;
       if (countdown <= 0) {
@@ -29,7 +29,7 @@
   }
 
   function handleClick() {
-    if (isCountdownActive) {
+    if (isCountdownActive && show) {
       clearInterval(countdownInterval);
       isCountdownActive = false;
     } else {
