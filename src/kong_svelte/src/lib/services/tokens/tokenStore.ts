@@ -3,7 +3,7 @@ import { writable, derived, get, type Readable } from 'svelte/store';
 import { TokenService } from '$lib/services/tokens/TokenService';
 import { browser } from '$app/environment';
 import { debounce } from 'lodash-es';
-import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 import { toastStore } from '$lib/stores/toastStore';
 import BigNumber from 'bignumber.js';
 

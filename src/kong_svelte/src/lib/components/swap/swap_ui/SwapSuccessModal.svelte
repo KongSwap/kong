@@ -14,7 +14,7 @@
 
   let countdown = 3;
   let countdownInterval: ReturnType<typeof setInterval>;
-  let isCountdownActive = true;
+  let isCountdownActive = false;
 
   function startCountdown() {
     countdownInterval = setInterval(() => {

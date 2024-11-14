@@ -8,7 +8,7 @@
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools/poolStore";
   import {
-    isConnected,
+    walletStore,
     restoreWalletConnection,
   } from "$lib/services/wallet/walletStore";
   import poolsBackground from "$lib/assets/backgrounds/pools.webp";
@@ -18,28 +18,63 @@
   let { children } = $props();
   let interval: NodeJS.Timeout | null = $state(null);
 
-  onMount(() => {
+  onMount(async () => {
     pageTitle = process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
+    
     if (!$localeStore) {
       switchLocale("en");
     }
-    
-    const init = async () => {
-      const basePromises = [
-        restoreWalletConnection(),
-        tokenStore.loadTokens(),
-        poolStore.loadPools(),
-      ];
 
-      if (isConnected()) {
-        interval = setInterval(tokenStore.loadBalances, 4000);
-        basePromises.push(tokenStore.loadBalances() as unknown as Promise<void>);
-      }
+    // Preload all pxcomponents
+    const pxComponents = import.meta.glob("/pxcomponents/*.svg", {
+      eager: true,
+      as: "url",
+    });
 
-      await Promise.allSettled(basePromises);
-    };
+    // Create all promises at once
+    const promises = [
+      // Core data loading
+      restoreWalletConnection(),
+      tokenStore.loadTokens(),
+      poolStore.loadPools(),
+      
+      // Asset preloading
+      ...Object.values(pxComponents).map(url => {
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = url;
+        document.head.appendChild(link);
+        return new Promise(resolve => link.onload = resolve);
+      }),
 
-    init();
+      // Background images preloading
+      new Promise(resolve => {
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = jungleBackground;
+        link.onload = resolve;
+        document.head.appendChild(link);
+      }),
+      new Promise(resolve => {
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = poolsBackground;
+        link.onload = resolve;
+        document.head.appendChild(link);
+      })
+    ];
+
+    // Add balance loading if connected
+    if ($walletStore.isConnected) {
+      promises.push(tokenStore.loadBalances());
+      interval = setInterval(tokenStore.loadBalances, 4000);
+    }
+
+    // Wait for everything to settle
+    await Promise.allSettled(promises);
 
     return () => {
       if (interval) {
@@ -49,12 +84,11 @@
   });
 
   $effect(() => {
-    if (isConnected()) {
+    if ($walletStore.isConnected) {
       if (interval) return;
 
-      tokenStore.loadBalances().then(() => {
-        interval = setInterval(tokenStore.loadBalances, 5000);
-      });
+      tokenStore.loadBalances();
+      interval = setInterval(tokenStore.loadBalances, 5000);
     }
   });
 
@@ -70,23 +104,6 @@
     }
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundPosition = "center";
-  });
-
-  // Import all images from pxcomponents folder
-  const pxComponents = import.meta.glob('/pxcomponents/*.svg', {
-    eager: true,
-    as: 'url'
-  });
-
-  onMount(() => {
-    // Preload all pxcomponents
-    Object.values(pxComponents).forEach(url => {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = url;
-      document.head.appendChild(link);
-    });
   });
 </script>
 

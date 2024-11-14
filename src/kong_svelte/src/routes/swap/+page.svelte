@@ -21,7 +21,7 @@
   const claimTokens = async () => {
     const result = await tokenStore.claimFaucetTokens();
     console.log('Claim result', result);
-    tokenStore.loadBalances();
+    await tokenStore.loadBalances();
   };
 
   onDestroy(() => {

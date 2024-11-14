@@ -76,6 +76,15 @@ export class TokenService {
     return await Promise.allSettled(tokenPromises);
   }
 
+  public static async fetchTokenImages(tokens: FE.Token[]): Promise<void> {
+    const promises = tokens.map(async (token) => {
+      const logo = await this.getCachedLogo(token);
+      
+      return { ...token, logo };
+    });
+    await Promise.allSettled(promises);
+  } 
+
   private static async getCachedPrice(token: FE.Token): Promise<number> {
     const cached = this.priceCache.get(token.canister_id);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {

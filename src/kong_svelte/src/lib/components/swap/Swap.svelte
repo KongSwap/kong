@@ -24,7 +24,6 @@
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
-  export let initialPool: string | null = null;
   export let initialFromToken: string | null = null;
   export let initialToToken: string | null = null;
 
@@ -197,6 +196,12 @@
 
   async function handleTokenSwitch() {
     if (isProcessing) return;
+    
+    // Clear initial values to prevent overwriting
+    initialFromToken = null;
+    initialToToken = null;
+    
+    // Perform the switch
     [payToken, receiveToken] = [receiveToken, payToken];
     const oldPayAmount = payAmount;
     payAmount = receiveAmount;
@@ -277,7 +282,7 @@
         payDecimals: getTokenDecimals(payToken),
       });
 
-      SwapService.executeSwap({
+      await SwapService.executeSwap({
         swapId,
         payToken,
         payAmount,
@@ -337,11 +342,13 @@
 
   // Add this effect to handle URL updates
   $: {
-    if (initialFromToken && initialFromToken !== payToken) {
+    if (initialFromToken && initialFromToken !== payToken && !isProcessing) {
+      // Only update if it's different and not in middle of processing
       payToken = initialFromToken;
       if (payAmount) debouncedGetQuote(payAmount);
     }
-    if (initialToToken && initialToToken !== receiveToken) {
+    if (initialToToken && initialToToken !== receiveToken && !isProcessing) {
+      // Only update if it's different and not in middle of processing
       receiveToken = initialToToken;
       if (payAmount) debouncedGetQuote(payAmount);
     }

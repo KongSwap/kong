@@ -25,13 +25,6 @@
     }
   });
 
-
-  onMount(async () => {
-    if (isLoggedIn) {
-      await tokenStore.loadBalances();
-    }
-  });
-
   const tabs: ("tokens" | "pools" | "history")[] = [
     "tokens",
     "pools",
