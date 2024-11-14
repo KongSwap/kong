@@ -6,7 +6,7 @@
   import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
   import RouteSection from './confirmation/RouteSection.svelte';
   import FeesSection from './confirmation/FeesSection.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
 
   export let payToken: string;
   export let payAmount: string;
@@ -19,10 +19,14 @@
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
 
+
   let isVisible = true;
   let isLoading = false;
+  let isCountingDown = false; // Added for countdown state
   let error = '';
   let isInitializing = true;
+  let countdown = 2;
+  let countdownInterval: NodeJS.Timeout;
 
   onMount(async () => {
     try {
@@ -71,23 +75,38 @@
   });
 
   async function handleConfirm() {
-    if (isLoading) return;
+    if (isLoading || isCountingDown) return; // Prevent multiple triggers
     
     isLoading = true;
     error = '';
     
     try {
-      const success = await onConfirm();
-      if (!success) throw new Error('Swap failed');
+      const success = onConfirm();
+      if (success) {
+        // Start countdown
+        isCountingDown = true;
+        countdown = 2; // Reset countdown
+        countdownInterval = setInterval(() => {
+          countdown--;
+          if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            isVisible = false;
+            onClose();
+          }
+        }, 1000);
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Swap failed';
-      return;
     } finally {
       isLoading = false;
-      isVisible = false; 
-      onClose();
     }
   }
+
+  onDestroy(() => {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+    }
+  });
 
   $: totalGasFee = calculateTotalFee(gasFees);
   $: totalLPFee = calculateTotalFee(lpFees);
@@ -113,7 +132,7 @@
   }
 </script>
 
-<Modal show={isVisible} title="Review Swap" {onClose} variant="green">
+<Modal show={isVisible} title="Review Swap" {onClose} variant="green" height="100%">
   {#if isInitializing}
     <div class="flex justify-center items-center max-h-[100px]">
       <span class="text-white text-lg opacity-80">Getting latest price...</span>
@@ -132,11 +151,11 @@
       
       <div class="mt-auto">
         <Button
-          text={isLoading ? 'Processing...' : 'CONFIRM SWAP'}
+          text={isCountingDown ? `Processing ${countdown}...` : 'CONFIRM SWAP'}
           variant="yellow"
           size="big"
           onClick={handleConfirm}
-          disabled={isLoading}
+          disabled={isLoading || isCountingDown}
           width="100%"
         />
       </div>

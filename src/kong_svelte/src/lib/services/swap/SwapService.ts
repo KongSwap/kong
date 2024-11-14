@@ -323,11 +323,11 @@ export class SwapService {
                             
                             const tokens = get(tokenStore).tokens;
                             const swap = swapStatusStore.getSwap(swapId);      
-                            await Promise.allSettled([
+                            toastStore.dismiss(toastId);
+                            await Promise.all([
                                 tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.receiveToken)),
                                 tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.payToken))
                             ]);
-                            toastStore.dismiss(toastId);
                         } else if (swapStatus.status === "Failed") {
                             this.stopPolling();
                             swapStatusStore.updateSwap(swapId, {

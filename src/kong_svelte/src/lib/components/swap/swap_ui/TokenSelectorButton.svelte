@@ -1,13 +1,23 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
-  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, tokenLogos } from "$lib/services/tokens/tokenStore";
 
-  export let token: string;
-  export let onClick: () => void;
-  export let disabled: boolean = false;
+  interface TokenSelectorButtonProps {
+    token: string;
+    onClick: () => void;
+    disabled: boolean;
+  }
 
-  $: tokenInfo = $formattedTokens.find(t => t.symbol === token);
-  $: logoUrl = tokenInfo?.logo || "/tokens/not_verified.webp";
+  let { token, onClick, disabled }: TokenSelectorButtonProps = $props();
+
+  let tokenInfo: FE.Token | null = null;
+  let logoUrl = $state('/tokens/not_verified.webp');
+
+  $effect(() => {
+    tokenInfo = $formattedTokens.find(t => t.symbol === token);
+    logoUrl = tokenInfo ? $tokenLogos[tokenInfo.canister_id] || tokenInfo.logo || '/tokens/not_verified.webp' : '/tokens/not_verified.webp';
+  }); 
+
 </script>
 
 <Button
@@ -23,7 +33,6 @@
       alt={token}
       class="token-logo"
       on:error={(e) => {
-        // Fallback to default logo if image fails to load
         e.currentTarget.src = "/tokens/not_verified.webp";
       }}
     />

@@ -14,20 +14,22 @@
 
   let countdown = 3;
   let countdownInterval: ReturnType<typeof setInterval>;
-  let isCountdownActive = true;
+  let isCountdownActive = false;
 
   function startCountdown() {
+    if(isCountdownActive && show) {
     countdownInterval = setInterval(() => {
       countdown--;
       if (countdown <= 0) {
         clearInterval(countdownInterval);
         onClose();
       }
-    }, 1000);
+      }, 1000);
+    }
   }
 
   function handleClick() {
-    if (isCountdownActive) {
+    if (isCountdownActive && show) {
       clearInterval(countdownInterval);
       isCountdownActive = false;
     } else {

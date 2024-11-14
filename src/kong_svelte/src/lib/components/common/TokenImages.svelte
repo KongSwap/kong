@@ -20,7 +20,7 @@
       "
       src={token?.logo ?? '/tokens/not_verified.webp'}
       alt={token?.symbol}
-      loading="lazy"
+      loading="eager"
     />
   {/each}
 </div> 

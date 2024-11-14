@@ -21,7 +21,7 @@
   }
 </script>
 
-<Modal show={show} title="Settings" {onClose} variant="green">
+<Modal show={show} title="Settings" {onClose} variant="green" height="100%">
   <div class="flex flex-col h-full">
     <div class="border-b border-white/10 md:hidden">
       <div class="flex w-full gap-2">
