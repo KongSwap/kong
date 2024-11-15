@@ -120,6 +120,7 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
+    lp_token_supply : nat;
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;

@@ -36,4 +36,5 @@ pub struct PoolReply {
     pub total_volume: Nat,
     pub total_lp_fee: Nat,
     pub lp_token_symbol: String,
+    pub lp_token_supply: Nat,
 }

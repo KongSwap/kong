@@ -11,6 +11,7 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
     let token_1 = token_map::get_by_token_id(pool.token_id_1);
     let lp_token = pool.lp_token();
     let lp_token_symbol = lp_token.symbol().to_string();
+    let lp_token_supply = nat_zero();
 
     PoolReply {
         pool_id: pool.pool_id,
@@ -52,6 +53,7 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
         rolling_24h_num_swaps: pool.rolling_24h_num_swaps.clone(),
         rolling_24h_apy: pool.rolling_24h_apy,
         lp_token_symbol,
+        lp_token_supply,
         total_volume: pool.total_volume.clone(),
         total_lp_fee: pool.total_lp_fee.clone(),
         on_kong: pool.on_kong,
