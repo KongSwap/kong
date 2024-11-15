@@ -9,7 +9,7 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
 
-use super::kong_data::KongData;
+use super::kong_update::KongUpdate;
 
 pub async fn dump_users(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
@@ -78,7 +78,7 @@ pub async fn dump_users(db_client: &Client) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-pub async fn archive_users(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_users<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"users.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?
@@ -107,7 +107,7 @@ pub async fn archive_users(kong_data: &KongData) -> Result<(), Box<dyn std::erro
         let mut reader = BufReader::new(file);
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
-        kong_data.archive_users(&contents).await?;
+        kong_update.update_users(&contents).await?;
     }
 
     Ok(())

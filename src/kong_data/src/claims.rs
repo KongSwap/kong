@@ -1,9 +1,9 @@
 use ic_cdk::{query, update};
+use kong_lib::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
-use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
-use crate::stable_memory::CLAIM_MAP;
+use super::guards::caller_is_kingkong;
+use super::stable_memory::CLAIM_MAP;
 
 const MAX_CLAIMS: usize = 1_000;
 
@@ -43,26 +43,4 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
     });
 
     Ok("Claims updated".to_string())
-}
-
-// "unclaimed"
-// "claiming"
-// "claimed"
-// "too_many_attempts"
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> {
-    CLAIM_MAP.with(|m| {
-        let status = match status.as_str() {
-            "unclaimed" => ClaimStatus::Unclaimed,
-            "claiming" => ClaimStatus::Claiming,
-            "claimed" => ClaimStatus::Claimed,
-            "too_many_attempts" => ClaimStatus::TooManyAttempts,
-            _ => return Err("Invalid status".to_string()),
-        };
-        let mut map = m.borrow_mut();
-        let mut claim = map.get(&StableClaimId(claim_id)).ok_or("Claim not found")?;
-        claim.status = status;
-        map.insert(StableClaimId(claim_id), claim);
-        Ok("Claim status changed".to_string())
-    })
 }

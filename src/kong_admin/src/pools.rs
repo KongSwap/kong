@@ -4,9 +4,10 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::path::Path;
 use tokio_postgres::Client;
 
-use super::kong_data::KongData;
+use super::kong_update::KongUpdate;
 use super::math_helpers::round_f64;
 
 pub fn serialize_pool(pool: &StablePool) -> serde_json::Value {
@@ -124,12 +125,14 @@ pub async fn load_pools(db_client: &Client) -> Result<BTreeMap<u32, (u32, u32)>,
     Ok(pools_map)
 }
 
-pub async fn archive_pools(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backups/pools.json")?;
+pub async fn update_pools<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+    let path = Path::new("./backups/pools.json");
+    let file = File::open(path)?;
+    println!("processing: {:?}", path.file_name().unwrap());
     let mut reader = BufReader::new(file);
     let mut contents = String::new();
     reader.read_to_string(&mut contents)?;
-    kong_data.archive_pools(&contents).await?;
+    kong_update.update_pools(&contents).await?;
 
     Ok(())
 }

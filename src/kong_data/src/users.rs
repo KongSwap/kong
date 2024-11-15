@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use super::guards::caller_is_kingkong;
 use super::stable_memory::USER_MAP;
 
-const MAX_USERS: usize = 2_000;
+const MAX_USERS: usize = 1_000;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
@@ -28,7 +28,7 @@ fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, 
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_users(stable_users_json: String) -> Result<String, String> {
+fn update_users(stable_users_json: String) -> Result<String, String> {
     let users: BTreeMap<StableUserId, StableUser> = match serde_json::from_str(&stable_users_json) {
         Ok(users) => users,
         Err(e) => return Err(format!("Invalid users: {}", e)),
@@ -41,5 +41,5 @@ fn archive_users(stable_users_json: String) -> Result<String, String> {
         }
     });
 
-    Ok("Users archived".to_string())
+    Ok("Users updated".to_string())
 }
