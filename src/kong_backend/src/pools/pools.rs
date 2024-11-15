@@ -3,7 +3,6 @@ use ic_cdk::query;
 use super::pools_reply::PoolsReply;
 use super::pools_reply_impl::{to_pool_reply, to_pools_reply};
 
-use crate::ic;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_pool::pool_map;
 
@@ -15,14 +14,11 @@ use crate::stable_pool::pool_map;
 /// None returns pools only listed on Kong
 #[query(guard = "not_in_maintenance_mode")]
 fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
-    let start_cycles = ic::management::get_performance_counter(0);
     let pools = match symbol.as_deref() {
         Some("all") => pool_map::get().iter().map(to_pool_reply).collect(),
         Some(symbol) => pool_map::get_by_token_wildcard(symbol).iter().map(to_pool_reply).collect(),
         None => pool_map::get_on_kong().iter().map(to_pool_reply).collect(),
     };
     let reply = to_pools_reply(pools);
-    let end_cycles = ic::management::get_performance_counter(0);
-    ic_cdk::api::print(format!("pools took {} cycles", end_cycles - start_cycles));
     Ok(reply)
 }
