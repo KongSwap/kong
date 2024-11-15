@@ -22,6 +22,21 @@ pub fn archive_transfer_map() {
             }
         });
     });
+
+    let two_days_ago = get_time() - 172_800_000_000_000; // 2 days
+    let mut remove_list = Vec::new();
+    TRANSFER_MAP.with(|transfer_map| {
+        transfer_map.borrow().iter().for_each(|(transfer_id, transfer)| {
+            if transfer.ts < two_days_ago {
+                remove_list.push(transfer_id);
+            }
+        });
+    });
+    TRANSFER_MAP.with(|transfer_map| {
+        remove_list.iter().for_each(|transfer_id| {
+            transfer_map.borrow_mut().remove(transfer_id);
+        });
+    });
 }
 
 pub fn remove_transfer_1h_map() {
