@@ -7,8 +7,6 @@
       "package": "kong_backend",
       "candid": "src/kong_backend/kong_backend.did",
       "type": "rust",
-      "optimize": "cycles",
-      "gzip": true,
 			"specified_id": "l4lgk-raaaa-aaaar-qahpq-cai",
 			"metadata": [
 				{
@@ -23,8 +21,6 @@
       },
       "package": "kong_data",
       "type": "rust",
-      "optimize": "cycles",
-      "gzip": true,
       "specified_id": "bd3sg-teaaa-aaaaa-qaaba-cai",
 			"metadata": [
 				{
