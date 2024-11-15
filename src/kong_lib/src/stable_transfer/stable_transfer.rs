@@ -7,22 +7,16 @@ use super::tx_id::TxId;
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableTransferId(pub u64);
 
-const TRANSFER_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
-
 impl Storable for StableTransferId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        self.0.to_bytes() // u64 is already Storable
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(u64::from_bytes(bytes))
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // u64 is fixed size
-    const BOUND: Bound = Bound::Bounded {
-        max_size: TRANSFER_ID_SIZE,
-        is_fixed_size: true,
-    };
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +39,5 @@ impl Storable for StableTransfer {
         serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }

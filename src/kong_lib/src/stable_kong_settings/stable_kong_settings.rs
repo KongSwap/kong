@@ -102,6 +102,5 @@ impl Storable for StableKongSettings {
         serde_cbor::from_slice(&bytes).unwrap_or_default()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }
