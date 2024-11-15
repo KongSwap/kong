@@ -96,14 +96,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // txs::update_txs(&kong_data).await?;
 
     // Dump to kong_backend
-    kong_settings::update_kong_settings(&kong_backend).await?;
-    users::update_users(&kong_backend).await?;
-    tokens::update_tokens(&kong_backend).await?;
-    pools::update_pools(&kong_backend).await?;
-    lp_token_ledger::update_lp_token_ledger(&kong_backend).await?;
-    requests::update_requests(&kong_backend).await?;
-    transfers::update_transfers(&kong_backend).await?;
-    txs::update_txs(&kong_backend).await?;
+    // kong_settings::update_kong_settings(&kong_backend).await?;
+    // users::update_users(&kong_backend).await?;
+    // tokens::update_tokens(&kong_backend).await?;
+    // pools::update_pools(&kong_backend).await?;
+    // lp_token_ledger::update_lp_token_ledger(&kong_backend).await?;
+    // requests::update_requests(&kong_backend).await?;
+    // transfers::update_transfers(&kong_backend).await?;
+    // txs::update_txs(&kong_backend).await?;
 
     Ok(())
 }

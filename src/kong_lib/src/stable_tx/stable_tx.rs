@@ -1,7 +1,6 @@
-use candid::{CandidType, Decode, Encode};
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 use super::add_liquidity_tx::AddLiquidityTx;
 use super::add_pool_tx::AddPoolTx;
@@ -41,11 +40,11 @@ pub enum StableTx {
 
 impl Storable for StableTx {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
     // unbounded size
