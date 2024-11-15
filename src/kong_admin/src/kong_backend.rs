@@ -5,6 +5,7 @@ use ic_agent::Agent;
 use super::kong_update::KongUpdate;
 
 const KONG_BACKEND_STAGING: &str = "l4lgk-raaaa-aaaar-qahpq-cai";
+// don't use prod canister unless you know what you're doing
 //const KONG_BACKEND_PROD: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
 #[derive(Clone)]
@@ -15,7 +16,6 @@ pub struct KongBackend {
 
 impl KongBackend {
     pub async fn new(agent: &Agent) -> Self {
-        // don't use prod canister unless you know what you're doing
         let canister_id = Principal::from_text(KONG_BACKEND_STAGING).unwrap();
         KongBackend {
             agent: agent.clone(),

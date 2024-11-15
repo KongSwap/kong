@@ -75,15 +75,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let kong_backend = KongBackend::new(&agent).await;
 
     // Dump to database
-    // users::dump_users(&db_client).await?;
-    // let tokens_map = tokens::dump_tokens(&db_client).await?;
-    // let tokens_map = tokens::load_tokens(&db_client).await?;
-    // let pools_map = pools::dump_pools(&db_client, &tokens_map).await?;
-    // let pools_map = pools::load_pools(&db_client).await?;
-    // lp_token_ledger::dump_lp_token_ledger(&db_client, &tokens_map).await?;
-    // requests::dump_requests(&db_client).await?;
-    // transfers::dump_transfers(&db_client, &tokens_map).await?;
-    // txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
+    users::dump_users(&db_client).await?;
+    //let tokens_map = tokens::dump_tokens(&db_client).await?;
+    let tokens_map = tokens::load_tokens(&db_client).await?;
+    //let pools_map = pools::dump_pools(&db_client, &tokens_map).await?;
+    let pools_map = pools::load_pools(&db_client).await?;
+    lp_token_ledger::dump_lp_token_ledger(&db_client, &tokens_map).await?;
+    requests::dump_requests(&db_client).await?;
+    transfers::dump_transfers(&db_client, &tokens_map).await?;
+    txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
 
     // Dump to kong_data
     // kong_settings::update_kong_settings(&kong_data).await?;
