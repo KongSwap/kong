@@ -5,111 +5,25 @@ import { get } from 'svelte/store';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { poolStore } from '$lib/services/pools/poolStore';
 import { Principal } from '@dfinity/principal';
-import { TokenSchema, BETokenSchema, BETokenArraySchema } from './tokenSchema';
 import { IcrcService } from '$lib/services/icrc/IcrcService';
-
-class TokenImageDB {
-  private static DB_NAME = 'TokenImageCache';
-  private static STORE_NAME = 'images';
-  private static DB_VERSION = 1;
-
-  private static async openDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-          db.createObjectStore(this.STORE_NAME, { keyPath: 'canisterId' });
-        }
-      };
-    });
-  }
-
-  static async saveImage(canisterId: string, imageUrl: string): Promise<void> {
-    const db = await this.openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(this.STORE_NAME, 'readwrite');
-      const store = tx.objectStore(this.STORE_NAME);
-      
-      const request = store.put({
-        canisterId,
-        imageUrl,
-        timestamp: Date.now()
-      });
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  static async getImage(canisterId: string): Promise<string | null> {
-    const db = await this.openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(this.STORE_NAME, 'readonly');
-      const store = tx.objectStore(this.STORE_NAME);
-      const request = store.get(canisterId);
-
-      request.onsuccess = () => {
-        const result = request.result;
-        if (result) {
-          const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-          if (Date.now() - result.timestamp < CACHE_DURATION) {
-            resolve(result.imageUrl);
-          } else {
-            resolve(null);
-          }
-        } else {
-          resolve(null);
-        }
-      };
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  static async cleanup(): Promise<void> {
-    const db = await this.openDB();
-    const tx = db.transaction(this.STORE_NAME, 'readwrite');
-    const store = tx.objectStore(this.STORE_NAME);
-    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-
-    return new Promise((resolve, reject) => {
-      const request = store.openCursor();
-      
-      request.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest).result;
-        if (cursor) {
-          if (Date.now() - cursor.value.timestamp > CACHE_DURATION) {
-            cursor.delete();
-          }
-          cursor.continue();
-        } else {
-          resolve();
-        }
-      };
-      
-      request.onerror = () => reject(request.error);
-    });
-  }
-}
-
-// Call cleanup periodically
-setInterval(() => {
-  TokenImageDB.cleanup().catch(console.error);
-}, 60 * 60 * 1000); // Every hour
+import { TokenSerializer } from './TokenSerializer';
+import { 
+  saveTokenLogo,
+  getTokenLogo,
+  cleanupExpiredTokenLogos,
+  bulkSaveTokenLogos,
+  getMultipleTokenLogos,
+  fetchTokenLogo,
+  DEFAULT_LOGOS
+} from './tokenLogo';
+import { kongDB } from '../db/db';
+import { tokenStore } from './tokenStore';
 
 export class TokenService {
   protected static instance: TokenService;
-  private static logoCache = new Map<string, string>();
   private static priceCache = new Map<string, { price: number; timestamp: number }>();
   private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  private static readonly DEFAULT_LOGOS = {
-    [ICP_CANISTER_ID]: '/tokens/icp.webp',
-    DEFAULT: '/tokens/not_verified.webp'
-  };
+  private static readonly TOKEN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   public static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -118,65 +32,145 @@ export class TokenService {
     return TokenService.instance;
   }
 
-  public static async fetchTokens(): Promise<BE.Token[]> {
-    const actor = await getActor();
-    const result = await actor.tokens(['all'])
-    return result.Ok
+  public static async fetchTokens(): Promise<FE.Token[]> {
+    try {
+      // Try to get cached tokens
+      const currentTime = Date.now();
+      const cachedTokens = await kongDB.tokens
+        .where('timestamp')
+        .above(currentTime - this.TOKEN_CACHE_DURATION)
+        .toArray();
+
+      if (cachedTokens.length > 0) {
+        return cachedTokens;
+      }
+
+      // If no valid cache, fetch from network
+      const actor = await getActor();
+      const result = await actor.tokens(['all']);
+      const serialized = TokenSerializer.serializeTokens(result);
+      
+      if (serialized.Err) throw serialized.Err;
+      
+      // Cache the results
+      await this.cacheTokens(serialized.Ok);
+      
+      return serialized.Ok;
+    } catch (error) {
+      console.error('Error fetching tokens:', error);
+      throw error;
+    }
+  }
+
+  private static async cacheTokens(tokens: FE.Token[]): Promise<void> {
+    try {
+      await kongDB.transaction('rw', kongDB.tokens, async () => {
+        // Clear old cache
+        await kongDB.tokens.clear();
+        
+        // Add new tokens with timestamp
+        const timestamp = Date.now();
+        const cachedTokens: FE.Token[] = tokens.map(token => ({
+          ...token,
+          timestamp
+        }));
+        
+        await kongDB.tokens.bulkAdd(cachedTokens);
+      });
+    } catch (error) {
+      console.error('Error caching tokens:', error);
+    }
+  }
+
+  public static async clearTokenCache(): Promise<void> {
+    try {
+      await kongDB.tokens.clear();
+    } catch (error) {
+      console.error('Error clearing token cache:', error);
+    }
+  }
+
+  private static async cleanupExpiredTokens(): Promise<void> {
+    try {
+      const expirationTime = Date.now() - this.TOKEN_CACHE_DURATION;
+      await kongDB.tokens
+        .where('timestamp')
+        .below(expirationTime)
+        .delete();
+    } catch (error) {
+      console.error('Error cleaning up expired tokens:', error);
+    }
+  }
+
+  // Optional: Add a method to get a single token from cache
+  public static async getToken(canisterId: string): Promise<FE.Token | null> {
+    try {
+      const currentTime = Date.now();
+      const token = await kongDB.tokens
+        .where('canisterId')
+        .equals(canisterId)
+        .and(token => currentTime - token.timestamp < this.TOKEN_CACHE_DURATION)
+        .first();
+      
+      return token || null;
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return null;
+    }
+  }
+
+  // Optional: Add a method to update a single token in cache
+  public static async updateToken(token: FE.Token): Promise<void> {
+    try {
+      await kongDB.tokens.put({
+        ...token,
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Error updating token:', error);
+    }
   }
 
   public static async enrichTokenWithMetadata(
     tokens: FE.Token[]
   ): Promise<PromiseSettledResult<FE.Token>[]> {
-    const enrichedTokens: FE.Token[] = [];
     const poolData = get(poolStore);
+    const BATCH_SIZE = 10; // Process 10 tokens at a time
 
-    // Create an array of promises for all tokens
-    const tokenPromises = tokens.map(async (token) => {
-      try {
-        // Validate the base token
-        TokenSchema.parse(token);
+    const processTokenBatch = async (tokenBatch: FE.Token[]) => {
+      return Promise.all(tokenBatch.map(async (token) => {
+        try {
+          const [logo, price, volume24h, fee] = await Promise.allSettled([
+            this.getCachedLogo(token),
+            this.getCachedPrice(token),
+            this.calculate24hVolume(token, poolData.pools),
+            token?.fee ? Promise.resolve(token.fee) : this.fetchTokenFee(token),
+          ]);
 
-        // Fetch all data in parallel
-        const [fee, price, volume24h, logo] = await Promise.allSettled([
-          this.fetchTokenFee(token),
-          this.getCachedPrice(token),
-          this.calculate24hVolume(token, poolData.pools),
-          this.getCachedLogo(token)
-        ]);
+          return {
+            ...token,
+            fee: fee.status === 'fulfilled' ? fee.value : 0n,
+            price: price.status === 'fulfilled' ? price.value : 0,
+            total_24h_volume: volume24h.status === 'fulfilled' ? volume24h.value : 0n,
+            logo: logo.status === 'fulfilled' ? logo.value : '/tokens/not_verified.webp',
+          };
+        } catch (error) {
+          console.error(`Error enriching token ${token.symbol}:`, error);
+          return null;
+        }
+      }));
+    };
 
-        return {
-          ...token,
-          fee: fee.status === 'fulfilled' ? fee.value : 0n,
-          price: price.status === 'fulfilled' ? price.value : 0,
-          total_24h_volume: volume24h.status === 'fulfilled' ? volume24h.value : 0n,
-          logo: logo.status === 'fulfilled' ? logo.value : '/tokens/not_verified.webp',
-        };
-      } catch (error) {
-        console.error(`Error enriching token ${token.symbol}:`, error);
+    // Process tokens in batches
+    const results = [];
+    for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
+      const batch = tokens.slice(i, i + BATCH_SIZE);
+      const batchResults = await processTokenBatch(batch);
+      results.push(...batchResults);
+    }
 
-        // Even if enrichment fails, include the token with defaults
-        return {
-          ...token,
-          fee: BigInt(0),
-          logo: this.DEFAULT_LOGOS.DEFAULT,
-          price: token.price || 0,
-          total_24h_volume: token.total_24h_volume || 0n,
-        };
-      }
-    });
-
-    // Wait for all token promises to resolve
-    return await Promise.allSettled(tokenPromises);
+    return results.map(r => ({ status: r ? 'fulfilled' : 'rejected', value: r })) as PromiseSettledResult<FE.Token>[];
   }
-
-  public static async fetchTokenImages(tokens: FE.Token[]): Promise<void> {
-    const promises = tokens.map(async (token) => {
-      const logo = await this.getCachedLogo(token);
-      
-      return { ...token, logo };
-    });
-    await Promise.allSettled(promises);
-  } 
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
     const cached = this.priceCache.get(token.canister_id);
@@ -192,65 +186,36 @@ export class TokenService {
     return price;
   }
 
-  private static async validateImageUrl(url: string): Promise<boolean> {
-    try {
-      const response = await fetch(url, { method: 'HEAD' });
-      return response.ok && response.headers.get('content-type')?.startsWith('image/');
-    } catch {
-      return false;
-    }
-  }
-
   private static async getCachedLogo(token: FE.Token): Promise<string> {
-    // First check memory cache
-    if (this.logoCache.has(token.canister_id)) {
-        const cachedUrl = this.logoCache.get(token.canister_id);
-        if (await this.validateImageUrl(cachedUrl)) {
-            return cachedUrl;
-        }
-        this.logoCache.delete(token.canister_id); // Invalid cache
-    }
-
-    // Then check IndexedDB
-    try {
-        const cachedImage = await TokenImageDB.getImage(token.canister_id);
-        if (cachedImage && await this.validateImageUrl(cachedImage)) {
-            this.logoCache.set(token.canister_id, cachedImage);
-            return cachedImage;
-        }
-    } catch (error) {
-        console.warn('Error accessing IndexedDB:', error);
-    }
-
-    // Handle ICP special case
+    // Handle ICP special case first
     if (token.canister_id === ICP_CANISTER_ID) {
-      const logo = this.DEFAULT_LOGOS[ICP_CANISTER_ID];
-      this.logoCache.set(token.canister_id, logo);
-      await TokenImageDB.saveImage(token.canister_id, logo);
+      const logo = DEFAULT_LOGOS[ICP_CANISTER_ID];
+      await saveTokenLogo(token.canister_id, logo);
       return logo;
+    }
+
+    // Try to get from DB cache
+    const cachedImage = await getTokenLogo(token.canister_id);
+    if (cachedImage) {
+      return cachedImage;
     }
 
     // Fetch from network if not cached
     try {
-      const actor = await getActor(token.canister_id, 'icrc1');
-      const res = await actor.icrc1_metadata();
-      const logoEntry = res.find(
-        ([key]) => key === 'icrc1:logo' || key === 'icrc1_logo'
-      );
+      const logo = await fetchTokenLogo(token);
 
-      const logo = logoEntry && logoEntry[1]?.Text 
-        ? logoEntry[1].Text 
-        : this.DEFAULT_LOGOS.DEFAULT;
-
-      // Cache in both memory and IndexedDB
-      this.logoCache.set(token.canister_id, logo);
-      await TokenImageDB.saveImage(token.canister_id, logo);
-      return logo;
+      // Validate and cache the logo
+      if (logo) {
+        await saveTokenLogo(token.canister_id, logo);
+        return logo;
+      } else {
+        await saveTokenLogo(token.canister_id, DEFAULT_LOGOS.DEFAULT);
+        return DEFAULT_LOGOS.DEFAULT;
+      }
     } catch (error) {
       console.error('Error fetching token logo:', error);
-      const defaultLogo = this.DEFAULT_LOGOS.DEFAULT;
-      this.logoCache.set(token.canister_id, defaultLogo);
-      await TokenImageDB.saveImage(token.canister_id, defaultLogo);
+      const defaultLogo = DEFAULT_LOGOS.DEFAULT;
+      await saveTokenLogo(token.canister_id, defaultLogo);
       return defaultLogo;
     }
   }
@@ -263,7 +228,7 @@ export class TokenService {
     if (!wallet.isConnected) return {};
 
     if (!principalId) {
-      principalId = wallet.account.owner.toString();
+      return {};
     }
 
     // Create an array of promises for all tokens
@@ -271,7 +236,7 @@ export class TokenService {
       try {
         let balance: bigint;
 
-        if (token.icrc1) {
+        if (token.icrc1 && principalId) {
           balance = await IcrcService.getIcrc1Balance(
             token,
             Principal.fromText(principalId)
@@ -294,6 +259,8 @@ export class TokenService {
         };
       } catch (err) {
         console.error(`Error fetching balance for ${token.canister_id}:`, err);
+        console.log("principalId", principalId.toString());
+        console.log("token", token);
         // Optionally provide more details from 'err'
         return {
           canister_id: token.canister_id,
@@ -320,13 +287,35 @@ export class TokenService {
     return balances;
   }
 
-  public static async fetchBalance(token: FE.Token): Promise<string> {
-    const wallet = get(walletStore);
+  public static async fetchBalance(token: FE.Token, principalId?: string, forceRefresh = false): Promise<FE.TokenBalance> {
+    // Add cache check
+    if (!forceRefresh) {
+        const cachedBalance = get(tokenStore).balances[token.canister_id];
+        if (cachedBalance) {
+            return cachedBalance;
+        }
+    }
+
+    if (!token?.canister_id) {
+        return {
+            in_tokens: BigInt(0),
+            in_usd: formatToNonZeroDecimal(0),
+        };
+    }
+
     const balance = await IcrcService.getIcrc1Balance(
-      token,
-      wallet.account.owner
+        token,
+        Principal.fromText(principalId)
     );
-    return balance.toString();
+  
+    const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
+    const price = await this.fetchPrice(token);
+    const usdValue = parseFloat(actualBalance) * price;
+
+    return {
+        in_tokens: balance || BigInt(0),
+        in_usd: formatToNonZeroDecimal(usdValue),
+    };
   }
 
   public static async fetchPrices(tokens: FE.Token[]): Promise<Record<string, number>> {
@@ -360,15 +349,16 @@ export class TokenService {
 
     // Convert the array of results into a record
     const prices: Record<string, number> = {};
+    // insert into dexie
     resolvedPrices.forEach((result) => {
       if (result.status === 'fulfilled') {
         const { canister_id, price } = result.value;
         prices[canister_id] = price;
       }
     });
-
     prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
 
+    await kongDB.tokens.bulkPut(tokens, ['canister_id'], );
     return prices;
   }
 
@@ -479,35 +469,6 @@ export class TokenService {
     } catch (error) {
       console.error('Error getting icrc1 token metadata:', error);
       throw error;
-    }
-  }
-
-  public static async fetchTokenLogo(token: FE.Token): Promise<string> {
-    try {
-      const actor = await getActor(token.canister_id, 'icrc1');
-      const res = await actor.icrc1_metadata();
-      const logoEntry = res.find(
-        ([key]) => key === 'icrc1:logo' || key === 'icrc1_logo'
-      );
-
-      if (logoEntry && logoEntry[1]?.Text) {
-        return logoEntry[1].Text;
-      }
-
-      if (token.canister_id === ICP_CANISTER_ID) {
-        return '/tokens/icp.webp';
-      } else {
-        return '/tokens/not_verified.webp';
-      }
-    } catch (error) {
-      console.log(error);
-      console.error('Error getting icrc1 token metadata:', token);
-
-      if (token.canister_id === ICP_CANISTER_ID) {
-        return '/tokens/icp.webp';
-      } else {
-        return '/tokens/not_verified.webp';
-      }
     }
   }
 

@@ -7,8 +7,8 @@
   import Button from "$lib/components/common/Button.svelte";
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
-  import { IcrcService } from "$lib/services/icrc/icrcService";
-
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { tokenLogoStore } from '$lib/services/tokens/tokenLogo';
   let selectedToken: any = null;
   let isModalOpen = false;
   let amount = "";
@@ -87,7 +87,7 @@
   {#if selectedToken}
     <div class="token-details w-[380px]">
       <img
-        src={selectedToken.logo || "/tokens/not_verified.webp"}
+        src={$tokenLogoStore[selectedToken.canister_id] ?? "/tokens/not_verified.webp"}
         alt={selectedToken.name}
         class="token-logo"
       />

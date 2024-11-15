@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tokenLogoStore } from '$lib/services/tokens/tokenLogo';
+
   export let tokens: FE.Token[] = [];
   export let size: number = 44; // default 44px (h-11 = 44px)
   export let overlap: number = 16; // default 16px of overlap
@@ -18,7 +20,7 @@
         z-index: {30 - (i * 10)};
         margin-left: {i === 0 ? 0 : -overlap}px;
       "
-      src={token?.logo ?? '/tokens/not_verified.webp'}
+      src={$tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp'}
       alt={token?.symbol}
       loading="eager"
     />

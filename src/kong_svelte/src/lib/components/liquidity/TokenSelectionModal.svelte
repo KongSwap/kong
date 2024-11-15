@@ -2,7 +2,7 @@
   import { fade } from "svelte/transition";
   import { Search } from "lucide-svelte";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
-
+  import { tokenLogoStore } from "$lib/services/tokens/tokenLogo";
   export let show: boolean = false;
   export let tokens: FE.Token[] = [];
   export let helperText: string = "";
@@ -65,7 +65,7 @@
             on:click={() => onSelect(token)}
           >
             <img
-              src={token.logo || "/default-token.png"}
+              src={$tokenLogoStore[token.canister_id] ?? "/default-token.png"}
               alt={token.symbol}
               class="w-8 h-8 rounded-full"
             />

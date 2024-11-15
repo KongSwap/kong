@@ -3,9 +3,7 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import {
-    formattedTokens,
-    getTokenBalance,
-    getTokenPrice,
+    tokenStore,
     fromTokenDecimals,
   } from "$lib/services/tokens/tokenStore";
   import {
@@ -16,102 +14,75 @@
   import { debounce } from "lodash-es";
   import TokenSelectorButton from "./TokenSelectorButton.svelte";
   import BigNumber from "bignumber.js";
+  import { walletStore } from "$lib/services/wallet/walletStore";
 
-  interface SwapPanelProps {
-    title: string;
-    token: string;
-    amount: string;
-    onTokenSelect: () => void;
-    onAmountChange: (event: Event) => void;
-    disabled: boolean;
-    showPrice: boolean;
-    slippage: number;
-    fees: string;
-    onSettingsClick: (() => void) | undefined;
-  }
+  export let title: string;
+  export let token: FE.Token;
+  export let amount: string;
+  export let onTokenSelect: () => void;
+  export let onAmountChange: (event: Event) => void;
+  export let disabled: boolean;
+  export let showPrice: boolean;
+  export let slippage: number;
+  export let fees: string;
+  export let onSettingsClick: () => void;
 
-  let {
-    title,
-    token,
-    amount,
-    onTokenSelect,
-    onAmountChange,
-    disabled,
-    showPrice,
-    slippage,
-    fees,
-    onSettingsClick,
-  }: SwapPanelProps = $props();
-
-  let formattedUsdValue: string = $state("0.00");
-  let balancePlusAmount: string = $state("0");
-  let calculatedUsdValue: number = $state(0);
-  let isOverBalance: boolean = $state(false);
-  let pendingAnimation: any = $state(null);
+  let formattedUsdValue: string = "0.00";
+  let balancePlusAmount: string = "0";
+  let calculatedUsdValue: number = 0;
+  let isOverBalance: boolean = false;
+  let pendingAnimation: any = null;
   const DEFAULT_DECIMALS = 8;
 
-  // Use derived stores for memoization
-  let tokenInfo = $derived($formattedTokens.find((t) => t.symbol === token));
-  let decimals = $derived(tokenInfo?.decimals || DEFAULT_DECIMALS);
-  let isIcrc1 = $derived(tokenInfo?.icrc1 && !tokenInfo?.icrc2);
+  // Reactive variables
+  $: tokenInfo = $tokenStore.tokens.find((t) => t.canister_id === token?.canister_id);
+  $: decimals = tokenInfo?.decimals || DEFAULT_DECIMALS;
+  $: isIcrc1 = tokenInfo?.icrc1 && !tokenInfo?.icrc2;
 
-  // Optimize formattedBalance calculation
-  let formattedBalance = $derived.by(() => {
-    const balance = getTokenBalance(tokenInfo?.canister_id)?.in_tokens || 0;
-    const feesInTokens = tokenInfo?.fee ? BigInt(tokenInfo.fee) * (isIcrc1 ? 1n : 2n) : 0n;
+  // Formatted balance calculation
+  $: formattedBalance = (() => {
+    if(!$walletStore?.account) return "0";
+    const balance = $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || tokenStore.loadBalance(tokenInfo, $walletStore.account.owner.toString(), true);
+    const feesInTokens = tokenInfo?.fee
+      ? BigInt(tokenInfo.fee) * (isIcrc1 ? 1n : 2n)
+      : 0n;
     const isZero = balance.toString() === "0";
-    return isZero ? "0" : formatTokenAmount(
-      new BigNumber(balance.toString())
-        .minus(fromTokenDecimals(amount || "0", decimals))
-        .minus(feesInTokens.toString())
-        .toString(),
-      decimals,
-    );
-  });
+    if (isZero) return "0";
+    const calculatedBalance = new BigNumber(balance.toString())
+      .minus(fromTokenDecimals(amount || "0", decimals))
+      .minus(feesInTokens.toString())
+      .toString();
+    return formatTokenAmount(calculatedBalance, decimals);
+  })();
 
-  let tokenBalance = $derived(getTokenBalance(tokenInfo?.canister_id));
+  // Reactive statements
+  $: {
+      const balance = $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || 0n;
+      balancePlusAmount = formatTokenAmount(
+        new BigNumber(balance.toString())
+          .plus(fromTokenDecimals(amount || "0", decimals))
+          .toString(),
+        decimals,
+      );
+      formattedUsdValue = $tokenStore.balances[tokenInfo?.canister_id]?.in_usd || "0";
+      calculatedUsdValue = parseFloat(formattedUsdValue);
+      isOverBalance =
+        parseFloat(amount || "0") >
+        parseFloat(formattedBalance.toString() || "0");
 
-  // Use $: for reactive statements to avoid unnecessary re-renders
-  $effect(() => {
-    const balance = tokenBalance?.in_tokens || 0n;
-    balancePlusAmount = formatTokenAmount(
-      new BigNumber(balance.toString())
-        .plus(fromTokenDecimals(amount || "0", decimals))
-        .toString(),
-      decimals,
-    );
-    formattedUsdValue = tokenBalance?.in_usd || "0";
-    calculatedUsdValue = parseFloat(formattedUsdValue);
-    isOverBalance = parseFloat(amount || "0") > parseFloat(formattedBalance.toString() || "0");
-  });
+      if (pendingAnimation && amount === "0") {
+        pendingAnimation = null;
+      }
 
-  $effect(() => {
-    let balance = getTokenBalance(tokenInfo?.canister_id)?.in_tokens || 0;
-    balancePlusAmount = formatTokenAmount(
-      new BigNumber(balance.toString())
-        .plus(fromTokenDecimals(amount || "0", decimals))
-        .toString(),
-      decimals,
-    );
-    formattedUsdValue = getTokenBalance(tokenInfo?.canister_id)?.in_usd || "0";
-    calculatedUsdValue = parseFloat(formattedUsdValue);
-    isOverBalance =
-      parseFloat(amount || "0") >
-      parseFloat(formattedBalance.toString() || "0");
+      if (amount === "0") {
+        animatedUsdValue.set(calculatedUsdValue, { duration: 0 });
+        animatedAmount.set(parseFloat(amount || "0"), { duration: 0 });
+      } else {
+        animatedUsdValue.set(calculatedUsdValue, { duration: 400 });
+      }
 
-    if (pendingAnimation && amount === "0") {
-      pendingAnimation = null;
-    }
-
-    if (amount === "0") {
-      animatedUsdValue.set(calculatedUsdValue, { duration: 0 });
-      animatedAmount.set(parseFloat(amount || "0"), { duration: 0 });
-    } else {
-      animatedUsdValue.set(calculatedUsdValue, { duration: 400 });
-    }
-
-    animatedSlippage.set(slippage, { duration: 0 });
-  });
+      animatedSlippage.set(slippage, { duration: 0 });
+  }
 
   const animatedUsdValue = tweened(0, {
     duration: 120,
@@ -128,17 +99,17 @@
     easing: cubicOut,
   });
 
-  let inputFocused: boolean = $state(false);
-  let isAnimating: boolean = $state(false);
-  let inputElement: HTMLInputElement | null = $state(null);
+  let inputFocused: boolean = false;
+  let isAnimating: boolean = false;
+  let inputElement: HTMLInputElement | null = null;
 
-  // Optimize handleInput with debounce
+  // Handle input with debounce
   const handleInput = debounce((event: Event) => {
     if (title === "You Receive") return;
     const input = event.target as HTMLInputElement;
     const newValue = input.value;
     try {
-      const price = getTokenPrice(tokenInfo?.canister_id);
+      const price = $tokenStore.prices[tokenInfo?.canister_id] || 0;
       const estimatedUsdValue = price * parseFloat(newValue || "0");
       animatedUsdValue.set(estimatedUsdValue, { duration: 400 });
       animatedAmount.set(Number(newValue) || 0, { duration: 400 });
@@ -150,23 +121,43 @@
     }
   }, 300);
 
-  // Optimize handleMaxClick
+  // Handle Max Click
   const handleMaxClick = () => {
     if (!disabled && title === "You Pay" && tokenInfo) {
       try {
-        const balanceInTokens = new BigNumber(getTokenBalance(tokenInfo.canister_id)?.in_tokens.toString() || "0");
-        const totalFeeInTokens = new BigNumber(tokenInfo.fee.toString()).multipliedBy(tokenInfo.icrc2 ? 2 : 1);
+        const balanceInTokens = new BigNumber(
+          $tokenStore.balances[tokenInfo.canister_id]?.in_tokens.toString() ||
+            "0",
+        );
+        const totalFeeInTokens = new BigNumber(
+          tokenInfo.fee.toString(),
+        ).multipliedBy(tokenInfo.icrc2 ? 2 : 1);
         let maxAmountInTokens = balanceInTokens.minus(totalFeeInTokens);
         if (maxAmountInTokens.isLessThanOrEqualTo(0)) {
-          toastStore.error("Insufficient balance to cover the transaction fees");
+          toastStore.error(
+            "Insufficient balance to cover the transaction fees",
+          );
           return;
         }
-        maxAmountInTokens = maxAmountInTokens.integerValue(BigNumber.ROUND_DOWN);
-        const maxAmountInDecimals = maxAmountInTokens.dividedBy(new BigNumber(10).pow(decimals));
+        maxAmountInTokens = maxAmountInTokens.integerValue(
+          BigNumber.ROUND_DOWN,
+        );
+        const maxAmountInDecimals = maxAmountInTokens.dividedBy(
+          new BigNumber(10).pow(decimals),
+        );
         const formattedMaxAmount = maxAmountInDecimals.toFixed(decimals);
-        inputElement.value = formattedMaxAmount;
-        onAmountChange(new CustomEvent("input", { detail: { value: formattedMaxAmount } }));
-        animatedAmount.set(maxAmountInDecimals.toNumber(), { duration: 400, easing: cubicOut });
+        if (inputElement) {
+          inputElement.value = formattedMaxAmount;
+        }
+        onAmountChange(
+          new CustomEvent("input", {
+            detail: { value: formattedMaxAmount },
+          }),
+        );
+        animatedAmount.set(maxAmountInDecimals.toNumber(), {
+          duration: 400,
+          easing: cubicOut,
+        });
       } catch (error) {
         console.error("Error in handleMaxClick:", error);
         toastStore.error("Failed to set max amount");
@@ -177,25 +168,23 @@
   function formatDisplayValue(value: string, decimals: number = 8): string {
     const [whole, fraction = ""] = value.split(".");
     if (!fraction) return whole;
-
     const formattedFraction = fraction.slice(0, decimals);
     const hasMoreDecimals = fraction.length > decimals;
-
     return `${whole}.${formattedFraction}${hasMoreDecimals ? "..." : ""}`;
   }
 
-  let displayAmount = $derived(
+  $: displayAmount =
     title === "You Receive" && amount
       ? formatDisplayValue(amount)
       : isAnimating
         ? $animatedAmount.toFixed(decimals)
-        : amount,
-  );
-  let tradeUsdValue: string = $derived(
-    formatToNonZeroDecimal(
-      getTokenPrice(tokenInfo?.canister_id) * parseFloat(displayAmount || "0"),
-    ),
-  );
+        : amount;
+
+  $: parsedAmount = parseFloat(displayAmount || "0");
+  $: tradeUsdValue = $tokenStore.tokens.find(token => token.canister_id === tokenInfo?.canister_id)?.price * parsedAmount;
+
+  let payToken: FE.Token;
+  let receiveToken: FE.Token;
 </script>
 
 <Panel variant="green" width="auto" className="token-panel">
@@ -282,7 +271,7 @@
           />
         </div>
         <div class="button-group flex gap-2 items-center">
-          <TokenSelectorButton {token} onClick={onTokenSelect} {disabled} />
+          <TokenSelectorButton token={token} onClick={onTokenSelect} {disabled} />
         </div>
       </div>
     </div>
@@ -295,20 +284,23 @@
           <span class="balance-label text-white/50 font-normal tracking-wide"
             >Available:
           </span>
-          <span
+          <button
             class="token-amount pl-1 text-white/70 font-semibold tracking-tight clickable"
             class:clickable={title === "You Pay" && !disabled}
             onclick={handleMaxClick}
           >
             {#if title === "You Pay"}
-                {formattedBalance.toString()}
+              {formattedBalance.toString()}
             {:else}
-                {getTokenBalance(tokenInfo?.canister_id)?.in_tokens 
-                    ? formatTokenAmount(getTokenBalance(tokenInfo?.canister_id)?.in_tokens.toString(), decimals)
-                    : "0"}
+              {$tokenStore.balances[tokenInfo?.canister_id]?.in_tokens
+                ? formatTokenAmount(
+                    $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString(),
+                    decimals,
+                  )
+                : "0"}
             {/if}
-            {token}
-          </span>
+            {token?.symbol}
+          </button>
         </div>
         <div class="flex items-center">
           <span class="separator text-white/10">|</span>
@@ -318,7 +310,7 @@
           <span
             class="fiat-amount pl-2 text-white/50 font-medium tracking-wide"
           >
-            ${tradeUsdValue}
+            ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
       </div>

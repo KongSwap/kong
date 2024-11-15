@@ -128,8 +128,8 @@
       error = null;
       isProcessingOutput = true;
 
-      const balance0 = tokenStore.getBalance(token0.canister_id);
-      const balance1 = tokenStore.getBalance(token1.canister_id);
+      const balance0 = $tokenStore.balances[token0.canister_id];
+      const balance1 = $tokenStore.balances[token1.canister_id];
 
       if (index === 0) {
         const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -149,9 +149,9 @@
             token0.token,
           );
           amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals).toString();
-          amount1 = formatTokenAmount(balance1.in_tokens - token1.fee, token1.decimals).toString();
+          amount1 = formatTokenAmount((balance1.in_tokens - token1.fee).toString(), token1.decimals).toString();
         } else {
-          amount1 = formatTokenAmount(requiredAmount1 - token1.fee, token1.decimals).toString();
+          amount1 = formatTokenAmount((requiredAmount1 - token1.fee).toString(), token1.decimals).toString();
         }
       } else {
         const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -170,10 +170,10 @@
             balance0.in_tokens - token0.fee,
             token1.token,
           );
-          amount0 = formatTokenAmount(balance0.in_tokens - token0.fee, token0.decimals).toString();
+          amount0 = formatTokenAmount((balance0.in_tokens - token0.fee).toString(), token0.decimals).toString();
           amount1 = formatTokenAmount(reverseAmount.Ok.amount_1, token1.decimals).toString();
         } else {
-          amount0 = formatTokenAmount(requiredAmount0 - token0.fee, token0.decimals).toString();
+          amount0 = formatTokenAmount((requiredAmount0 - token0.fee).toString(), token0.decimals).toString();
         }
       }
     } catch (err) {

@@ -1,11 +1,12 @@
 // src/kong_svelte/src/lib/features/tokens/tokenStore.ts
 import { writable, derived, get, type Readable } from 'svelte/store';
-import { TokenService } from '$lib/services/tokens/TokenService';
-import { browser } from '$app/environment';
+import { TokenService } from './TokenService';
 import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 import { toastStore } from '$lib/stores/toastStore';
 import BigNumber from 'bignumber.js';
 import { walletStore } from '$lib/services/wallet/walletStore';
+import { kongDB } from '$lib/services/db/db';
+import { Principal } from '@dfinity/principal';
 
 interface TokenState {
   tokens: FE.Token[];
@@ -19,12 +20,8 @@ interface TokenState {
   favoriteTokens: Record<string, string[]>;
 }
 
-const CACHE_DURATION = 1000 * 60 * 3; // 3 minutes in milliseconds
-
-// Base BigNumber configuration for internal calculations
-// Set this high enough to handle intermediate calculations without loss of precision
 BigNumber.config({
-  DECIMAL_PLACES: 36, // High enough for internal calculations
+  DECIMAL_PLACES: 36,
   ROUNDING_MODE: BigNumber.ROUND_DOWN,
   EXPONENTIAL_AT: [-50, 50]
 });
@@ -38,37 +35,15 @@ export const fromTokenDecimals = (amount: BigNumber | string | number, decimals:
   return new BigNumber(amount).multipliedBy(new BigNumber(10 ** decimals));
 };
 
-// Add BigInt serialization handler
-const serializeState = (state: TokenState): string => {
-  return JSON.stringify(state, (key, value) => {
-    // Convert BigInt to string during serialization
-    if (typeof value === 'bigint') {
-      return value.toString();
-    }
-    return value;
-  });
-};
-
-// Add BigInt deserialization handler
-const deserializeState = (cachedData: string): TokenState => {
-  return JSON.parse(cachedData, (key, value) => {
-    // Handle potential BigInt values
-    if (typeof value === 'string' && /^\d+n$/.test(value)) {
-      return BigInt(value.slice(0, -1));
-    }
-    return value;
-  });
-};
-
-// Debounced save to cache with a longer delay to reduce frequency
-const saveToCache = (state: TokenState) => {
-  if (browser) {
-    try {
-      localStorage.setItem('tokenStore', serializeState(state));
-    } catch (error) {
-      console.error('Error saving token data to cache:', error);
-    }
-  }
+// Modify the debounce utility to preserve the return type
+const debounce = <T extends (...args: any[]) => any>(fn: T, ms = 300): T => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return ((...args: Parameters<T>): ReturnType<T> => {
+        clearTimeout(timeoutId);
+        return new Promise((resolve) => {
+            timeoutId = setTimeout(() => resolve(fn(...args)), ms);
+        }) as ReturnType<T>;
+    }) as T;
 };
 
 function createTokenStore() {
@@ -81,248 +56,213 @@ function createTokenStore() {
     totalValueUsd: '0.00',
     lastTokensFetch: null,
     activeSwaps: {},
-    favoriteTokens: {} as Record<string, string[]>,
+    favoriteTokens: {},
   };
 
   const store = writable<TokenState>(initialState);
-
-  // Load cached state on initialization
-  if (browser) {
-    try {
-      const cached = localStorage.getItem('tokenStore');
-      const wallet = get(walletStore);
-      if (cached) {
-        const cachedData = deserializeState(cached);
-        if (!cachedData.favoriteTokens[wallet?.account?.owner?.toString() || 'anonymous']) {
-          cachedData.favoriteTokens[wallet?.account?.owner?.toString() || 'anonymous'] = [];
-        }
-        console.log('Loaded cached token data:', cachedData);
-        store.set(cachedData);
-      }
-    } catch (error) {
-      console.error('Error loading cached token data:', error);
-    }
-  }
-
-  const shouldRefetch = (lastFetch: number | null): boolean => {
-    if (!lastFetch) return true;
-    return Date.now() - lastFetch > CACHE_DURATION;
-  };
-
-  const getCurrentState = (): TokenState => get(store);
-
   const getCurrentWalletId = (): string => {
     const wallet = get(walletStore);
-    return wallet?.account?.owner?.toString() || 'anonymous';
-  };
-
-  const getFavoritesForCurrentWallet = (): string[] => {
-    const currentState = getCurrentState();
-    const walletId = getCurrentWalletId();
-    return currentState.favoriteTokens[walletId] || [];
-  };
-
-  const updateState = (newState: TokenState) => {
-    store.set(newState);
-    saveToCache(newState);
+    return wallet?.account?.owner?.toString();
   };
 
   return {
     subscribe: store.subscribe,
-    loadTokens: async (forceRefresh = false) => {
-      const currentState = getCurrentState();
-
-      if (!forceRefresh && !shouldRefetch(currentState.lastTokensFetch)) {
-        return currentState.tokens;
-      }
-
-      store.update((s) => ({ ...s, isLoading: true, tokens: [] }));
-
-      try {
-        const baseTokens = await TokenService.fetchTokens();
-        console.log(baseTokens);
-
-        // Extract IC tokens and map them to FE.Token[]
-        const icTokens: FE.Token[] = baseTokens
-            .filter((token): token is { IC: BE.ICToken } => token.IC !== undefined)
-            .map((token) => {
-                const icToken = token.IC;
-                return {
-                    canister_id: icToken.canister_id,
-                    name: icToken.name,
-                    symbol: icToken.symbol,
-                    fee: icToken.fee,
-                    decimals: icToken.decimals,
-                    token: icToken.token,
-                    token_id: icToken.token_id,
-                    chain: icToken.chain,
-                    icrc1: icToken.icrc1,
-                    icrc2: icToken.icrc2,
-                    icrc3: icToken.icrc3,
-                    on_kong: icToken.on_kong,
-                    pool_symbol: icToken.pool_symbol ?? "Pool not found",
-                    // Optional fields
-                    logo: "/tokens/not_verified.webp",
-                    total_24h_volume: undefined,
-                    price: undefined,
-                    tvl: undefined,
-                    balance: undefined,
-                } as FE.Token;
-            });
-
-        const enrichedTokens = await TokenService.enrichTokenWithMetadata(icTokens);
-
-        updateState({
-            ...currentState,  // Preserve existing state
-            tokens: enrichedTokens.map(result => result.status === 'fulfilled' ? result.value : null).filter(Boolean) as FE.Token[],
-            isLoading: false,
-            lastTokensFetch: Date.now(),
-            error: null,
-        });
-
-        return enrichedTokens;
-      } catch (error: any) {
-        console.error('Error loading tokens:', error);
-        updateState({
-            ...currentState,  // Preserve existing state
-            error: error.message,
-            isLoading: false,
-            tokens: []
-        });
-        toastStore.error('Failed to load tokens');
-      }
-    },
-    getBalance: (canisterId: string) => {
-      const currentState = getCurrentState();
-      return currentState.balances[canisterId] || { in_tokens: BigInt(0), in_usd: '0' };
-    },
-    refreshBalance: async (token: FE.Token) => {
-      const currentState = getCurrentState();
-      const balance = await TokenService.fetchBalance(token);
-      updateState({ ...currentState, balances: { ...currentState.balances, [token.canister_id]: { in_tokens: BigInt(balance), in_usd: '0' } } });
-    },
-    loadBalance: async (token: FE.Token) => {
-      const currentState = getCurrentState();
-      const balance = await TokenService.fetchBalance(token);
-      updateState({ ...currentState, balances: { ...currentState.balances, [token.canister_id]: { in_tokens: BigInt(balance), in_usd: '0' } } });
-    },
-    loadBalances: async () => {
-      const currentState = getCurrentState();
+    loadTokens: async (forceRefresh = true) => {
+      const walletId = getCurrentWalletId();
+      
       store.update(s => ({ ...s, isLoading: true }));
 
       try {
-        const [balances, prices] = await Promise.allSettled([
-          TokenService.fetchBalances(currentState.tokens),
-          TokenService.fetchPrices(currentState.tokens) // Fetch prices
-        ]);
+        // Load favorites from DB first
+        const favorites = await loadFavoriteTokens(walletId);
+        store.update(s => ({
+          ...s,
+          favoriteTokens: {
+            ...s.favoriteTokens,
+            [walletId]: favorites
+          }
+        }));
 
-        const formattedBalances = Object.entries(balances.status === 'fulfilled' ? balances.value : {}).reduce<Record<string, FE.TokenBalance>>(
-          (acc, [key, value]) => ({
-            ...acc,
-            [key]: value
-          }), 
-          {}
-        );
+        // Fetch tokens using TokenService
+        const baseTokens = await TokenService.fetchTokens();        
+        // Update UI with basic data first
+        store.update(s => ({
+          ...s,
+          tokens: baseTokens,
+          lastTokensFetch: Date.now()
+        }));
 
-        const newState: TokenState = {
-          ...currentState,
-          balances: formattedBalances,
-          prices: prices.status === 'fulfilled' ? prices.value : {},
+        // Enrich tokens with metadata
+        const enrichedTokens = await TokenService.enrichTokenWithMetadata(baseTokens);
+        const validTokens = enrichedTokens
+          .filter(result => result.status === 'fulfilled')
+          .map(result => (result as PromiseFulfilledResult<FE.Token>).value);
+
+        store.update(s => ({
+          ...s,
+          tokens: validTokens,
           isLoading: false
-        };
+        }));
 
-        updateState(newState);
-        return formattedBalances;
+        const balances = await tokenStore.loadBalances();
+        store.update(s => ({
+          ...s,
+          balances
+        }));
+
+        return validTokens;
+      } catch (error: any) {
+        console.error('Error loading tokens:', error);
+        store.update(s => ({
+          ...s,
+          error: error.message,
+          isLoading: false,
+          tokens: []
+        }));
+        toastStore.error('Failed to load tokens');
+        return [];
+      }
+    },
+
+    loadBalances: async () => {
+      const tokenStore = get(store);
+      const wallet = get(walletStore);
+      if (!wallet?.account?.owner) return {};
+      console.log('Loading balances for', wallet.account?.owner?.toString());
+      try {
+        const balances = await TokenService.fetchBalances(tokenStore.tokens, wallet.account?.owner?.toString());
+        
+        store.update(s => ({
+          ...s,
+          balances
+        }));
+        return balances;
       } catch (error) {
         console.error('Error loading balances:', error);
-        this.clearCache();
-        store.update(s => ({ 
-          ...s, 
-          error: error.message, 
-          isLoading: false 
+        toastStore.error('Failed to load balances');
+        return {};
+      }
+    },
+    loadBalance: debounce(async (token: FE.Token, principalId?: string, forceRefresh = false): Promise<FE.TokenBalance> => {
+      let balance;
+      if(!token?.canister_id) {
+        return balance = {
+          in_tokens: BigInt(0),
+          in_usd: formatToNonZeroDecimal(0),
+        };
+      } else {
+        balance = await TokenService.fetchBalance(token, principalId, forceRefresh);
+      }
+      store.update(s => ({
+        ...s,
+        balances: {
+          ...s.balances,
+          [token.canister_id]: balance
+        }
+      }));
+      return {
+        in_tokens: balance.in_tokens || BigInt(0),
+        in_usd: balance.in_usd || '0'
+      };
+    }),
+    getToken: (canister_id: string): FE.Token | null => {
+      return get(store).tokens.find(token => token.canister_id === canister_id) || null;
+    },
+    refetchPrice: async (token: FE.Token): Promise<number> => {
+      const price = await TokenService.fetchPrice(token);
+      store.update(s => ({
+        ...s,
+        prices: { ...s.prices, [token.canister_id]: price }
+      }));
+      return price;
+    },
+    clearUserData: async () => {
+      const walletId = getCurrentWalletId();
+      
+      // Clear favorites from DB
+      await kongDB.favorite_tokens
+        .where('wallet_id')
+        .equals(walletId)
+        .delete();
+      
+      store.update(s => ({
+        ...s,
+        balances: {},
+        isLoading: false,
+        error: null,
+        totalValueUsd: '0.00',
+        activeSwaps: {},
+        favoriteTokens: {
+          ...s.favoriteTokens,
+          [walletId]: []
+        }
+      }));
+    },
+
+    clearCache: async () => {
+      await TokenService.clearTokenCache();
+      store.set(initialState);
+    },
+    toggleFavorite: async (canister_id: string) => {
+      const currentState = get(store);
+      const walletId = getCurrentWalletId();
+      
+      const currentFavorites = currentState.favoriteTokens[walletId] || [];
+      const isFavorite = currentFavorites.includes(canister_id);
+      
+      if (isFavorite) {
+        await removeFavoriteToken(canister_id, walletId);
+        store.update(s => ({
+          ...s,
+          favoriteTokens: {
+            ...s.favoriteTokens,
+            [walletId]: currentFavorites.filter(id => id !== canister_id)
+          }
+        }));
+      } else {
+        await saveFavoriteToken(canister_id, walletId);
+        store.update(s => ({
+          ...s,
+          favoriteTokens: {
+            ...s.favoriteTokens,
+            [walletId]: [...currentFavorites, canister_id]
+          }
         }));
       }
     },
-    clearUserData: () => {
-      const currentState = getCurrentState();
+    isFavorite: (canister_id: string) => {
+      const currentState = get(store);
       const walletId = getCurrentWalletId();
-      
-      // Only clear favorites for current wallet
-      const newFavorites = { ...currentState.favoriteTokens };
-      delete newFavorites[walletId];
-
-      const newState = {
-        ...currentState,
-        balances: {},
-        isLoading: false,
-        error: null,
-        totalValueUsd: '0.00',
-        activeSwaps: {},
-        favoriteTokens: newFavorites,
-      };
-      store.set(newState);
-      saveToCache(newState);
+      return currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false;
     },
-    clearCache: () => {
-      if (browser) localStorage.removeItem('tokenStore');
-      store.set({
-        tokens: [],
-        balances: {},
-        prices: {},
-        isLoading: false,
-        error: null,
-        totalValueUsd: '0.00',
-        lastTokensFetch: null,
-        activeSwaps: {},
-        favoriteTokens: {},
-      });
-    },
-    getTokenPrices: () => {
-      const currentState = getCurrentState();
-      return currentState.prices;
+    getFavorites: (walletId: string = getCurrentWalletId()) => {
+      const currentState = get(store);
+      return currentState.favoriteTokens[walletId] || [];
     },
     claimFaucetTokens: async () => {
-      return await TokenService.claimFaucetTokens();
-    },
-    toggleFavorite: (canisterId: string) => {
-      const currentState = getCurrentState();
-      const walletId = getCurrentWalletId();
-      
-      // Initialize favorites for the current wallet if they don't exist
-      const currentFavorites = currentState.favoriteTokens[walletId] || [];
-      
-      // Toggle the favorite status
-      const newFavorites = currentFavorites.includes(canisterId)
-        ? currentFavorites.filter(id => id !== canisterId)
-        : [...currentFavorites, canisterId];
-
-      // Update the state with the new favorites for the current wallet
-      const newState = {
-        ...currentState,
-        favoriteTokens: {
-          ...currentState.favoriteTokens,
-          [walletId]: newFavorites
-        }
-      };
-      
-      console.log(`Saving favorites for wallet ${walletId}:`, newFavorites);
-      updateState(newState);
-    },
-
-    isFavorite: (canisterId: string) => {
-      const currentState = getCurrentState();
-      const walletId = getCurrentWalletId();
-      return currentState.favoriteTokens[walletId]?.includes(canisterId) ?? false;
+      const result = await TokenService.claimFaucetTokens();
+      const store = get(tokenStore);
+      await tokenStore.loadBalances();
     }
   };
 }
 
-export const tokenStore = createTokenStore();
+export const tokenStore: {
+  subscribe: (run: (value: TokenState) => void) => () => void;
+  loadTokens: (forceRefresh?: boolean) => Promise<FE.Token[]>;
+  loadBalances: () => Promise<Record<string, FE.TokenBalance>>;
+  loadBalance: (token: FE.Token, principalId?: string, forceRefresh?: boolean) => Promise<FE.TokenBalance>;
+  refetchPrice: (token: FE.Token) => Promise<number>;
+  clearUserData: () => void;
+  clearCache: () => Promise<void>;
+  toggleFavorite: (canister_id: string) => void;
+  isFavorite: (canister_id: string) => boolean;
+  getFavorites: (walletId?: string) => string[];
+  getToken: (canister_id: string) => FE.Token | null;
+  claimFaucetTokens: () => Promise<void>;
+} = createTokenStore();
 
-// Export convenience functions
-export const toggleFavoriteToken = (canisterId: string) => tokenStore.toggleFavorite(canisterId);
-export const isTokenFavorite = (canisterId: string) => tokenStore.isFavorite(canisterId);
-
+// Derived stores
 export const favoriteTokens = derived(
   tokenStore,
   ($store) => {
@@ -334,7 +274,6 @@ export const favoriteTokens = derived(
   }
 );
 
-// Other derived stores
 export const portfolioValue = derived(
   tokenStore,
   ($store) => {
@@ -350,6 +289,20 @@ export const portfolioValue = derived(
   }
 );
 
+export const getTokenDecimals = (canister_id: string): number => {
+  const token = get(tokenStore).tokens?.find((t) => t.canister_id === canister_id);
+  return token?.decimals || 8;
+};
+
+export const clearUserData = () => {
+  tokenStore.clearUserData();
+};
+
+export const getTokenPrice = (canister_id: string): number => {
+  return get(tokenStore).prices[canister_id] || 0;
+};
+
+// Add these derived stores
 // Derived store to prepare tokens with formatted values
 export const formattedTokens: Readable<FE.Token[]> = derived(
   tokenStore,
@@ -362,12 +315,11 @@ export const formattedTokens: Readable<FE.Token[]> = derived(
     return $tokenStore.tokens
       .map((token) => {
         const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-        const price = $tokenStore.prices[token.canister_id] || new BigNumber(0);
         const amount = toTokenDecimals(balance.toString(), token.decimals);
         
         // Format with token-specific decimal places
         const formattedBalance = amount.toFormat(token.decimals);
-        const usdValue = amount.times(price);
+        const usdValue = amount.times(token.price);
 
         return {
           ...token,
@@ -396,61 +348,17 @@ export const tokenPrices = derived(
   ($store) => $store?.prices ?? {}
 );
 
-export const getTokenByCanisterId = (canisterId: string): FE.Token | undefined => {
-  return get(tokenStore).tokens.find((token) => token.canister_id === canisterId);
+
+export const toggleFavoriteToken = (canister_id: string): void => {
+  tokenStore.toggleFavorite(canister_id);
 };
 
-export const getTokenDecimals = (symbol: string): number => {
-  const token = get(tokenStore).tokens?.find((t) => t.symbol === symbol);
-  return token?.decimals || 8;
+export const isTokenFavorite = (canister_id: string): boolean => {
+  const state = get(tokenStore);
+  const wallet = get(walletStore);
+  const walletId = wallet?.account?.owner?.toString() || 'anonymous';
+  return state.favoriteTokens[walletId]?.includes(canister_id) ?? false;
 };
-
-export const getTokenBalance = (canisterId: string): FE.TokenBalance => {
-  const balance = get(tokenStore).balances[canisterId] || { in_tokens: BigInt(0), in_usd: '0' };
-  return balance;
-};
-
-export const clearUserData = () => {
-  tokenStore.clearUserData();
-};
-
-export const getTokenPrice = (canisterId: string): number => {
-  const price = get(tokenStore).prices[canisterId] || 0;
-  const tokens = get(tokenStore).tokens;
-  // update the token store tokens with the price
-  tokens.forEach((token) => {
-    if (token.canister_id === canisterId) {
-      token.price = price;
-    }
-  });
-  return price;
-};
-
-export const activeSwaps = derived(
-  tokenStore,
-  ($store) => {
-    if (!$store?.activeSwaps) return [];
-    
-    return Object.entries($store.activeSwaps)
-      .map(([id, swap]) => {
-        const payTokenInfo = $store.tokens?.find(t => t.symbol === swap.payToken);
-        if (!payTokenInfo) return null;
-
-        const price = $store.prices[swap.payToken] || new BigNumber(0);
-        const formattedAmount = toTokenDecimals(swap.amount, payTokenInfo.decimals);
-        const valueUsd = formattedAmount.times(price);
-
-        return {
-          id,
-          ...swap,
-          age: Date.now() - swap.timestamp,
-          formattedAmount: formattedAmount.toNumber(),
-          valueUsd: valueUsd.toFormat(2)
-        };
-      })
-      .filter(Boolean);
-  }
-);
 
 export const getFavoritesForWallet = derived(
   tokenStore,
@@ -461,4 +369,54 @@ export const getFavoritesForWallet = derived(
   }
 );
 
-export const tokenLogos = writable<Record<string, string>>({});
+async function loadFavoriteTokens(walletId: string) {
+  try {
+    const favorites = await kongDB.favorite_tokens
+      .where('wallet_id')
+      .equals(walletId)
+      .toArray();
+    
+    return favorites.map(f => f.canister_id);
+  } catch (error) {
+    console.error('Error loading favorite tokens:', error);
+    return [];
+  }
+}
+
+async function saveFavoriteToken(canister_id: string, walletId: string) {
+  try {
+    // First check if the entry already exists
+    const existing = await kongDB.favorite_tokens
+      .where(['canister_id', 'wallet_id'])
+      .equals([canister_id, walletId])
+      .first();
+
+    if (!existing) {
+      // Only add if it doesn't exist
+      await kongDB.favorite_tokens.add({
+        canister_id: canister_id,
+        wallet_id: walletId,
+        timestamp: Date.now()
+      });
+    } else {
+      // Optionally update the timestamp if it exists
+      await kongDB.favorite_tokens
+        .where(['canister_id', 'wallet_id'])
+        .equals([canister_id, walletId])
+        .modify({ timestamp: Date.now() });
+    }
+  } catch (error) {
+    console.error('Error saving favorite token:', error);
+  }
+}
+
+async function removeFavoriteToken(canister_id: string, walletId: string) {
+  try {
+    await kongDB.favorite_tokens
+      .where(['canister_id', 'wallet_id'])
+      .equals([canister_id, walletId])
+      .delete();
+  } catch (error) {
+    console.error('Error removing favorite token:', error);
+  }
+}

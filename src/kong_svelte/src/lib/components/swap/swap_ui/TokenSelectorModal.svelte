@@ -1,13 +1,14 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { formattedTokens, tokenStore, isTokenFavorite, toggleFavoriteToken, getFavoritesForWallet } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { walletStore } from '$lib/services/wallet/walletStore';
+  import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogo';
 
   export let show = false;
-  export let onSelect: (token: string) => void;
+  export let onSelect: (token: FE.Token) => void;
   export let onClose: () => void;
-  export let currentToken: string;
+  export let currentToken: FE.Token;
 
   let searchQuery = "";
   let standardFilter = "all";
@@ -17,6 +18,8 @@
 
   $: filteredTokens = $formattedTokens
     .filter((token) => {
+      if (!token) return false;
+      if(!token?.symbol || !token?.name) return false;
       const matchesSearch =
         token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         token.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -27,24 +30,36 @@
         case "ck":
           return token.symbol.toLowerCase().startsWith("ck");
         case "favorites":
-          return isTokenFavorite(token.canister_id);
+          return $tokenStore.favoriteTokens[walletId]?.includes(token.canister_id);
         case "all":
         default:
           return true;
       }
     });
 
-  function handleSelect(token: string) {
+  // Load logos when filtered tokens change
+  $: {
+    if (filteredTokens) {
+      filteredTokens.forEach(async (token) => {
+        if (!$tokenLogoStore[token.canister_id]) {
+          await getTokenLogo(token.canister_id);
+        }
+      });
+    }
+  }
+
+  function handleSelect(token: FE.Token) {
     onSelect(token);
     onClose();
   }
 
-  function handleFavoriteClick(event: MouseEvent, canisterId: string) {
+  async function handleFavoriteClick(event: MouseEvent, canisterId: string) {
     event.stopPropagation();
-    toggleFavoriteToken(canisterId);
+    tokenStore.toggleFavorite(canisterId);
   }
 
-  $: favoriteCount = $getFavoritesForWallet.length;
+  // Get favorite count for the button label
+  $: favoriteCount = $tokenStore.favoriteTokens[walletId]?.length || 0;
 </script>
 
 <Modal {show} title="Select Token" {onClose} variant="green">
@@ -85,17 +100,19 @@
       <div class="token-row-container">
         <button
           class="token-button"
-          class:active={token.symbol === currentToken}
-          on:click={() => handleSelect(token.symbol)}
+          class:active={token.canister_id === currentToken?.canister_id}
+          on:click={() => handleSelect(token)}
           role="option"
-          aria-selected={token.symbol === currentToken}
+          aria-selected={token.canister_id === currentToken?.canister_id}
         >
           <TokenRow {token} />
         </button>
         <button
           class="favorite-button"
           on:click={(e) => handleFavoriteClick(e, token.canister_id)}
-          aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+          aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
+            ? "Remove from favorites" 
+            : "Add to favorites"}
         >
           {#if $tokenStore.favoriteTokens[walletId]?.includes(token.canister_id)}
             <span class="star filled">★</span>

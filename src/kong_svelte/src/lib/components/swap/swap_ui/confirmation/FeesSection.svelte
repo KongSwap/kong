@@ -2,7 +2,7 @@
   export let totalGasFee: number;
   export let totalLPFee: number;
   export let userMaxSlippage: number;
-  export let receiveToken: string;
+  export let receiveToken: FE.Token;
 </script>
 
 <div class="section">
@@ -10,14 +10,14 @@
     <span class="label">Gas Fee</span>
     <div class="amount">
       <span class="value">{totalGasFee.toFixed(6)}</span>
-      <span class="token">{receiveToken}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
   </div>
   <div class="fee-row">
     <span class="label">LP Fee</span>
     <div class="amount">
       <span class="value">{totalLPFee.toFixed(6)}</span>
-      <span class="token">{receiveToken}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
   </div>
   <div class="fee-row">

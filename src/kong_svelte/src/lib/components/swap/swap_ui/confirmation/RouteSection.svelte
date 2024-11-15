@@ -1,12 +1,11 @@
 <script lang="ts">
 	import  TokenImages  from '$lib/components/common/TokenImages.svelte';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
-  export let payToken: string;
-  export let receiveToken: string;
+  export let payToken: FE.Token;
+  export let receiveToken: FE.Token;
 
   export let currentRouteIndex = 0;
   export let progress = 0;
@@ -23,12 +22,10 @@
         class:completed={i < currentRouteIndex}
       >
         <div class="token-pair">
-          <div class="token-badge-small from {token === payToken ? 'highlight' : ''}">
+          <div class="token-badge-small from {token === payToken.symbol ? 'highlight' : ''}">
             <div class="token-icon-wrapper">
               <TokenImages
-                tokens={[
-                  $tokenStore.tokens?.find(t => t.symbol === token)
-                ]}
+                tokens={[payToken]}
                 size={24}
               />
             </div>
@@ -38,12 +35,10 @@
             <span class="arrow">→</span>
             <div class="arrow-line"></div>
           </div>
-          <div class="token-badge-small to {routingPath[i + 1] === receiveToken ? 'highlight' : ''}">
+          <div class="token-badge-small to {routingPath[i + 1] === receiveToken.symbol ? 'highlight' : ''}">
             <div class="token-icon-wrapper">
               <TokenImages
-                tokens={[
-                  $tokenStore.tokens?.find(t => t.symbol === routingPath[i + 1])
-                ]}
+                tokens={[receiveToken]}
                 size={24}
               />
             </div>

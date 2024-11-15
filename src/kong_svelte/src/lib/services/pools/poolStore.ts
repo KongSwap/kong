@@ -125,11 +125,11 @@ function createPoolStore() {
 
     loadUserPoolBalances: async () => {
       update(state => ({ ...state, isLoading: true, error: null }));
-
+      const tokens = get(tokenStore);
       try {
         const [balances, tokenPrices] = await Promise.all([
           PoolService.fetchUserPoolBalances(),
-          tokenStore.getTokenPrices()
+          tokens.prices
         ]);
 
         if (!tokenPrices) {

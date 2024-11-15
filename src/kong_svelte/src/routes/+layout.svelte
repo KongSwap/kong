@@ -7,107 +7,101 @@
   import { t } from "$lib/services/translations";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools/poolStore";
-  import {
-    walletStore,
-    restoreWalletConnection,
-  } from "$lib/services/wallet/walletStore";
-  import poolsBackground from "$lib/assets/backgrounds/pools.webp";
-  import jungleBackground from "$lib/assets/backgrounds/kong_jungle2.webp";
+  import { walletStore, restoreWalletConnection } from "$lib/services/wallet/walletStore";
+  import { browser } from "$app/environment";
 
-  let pageTitle: string = $state("");
+  // Lazy load backgrounds
+  const poolsBackground = new URL('$lib/assets/backgrounds/pools.webp', import.meta.url).href;
+  const jungleBackground = new URL('$lib/assets/backgrounds/kong_jungle2.webp', import.meta.url).href;
+
+  let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let { children } = $props();
   let interval: NodeJS.Timeout | null = $state(null);
 
-  onMount(async () => {
-    pageTitle = process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]";
+  // Preload assets in parallel
+  const preloadAsset = (url: string, type = 'image') => {
+    if (!browser) return Promise.resolve();
+    return new Promise((resolve) => {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = type;
+      link.href = url;
+      link.onload = resolve;
+      document.head.appendChild(link);
+    });
+  };
 
-    // Preload all pxcomponents
+  // Initialize app state
+  const initializeApp = async () => {
+    // Core data loading - run in parallel
+    const corePromises = [
+      restoreWalletConnection(),
+      tokenStore.loadTokens(),
+      poolStore.loadPools(),
+    ];
+
+    // Asset preloading - run in parallel
+    const assetPromises = [
+      preloadAsset(jungleBackground),
+      preloadAsset(poolsBackground),
+    ];
+
+    // Preload SVG components
     const pxComponents = import.meta.glob("/pxcomponents/*.svg", {
       eager: true,
       as: "url",
     });
+    const svgPromises = Object.values(pxComponents).map(url => preloadAsset(url));
 
-    // Create all promises at once
-    const promises = [
-      // Core data loading
-      restoreWalletConnection(),
-      tokenStore.loadTokens(),
-      poolStore.loadPools(),
-      
-      // Asset preloading
-      ...Object.values(pxComponents).map(url => {
-        const link = document.createElement("link");
-        link.rel = "preload";
-        link.as = "image";
-        link.href = url;
-        document.head.appendChild(link);
-        return new Promise(resolve => link.onload = resolve);
-      }),
+    // Run all promises in parallel
+    await Promise.allSettled([
+      ...corePromises,
+      ...assetPromises,
+      ...svgPromises
+    ]);
 
-      // Background images preloading
-      new Promise(resolve => {
-        const link = document.createElement("link");
-        link.rel = "preload";
-        link.as = "image";
-        link.href = jungleBackground;
-        link.onload = resolve;
-        document.head.appendChild(link);
-      }),
-      new Promise(resolve => {
-        const link = document.createElement("link");
-        link.rel = "preload";
-        link.as = "image";
-        link.href = poolsBackground;
-        link.onload = resolve;
-        document.head.appendChild(link);
-      })
-    ];
-
-    // Add balance loading if connected
+    // Setup wallet polling if connected
     if ($walletStore.isConnected) {
-      promises.push(tokenStore.loadBalances());
+      await tokenStore.loadBalances();
       interval = setInterval(tokenStore.loadBalances, 4000);
     }
+  };
 
-    // Wait for everything to settle
-    await Promise.allSettled(promises);
+  // Background management
+  const updateBackground = (pathname: string) => {
+    const backgrounds = {
+      '/pools': poolsBackground,
+      '/stats': null,
+      '/swap': jungleBackground,
+    };
 
+    const defaultBg = jungleBackground;
+    const matchedPath = Object.keys(backgrounds).find(path => pathname.startsWith(path));
+    const background = matchedPath ? backgrounds[matchedPath] : defaultBg;
+
+    document.body.style.background = background 
+      ? `#5BB2CF url(${background})`
+      : '#5BB2CF';
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+  };
+
+  onMount(async () => {
+    await initializeApp();
+    
     return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
+      if (interval) clearInterval(interval);
     };
   });
 
-  $effect(() => {
-    if ($walletStore.isConnected) {
-      if (interval) return;
-
-      tokenStore.loadBalances();
-      interval = setInterval(tokenStore.loadBalances, 5000);
-    }
-  });
-
+  // Watch route changes
   $effect.pre(() => {
-    if ($page.url.pathname.startsWith("/pools")) {
-      document.body.style.background = `#5BB2CF url(${poolsBackground})`;
-    } else if ($page.url.pathname.startsWith("/stats")) {
-      document.body.style.background = "#5BB2CF";
-    } else if ($page.url.pathname.startsWith("/swap")) {
-      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-    } else {
-      document.body.style.background = `#5BB2CF url(${jungleBackground})`;
-    }
-    document.body.style.backgroundSize = "cover";
-    document.body.style.backgroundPosition = "center";
+    updateBackground($page.url.pathname);
   });
 </script>
 
 <svelte:head>
-  <title>{`${pageTitle}`} - {$t("common.browserSubtitle")}</title>
-  <link rel="preload" as="image" href={jungleBackground} />
-  <link rel="preload" as="image" href={poolsBackground} />
-  <!-- Individual preloads will be added dynamically -->
+  <title>{pageTitle} - {$t("common.browserSubtitle")}</title>
 </svelte:head>
 
 <div class="flex justify-center">

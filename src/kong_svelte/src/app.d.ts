@@ -6,6 +6,11 @@ declare global {
   }
   
   const CANISTER_ID_ICP_LEDGER: CanisterIdIcpLedger;
+
+  interface Result<T> {
+    Ok?: T;
+    Err?: string;
+  }
   
   namespace FE {
     interface TokenBalance {
@@ -34,6 +39,7 @@ declare global {
       balance?: bigint;
       formattedBalance?: string;
       formattedUsdValue?: string;
+      timestamp?: number;
     }
 
     interface UserPoolBalance {

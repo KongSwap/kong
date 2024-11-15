@@ -9,12 +9,13 @@ import { Principal } from '@dfinity/principal';
 import BigNumber from 'bignumber.js';
 import { IcrcService } from '$lib/services/icrc/IcrcService';
 import { swapStatusStore } from './swapStore';
+import { walletStore } from '$lib/services/wallet/walletStore';
 
 interface SwapExecuteParams {
     swapId: string;
-    payToken: string;
+    payToken: FE.Token;
     payAmount: string;
-    receiveToken: string;
+    receiveToken: FE.Token;
     receiveAmount: string;
     userMaxSlippage: number;
     backendPrincipal: Principal;
@@ -58,13 +59,13 @@ export class SwapService {
      * Gets swap quote from backend
      */
     public static async swap_amounts(
-        payToken: string,
+        payToken: FE.Token,
         payAmount: bigint,
-        receiveToken: string
+        receiveToken: FE.Token
     ): Promise<BE.SwapQuoteResponse> {
         try {
             const actor = await getActor();
-            return await actor.swap_amounts(payToken, payAmount, receiveToken);
+            return await actor.swap_amounts(payToken.symbol, payAmount, receiveToken.symbol);
         } catch (error) {
             console.error('Error getting swap amounts:', error);
             throw error;
@@ -75,9 +76,9 @@ export class SwapService {
      * Gets quote details including price, fees, etc.
      */
     public static async getQuoteDetails(params: {
-        payToken: string;
+        payToken: FE.Token;
         payAmount: bigint;
-        receiveToken: string;
+        receiveToken: FE.Token;
     }): Promise<{
         receiveAmount: string;
         price: string;
@@ -98,8 +99,8 @@ export class SwapService {
         }
 
         const tokens = get(tokenStore).tokens;
-        const receiveToken = tokens.find(t => t.symbol === params.receiveToken);
-        const payToken = tokens.find(t => t.symbol === params.payToken);
+        const receiveToken = tokens.find(t => t.canister_id === params.receiveToken.canister_id);
+        const payToken = tokens.find(t => t.canister_id === params.payToken.canister_id);
         if (!receiveToken) throw new Error('Receive token not found');
 
         const receiveAmount = SwapService.fromBigInt(
@@ -176,22 +177,23 @@ export class SwapService {
     public static async executeSwap(params: SwapExecuteParams): Promise<bigint | false> {
         const swapId = params.swapId;
         try {
+            const wallet = get(walletStore);
             await Promise.allSettled([
                 walletValidator.requireWalletConnection(),
-                tokenStore.loadBalances()
+                tokenStore.loadBalances(get(tokenStore).tokens, wallet.account.owner.toString())
             ]);
             const tokens = get(tokenStore).tokens;
-            const payToken = tokens.find(t => t.symbol === params.payToken);
+            const payToken = tokens.find(t => t.canister_id === params.payToken.canister_id);
             if (!payToken) throw new Error('Pay token not found');
 
             const payAmount = SwapService.toBigInt(params.payAmount, payToken.decimals);
-            const receiveToken = tokens.find(t => t.symbol === params.receiveToken);
+            const receiveToken = tokens.find(t => t.canister_id === params.receiveToken.canister_id);
             if (!receiveToken) throw new Error('Receive token not found');
 
             const receiveAmount = SwapService.toBigInt(params.receiveAmount, receiveToken.decimals);
 
             console.log('Processing transfer/approval for amount:', payAmount.toString());
-            const toastId = toastStore.info(`Swapping ${params.payAmount} ${params.payToken} to ${params.receiveAmount} ${params.receiveToken}...`, 0);
+            const toastId = toastStore.info(`Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`, 0);
 
             let txId: bigint | false;
             let approvalId: bigint | false;
@@ -231,9 +233,9 @@ export class SwapService {
             }
 
             const swapParams = {
-                pay_token: params.payToken,
+                pay_token: params.payToken.symbol,
                 pay_amount: payAmount,
-                receive_token: params.receiveToken,
+                receive_token: params.receiveToken.symbol,
                 receive_amount: [receiveAmount],
                 max_slippage: [params.userMaxSlippage],
                 receive_address: [],
@@ -243,6 +245,10 @@ export class SwapService {
             const result = await SwapService.swap_async(swapParams);
             this.monitorTransaction(result?.Ok, swapId);
             toastStore.dismiss(toastId);
+            await Promise.allSettled([
+                tokenStore.loadBalance(tokens.find(t => t.canister_id === params.receiveToken.canister_id), wallet.account.owner.toString(), true),
+                tokenStore.loadBalance(tokens.find(t => t.canister_id === params.payToken.canister_id), wallet.account.owner.toString(), true)
+            ]);
             return result.Ok;
         } catch (error) {
             swapStatusStore.updateSwap(swapId, {
@@ -261,7 +267,7 @@ export class SwapService {
         
         let attempts = 0;
         let swapStatus = swapStatusStore.getSwap(swapId);
-        const toastId = toastStore.info(`Confirming swap of ${swapStatus?.lastPayAmount} ${swapStatus?.payToken} to ${swapStatus?.expectedReceiveAmount} ${swapStatus?.receiveToken}...`, 0);
+        const toastId = toastStore.info(`Confirming swap of ${swapStatus?.lastPayAmount} ${swapStatus?.payToken.symbol} to ${swapStatus?.expectedReceiveAmount} ${swapStatus?.receiveToken.symbol}...`, 0);
         
         this.pollingInterval = setInterval(async () => {
             try {
@@ -321,13 +327,7 @@ export class SwapService {
                                 }
                             }));
                             
-                            const tokens = get(tokenStore).tokens;
-                            const swap = swapStatusStore.getSwap(swapId);      
                             toastStore.dismiss(toastId);
-                            await Promise.all([
-                                tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.receiveToken)),
-                                tokenStore.loadBalance(tokens.find(t => t.symbol === swap?.payToken))
-                            ]);
                         } else if (swapStatus.status === "Failed") {
                             this.stopPolling();
                             swapStatusStore.updateSwap(swapId, {
@@ -383,8 +383,8 @@ export class SwapService {
      * Fetches the swap quote based on the provided amount and tokens.
      */
     public static async getSwapQuote(
-        payToken: string,
-        receiveToken: string,
+        payToken: FE.Token,
+        receiveToken: FE.Token,
         amount: string
     ): Promise<{
         receiveAmount: string;
@@ -400,7 +400,7 @@ export class SwapService {
         }
 
         try {
-            const payDecimals = getTokenDecimals(payToken);
+            const payDecimals = getTokenDecimals(payToken.canister_id);
             const payAmountBigInt = this.toBigInt(amount, payDecimals);
 
             const quote = await this.swap_amounts(
@@ -410,14 +410,15 @@ export class SwapService {
             );
 
             if ("Ok" in quote) {
-                const receiveDecimals = getTokenDecimals(receiveToken);
+                const receiveDecimals = getTokenDecimals(receiveToken.canister_id);
                 const receivedAmount = this.fromBigInt(
                     quote.Ok.receive_amount,
                     receiveDecimals,
                 );
 
                 // Assuming you have a method to get the price
-                const price = getTokenPrice(receiveToken);
+                const store = get(tokenStore);
+                const price = await tokenStore.refetchPrice(store.tokens.find(t => t.canister_id === receiveToken.canister_id));
                 const usdValueNumber = parseFloat(receivedAmount) * parseFloat(price.toString());
 
                 return {

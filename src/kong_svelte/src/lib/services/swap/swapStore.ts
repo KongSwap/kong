@@ -17,8 +17,8 @@ interface SwapStatus {
     lastPayAmount?: BigNumber;
     expectedReceiveAmount?: BigNumber;
     minReceiveAmount?: BigNumber;
-    payToken?: string;
-    receiveToken?: string;
+    payToken?: FE.Token;
+    receiveToken?: FE.Token;
     payDecimals?: number;
     receiveDecimals?: number;
     lastQuote?: any;
@@ -42,8 +42,8 @@ function createSwapStatusStore() {
             lastPayAmount?: string | number | BigNumber;
             expectedReceiveAmount?: string | number | BigNumber;
             minReceiveAmount?: string | number | BigNumber;
-            payToken?: string;
-            receiveToken?: string;
+            payToken?: FE.Token;
+            receiveToken?: FE.Token;
             payDecimals?: number;
             receiveDecimals?: number;
             priceImpact?: string | number | BigNumber;

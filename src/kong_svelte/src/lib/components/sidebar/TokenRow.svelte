@@ -1,7 +1,8 @@
 <script lang="ts">  
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { fade } from 'svelte/transition';
-  import { tokenLogos } from '$lib/services/tokens/tokenStore';
+  import { tokenLogoStore } from '$lib/services/tokens/tokenLogo';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
 
   interface TokenRowProps {
     token: FE.Token;
@@ -12,7 +13,7 @@
 
   // Subscribe to the logo store
   $effect(() => {
-    logoUrl = globalThis.$tokenLogos[token.canister_id] || token.logo || '/tokens/not_verified.webp';
+    logoUrl = $tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp';
   });
 
   // Helper function for number formatting
@@ -25,6 +26,7 @@
   }
 </script>
 
+{#if token}
 <button 
   class="token-row"
   onclick={onClick}
@@ -51,10 +53,11 @@
       {formatBalance(token.formattedBalance)}
     </span>
     <span class="usd-value hide-on-small">
-      ${token.formattedUsdValue}
+      ${$tokenStore.balances[token.canister_id]?.in_usd}
     </span>
   </div>
 </button>
+{/if}
 
 <style scoped lang="postcss">
   .token-row {
