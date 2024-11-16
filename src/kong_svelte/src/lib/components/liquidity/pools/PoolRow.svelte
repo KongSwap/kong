@@ -26,7 +26,7 @@
   
     onMount(() => {
       const checkMobile = () => {
-        isMobile = window.innerWidth < 1250;
+        isMobile = window.innerWidth < 1000;
       };
       
       checkMobile();
