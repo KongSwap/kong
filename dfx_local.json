@@ -6,10 +6,7 @@
       },
       "package": "kong_backend",
       "candid": "src/kong_backend/kong_backend.did",
-      "type": "custom",
-      "wasm": "target/wasm32-unknown-unknown/release/kong_backend.wasm",
-      "optimize": "cycles",
-      "gzip": true,
+      "type": "rust",
 			"specified_id": "l4lgk-raaaa-aaaar-qahpq-cai",
 			"metadata": [
 				{
@@ -23,10 +20,7 @@
         "node_compatibility": true
       },
       "package": "kong_data",
-      "type": "custom",
-      "wasm": "target/wasm32-unknown-unknown/release/kong_data.wasm",
-      "optimize": "cycles",
-      "gzip": true,
+      "type": "rust",
       "specified_id": "bd3sg-teaaa-aaaaa-qaaba-cai",
 			"metadata": [
 				{
@@ -34,15 +28,16 @@
 				}
 			]
     },
-    "kong_svelte": {
+    "kong_frontend": {
       "dependencies": [
         "kong_backend"
       ],
       "source": [
-        "src/kong_svelte/dist"
+        "src/assets",
+        "src/kong_frontend/dist"
       ],
       "type": "assets",
-      "workspace": "kong_svelte",
+      "workspace": "kong_frontend",
       "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
 			"metadata": [
 				{

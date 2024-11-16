@@ -1,5 +1,4 @@
 use crate::helpers::nat_helpers::{nat_add, nat_zero};
-use crate::stable_lp_token_ledger::lp_token_ledger;
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -12,8 +11,6 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
     let token_1 = token_map::get_by_token_id(pool.token_id_1);
     let lp_token = pool.lp_token();
     let lp_token_symbol = lp_token.symbol().to_string();
-    let lp_token_id = lp_token.token_id();
-    //let lp_token_supply = lp_token_ledger::get_total_supply(lp_token_id);
     let lp_token_supply = nat_zero();
 
     PoolReply {
@@ -64,7 +61,6 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
 }
 
 pub fn to_pools_reply(pools: Vec<PoolReply>) -> PoolsReply {
-    /*
     let (total_tvl, total_24h_volume, total_24h_lp_fee, total_24h_num_swaps) = pools.iter().fold(
         (nat_zero(), nat_zero(), nat_zero(), nat_zero()),
         |acc, pool| -> (Nat, Nat, Nat, Nat) {
@@ -76,21 +72,11 @@ pub fn to_pools_reply(pools: Vec<PoolReply>) -> PoolsReply {
             )
         },
     );
-    */
-    /*
     PoolsReply {
         pools,
         total_tvl,
         total_24h_volume,
         total_24h_lp_fee,
         total_24h_num_swaps,
-    }
-    */
-    PoolsReply {
-        pools,
-        total_tvl: nat_zero(),
-        total_24h_volume: nat_zero(),
-        total_24h_lp_fee: nat_zero(),
-        total_24h_num_swaps: nat_zero(),
     }
 }

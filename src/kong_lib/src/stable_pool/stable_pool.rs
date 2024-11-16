@@ -1,7 +1,6 @@
-use candid::{CandidType, Decode, Encode, Nat};
+use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 const POOL_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
 
@@ -49,11 +48,11 @@ pub struct StablePool {
 
 impl Storable for StablePool {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
     // unbounded size

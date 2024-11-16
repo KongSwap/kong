@@ -28,7 +28,7 @@ fn backup_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Result<Strin
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_tokens(stable_tokens: String) -> Result<String, String> {
+fn update_tokens(stable_tokens: String) -> Result<String, String> {
     let tokens: BTreeMap<StableTokenId, StableToken> = match serde_json::from_str(&stable_tokens) {
         Ok(tokens) => tokens,
         Err(e) => return Err(format!("Invalid tokens: {}", e)),
@@ -41,5 +41,5 @@ fn archive_tokens(stable_tokens: String) -> Result<String, String> {
         }
     });
 
-    Ok("Tokens archived".to_string())
+    Ok("Tokens update".to_string())
 }

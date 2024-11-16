@@ -28,7 +28,7 @@ fn backup_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<String, 
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_pools(tokens: String) -> Result<String, String> {
+fn update_pools(tokens: String) -> Result<String, String> {
     let pools: BTreeMap<StablePoolId, StablePool> = match serde_json::from_str(&tokens) {
         Ok(pools) => pools,
         Err(e) => return Err(format!("Invalid pools: {}", e)),
@@ -41,9 +41,5 @@ fn archive_pools(tokens: String) -> Result<String, String> {
         }
     });
 
-    Ok("Pools archived".to_string())
-}
-
-pub fn get_by_pool_id(pool_id: u32) -> Option<StablePool> {
-    POOL_MAP.with(|m| m.borrow().get(&StablePoolId(pool_id)))
+    Ok("Pools updated".to_string())
 }

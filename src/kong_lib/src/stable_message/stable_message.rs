@@ -1,11 +1,10 @@
-use candid::{CandidType, Decode, Encode};
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 const MESSAGE_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
 
-#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableMessageId(pub u64);
 
 impl Storable for StableMessageId {
@@ -35,11 +34,11 @@ pub struct StableMessage {
 
 impl Storable for StableMessage {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
     // unbounded size

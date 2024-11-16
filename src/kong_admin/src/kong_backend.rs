@@ -4,23 +4,20 @@ use ic_agent::Agent;
 
 use super::kong_update::KongUpdate;
 
-const KONG_DATA_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
-const KONG_DATA_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
+const KONG_BACKEND_STAGING: &str = "l4lgk-raaaa-aaaar-qahpq-cai";
+// don't use prod canister unless you know what you're doing
+//const KONG_BACKEND_PROD: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
 #[derive(Clone)]
-pub struct KongData {
+pub struct KongBackend {
     agent: Agent,
     canister_id: Principal,
 }
 
-impl KongData {
-    pub async fn new(agent: &Agent, is_mainnet: bool) -> Self {
-        let canister_id = if is_mainnet {
-            Principal::from_text(KONG_DATA_PROD).unwrap()
-        } else {
-            Principal::from_text(KONG_DATA_STAGING).unwrap()
-        };
-        KongData {
+impl KongBackend {
+    pub async fn new(agent: &Agent) -> Self {
+        let canister_id = Principal::from_text(KONG_BACKEND_STAGING).unwrap();
+        KongBackend {
             agent: agent.clone(),
             canister_id,
         }
@@ -33,7 +30,7 @@ impl KongData {
     }
 }
 
-impl KongUpdate for KongData {
+impl KongUpdate for KongBackend {
     #[allow(dead_code)]
     async fn update_kong_settings(&self, kong_settings: &str) -> Result<String> {
         let result: Vec<u8> = self

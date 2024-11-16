@@ -28,7 +28,7 @@ fn backup_lp_token_ledger(lp_token_id: Option<u64>, num_lp_token_ledger: Option<
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_lp_token_ledger(stable_lp_token_ledger: String) -> Result<String, String> {
+fn update_lp_token_ledger(stable_lp_token_ledger: String) -> Result<String, String> {
     let lp_token_ledgers: BTreeMap<StableLPTokenLedgerId, StableLPTokenLedger> = match serde_json::from_str(&stable_lp_token_ledger) {
         Ok(lp_token_ledgers) => lp_token_ledgers,
         Err(e) => return Err(format!("Invalid LP tokens: {}", e)),
@@ -41,5 +41,5 @@ fn archive_lp_token_ledger(stable_lp_token_ledger: String) -> Result<String, Str
         }
     });
 
-    Ok("LP tokens archived".to_string())
+    Ok("LP tokens updated".to_string())
 }

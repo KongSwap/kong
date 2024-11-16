@@ -1,7 +1,9 @@
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{TX_24H_MAP, TX_ARCHIVE_MAP, TX_MAP};
-use crate::stable_tx::stable_tx::{StableTx, StableTxId};
+
+use super::stable_tx::{StableTx, StableTxId};
+use super::tx::Tx;
 
 pub fn archive_tx_map() {
     if not_in_maintenance_mode().is_err() {
@@ -20,6 +22,21 @@ pub fn archive_tx_map() {
                     tx_archive.insert(StableTxId(tx_id), tx);
                 }
             }
+        });
+    });
+
+    let two_days_ago = get_time() - 172_800_000_000_000; // 2 days
+    let mut remove_list = Vec::new();
+    TX_MAP.with(|tx_map| {
+        tx_map.borrow().iter().for_each(|(tx_id, tx)| {
+            if tx.ts() < two_days_ago {
+                remove_list.push(tx_id);
+            }
+        });
+    });
+    TX_MAP.with(|tx_map| {
+        remove_list.iter().for_each(|tx_id| {
+            tx_map.borrow_mut().remove(tx_id);
         });
     });
 }

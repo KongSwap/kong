@@ -28,7 +28,7 @@ fn backup_transfers(transfer_id: Option<u64>, num_requests: Option<u16>) -> Resu
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_transfers(stable_transfers_json: String) -> Result<String, String> {
+fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
     let transfers: BTreeMap<StableTransferId, StableTransfer> = match serde_json::from_str(&stable_transfers_json) {
         Ok(transfers) => transfers,
         Err(e) => return Err(format!("Invalid transfers: {}", e)),
@@ -41,5 +41,5 @@ fn archive_transfers(stable_transfers_json: String) -> Result<String, String> {
         }
     });
 
-    Ok("Transfers archived".to_string())
+    Ok("Transfers updated".to_string())
 }

@@ -15,6 +15,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
         .pool_id()
         .and_then(|pool_id| pool_map::get_by_pool_id(pool_id).map(|pool| pool.symbol()))
         .unwrap_or_else(|| "Pool not found".to_string());
+
     match token {
         LP(lp_token) => TokensReply::LP(LPReply {
             token_id,
