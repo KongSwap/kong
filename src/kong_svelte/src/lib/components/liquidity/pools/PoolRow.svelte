@@ -26,10 +26,7 @@
   
     onMount(() => {
       const checkMobile = () => {
-        isMobile = window.innerWidth < 768;
-        isSmallMobile = window.innerWidth < 480;
-        isTableCompact = window.innerWidth < 1200;
-        hideSwap = window.innerWidth < 1050;
+        isMobile = window.innerWidth < 1250;
       };
       
       checkMobile();

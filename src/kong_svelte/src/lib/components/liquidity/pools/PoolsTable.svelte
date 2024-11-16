@@ -17,8 +17,7 @@
   let searchTerm = "";
   let showAddLiquidityModal = false;
   let selectedTokens = { token0: '', token1: '' };
-  let showMobileSort = false;
-  let isMobile = false;
+  let isCardView = false;
 
   function handleAddLiquidity(token0: string, token1: string) {
     selectedTokens = { token0, token1 };
@@ -68,76 +67,49 @@
   });
 
   onMount(() => {
-    const checkMobile = () => {
-      isMobile = window.innerWidth < 768;
+    const checkView = () => {
+      isCardView = window.innerWidth < 1250;
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    checkView();
+    window.addEventListener('resize', checkView);
+    return () => window.removeEventListener('resize', checkView);
   });
+
+  const sortOptions = [
+    { label: "Pool", value: "pool" },
+    { label: "Price", value: "price" },
+    { label: "TVL", value: "tvl" },
+    { label: "Volume (24h)", value: "volume" },
+    { label: "APY", value: "apy" }
+  ];
 </script>
 
 <div class="table-container">
   <div class="controls-wrapper">
-    <div class="controls">
-      <div class="search-section">
-        <div class="search-wrapper">
-          <Search class="search-icon" size={18} />
-          <TextInput
-            id="pool-search"
-            placeholder="Search by token symbol or pair..."
-            bind:value={searchTerm}
-            size="sm"
-            variant="success"
-          />
-        </div>
-      </div>
-
-      {#if isMobile}
-        <div class="sort-options-row">
-          <button 
-            class="sort-button"
-            class:active={sortColumn === "pool"}
-            on:click={() => toggleSort("pool")}
-          >
-            <span>Pool</span>
-            <svelte:component this={getSortIcon("pool")} size={16} />
-          </button>
-          <button 
-            class="sort-button"
-            class:active={sortColumn === "price"}
-            on:click={() => toggleSort("price")}
-          >
-            <span>Price</span>
-            <svelte:component this={getSortIcon("price")} size={16} />
-          </button>
-          <button 
-            class="sort-button"
-            class:active={sortColumn === "tvl"}
-            on:click={() => toggleSort("tvl")}
-          >
-            <span>TVL</span>
-            <svelte:component this={getSortIcon("tvl")} size={16} />
-          </button>
-          <button 
-            class="sort-button"
-            class:active={sortColumn === "volume"}
-            on:click={() => toggleSort("volume")}
-          >
-            <span>Volume</span>
-            <svelte:component this={getSortIcon("volume")} size={16} />
-          </button>
-          <button 
-            class="sort-button"
-            class:active={sortColumn === "apy"}
-            on:click={() => toggleSort("apy")}
-          >
-            <span>APY</span>
-            <svelte:component this={getSortIcon("apy")} size={16} />
-          </button>
-        </div>
-      {/if}
+    <div class="search-wrapper">
+      <Search class="search-icon" size={18} />
+      <TextInput
+        id="pool-search"
+        placeholder="Search by token symbol or pair..."
+        bind:value={searchTerm}
+        size="sm"
+        variant="success"
+      />
     </div>
+
+    {#if isCardView}
+      <div class="mobile-sort-controls">
+        {#each sortOptions as option}
+          <button 
+            class="sort-button {sortColumn === option.value ? 'active' : ''}"
+            on:click={() => toggleSort(option.value)}
+          >
+            <span>{option.label}</span>
+            <svelte:component this={getSortIcon(option.value)} size={16} />
+          </button>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   {#if loading}
@@ -147,68 +119,70 @@
   {:else if error}
     <div class="error">{error}</div>
   {:else}
-    <!-- Desktop view -->
-    <div class="table-scroll-container">
-      <table class="w-full hidden md:table">
-        <thead>
-          <tr>
-            <th class="text-left p-4">
-              <button class="flex items-center gap-2" on:click={() => toggleSort("pool")}>
-                <span>Pool</span>
-                <svelte:component this={getSortIcon("pool")} size={16} />
-              </button>
-            </th>
-            <th class="text-right p-4">
-              <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("price")}>
-                <span>Price</span>
-                <svelte:component this={getSortIcon("price")} size={16} />
-              </button>
-            </th>
-            <th class="text-right p-4">
-              <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("tvl")}>
-                <span>TVL</span>
-                <svelte:component this={getSortIcon("tvl")} size={16} />
-              </button>
-            </th>
-            <th class="text-right p-4">
-              <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("volume")}>
-                <span>Volume (24h)</span>
-                <svelte:component this={getSortIcon("volume")} size={16} />
-              </button>
-            </th>
-            <th class="text-right p-4">
-              <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("apy")}>
-                <span>APY</span>
-                <svelte:component this={getSortIcon("apy")} size={16} />
-              </button>
-            </th>
-            <th class="text-center p-4">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each sortedAndFilteredPools as pool, i}
-            <PoolRow 
-              {pool} 
-              {tokenMap} 
-              isEven={i % 2 === 0} 
-              onAddLiquidity={handleAddLiquidity} 
-            />
-          {/each}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Mobile view -->
-    <div class="mobile-scroll-container">
-      {#each sortedAndFilteredPools as pool, i}
-        <PoolRow 
-          {pool} 
-          {tokenMap} 
-          isEven={i % 2 === 0} 
-          onAddLiquidity={handleAddLiquidity}
-        />
-      {/each}
-    </div>
+    {#if !isCardView}
+      <!-- Desktop Table View -->
+      <div class="table-scroll-container">
+        <table class="w-full">
+          <thead>
+            <tr>
+              <th class="text-left p-4">
+                <button class="flex items-center gap-2" on:click={() => toggleSort("pool")}>
+                  <span>Pool</span>
+                  <svelte:component this={getSortIcon("pool")} size={16} />
+                </button>
+              </th>
+              <th class="text-right p-4">
+                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("price")}>
+                  <span>Price</span>
+                  <svelte:component this={getSortIcon("price")} size={16} />
+                </button>
+              </th>
+              <th class="text-right p-4">
+                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("tvl")}>
+                  <span>TVL</span>
+                  <svelte:component this={getSortIcon("tvl")} size={16} />
+                </button>
+              </th>
+              <th class="text-right p-4">
+                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("volume")}>
+                  <span>Volume (24h)</span>
+                  <svelte:component this={getSortIcon("volume")} size={16} />
+                </button>
+              </th>
+              <th class="text-right p-4">
+                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("apy")}>
+                  <span>APY</span>
+                  <svelte:component this={getSortIcon("apy")} size={16} />
+                </button>
+              </th>
+              <th class="text-center p-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each sortedAndFilteredPools as pool, i}
+              <PoolRow 
+                {pool} 
+                {tokenMap} 
+                isEven={i % 2 === 0} 
+                onAddLiquidity={handleAddLiquidity}
+              />
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {:else}
+      <!-- Card View -->
+      <div class="card-container">
+        {#each sortedAndFilteredPools as pool, i}
+          <PoolRow 
+            {pool} 
+            {tokenMap} 
+            isEven={i % 2 === 0} 
+            onAddLiquidity={handleAddLiquidity}
+          />
+        {/each}
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -228,41 +202,8 @@
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    height: 70vh;
-    min-height: 400px;
-    min-width: 0;
-    padding: 0 1rem;
-  }
-
-  .controls-wrapper {
-    width: 100%;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: inherit;
-    padding-right: 0.375rem;
-    flex-shrink: 0;
-  }
-
-  .controls {
-    display: flex;
-    flex-direction: row; /* Changed from column to row */
-    justify-content: flex-start; /* Changed from space-between to flex-start */
-    align-items: center;
-    margin-bottom: 1rem;
     gap: 1rem;
-    flex-shrink: 0;
-  }
-
-  .search-section {
-    flex: 0 1 400px; /* Changed from flex: 1 to flex: 0 1 400px */
-    width: auto; /* Changed from 100% to auto */
-  }
-
-  @media (min-width: 768px) {
-    .search-section {
-      max-width: 400px;
-    }
+    height: 70vh;
   }
 
   .search-wrapper {
@@ -272,139 +213,68 @@
     background: rgba(255, 255, 255, 0.1);
     border-radius: 0.5rem;
     padding: 0 1rem;
+    max-width: 400px;
   }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    overflow: hidden;
+  .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
   }
 
-  /* Mobile-specific styles */
-  @media (max-width: 767px) {
-    .sort-options-row {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 0.5rem;
-      width: 100%;
-      overflow-x: auto;
-      padding-bottom: 0.5rem;
-      -webkit-overflow-scrolling: touch;
+  .spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #000;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  .error {
+    color: red;
+    text-align: center;
+  }
+
+  .controls-wrapper {
+    @apply flex flex-col gap-3 w-full;
+  }
+
+  .mobile-sort-controls {
+    @apply flex flex-wrap gap-2 w-full;
+  }
+
+  .sort-button {
+    @apply flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-900/30 
+           border border-emerald-900/50 text-sm font-medium transition-colors
+           hover:bg-emerald-900/40;
+  }
+
+  .sort-button.active {
+    @apply bg-emerald-600/30 border-emerald-600;
+  }
+
+  @media (max-width: 640px) {
+    .controls-wrapper {
+      @apply gap-2;
     }
 
-    .table-scroll-container {
-      flex: 0 0 auto;
-      display: none;
+    .mobile-sort-controls {
+      @apply gap-1.5;
     }
 
     .sort-button {
-      font-size: 0.75rem;
-      padding: 0.5rem 0.75rem;
-      white-space: nowrap;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 0.375rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-shrink: 0;
+      @apply px-2 py-1 text-xs;
     }
-
-    .sort-button.active {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .controls {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
-      padding: 0.75rem;
-    }
-
-    .search-section {
-      flex: none;
-      width: 100%;
-    }
-
-    .table-container {
-      height: 74dvh;
-      min-height: 300px;
-      width: 100%;
-      min-width: 320px;
-    }
-
-    .search-wrapper {
-      min-width: 280px;
-    }
-
-    @media (max-width: 374px) {
-      .sort-button {
-        font-size: 0.7rem;
-        padding: 0.4rem 0.6rem;
-      }
-
-      .search-wrapper {
-        min-width: 250px;
-      }
-    }
-  }
-
-  /* Desktop-specific styles */
-  @media (min-width: 768px) {
-    .mobile-scroll-container {
-      display: none;
-    }
-  }
-
-  .mobile-scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    width: 100%;
-    min-width: 0;
-  }
-
-  /* Custom Scrollbar Styles */
-  .mobile-scroll-container,
-  .sort-options-row {
-    /* Firefox */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-  }
-
-  /* Webkit (Chrome, Safari, Edge) */
-  .mobile-scroll-container::-webkit-scrollbar,
-  .sort-options-row::-webkit-scrollbar {
-    width: 6px;  /* vertical scrollbar width */
-    height: 6px; /* horizontal scrollbar height */
-  }
-
-  .mobile-scroll-container::-webkit-scrollbar-track,
-  .sort-options-row::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .mobile-scroll-container::-webkit-scrollbar-thumb,
-  .sort-options-row::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-
-  /* Hover state */
-  .mobile-scroll-container::-webkit-scrollbar-thumb:hover,
-  .sort-options-row::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255, 255, 255, 0.4);
-  }
-
-  /* Ensure smooth scrolling */
-  .mobile-scroll-container,
-  .sort-options-row {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
   }
 </style>
