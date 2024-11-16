@@ -77,23 +77,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Dump to database
     // users::dump_users(&db_client).await?;
     // let tokens_map = tokens::dump_tokens(&db_client).await?;
-    // let tokens_map = tokens::load_tokens(&db_client).await?;
+    let tokens_map = tokens::load_tokens(&db_client).await?;
     // let pools_map = pools::dump_pools(&db_client, &tokens_map).await?;
     // let pools_map = pools::load_pools(&db_client).await?;
     // lp_token_ledger::dump_lp_token_ledger(&db_client, &tokens_map).await?;
+    // claims::dump_claims(&db_client, &tokens_map).await?;
     // requests::dump_requests(&db_client).await?;
     // transfers::dump_transfers(&db_client, &tokens_map).await?;
     // txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
 
     // Dump to kong_data
-    kong_settings::update_kong_settings(&kong_data).await?;
-    users::update_users(&kong_data).await?;
-    tokens::update_tokens(&kong_data).await?;
-    pools::update_pools(&kong_data).await?;
-    lp_token_ledger::update_lp_token_ledger(&kong_data).await?;
-    requests::update_requests(&kong_data).await?;
-    transfers::update_transfers(&kong_data).await?;
-    txs::update_txs(&kong_data).await?;
+    // kong_settings::update_kong_settings(&kong_data).await?;
+    // users::update_users(&kong_data).await?;
+    // tokens::update_tokens(&kong_data).await?;
+    // pools::update_pools(&kong_data).await?;
+    // lp_token_ledger::update_lp_token_ledger(&kong_data).await?;
+    // claims::update_claims(&kong_data).await?;
+    // requests::update_requests(&kong_data).await?;
+    // transfers::update_transfers(&kong_data).await?;
+    // txs::update_txs(&kong_data).await?;
 
     // Dump to kong_backend
     // kong_settings::update_kong_settings(&kong_backend).await?;
@@ -101,6 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // tokens::update_tokens(&kong_backend).await?;
     // pools::update_pools(&kong_backend).await?;
     // lp_token_ledger::update_lp_token_ledger(&kong_backend).await?;
+    // claims::update_claims(&kong_backend).await?;
     // requests::update_requests(&kong_backend).await?;
     // transfers::update_transfers(&kong_backend).await?;
     // txs::update_txs(&kong_backend).await?;

@@ -11,15 +11,6 @@ const PRINCIPAL_ID_REGEX: &str = r"^([a-z0-9]{5}-){10}[a-z0-9]{3}|([a-z0-9]{5}-)
 static ACCOUNT_ID_LOCK: OnceLock<Regex> = OnceLock::new();
 const ACCOUNT_ID_REGEX: &str = r"^[a-f0-9]{64}$";
 
-impl std::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Address::AccountId(account_id) => write!(f, "{}", account_id),
-            Address::PrincipalId(principal_id) => write!(f, "{}", principal_id),
-        }
-    }
-}
-
 pub fn is_principal_id(address: &str) -> bool {
     let regrex_principal_id = PRINCIPAL_ID_LOCK.get_or_init(|| Regex::new(PRINCIPAL_ID_REGEX).unwrap());
     regrex_principal_id.is_match(address)
