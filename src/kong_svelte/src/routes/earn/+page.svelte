@@ -61,27 +61,6 @@
     </div>
 
     {#if $activeSection === "pools"}
-      <div class="mode-selector">
-        <Button
-          variant="yellow"
-          size="medium"
-          state={$activeTab === "all_pools" ? "selected" : "default"}
-          onClick={() => activeTab.set("all_pools")}
-          width="50%"
-        >
-          All Pools
-        </Button>
-        <Button
-          variant="yellow"
-          size="medium"
-          state={$activeTab === "your_pools" ? "selected" : "default"}
-          onClick={() => activeTab.set("your_pools")}
-          width="50%"
-        >
-          Your Pools
-        </Button>
-      </div>
-
       <Panel variant="green" width="100%">
         <PoolsTable
           pools={$poolsList}

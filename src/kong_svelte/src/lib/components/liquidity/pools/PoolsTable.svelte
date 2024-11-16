@@ -6,7 +6,8 @@
   import { ArrowUp, ArrowDown, ArrowUpDown, Search, Filter, LayoutList, LayoutGrid } from 'lucide-svelte';
   import AddLiquidityModal from "$lib/components/liquidity/add_liquidity/AddLiquidityModal.svelte";
   import { onMount } from 'svelte';
-  
+  import Button from "$lib/components/common/Button.svelte";
+
   export let pools: BE.Pool[] = [];
   export let loading = false;
   export let error: string | null = null;
@@ -19,6 +20,8 @@
   let selectedTokens = { token0: '', token1: '' };
   let forceCardView = false;
   let isCardView = false;
+
+  const activeTab = writable("all_pools");
 
   function handleAddLiquidity(token0: string, token1: string) {
     selectedTokens = { token0, token1 };
@@ -100,6 +103,26 @@
 <div class="table-container">
   <div class="controls-wrapper">
     <div class="controls-top">
+      <div class="mode-selector">
+        <Button
+          variant="yellow"
+          size="medium"
+          state={$activeTab === "all_pools" ? "selected" : "default"}
+          onClick={() => activeTab.set("all_pools")}
+          width="50%"
+        >
+          All Pools
+        </Button>
+        <Button
+          variant="yellow"
+          size="medium"
+          state={$activeTab === "your_pools" ? "selected" : "default"}
+          onClick={() => activeTab.set("your_pools")}
+          width="50%"
+        >
+          Your Pools
+        </Button>
+      </div>
       <div class="search-wrapper" class:full-width={isCardView}>
         <div class="search-input-container">
           <button class="search-button">
@@ -428,9 +451,24 @@
     }
   }
 
-  @media (min-width: 640px) {
-    .search-wrapper:not(.full-width) {
-      max-width: 400px;
+  @media (max-width: 1250px) {
+    .controls-top {
+      @apply flex-col items-stretch;
+    }
+    
+    .mode-selector {
+      width: 100%;
+      min-width: unset;
+    }
+
+    .mode-selector :global(button) {
+      flex: 1;
+      width: 100% !important;
+    }
+
+    .search-wrapper {
+      width: 100%;
+      max-width: 100%;
     }
   }
 
@@ -478,7 +516,7 @@
   }
 
   .controls-top {
-    @apply flex items-center gap-4 w-full;
+    @apply flex items-center justify-between gap-4 w-full;
   }
 
   .view-toggle {
@@ -533,5 +571,15 @@
     table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    min-width: 300px;
+  }
+
+  .controls-top {
+    @apply flex items-center gap-4 w-full flex-wrap;
   }
 </style>
