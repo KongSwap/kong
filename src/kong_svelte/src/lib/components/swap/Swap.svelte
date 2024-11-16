@@ -15,7 +15,6 @@
   import Button from "$lib/components/common/Button.svelte";
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
-  import SwapSettings from "./swap_ui/SwapSettings.svelte";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
@@ -30,8 +29,9 @@
 
   walletStore.subscribe(async value => {
     isLoggedIn = value.isConnected;
+    const tokens = await tokenStore.loadTokens();
     if (isLoggedIn) {
-      await tokenStore.loadBalances($tokenStore.tokens, value.account.owner.toString());
+      await tokenStore.loadBalances();
     }
   });
 
@@ -45,7 +45,6 @@
           receiveToken = initialToToken || $tokenStore.tokens.find(t => t.canister_id === initialToToken?.canister_id) || $tokenStore.tokens.find(t => t.symbol === "ckBTC");
       }
   }
-  console.log('receiveToken:', $tokenStore.tokens.find(t => t.symbol === "ckBTC"));
   let payAmount;
   let receiveAmount = "0";
   let displayReceiveAmount = "0";
@@ -77,7 +76,6 @@
 
   let routingPath: string[] = [];
   let isSwitching = false;
-  let showSettings = false;
   let showConfirmation = false;
   let userMaxSlippage = 2;
   let isSlippageExceeded = false;
@@ -90,6 +88,12 @@
     payToken: "",
     receiveAmount: "",
     receiveToken: "",
+  };
+
+  // Add a flag to track if tokens were manually selected
+  let manuallySelectedTokens = {
+    pay: false,
+    receive: false
   };
 
   onDestroy(() => {
@@ -169,9 +173,8 @@
     error = null;
 
     try {
-      console.log("Getting quote for", payAmount, payToken, receiveToken);
       const formattedPayAmount = parseTokenAmount(
-        payAmount,
+        amount,
         getTokenDecimals(payToken.canister_id),
       );
       const quote = await SwapService.getQuoteDetails({
@@ -181,9 +184,10 @@
       });
 
       // Update the receive amount and other values
-      setReceiveAmount(quote.receiveAmount);
+      setReceiveAmount(quote.receiveAmount.toString());
       swapSlippage = quote.slippage;
       usdValue = quote.usdValue;
+      return quote;
     } catch (err) {
       console.error("Error fetching swap quote:", err);
       error = err instanceof Error ? err.message : "Failed to get quote";
@@ -211,7 +215,12 @@
     const newPayToken = receiveToken;
     const newReceiveToken = payToken;
     
-    // Update initial tokens to prevent reactive statement from switching back
+    // Swap the manual selection flags too
+    const tempPaySelected = manuallySelectedTokens.pay;
+    manuallySelectedTokens.pay = manuallySelectedTokens.receive;
+    manuallySelectedTokens.receive = tempPaySelected;
+    
+    // Update initial tokens
     initialFromToken = newPayToken;
     initialToToken = newReceiveToken;
     
@@ -221,7 +230,7 @@
     const oldPayAmount = payAmount;
     payAmount = receiveAmount;
 
-    // Update URL query parameters
+    // Update URL
     const url = new URL(window.location.href);
     url.searchParams.set('from', receiveToken.canister_id);
     url.searchParams.set('to', payToken.canister_id);
@@ -264,12 +273,16 @@
     // Update token and URL
     if (type === "pay") {
       payToken = token;
+      initialFromToken = token;
+      manuallySelectedTokens.pay = true;
       showPayTokenSelector = false;
       const url = new URL(window.location.href);
       url.searchParams.set('from', token.canister_id);
       history.replaceState({}, '', url.toString());
     } else {
       receiveToken = token;
+      initialToToken = token;
+      manuallySelectedTokens.receive = true;
       showReceiveTokenSelector = false;
       const url = new URL(window.location.href);
       url.searchParams.set('to', token.canister_id);
@@ -288,6 +301,8 @@
         receiveAmount: event.detail.receiveAmount,
         receiveToken: event.detail.receiveToken,
       };
+      tokenStore.loadPrices();
+      payAmount = null;
       showSuccessModal = true;
     };
 
@@ -311,7 +326,7 @@
         lastPayAmount: payAmount,
         payToken: payToken,
         receiveToken: receiveToken,
-        payDecimals: getTokenDecimals(payToken.canister_id),
+        payDecimals: Number(getTokenDecimals(payToken.canister_id).toString()),
       });
 
       await SwapService.executeSwap({
@@ -340,8 +355,8 @@
   // Subscribe to quote updates for this specific swap
   $: {
     async function refreshQuote() {
-      console.log("Refreshing quote display");
       const quote = await getSwapQuote(payAmount);
+      console.log("Refreshing quote display:", quote);
       // Update only this specific swap's quote
       if (currentSwapId) {
         swapStatusStore.updateSwap(currentSwapId, {
@@ -363,7 +378,6 @@
     // Refresh quote before showing confirmation
     isProcessing = true;
     const quote = await getSwapQuote(payAmount);
-    console.log("Quote:", quote);
     swapStatusStore.updateSwap(currentSwapId, {
       lastQuote: quote,
       shouldRefreshQuote: true,
@@ -374,14 +388,14 @@
 
   // Add this effect to handle URL updates
   $: {
-    if (!isSwitching) {  // Only update if not currently switching
-        if (initialFromToken && initialFromToken.canister_id !== payToken.canister_id && !isProcessing) {
-            payToken = $tokenStore.tokens.find(t => t.canister_id === initialFromToken.canister_id);
-            if (payAmount) debouncedGetQuote(payAmount);
+    if (!isSwitching) {
+        if (initialFromToken && !manuallySelectedTokens.pay) {
+            payToken = $tokenStore.tokens.find(t => t.canister_id === initialFromToken.canister_id) || 
+                      $tokenStore.tokens.find(t => t.symbol === "ICP");
         }
-        if (initialToToken && initialToToken.canister_id !== receiveToken.canister_id && !isProcessing) {
-            receiveToken = $tokenStore.tokens.find(t => t.canister_id === initialToToken.canister_id);
-            if (payAmount) debouncedGetQuote(payAmount);
+        if (initialToToken && !manuallySelectedTokens.receive) {
+            receiveToken = $tokenStore.tokens.find(t => t.canister_id === initialToToken.canister_id) || 
+                          $tokenStore.tokens.find(t => t.symbol === "ckBTC");
         }
     }
   }
@@ -417,7 +431,6 @@
             <SwapPanel
               title={panel.title}
               {...panelData[panel.type]}
-              onSettingsClick={() => (showSettings = true)}
             />
           </div>
         </div>
@@ -492,20 +505,6 @@
       showConfirmation = false;
       isProcessing = false;
     }}
-  />
-{/if}
-
-{#if showSettings}
-  <SwapSettings
-    show={showSettings}
-    onClose={() => (showSettings = false)}
-    {userMaxSlippage}
-    onSlippageChange={(value) => {
-      userMaxSlippage = value;
-      if (payAmount) debouncedGetQuote(payAmount);
-    }}
-    onApproveToken={async () => {}}
-    onRevokeToken={async () => {}}
   />
 {/if}
 

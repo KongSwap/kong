@@ -2,14 +2,42 @@
   import LanguageSelector from "../common/LanguageSelector.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { browser } from '$app/environment';
+  import { toastStore } from '$lib/stores/toastStore';
   
   let settings;
   settingsStore.subscribe(value => {
     settings = value;
+    if (browser && value?.max_slippage !== undefined) {
+      setTimeout(() => {
+        const slider = document.querySelector('.slippage-slider') as HTMLElement;
+        if (slider) {
+          const percent = (value.max_slippage / 99) * 100;
+          slider.style.setProperty('--value-percent', `${percent}%`);
+        }
+      }, 0);
+    }
   });
 
+  function handleSlippageChange(e: Event) {
+    const value = parseFloat((e.target as HTMLInputElement).value);
+    const boundedValue = Math.min(Math.max(value, 0), 99);
+    if (!isNaN(boundedValue)) {
+      settingsStore.updateSetting('max_slippage', boundedValue);
+    }
+  }
+
+  function handleSlippageRelease(e: Event) {
+    const value = parseFloat((e.target as HTMLInputElement).value);
+    const boundedValue = Math.min(Math.max(value, 0), 99);
+    if (!isNaN(boundedValue)) {
+      settingsStore.updateSetting('max_slippage', boundedValue);
+      toastStore.success(`Slippage updated to ${boundedValue}%`);
+    }
+  }
+
   function toggleSound() {
-    settingsStore.updateSetting('sound', 'enabled', !settings.sound.enabled);
+    settingsStore.updateSetting('sound_enabled', !settings.sound_enabled);
   }
 
   async function clearFavorites() {
@@ -37,7 +65,7 @@
   <!-- Sound Section -->
   <div class="setting-section z-1">
     <div class="setting-header">
-      {#if settings.sound.enabled}
+      {#if settings.sound_enabled}
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M11 5 6 9H2v6h4l5 4V5z"/>
           <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -57,7 +85,7 @@
         <span class="setting-label">Sound Effects</span>
         <button
           class="toggle-button"
-          class:active={settings.sound.enabled}
+          class:active={settings.sound_enabled}
           on:click={toggleSound}
         >
           <div class="toggle-slider" />
@@ -66,6 +94,49 @@
       <p class="setting-description">
         Enable or disable sound effects throughout the application
       </p>
+    </div>
+  </div>
+
+  <!-- Slippage Section -->
+  <div class="setting-section z-1">
+    <div class="setting-header">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+      </svg>
+      <h3>Slippage Settings</h3>
+    </div>
+    <div class="setting-content">
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="setting-label">Max Slippage</span>
+          <div class="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              max="99"
+              step="1"
+              value={settings?.max_slippage}
+              class="slippage-input"
+              on:input={handleSlippageChange}
+              on:change={handleSlippageRelease}
+            />
+            <span class="text-white/90 font-medium">%</span>
+          </div>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="99"
+          step="1"
+          value={settings?.max_slippage}
+          class="slippage-slider"
+          on:input={handleSlippageChange}
+          on:change={handleSlippageRelease}
+        />
+        <p class="setting-description">
+          Maximum allowed price difference between expected and actual swap price
+        </p>
+      </div>
     </div>
   </div>
 
@@ -214,5 +285,66 @@
 
   .clear-button:active {
     transform: translateY(0px);
+  }
+
+  .slippage-slider {
+    @apply w-full h-2 rounded-lg appearance-none cursor-pointer;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .slippage-slider::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-yellow-400 cursor-pointer;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+  }
+
+  .slippage-slider::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full bg-yellow-400 cursor-pointer;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+  }
+
+  .slippage-slider::-webkit-slider-thumb:hover {
+    @apply bg-yellow-500;
+    transform: scale(1.1);
+  }
+
+  .slippage-slider::-moz-range-thumb:hover {
+    @apply bg-yellow-500;
+    transform: scale(1.1);
+  }
+
+  .slippage-slider::-webkit-slider-runnable-track {
+    @apply rounded-lg;
+    background: linear-gradient(to right, rgb(250, 204, 21) 0%, rgb(250, 204, 21) var(--value-percent, 50%), rgba(255, 255, 255, 0.1) var(--value-percent, 50%));
+  }
+
+  .slippage-slider::-moz-range-track {
+    @apply rounded-lg;
+    background: linear-gradient(to right, rgb(250, 204, 21) 0%, rgb(250, 204, 21) var(--value-percent, 50%), rgba(255, 255, 255, 0.1) var(--value-percent, 50%));
+  }
+
+  .slippage-input {
+    @apply w-16 px-2 py-1 text-right bg-white/10 rounded-lg text-white/90 
+           focus:outline-none focus:ring-2 focus:ring-yellow-400/50;
+    font-family: monospace;
+  }
+
+  .slippage-input::-webkit-outer-spin-button,
+  .slippage-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .slippage-input[type=number] {
+    -moz-appearance: textfield;
+  }
+
+  .slippage-input:hover {
+    @apply bg-white/20;
+  }
+
+  .slippage-input:focus {
+    @apply bg-white/20;
   }
 </style> 

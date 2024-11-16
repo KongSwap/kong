@@ -19,7 +19,7 @@
   let isCountdownActive = false;
 
   function startCountdown() {
-    if ($settingsStore.sound.enabled) {
+    if ($settingsStore.sound_enabled) {
       const audio1 = new Audio(coinReceivedSound);
       const audio2 = new Audio(coinReceivedSound);
       const audio3 = new Audio(coinReceivedSound);

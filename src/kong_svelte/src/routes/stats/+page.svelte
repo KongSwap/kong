@@ -6,15 +6,12 @@
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import { tokensTableHeaders } from "$lib/constants/statsConstants";
   import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
-  import { goto } from "$app/navigation";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce";
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { ArrowLeftRight } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { poolStore } from "$lib/services/pools/poolStore";
-  import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { walletStore } from "$lib/services/wallet/walletStore";
   import Clouds from "$lib/components/stats/Clouds.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
@@ -57,15 +54,6 @@
       return $tokenStore.error || $poolStore.error;
     }
   );
-
-  // Handles sorting events triggered by TableHeader components.
-  function handleSortEvent(
-    event: CustomEvent<{ column: string; direction: "asc" | "desc" }>,
-  ) {
-    const { column, direction } = event.detail;
-    sortColumnStore.set(column);
-    sortDirectionStore.set(direction);
-  }
 
   // Function to copy text to clipboard
   function copyToClipboard(tokenId: string) {
@@ -184,9 +172,9 @@
                             {/if}
                           </div>
                         </td>
-                        <td class="p-2 text-right">${formatToNonZeroDecimal(token?.price || 0)}</td>
+                        <td class="p-2 text-right">${formatToNonZeroDecimal($tokenStore.prices[token.canister_id] || 0)}</td>
                         <td class="p-2 text-right">
-                          ${formatToNonZeroDecimal(formatTokenAmount(token?.total_24h_volume || 0n, 6))}
+                          ${formatToNonZeroDecimal(formatTokenAmount(token.total_24h_volume || 0n, 6))}
                         </td>
                         {#if $walletStore.isConnected}
                           <td class="p-2 text-right">

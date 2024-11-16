@@ -1,7 +1,7 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
-  import { getTokenLogo, tokenLogoStore } from '$lib/services/tokens/tokenLogo';
+  import { getTokenLogo, tokenLogoStore } from '$lib/services/tokens/tokenLogos';
 
   export let token: FE.Token;
   export let onClick: () => void;
@@ -38,6 +38,7 @@
       alt={tokenInfo?.symbol}
       class="token-logo"
       on:error={(e) => {
+        // @ts-ignore
         e.currentTarget.src = "/tokens/not_verified.webp";
       }}
     />

@@ -47,15 +47,20 @@ export class IcrcService {
   ): Promise<bigint> {
     try {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
-      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000); // 1 minute from now
+      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
       const totalAmount = payAmount + token.fee;
+
+      console.log('Approval args:', {
+        amount: totalAmount.toString(),
+        expiresAt: expiresAt.toString()
+      });
 
       const approveArgs = {
         fee: [],
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: BigInt(totalAmount),
+        amount: totalAmount,
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: { 
@@ -104,7 +109,7 @@ export class IcrcService {
       fromSubaccount?: number[];
       createdAtTime?: bigint;
     } = {}
-  ): Promise<{ Ok?: bigint; Err?: any }> {
+  ): Promise<Result<bigint>> {
     try {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc1');
       const toPrincipal = typeof to === 'string' ? Principal.fromText(to) : to;
@@ -123,9 +128,9 @@ export class IcrcService {
 
       const result = await actor.icrc1_transfer(transferArgs);
       if ('Err' in result) {
-        throw new Error(`Transfer failed: ${JSON.stringify(result.Err)}`);
+        return { Err: result.Err };
       }
-      return result;
+      return { Ok: result.Ok };
     } catch (error) {
       this.handleError('icrc1Transfer', error);
     }

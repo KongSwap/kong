@@ -1,13 +1,8 @@
-import { kongDB } from '../db/db';
+import { kongDB } from '../db';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { getActor } from '../wallet/walletStore';
 import { writable, get } from 'svelte/store';
-export interface KongImage {
-  id?: number;
-  canister_id?: string;
-  image_url?: string;
-  timestamp: number;
-}
+import type { KongImage } from './types';
 
 export const IMAGE_CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hour
 export const DEFAULT_LOGOS = {
@@ -153,8 +148,6 @@ export async function getAllTokenLogos(): Promise<KongImage[]> {
     return [];
   }
 }
-
-// ... other existing functions ...
 
 export async function deleteTokenLogo(id: number): Promise<void> {
   try {

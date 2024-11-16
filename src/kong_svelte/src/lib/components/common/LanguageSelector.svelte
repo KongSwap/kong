@@ -9,6 +9,9 @@
   let isOpen: boolean = false;
   let currentLang;
   settingsStore.currentLanguage.subscribe(value => {
+    if(!value) {
+      settingsStore.updateSetting('default_language', 'en');
+    }
     currentLang = value;
   });
 
@@ -18,7 +21,7 @@
   ];
 
   function changeLanguage(lang: string) {
-    settingsStore.updateSetting('language', 'current', lang as 'en' | 'es');
+    settingsStore.updateSetting('default_language', lang as 'en' | 'es');
     isOpen = false;
   }
 
@@ -30,7 +33,7 @@
 <div class="relative inline-block p-2 w-[120px] text-white" use:clickOutside={() => { isOpen = false; }}>
   <!-- Dropdown Button -->
   <Button
-    text={currentLang.toUpperCase()}
+    text={$settingsStore.default_language}
     variant="yellow"
     size="medium"
     state={isOpen ? 'selected' : 'default'}
@@ -40,7 +43,7 @@
       {#each languages as { code, flag: Flag }}
         {#if currentLang === code}
           <Flag class="w-5 h-5 flex-shrink-0" />
-          <span class="text-sm">{currentLang.toUpperCase()}</span>
+          <span class="text-sm">{code.toUpperCase()}</span>
         {/if}
       {/each}
     </div>

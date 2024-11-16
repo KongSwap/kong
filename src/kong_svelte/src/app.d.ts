@@ -32,6 +32,7 @@ declare global {
       icrc3: boolean;
       on_kong: boolean;
       pool_symbol: string;
+      pools: BE.Pool[];
       logo?: string;
       total_24h_volume?: bigint;
       price?: number;

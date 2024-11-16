@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogo';
+  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
 
   export let tokens: FE.Token[] = [];
   export let size: number = 44; // default 44px (h-11 = 44px)

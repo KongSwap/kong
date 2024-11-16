@@ -44,7 +44,6 @@ dfx identity use kong
 ./deploy_kong1_ledger.sh
 ./deploy_kong2_ledger.sh
 ./deploy_kong_svelte.sh
-./deploy_kong_frontend.sh
 
 ./user_mint.sh
 

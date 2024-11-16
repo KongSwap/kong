@@ -36,23 +36,6 @@
 				}
 			]
     },
-    "kong_frontend": {
-      "dependencies": [
-        "kong_backend"
-      ],
-      "source": [
-        "src/assets",
-        "src/kong_frontend/dist"
-      ],
-      "type": "assets",
-      "workspace": "kong_frontend",
-      "specified_id": "3ldz4-aiaaa-aaaar-qaina-cai",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
-    },
     "kong_svelte": {
       "dependencies": [
         "kong_backend"
@@ -60,6 +43,7 @@
       "source": [
         "src/kong_svelte/dist"
       ],
+      "specified_id": "3ldz4-aiaaa-aaaar-qaina-cai",
       "type": "assets",
       "workspace": "kong_svelte",
 			"metadata": [

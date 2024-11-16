@@ -1,6 +1,6 @@
 <!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
-  import { tokenStore, formattedTokens, toggleFavoriteToken, isTokenFavorite } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
@@ -8,7 +8,10 @@
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogo';
+  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
+  import { toastStore } from '$lib/stores/toastStore';
+  import { walletStore } from '$lib/services/wallet/walletStore';
+
   let selectedToken: any = null;
   let isModalOpen = false;
   let amount = "";
@@ -36,18 +39,22 @@
   }
 
   function handleFavoriteClick(event: MouseEvent, token: any) {
-    event.stopPropagation(); // Prevent modal from opening
-    toggleFavoriteToken(token.canister_id);
+    tokenStore.toggleFavorite(token.canister_id);
   }
 
   const sendToken = async () => {
     const tx = await IcrcService.icrc1Transfer(selectedToken, destinationPid, BigInt(amount));
-    console.log(tx);
+    if(tx.Ok) {
+      toastStore.success('Token sent successfully');
+    } else {
+      toastStore.error('Failed to send token');
+    }
   }
 
   $: balance = $formattedTokens?.find(
     (token) => token.canister_id === selectedToken?.canister_id,
   )?.formattedBalance || "0";
+
 </script>
 
 <div class="token-list w-full">
@@ -64,9 +71,9 @@
         <button
           class="favorite-button"
           on:click={(e) => handleFavoriteClick(e, token)}
-          aria-label={isTokenFavorite(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+          aria-label={$tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()]?.includes(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
         >
-          {#if isTokenFavorite(token.canister_id)}
+          {#if $tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()]?.includes(token.canister_id)}
             <span class="star filled">★</span>
           {:else}
             <span class="star outline">☆</span>
@@ -82,7 +89,7 @@
   onClose={handleCloseModal}
   title={"Send " + (selectedToken?.symbol || "Token Details")}
   width="480px"
-  height="100%"
+  height="auto"
 >
   {#if selectedToken}
     <div class="token-details w-[380px]">

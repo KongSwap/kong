@@ -202,7 +202,6 @@ export class PoolService {
         token_1: params.token1,
         remove_lp_token_amount: params.lpTokenAmount
       });
-      console.log("result", result.Ok)
       return result.Ok;
     } catch (error) {
       console.error('Error removing liquidity:', error);
@@ -226,7 +225,6 @@ export class PoolService {
       }
 
       const result: Record<string, any[]> = await actor.user_balances([]);
-      console.log("result", result)
 
       if (!result || !result.Ok) {
         throw new Error('Failed to fetch user pool balances');

@@ -1,7 +1,7 @@
 <script lang="ts">  
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { fade } from 'svelte/transition';
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogo';
+  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
 
   interface TokenRowProps {

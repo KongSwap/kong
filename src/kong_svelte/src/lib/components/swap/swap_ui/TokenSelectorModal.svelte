@@ -3,7 +3,7 @@
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { walletStore } from '$lib/services/wallet/walletStore';
-  import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogo';
+  import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
 
   export let show = false;
   export let onSelect: (token: FE.Token) => void;
@@ -63,239 +63,106 @@
 </script>
 
 <Modal {show} title="Select Token" {onClose} variant="green">
-  <div class="search-container">
-    <label for="token-search" class="sr-only">Search tokens</label>
-    <input
-      id="token-search"
-      type="text"
-      bind:value={searchQuery}
-      placeholder="Search tokens..."
-      class="search-input"
-      aria-label="Search tokens"
-    />
-    <div class="filter-buttons">
-      <button
-        class="filter-btn {standardFilter === 'all' ? 'active' : ''}"
-        on:click={() => (standardFilter = "all")}
-      >
-        All
-      </button>
-      <button
-        class="filter-btn {standardFilter === 'favorites' ? 'active' : ''}"
-        on:click={() => (standardFilter = "favorites")}
-      >
-        Favorites {favoriteCount > 0 ? `(${favoriteCount})` : ''}
-      </button>
-      <button
-        class="filter-btn {standardFilter === 'ck' ? 'active' : ''}"
-        on:click={() => (standardFilter = "ck")}
-      >
-        ckTokens
-      </button>
-    </div>
-  </div>
-
-  <div class="token-list" role="listbox" aria-label="Token list">
-    {#each filteredTokens as token}
-      <div class="token-row-container">
+  <div class="space-y-4">
+    <div class="w-full">
+      <label for="token-search" class="sr-only">Search tokens</label>
+      <input
+        id="token-search"
+        type="text"
+        bind:value={searchQuery}
+        placeholder="Search tokens..."
+        class="w-full bg-black/30 border-2 border-white/10 rounded-xl px-4 py-2 text-white text-lg font-medium 
+               placeholder-white/60 transition-all duration-100 
+               hover:border-white/20 focus:border-yellow-300/50 focus:outline-none"
+        aria-label="Search tokens"
+      />
+      <div class="flex flex-wrap gap-1 mt-2">
         <button
-          class="token-button"
-          class:active={token.canister_id === currentToken?.canister_id}
-          on:click={() => handleSelect(token)}
-          role="option"
-          aria-selected={token.canister_id === currentToken?.canister_id}
+          class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
+                 transition-all duration-100 hover:border-white/20 hover:text-white
+                 {standardFilter === 'all' ? 'border-yellow-300/50 text-yellow-300 bg-black/50' : ''}"
+          on:click={() => (standardFilter = "all")}
         >
-          <TokenRow {token} />
+          All
         </button>
         <button
-          class="favorite-button"
-          on:click={(e) => handleFavoriteClick(e, token.canister_id)}
-          aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
-            ? "Remove from favorites" 
-            : "Add to favorites"}
+          class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
+                 transition-all duration-100 hover:border-white/20 hover:text-white
+                 {standardFilter === 'favorites' ? 'border-yellow-300/50 text-yellow-300 bg-black/50' : ''}"
+          on:click={() => (standardFilter = "favorites")}
         >
-          {#if $tokenStore.favoriteTokens[walletId]?.includes(token.canister_id)}
-            <span class="star filled">★</span>
-          {:else}
-            <span class="star outline">☆</span>
-          {/if}
+          Favorites {favoriteCount > 0 ? `(${favoriteCount})` : ''}
+        </button>
+        <button
+          class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
+                 transition-all duration-100 hover:border-white/20 hover:text-white
+                 {standardFilter === 'ck' ? 'border-yellow-300/50 text-yellow-300 bg-black/50' : ''}"
+          on:click={() => (standardFilter = "ck")}
+        >
+          ckTokens
         </button>
       </div>
-    {/each}
+    </div>
+
+    <div class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-2 token-list" role="listbox" aria-label="Token list">
+      {#each filteredTokens as token}
+        <div class="flex items-center px-4 rounded-lg transition-all duration-100 hover:bg-white/5">
+          <button
+            class="flex-1 py-2 bg-transparent border-none cursor-pointer transition-all duration-100 text-left
+                   hover:translate-x-1 min-w-0
+                   {token.canister_id === currentToken?.canister_id ? 'opacity-50 cursor-not-allowed hover:translate-x-0' : ''}"
+            on:click={() => handleSelect(token)}
+            role="option"
+            aria-selected={token.canister_id === currentToken?.canister_id}
+          >
+            <TokenRow {token} />
+          </button>
+          <button
+            class="p-2 bg-transparent border-none cursor-pointer text-white/50 transition-all duration-100
+                   hover:text-yellow-300 hover:scale-110 flex items-center justify-center"
+            on:click={(e) => handleFavoriteClick(e, token.canister_id)}
+            aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
+              ? "Remove from favorites" 
+              : "Add to favorites"}
+          >
+            <span class="text-xl leading-none outline-none
+                       {$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
+                         ? 'text-yellow-300' 
+                         : 'opacity-70'}">
+              {$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) ? '★' : '☆'}
+            </span>
+          </button>
+        </div>
+      {/each}
+    </div>
   </div>
 </Modal>
 
-<style>
-  .search-container {
-    margin-bottom: 1rem;
-  }
-
-  .search-input {
-    width: 100%;
-    background-color: rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0.75rem;
-    padding: 0.5rem;
-    color: white;
-    font-size: 1.125rem;
-    font-weight: 500;
-    transition: all 100ms;
-  }
-
-  .search-input:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .search-input:focus {
-    border-color: rgba(253, 224, 71, 0.5);
-    outline: none;
-  }
-
-  .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .filter-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    justify-content: flex-start;
-    margin-top: 0.5rem;
-  }
-
-  .filter-btn {
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.5rem;
-    background-color: rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 100ms;
-  }
-
-  .filter-btn:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    color: white;
-  }
-
-  .filter-btn.active {
-    border-color: rgba(253, 224, 71, 0.5);
-    color: rgb(253, 224, 71);
-    background-color: rgba(0, 0, 0, 0.5);
-  }
-
+<style lang="postcss">
+  /* Custom scrollbar styles - can't be done with Tailwind */
   .token-list {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    margin: 0;
-    padding: 0.25rem 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
     scrollbar-width: thin;
+    
+    &::-webkit-scrollbar {
+      @apply w-1.5;
+    }
+    
+    &::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      @apply bg-white/20 rounded-full;
+      
+      &:hover {
+        @apply bg-white/30;
+      }
+    }
   }
 
-  .token-list::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .token-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .token-list::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 9999px;
-  }
-
-  .token-list::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-  }
-
-  .token-row-container {
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    border-radius: 0.5rem;
-    transition: all 100ms;
-  }
-
-  .token-row-container:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-
-  .token-button {
-    flex: 1;
-    padding: 0.5rem 0;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: all 100ms;
-    min-width: 0;
-    text-align: left;
-  }
-
-  .token-button:hover {
-    transform: translateX(0.25rem);
-  }
-
-  .favorite-button {
-    background: transparent;
-    border: none;
-    padding: 0.5rem;
-    cursor: pointer;
-    color: rgba(255, 255, 255, 0.5);
-    transition: all 100ms;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .favorite-button:hover {
-    color: rgb(253, 224, 71);
-    transform: scale(1.1);
-  }
-
-  .star {
-    font-size: 1.25rem;
-    line-height: 1;
-    outline: none;
-  }
-
-  .star.filled {
-    color: rgb(253, 224, 71);
-  }
-
-  .star.outline {
-    opacity: 0.7;
-  }
-
-  .token-button.active {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .token-button.active:hover {
-    transform: none;
-  }
-
+  /* Screen reader only utility */
   .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
     clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .favorite-indicator {
-    color: rgb(253, 224, 71);
-    margin-right: 0.5rem;
-    outline: none;
   }
 </style>
