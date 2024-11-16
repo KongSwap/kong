@@ -18,6 +18,7 @@
   let showAddLiquidityModal = false;
   let selectedTokens = { token0: '', token1: '' };
   let forceCardView = false;
+  let isCardView = false;
 
   function handleAddLiquidity(token0: string, token1: string) {
     selectedTokens = { token0, token1 };
@@ -58,7 +59,9 @@
       case "tvl":
         return (Number(a.tvl) - Number(b.tvl)) * direction;
       case "volume":
-        return (Number(a.volume_24h) - Number(b.volume_24h)) * direction;
+        if (a.rolling_24h_volume < b.rolling_24h_volume) return -1 * direction;
+        if (a.rolling_24h_volume > b.rolling_24h_volume) return 1 * direction;
+        return 0;
       case "apy":
         return (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy)) * direction;
       default:
@@ -68,11 +71,15 @@
 
   onMount(() => {
     const checkView = () => {
-      isCardView = window.innerWidth < 1250 || forceCardView;
+      if (typeof window !== 'undefined') {
+        isCardView = window.innerWidth < 900 || forceCardView;
+      }
     };
     checkView();
-    window.addEventListener('resize', checkView);
-    return () => window.removeEventListener('resize', checkView);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', checkView);
+      return () => window.removeEventListener('resize', checkView);
+    }
   });
 
   const sortOptions = [
@@ -83,39 +90,30 @@
     { label: "APY", value: "apy" }
   ];
 
-  $: isCardView = window.innerWidth < 1250 || forceCardView;
+  $: {
+    if (typeof window !== 'undefined') {
+      isCardView = window.innerWidth < 1250 || forceCardView;
+    }
+  }
 </script>
 
 <div class="table-container">
   <div class="controls-wrapper">
     <div class="controls-top">
-      <div class="search-wrapper">
-        <Search class="search-icon" size={18} />
-        <TextInput
-          id="pool-search"
-          placeholder="Search by token symbol or pair..."
-          bind:value={searchTerm}
-          size="sm"
-          variant="success"
-        />
-      </div>
-      
-      {#if window.innerWidth >= 1250}
-        <div class="view-toggle">
-          <button
-            class="toggle-button {!forceCardView ? 'active' : ''}"
-            on:click={() => forceCardView = false}
-          >
-            <LayoutList size={18} />
+      <div class="search-wrapper" class:full-width={isCardView}>
+        <div class="search-input-container">
+          <button class="search-button">
+            <Search size={18} />
           </button>
-          <button
-            class="toggle-button {forceCardView ? 'active' : ''}"
-            on:click={() => forceCardView = true}
-          >
-            <LayoutGrid size={18} />
-          </button>
+          <TextInput
+            id="pool-search"
+            placeholder="Search by token symbol or pair..."
+            bind:value={searchTerm}
+            size="sm"
+            variant="success"
+          />
         </div>
-      {/if}
+      </div>
     </div>
 
     {#if isCardView}
@@ -177,57 +175,53 @@
     {#if !isCardView}
       <!-- Desktop Table View -->
       <div class="table-wrapper">
-        <table class="w-full table-header">
-          <thead>
+        <table class="w-full">
+          <thead class="table-header">
             <tr>
-              <th class="text-left p-4">
-                <button class="flex items-center gap-2" on:click={() => toggleSort("pool")}>
+              <th class="text-left p-4 w-[22%]">
+                <button class="header-button" on:click={() => toggleSort("pool")}>
                   <span>Pool</span>
-                  <svelte:component this={getSortIcon("pool")} size={16} />
+                  <svelte:component this={getSortIcon("pool")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4">
-                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("price")}>
+              <th class="text-right p-4 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("price")}>
                   <span>Price</span>
-                  <svelte:component this={getSortIcon("price")} size={16} />
+                  <svelte:component this={getSortIcon("price")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4">
-                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("tvl")}>
+              <th class="text-right p-4 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("tvl")}>
                   <span>TVL</span>
-                  <svelte:component this={getSortIcon("tvl")} size={16} />
+                  <svelte:component this={getSortIcon("tvl")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4">
-                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("volume")}>
+              <th class="text-right p-4 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("volume")}>
                   <span>Volume (24h)</span>
-                  <svelte:component this={getSortIcon("volume")} size={16} />
+                  <svelte:component this={getSortIcon("volume")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4">
-                <button class="flex items-center gap-2 ml-auto" on:click={() => toggleSort("apy")}>
+              <th class="text-right p-4 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("apy")}>
                   <span>APY</span>
-                  <svelte:component this={getSortIcon("apy")} size={16} />
+                  <svelte:component this={getSortIcon("apy")} size={16} class="sort-icon" />
                 </button>
               </th>
               <th class="text-center p-4">Actions</th>
             </tr>
           </thead>
+          <tbody class="table-body">
+            {#each sortedAndFilteredPools as pool, i}
+              <PoolRow 
+                {pool} 
+                {tokenMap} 
+                isEven={i % 2 === 0} 
+                onAddLiquidity={handleAddLiquidity}
+              />
+            {/each}
+          </tbody>
         </table>
-        <div class="table-body-wrapper">
-          <table class="w-full">
-            <tbody>
-              {#each sortedAndFilteredPools as pool, i}
-                <PoolRow 
-                  {pool} 
-                  {tokenMap} 
-                  isEven={i % 2 === 0} 
-                  onAddLiquidity={handleAddLiquidity}
-                />
-              {/each}
-            </tbody>
-          </table>
-        </div>
       </div>
     {:else}
       <div class="card-body-wrapper">
@@ -262,8 +256,7 @@
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    height: 70vh;
+    gap: 0.69rem;
     padding: 0 0.69rem;
   }
 
@@ -281,7 +274,7 @@
     top: 0;
     z-index: 10;
     background: var(--background-color-darker, #111111);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
   }
 
   .table-body-wrapper {
@@ -304,17 +297,57 @@
   .card-container {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
   }
 
   .search-wrapper {
     position: relative;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .search-wrapper.full-width {
+    max-width: 100%;
+  }
+
+  .search-input-container {
+    position: relative;
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 0.5rem;
-    padding: 0 1rem;
+  }
+
+  .search-input-container :global(input) {
     width: 100%;
+    height: 40px;
+    padding: 0.5rem 1rem 0.5rem 3rem;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+  }
+
+  .search-button {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.5);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+  }
+
+  .search-button:hover {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .search-input-container :global(input::placeholder) {
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .loading {
@@ -392,7 +425,7 @@
   }
 
   @media (min-width: 640px) {
-    .search-wrapper {
+    .search-wrapper:not(.full-width) {
       max-width: 400px;
     }
   }
@@ -462,5 +495,39 @@
 
   tr:nth-child(even) {
     background: rgba(0, 0, 0, 0.2);
+  }
+
+  .header-button {
+    @apply flex items-center gap-2 px-2 py-1 rounded-md transition-all duration-200
+           hover:bg-emerald-900/30 hover:text-emerald-400 w-full;
+  }
+
+  th:not(:first-child) .header-button {
+    @apply justify-end;
+  }
+
+  .sort-icon {
+    @apply opacity-50 transition-opacity;
+  }
+
+  .header-button:hover .sort-icon {
+    @apply opacity-100;
+  }
+
+  th {
+    @apply font-medium text-sm text-gray-300;
+  }
+
+  .table-header {
+    @apply bg-black/40 backdrop-blur-sm;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Add table layout styles */
+  .table-wrapper table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
   }
 </style>

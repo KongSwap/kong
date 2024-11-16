@@ -23,10 +23,12 @@
     let isSmallMobile = false;
     let isTableCompact = false;
     let hideSwap = false;
+    let showSwapButton = true;
   
     onMount(() => {
       const checkMobile = () => {
-        isMobile = window.innerWidth < 1000;
+        isMobile = window.innerWidth < 900;
+        showSwapButton = window.innerWidth >= 1150;
       };
       
       checkMobile();
@@ -38,7 +40,7 @@
     });
   
     function handleAddLiquidity() {
-      showAddLiquidity = true;
+      showPoolDetails = true;
     }
   
     function handleAddLiquidityClose() {
@@ -74,11 +76,11 @@
       <div class="token-info">
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={isTableCompact ? 32 : 40}
-          overlap={isTableCompact ? 12 : 16}
+          size={isTableCompact ? 28 : 32}
+          overlap={isTableCompact ? 10 : 12}
         />
         <div class="flex flex-col">
-          <span class="token-pair text-base sm:text-lg font-bold">{pool.symbol_0}/{pool.symbol_1}</span>
+          <span class="token-pair text-xs sm:text-sm font-bold">{pool.symbol_0}/{pool.symbol_1}</span>
         </div>
       </div>
     </td>
@@ -105,24 +107,15 @@
           size="small"
           text="Add LP"
           onClick={handleAddLiquidity}
-          className="action-button"
+          className="action-button mr-1"
         />
-        {#if !hideSwap}
+        {#if showSwapButton}
           <Button 
             variant="green" 
             size="small" 
             text="Swap" 
             onClick={handleSwap}
-            className="action-button"
-          />
-        {/if}
-        {#if !isTableCompact}
-          <Button 
-            variant="green"
-            size="small" 
-            text="Details" 
-            onClick={handleViewDetails}
-            className="action-button"
+            className="action-button mr-2"
           />
         {/if}
       </div>
@@ -144,8 +137,8 @@
         <Button 
           variant="green"
           size="small"
-          text="Details"
-          onClick={handleViewDetails}
+          text="Add LP"
+          onClick={handleAddLiquidity}
           className="header-details-button ml-auto"
         />
       </div>
@@ -177,15 +170,6 @@
       </div>
     </div>
   </div>
-{/if}
-
-{#if showAddLiquidity}
-  <AddLiquidityModal
-    showModal={showAddLiquidity}
-    onClose={handleAddLiquidityClose}
-    token0={tokenMap.get(pool.address_0)}
-    token1={tokenMap.get(pool.address_1)}
-  />
 {/if}
 
 {#if showPoolDetails}
@@ -229,7 +213,7 @@
   }
 
   .token-pair {
-    @apply text-sm sm:text-base md:text-xl font-bold text-white leading-tight truncate w-full;
+    @apply text-xs sm:text-sm font-bold text-white leading-tight truncate max-w-[120px] sm:max-w-[160px];
   }
 
   .card-stats {
@@ -257,16 +241,16 @@
   }
 
   .apy-badge {
-    @apply px-2 py-0.5 sm:px-3 sm:py-1 md:px-4 md:py-1.5 rounded-lg font-bold font-mono 
-           text-black text-xs sm:text-sm shadow-sm;
+    @apply px-2 py-0.5 sm:px-2 sm:py-0.5 md:px-3 md:py-1 rounded-lg font-bold font-mono 
+           text-black text-xs shadow-sm;
   }
 
   .value-cell {
-    @apply px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 text-right font-mono text-white font-medium text-sm sm:text-base;
+    @apply px-2 sm:px-3 md:px-4 py-2 sm:py-2 md:py-3 text-right font-mono text-white font-medium text-xs sm:text-sm;
   }
 
   .actions {
-    @apply flex justify-center gap-1.5 sm:gap-2 p-2 sm:p-4;
+    @apply flex justify-end gap-2 sm:gap-3 px-2 sm:px-3;
   }
 
   @media (max-width: 374px) {

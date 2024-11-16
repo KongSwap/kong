@@ -158,7 +158,7 @@
 
   @media (min-width: 769px) {
     .pools-container {
-      padding: 24px;
+      padding: 12px;
     }
   }
 
