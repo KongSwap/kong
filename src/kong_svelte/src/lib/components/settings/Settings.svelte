@@ -3,8 +3,10 @@
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
-    import { onMount } from "svelte";
-  
+  import { onMount } from "svelte";
+  import { writable } from 'svelte/store';
+  import { themeStore } from '$lib/stores/themeStore';
+
   let activeTab: 'trade' | 'app' = 'trade';
 
   function updateSliderBackground(value: number) {
@@ -40,6 +42,10 @@
   async function clearFavorites() {
     confirm('Are you sure you want to clear your favorite tokens?') && tokenStore.clearUserData();
     await tokenStore.loadTokens(true);
+  }
+
+  function toggleTheme() {
+    $themeStore = $themeStore === 'pixel' ? 'glass' : 'pixel';
   }
 
   onMount(() => {
@@ -87,10 +93,38 @@
         <h3>Slippage Settings</h3>
       </div>
       <div class="setting-content">
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Max Slippage</span>
-            <div class="flex items-center gap-2">
+        <div class="flex flex-col gap-4">
+          <!-- Quick select buttons -->
+          <div class="flex gap-2">
+            {#each [1, 2, 3, 4, 5] as value}
+              <button
+                class="quick-select-btn"
+                class:active={$settingsStore.max_slippage === value}
+                on:click={() => {
+                  settingsStore.updateSetting('max_slippage', value);
+                  toastStore.success(`Slippage updated to ${value}%`);
+                }}
+              >
+                {value}%
+              </button>
+            {/each}
+          </div>
+
+          <!-- Custom input and slider -->
+          <div class="flex items-center gap-4">
+            <div class="flex-1">
+              <input
+                type="range"
+                min="0"
+                max="99"
+                step="1"
+                bind:value={$settingsStore.max_slippage}
+                class="slippage-slider"
+                on:input={handleSlippageChange}
+                on:change={handleSlippageRelease}
+              />
+            </div>
+            <div class="flex items-center gap-2 min-w-[80px]">
               <input
                 type="number"
                 min="0"
@@ -104,16 +138,7 @@
               <span class="text-white/90 font-medium">%</span>
             </div>
           </div>
-          <input
-            type="range"
-            min="0"
-            max="99"
-            step="1"
-            bind:value={$settingsStore.max_slippage}
-            class="slippage-slider"
-            on:input={handleSlippageChange}
-            on:change={handleSlippageRelease}
-          />
+
           <p class="setting-description">
             Maximum allowed price difference between expected and actual swap price
           </p>
@@ -194,6 +219,44 @@
         </p>
       </div>
     </div>
+
+    <!-- Interface Style Section -->
+    <div class="setting-section z-1">
+      <div class="setting-header">
+        {#if $themeStore === 'pixel'}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <rect x="7" y="7" width="3" height="3"/>
+            <rect x="14" y="7" width="3" height="3"/>
+            <rect x="7" y="14" width="3" height="3"/>
+            <rect x="14" y="14" width="3" height="3"/>
+          </svg>
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2H3a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/>
+            <path d="M7 12h10"/>
+            <path d="M7 17h10"/>
+            <path d="M7 7h10"/>
+          </svg>
+        {/if}
+        <h3>Interface Style</h3>
+      </div>
+      <div class="setting-content">
+        <div class="flex items-center justify-between">
+          <span class="setting-label">Glass Mode</span>
+          <button
+            class="toggle-button"
+            class:active={$themeStore === 'glass'}
+            on:click={toggleTheme}
+          >
+            <div class="toggle-slider" />
+          </button>
+        </div>
+        <p class="setting-description">
+          Switch between pixel art and modern glass interface styles
+        </p>
+      </div>
+    </div>
   {/if}
 
   <!-- Version Info -->
@@ -257,8 +320,8 @@
 
   .setting-header h3 {
     @apply text-lg font-bold text-yellow-400;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.9rem;
+    font-family: 'Alumni Sans', sans-serif;
+    font-size: 1.25rem;
   }
 
   .setting-content {
@@ -271,6 +334,7 @@
 
   .setting-description {
     @apply text-white/60 text-sm mt-2;
+    font-family: system-ui, -apple-system, sans-serif;
   }
 
   .toggle-button {
@@ -354,8 +418,8 @@
   }
 
   .slippage-slider {
-    @apply w-full h-2 rounded-lg appearance-none cursor-pointer;
-    background: rgba(255, 255, 255, 0.1);
+    @apply w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/10;
+    background: linear-gradient(to right, rgb(250, 204, 21) 0%, rgb(250, 204, 21) var(--value-percent, 50%), rgba(255, 255, 255, 0.1) var(--value-percent, 50%));
   }
 
   .slippage-slider::-webkit-slider-thumb {
@@ -380,20 +444,11 @@
     transform: scale(1.1);
   }
 
-  .slippage-slider::-webkit-slider-runnable-track {
-    @apply rounded-lg;
-    background: linear-gradient(to right, rgb(250, 204, 21) 0%, rgb(250, 204, 21) var(--value-percent, 50%), rgba(255, 255, 255, 0.1) var(--value-percent, 50%));
-  }
-
-  .slippage-slider::-moz-range-track {
-    @apply rounded-lg;
-    background: linear-gradient(to right, rgb(250, 204, 21) 0%, rgb(250, 204, 21) var(--value-percent, 50%), rgba(255, 255, 255, 0.1) var(--value-percent, 50%));
-  }
-
   .slippage-input {
     @apply w-16 px-2 py-1 text-right bg-white/10 rounded-lg text-white/90 
-           focus:outline-none focus:ring-2 focus:ring-yellow-400/50;
-    font-family: monospace;
+           focus:outline-none focus:ring-2 focus:ring-yellow-400/50
+           border border-white/10;
+    font-family: 'Alumni Sans', sans-serif;
   }
 
   .slippage-input::-webkit-outer-spin-button,
@@ -412,5 +467,18 @@
 
   .slippage-input:focus {
     @apply bg-white/20;
+  }
+
+  .quick-select-btn {
+    @apply px-4 py-2 rounded-lg bg-white/5 text-white/80 
+           transition-all duration-200 flex-1 text-center
+           hover:bg-white/10 hover:text-white
+           border border-white/10;
+    font-family: 'Alumni Sans', sans-serif;
+    font-size: 1.125rem;
+  }
+
+  .quick-select-btn.active {
+    @apply bg-yellow-400/20 text-yellow-400 border-yellow-400/30;
   }
 </style> 
