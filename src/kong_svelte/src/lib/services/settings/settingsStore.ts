@@ -53,18 +53,28 @@ function createSettingsStore() {
 
   async function initializeStore() {
     if (browser) {
-      const walletId = get(walletStore).account?.owner;
-      const dbSettings = await kongDB.settings.filter(s => s.principal_id === walletId).first();
-      if (dbSettings) {
-        set(dbSettings);
-        locale.set(dbSettings.default_language);
-        loadTranslations(dbSettings.default_language);
-      } else {
-        await kongDB.settings.put({
-          principal_id: walletId,
-          ...DEFAULT_SETTINGS,
-          timestamp: Date.now()
-        });
+      const walletId = get(walletStore).account?.owner?.toString();
+      if (!walletId) {
+        console.error('Wallet ID is not available.');
+        return;
+      }
+
+      try {
+        const dbSettings = await kongDB.settings.get(walletId);
+        if (dbSettings) {
+          set(dbSettings);
+          locale.set(dbSettings.default_language);
+          loadTranslations(dbSettings.default_language);
+        } else {
+          // If no settings exist, store default settings
+          await kongDB.settings.put({
+            ...DEFAULT_SETTINGS,
+            principal_id: walletId,
+            timestamp: Date.now()
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing settings:', error);
       }
     }
   }
@@ -74,20 +84,31 @@ function createSettingsStore() {
     value: Settings[keyof Settings]
   ) {
     update(settings => {
+      const walletId = get(walletStore).account?.owner?.toString();
+      if (!walletId) {
+        console.error('Wallet ID is not available.');
+        return settings;
+      }
+
       const newSettings = {
         ...settings,
-        [key]: value
+        [key]: value,
       };
       
       if (browser) {
-        kongDB.settings.put({
-          ...newSettings,
-          timestamp: Date.now()
-        });
-        
-        if (key === 'default_language') {
-          locale.set(value as string);
-          loadTranslations(value as string);
+        try {
+          kongDB.settings.put({
+            ...newSettings,
+            principal_id: walletId,
+            timestamp: Date.now()
+          });
+          
+          if (key === 'default_language') {
+            locale.set(value as string);
+            loadTranslations(value as string);
+          }
+        } catch (error) {
+          console.error('Error updating settings:', error);
         }
       }
       
@@ -96,9 +117,14 @@ function createSettingsStore() {
   }
 
   async function reset() {
+    const walletId = get(walletStore).account?.owner;
+    if (!walletId) {
+      console.error('Wallet ID is not available.');
+      return;
+    }
+
     set(DEFAULT_SETTINGS);
     if (browser) {
-      const walletId = get(walletStore).account?.owner;
       await kongDB.settings.put({
         principal_id: walletId,
         ...DEFAULT_SETTINGS,
@@ -109,11 +135,10 @@ function createSettingsStore() {
     }
   }
 
-  // Initialize the store
-  initializeStore();
-
   return {
     subscribe,
+    set,
+    initializeStore,
     updateSetting,
     reset,
     soundEnabled: derived({ subscribe }, $settings => $settings.sound_enabled),

@@ -3,7 +3,7 @@ import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { walletStore, restoreWalletConnection } from "$lib/services/wallet/walletStore";
 import { derived, get } from "svelte/store";
-
+import { settingsStore } from "$lib/services/settings/settingsStore";
 export class AppLoader {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
   private isInitialized = false;
@@ -52,7 +52,8 @@ export class AppLoader {
     try {
       await Promise.all([
         tokenStore.loadBalances(),
-        tokenStore.loadPrices()
+        tokenStore.loadPrices(),
+        settingsStore.initializeStore()
       ]);
     } catch (error) {
       console.error("Error updating authenticated data:", error);

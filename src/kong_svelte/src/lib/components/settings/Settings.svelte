@@ -2,28 +2,25 @@
   import LanguageSelector from "../common/LanguageSelector.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
-  import { browser } from '$app/environment';
   import { toastStore } from '$lib/stores/toastStore';
+    import { onMount } from "svelte";
   
-  let settings;
-  settingsStore.subscribe(value => {
-    settings = value;
-    if (browser && value?.max_slippage !== undefined) {
-      setTimeout(() => {
-        const slider = document.querySelector('.slippage-slider') as HTMLElement;
-        if (slider) {
-          const percent = (value.max_slippage / 99) * 100;
-          slider.style.setProperty('--value-percent', `${percent}%`);
-        }
-      }, 0);
+  let activeTab: 'trade' | 'app' = 'trade';
+
+  function updateSliderBackground(value: number) {
+    const percent = (value / 99) * 100;
+    const sliderElement = document.querySelector('.slippage-slider') as HTMLElement;
+    if (sliderElement) {
+      sliderElement.style.setProperty('--value-percent', `${percent}%`);
     }
-  });
+  }
 
   function handleSlippageChange(e: Event) {
     const value = parseFloat((e.target as HTMLInputElement).value);
     const boundedValue = Math.min(Math.max(value, 0), 99);
     if (!isNaN(boundedValue)) {
       settingsStore.updateSetting('max_slippage', boundedValue);
+      updateSliderBackground(boundedValue);
     }
   }
 
@@ -37,132 +34,167 @@
   }
 
   function toggleSound() {
-    settingsStore.updateSetting('sound_enabled', !settings.sound_enabled);
+    settingsStore.updateSetting('sound_enabled', !$settingsStore.sound_enabled);
   }
 
   async function clearFavorites() {
     confirm('Are you sure you want to clear your favorite tokens?') && tokenStore.clearUserData();
     await tokenStore.loadTokens(true);
   }
+
+  onMount(() => {
+    updateSliderBackground($settingsStore.max_slippage);
+  });
+
+  $: $settingsStore.max_slippage && updateSliderBackground($settingsStore.max_slippage);
 </script>
 
 <div class="settings-container relative">
-  <!-- Language Section -->
-  <div class="setting-section relative z-[10]">
-    <div class="setting-header">
+  <!-- Tab Navigation -->
+  <div class="tabs-container">
+    <button 
+      class="tab-button" 
+      class:active={activeTab === 'trade'}
+      on:click={() => activeTab = 'trade'}
+    >
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        <path d="M2 12h20"/>
+        <path d="M3 3v18h18"/>
+        <path d="m19 9-5 5-4-4-3 3"/>
       </svg>
-      <h3>Language Settings</h3>
-    </div>
-    <div class="setting-content">
-      <LanguageSelector />
-    </div>
+      Trade
+    </button>
+    <button 
+      class="tab-button" 
+      class:active={activeTab === 'app'}
+      on:click={() => activeTab = 'app'}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      
+      App
+    </button>
   </div>
 
-  <!-- Sound Section -->
-  <div class="setting-section z-1">
-    <div class="setting-header">
-      {#if settings.sound_enabled}
+  {#if activeTab === 'trade'}
+    <!-- Slippage Section -->
+    <div class="setting-section z-1">
+      <div class="setting-header">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 5 6 9H2v6h4l5 4V5z"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
         </svg>
-      {:else}
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 5 6 9H2v6h4l5 4V5z"/>
-          <line x1="23" y1="9" x2="17" y2="15"/>
-          <line x1="17" y1="9" x2="23" y2="15"/>
-        </svg>
-      {/if}
-      <h3>Sound Settings</h3>
-    </div>
-    <div class="setting-content">
-      <div class="flex items-center justify-between">
-        <span class="setting-label">Sound Effects</span>
-        <button
-          class="toggle-button"
-          class:active={settings.sound_enabled}
-          on:click={toggleSound}
-        >
-          <div class="toggle-slider" />
-        </button>
+        <h3>Slippage Settings</h3>
       </div>
-      <p class="setting-description">
-        Enable or disable sound effects throughout the application
-      </p>
-    </div>
-  </div>
-
-  <!-- Slippage Section -->
-  <div class="setting-section z-1">
-    <div class="setting-header">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-      </svg>
-      <h3>Slippage Settings</h3>
-    </div>
-    <div class="setting-content">
-      <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-          <span class="setting-label">Max Slippage</span>
-          <div class="flex items-center gap-2">
-            <input
-              type="number"
-              min="0"
-              max="99"
-              step="1"
-              value={settings?.max_slippage}
-              class="slippage-input"
-              on:input={handleSlippageChange}
-              on:change={handleSlippageRelease}
-            />
-            <span class="text-white/90 font-medium">%</span>
+      <div class="setting-content">
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="setting-label">Max Slippage</span>
+            <div class="flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                max="99"
+                step="1"
+                bind:value={$settingsStore.max_slippage}
+                class="slippage-input"
+                on:input={handleSlippageChange}
+                on:change={handleSlippageRelease}
+              />
+              <span class="text-white/90 font-medium">%</span>
+            </div>
           </div>
+          <input
+            type="range"
+            min="0"
+            max="99"
+            step="1"
+            bind:value={$settingsStore.max_slippage}
+            class="slippage-slider"
+            on:input={handleSlippageChange}
+            on:change={handleSlippageRelease}
+          />
+          <p class="setting-description">
+            Maximum allowed price difference between expected and actual swap price
+          </p>
         </div>
-        <input
-          type="range"
-          min="0"
-          max="99"
-          step="1"
-          value={settings?.max_slippage}
-          class="slippage-slider"
-          on:input={handleSlippageChange}
-          on:change={handleSlippageRelease}
-        />
+      </div>
+    </div>
+
+    <!-- Favorites Section -->
+    <div class="setting-section z-1">
+      <div class="setting-header">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <h3>Favorite Tokens</h3>
+      </div>
+      <div class="setting-content">
+        <div class="flex items-center justify-between">
+          <span class="setting-label">Clear Favorites</span>
+          <button
+            class="clear-button"
+            on:click={clearFavorites}
+          >
+            Clear
+          </button>
+        </div>
         <p class="setting-description">
-          Maximum allowed price difference between expected and actual swap price
+          Remove all favorite tokens for the current wallet
         </p>
       </div>
     </div>
-  </div>
-
-  <!-- Favorites Section -->
-  <div class="setting-section z-1">
-    <div class="setting-header">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-      <h3>Favorite Tokens</h3>
-    </div>
-    <div class="setting-content">
-      <div class="flex items-center justify-between">
-        <span class="setting-label">Clear Favorites</span>
-        <button
-          class="clear-button"
-          on:click={clearFavorites}
-        >
-          Clear
-        </button>
+  {:else}
+    <!-- Language Section -->
+    <div class="setting-section relative z-[10]">
+      <div class="setting-header">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          <path d="M2 12h20"/>
+        </svg>
+        <h3>Language Settings</h3>
       </div>
-      <p class="setting-description">
-        Remove all favorite tokens for the current wallet
-      </p>
+      <div class="setting-content">
+        <LanguageSelector />
+      </div>
     </div>
-  </div>
+
+    <!-- Sound Section -->
+    <div class="setting-section z-1">
+      <div class="setting-header">
+        {#if $settingsStore.sound_enabled}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 5 6 9H2v6h4l5 4V5z"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 5 6 9H2v6h4l5 4V5z"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+        {/if}
+        <h3>Sound Settings</h3>
+      </div>
+      <div class="setting-content">
+        <div class="flex items-center justify-between">
+          <span class="setting-label">Sound Effects</span>
+          <button
+            class="toggle-button"
+            class:active={$settingsStore.sound_enabled}
+            on:click={toggleSound}
+          >
+            <div class="toggle-slider" />
+          </button>
+        </div>
+        <p class="setting-description">
+          Enable or disable sound effects throughout the application
+        </p>
+      </div>
+    </div>
+  {/if}
 
   <!-- Version Info -->
   <div class="version-info">
@@ -175,6 +207,35 @@
     @apply flex flex-col gap-6 p-2;
   }
 
+  .tabs-container {
+    @apply flex gap-2;
+  }
+
+  .tab-button {
+    @apply flex items-center justify-center gap-2 px-4 py-2 rounded-lg 
+           bg-white/5 backdrop-blur-sm
+           text-white/60 transition-all duration-200
+           hover:bg-white/10 hover:text-white/90 w-full;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 1rem;
+  }
+
+  .tab-button.active {
+    @apply bg-yellow-400/20 text-yellow-400;
+  }
+
+  .tab-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .tab-button:active {
+    transform: translateY(0px);
+  }
+
+  .tab-button svg {
+    @apply w-4 h-4;
+  }
+
   .setting-section {
     @apply bg-white/5 backdrop-blur-sm rounded-xl p-6 transition-all duration-300;
     border: 2px solid transparent;
@@ -182,7 +243,7 @@
 
   .setting-section:hover {
     @apply bg-white/10;
-    border-color: theme(colors.yellow.400/30%);
+    border-color: theme(colors.yellow.400/70%);
     transform: translateY(-1px);
   }
 
@@ -233,7 +294,6 @@
     font-family: monospace;
   }
 
-  /* Hover Effects */
   .toggle-button:hover {
     @apply bg-white/20;
   }
@@ -242,12 +302,10 @@
     @apply bg-yellow-500;
   }
 
-  /* Focus States */
   .toggle-button:focus {
     @apply outline-none ring-2 ring-yellow-400 ring-opacity-50;
   }
 
-  /* Animation for icon changes */
   svg {
     @apply transition-transform duration-300;
   }
@@ -256,7 +314,6 @@
     @apply scale-110;
   }
 
-  /* Responsive adjustments */
   @media (max-width: 640px) {
     .setting-header h3 {
       font-size: 0.8rem;
@@ -268,6 +325,15 @@
 
     .setting-section {
       @apply p-4;
+    }
+    
+    .tab-button {
+      @apply px-3 py-2;
+      font-size: 0.6rem;
+    }
+    
+    .tab-button svg {
+      @apply w-3 h-3;
     }
   }
 

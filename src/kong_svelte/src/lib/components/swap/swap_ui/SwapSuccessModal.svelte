@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { fade, scale } from "svelte/transition";
   import { backOut } from "svelte/easing";
   import Button from "$lib/components/common/Button.svelte";
@@ -9,9 +10,9 @@
 
   export let show = false;
   export let payAmount: string;
-  export let payToken: string;
+  export let payToken: FE.Token;
   export let receiveAmount: string;
-  export let receiveToken: string;
+  export let receiveToken: FE.Token;
   export let onClose: () => void;
 
   let countdown = 4;
@@ -93,7 +94,7 @@
         <div class="bg-white/20 backdrop-blur rounded-xl p-4 mb-6">
           <div class="flex items-center justify-between mb-4">
             <div class="text-sm opacity-80">You paid</div>
-            <div class="font-bold">{payAmount} {payToken}</div>
+            <div class="font-bold">{formatTokenAmount(payAmount, payToken.decimals).toString()} {payToken.symbol}</div>
           </div>
 
           <div class="flex justify-center my-2">
@@ -102,7 +103,7 @@
 
           <div class="flex items-center justify-between">
             <div class="text-sm opacity-80">You received</div>
-            <div class="font-bold">{receiveAmount} {receiveToken}</div>
+            <div class="font-bold">{formatTokenAmount(receiveAmount, receiveToken.decimals).toString()} {receiveToken.symbol}</div>
           </div>
         </div>
 

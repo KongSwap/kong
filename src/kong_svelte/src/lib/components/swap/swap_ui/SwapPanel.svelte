@@ -234,13 +234,13 @@
           >
             {#if title === "You Pay"}
               {formatTokenAmount(
-                $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString(),
+                $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens?.toString() || "0",
                 decimals,
               ) || "0"}
             {:else}
               {$tokenStore.balances[tokenInfo?.canister_id]?.in_tokens
                 ? formatTokenAmount(
-                    $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens.toString(),
+                    $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens?.toString() || "0",
                     decimals,
                   )
                 : "0"}
