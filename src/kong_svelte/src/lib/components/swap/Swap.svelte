@@ -19,6 +19,7 @@
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
+  import { themeStore } from '$lib/stores/themeStore';
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
@@ -439,6 +440,24 @@
       maxWait: 1000,
     },
   );
+
+  // Update arrow configurations
+  const PixelArrow = {
+    viewBox: "0 0 35 42",
+    path: "M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
+  };
+
+  const ModernArrow = {
+    viewBox: "0 0 48 48",
+    paths: [
+      // Main circle
+      "M24 44c11.046 0 20-8.954 20-20S35.046 4 24 4 4 12.954 4 24s8.954 20 20 20z",
+      // Top arrow
+      "M24 15l7 7H17l7-7z",
+      // Bottom arrow
+      "M24 33l-7-7h14l-7 7z"
+    ]
+  };
 </script>
 
 <div class="swap-wrapper">
@@ -475,24 +494,51 @@
 
       <button
         class="switch-button"
+        class:modern={$themeStore !== 'pixel'}
         on:click={handleTokenSwitch}
         disabled={isProcessing}
         aria-label="Switch tokens"
       >
-        <svg
-          width="56"
-          height="64"
-          viewBox="0 0 35 42"
-          xmlns="http://www.w3.org/2000/svg"
-          class="swap-arrow"
-        >
-          <path
-            d="M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
-            stroke="#000000"
-            stroke-width="1"
-            fill="#ffcd1f"
-          />
-        </svg>
+        {#if $themeStore === 'pixel'}
+          <svg
+            width="56"
+            height="64"
+            viewBox={PixelArrow.viewBox}
+            xmlns="http://www.w3.org/2000/svg"
+            class="swap-arrow"
+          >
+            <path
+              d={PixelArrow.path}
+              stroke="#000000"
+              stroke-width="1"
+              fill="#ffcd1f"
+              class="arrow-path"
+            />
+          </svg>
+        {:else}
+          <svg
+            width="48"
+            height="48"
+            viewBox={ModernArrow.viewBox}
+            xmlns="http://www.w3.org/2000/svg"
+            class="swap-arrow modern"
+          >
+            <!-- Background circle -->
+            <path
+              d={ModernArrow.paths[0]}
+              class="arrow-background"
+            />
+            <!-- Arrows -->
+            <path
+              d={ModernArrow.paths[1]}
+              class="arrow-symbol"
+            />
+            <path
+              d={ModernArrow.paths[2]}
+              class="arrow-symbol"
+            />
+          </svg>
+        {/if}
       </button>
     </div>
 
@@ -602,11 +648,17 @@
     min-height: 64px;
   }
 
-  .switch-button:hover:not(:disabled) {
+  .switch-button.modern {
+    background: transparent;
+    border-radius: 50%;
+    padding: 0.75rem;
+  }
+
+  .switch-button.modern:hover:not(:disabled) {
     transform: translate(-50%, -50%) scale(1.1);
   }
 
-  .switch-button:active:not(:disabled) {
+  .switch-button.modern:active:not(:disabled) {
     transform: translate(-50%, -50%) scale(0.95);
   }
 
@@ -615,8 +667,62 @@
     cursor: not-allowed;
   }
 
-  .switch-button:disabled .swap-arrow path {
-    fill: #666;
+  /* Modern theme specific styles */
+  .swap-arrow.modern {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  }
+
+  .arrow-background {
+    fill: #ffcd1f;
+    transition: all 0.3s ease;
+  }
+
+  .arrow-symbol {
+    fill: #000000;
+    transition: all 0.3s ease;
+  }
+
+  /* Hover effects for modern theme */
+  .switch-button.modern:hover:not(:disabled) .arrow-background {
+    fill: #ffe380;
+  }
+
+  .switch-button.modern:active:not(:disabled) .arrow-background {
+    fill: #ffc107;
+  }
+
+  /* Disabled state for modern theme */
+  .switch-button.modern:disabled .arrow-background {
+    fill: #e0e0e0;
+  }
+
+  .switch-button.modern:disabled .arrow-symbol {
+    fill: #999999;
+  }
+
+  /* Animation for modern theme */
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(180deg);
+    }
+  }
+
+  .switch-button.modern:hover:not(:disabled) .swap-arrow.modern {
+    animation: rotate 0.3s ease-in-out;
+  }
+
+  @media (max-width: 480px) {
+    .switch-button.modern {
+      padding: 0.5rem;
+    }
+
+    .swap-arrow.modern {
+      width: 40px;
+      height: 40px;
+    }
   }
 
   .swap-arrow {
@@ -664,5 +770,19 @@
     display: flex;
     gap: 0.5rem;
     margin-bottom: 1rem;
+  }
+
+  .arrow-path {
+    transition: fill 0.2s ease;
+  }
+
+  :global([data-theme="minimal"]) .arrow-path {
+    stroke-width: 2;
+    /* You can customize these styles for minimal theme */
+  }
+
+  :global([data-theme="pixel"]) .arrow-path {
+    stroke-width: 1;
+    /* You can customize these styles for pixel theme */
   }
 </style>

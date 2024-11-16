@@ -252,25 +252,31 @@
   }
 
   .glass-button.green {
-    @apply border-emerald-500/30 text-emerald-100;
+    @apply border-emerald-500/20 text-emerald-50;
     background: linear-gradient(
       135deg,
-      rgba(6, 78, 59, 0.97),
+      rgba(4, 120, 87, 0.97),
       rgba(6, 78, 59, 0.92)
     );
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4),
-                inset 0 0 16px rgba(16, 185, 129, 0.15);
+                inset 0 0 16px rgba(16, 185, 129, 0.1);
+  }
+
+  .glass-button.green:hover {
+    @apply bg-emerald-900/90 border-emerald-400/30;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+                inset 0 0 24px rgba(16, 185, 129, 0.15);
   }
 
   .glass-button.yellow {
-    @apply border-yellow-500/30 text-yellow-100;
+    @apply border-amber-500/30 text-amber-50;
     background: linear-gradient(
       135deg,
-      rgba(120, 53, 15, 0.97),
-      rgba(120, 53, 15, 0.92)
+      rgba(245, 158, 11, 0.97),
+      rgba(180, 83, 9, 0.92)
     );
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4),
-                inset 0 0 16px rgba(234, 179, 8, 0.15);
+                inset 0 0 16px rgba(245, 158, 11, 0.15);
   }
 
   .button-content {
@@ -339,13 +345,13 @@
   .glass-button.green:hover {
     @apply bg-emerald-900/90 border-emerald-400/40;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
-                inset 0 0 24px rgba(16, 185, 129, 0.2);
+                inset 0 0 24px rgba(52, 211, 153, 0.2);
   }
 
   .glass-button.yellow:hover {
-    @apply bg-yellow-900/90 border-yellow-400/40;
+    @apply bg-amber-900/90 border-amber-400/40;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
-                inset 0 0 24px rgba(234, 179, 8, 0.2);
+                inset 0 0 24px rgba(245, 158, 11, 0.2);
   }
 
   /* Active state */
@@ -419,11 +425,11 @@
     @apply border-emerald-500/30;
     background: linear-gradient(
       135deg,
-      rgba(6, 78, 59, 0.97),
-      rgba(6, 78, 59, 0.92)
+      rgba(16, 185, 129, 0.97),
+      rgba(6, 95, 70, 0.92)
     );
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4),
-                inset 0 0 16px rgba(16, 185, 129, 0.15);
+                inset 0 0 16px rgba(52, 211, 153, 0.15);
   }
 
   .glass-button.green .button-content {
@@ -432,14 +438,14 @@
   }
 
   .glass-button.yellow {
-    @apply border-yellow-500/30;
+    @apply border-amber-500/30;
     background: linear-gradient(
       135deg,
-      rgba(120, 53, 15, 0.97),
-      rgba(120, 53, 15, 0.92)
+      rgba(245, 158, 11, 0.97),
+      rgba(180, 83, 9, 0.92)
     );
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4),
-                inset 0 0 16px rgba(234, 179, 8, 0.15);
+                inset 0 0 16px rgba(245, 158, 11, 0.15);
   }
 
   .glass-button.yellow .button-content {

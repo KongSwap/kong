@@ -76,13 +76,16 @@
   </div>
 {:else}
   <div 
+    id="panel"
     class="glass-panel {variant} {type} {className}"
     style="width: {formattedWidth}; height: {formattedHeight};"
   >
-    <div class="glass-content" style="margin: -10px;">
-      <slot>{content}</slot>
+    <div class="glass-container min-w-full" class:auto-size={isAutoSize}>
+      <div class="glass-content">
+        <slot>{content}</slot>
+      </div>
+      <div class="panel-light"></div>
     </div>
-    <div class="panel-light"></div>
   </div>
 {/if}
 
@@ -182,9 +185,9 @@
       rgba(0, 0, 0, 0.92),
       rgba(0, 0, 0, 0.85)
     );
-    min-height: 0;
     transition: all 0.2s ease-out;
     isolation: isolate;
+    position: relative;
   }
 
   .glass-panel:hover {
@@ -192,10 +195,10 @@
   }
 
   .glass-panel.green {
-    @apply border-emerald-500/30;
+    @apply border-emerald-500/20;
     background: linear-gradient(
       135deg,
-      rgba(6, 78, 59, 0.97),
+      rgba(4, 120, 87, 0.97),
       rgba(6, 78, 59, 0.92)
     );
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
@@ -214,17 +217,19 @@
   }
 
   .glass-panel.yellow {
-    @apply border-yellow-500/30;
+    @apply border-amber-500/30;
     background: linear-gradient(
       135deg,
-      rgba(120, 53, 15, 0.97),
-      rgba(120, 53, 15, 0.92)
+      rgba(245, 158, 11, 0.97),
+      rgba(194, 65, 12, 0.92)
     );
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 0 32px rgba(234, 179, 8, 0.1);
+                inset 0 0 32px rgba(251, 191, 36, 0.15);
   }
 
   .glass-panel.main {
+    min-width: min-content;
+    width: 100%;
     @apply border-opacity-40;
   }
 
@@ -233,13 +238,12 @@
   }
 
   .glass-content {
-    @apply p-6 relative h-full overflow-y-auto;
-    mask-image: linear-gradient(to bottom, 
-      transparent 0%,
-      black 5%,
-      black 95%,
-      transparent 100%
-    );
+    @apply relative h-full overflow-y-auto;
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .glass-content::before {
@@ -311,8 +315,8 @@
   }
 
   .glass-panel.yellow :global(*) {
-    @apply text-yellow-50;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    @apply text-amber-50;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
 
   /* Panel light effect */
@@ -352,8 +356,22 @@
   .glass-panel.yellow .panel-light {
     background: radial-gradient(
       circle at 0% 0%,
-      rgba(234, 179, 8, 0.15) 0%,
+      rgba(251, 191, 36, 0.2) 0%,
       transparent 50%
     );
+  }
+
+  /* Add glass container styles to match pixel panel container */
+  .glass-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .glass-container.auto-size {
+    width: fit-content;
+    height: fit-content;
   }
 </style>
