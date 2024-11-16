@@ -6,12 +6,12 @@
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
   import { t } from "$lib/services/translations";
-  import { walletStore, isConnected } from "$lib/services/wallet/walletStore";
+  import { walletStore } from "$lib/services/wallet/walletStore";
   import { fade } from "svelte/transition";
   import Modal from "../common/Modal.svelte";
   import Settings from "../settings/Settings.svelte";
 
-  type Tab = "swap" | "pools" | "stats";
+  type Tab = "swap" | "earn" | "stats";
 
   let activeTab: Tab = "swap";
   let sidebarOpen = false;
@@ -19,13 +19,13 @@
   let isSpinning = false;
   let navOpen = false;
   let isModalOpen = false;
-  const tabs: Tab[] = ["swap", "pools"];
+  const tabs: Tab[] = ["swap", "earn"];
   const titles = {
     swap: {
       desktop: "/titles/swap_title.webp",
       mobile: "/titles/swap_title.webp",
     },
-    pools: {
+    earn: {
       desktop: "/titles/swap_title.webp",
       mobile: "/titles/swap_title.webp",
     },
@@ -59,8 +59,8 @@
   function determineActiveTab(path: string): Tab {
     return path.includes("stats")
       ? "stats"
-      : path.includes("pools")
-        ? "pools"
+      : path.includes("earn")
+        ? "earn"
         : "swap";
   }
 
@@ -89,19 +89,19 @@
     : titles[activeTab].desktop;
 </script>
 
-<nav class="w-full z-5 p-4 max-w-6xl">
-  <div class="grid grid-cols-12 gap-2">
-    <div class="col-span-2 flex items-center gap-2">
+<nav class="w-full z-50 p-4 max-w-6xl mx-auto">
+  <div class="grid grid-cols-12 gap-4">
+    <div class="col-span-2 flex items-center">
       {#if isMobile}
         <button
-          class="text-3xl text-gray-800 self-start place-self-start pb-0.5"
+          class="text-3xl text-gray-800 hover:text-gray-600 transition-colors"
           on:click={() => (navOpen = !navOpen)}
         >
           ☰
         </button>
       {/if}
       {#if !isMobile}
-        <div class="flex gap-4">
+        <div class="flex gap-6 ml-2">
           {#each tabs as tab}
             <Button
               text={tab.toUpperCase()}
@@ -115,22 +115,22 @@
       {/if}
     </div>
 
-    <div class="col-span-8 flex justify-center items-end">
+    <div class="col-span-8 flex justify-center items-center">
       <div class="w-full flex items-center justify-center">
-        <a href={`/${activeTab}`}>
-        <img
-          src={titleImage}
-          alt={activeTab}
-          class="object-contain max-h-16"
-        />
-        
+        <a href={`/${activeTab}`} class="hover:opacity-90 transition-opacity">
+          <img
+            src={titleImage}
+            alt={activeTab}
+            class="object-contain max-h-16"
+          />
+        </a>
       </div>
     </div>
 
-    <div class="col-span-2 flex gap-4 items-center">
+    <div class="col-span-2 flex gap-6 items-center justify-end mr-2">
       {#if !isMobile}
         <button
-          class="p-2 flex items-center justify-center transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95"
+          class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
           class:spinning={isSpinning}
           aria-label="Settings"
           on:mouseenter={() => (isSpinning = true)}
@@ -163,7 +163,7 @@
         />
 
         <Button
-          text={$walletStore.account?.owner
+          text={$walletStore.isConnected
             ? $t("common.openDrawer")
             : $t("common.connect")}
           variant="yellow"
@@ -177,18 +177,18 @@
 
   {#if navOpen && isMobile}
     <div
-      class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex flex-col items-center justify-center gap-6 z-100"
-      transition:fade={{ duration: 100 }}
+      class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex flex-col items-center justify-center gap-8 z-[100]"
+      transition:fade={{ duration: 150 }}
     >
       <button
-        class="absolute top-4 right-4 text-white text-2xl"
+        class="absolute top-6 right-6 text-white text-2xl hover:text-gray-300 transition-colors"
         on:click={() => (navOpen = false)}
       >
         ✕
       </button>
 
       <h2
-        class="text-white text-2xl font-bold uppercase border-b-2 border-sky-300"
+        class="text-white text-2xl font-bold uppercase border-b-2 border-sky-300 pb-2"
       >
         {$t("common.navigation")}
       </h2>
@@ -210,7 +210,7 @@
       />
 
       <button
-        class="p-2 flex items-center justify-center transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95"
+        class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
         class:spinning={isSpinning}
         aria-label="Settings"
         on:mouseenter={() => (isSpinning = true)}
@@ -250,5 +250,16 @@
 </Modal>
 
 <style lang="postcss">
-  /* Remove all settings-related styles */
+  :global(.spinning) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
 </style>
