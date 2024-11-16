@@ -89,7 +89,7 @@
     : titles[activeTab].desktop;
 </script>
 
-<nav class="w-full z-50 p-4 max-w-6xl mx-auto">
+<nav class="w-full z-50 px-1 py-4 max-w-6xl mx-auto">
   <div class="grid grid-cols-12 gap-4">
     <div class="col-span-2 flex items-center">
       {#if isMobile}
