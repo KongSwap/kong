@@ -13,6 +13,7 @@ import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "./swapStore";
 import { walletStore } from "$lib/services/wallet/walletStore";
+import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -355,8 +356,10 @@ export class SwapService {
                 swapStatus.receive_amount,
                 getTokenDecimals(swapStatus.receive_symbol),
               );
+              const token0 = get(tokenStore).tokens.find((t) => t.symbol === swapStatus.pay_symbol);
+              const token1 = get(tokenStore).tokens.find((t) => t.symbol === swapStatus.receive_symbol);
               toastStore.success(
-                `Successfully swaped ${formattedPayAmount} ${swapStatus.pay_symbol} to ${formattedReceiveAmount} ${swapStatus.receive_symbol}!`,
+                `Successfully swaped ${formatTokenAmount(formattedPayAmount, token0?.decimals)} ${token0?.symbol} to ${formatTokenAmount(formattedReceiveAmount, token1?.decimals)} ${token1?.symbol}!`,
               );
               // Dispatch custom event with swap details
               window.dispatchEvent(
