@@ -8,9 +8,9 @@
   import FeesSection from './confirmation/FeesSection.svelte';
   import { onMount, onDestroy } from 'svelte';
 
-  export let payToken: string;
+  export let payToken: FE.Token;
   export let payAmount: string;
-  export let receiveToken: string;
+  export let receiveToken: FE.Token;
   export let receiveAmount: string;
   export let routingPath: string[] = [];
   export let userMaxSlippage: number;
@@ -31,7 +31,7 @@
   onMount(async () => {
     try {
       isInitializing = true;
-      const payDecimals = getTokenDecimals(payToken);
+      const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
       
       const quote = await SwapService.swap_amounts(
@@ -41,7 +41,7 @@
       );
 
       if ("Ok" in quote) {
-        const receiveDecimals = getTokenDecimals(receiveToken);
+        const receiveDecimals = receiveToken.decimals;
         receiveAmount = SwapService.fromBigInt(
           quote.Ok.receive_amount,
           receiveDecimals,
@@ -49,7 +49,7 @@
         
         if (quote.Ok.txs.length > 0) {
           routingPath = [
-            payToken,
+            payToken.symbol,
             ...quote.Ok.txs.map((tx) => tx.receive_symbol),
           ];
 
@@ -112,24 +112,37 @@
   $: totalLPFee = calculateTotalFee(lpFees);
 
   function calculateTotalFee(fees: string[]): number {
-    return routingPath.length > 0 ? 
-      routingPath.slice(1).reduce((acc, _, i) => {
-        const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
-        const decimals = token?.decimals || 8;
-        const feeValue = typeof fees[i] === 'string' ? Number(fees[i]) : fees[i] || 0;
-        const stepFee = SwapService.fromBigInt(
-          scaleDecimalToBigInt(feeValue, decimals),
-          decimals
-        );
-        return acc + Number(stepFee);
-      }, 0) : 0;
-  }
+  if (!routingPath.length || !fees.length) return 0;
+  
+  return routingPath.slice(1).reduce((acc, _, i) => {
+    const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
+    if (!token) return acc;
 
-  function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
-    const scaleFactor = 10n ** BigInt(decimals);
-    const scaledValue = decimal * Number(scaleFactor);
-    return BigInt(Math.floor(scaledValue));
-  }
+    const decimals = token.decimals || 8;
+    // Parse the fee value safely
+    const feeValue = parseFloat(fees[i]) || 0;
+    
+    try {
+      const stepFee = SwapService.fromBigInt(
+        scaleDecimalToBigInt(feeValue, decimals),
+        decimals
+      );
+      return acc + (Number(stepFee) || 0);
+    } catch (error) {
+      console.error('Error calculating fee:', error);
+      return acc;
+    }
+  }, 0);
+}
+
+function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
+  if (isNaN(decimal) || !isFinite(decimal)) return 0n;
+  
+  const scaleFactor = 10n ** BigInt(decimals);
+  const scaledValue = decimal * Number(scaleFactor);
+  // Ensure we're converting a valid number
+  return BigInt(Math.floor(Math.max(0, scaledValue)));
+}
 </script>
 
 <Modal show={isVisible} title="Review Swap" {onClose} variant="green" height="auto">
@@ -141,7 +154,7 @@
     <div class="flex justify-center items-center min-h-[200px] p-4">
       <p class="text-red-500 text-base text-center">{error}</p>
     </div>
-  {:else}
+  {:else if payToken && receiveToken}
     <div class="flex flex-col h-full">
       <div class="flex flex-col gap-2 overflow-y-auto pr-1 mb-4">
         <PayReceiveSection {payToken} {payAmount} {receiveToken} {receiveAmount} />

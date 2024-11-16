@@ -1,10 +1,9 @@
 <script lang="ts">
 	import  TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
   
-  export let payToken: string;
+  export let payToken: FE.Token;
   export let payAmount: string;
-  export let receiveToken: string;
+  export let receiveToken: FE.Token;
   export let receiveAmount: string;
 </script>
 
@@ -13,13 +12,11 @@
     <span class="label">You Pay</span>
     <div class="amount">
       <TokenImages
-        tokens={[
-          $tokenStore.tokens?.find(t => t.symbol === payToken)
-        ]}
+        tokens={[payToken]}
         size={24}
       />
       <span class="value">{payAmount}</span>
-      <span class="token">{payToken}</span>
+      <span class="token">{payToken.symbol}</span>
     </div>
   </div>
   
@@ -27,13 +24,11 @@
     <span class="label">You Receive</span>
     <div class="amount">
       <TokenImages
-        tokens={[
-          $tokenStore.tokens?.find(t => t.symbol === receiveToken)
-        ]}
+        tokens={[receiveToken]}
         size={24}
       />
       <span class="value">{receiveAmount}</span>
-      <span class="token">{receiveToken}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
   </div>
 </div>

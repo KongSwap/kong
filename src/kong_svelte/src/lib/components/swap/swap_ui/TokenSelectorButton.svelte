@@ -1,23 +1,28 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
-  import { formattedTokens, tokenLogos } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { getTokenLogo, tokenLogoStore } from '$lib/services/tokens/tokenLogos';
 
-  interface TokenSelectorButtonProps {
-    token: string;
-    onClick: () => void;
-    disabled: boolean;
-  }
-
-  let { token, onClick, disabled }: TokenSelectorButtonProps = $props();
+  export let token: FE.Token;
+  export let onClick: () => void;
+  export let disabled: boolean;
 
   let tokenInfo: FE.Token | null = null;
-  let logoUrl = $state('/tokens/not_verified.webp');
+  let logoUrl = '/tokens/not_verified.webp';
 
-  $effect(() => {
-    tokenInfo = $formattedTokens.find(t => t.symbol === token);
-    logoUrl = tokenInfo ? $tokenLogos[tokenInfo.canister_id] || tokenInfo.logo || '/tokens/not_verified.webp' : '/tokens/not_verified.webp';
-  }); 
-
+  $: tokenInfo = $formattedTokens.find(t => t.canister_id === token?.canister_id);
+  
+  $: {
+    if (tokenInfo?.canister_id) {
+      if ($tokenLogoStore[tokenInfo.canister_id]) {
+        logoUrl = $tokenLogoStore[tokenInfo.canister_id];
+      } else {
+        getTokenLogo(tokenInfo.canister_id).then(url => {
+          if (url) logoUrl = url;
+        });
+      }
+    }
+  }
 </script>
 
 <Button
@@ -30,13 +35,14 @@
   <div class="token-button-content">
     <img
       src={logoUrl}
-      alt={token}
+      alt={tokenInfo?.symbol}
       class="token-logo"
       on:error={(e) => {
+        // @ts-ignore
         e.currentTarget.src = "/tokens/not_verified.webp";
       }}
     />
-    <span class="token-symbol">{token}</span>
+    <span class="token-symbol">{tokenInfo?.symbol}</span>
   </div>
 </Button>
 

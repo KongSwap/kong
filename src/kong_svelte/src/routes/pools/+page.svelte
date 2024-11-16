@@ -20,17 +20,6 @@
   import debounce from "lodash-es/debounce"; // Import debounce from lodash-es
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { ArrowLeftRight } from "lucide-svelte";
-  /**
-   * Derived store to create a token map for quick lookup.
-   * Automatically updates when tokenStore changes.
-   */
-  const tokenMap = derived(tokenStore, ($tokenStore) => {
-    const map = new Map<string, any>();
-    $tokenStore.tokens.forEach((token) => {
-      map.set(token.canister_id, token);
-    });
-    return map;
-  });
 
   const searchQuery = writable("");
 
@@ -53,17 +42,6 @@
     },
   );
 
-  /**
-   * Handles sorting events triggered by TableHeader components.
-   * @param {CustomEvent<{ column: string; direction: "asc" | "desc" }>} event
-   */
-  function handleSortEvent(
-    event: CustomEvent<{ column: string; direction: "asc" | "desc" }>,
-  ) {
-    const { column, direction } = event.detail;
-    sortColumnStore.set(column);
-    sortDirectionStore.set(direction);
-  }
 </script>
 
 <section class="flex min-h-[94vh] justify-center w-full">
@@ -132,7 +110,7 @@
                       </td>
                     </tr>
                   {:else}
-                    {#each $filteredSortedPools as pool (pool)}
+                    {#each $filteredSortedPools as pool (pool.id)}
                       <tr
                         class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
                         animate:flip={{ duration: 300 }}
@@ -144,7 +122,7 @@
                         >
                           <div class="flex items-center">
                             <TokenImages
-                              tokens={[$tokenMap.get(pool.address_0), $tokenMap.get(pool.address_1)]}
+                              tokens={[$tokenStore.tokens.find(t => t.canister_id === pool.address_0), $tokenStore.tokens.find(t => t.canister_id === pool.address_1)]}
                               containerClass="mr-2.5"
                             />
                             <span>{pool.symbol_0}/{pool.symbol_1}</span>
@@ -156,7 +134,7 @@
                           </div>
                         </td>
                         <td class="p-2 text-right">
-                          ${formatToNonZeroDecimal($tokenMap.get(pool.address_0)?.price ?? 0)}
+                          ${formatToNonZeroDecimal($tokenStore.prices[pool.address_0] ?? 0)}
                         </td>
                         <td class="p-2 text-right">
                           ${formatToNonZeroDecimal(pool.tvl)}

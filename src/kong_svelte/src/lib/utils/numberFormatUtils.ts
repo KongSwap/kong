@@ -20,11 +20,8 @@ export function formatTokenAmount(amount: string, decimals: number): string {
  */
 export function toMinimalUnit(amount: string, decimals: number): string {
   const bigAmount = new BigNumber(amount);
-  console.log(`BigNumber amount: ${bigAmount.toString()}`);
   const multiplier = new BigNumber(10).pow(decimals);
-  console.log(`Multiplier (10^${decimals}): ${multiplier.toString()}`);
   const minimalAmount = bigAmount.multipliedBy(multiplier).integerValue(BigNumber.ROUND_DOWN);
-  console.log(`Minimal unit amount: ${minimalAmount.toString()}`);
   return minimalAmount.toFixed(0);
 }
 

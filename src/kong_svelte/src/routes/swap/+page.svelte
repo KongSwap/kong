@@ -1,26 +1,24 @@
 <script lang="ts">
   import { t } from '$lib/services/translations';
-  import { getTokenByCanisterId, tokenStore } from '$lib/services/tokens/tokenStore';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { onMount, onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
   import { page } from '$app/stores';
-  import { isConnected } from '$lib/services/wallet/walletStore';
 
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
 
   onMount(() => {
     const unsubscribe = page.subscribe(($page) => {
-      fromToken = getTokenByCanisterId($page.url.searchParams.get('from'));
-      toToken = getTokenByCanisterId($page.url.searchParams.get('to'));
+      fromToken = tokenStore.getToken($page.url.searchParams.get('from'));
+      toToken = tokenStore.getToken($page.url.searchParams.get('to'));
     });
     return () => unsubscribe();
   });
 
   const claimTokens = async () => {
     const result = await tokenStore.claimFaucetTokens();
-    console.log('Claim result', result);
     await tokenStore.loadBalances();
   };
 
@@ -31,9 +29,13 @@
 
 <section class="flex flex-col items-center justify-center">
 
+  {#if process.env.DFX_NETWORK === 'local'}
+    <button on:click={claimTokens}>Claim Tokens</button>
+  {/if}
+
   {#if $tokenStore.tokens}
     <div class="flex justify-center mt-8 md:mt-12">
-      <Swap initialFromToken={fromToken?.symbol} initialToToken={toToken?.symbol} />
+      <Swap initialFromToken={fromToken} initialToToken={toToken} />
     </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>

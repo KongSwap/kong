@@ -41,22 +41,6 @@
       ],
       "type": "assets",
       "workspace": "kong_svelte",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
-    },
-    "kong_frontend": {
-      "dependencies": [
-        "kong_backend"
-      ],
-      "source": [
-        "src/assets",
-        "src/kong_frontend/dist"
-      ],
-      "type": "assets",
-      "workspace": "kong_frontend",
       "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
 			"metadata": [
 				{

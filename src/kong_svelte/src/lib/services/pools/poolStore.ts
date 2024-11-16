@@ -3,7 +3,7 @@ import { PoolService } from './PoolService';
 import { formatPoolData } from '$lib/utils/statsUtils';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
 import BigNumber from 'bignumber.js';
-import { UserPoolBalanceSchema } from './poolSchema';
+import { get } from 'svelte/store';
 
 interface PoolState {
   pools: BE.Pool[];
@@ -19,7 +19,7 @@ interface PoolState {
 }
 
 function createPoolStore() {
-  const CACHE_DURATION = 1000 * 60 * 1; // 1 minute cache
+  const CACHE_DURATION = 1000 * 30; // 30 second cache
   const { subscribe, set, update } = writable<PoolState>({
     pools: [],
     userPoolBalances: [],
@@ -46,62 +46,62 @@ function createPoolStore() {
   return {
     subscribe,
     loadPools: async (forceRefresh = false) => {
-      // Return cached data if available and fresh
+      // Determine if we should fetch new data
       if (!forceRefresh && !shouldRefetch() && cache.pools.size > 0) {
+        console.log('[PoolStore] Using cached pools data');
         return Array.from(cache.pools.values());
       }
 
       update(state => ({ ...state, isLoading: true, error: null }));
-      
+
       try {
-        // Load pools incrementally
         const poolsData = await PoolService.fetchPoolsData();
         if (!poolsData?.pools) {
           throw new Error('Invalid pools data received');
         }
 
-        // Process pools in chunks
-        const CHUNK_SIZE = 10;
-        const pools = poolsData.pools;
-        
-        for (let i = 0; i < pools.length; i += CHUNK_SIZE) {
-          const chunk = pools.slice(i, i + CHUNK_SIZE);
-          const formattedChunk = formatPoolData(chunk);
-          
-          // Update store with each chunk
-          update(state => ({
-            ...state,
-            pools: [...state.pools, ...formattedChunk],
-          }));
+        // Process pools data
+        const pools = formatPoolData(poolsData.pools);
 
-          // Update cache
-          formattedChunk.forEach(pool => {
-            cache.pools.set(pool.id, pool);
-          });
+        // Update cache
+        const newPoolsMap = new Map<string, BE.Pool>();
+        pools.forEach(pool => {
+          newPoolsMap.set(pool.id, pool);
+        });
 
-          // Small delay to prevent UI blocking
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-
-        // Update totals and finish loading
-        update(state => ({
+        tokenStore.update(state => ({
           ...state,
+          tokens: state.tokens.map(token => ({
+            ...token,
+            pools: pools.filter(p => p.address_0 === token.canister_id),
+            total_24h_volume: BigInt(pools.filter(p => p.address_0 === token.canister_id).reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)),
+          }))
+        }));
+
+        // Replace the entire pools array to ensure reactivity
+        set({
+          pools: pools,
+          userPoolBalances: get(poolStore).userPoolBalances, // Retain existing userPoolBalances
           totals: {
             tvl: Number(poolsData.total_tvl) / 1e6,
             rolling_24h_volume: Number(poolsData.total_24h_volume) / 1e6,
             fees_24h: Number(poolsData.total_24h_lp_fee) / 1e6
           },
           isLoading: false,
+          error: null,
           lastUpdate: Date.now()
-        }));
+        });
 
+        // Update cache
+        cache.pools = newPoolsMap;
         cache.lastFetch = Date.now();
+        console.log('[PoolStore] Pools data updated successfully');
 
       } catch (error) {
-        console.error('[PoolStore] Error:', error);
+        console.error('[PoolStore] Error loading pools:', error);
         update(state => ({
           ...state,
-          error: error.message,
+          error: error instanceof Error ? error.message : 'Unknown error',
           isLoading: false
         }));
       }
@@ -114,8 +114,14 @@ function createPoolStore() {
       }
 
       try {
+        console.log(`[PoolStore] Fetching details for pool ID: ${poolId}`);
         const pool = await PoolService.getPoolDetails(poolId);
         cache.pools.set(poolId, pool);
+        // Optionally, update the pools array if necessary
+        update(state => ({
+          ...state,
+          pools: [...state.pools.filter(p => p.id !== poolId), pool]
+        }));
         return pool;
       } catch (error) {
         console.error('[PoolStore] Error fetching pool:', error);
@@ -125,66 +131,51 @@ function createPoolStore() {
 
     loadUserPoolBalances: async () => {
       update(state => ({ ...state, isLoading: true, error: null }));
-
+      const tokens = get(tokenStore);
       try {
+        console.log('[PoolStore] Fetching user pool balances...');
         const [balances, tokenPrices] = await Promise.all([
           PoolService.fetchUserPoolBalances(),
-          tokenStore.getTokenPrices()
+          tokens.prices
         ]);
 
         if (!tokenPrices) {
           throw new Error('Token prices are not available');
         }
 
-        // Process balances in chunks
-        const CHUNK_SIZE = 5;
-        const processedBalances: FE.UserPoolBalance[] = [];
+        // Process balances
+        const processedBalances: FE.UserPoolBalance[] = balances.map(item => {
+          const key = Object.keys(item)[0];
+          const token = item[key];
+          const poolPrice = tokenPrices[`${token.symbol_0}_${token.symbol_1}`] || 
+                            tokenPrices[`${token.symbol_1}_${token.symbol_0}`];
 
-        for (let i = 0; i < balances.length; i += CHUNK_SIZE) {
-          const chunk = balances.slice(i, i + CHUNK_SIZE);
-          
-          const processedChunk = chunk
-            .map(item => {
-              const key = Object.keys(item)[0];
-              const token = item[key];
-              const poolPrice = tokenPrices[`${token.symbol_0}_${token.symbol_1}`] || 
-                              tokenPrices[`${token.symbol_1}_${token.symbol_0}`];
+          return {
+            name: `${token.symbol_0}/${token.symbol_1}`,
+            balance: new BigNumber(token.balance).toFormat(8),
+            amount_0: token.amount_0,
+            amount_1: token.amount_1,
+            symbol_0: token.symbol_0,
+            symbol_1: token.symbol_1,
+            ...item
+          };
+        });
 
-              return {
-                name: `${token.symbol_0}/${token.symbol_1}`,
-                balance: new BigNumber(token.balance).toFormat(8),
-                amount_0: token.amount_0,
-                amount_1: token.amount_1,
-                symbol_0: token.symbol_0,
-                symbol_1: token.symbol_1,
-                ...item
-              };
-            })
-            .filter(Boolean);
-
-          processedBalances.push(...processedChunk);
-
-          // Update store incrementally
-          update(state => ({
-            ...state,
-            userPoolBalances: processedBalances,
-          }));
-
-          // Prevent UI blocking
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-
+        // Update the store with processed balances
         update(state => ({
           ...state,
+          userPoolBalances: processedBalances,
           isLoading: false,
           lastUpdate: Date.now(),
+          error: null
         }));
+        console.log('[PoolStore] User pool balances updated successfully');
 
       } catch (error) {
         console.error('[PoolStore] Error loading user pool balances:', error);
         update(state => ({
           ...state,
-          error: error.message,
+          error: error instanceof Error ? error.message : 'Unknown error',
           isLoading: false,
         }));
       }
@@ -205,6 +196,7 @@ function createPoolStore() {
         error: null,
         lastUpdate: null,
       });
+      console.log('[PoolStore] Reset successful');
     }
   };
 }
@@ -221,6 +213,7 @@ export const poolsList: Readable<BE.Pool[]> = derived(poolStore, ($store, set) =
 });
 
 export const poolsLoading: Readable<boolean> = derived(poolStore, $store => $store.isLoading);
+
 export const poolsError: Readable<string | null> = derived(poolStore, $store => $store.error);
 
 // Derived store for user pool balances

@@ -3,8 +3,8 @@ import { Principal } from '@dfinity/principal';
 import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
 
 export class IcrcService {
-  private static async getActorWithCheck(canisterId: string, interfaceName: CanisterType) {
-    const actor = await getActor(canisterId, interfaceName);
+  private static async getActorWithCheck(canister_id: string, interfaceName: CanisterType) {
+    const actor = await getActor(canister_id, interfaceName);
     if (!actor) {
       throw new Error(`Actor for ${interfaceName} not available`);
     }
@@ -17,8 +17,11 @@ export class IcrcService {
   }
 
   public static async getIcrc1Balance(token: FE.Token, principal: Principal): Promise<bigint> {
+    if (!token?.canister_id) {
+      return BigInt(0);
+    }
     try {
-      const actor = await this.getActorWithCheck(token.canister_id, 'icrc1');
+      const actor = await getActor(token.canister_id, 'icrc1');
       return actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
@@ -28,9 +31,9 @@ export class IcrcService {
     }
   }
 
-  public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
+  public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
     try {
-      const actor = await getActor(canisterId, 'icrc1');
+      const actor = await getActor(canister_id, 'icrc1');
       return await actor.icrc1_metadata();
     } catch (error) {
       this.handleError('getIcrc1TokenMetadata', error);
@@ -44,15 +47,20 @@ export class IcrcService {
   ): Promise<bigint> {
     try {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
-      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000); // 1 minute from now
+      const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
       const totalAmount = payAmount + token.fee;
+
+      console.log('Approval args:', {
+        amount: totalAmount.toString(),
+        expiresAt: expiresAt.toString()
+      });
 
       const approveArgs = {
         fee: [],
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: BigInt(totalAmount),
+        amount: totalAmount,
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: { 
@@ -101,7 +109,7 @@ export class IcrcService {
       fromSubaccount?: number[];
       createdAtTime?: bigint;
     } = {}
-  ): Promise<{ Ok?: bigint; Err?: any }> {
+  ): Promise<Result<bigint>> {
     try {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc1');
       const toPrincipal = typeof to === 'string' ? Principal.fromText(to) : to;
@@ -120,16 +128,16 @@ export class IcrcService {
 
       const result = await actor.icrc1_transfer(transferArgs);
       if ('Err' in result) {
-        throw new Error(`Transfer failed: ${JSON.stringify(result.Err)}`);
+        return { Err: result.Err };
       }
-      return result;
+      return { Ok: result.Ok };
     } catch (error) {
       this.handleError('icrc1Transfer', error);
     }
   }
 
   public static async icrc2TransferFrom(
-    canisterId: string,
+    canister_id: string,
     from: Principal,
     to: Principal,
     amount: bigint,
@@ -141,7 +149,7 @@ export class IcrcService {
     } = {}
   ): Promise<{ Ok?: bigint; Err?: any }> {
     try {
-      const actor = await this.getActorWithCheck(canisterId, 'icrc2');
+      const actor = await this.getActorWithCheck(canister_id, 'icrc2');
       const transferArgs = {
         from: {
           owner: from,

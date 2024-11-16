@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Plus } from "lucide-svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
-  import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
