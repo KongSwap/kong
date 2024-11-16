@@ -407,6 +407,10 @@
   }
 
   @media (max-width: 640px) {
+    .table-container {
+      margin-top: 0.69rem;
+    }
+
     .controls-wrapper {
       @apply gap-2;
     }
