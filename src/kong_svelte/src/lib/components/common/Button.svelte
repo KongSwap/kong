@@ -220,24 +220,24 @@
   }
 
   .button-text {
-    @apply absolute inset-0 flex items-center justify-center font-alumni text-2xl uppercase select-none;
+    @apply absolute inset-0 flex items-center justify-center font-alumni text-xl uppercase select-none;
     min-width: max-content;
     padding: 0 0.875rem;
   }
 
   .small {
     @apply h-6;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 
   .medium {
     @apply h-8;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
   }
 
   .big {
     @apply h-12;
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
 
   .blue {
