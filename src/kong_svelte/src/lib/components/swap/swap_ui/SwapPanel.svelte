@@ -160,7 +160,7 @@
   $: tradeUsdValue = $tokenStore.prices[tokenInfo?.canister_id] * parsedAmount;
 </script>
 
-<Panel variant="green" width="auto" className="token-panel w-full max-w-[480px]">
+<Panel variant="green" width="auto" className="token-panel w-full max-w-[690px]">
   <div class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg">
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[2.5rem] mb-5">
