@@ -75,13 +75,13 @@
     on:click={handleClick}
   >
     <div
-      class="bg-gradient-to-br from-yellow-400/90 to-lime-400/90 p-8 rounded-t-2xl rounded-b-lg max-w-md w-full mx-4 shadow-2xl relative"
+      class="bg-gradient-to-br from-yellow-400/90 to-lime-400/90 p-8 rounded-t-2xl rounded-b-xl max-w-md w-full mx-4 shadow-2xl relative"
       transition:scale={{ duration: 400, easing: backOut }}
       on:click|stopPropagation
     >
       <!-- Progress bar -->
       <div
-        class="absolute bottom-0 left-0 h-3 bg-yellow-500 rounded-b-2xl"
+        class="absolute bottom-0 left-0 h-3 bg-yellow-500 rounded-b-xl"
         style="width: {(countdown / 5) * 100}%; transition: width 1s linear"
       />
 

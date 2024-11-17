@@ -177,7 +177,8 @@
 
 <style scoped lang="postcss">
   .pixel-button {
-    filter: grayscale(100%) opacity(50%);
+    filter: grayscale(100%);
+    transition: all 0.2s ease-in-out;
   }
 
   .image-rendering-pixelated {
@@ -185,11 +186,13 @@
   }
 
   .button-container {
-    @apply flex items-stretch w-full relative;
+    @apply relative flex items-stretch;
+    min-width: max-content;
+    margin: 0 0.25rem;
   }
 
   .button-container.auto-size {
-    @apply w-fit;
+    width: max-content;
   }
 
   .left-part,
@@ -202,19 +205,24 @@
   }
 
   .button-text {
-    @apply font-alumni text-2xl uppercase px-3.5 select-none whitespace-nowrap absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center w-auto min-w-max;
+    @apply absolute inset-0 flex items-center justify-center font-alumni text-2xl uppercase select-none;
+    min-width: max-content;
+    padding: 0 0.875rem;
   }
 
   .small {
-    @apply h-6 text-xs;
+    @apply h-6;
+    font-size: 0.75rem;
   }
 
   .medium {
-    @apply h-8 text-sm;
+    @apply h-8;
+    font-size: 0.875rem;
   }
 
   .big {
-    @apply h-12 text-base;
+    @apply h-12;
+    font-size: 1rem;
   }
 
   .blue {
@@ -225,10 +233,6 @@
     @apply text-black;
   }
 
-  .blue:hover {
-    @apply text-white font-semibold;
-  }
-
   .green .button-text {
     @apply text-white;
     text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.5);
@@ -236,6 +240,9 @@
 
   .yellow .button-text {
     @apply text-black;
-    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  }
+
+  .yellow.selected .button-text {
+    @apply text-white font-bold;
   }
 </style>
