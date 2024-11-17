@@ -17,7 +17,8 @@
   });
 
   // Helper function for number formatting
-  function formatBalance(value: string): string {
+  function formatBalance(value: string | undefined): string {
+    if (!value) return "0";
     if (!value.includes('.')) return value;
     const [whole, decimal] = value.split('.');
     return decimal.length > 5 

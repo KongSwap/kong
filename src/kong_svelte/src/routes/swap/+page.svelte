@@ -18,7 +18,7 @@
   });
 
   const claimTokens = async () => {
-    const result = await tokenStore.claimFaucetTokens();
+    await tokenStore.claimFaucetTokens();
     await tokenStore.loadBalances();
   };
 

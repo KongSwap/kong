@@ -27,6 +27,7 @@
   let isInitializing = true;
   let countdown = 2;
   let countdownInterval: NodeJS.Timeout;
+  let initialQuoteLoaded = false;
 
   onMount(async () => {
     try {
@@ -47,7 +48,9 @@
           receiveDecimals,
         );
         
-        if (quote.Ok.txs.length > 0) {
+        // Only update routing path and fees on initial load
+        if (quote.Ok.txs.length > 0 && !initialQuoteLoaded) {
+          initialQuoteLoaded = true;
           routingPath = [
             payToken.symbol,
             ...quote.Ok.txs.map((tx) => tx.receive_symbol),

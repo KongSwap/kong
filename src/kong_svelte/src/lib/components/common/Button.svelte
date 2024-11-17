@@ -2,6 +2,8 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { tooltip } from '$lib/actions/tooltip';
+  import { assetCache } from '$lib/services/assetCache';
+  import { onMount } from 'svelte';
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
   export let size: 'small' | 'medium' | 'big' = 'big';
@@ -13,12 +15,30 @@
   export let width: number | string | 'auto' = 'auto';
   export let tooltipText: string | null = null;
 
+  let cachedUrls = {
+    left: '',
+    middle: '',
+    right: ''
+  };
+
+  let mounted = false;
+
   $: {
     if (size === 'small' && variant === 'blue') {
       size = 'medium';
       console.warn('Small size is not available for blue buttons, falling back to medium');
     }
   }
+
+  $: {
+    if (disabled && state !== 'disabled') {
+      state = 'disabled';
+    } else if (!disabled && state === 'disabled') {
+      state = 'default';
+    }
+  }
+
+  $: buttonClass = `${size} ${variant} ${state === 'disabled' ? 'default' : state} ${className} pixel-button`;
 
   const prefixMap = {
     small: 'btnsmall',
@@ -35,7 +55,29 @@
   function getImagePath(part: string): string {
     const prefix = prefixMap[size];
     const middlePart = part === 'middle' ? middlePartMap[size] : part;
-    return `/pxcomponents/${prefix}-${variant}-${state}-${middlePart}.svg`;
+    return `/pxcomponents/${prefix}-${variant}-${state === 'disabled' ? 'default' : state}-${middlePart}.svg`;
+  }
+
+  async function updateCachedUrls() {
+    try {
+      const [left, middle, right] = await Promise.all([
+        assetCache.getAsset(getImagePath('l')),
+        assetCache.getAsset(getImagePath('mid')),
+        assetCache.getAsset(getImagePath('r'))
+      ]);
+      cachedUrls = { left, middle, right };
+    } catch (error) {
+      console.error('Error updating cached URLs:', error);
+    }
+  }
+
+  onMount(() => {
+    mounted = true;
+    updateCachedUrls();
+  });
+
+  $: if (mounted && (variant || size || state)) {
+    updateCachedUrls();
   }
 
   function formatDimension(value: number | string): string {
@@ -104,7 +146,6 @@
     onClick();
   }
 
-  $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''} ${className}`;
   $: formattedWidth = formatDimension(width);
 </script>
 
@@ -119,12 +160,16 @@
   data-sveltekit-preload-code="eager"
   style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
   aria-disabled={disabled}
+  class:disabled={disabled}
 >
-  <div class="button-container" class:auto-size={width === 'auto'}>
-    <img src={getImagePath('l')} alt="" class="left-part" />
-    <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
-    <img src={getImagePath('r')} alt="" class="right-part" />
-    <span class="button-text {state === 'selected' ? 'text-white font-semibold' : ''}">
+  <div class="button-container {state === 'disabled' ? 'grayscale cursor-not-allowed' : 'cursor-pointer'}" class:auto-size={width === 'auto'}>
+    <img src={cachedUrls.left} alt="" class="left-part" loading="eager" decoding="sync" />
+    <div 
+      class="middle-part" 
+      style="background-image: url({cachedUrls.middle}); image-rendering: pixelated;"
+    ></div>
+    <img src={cachedUrls.right} alt="" class="right-part" loading="eager" decoding="sync" />
+    <span class="button-text">
       <slot>{text}</slot>
     </span>
   </div>
@@ -132,7 +177,7 @@
 
 <style scoped lang="postcss">
   .pixel-button {
-    @apply relative border-none bg-none p-0 cursor-pointer inline-flex items-center justify-center transition-transform duration-100 ease-out min-w-fit;
+    filter: grayscale(100%) opacity(50%);
   }
 
   .image-rendering-pixelated {
@@ -170,10 +215,6 @@
 
   .big {
     @apply h-12 text-base;
-  }
-
-  .disabled {
-    @apply cursor-not-allowed opacity-50 pointer-events-none;
   }
 
   .blue {

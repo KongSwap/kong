@@ -1,6 +1,5 @@
 <!-- src/kong_svelte/src/routes/stats/+page.svelte -->
 <script lang="ts">
-	import grassStripeBackground from '$lib/assets/backgrounds/grass.webp';
   import { writable, derived } from "svelte/store";
   import { t } from "$lib/services/translations";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
@@ -26,6 +25,21 @@
   const sortColumnStore = writable("formattedUsdValue");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
 
+  // Loading state
+  const tokensLoading = derived(
+    [tokenStore, poolStore, formattedTokens],
+    ([$tokenStore, $poolStore, $formattedTokens]) => 
+      $tokenStore.isLoading || 
+      $poolStore.isLoading || 
+      !$formattedTokens?.length
+  );
+
+  // Error state with null check
+  const tokensError = derived(
+    [tokenStore, poolStore],
+    ([$tokenStore, $poolStore]) => $tokenStore.error || $poolStore.error
+  );
+
   // Modified filtered tokens store to handle undefined or null values
   const filteredSortedTokens = derived(
     [formattedTokens, searchQuery, sortColumnStore, sortDirectionStore],
@@ -34,24 +48,6 @@
 
       const filtered = filterTokens($formattedTokens, $searchQuery);
       return sortTableData(filtered, $sortColumn, $sortDirection);
-    }
-  );
-
-  // Loading state
-  const tokensLoading = derived(
-    [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]) => 
-      $tokenStore.isLoading || 
-      $poolStore.isLoading || 
-      !$tokenStore.tokens.length
-  );
-
-  // Error state with null check
-  const tokensError = derived(
-    [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]) => {
-      if (!$tokenStore || !$poolStore) return null;
-      return $tokenStore.error || $poolStore.error;
     }
   );
 
@@ -112,9 +108,7 @@
 
           <!-- Table Container -->
           <div class="overflow-x-scroll">
-            {#if $tokensLoading && $filteredSortedTokens.length === 0}
-              <LoadingIndicator />
-            {:else if $tokensError}
+            {#if $tokensError}
               <div class="text-center text-red-500 p-4">{$tokensError}</div>
             {:else}
               <table class="w-full text-black font-alumni">
@@ -188,12 +182,7 @@
                         {/if}
                       </tr>
                     {/each}
-                  {:else if !$tokensLoading}
-                    <tr class="border-b-2 border-black text-xl md:text-3xl">
-                      <td class="p-2 uppercase font-bold text-center" colspan="50">
-                        No results found
-                      </td>
-                    </tr>
+  
                   {/if}
 
                   {#if $tokensLoading && !$filteredSortedTokens.length}
@@ -224,7 +213,7 @@
 </section>
 
 <div class="absolute bottom-0 left-0 w-full h-[10vh] bg-gradient-to-t from-transparent to-white">
-  <img src={grassStripeBackground} class="w-full h-full object-cover" />
+  <img src="/backgrounds/grass.webp" class="w-full h-full object-cover" />
 </div>
 
 <style scoped>

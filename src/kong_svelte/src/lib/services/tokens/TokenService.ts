@@ -128,7 +128,7 @@ export class TokenService {
     tokens: FE.Token[],
   ): Promise<PromiseSettledResult<FE.Token>[]> {
     const poolData = get(poolStore);
-    const BATCH_SIZE = 10; // Process 10 tokens at a time
+    const BATCH_SIZE = 1000; // Process 10 tokens at a time
 
     const processTokenBatch = async (tokenBatch: FE.Token[]) => {
       return Promise.all(
@@ -294,10 +294,12 @@ export class TokenService {
     principalId?: string,
     forceRefresh = false,
   ): Promise<FE.TokenBalance> {
-    // Add cache check
+    // Add cache check with a 10 second TTL
     if (!forceRefresh) {
       const cachedBalance = get(tokenStore).balances[token.canister_id];
-      if (cachedBalance) {
+      const lastUpdate = get(tokenStore).lastBalanceUpdate?.[token.canister_id] || 0;
+      const now = Date.now();
+      if (cachedBalance && (now - lastUpdate) < 10000) { // 10 second cache
         return cachedBalance;
       }
     }
@@ -317,6 +319,15 @@ export class TokenService {
     const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
     const price = await this.fetchPrice(token);
     const usdValue = parseFloat(actualBalance) * price;
+
+    // Update last balance update time
+    tokenStore.update(s => ({
+      ...s,
+      lastBalanceUpdate: {
+        ...s.lastBalanceUpdate,
+        [token.canister_id]: Date.now()
+      }
+    }));
 
     return {
       in_tokens: balance || BigInt(0),
