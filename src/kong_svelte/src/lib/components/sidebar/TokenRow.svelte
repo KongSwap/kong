@@ -53,7 +53,7 @@
     <span class="balance">
       {formatBalance(token.formattedBalance)}
     </span>
-    <span class="usd-value hide-on-small">
+    <span class="usd-value">
       ${$tokenStore.balances[token.canister_id]?.in_usd}
     </span>
   </div>
@@ -96,7 +96,7 @@
   }
 
   .usd-value {
-    @apply opacity-70;
+    @apply opacity-70 text-sm;
   }
 
   @media (max-width: 400px) {
@@ -105,7 +105,7 @@
     }
     
     .token-values {
-      @apply text-xs;
+      @apply text-sm flex flex-col items-end;
     }
 
     .symbol {
@@ -114,6 +114,10 @@
 
     .token-row {
       @apply p-2;
+    }
+
+    .usd-value {
+      @apply text-[10px] opacity-60;
     }
   }
 </style>
