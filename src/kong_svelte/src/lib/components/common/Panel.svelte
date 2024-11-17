@@ -11,7 +11,7 @@
     export let height: string = "auto"; 
     export let content: string = '';
     export let className: string = '';
-    export let zIndex: number = 1000;
+    export let zIndex: number = 10;
 
     let cachedUrls: Record<string, string> = {};
 
@@ -208,10 +208,6 @@
     transition: all 0.2s ease-out;
     isolation: isolate;
     position: relative;
-  }
-
-  .glass-panel:hover {
-    transform: translateY(-1px);
   }
 
   .glass-panel.green {

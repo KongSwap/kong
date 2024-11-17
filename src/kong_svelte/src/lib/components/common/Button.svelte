@@ -274,7 +274,8 @@
 
   .glass-button.medium {
     @apply px-5 py-1 text-base tracking-wide;
-    height: 40px;
+    height: 35px;
+    font-size: larger;
   }
 
   .glass-button.big {

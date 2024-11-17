@@ -101,9 +101,9 @@
 </script>
 
 <div class="table-container">
-  <div class="controls-wrapper">
+  <div class="controls-wrapper" style="position: relative; z-index: 1;">
     <div class="controls-top">
-      <div class="mode-selector">
+      <div class="mode-selector" style="position: relative; z-index: 1;">
         <Button
           variant="yellow"
           size="medium"
@@ -199,7 +199,7 @@
       <!-- Desktop Table View -->
       <div class="table-wrapper">
         <table class="w-full">
-          <thead class="table-header">
+          <thead class="table-header" style="position: sticky; top: 0; z-index: 1;">
             <tr>
               <th class="text-left p-4 w-[22%]">
                 <button class="header-button" on:click={() => toggleSort("pool")}>
@@ -281,6 +281,8 @@
     flex-direction: column;
     gap: 0.69rem;
     padding: 0 0.69rem;
+    position: relative;
+    z-index: 1;
   }
 
   .table-wrapper {
@@ -295,15 +297,9 @@
   .table-header {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 1;
     background: var(--background-color-darker, #111111);
     backdrop-filter: blur(8px);
-  }
-
-  .table-body-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
   }
 
   .table-header::after {
@@ -404,7 +400,8 @@
   }
 
   .controls-wrapper {
-    @apply flex flex-col gap-3 w-full;
+    @apply flex flex-col gap-3 w-full relative;
+    z-index: 1;
   }
 
   .mobile-sort-controls {
@@ -577,6 +574,8 @@
     display: flex;
     gap: 8px;
     min-width: 300px;
+    position: relative;
+    z-index: 1;
   }
 
   .controls-top {

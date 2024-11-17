@@ -12,11 +12,13 @@
   import { onMount, onDestroy } from "svelte";
   import { walletStore } from '$lib/services/wallet/walletStore';
   import { liveQuery } from "dexie";
-  
+  import { browser } from '$app/environment';
+
   let activeTab: 'trade' | 'app' = 'trade';
   let soundEnabled = true;
   let settingsSubscription: () => void;
   let slippageInputValue: string;
+  let isMobile = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [0.1, 0.5, 1, 2, 3];
@@ -136,6 +138,20 @@
       }
     }
   }
+
+  function handleResize() {
+    if (browser) {
+      isMobile = window.innerWidth <= 768;
+    }
+  }
+
+  onMount(() => {
+    handleResize();
+    if (browser) {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  });
 </script>
 
 <div class="settings-container relative">
@@ -178,7 +194,7 @@
       <div class="setting-content">
         <div class="flex flex-col gap-4">
           <!-- Quick select buttons -->
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             {#each quickSlippageValues as value}
               <button
                 class="quick-select-btn"
@@ -202,18 +218,20 @@
             </div>
           </div>
 
-          <!-- Slider -->
-          <div class="flex-1">
-            <input
-              type="range"
-              min="0"
-              max="99"
-              step="0.1"
-              value={$settingsStore.max_slippage}
-              class="slippage-slider"
-              on:input={handleSlippageChange}
-            />
-          </div>
+          <!-- Slider - only show on desktop -->
+          {#if !isMobile}
+            <div class="flex-1">
+              <input
+                type="range"
+                min="0"
+                max="99"
+                step="0.1"
+                value={$settingsStore.max_slippage}
+                class="slippage-slider"
+                on:input={handleSlippageChange}
+              />
+            </div>
+          {/if}
 
           <p class="setting-description">
             Maximum allowed price difference between expected and actual swap price
@@ -372,7 +390,7 @@
 
   .quick-select-btn {
     @apply px-3 py-2 rounded-lg bg-white/5 text-white/80 
-           transition-all duration-200 flex-1 text-center
+           transition-all duration-200 text-center min-w-[60px]
            hover:bg-white/10 hover:text-white
            border border-white/10;
     font-family: 'Alumni Sans', sans-serif;
@@ -383,7 +401,7 @@
   }
 
   .custom-input-container {
-    @apply flex items-center gap-1 px-2 rounded-lg bg-white/5 border border-white/10;
+    @apply flex items-center gap-1 px-2 rounded-lg bg-white/5 border border-white/10 min-w-[80px];
   }
 
   .slippage-input {

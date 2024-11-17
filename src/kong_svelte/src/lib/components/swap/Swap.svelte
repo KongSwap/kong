@@ -409,7 +409,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: clamp(1rem, 2vw, 1.5rem);
+    padding: 0 0.5rem;
   }
 
   .mode-selector {
@@ -417,6 +417,9 @@
     gap: 0.75rem;
     margin-top: clamp(1rem, 2vw, 1.5rem);
     font-size: clamp(0.875rem, 1.5vw, 1rem);
+    @media (max-width: 768px) {
+      display: none;
+    }
   }
 
   .panels-container {
