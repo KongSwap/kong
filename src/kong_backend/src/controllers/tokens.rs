@@ -2,8 +2,10 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::TOKEN_MAP;
+use crate::stable_memory::{TOKEN_ALT_MAP, TOKEN_ARCHIVE_MAP, TOKEN_MAP};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
+use crate::stable_token::stable_token_alt::{StableTokenAlt, StableTokenIdAlt};
+use crate::stable_token::token_archive::archive_token_map;
 
 const MAX_TOKENS: usize = 1_000;
 
@@ -43,4 +45,40 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
     });
 
     Ok("Tokens updated".to_string())
+}
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_archive_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Result<String, String> {
+    TOKEN_ARCHIVE_MAP.with(|m| {
+        let map = m.borrow();
+        let tokens: BTreeMap<_, _> = match token_id {
+            Some(token_id) => {
+                let start_id = StableTokenId(token_id);
+                let num_tokens = num_tokens.map_or(1, |n| n as usize);
+                map.range(start_id..).take(num_tokens).collect()
+            }
+            None => {
+                let num_tokens = num_tokens.map_or(MAX_TOKENS, |n| n as usize);
+                map.iter().take(num_tokens).collect()
+            }
+        };
+        serde_json::to_string(&tokens).map_err(|e| format!("Failed to serialize tokens: {}", e))
+    })
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_tokens() -> Result<String, String> {
+    archive_token_map();
+
+    TOKEN_MAP.with(|token_map| {
+        for (k, v) in token_map.borrow().iter() {
+            let token_id = StableTokenIdAlt::from_stable_token_id(&k);
+            let token = StableTokenAlt::from_stable_token(&v);
+            TOKEN_ALT_MAP.with(|m| {
+                m.borrow_mut().insert(token_id, token);
+            });
+        }
+    });
+
+    Ok("Alt tokens upgraded".to_string())
 }

@@ -8,6 +8,7 @@ pub mod send_tx;
 pub mod send_tx_impl;
 #[allow(clippy::module_inception)]
 pub mod stable_tx;
+pub mod stable_tx_alt;
 pub mod status_tx;
 pub mod status_tx_impl;
 pub mod swap_tx;

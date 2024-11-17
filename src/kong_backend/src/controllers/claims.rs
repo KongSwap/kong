@@ -2,8 +2,10 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
+use crate::stable_claim::claim_archive::archive_claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
-use crate::stable_memory::CLAIM_MAP;
+use crate::stable_claim::stable_claim_alt::{StableClaimAlt, StableClaimIdAlt};
+use crate::stable_memory::{CLAIM_ALT_MAP, CLAIM_ARCHIVE_MAP, CLAIM_MAP};
 
 const MAX_CLAIMS: usize = 1_000;
 
@@ -65,4 +67,59 @@ fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> 
         map.insert(StableClaimId(claim_id), claim);
         Ok("Claim status changed".to_string())
     })
+}
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_archive_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<String, String> {
+    CLAIM_ARCHIVE_MAP.with(|m| {
+        let map = m.borrow();
+        let claims: BTreeMap<_, _> = match claim_id {
+            Some(claim_id) => {
+                let start_id = StableClaimId(claim_id);
+                let num_claims = num_claims.map_or(1, |n| n as usize);
+                map.range(start_id..).take(num_claims).collect()
+            }
+            None => {
+                let num_claims = num_claims.map_or(MAX_CLAIMS, |n| n as usize);
+                map.iter().take(num_claims).collect()
+            }
+        };
+        serde_json::to_string(&claims).map_err(|e| format!("Failed to serialize claims: {}", e))
+    })
+}
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_alt_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<String, String> {
+    CLAIM_ALT_MAP.with(|m| {
+        let map = m.borrow();
+        let claims: BTreeMap<_, _> = match claim_id {
+            Some(claim_id) => {
+                let start_id = StableClaimIdAlt(claim_id);
+                let num_claims = num_claims.map_or(1, |n| n as usize);
+                map.range(start_id..).take(num_claims).collect()
+            }
+            None => {
+                let num_claims = num_claims.map_or(MAX_CLAIMS, |n| n as usize);
+                map.iter().take(num_claims).collect()
+            }
+        };
+        serde_json::to_string(&claims).map_err(|e| format!("Failed to serialize claims: {}", e))
+    })
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_claims() -> Result<String, String> {
+    archive_claim_map();
+
+    CLAIM_MAP.with(|claim_map| {
+        for (k, v) in claim_map.borrow().iter() {
+            let claim_id = StableClaimIdAlt::from_stable_claim_id(&k);
+            let claim = StableClaimAlt::from_stable_claim(&v);
+            CLAIM_ALT_MAP.with(|m| {
+                m.borrow_mut().insert(claim_id, claim);
+            });
+        }
+    });
+
+    Ok("Alt claims upgraded".to_string())
 }
