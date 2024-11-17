@@ -4,7 +4,7 @@
     import { assetCache } from "$lib/services/assetCache";
     import { onMount } from "svelte";
 
-  export let variant: "green" | "red" = "green";
+  export let variant: "green" | "yellow" = "green";
   export let type: "main" | "secondary" = "main";
   export let width: string = "auto";
   export let height: string = "auto"; 
@@ -33,14 +33,6 @@
           br: `/pxcomponents/${prefix}-br.svg`
       };
       updateCachedUrls();
-  }
-
-  // Validate variant based on type
-  $: {
-    if (type === 'secondary' && variant === 'red') {
-      console.warn('Red variant is not available for secondary panels, falling back to green');
-      variant = 'green';
-    }
   }
 
   async function updateCachedUrls() {

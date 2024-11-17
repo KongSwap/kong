@@ -8,7 +8,7 @@
   export let show = false;
   export let title: string;
   export let onClose: () => void;
-  export let variant: "green" | "yellow" | "red" = "green";
+  export let variant: "green" | "yellow" = "green";
   export let width = "600px";
   export let height = "80vh";
 
@@ -59,7 +59,7 @@
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
       <Panel 
-        variant={variant === "red" ? "blue" : variant}
+        variant={variant}
         width={modalWidth}
         height={modalHeight}
         className="modal-panel"
