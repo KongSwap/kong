@@ -114,7 +114,7 @@
 
     try {
       swapState.setIsProcessing(true);
-      const success = SwapLogicService.executeSwap({
+      const success = await SwapLogicService.executeSwap({
         payToken: $swapState.payToken,
         payAmount: $swapState.payAmount,
         receiveToken: $swapState.receiveToken,

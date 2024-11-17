@@ -17,10 +17,15 @@ function createToastStore() {
     const addToast = (
         message: string,
         type: ToastType = 'info',
-        duration: number = 3000,
+        duration: number = 5000,
         title?: string
     ): string => {
         const id = uuidv4();
+
+        if (type === 'error') {
+            duration = duration || 8000;
+        }
+
         const toast: Toast = {
             id,
             type,

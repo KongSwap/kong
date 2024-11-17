@@ -11,15 +11,33 @@
 
   let poolsBgUrl = $state("");
   let jungleBgUrl = $state("");
+  let isChanging = $state(false);
 
-  let backgroundStyle = $derived.by(() => {
-    if (!page) return "blue-bg";
+  let background = $derived.by(() => {
+    const defaultBg = { image: 'none', color: '#5bb2cf' };
+    if (!page) return defaultBg;
+    
     if (page.includes("pools")) {
-        return `url(${poolsBgUrl})`;
+      return poolsBgUrl 
+        ? { image: `url(${poolsBgUrl})`, color: '#5bb2cf' }
+        : defaultBg;
     }
-    if (page.includes("swap")) return `url(${jungleBgUrl})`;
-    if (page.includes("stats")) return "#5bb2cf";
-    return "blue-bg";
+    if (page.includes("swap")) {
+      return jungleBgUrl
+        ? { image: `url(${jungleBgUrl})`, color: '#5bb2cf' }
+        : defaultBg;
+    }
+    if (page.includes("stats")) return { image: 'none', color: '#5bb2cf' };
+    return defaultBg;
+  });
+
+  $effect(() => {
+    if (background) {
+      isChanging = true;
+      setTimeout(() => {
+        isChanging = false;
+      }, 200);
+    }
   });
 
   onMount(async () => {
@@ -30,33 +48,30 @@
 
 <div
   class="page-wrapper"
-  style={`background: ${backgroundStyle}; background-size: cover; background-position: center center;`}
+  class:changing={isChanging}
+  style={`background-image: ${background.image}; background-color: ${background.color}`}
 >
   {@render children?.()}
 </div>
 
-<style scoped>
+<style>
   .page-wrapper {
     min-height: 100vh;
     width: 100%;
-    will-change: background-image;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-
-  .pools-bg {
-    background: #5bb2cf var(--pools-bg-url) center/cover no-repeat;
-    -webkit-background-size: cover;
     background-size: cover;
+    background-position: center center;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    opacity: 1;
   }
 
-  .jungle-bg {
-    background: #5bb2cf var(--jungle-bg-url) center/cover no-repeat;
-    -webkit-background-size: cover;
-    background-size: cover;
+  .changing {
+    animation: crossFade 0.2s ease;
   }
 
-  .blue-bg {
-    background: #5bb2cf;
+  @keyframes crossFade {
+    0% { opacity: 1; }
+    50% { opacity: 0.95; }
+    100% { opacity: 1; }
   }
 </style>

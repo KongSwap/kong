@@ -3,32 +3,27 @@
   export let totalLPFee: number;
   export let userMaxSlippage: number;
   export let receiveToken: FE.Token;
-
-  let initialTotalGasFee = totalGasFee;
-  let initialTotalLPFee = totalLPFee;
-  let initialUserMaxSlippage = userMaxSlippage;
-  let initialReceiveToken = receiveToken;
 </script>
 
 <div class="section">
   <div class="fee-row">
     <span class="label">Gas Fee</span>
     <div class="amount">
-      <span class="value">{initialTotalGasFee.toFixed(6)}</span>
-      <span class="token">{initialReceiveToken.symbol}</span>
+      <span class="value">{totalGasFee.toFixed(6)}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
   </div>
   <div class="fee-row">
     <span class="label">LP Fee</span>
     <div class="amount">
-      <span class="value">{initialTotalLPFee.toFixed(6)}</span>
-      <span class="token">{initialReceiveToken.symbol}</span>
+      <span class="value">{totalLPFee.toFixed(6)}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
   </div>
   <div class="fee-row">
     <span class="label">Max Slippage</span>
     <div class="amount">
-      <span class="value">{initialUserMaxSlippage}</span>
+      <span class="value">{userMaxSlippage}</span>
       <span class="token">%</span>
     </div>
   </div>

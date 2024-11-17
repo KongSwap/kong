@@ -87,8 +87,18 @@ export class SwapLogicService {
     swapState.setIsProcessing(true);
 
     try {
-      // Generate a unique swapId
-      const swapId = crypto.randomUUID();
+      // Create the swap in the store first
+      const swapId = swapStatusStore.addSwap({
+        payToken: params.payToken,
+        receiveToken: params.receiveToken,
+        lastPayAmount: params.payAmount,
+        expectedReceiveAmount: params.receiveAmount,
+        fees: {
+          gas: "0",
+          lp: params.lpFees[0] || "0"
+        }
+      });
+
       const result = await SwapService.executeSwap({
         ...params,
         swapId
