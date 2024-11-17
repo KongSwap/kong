@@ -409,6 +409,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    padding: clamp(1rem, 2vw, 1.5rem);
   }
 
   .mode-selector {

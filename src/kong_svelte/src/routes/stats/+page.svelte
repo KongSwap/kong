@@ -9,7 +9,7 @@
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools/poolStore";
   import { walletStore } from "$lib/services/wallet/walletStore";
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
@@ -221,10 +221,6 @@
     @apply p-3 rounded-lg bg-white/10;
   }
 
-  .stat-icon {
-    @apply w-6 h-6 text-white;
-  }
-
   .stat-content {
     @apply flex flex-col;
   }
@@ -264,10 +260,6 @@
 
   .token-cell {
     @apply flex items-center gap-3;
-  }
-
-  .token-image {
-    @apply w-8 h-8;
   }
 
   .token-info {
