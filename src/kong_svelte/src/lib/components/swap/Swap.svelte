@@ -405,15 +405,6 @@
 />
 
 <style lang="postcss">
-  .swap-wrapper {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-  }
-
   .swap-container {
     position: relative;
     display: flex;

@@ -65,24 +65,34 @@
         animatedUsdValue.set(calculatedUsdValue, { duration: 0 });
         animatedAmount.set(parseFloat(amount || "0"), { duration: 0 });
       } else {
-        animatedUsdValue.set(calculatedUsdValue, { duration: 400 });
+        // Calculate animation duration based on value change
+        const currentValue = $animatedUsdValue;
+        const valueDiff = Math.abs(calculatedUsdValue - currentValue);
+        const baseDuration = 200;
+        const maxDuration = 300;
+        const duration = Math.min(maxDuration, baseDuration + (valueDiff * 50));
+        
+        animatedUsdValue.set(calculatedUsdValue, { 
+          duration,
+          easing: cubicOut 
+        });
       }
 
       animatedSlippage.set(slippage, { duration: 0 });
   }
 
   const animatedUsdValue = tweened(0, {
-    duration: 120,
+    duration: 200,
     easing: cubicOut,
   });
 
   const animatedAmount = tweened(0, {
-    duration: 120,
+    duration: 200,
     easing: cubicOut,
   });
 
   const animatedSlippage = tweened(0, {
-    duration: 120,
+    duration: 200,
     easing: cubicOut,
   });
 
@@ -150,7 +160,7 @@
   $: tradeUsdValue = $tokenStore.prices[tokenInfo?.canister_id] * parsedAmount;
 </script>
 
-<Panel variant="green" width="auto" className="token-panel">
+<Panel variant="green" width="auto" className="token-panel w-full max-w-[480px]">
   <div class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg">
     <header>
       <div class="flex items-center justify-between gap-4 min-h-[2.5rem] mb-5">
@@ -249,14 +259,11 @@
     @apply text-red-500;
   }
 
-  @media (max-width: 400px) {
+  @media (max-width: 420px) {
     input {
       @apply text-2xl mt-[-0.15rem];
     }
 
-    .input-section {
-      @apply h-[58px] mb-0;
-    }
 
     :global(.token-panel .button-group) {
       @apply scale-90;
@@ -267,12 +274,7 @@
     @apply relative;
   }
 
-  :global(.token-panel:first-of-type::after) {
-    content: "";
-    @apply absolute bottom-[-24px] left-1/2 transform translate-x-[-50%] w-12 h-12 bg-contain bg-no-repeat bg-center z-20;
-  }
-
-  @media (max-width: 400px) {
+  @media (max-width: 420px) {
     :global(.token-panel:first-of-type::after) {
       @apply w-9 h-9 bottom-[-18px];
     }
