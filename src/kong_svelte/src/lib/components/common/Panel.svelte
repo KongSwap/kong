@@ -1,150 +1,112 @@
 <!-- Panel.svelte -->
 <script lang="ts">
     import { browser } from "$app/environment";
-<<<<<<< HEAD
     import { themeStore } from '$lib/stores/themeStore';
-=======
     import { assetCache } from "$lib/services/assetCache";
     import { onMount } from "svelte";
->>>>>>> main
 
-  export let variant: "green" | "yellow" = "green";
-  export let type: "main" | "secondary" = "main";
-  export let width: string = "auto";
-  export let height: string = "auto"; 
-  export let content: string = '';
-  export let className: string = ''; // Allow custom classes
-  export let zIndex: number = 1000;
+    export let variant: "green" | "yellow" = "green";
+    export let type: "main" | "secondary" = "main";
+    export let width: string = "auto";
+    export let height: string = "auto"; 
+    export let content: string = '';
+    export let className: string = '';
+    export let zIndex: number = 1000;
 
-  // State for cached URLs
-  let cachedUrls: Record<string, string> = {};
+    let cachedUrls: Record<string, string> = {};
 
-  // Precompute all image paths based on variant and type
-  const imageParts = ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'];
-  let imagePaths: Record<string, string> = {};
+    const imageParts = ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'];
+    let imagePaths: Record<string, string> = {};
 
-  $: {
-      const prefix = type === 'secondary' ? `panel-s-${variant}` : `panel-${variant}-${type}`;
-      imagePaths = {
-          tl: `/pxcomponents/${prefix}-tl.svg`,
-          tm: `/pxcomponents/${prefix}-tm.svg`,
-          tr: `/pxcomponents/${prefix}-tr.svg`,
-          // For secondary panels, use empty strings for middle parts since they don't exist
-          ml: type === 'secondary' ? '' : `/pxcomponents/panel-${variant}-main-ml.svg`,
-          mr: type === 'secondary' ? '' : `/pxcomponents/panel-${variant}-main-mr.svg`,
-          bl: `/pxcomponents/${prefix}-bl.svg`,
-          bm: `/pxcomponents/${prefix}-bm.svg`,
-          br: `/pxcomponents/${prefix}-br.svg`
-      };
-      updateCachedUrls();
-  }
-
-  async function updateCachedUrls() {
-    try {
-      const promises = Object.entries(imagePaths).map(async ([part, path]) => {
-        const url = await assetCache.getAsset(path);
-        return [part, url];
-      });
-      
-      const results = await Promise.all(promises);
-      cachedUrls = Object.fromEntries(results);
-    } catch (error) {
-      console.error('Error updating cached URLs:', error);
+    $: {
+        const prefix = type === 'secondary' ? `panel-s-${variant}` : `panel-${variant}-${type}`;
+        imagePaths = {
+            tl: `/pxcomponents/${prefix}-tl.svg`,
+            tm: `/pxcomponents/${prefix}-tm.svg`,
+            tr: `/pxcomponents/${prefix}-tr.svg`,
+            ml: type === 'secondary' ? '' : `/pxcomponents/panel-${variant}-main-ml.svg`,
+            mr: type === 'secondary' ? '' : `/pxcomponents/panel-${variant}-main-mr.svg`,
+            bl: `/pxcomponents/${prefix}-bl.svg`,
+            bm: `/pxcomponents/${prefix}-bm.svg`,
+            br: `/pxcomponents/${prefix}-br.svg`
+        };
+        updateCachedUrls();
     }
-  }
 
-  // Format dimension value
-  function formatDimension(value: number | string): string {
-      return value === 'auto' ? 'auto' : typeof value === 'number' ? `${value}px` : value;
-  }
+    async function updateCachedUrls() {
+        try {
+            const promises = Object.entries(imagePaths).map(async ([part, path]) => {
+                const url = await assetCache.getAsset(path);
+                return [part, url];
+            });
+            
+            const results = await Promise.all(promises);
+            cachedUrls = Object.fromEntries(results);
+        } catch (error) {
+            console.error('Error updating cached URLs:', error);
+        }
+    }
 
-  $: formattedWidth = formatDimension(width);
-  $: formattedHeight = formatDimension(height);
-  $: isAutoSize = width === 'auto' || height === 'auto';
-  $: useMainPanelCenter = type === 's';
-  $: if(browser) {
-     // set z-index of the panel
-     document.getElementById('panel')?.style.setProperty('z-index', zIndex.toString());
-  }
+    function formatDimension(value: number | string): string {
+        return value === 'auto' ? 'auto' : typeof value === 'number' ? `${value}px` : value;
+    }
 
-  onMount(() => {
-    updateCachedUrls();
-  });
+    $: formattedWidth = formatDimension(width);
+    $: formattedHeight = formatDimension(height);
+    $: isAutoSize = width === 'auto' || height === 'auto';
+    $: useMainPanelCenter = type === 's';
+    $: if(browser) {
+        document.getElementById('panel')?.style.setProperty('z-index', zIndex.toString());
+    }
+
+    onMount(() => {
+        updateCachedUrls();
+    });
 </script>
 
-<<<<<<< HEAD
 {#if $themeStore === 'pixel'}
-  <div 
-    class="panel {variant} {type} {className}"
-    style="width: {formattedWidth}; height: {formattedHeight};"
-  >
-    <div class="panel-container min-w-full" class:auto-size={isAutoSize}>
-        <!-- Top -->
-        <div class="panel-row top">
-            <img src={imagePaths.tl} alt="" class="corner top-left" />
-            <div class="edge horizontal top-middle" style="background-image: url({imagePaths.tm})"></div>
-            <img src={imagePaths.tr} alt="" class="corner top-right" />
-        </div>
+    <div 
+        class="panel {variant} {type} {className}"
+        style="width: {formattedWidth}; height: {formattedHeight};"
+    >
+        <div class="panel-container min-w-full" class:auto-size={isAutoSize}>
+            <!-- Top -->
+            <div class="panel-row top">
+                <img src={cachedUrls.tl} alt="" class="corner top-left" loading="eager" decoding="sync" />
+                <div class="edge horizontal top-middle" style="background-image: url({cachedUrls.tm}); image-rendering: pixelated;"></div>
+                <img src={cachedUrls.tr} alt="" class="corner top-right" loading="eager" decoding="sync" />
+            </div>
 
-        <!-- Middle -->
-        <div class="panel-row middle">
-            <div class="edge vertical middle-left" style="background-image: url({imagePaths.ml})"></div>
-            <div class="center-content bg-[#64AD3B] {useMainPanelCenter ? 'main-panel-center' : ''}" style="margin: -10px;">
+            <!-- Middle -->
+            <div class="panel-row middle">
+                <div class="edge vertical middle-left" style="background-image: url({cachedUrls.ml}); image-rendering: pixelated;"></div>
+                <div class="center-content bg-[#64AD3B] {useMainPanelCenter ? 'main-panel-center' : ''}" style="margin: -10px;">
+                    <slot>{content}</slot>
+                </div>
+                <div class="edge vertical middle-right" style="background-image: url({cachedUrls.mr}); image-rendering: pixelated;"></div>
+            </div>
+
+            <!-- Bottom -->
+            <div class="panel-row bottom">
+                <img src={cachedUrls.bl} alt="" class="corner bottom-left" loading="eager" decoding="sync" />
+                <div class="edge horizontal bottom-middle" style="background-image: url({cachedUrls.bm}); image-rendering: pixelated;"></div>
+                <img src={cachedUrls.br} alt="" class="corner bottom-right" loading="eager" decoding="sync" />
+            </div>  
+        </div>
+    </div>
+{:else}
+    <div 
+        id="panel"
+        class="glass-panel {variant} {type} {className}"
+        style="width: {formattedWidth}; height: {formattedHeight};"
+    >
+        <div class="glass-container min-w-full" class:auto-size={isAutoSize}>
+            <div class="glass-content">
                 <slot>{content}</slot>
             </div>
-            <div class="edge vertical middle-right" style="background-image: url({imagePaths.mr})"></div>
+            <div class="panel-light"></div>
         </div>
-
-        <!-- Bottom -->
-        <div class="panel-row bottom">
-            <img src={imagePaths.bl} alt="" class="corner bottom-left" />
-            <div class="edge horizontal bottom-middle" style="background-image: url({imagePaths.bm})"></div>
-            <img src={imagePaths.br} alt="" class="corner bottom-right" />
-        </div>  
     </div>
-=======
-<div 
-  class="panel {variant} {type} {className}"
-  style="width: {formattedWidth}; height: {formattedHeight};"
->
-  <div class="panel-container min-w-full" class:auto-size={isAutoSize}>
-      <!-- Top -->
-      <div class="panel-row top">
-          <img src={cachedUrls.tl} alt="" class="corner top-left" loading="eager" decoding="sync" />
-          <div class="edge horizontal top-middle" style="background-image: url({cachedUrls.tm}); image-rendering: pixelated;"></div>
-          <img src={cachedUrls.tr} alt="" class="corner top-right" loading="eager" decoding="sync" />
-      </div>
-
-      <!-- Middle -->
-      <div class="panel-row middle">
-          <div class="edge vertical middle-left" style="background-image: url({cachedUrls.ml}); image-rendering: pixelated;"></div>
-          <div class="center-content bg-[#64AD3B] {useMainPanelCenter ? 'main-panel-center' : ''}" style="margin: -10px;">
-              <slot>{content}</slot>
-          </div>
-          <div class="edge vertical middle-right" style="background-image: url({cachedUrls.mr}); image-rendering: pixelated;"></div>
-      </div>
-
-      <!-- Bottom -->
-      <div class="panel-row bottom">
-          <img src={cachedUrls.bl} alt="" class="corner bottom-left" loading="eager" decoding="sync" />
-          <div class="edge horizontal bottom-middle" style="background-image: url({cachedUrls.bm}); image-rendering: pixelated;"></div>
-          <img src={cachedUrls.br} alt="" class="corner bottom-right" loading="eager" decoding="sync" />
-      </div>  
->>>>>>> main
-  </div>
-{:else}
-  <div 
-    id="panel"
-    class="glass-panel {variant} {type} {className}"
-    style="width: {formattedWidth}; height: {formattedHeight};"
-  >
-    <div class="glass-container min-w-full" class:auto-size={isAutoSize}>
-      <div class="glass-content">
-        <slot>{content}</slot>
-      </div>
-      <div class="panel-light"></div>
-    </div>
-  </div>
 {/if}
 
 <style lang="postcss">

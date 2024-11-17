@@ -8,6 +8,12 @@
     export let pools: Pool[] = [];
     export let isLoading: boolean = false;
     export let error: string | null = null;
+
+    // Ensure we have valid tokens for each pool
+    $: validPools = pools.map(pool => ({
+        ...pool,
+        tokens: pool.tokens?.filter(token => token !== undefined && token !== null) ?? []
+    }));
 </script>
 
 <div class="pool-list">
@@ -28,13 +34,15 @@
                 <div class="apy-col">APY</div>
             </div>
             <div class="pool-body">
-                {#each pools as pool (pool.address)}
+                {#each validPools as pool (pool.address)}
                     <div class="pool-row" animate:flip={{ duration: 300 }}>
                         <div class="pool-col">
                             <div class="pool-info">
                                 <TokenImages tokens={pool.tokens} size={32} />
                                 <div class="pool-details">
-                                    <span class="pool-pair">{pool.tokens.map(t => t.symbol).join('/')}</span>
+                                    <span class="pool-pair">
+                                        {pool.tokens.map(t => t?.symbol ?? 'Unknown').join('/')}
+                                    </span>
                                 </div>
                             </div>
                         </div>

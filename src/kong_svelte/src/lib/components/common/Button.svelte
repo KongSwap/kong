@@ -2,12 +2,9 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { tooltip } from '$lib/actions/tooltip';
-<<<<<<< HEAD
   import { themeStore } from '$lib/stores/themeStore';
-=======
   import { assetCache } from '$lib/services/assetCache';
   import { onMount } from 'svelte';
->>>>>>> main
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
   export let size: 'small' | 'medium' | 'big' = 'big';
@@ -153,7 +150,6 @@
   $: formattedWidth = formatDimension(width);
 </script>
 
-<<<<<<< HEAD
 {#if $themeStore === 'pixel'}
   <a
     use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
@@ -166,12 +162,16 @@
     data-sveltekit-preload-code="eager"
     style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
     aria-disabled={disabled}
+    class:disabled={disabled}
   >
-    <div class="button-container" class:auto-size={width === 'auto'}>
-      <img src={getImagePath('l')} alt="" class="left-part" />
-      <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
-      <img src={getImagePath('r')} alt="" class="right-part" />
-      <span class="button-text {state === 'selected' ? 'text-white font-semibold' : ''}">
+    <div class="button-container {state === 'disabled' ? 'grayscale cursor-not-allowed' : 'cursor-pointer'}" class:auto-size={width === 'auto'}>
+      <img src={cachedUrls.left} alt="" class="left-part" loading="eager" decoding="sync" />
+      <div 
+        class="middle-part" 
+        style="background-image: url({cachedUrls.middle}); image-rendering: pixelated;"
+      ></div>
+      <img src={cachedUrls.right} alt="" class="right-part" loading="eager" decoding="sync" />
+      <span class="button-text">
         <slot>{text}</slot>
       </span>
     </div>
@@ -185,29 +185,6 @@
     use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
   >
     <span class="button-content">
-=======
-<a
-  use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
-  class={buttonClass}
-  on:click={handleClick}
-  on:mousedown={handleMouseDown}
-  on:mouseup={handleMouseUp}
-  on:mouseenter={handleMouseEnter}
-  on:mouseleave={handleMouseLeave}
-  data-sveltekit-preload-code="eager"
-  style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
-  aria-disabled={disabled}
-  class:disabled={disabled}
->
-  <div class="button-container {state === 'disabled' ? 'grayscale cursor-not-allowed' : 'cursor-pointer'}" class:auto-size={width === 'auto'}>
-    <img src={cachedUrls.left} alt="" class="left-part" loading="eager" decoding="sync" />
-    <div 
-      class="middle-part" 
-      style="background-image: url({cachedUrls.middle}); image-rendering: pixelated;"
-    ></div>
-    <img src={cachedUrls.right} alt="" class="right-part" loading="eager" decoding="sync" />
-    <span class="button-text">
->>>>>>> main
       <slot>{text}</slot>
     </span>
   </button>

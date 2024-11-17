@@ -6,7 +6,7 @@
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { walletStore } from "$lib/services/wallet/walletStore";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import { getButtonText } from "./utils";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
@@ -20,8 +20,29 @@
   import { get } from "svelte/store";
   import { writable } from 'svelte/store';
   import { SwapService } from "$lib/services/swap/SwapService";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { swapStatusStore } from "$lib/services/swap/swapStore";
+  import debounce from "lodash/debounce";
 
   const hoveredState = writable(false);
+  let currentSwapId: string | null = null;
+  let isConfirmationOpen = false;
+  let showConfirmation = false;
+  let showSuccessModal = false;
+  let successDetails: any = null;
+  let isProcessing = false;
+  let error: string | null = null;
+  let isRotating = false;
+  let rotationCount = 0;
+  let tooltipMessage = "Reverse trade";
+  let showClickTooltip = false;
+  let manuallySelectedTokens = { pay: false, receive: false };
+  let payToken: FE.Token | null = null;
+  let receiveToken: FE.Token | null = null;
+  let payAmount: string | null = null;
+  let receiveAmount: string | null = null;
+  let showReceiveTokenSelector = false;
+  let lpFees: number = 0;
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
@@ -45,12 +66,9 @@
     { id: "receive", type: "receive", title: "You Receive" },
   ];
 
-  $: userMaxSlippage = $settingsStore.max_slippage;
+  let swapMode = "normal";
 
-  let rotationCount = 0;
-  let isRotating = false;
-  let tooltipMessage = "Reverse trade";
-  let showClickTooltip = false;
+  $: userMaxSlippage = $settingsStore.max_slippage;
 
   onMount(() => {
     const init = async () => {
@@ -101,15 +119,43 @@
       return false;
     }
 
-    return SwapLogicService.executeSwap({
-      payToken: $swapState.payToken,
-      payAmount: $swapState.payAmount,
-      receiveToken: $swapState.receiveToken,
-      receiveAmount: $swapState.receiveAmount,
-      userMaxSlippage,
-      backendPrincipal: KONG_BACKEND_PRINCIPAL,
-      lpFees: $swapState.lpFees
-    });
+    swapState.setIsProcessing(true);
+    swapState.setError(null);
+
+    try {
+      // Create new swap entry and store its ID
+      let swapId = swapStatusStore.addSwap({
+        expectedReceiveAmount: $swapState.receiveAmount,
+        lastPayAmount: $swapState.payAmount,
+        payToken: $swapState.payToken,
+        receiveToken: $swapState.receiveToken,
+        payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
+      });
+
+      currentSwapId = swapId;
+
+      const success = await SwapService.executeSwap({
+        swapId,
+        payToken: $swapState.payToken,
+        payAmount: $swapState.payAmount,
+        receiveToken: $swapState.receiveToken,
+        receiveAmount: $swapState.receiveAmount,
+        userMaxSlippage,
+        backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        lpFees: $swapState.lpFees,
+      });
+
+      return success;
+    } catch (err) {
+      console.error("Swap execution error:", err);
+      toastStore.error(err instanceof Error ? err.message : "Swap failed");
+      return false;
+    } finally {
+      swapState.setPayAmount(null);
+      swapState.setReceiveAmount(null);
+      swapState.setIsProcessing(false);
+      swapState.setShowConfirmation(false);
+    }
   }
 
   async function handleAmountChange(event: CustomEvent) {
@@ -142,131 +188,57 @@
 
     // Otherwise just update the selected token
     if (panelType === 'pay') {
-      swapState.update(s => ({ ...s, payToken: token, showPayTokenSelector: false }));
+      swapState.setPayToken(token);
+      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+      if (token.canister_id) {
+        updateTokenInURL('from', token.canister_id);
+      }
     } else {
-      receiveToken = token;
-      initialToToken = token;
-      manuallySelectedTokens.receive = true;
-      showReceiveTokenSelector = false;
-      updateURL({ to: token.canister_id });
-    }
-
-    if (payAmount) debouncedGetQuote(payAmount);
-  }
-
-  onMount(() => {
-    const handleSwapSuccess = (event: CustomEvent) => {
-      // Update success details with the actual swap values
-      successDetails = {
-        payAmount: event.detail.payAmount,
-        payToken: $tokenStore.tokens.find((t) => t.symbol === event.detail.payToken),
-        receiveAmount: event.detail.receiveAmount,
-        receiveToken: $tokenStore.tokens.find((t) => t.symbol === event.detail.receiveToken),
-      };
-      tokenStore.loadPrices();
-      payAmount = null;
-      showSuccessModal = true;
-    };
-
-    window.addEventListener("swapSuccess", handleSwapSuccess);
-
-    return () => {
-      window.removeEventListener("swapSuccess", handleSwapSuccess);
-    };
-  });
-
-  async function handleSwap(): Promise<boolean> {
-    if (!isValidInput || isProcessing) {
-      return false;
-    }
-    isProcessing = true;
-    error = null;
-    try {
-      // Create new swap entry and store its ID
-      let swapId = swapStatusStore.addSwap({
-        expectedReceiveAmount: receiveAmount,
-        lastPayAmount: payAmount,
-        payToken: payToken,
-        receiveToken: receiveToken,
-        payDecimals: Number(getTokenDecimals(payToken.canister_id).toString()),
-      });
-
-      await SwapService.executeSwap({
-        swapId,
-        payToken,
-        payAmount,
-        receiveToken,
-        receiveAmount,
-        userMaxSlippage,
-        backendPrincipal: KONG_BACKEND_PRINCIPAL,
-        lpFees,
-      });
-      return true;
-    } catch (err) {
-      console.error("Swap execution error:", err);
-      toastStore.error(err instanceof Error ? err.message : "Swap failed");
-      return false;
-    } finally {
-      payAmount = null;
-      receiveAmount = null;
-      isProcessing = false;
-      isConfirmationOpen = false;
-    }
-  }
-
-  // Subscribe to quote updates for this specific swap
-  $: {
-    async function refreshQuote() {
-      const quote = await getSwapQuote(payAmount);
-      console.log("Refreshing quote display:", quote);
-      // Update only this specific swap's quote
-      if (currentSwapId) {
-        swapStatusStore.updateSwap(currentSwapId, {
-          shouldRefreshQuote: false,
-          lastQuote: quote,
-        });
+      swapState.setReceiveToken(token);
+      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
+      if (token.canister_id) {
+        updateTokenInURL('to', token.canister_id);
       }
     }
 
-    // Check if current swap needs a quote refresh
-    if (currentSwapId && $swapStatusStore[currentSwapId]?.shouldRefreshQuote) {
-      refreshQuote();
+    if ($swapState.payAmount) {
+      debouncedGetQuote($swapState.payAmount);
     }
   }
 
-  async function handleSwapClick() {
-    if (!isValidInput || isProcessing) return;
-
-    // Refresh quote before showing confirmation
-    isProcessing = true;
-    const quote = await getSwapQuote(payAmount);
-    swapStatusStore.updateSwap(currentSwapId, {
-      lastQuote: quote,
-      shouldRefreshQuote: true,
-    });
-    isProcessing = false;
-    showConfirmation = true;
-  }
-
-  // Add this effect to handle URL updates
-  $: {
-    if (!isSwitching) {
-      if (initialFromToken && !manuallySelectedTokens.pay) {
-        payToken =
-          $tokenStore.tokens.find(
-            (t) => t.canister_id === initialFromToken.canister_id,
-          ) || $tokenStore.tokens.find((t) => t.symbol === "ICP");
-      }
-      if (initialToToken && !manuallySelectedTokens.receive) {
-        receiveToken =
-          $tokenStore.tokens.find(
-            (t) => t.canister_id === initialToToken.canister_id,
-          ) || $tokenStore.tokens.find((t) => t.symbol === "ckBTC");
-      }
+  async function handleReverseTokens() {
+    if ($swapState.isProcessing) return;
+    
+    isRotating = true;
+    rotationCount++;
+    
+    const tempPayToken = $swapState.payToken;
+    const tempPayAmount = $swapState.payAmount;
+    
+    swapState.setPayToken($swapState.receiveToken);
+    swapState.setReceiveToken(tempPayToken);
+    
+    if (tempPayAmount) {
+      await swapState.setPayAmount(tempPayAmount);
     }
+    
+    // Update URL params if both tokens are present
+    if ($swapState.payToken?.canister_id && $swapState.receiveToken?.canister_id) {
+      updateTokenInURL('from', $swapState.payToken.canister_id);
+      updateTokenInURL('to', $swapState.receiveToken.canister_id);
+    }
+    
+    setTimeout(() => {
+      isRotating = false;
+    }, 300);
   }
 
-  // Add this near the top of your script, with other declarations
+  function updateTokenInURL(param: 'from' | 'to', tokenId: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(param, tokenId);
+    history.replaceState({}, '', url.toString());
+  }
+
   const debouncedGetQuote = debounce(
     async (amount: string) => {
       await getSwapQuote(amount);
@@ -300,59 +272,48 @@
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
-    <div class="panels-container relative">
-      {#each panels as panel}
-        <SwapPanel
-          title={panel.title}
-          token={panel.type === 'pay' ? $swapState.payToken : $swapState.receiveToken}
-          amount={panel.type === 'pay' ? $swapState.payAmount : $swapState.receiveAmount}
-          onAmountChange={handleAmountChange}
-          onTokenSelect={() => handleTokenSelect(panel.type)}
-          showPrice={panel.type === 'receive'}
-          slippage={$swapState.swapSlippage}
-          disabled={false}
-          panelType={panel.type}
-        />
+    <div class="mode-selector">
+      <Button
+        variant="yellow"
+        size="medium"
+        state={swapMode === "normal" ? "selected" : "default"}
+        onClick={() => (swapMode = "normal")}
+        width="50%"
+      >
+        Normal
+      </Button>
+      <Button
+        variant="yellow"
+        size="medium"
+        state="disabled"
+        onClick={() => {}}
+        width="50%"
+      >
+        Pro (Soon)
+      </Button>
+    </div>
 
-        {#if panel.type === 'pay'}
-        <div class="reverse-button-wrapper" class:rotating={isRotating}>
-          <div class="tooltip font-mono" class:show={showClickTooltip || (!isRotating && $hoveredState)}>{tooltipMessage}</div>
-          <button
-            class="reverse-button"
-            style="transform: translate(-50%, -50%) rotate({rotationCount * -360}deg)"
-            on:click={handleReverseTokens}
-            aria-label="Reverse tokens"
-            on:mouseenter={() => hoveredState.set(true)}
-            on:mouseleave={() => hoveredState.set(false)}
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="72" 
-              height="72" 
-              viewBox="0 0 24 24" 
-              fill="#FFD722" 
-              stroke="#FFD722"
-              style="pointer-events: none;"
-            >
-              <g stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <!-- Down arrow (always visible) -->
-                <path class="down-arrow" d="M12 8V20M12 20L16 16M12 20L8 16" stroke="black" stroke-width="4.5"/>
-                <path class="down-arrow" d="M12 8V20M12 20L16 16M12 20L8 16" stroke="#FFD722" stroke-width="3"/>
-                
-                <!-- Up arrow (visible on hover) -->
-                <path class="up-arrow" d="M12 16V4M12 4L16 8M12 4L8 8" stroke="black" stroke-width="4.5"/>
-                <path class="up-arrow" d="M12 16V4M12 4L16 8M12 4L8 8" stroke="#FFD722" stroke-width="3"/>
-              </g>
-            </svg>
-          </button>
+    <div class="panels-container relative">
+      {#each panels as panel (panel.id)}
+        <div class="panel-wrapper">
+          <SwapPanel
+            title={panel.title}
+            token={panel.type === 'pay' ? $swapState.payToken : $swapState.receiveToken}
+            amount={panel.type === 'pay' ? $swapState.payAmount : $swapState.receiveAmount}
+            onAmountChange={handleAmountChange}
+            onTokenSelect={() => handleTokenSelect(panel.type)}
+            showPrice={panel.type === 'receive'}
+            slippage={$swapState.swapSlippage}
+            disabled={false}
+            panelType={panel.type}
+          />
         </div>
-        {/if}
       {/each}
 
       <button
         class="switch-button"
         class:modern={$themeStore !== 'pixel'}
-        on:click={handleTokenSwitch}
+        on:click={handleReverseTokens}
         disabled={isProcessing}
         aria-label="Switch tokens"
       >
@@ -397,17 +358,17 @@
           </svg>
         {/if}
       </button>
-    </div>
 
-    <div class="swap-footer">
-      <Button
-        variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
-        disabled={isSwapButtonDisabled}
-        onClick={handleSwapClick}
-        width="100%"
-      >
-        {buttonText}
-      </Button>
+      <div class="swap-footer">
+        <Button
+          variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
+          disabled={isSwapButtonDisabled}
+          onClick={handleSwapClick}
+          width="100%"
+        >
+          {buttonText}
+        </Button>
+      </div>
     </div>
   </div>
 </div>
@@ -458,7 +419,7 @@
   onClose={() => swapState.setShowSuccessModal(false)}
 />
 
-<style scoped lang="postcss">
+<style lang="postcss">
   .swap-wrapper {
     width: 100%;
     margin: 0;
@@ -470,6 +431,12 @@
     flex-direction: column;
   }
 
+  .mode-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
   .panels-container {
     display: flex;
     flex-direction: column;
@@ -478,36 +445,26 @@
     position: relative;
   }
 
-  .reverse-button-wrapper {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 80px;
-    height: 80px;
-    transform: translate(-50%, -50%);
-    z-index: 20;
-  }
-
-  :global(.swap-panel) {
+  .panel-wrapper {
     position: relative;
-    z-index: 10;
+    z-index: 1;
   }
 
-  .reverse-button {
+  .switch-button {
     position: absolute;
     left: 50%;
     top: 50%;
-    border-radius: 50%;
-    width: 80px;
-    height: 80px;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    background: transparent;
+    border: none;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
     display: flex;
-    padding: 0.3rem;
     align-items: center;
     justify-content: center;
-    color: #FFD722;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    pointer-events: all;
+    min-width: 64px;
+    min-height: 64px;
   }
 
   .switch-button.modern {
@@ -529,8 +486,15 @@
     cursor: not-allowed;
   }
 
-  /* Modern theme specific styles */
+  .swap-arrow {
+    width: 56px;
+    height: 64px;
+    pointer-events: none;
+  }
+
   .swap-arrow.modern {
+    width: 48px;
+    height: 48px;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   }
 
@@ -544,7 +508,6 @@
     transition: all 0.3s ease;
   }
 
-  /* Hover effects for modern theme */
   .switch-button.modern:hover:not(:disabled) .arrow-background {
     fill: #ffe380;
   }
@@ -553,7 +516,6 @@
     fill: #ffc107;
   }
 
-  /* Disabled state for modern theme */
   .switch-button.modern:disabled .arrow-background {
     fill: #e0e0e0;
   }
@@ -562,7 +524,6 @@
     fill: #999999;
   }
 
-  /* Animation for modern theme */
   @keyframes rotate {
     from {
       transform: rotate(0deg);
@@ -574,23 +535,6 @@
 
   .switch-button.modern:hover:not(:disabled) .swap-arrow.modern {
     animation: rotate 0.3s ease-in-out;
-  }
-
-  @media (max-width: 480px) {
-    .switch-button.modern {
-      padding: 0.5rem;
-    }
-
-    .swap-arrow.modern {
-      width: 40px;
-      height: 40px;
-    }
-  }
-
-  .swap-arrow {
-    width: 56px;
-    height: 64px;
-    pointer-events: none;
   }
 
   @media (max-width: 480px) {
@@ -619,32 +563,19 @@
     }
   }
 
-  :global(.swap-footer) {
-    margin-top: 0;
-  }
-
-  .panel-content {
-    transform-origin: center center;
-    backface-visibility: hidden;
-  }
-
-  .mode-selector {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
   .arrow-path {
     transition: fill 0.2s ease;
   }
 
   :global([data-theme="minimal"]) .arrow-path {
     stroke-width: 2;
-    /* You can customize these styles for minimal theme */
   }
 
   :global([data-theme="pixel"]) .arrow-path {
     stroke-width: 1;
-    /* You can customize these styles for pixel theme */
+  }
+
+  .swap-footer {
+    margin-top: 1rem;
   }
 </style>

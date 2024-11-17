@@ -101,11 +101,7 @@
         </button>
       {/if}
       {#if !isMobile}
-<<<<<<< HEAD
         <div class="flex gap-6 ml-2">
-=======
-        <div class="flex gap-4 nav-buttons">
->>>>>>> main
           {#each tabs as tab}
             <Button
               text={tab.toUpperCase()}
@@ -131,17 +127,10 @@
       </div>
     </div>
 
-<<<<<<< HEAD
     <div class="col-span-2 flex gap-6 items-center justify-end mr-2">
       {#if !isMobile}
         <button
           class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
-=======
-    <div class="col-span-2 flex items-center justify-center space-x-3">
-      {#if !isMobile}
-        <button
-          class="p-2 flex items-center mt-2 justify-center transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95"
->>>>>>> main
           class:spinning={isSpinning}
           aria-label="Settings"
           on:mouseenter={() => (isSpinning = true)}
@@ -165,16 +154,14 @@
           </svg>
         </button>
 
-        <div class="flex items-center space-x-3 nav-buttons">
-          <Button
-            text="STATS"
-            variant="blue"
-            size="medium"
-            state={activeTab === "stats" ? "selected" : "default"}
-            onClick={() => handleTabChange("stats")}
-          />
+        <Button
+          text="STATS"
+          variant="blue"
+          size="medium"
+          state={activeTab === "stats" ? "selected" : "default"}
+          onClick={() => handleTabChange("stats")}
+        />
 
-<<<<<<< HEAD
         <Button
           text={$walletStore.isConnected
             ? $t("common.openDrawer")
@@ -184,18 +171,6 @@
           state={sidebarOpen ? "selected" : "default"}
           onClick={handleConnect}
         />
-=======
-          <Button
-            text={$walletStore.account?.owner
-              ? $t("common.openDrawer")
-              : $t("common.connect")}
-            variant="yellow"
-            size="medium"
-            state={sidebarOpen ? "selected" : "default"}
-            onClick={handleConnect}
-          />
-        </div>
->>>>>>> main
       {/if}
     </div>
   </div>
@@ -275,7 +250,6 @@
 </Modal>
 
 <style lang="postcss">
-<<<<<<< HEAD
   :global(.spinning) {
     animation: spin 1s linear infinite;
   }
@@ -287,13 +261,5 @@
     to {
       transform: rotate(360deg);
     }
-=======
-  :global(.nav-buttons .pixel-button:hover:not(.selected) .button-text) {
-    @apply text-black font-semibold;
-  }
-
-  :global(.nav-buttons .selected .button-text) {
-    @apply text-white font-bold;
->>>>>>> main
   }
 </style>
