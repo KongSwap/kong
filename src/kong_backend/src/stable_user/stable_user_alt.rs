@@ -3,7 +3,6 @@ use crate::ic::id::caller_principal_id;
 use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use super::stable_user::{StableUser, StableUserId};
 
@@ -65,7 +64,7 @@ pub struct StableUserAlt {
 
 impl StableUserAlt {
     pub fn from_stable_user(stable_user: &StableUser) -> Self {
-        let user_alt = json!(stable_user);
+        let user_alt = serde_json::to_value(stable_user).unwrap();
         serde_json::from_value(user_alt).unwrap()
     }
 }
