@@ -50,6 +50,7 @@
   .token-button-content {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 0 4px;
     width: 100%;
@@ -68,6 +69,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: center;
   }
 
   .selector-icon {
@@ -76,6 +78,8 @@
   }
 
   :global(.token-selector-button) {
-    width: 140px;
+    min-width: 160px;
+    width: 100%;
+    max-width: 200px;
   }
 </style>
