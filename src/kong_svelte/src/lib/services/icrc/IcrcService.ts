@@ -48,12 +48,6 @@ export class IcrcService {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
       const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
       const totalAmount = payAmount + token.fee;
-
-      console.log('Approval args:', {
-        amount: totalAmount.toString(),
-        expiresAt: expiresAt.toString()
-      });
-
       const approveArgs = {
         fee: [],
         memo: [],
@@ -67,7 +61,6 @@ export class IcrcService {
           subaccount: [] 
         }
       };
-
       const result = await actor.icrc2_approve(approveArgs);
       if ('Err' in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);

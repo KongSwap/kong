@@ -1,12 +1,15 @@
 <script lang="ts">
-  import Modal from '$lib/components/common/Modal.svelte';
-  import { tokenStore, getTokenDecimals } from '$lib/services/tokens/tokenStore';
-  import { SwapService } from '$lib/services/swap/SwapService';
-  import Button from '$lib/components/common/Button.svelte';
-  import PayReceiveSection from './confirmation/PayReceiveSection.svelte';
-  import RouteSection from './confirmation/RouteSection.svelte';
-  import FeesSection from './confirmation/FeesSection.svelte';
-  import { onMount, onDestroy } from 'svelte';
+  import Modal from "$lib/components/common/Modal.svelte";
+  import {
+    tokenStore,
+    getTokenDecimals,
+  } from "$lib/services/tokens/tokenStore";
+  import { SwapService } from "$lib/services/swap/SwapService";
+  import Button from "$lib/components/common/Button.svelte";
+  import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
+  import RouteSection from "./confirmation/RouteSection.svelte";
+  import FeesSection from "./confirmation/FeesSection.svelte";
+  import { onMount, onDestroy } from "svelte";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -19,22 +22,28 @@
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
 
-
-  let isVisible = true;
   let isLoading = false;
   let isCountingDown = false; // Added for countdown state
-  let error = '';
+  let error = "";
   let isInitializing = true;
   let countdown = 2;
   let countdownInterval: NodeJS.Timeout;
   let initialQuoteLoaded = false;
+  let initialQuoteData = {
+    routingPath: [],
+    gasFees: [],
+    lpFees: [],
+    payToken: payToken,
+    receiveToken: receiveToken,
+  };
 
   onMount(async () => {
+    cleanComponent();
     try {
       isInitializing = true;
       const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
-      
+
       const quote = await SwapService.swap_amounts(
         payToken,
         payAmountBigInt,
@@ -47,7 +56,7 @@
           quote.Ok.receive_amount,
           receiveDecimals,
         );
-        
+
         // Only update routing path and fees on initial load
         if (quote.Ok.txs.length > 0 && !initialQuoteLoaded) {
           initialQuoteLoaded = true;
@@ -55,22 +64,32 @@
             payToken.symbol,
             ...quote.Ok.txs.map((tx) => tx.receive_symbol),
           ];
-
           gasFees = [];
           lpFees = [];
 
           quote.Ok.txs.forEach((tx) => {
             const receiveDecimals = getTokenDecimals(tx.receive_symbol);
-            gasFees.push(SwapService.fromBigInt(tx.gas_fee, receiveDecimals));
-            lpFees.push(SwapService.fromBigInt(tx.lp_fee, receiveDecimals));
+            gasFees.push(
+              SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals),
+            );
+            lpFees.push(
+              SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals),
+            );
           });
+          initialQuoteData = {
+            routingPath: routingPath,
+            gasFees: gasFees,
+            lpFees: lpFees,
+            payToken: payToken,
+            receiveToken: receiveToken,
+          };
         }
       } else {
         error = quote.Err;
         setTimeout(() => onClose(), 2000);
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to get quote';
+      error = err instanceof Error ? err.message : "Failed to get quote";
       setTimeout(() => onClose(), 2000);
     } finally {
       isInitializing = false;
@@ -79,10 +98,10 @@
 
   async function handleConfirm() {
     if (isLoading || isCountingDown) return; // Prevent multiple triggers
-    
+
     isLoading = true;
-    error = '';
-    
+    error = "";
+
     try {
       const success = onConfirm();
       if (success) {
@@ -93,14 +112,16 @@
           countdown--;
           if (countdown <= 0) {
             clearInterval(countdownInterval);
-            isVisible = false;
+            cleanComponent();
             onClose();
           }
         }, 1000);
+      } else {
+        isLoading = false;
+        error = "Swap failed";
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Swap failed';
-    } finally {
+      error = err instanceof Error ? err.message : "Swap failed";
       isLoading = false;
     }
   }
@@ -109,46 +130,69 @@
     if (countdownInterval) {
       clearInterval(countdownInterval);
     }
+    cleanComponent();
   });
 
-  $: totalGasFee = calculateTotalFee(gasFees);
-  $: totalLPFee = calculateTotalFee(lpFees);
+  $: totalGasFee = calculateTotalFee(initialQuoteData.gasFees);
+  $: totalLPFee = calculateTotalFee(initialQuoteData.lpFees);
 
   function calculateTotalFee(fees: string[]): number {
-  if (!routingPath.length || !fees.length) return 0;
-  
-  return routingPath.slice(1).reduce((acc, _, i) => {
-    const token = $tokenStore.tokens.find(t => t.symbol === routingPath[i + 1]);
-    if (!token) return acc;
+    if (!routingPath.length || !fees.length) return 0;
 
-    const decimals = token.decimals || 8;
-    // Parse the fee value safely
-    const feeValue = parseFloat(fees[i]) || 0;
-    
-    try {
-      const stepFee = SwapService.fromBigInt(
-        scaleDecimalToBigInt(feeValue, decimals),
-        decimals
+    return routingPath.slice(1).reduce((acc, _, i) => {
+      const token = $tokenStore.tokens.find(
+        (t) => t.symbol === routingPath[i + 1],
       );
-      return acc + (Number(stepFee) || 0);
-    } catch (error) {
-      console.error('Error calculating fee:', error);
-      return acc;
-    }
-  }, 0);
-}
+      if (!token) return acc;
 
-function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
-  if (isNaN(decimal) || !isFinite(decimal)) return 0n;
-  
-  const scaleFactor = 10n ** BigInt(decimals);
-  const scaledValue = decimal * Number(scaleFactor);
-  // Ensure we're converting a valid number
-  return BigInt(Math.floor(Math.max(0, scaledValue)));
-}
+      const decimals = token.decimals || 8;
+      // Parse the fee value safely
+      const feeValue = parseFloat(fees[i]) || 0;
+
+      try {
+        const stepFee = SwapService.fromBigInt(
+          scaleDecimalToBigInt(feeValue, decimals),
+          decimals,
+        );
+        return acc + (Number(stepFee) || 0);
+      } catch (error) {
+        console.error("Error calculating fee:", error);
+        return acc;
+      }
+    }, 0);
+  }
+
+  function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
+    if (isNaN(decimal) || !isFinite(decimal)) return 0n;
+
+    const scaleFactor = 10n ** BigInt(decimals);
+    const scaledValue = decimal * Number(scaleFactor);
+    // Ensure we're converting a valid number
+    return BigInt(Math.floor(Math.max(0, scaledValue)));
+  }
+
+  function cleanComponent() {
+    isLoading = false;
+    isCountingDown = false;
+    countdown = 2;
+    initialQuoteLoaded = false;
+    initialQuoteData = {
+      routingPath: [],
+      gasFees: [],
+      lpFees: [],
+      payToken: payToken,
+      receiveToken: receiveToken,
+    };
+  }
 </script>
 
-<Modal show={isVisible} title="Review Swap" {onClose} variant="green" height="auto">
+<Modal
+  show={true}
+  title="Review Swap"
+  {onClose}
+  variant="green"
+  height="auto"
+>
   {#if isInitializing}
     <div class="flex justify-center items-center max-h-[100px]">
       <span class="text-white text-lg opacity-80">Getting latest price...</span>
@@ -160,14 +204,30 @@ function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
   {:else if payToken && receiveToken}
     <div class="flex flex-col h-full">
       <div class="flex flex-col gap-2 overflow-y-auto pr-1 mb-4">
-        <PayReceiveSection {payToken} {payAmount} {receiveToken} {receiveAmount} />
-        <RouteSection {routingPath} {gasFees} {lpFees} {payToken} {receiveToken} />
-        <FeesSection {totalGasFee} {totalLPFee} {userMaxSlippage} {receiveToken} />
+        <PayReceiveSection
+          {payToken}
+          {payAmount}
+          {receiveToken}
+          {receiveAmount}
+        />
+        <RouteSection
+          routingPath={initialQuoteData.routingPath}
+          gasFees={initialQuoteData.gasFees}
+          lpFees={initialQuoteData.lpFees}
+          payToken={initialQuoteData.payToken}
+          {receiveToken}
+        />
+        <FeesSection
+          {totalGasFee}
+          {totalLPFee}
+          {userMaxSlippage}
+          {receiveToken}
+        />
       </div>
-      
+
       <div class="mt-auto">
         <Button
-          text={isCountingDown ? `Processing ${countdown}...` : 'CONFIRM SWAP'}
+          text={isCountingDown ? `Processing ${countdown}...` : "CONFIRM SWAP"}
           variant="yellow"
           size="big"
           onClick={handleConfirm}

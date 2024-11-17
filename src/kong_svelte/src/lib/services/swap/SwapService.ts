@@ -310,7 +310,7 @@ export class SwapService {
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
       `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
-      0,
+      10000, // 10 seconds for swap confirmation messages
     );
 
     this.pollingInterval = setInterval(async () => {
@@ -327,7 +327,7 @@ export class SwapService {
               isProcessing: false,
               error: res.statuses.find((s) => s.includes("Failed")),
             });
-            toastStore.error(res.statuses.find((s) => s.includes("Failed")));
+            toastStore.error(res.statuses.find((s) => s.includes("Failed")), 8000); // 8 seconds for error messages
             toastStore.dismiss(toastId);
           }
 

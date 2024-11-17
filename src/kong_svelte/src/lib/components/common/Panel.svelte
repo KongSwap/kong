@@ -54,7 +54,7 @@
     $: formattedWidth = formatDimension(width);
     $: formattedHeight = formatDimension(height);
     $: isAutoSize = width === 'auto' || height === 'auto';
-    $: useMainPanelCenter = type === 's';
+    $: useMainPanelCenter = type === 'secondary';
     $: if(browser) {
         document.getElementById('panel')?.style.setProperty('z-index', zIndex.toString());
     }

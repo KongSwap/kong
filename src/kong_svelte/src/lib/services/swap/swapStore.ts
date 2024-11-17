@@ -87,6 +87,12 @@ function createSwapStatusStore() {
             status: string;
             isProcessing: boolean;
             error: string | null;
+            payToken: FE.Token;
+            receiveToken: FE.Token;
+            payDecimals: number;
+            payAmount: string | number | BigNumber;
+            receiveAmount: string | number | BigNumber;
+            receiveDecimals: number;
             lastPayAmount: string | number | BigNumber;
             expectedReceiveAmount: string | number | BigNumber;
             minReceiveAmount: string | number | BigNumber;
@@ -132,6 +138,12 @@ function createSwapStatusStore() {
                 if (updates.error !== undefined) updatedSwap.error = updates.error;
                 if (updates.shouldRefreshQuote !== undefined) updatedSwap.shouldRefreshQuote = updates.shouldRefreshQuote;
                 if (updates.lastQuote !== undefined) updatedSwap.lastQuote = updates.lastQuote;
+                if (updates.payToken !== undefined) updatedSwap.payToken = updates.payToken;
+                if (updates.receiveToken !== undefined) updatedSwap.receiveToken = updates.receiveToken;
+                if (updates.payDecimals !== undefined) updatedSwap.payDecimals = updates.payDecimals;
+                if (updates.receiveDecimals !== undefined) updatedSwap.receiveDecimals = updates.receiveDecimals;
+                if (updates.payAmount !== undefined) updatedSwap.lastPayAmount = new BigNumber(updates.payAmount);
+                if (updates.receiveAmount !== undefined) updatedSwap.expectedReceiveAmount = new BigNumber(updates.receiveAmount);
 
                 return {
                     ...swaps,

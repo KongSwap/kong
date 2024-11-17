@@ -20,6 +20,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash/debounce";
+  import { writable } from "svelte/store";
 
   let currentSwapId: string | null = null;
   let isProcessing = false;
@@ -53,7 +54,7 @@
       swapState.initializeTokens(initialFromToken, initialToToken);
     };
     init();
-    
+
     const swapSuccessHandler = (event: CustomEvent) => {
       SwapLogicService.handleSwapSuccess(event);
     };
@@ -62,89 +63,96 @@
     return () => window.removeEventListener("swapSuccess", swapSuccessHandler);
   });
 
-  $: isSwapButtonDisabled = !$walletStore.isConnected || 
-    !$swapState.payToken || 
-    !$swapState.receiveToken || 
-    !$swapState.payAmount || 
-    $swapState.isProcessing || 
+  $: isSwapButtonDisabled =
+    !$walletStore.isConnected ||
+    !$swapState.payToken ||
+    !$swapState.receiveToken ||
+    !$swapState.payAmount ||
+    $swapState.isProcessing ||
     get(swapState.isInputExceedingBalance) ||
-    ($swapState.swapSlippage > userMaxSlippage);
+    $swapState.swapSlippage > userMaxSlippage;
 
   $: buttonText = get(swapState.isInputExceedingBalance)
-    ? 'Insufficient Balance'
+    ? "Insufficient Balance"
     : $swapState.swapSlippage > userMaxSlippage
-    ? `Slippage (${$swapState.swapSlippage.toFixed(2)}%) Exceeds Limit (${userMaxSlippage}%)`
-    : getButtonText({
-        isCalculating: $swapState.isCalculating,
-        isValidInput: Boolean($swapState.payAmount),
-        isProcessing: $swapState.isProcessing,
-        error: $swapState.error,
-        swapSlippage: $swapState.swapSlippage,
-        userMaxSlippage,
-        isConnected: $walletStore.isConnected,
-        payTokenSymbol: $swapState.payToken?.symbol || '',
-        receiveTokenSymbol: $swapState.receiveToken?.symbol || ''
-      });
+      ? `Slippage (${$swapState.swapSlippage.toFixed(2)}%) Exceeds Limit (${userMaxSlippage}%)`
+      : getButtonText({
+          isCalculating: $swapState.isCalculating,
+          isValidInput: Boolean($swapState.payAmount),
+          isProcessing: $swapState.isProcessing,
+          error: $swapState.error,
+          swapSlippage: $swapState.swapSlippage,
+          userMaxSlippage,
+          isConnected: $walletStore.isConnected,
+          payTokenSymbol: $swapState.payToken?.symbol || "",
+          receiveTokenSymbol: $swapState.receiveToken?.symbol || "",
+        });
 
   async function handleSwapClick() {
     if (!$swapState.payToken || !$swapState.receiveToken) return;
-    swapState.setShowConfirmation(true);
+
+    // Reset all relevant state
+    swapState.update((state) => ({
+      ...state,
+      showConfirmation: true,
+      isProcessing: false,
+      error: null,
+      showSuccessModal: false,
+    }));
+
+    console.log("showConfirmation before:", $swapState.showConfirmation);
+
+    console.log("showConfirmation after:", $swapState.showConfirmation);
   }
 
   async function handleSwap(): Promise<boolean> {
-    if (!$swapState.payToken || !$swapState.receiveToken || !$swapState.payAmount || $swapState.isProcessing) {
+    if (
+      !$swapState.payToken ||
+      !$swapState.receiveToken ||
+      !$swapState.payAmount ||
+      $swapState.isProcessing
+    ) {
       return false;
     }
 
     swapState.setIsProcessing(true);
     swapState.setError(null);
 
-    try {
-      // Create new swap entry and store its ID
-      let swapId = swapStatusStore.addSwap({
-        expectedReceiveAmount: $swapState.receiveAmount,
-        lastPayAmount: $swapState.payAmount,
-        payToken: $swapState.payToken,
-        receiveToken: $swapState.receiveToken,
-        payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
-      });
+    // Create new swap entry and store its ID
+    let swapId = swapStatusStore.addSwap({
+      expectedReceiveAmount: $swapState.receiveAmount,
+      lastPayAmount: $swapState.payAmount,
+      payToken: $swapState.payToken,
+      receiveToken: $swapState.receiveToken,
+      payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
+    });
 
-      currentSwapId = swapId;
+    currentSwapId = swapId;
 
-      const success = await SwapService.executeSwap({
-        swapId,
-        payToken: $swapState.payToken,
-        payAmount: $swapState.payAmount,
-        receiveToken: $swapState.receiveToken,
-        receiveAmount: $swapState.receiveAmount,
-        userMaxSlippage,
-        backendPrincipal: KONG_BACKEND_PRINCIPAL,
-        lpFees: $swapState.lpFees,
-      });
+    const success = await SwapService.executeSwap({
+      swapId,
+      payToken: $swapState.payToken,
+      payAmount: $swapState.payAmount,
+      receiveToken: $swapState.receiveToken,
+      receiveAmount: $swapState.receiveAmount,
+      userMaxSlippage,
+      backendPrincipal: KONG_BACKEND_PRINCIPAL,
+      lpFees: $swapState.lpFees,
+    });
 
-      if (success) {
-        toastStore.success("Swap successful");
-        return true;
-      } else {
-        toastStore.error("Swap failed");
-        return false;
-      }
-    } catch (err) {
-      console.error("Swap execution error:", err);
-      toastStore.error(err instanceof Error ? err.message : "Swap failed");
+    if (success) {
+      toastStore.success("Swap successful");
+      return true;
+    } else {
+      toastStore.error("Swap failed");
       return false;
-    } finally {
-      swapState.setPayAmount(null);
-      swapState.setReceiveAmount(null);
-      swapState.setIsProcessing(false);
-      swapState.setShowConfirmation(false);
     }
   }
 
   async function handleAmountChange(event: CustomEvent) {
     const { value, panelType } = event.detail;
-    
-    if (panelType === 'pay') {
+
+    if (panelType === "pay") {
       await swapState.setPayAmount(value);
     } else {
       await swapState.setReceiveAmount(value);
@@ -152,19 +160,23 @@
   }
 
   function handleTokenSelect(panelType: PanelType) {
-    if (panelType === 'pay') {
-      swapState.update(s => ({ ...s, showPayTokenSelector: true }));
+    if (panelType === "pay") {
+      swapState.update((s) => ({ ...s, showPayTokenSelector: true }));
     } else {
-      swapState.update(s => ({ ...s, showReceiveTokenSelector: true }));
+      swapState.update((s) => ({ ...s, showReceiveTokenSelector: true }));
     }
   }
 
   function handleTokenSelected(token: FE.Token, panelType: PanelType) {
     const currentState = get(swapState);
-    
+
     // If selecting the same token that's in the other panel, reverse the positions
-    if ((panelType === 'pay' && token.canister_id === currentState.receiveToken?.canister_id) ||
-        (panelType === 'receive' && token.canister_id === currentState.payToken?.canister_id)) {
+    if (
+      (panelType === "pay" &&
+        token.canister_id === currentState.receiveToken?.canister_id) ||
+      (panelType === "receive" &&
+        token.canister_id === currentState.payToken?.canister_id)
+    ) {
       handleReverseTokens();
       return;
     }
@@ -362,7 +374,8 @@
   <TokenSelector
     show={true}
     onSelect={(token) => handleTokenSelected(token, "pay")}
-    onClose={() => swapState.update(s => ({ ...s, showPayTokenSelector: false }))}
+    onClose={() =>
+      swapState.update((s) => ({ ...s, showPayTokenSelector: false }))}
     currentToken={$swapState.receiveToken}
   />
 {/if}
@@ -371,7 +384,8 @@
   <TokenSelector
     show={true}
     onSelect={(token) => handleTokenSelected(token, "receive")}
-    onClose={() => swapState.update(s => ({ ...s, showReceiveTokenSelector: false }))}
+    onClose={() =>
+      swapState.update((s) => ({ ...s, showReceiveTokenSelector: false }))}
     currentToken={$swapState.payToken}
   />
 {/if}
@@ -384,12 +398,17 @@
     receiveAmount={$swapState.receiveAmount}
     gasFees={$swapState.gasFees}
     lpFees={$swapState.lpFees}
-    userMaxSlippage={userMaxSlippage}
+    {userMaxSlippage}
     routingPath={$swapState.routingPath}
     onConfirm={handleSwap}
     onClose={() => {
       swapState.setShowConfirmation(false);
-      swapState.setIsProcessing(false);
+      swapState.update((state) => ({
+        ...state,
+        showConfirmation: false,
+        isProcessing: false,
+        error: null,
+      }));
     }}
   />
 {/if}
