@@ -8,6 +8,7 @@ import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 import { toastStore } from "$lib/stores/toastStore";
 import { eventBus } from './eventBus';
 import { walletStore } from "$lib/services/wallet/walletStore";
+import { liveQuery } from "dexie";
 
 BigNumber.config({
   DECIMAL_PLACES: 36,
@@ -54,9 +55,26 @@ function createTokenStore() {
     lastTokensFetch: null,
     activeSwaps: {},
     favoriteTokens: {},
+    lastBalanceUpdate: {},
   };
 
   const store = writable<TokenState>(initialState);
+  
+  // Set up periodic balance updates
+  let balanceUpdateInterval: number;
+  
+  if (typeof window !== 'undefined') {
+    balanceUpdateInterval = window.setInterval(() => {
+      const currentStore = get(store);
+      const walletId = getCurrentWalletId();
+      if (walletId && currentStore.tokens.length > 0) {
+        loadBalances().catch(error => {
+          console.error("Error in periodic balance update:", error);
+        });
+      }
+    }, 10000); // Update every 10 seconds
+  }
+
   const getCurrentWalletId = (): string => {
     let walletId = '';
     const unsubscribe = walletStore.subscribe(($wallet) => {
@@ -182,6 +200,10 @@ function createTokenStore() {
             ...s.balances,
             [token.canister_id]: balance,
           },
+          lastBalanceUpdate: {
+            ...s.lastBalanceUpdate,
+            [token.canister_id]: Date.now(),
+          },
         }));
         return {
           in_tokens: balance.in_tokens || BigInt(0),
@@ -228,35 +250,15 @@ function createTokenStore() {
       }));
       return price;
     },
-    clearUserData: async () => {
-      const walletId = getCurrentWalletId();
-
-      await kongDB.favorite_tokens.where("wallet_id").equals(walletId).delete();
-
-      await kongDB.tokens
-        .where("timestamp")
-        .below(Date.now() + 1000 * 60 * 60 * 24)
-        .delete();
-
-      await kongDB.images
-        .where("timestamp")
-        .below(Date.now() + 1000 * 60 * 60 * 24)
-        .delete();
-
+    clearUserData: () => {
+      if (typeof window !== 'undefined' && balanceUpdateInterval) {
+        window.clearInterval(balanceUpdateInterval);
+      }
       store.update((s) => ({
-        ...s,
-        balances: {},
-        isLoading: false,
-        error: null,
-        totalValueUsd: "0.00",
-        activeSwaps: {},
-        favoriteTokens: {
-          ...s.favoriteTokens,
-          [walletId]: [],
-        },
+        ...initialState,
+        tokens: s.tokens,
       }));
     },
-
     clearCache: async () => {
       await kongDB.tokens.clear();
       await kongDB.favorite_tokens
@@ -280,44 +282,49 @@ function createTokenStore() {
       return favorites.map((f) => f.canister_id);
     },
     toggleFavorite: async (canister_id: string) => {
-      const walletId = getCurrentWalletId();
-      if (!walletId) {
-        console.warn("Cannot toggle favorite: No wallet connected");
-        return;
+      try {
+        const wallet = get(walletStore);
+        const walletId = wallet?.account?.owner?.toString() || "anonymous";
+        const store = get(tokenStore);
+        const currentFavorites = store?.favoriteTokens[walletId] || [];
+        const isFavorite = currentFavorites.includes(canister_id);
+
+        eventBus.emit("favorite-token-update", {
+          canister_id,
+          currentFavorites,
+          isFavorite,
+        });
+
+        if (isFavorite) {
+          await kongDB.favorite_tokens
+            .where(["canister_id", "wallet_id"])
+            .equals([canister_id, walletId])
+            .delete();
+          tokenStore.update((s) => ({
+            ...s,
+            favoriteTokens: {
+              ...s.favoriteTokens,
+              [walletId]: currentFavorites.filter((id) => id !== canister_id),
+            },
+          }));
+        } else {
+          await kongDB.favorite_tokens.add({
+            canister_id,
+            wallet_id: walletId,
+            timestamp: Date.now(),
+          });
+          tokenStore.update((s) => ({
+            ...s,
+            favoriteTokens: {
+              ...s.favoriteTokens,
+              [walletId]: [...currentFavorites, canister_id],
+            },
+          }));
+        }
+      } catch (error) {
+        console.error("Error toggling favorite token:", error);
+        toastStore.error("Failed to update favorite token");
       }
-
-      const currentState = get(store);
-      const currentFavorites = currentState.favoriteTokens[walletId] || [];
-      const isFavorite = currentFavorites.includes(canister_id);
-
-      console.log("Toggling favorite:", {
-        canister_id,
-        walletId,
-        currentFavorites,
-        isFavorite,
-      });
-
-      if (isFavorite) {
-        await removeFavoriteToken(canister_id, walletId);
-        store.update((s) => ({
-          ...s,
-          favoriteTokens: {
-            ...s.favoriteTokens,
-            [walletId]: currentFavorites.filter((id) => id !== canister_id),
-          },
-        }));
-      } else {
-        await saveFavoriteToken(canister_id, walletId);
-        store.update((s) => ({
-          ...s,
-          favoriteTokens: {
-            ...s.favoriteTokens,
-            [walletId]: [...currentFavorites, canister_id],
-          },
-        }));
-      }
-
-      console.log("Store state after toggle:", get(store).favoriteTokens);
     },
     isFavorite: (canister_id: string): boolean => {
       const currentState = get(store);
@@ -333,6 +340,13 @@ function createTokenStore() {
     claimFaucetTokens: async () => {
       await TokenService.claimFaucetTokens();
       await loadBalances();
+    },
+    cleanup: async () => {
+      // Cleanup any active subscriptions or connections
+      if (typeof window !== 'undefined' && balanceUpdateInterval) {
+        window.clearInterval(balanceUpdateInterval);
+      }
+      store.set(initialState);
     },
   };
 }
@@ -357,7 +371,59 @@ export const tokenStore: {
   getFavorites: (walletId?: string) => string[];
   getToken: (canister_id: string) => FE.Token | null;
   claimFaucetTokens: () => Promise<void>;
+  cleanup: () => Promise<void>;
 } = createTokenStore();
+
+const liveTokensQuery = liveQuery(async () => {
+  return await kongDB.tokens.toArray();
+});
+
+export const liveTokens: Readable<FE.Token[] | undefined> = {
+  subscribe: (run: (value: FE.Token[] | undefined) => void) => {
+    const subscription = liveTokensQuery?.subscribe(run);
+    return () => subscription?.unsubscribe();
+  }
+};
+
+export const formattedTokens = derived(
+  [tokenStore, liveTokens],
+  ([$tokenStore, $liveTokens]) => {
+    if (!$liveTokens) return [];
+    
+    const wallet = get(walletStore);
+    const walletId = wallet?.account?.owner?.toString() || "anonymous";
+    const favorites = $tokenStore?.favoriteTokens[walletId] || [];
+    
+    return $liveTokens
+      .map(token => {
+        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        const amount = toTokenDecimals(balance.toString(), token.decimals);
+        const price = $tokenStore.prices[token.canister_id] || 0;
+        const formattedBalance = amount.toFormat(token.decimals);
+        const usdValue = amount.times(price);
+        const isFavorite = favorites.includes(token.canister_id);
+
+        return {
+          ...token,
+          balance: balance.toString(),
+          formattedBalance,
+          price,
+          formattedUsdValue: formatToNonZeroDecimal(usdValue.toString()),
+          total_24h_volume: token.total_24h_volume || 0n,
+          usdValue: Number(usdValue),
+          isFavorite
+        };
+      })
+      .sort((a, b) => {
+        // Sort by favorites first
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        
+        // Then sort by USD value
+        return b.usdValue - a.usdValue;
+      });
+  }
+);
 
 export const favoriteTokens = derived(
   tokenStore,
@@ -376,7 +442,6 @@ export const favoriteTokens = derived(
 );
 
 export const portfolioValue = derived(tokenStore, ($store) => {
-  console.log("Derived portfolioValue - tokenStore:", $store);
   if (!$store?.tokens) return "0.00";
   let totalValue = 0;
 
@@ -390,57 +455,52 @@ export const portfolioValue = derived(tokenStore, ($store) => {
   return formatToNonZeroDecimal(totalValue);
 });
 
-export const formattedTokens: Readable<FE.Token[]> = derived(
-  tokenStore,
-  ($tokenStore) => {
-    const wallet = get(walletStore);
-    if (!$tokenStore || !wallet) {
-      console.error("One or more stores are not initialized.");
-      return [];
-    }
-
-    if (!$tokenStore.tokens) return [];
-
-    const walletId = wallet.account?.owner?.toString() || "anonymous";
-
-    return $tokenStore.tokens
-      .map((token) => {
-        const balance =
-          $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-        const amount = toTokenDecimals(balance.toString(), token.decimals);
-        const price = $tokenStore.prices[token.canister_id] || 0;
-
-        const formattedBalance = amount.toFormat(token.decimals);
-        const usdValue = amount.times(price);
-
-        return {
-          ...token,
-          formattedBalance,
-          formattedUsdValue: usdValue.toFormat(2),
-          price,
-          total_24h_volume: token.total_24h_volume || 0n,
-        };
-      })
-      .sort((a, b) => {
-        const aFavorite =
-          $tokenStore.favoriteTokens[walletId]?.includes(a.canister_id) ?? false;
-        const bFavorite =
-          $tokenStore.favoriteTokens[walletId]?.includes(b.canister_id) ?? false;
-
-        if (aFavorite && !bFavorite) return -1;
-        if (!aFavorite && bFavorite) return 1;
-
-        const aValue = parseFloat(a.formattedUsdValue.replace(/[^0-9.-]+/g, ""));
-        const bValue = parseFloat(b.formattedUsdValue.replace(/[^0-9.-]+/g, ""));
-        return bValue - aValue;
-      });
-  }
-);
-
 export const tokenPrices = derived(tokenStore, ($store) => $store?.prices ?? {});
 
-export const toggleFavoriteToken = (canister_id: string): void => {
-  tokenStore.toggleFavorite(canister_id);
+export const toggleFavoriteToken = async (canister_id: string) => {
+  try {
+    const wallet = get(walletStore);
+    const walletId = wallet?.account?.owner?.toString() || "anonymous";
+    const currentState = get(tokenStore);
+    const currentFavorites = currentState?.favoriteTokens[walletId] || [];
+    const isFavorite = currentFavorites.includes(canister_id);
+
+    eventBus.emit("favorite-token-update", {
+      canister_id,
+      currentFavorites,
+      isFavorite,
+    });
+
+    if (isFavorite) {
+      await kongDB.favorite_tokens
+        .where(["canister_id", "wallet_id"])
+        .equals([canister_id, walletId])
+        .delete();
+      tokenStore.update((s) => ({
+        ...s,
+        favoriteTokens: {
+          ...s.favoriteTokens,
+          [walletId]: currentFavorites.filter((id) => id !== canister_id),
+        },
+      }));
+    } else {
+      await kongDB.favorite_tokens.add({
+        canister_id,
+        wallet_id: walletId,
+        timestamp: Date.now(),
+      });
+      tokenStore.update((s) => ({
+        ...s,
+        favoriteTokens: {
+          ...s.favoriteTokens,
+          [walletId]: [...currentFavorites, canister_id],
+        },
+      }));
+    }
+  } catch (error) {
+    console.error("Error toggling favorite token:", error);
+    toastStore.error("Failed to update favorite token");
+  }
 };
 
 export const isTokenFavorite = (canister_id: string): boolean => {
@@ -455,41 +515,6 @@ export const getFavoritesForWallet = derived(tokenStore, ($store) => {
   const walletId = wallet?.account?.owner?.toString() || "anonymous";
   return $store?.favoriteTokens[walletId] || [];
 });
-
-async function saveFavoriteToken(canister_id: string, walletId: string) {
-  try {
-    const existing = await kongDB.favorite_tokens
-      .where(["canister_id", "wallet_id"])
-      .equals([canister_id, walletId])
-      .first();
-
-    if (!existing) {
-      await kongDB.favorite_tokens.add({
-        canister_id: canister_id,
-        wallet_id: walletId,
-        timestamp: Date.now(),
-      });
-    } else {
-      await kongDB.favorite_tokens
-        .where(["canister_id", "wallet_id"])
-        .equals([canister_id, walletId])
-        .modify({ timestamp: Date.now() });
-    }
-  } catch (error) {
-    console.error("Error saving favorite token:", error);
-  }
-}
-
-async function removeFavoriteToken(canister_id: string, walletId: string) {
-  try {
-    await kongDB.favorite_tokens
-      .where(["canister_id", "wallet_id"])
-      .equals([canister_id, walletId])
-      .delete();
-  } catch (error) {
-    console.error("Error removing favorite token:", error);
-  }
-}
 
 export const getTokenDecimals = (canister_id: string): number => {
   const token = tokenStore.getToken(canister_id);

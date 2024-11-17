@@ -2,8 +2,10 @@ use anyhow::Result;
 use candid::{Decode, Encode, Principal};
 use ic_agent::Agent;
 
-const KONG_BACKEND_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
-const KONG_BACKEND_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
+use super::kong_update::KongUpdate;
+
+const KONG_DATA_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
+const KONG_DATA_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
 
 #[derive(Clone)]
 pub struct KongData {
@@ -14,9 +16,9 @@ pub struct KongData {
 impl KongData {
     pub async fn new(agent: &Agent, is_mainnet: bool) -> Self {
         let canister_id = if is_mainnet {
-            Principal::from_text(KONG_BACKEND_PROD).unwrap()
+            Principal::from_text(KONG_DATA_PROD).unwrap()
         } else {
-            Principal::from_text(KONG_BACKEND_STAGING).unwrap()
+            Principal::from_text(KONG_DATA_STAGING).unwrap()
         };
         KongData {
             agent: agent.clone(),
@@ -29,12 +31,14 @@ impl KongData {
         let icrc1_name = self.agent.query(&self.canister_id, "icrc1_name").with_arg(Encode!()?).await?;
         Ok(Decode!(icrc1_name.as_slice(), String)?)
     }
+}
 
+impl KongUpdate for KongData {
     #[allow(dead_code)]
-    pub async fn archive_kong_settings(&self, kong_settings: &String) -> Result<String> {
-        let result = self
+    async fn update_kong_settings(&self, kong_settings: &str) -> Result<String> {
+        let result: Vec<u8> = self
             .agent
-            .update(&self.canister_id, "archive_kong_settings")
+            .update(&self.canister_id, "update_kong_settings")
             .with_arg(Encode!(&kong_settings)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -42,10 +46,10 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_users(&self, users: &String) -> Result<String> {
+    async fn update_users(&self, users: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "archive_users")
+            .update(&self.canister_id, "update_users")
             .with_arg(Encode!(&users)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -53,10 +57,10 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_tokens(&self, tokens: &String) -> Result<String> {
+    async fn update_tokens(&self, tokens: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "archive_tokens")
+            .update(&self.canister_id, "update_tokens")
             .with_arg(Encode!(&tokens)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -64,10 +68,10 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_pools(&self, pools: &String) -> Result<String> {
+    async fn update_pools(&self, pools: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "archive_pools")
+            .update(&self.canister_id, "update_pools")
             .with_arg(Encode!(&pools)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -75,10 +79,10 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_lp_token_ledger(&self, lp_token_ledgers: &String) -> Result<String> {
+    async fn update_lp_token_ledger(&self, lp_token_ledgers: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "archive_lp_token_ledger")
+            .update(&self.canister_id, "update_lp_token_ledger")
             .with_arg(Encode!(&lp_token_ledgers)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -86,10 +90,10 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_requests(&self, requests: &String) -> Result<String> {
+    async fn update_requests(&self, requests: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "archive_requests")
+            .update(&self.canister_id, "update_requests")
             .with_arg(Encode!(&requests)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -97,10 +101,10 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_transfers(&self, txs: &String) -> Result<String> {
+    async fn update_transfers(&self, txs: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "archive_transfers")
+            .update(&self.canister_id, "update_transfers")
             .with_arg(Encode!(&txs)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
@@ -108,8 +112,8 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn archive_txs(&self, txs: &String) -> Result<String> {
-        let result = self.agent.update(&self.canister_id, "archive_txs").with_arg(Encode!(&txs)?).await?;
+    async fn update_txs(&self, txs: &str) -> Result<String> {
+        let result = self.agent.update(&self.canister_id, "update_txs").with_arg(Encode!(&txs)?).await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
         call_result.map_err(|e| anyhow::anyhow!(e))
     }

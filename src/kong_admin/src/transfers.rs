@@ -10,7 +10,7 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use tokio_postgres::Client;
 
-use super::kong_data::KongData;
+use super::kong_update::KongUpdate;
 use super::math_helpers::round_f64;
 
 pub fn serialize_option_tx_id(tx_id: Option<&TxId>) -> serde_json::Value {
@@ -118,7 +118,7 @@ pub async fn dump_transfers(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) 
     Ok(())
 }
 
-pub async fn archive_transfers(kong_data: &KongData) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_transfers<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"transfers.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?
@@ -147,7 +147,7 @@ pub async fn archive_transfers(kong_data: &KongData) -> Result<(), Box<dyn std::
         let mut reader = BufReader::new(file);
         let mut contents = String::new();
         reader.read_to_string(&mut contents)?;
-        kong_data.archive_transfers(&contents).await?;
+        kong_data.update_transfers(&contents).await?;
     }
 
     Ok(())

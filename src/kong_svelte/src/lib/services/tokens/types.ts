@@ -8,6 +8,7 @@ export interface TokenState {
   lastTokensFetch: number | null;
   activeSwaps: Record<string, any>;
   favoriteTokens: Record<string, string[]>;
+  lastBalanceUpdate: Record<string, number>;
 }
 
 export interface FavoriteToken {

@@ -1,9 +1,9 @@
-use crate::ic::get_time::get_time;
-use crate::ic::id::caller_principal_id;
-use candid::{CandidType, Decode, Encode};
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
+
+use crate::ic::get_time::get_time;
+use crate::ic::id::caller_principal_id;
 
 // reserved user ids
 // 0: all users - users for stable_messages to broadcast to all users
@@ -80,11 +80,11 @@ impl Default for StableUser {
 
 impl Storable for StableUser {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
     // unbounded size

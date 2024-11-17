@@ -2,11 +2,13 @@
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
   import Panel from './Panel.svelte';
+  import { fade, scale } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
 
   export let show = false;
   export let title: string;
   export let onClose: () => void;
-  export let variant: "green" | "yellow" | "red" = "green";
+  export let variant: "green" | "yellow" = "green";
   export let width = "600px";
   export let height = "80vh";
 
@@ -48,14 +50,16 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
+    transition:fade={{ duration: 200 }}
   >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div 
       class="modal-container"
       on:click|stopPropagation
+      transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
     >
       <Panel 
-        variant={variant === "red" ? "blue" : variant}
+        variant={variant}
         width={modalWidth}
         height={modalHeight}
         className="modal-panel"
@@ -108,10 +112,12 @@
     display: grid;
     place-items: center;
     overflow: hidden;
+    will-change: opacity;
   }
 
   .modal-container {
     position: relative;
+    will-change: transform;
   }
 
   .modal-content {

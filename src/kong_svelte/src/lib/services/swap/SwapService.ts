@@ -309,7 +309,7 @@ export class SwapService {
     let attempts = 0;
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
-      `Confirming swap of ${swapStatus?.lastPayAmount} ${swapStatus?.payToken.symbol} to ${swapStatus?.expectedReceiveAmount} ${swapStatus?.receiveToken.symbol}...`,
+      `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
       0,
     );
 

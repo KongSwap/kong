@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Copy local environment-specific canister and dfx configuration
-cp ../../canister_ids_staging.json ../../canister_ids.json
-cp ../../dfx_staging.json ../../dfx.json
+cp ../../canister_ids_local.json ../../canister_ids.json
+cp ../../dfx_local.json ../../dfx.json
 cp ../../.env_local ../../.env
 
 # Copy local-specific asset and domain files

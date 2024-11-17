@@ -1,8 +1,7 @@
-use candid::{CandidType, Decode, Encode};
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 use crate::ic::{
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
@@ -95,13 +94,12 @@ impl Default for StableKongSettings {
 
 impl Storable for StableKongSettings {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        // if any error occurs saving, use the default StableKongSettings
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
         // if any error occurs retreiving the StableKongSettings, use the default
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap_or_default()
     }
 
     // unbounded size

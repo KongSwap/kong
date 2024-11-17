@@ -11,7 +11,7 @@ fn backup_kong_settings() -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_kong_settings(kong_settings: String) -> Result<String, String> {
+fn update_kong_settings(kong_settings: String) -> Result<String, String> {
     let kong_settings: StableKongSettings = match serde_json::from_str(&kong_settings) {
         Ok(kong_settings) => kong_settings,
         Err(e) => return Err(format!("Invalid Kong settings: {}", e)),
@@ -22,5 +22,5 @@ fn archive_kong_settings(kong_settings: String) -> Result<String, String> {
         _ = map.set(kong_settings);
     });
 
-    Ok("Kong settings archived".to_string())
+    Ok("Kong settings updated".to_string())
 }

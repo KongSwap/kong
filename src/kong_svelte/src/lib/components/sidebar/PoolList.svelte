@@ -1,11 +1,20 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { walletStore } from "$lib/services/wallet/walletStore";
-    import { poolStore } from "$lib/services/pools/poolStore";
+  import { poolStore } from "$lib/services/pools/poolStore";
+
+  // Accept pools prop for live data
+  export let pools: any[] = [];
 
   let loading = true;
   let error: string | null = null;
   let poolBalances: FE.UserPoolBalance[] = [];
+
+  // Process pools data when it changes
+  let processedPools = pools.map(pool => ({
+    ...pool,
+    balance: $poolStore.userPoolBalances.find(b => b.name === pool.name)?.balance || "0"
+  }));
 
   async function loadPoolBalances() {
     try {
@@ -21,38 +30,46 @@
     }
   }
 
-  // Load balances on mount and when wallet changes
-  $: if ($walletStore.isConnected) {
-    loadPoolBalances();
-  }
-
   onMount(() => {
     if ($walletStore.isConnected) {
       loadPoolBalances();
     }
   });
+
+  $: if ($walletStore.isConnected) {
+    loadPoolBalances();
+  }
 </script>
 
-<div class="space-y-4">
-  <h3 class="text-lg font-medium text-white">Your Liquidity Positions</h3>
-  {#if loading}
-    <div class="text-white/50">Loading...</div>
+<div class="pool-list">
+  {#if loading && processedPools.length === 0}
+    <div class="loading">Loading pools...</div>
   {:else if error}
-    <div class="text-red-400">{error}</div>
-  {:else if poolBalances.length === 0}
-    <div class="text-white/50">No LP positions found</div>
+    <div class="error">{error}</div>
+  {:else if processedPools.length === 0}
+    <div class="empty">No LP positions found</div>
   {:else}
-    {#each poolBalances as pool}
-      <div class="bg-white/5 rounded-lg p-4 space-y-2">
+    {#each processedPools as pool (pool.id)}
+      <div class="pool-item">
         <div class="flex justify-between items-center">
           <span class="text-white font-medium">{pool.name}</span>
           <span class="text-white/80">{pool.balance} LP</span>
-        </div>
-        <div class="flex justify-between items-center text-sm">
-          <span class="text-white/60">{pool.amount_0} {pool.symbol_0}</span>
-          <span class="text-white/60">{pool.amount_1} {pool.symbol_1}</span>
         </div>
       </div>
     {/each}
   {/if}
 </div>
+
+<style lang="postcss">
+  .pool-list {
+    @apply flex flex-col gap-2;
+  }
+
+  .pool-item {
+    @apply flex justify-between items-center p-2 bg-gray-800 rounded;
+  }
+
+  .loading, .error, .empty {
+    @apply text-center p-4 text-gray-200;
+  }
+</style>

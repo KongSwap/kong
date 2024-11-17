@@ -1,20 +1,52 @@
 <script lang="ts">
   import LanguageSelector from "../common/LanguageSelector.svelte";
+  import Slider from "../common/Slider.svelte";
+  import Toggle from "../common/Toggle.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
+<<<<<<< HEAD
   import { onMount } from "svelte";
   import { writable } from 'svelte/store';
   import { themeStore } from '$lib/stores/themeStore';
 
+=======
+  import { kongDB, KongDB } from '$lib/services/db';
+  import Dexie from 'dexie';
+  import { assetCache } from '$lib/services/assetCache';
+  import { onMount, onDestroy } from "svelte";
+  import { walletStore } from '$lib/services/wallet/walletStore';
+  import { liveQuery } from "dexie";
+  
+>>>>>>> main
   let activeTab: 'trade' | 'app' = 'trade';
+  let soundEnabled = true;
+  let settingsSubscription: () => void;
 
-  function updateSliderBackground(value: number) {
-    const percent = (value / 99) * 100;
-    const sliderElement = document.querySelector('.slippage-slider') as HTMLElement;
-    if (sliderElement) {
-      sliderElement.style.setProperty('--value-percent', `${percent}%`);
+  // Subscribe to settings changes using liveQuery
+  const settings = liveQuery(async () => {
+    return await kongDB.settings.toArray();
+  });
+
+  // Cleanup subscription on component destroy
+  onDestroy(() => {
+    if (settingsSubscription) {
+      settingsSubscription();
     }
+  });
+
+  // Subscribe to settings changes
+  $: if ($settings) {
+    const currentSettings = $settings[0];
+    if (currentSettings) {
+      soundEnabled = currentSettings.sound_enabled;
+      // Update the settings store
+      settingsStore.set(currentSettings);
+    }
+  }
+
+  $: if ($settingsStore) {
+    soundEnabled = $settingsStore.sound_enabled;
   }
 
   function handleSlippageChange(e: Event) {
@@ -22,7 +54,6 @@
     const boundedValue = Math.min(Math.max(value, 0), 99);
     if (!isNaN(boundedValue)) {
       settingsStore.updateSetting('max_slippage', boundedValue);
-      updateSliderBackground(boundedValue);
     }
   }
 
@@ -35,8 +66,15 @@
     }
   }
 
-  function toggleSound() {
-    settingsStore.updateSetting('sound_enabled', !$settingsStore.sound_enabled);
+  function handleToggleSound(event: CustomEvent<boolean>) {
+    if ($walletStore.isConnected) {
+      settingsStore.updateSetting('sound_enabled', event.detail);
+      soundEnabled = event.detail;
+    } else {
+      toastStore.error('Please connect your wallet to save settings');
+      // Revert the toggle
+      event.preventDefault();
+    }
   }
 
   async function clearFavorites() {
@@ -44,6 +82,7 @@
     await tokenStore.loadTokens(true);
   }
 
+<<<<<<< HEAD
   function toggleTheme() {
     $themeStore = $themeStore === 'pixel' ? 'glass' : 'pixel';
   }
@@ -53,6 +92,57 @@
   });
 
   $: $settingsStore.max_slippage && updateSliderBackground($settingsStore.max_slippage);
+=======
+  async function resetDatabase() {
+    if (confirm('Are you sure you want to reset the database? This will clear all cached data.')) {
+      try {
+        // Unsubscribe from all live queries
+        if (settingsSubscription) {
+          settingsSubscription();
+        }
+        
+        // Close all database connections
+        await Promise.all([
+          kongDB.close(),
+          // Add any other stores that need cleanup
+          tokenStore.cleanup && tokenStore.cleanup(),
+        ]);
+        
+        // Delete the database
+        await Dexie.delete('kong_db');
+        
+        // Clear asset cache
+        await assetCache.clearCache();
+        
+        toastStore.success('Database and asset cache reset successfully. Reloading...');
+        
+        // Force reload the page immediately
+        window.location.reload();
+      } catch (error) {
+        console.error('Error resetting database:', error);
+        toastStore.error('Failed to reset database');
+        
+        // Try to reopen the database in case of error
+        try {
+          await kongDB.open();
+        } catch (reopenError) {
+          console.error('Error reopening database:', reopenError);
+          // Force reload if we can't recover
+          window.location.reload();
+        }
+      }
+    }
+  }
+  
+  $: if ($settingsStore.max_slippage !== undefined) {
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', {
+      value: { value: $settingsStore.max_slippage.toString() },
+      enumerable: true
+    });
+    handleSlippageChange(event);
+  }
+>>>>>>> main
 </script>
 
 <div class="settings-container relative">
@@ -93,6 +183,7 @@
         <h3>Slippage Settings</h3>
       </div>
       <div class="setting-content">
+<<<<<<< HEAD
         <div class="flex flex-col gap-4">
           <!-- Quick select buttons -->
           <div class="flex gap-2">
@@ -139,6 +230,23 @@
             </div>
           </div>
 
+=======
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="setting-label">Max Slippage</span>
+            <span class="text-white/90 font-medium">%</span>
+          </div>
+          <Slider
+            bind:value={$settingsStore.max_slippage}
+            min={0}
+            max={99}
+            step={1}
+            color="yellow"
+            showInput={true}
+            on:input={handleSlippageChange}
+            on:change={handleSlippageRelease}
+          />
+>>>>>>> main
           <p class="setting-description">
             Maximum allowed price difference between expected and actual swap price
           </p>
@@ -205,17 +313,42 @@
       </div>
       <div class="setting-content">
         <div class="flex items-center justify-between">
-          <span class="setting-label">Sound Effects</span>
+          <span class="setting-label">Enable Sound</span>
+          <Toggle
+            checked={soundEnabled}
+            color="yellow"
+            on:change={handleToggleSound}
+            disabled={!$walletStore.isConnected}
+          />
+        </div>
+        <p class="setting-description">
+          Toggle sound effects for notifications and interactions
+        </p>
+      </div>
+    </div>
+
+    <!-- Database Section -->
+    <div class="setting-section z-1">
+      <div class="setting-header">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/>
+          <path d="M3 5V19A9 3 0 0 0 21 19V5"/>
+          <path d="M3 12A9 3 0 0 0 21 12"/>
+        </svg>
+        <h3>Database Settings</h3>
+      </div>
+      <div class="setting-content">
+        <div class="flex items-center justify-between">
+          <span class="setting-label">Reset Database</span>
           <button
-            class="toggle-button"
-            class:active={$settingsStore.sound_enabled}
-            on:click={toggleSound}
+            class="clear-button"
+            on:click={resetDatabase}
           >
-            <div class="toggle-slider" />
+            Reset
           </button>
         </div>
         <p class="setting-description">
-          Enable or disable sound effects throughout the application
+          Reset the local database and clear all cached data
         </p>
       </div>
     </div>
@@ -265,7 +398,7 @@
   </div>
 </div>
 
-<style lang="postcss">
+<style lang="postcss" scoped>
   .settings-container {
     @apply flex flex-col gap-6 p-2;
   }
@@ -337,45 +470,25 @@
     font-family: system-ui, -apple-system, sans-serif;
   }
 
-  .toggle-button {
-    @apply relative w-14 h-8 rounded-full bg-white/10 p-1 duration-300 ease-in-out;
-  }
-
-  .toggle-button.active {
-    @apply bg-yellow-400;
-  }
-
-  .toggle-slider {
-    @apply w-6 h-6 rounded-full bg-white shadow-lg transform duration-300 ease-in-out;
-  }
-
-  .toggle-button.active .toggle-slider {
-    @apply translate-x-6;
-  }
-
   .version-info {
     @apply mt-4 text-center text-white/40 text-sm;
     font-family: monospace;
   }
 
-  .toggle-button:hover {
-    @apply bg-white/20;
+  .clear-button {
+    @apply px-4 py-2 rounded-lg bg-red-600/70 text-red-100 
+           hover:bg-red-600/90 transition-all duration-200
+           border border-red-500/30 hover:border-red-500/50;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.7rem;
   }
 
-  .toggle-button.active:hover {
-    @apply bg-yellow-500;
+  .clear-button:hover {
+    transform: translateY(-1px);
   }
 
-  .toggle-button:focus {
-    @apply outline-none ring-2 ring-yellow-400 ring-opacity-50;
-  }
-
-  svg {
-    @apply transition-transform duration-300;
-  }
-
-  .setting-section:hover svg {
-    @apply scale-110;
+  .clear-button:active {
+    transform: translateY(0px);
   }
 
   @media (max-width: 640px) {
@@ -400,6 +513,7 @@
       @apply w-3 h-3;
     }
   }
+<<<<<<< HEAD
 
   .clear-button {
     @apply px-4 py-2 rounded-lg bg-red-600/70 text-red-100 
@@ -482,3 +596,6 @@
     @apply bg-yellow-400/20 text-yellow-400 border-yellow-400/30;
   }
 </style> 
+=======
+</style>
+>>>>>>> main

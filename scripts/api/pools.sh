@@ -9,8 +9,8 @@ fi
 
 KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
-dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(null)' | jq
-#dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "all")' | jq
+#dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(null)' | jq
+dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "all")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "ICP_ckUSDT")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.ckETH_IC.ckUSDT")' | jq
 #dfx canister call ${NETWORK} ${KONG_CANISTER} pools --output json '(opt "IC.ckUSDT_IC.ckUSDT")' | jq
