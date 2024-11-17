@@ -109,8 +109,7 @@
         <div class="flex items-center px-4 rounded-lg transition-all duration-100 hover:bg-white/5">
           <button
             class="flex-1 py-2 bg-transparent border-none cursor-pointer transition-all duration-100 text-left
-                   hover:translate-x-1 min-w-0
-                   {token.canister_id === currentToken?.canister_id ? 'opacity-50 cursor-not-allowed hover:translate-x-0' : ''}"
+                   hover:translate-x-1 min-w-0"
             on:click={() => handleSelect(token)}
             role="option"
             aria-selected={token.canister_id === currentToken?.canister_id}

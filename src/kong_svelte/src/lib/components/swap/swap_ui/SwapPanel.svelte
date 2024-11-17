@@ -19,15 +19,14 @@
   export let token: FE.Token;
   export let amount: string;
   export let onTokenSelect: () => void;
-  export let onAmountChange: (event: Event) => void;
+  export let onAmountChange: (event: CustomEvent) => void;
   export let disabled: boolean;
   export let showPrice: boolean;
   export let slippage: number;
+  export let panelType: 'pay' | 'receive';
 
   let formattedUsdValue: string = "0.00";
-  let balancePlusAmount: string = "0";
   let calculatedUsdValue: number = 0;
-  let isOverBalance: boolean = false;
   let pendingAnimation: any = null;
   const DEFAULT_DECIMALS = 8;
 
@@ -39,7 +38,7 @@
   // Formatted balance calculation
   $: formattedBalance = (() => {
     if(!$walletStore?.account) return "0";
-    const balance = $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || tokenStore.loadBalance(tokenInfo, $walletStore.account.owner.toString(), true);
+    const balance = $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || tokenStore.loadBalance(tokenInfo, $walletStore.account.owner.toString(), false);
     const feesInTokens = tokenInfo?.fee
       ? BigInt(tokenInfo.fee) * (isIcrc1 ? 1n : 2n)
       : 0n;
@@ -55,17 +54,8 @@
   // Reactive statements
   $: {
       const balance = $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || 0n;
-      balancePlusAmount = formatTokenAmount(
-        new BigNumber(balance.toString())
-          .plus(fromTokenDecimals(amount || "0", decimals))
-          .toString(),
-        decimals,
-      );
       formattedUsdValue = $tokenStore.balances[tokenInfo?.canister_id]?.in_usd || "0";
       calculatedUsdValue = parseFloat(formattedUsdValue);
-      isOverBalance =
-        parseFloat(amount || "0") >
-        parseFloat(formattedBalance.toString() || "0");
 
       if (pendingAnimation && amount === "0") {
         pendingAnimation = null;
@@ -100,10 +90,12 @@
   let isAnimating: boolean = false;
   let inputElement: HTMLInputElement | null = null;
 
-  // Simplify the input handler
+  // Handle input with panel type
   const handleInput = (event: Event) => {
-    if (title === "You Receive") return;
-    onAmountChange(event); // Just pass the event up
+    const value = (event.target as HTMLInputElement).value;
+    onAmountChange(new CustomEvent('input', {
+      detail: { value, panelType }
+    }));
   };
 
   // Handle Max Click
@@ -134,11 +126,9 @@
         if (inputElement) {
           inputElement.value = formattedMaxAmount;
         }
-        onAmountChange(
-          new CustomEvent("input", {
-            detail: { value: formattedMaxAmount },
-          }),
-        );
+        onAmountChange(new CustomEvent('input', {
+          detail: { value: formattedMaxAmount, panelType }
+        }));
         animatedAmount.set(maxAmountInDecimals.toNumber(), {
           duration: 400,
           easing: cubicOut,
@@ -169,7 +159,7 @@
         class="title-container flex items-center justify-between gap-4 min-h-[2.5rem] mb-5"
       >
         <h2
-          class="panel-title text-[1.75rem] font-semibold text-white m-0 tracking-tight leading-none"
+          class="panel-title text-3xl font-semibold text-white m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
@@ -203,14 +193,16 @@
           <input
             bind:this={inputElement}
             type="text"
+            inputmode="decimal"
+            pattern="[0-9]*"
+            placeholder="0.00"
             class="amount-input flex-1 min-w-0 bg-transparent border-none text-white text-[2.5rem] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
             value={displayAmount}
             oninput={handleInput}
             onfocus={() => (inputFocused = true)}
             onblur={() => (inputFocused = false)}
-            placeholder="0"
-            disabled={disabled || title === "You Receive"}
-            readonly={title === "You Receive"}
+            {disabled}
+            readonly={panelType === 'receive'}
           />
         </div>
         <div class="button-group flex gap-2 items-center">
@@ -223,8 +215,8 @@
       <div
         class="balance-info flex justify-between items-center text-[0.875rem] leading-6"
       >
-        <div class="balance-values flex gap-2 items-center">
-          <span class="balance-label text-white/50 font-normal tracking-wide"
+        <div class="balance-values flex flex-col md:flex-row gap-2 items-start md:items-center">
+          <span class="balance-label text-left text-white/50 font-normal tracking-wide"
             >Available:
           </span>
           <button
@@ -248,8 +240,7 @@
             {token?.symbol}
           </button>
         </div>
-        <div class="flex items-center">
-          <span class="separator text-white/10">|</span>
+        <div class="flex flex-col items-end md:flex-row md:items-center">
           <span class="balance-label text-white/50 font-normal tracking-wide"
             >Est Value</span
           >
@@ -368,7 +359,6 @@
   :global(.token-panel:first-of-type::after) {
     content: "";
     @apply absolute bottom-[-24px] left-1/2 transform translate-x-[-50%] w-12 h-12 bg-contain bg-no-repeat bg-center z-20;
-    background-image: url("/assets/yellow-arrow-down.png");
   }
 
   @media (max-width: 480px) {

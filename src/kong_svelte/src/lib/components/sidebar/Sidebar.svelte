@@ -12,6 +12,8 @@
   import SocialSection from "./SocialSection.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";
   import PoolList from "./PoolList.svelte";
+  import { kongDB } from "$lib/services/db";
+  import { liveQuery } from "dexie";
 
   // Exported props
   export let sidebarOpen: boolean;
@@ -30,6 +32,24 @@
   let isMobile = false;
   let sidebarWidth = 500;
   let dragTimeout: number;
+
+  // Live database subscriptions
+  const tokens = liveQuery(async () => {
+    return await kongDB.tokens.toArray();
+  });
+
+  const pools = liveQuery(async () => {
+    return await kongDB.pools.toArray();
+  });
+
+  const transactions = liveQuery(async () => {
+    return await kongDB.transactions.toArray();
+  });
+
+  // Pass live data to child components
+  $: tokensData = $tokens || [];
+  $: poolsData = $pools || [];
+  $: transactionsData = $transactions || [];
 
   // Debounce utility
   function debounce(fn: Function, ms: number) {
@@ -160,11 +180,11 @@
               {#if !$walletStore.isConnected}
                 <WalletProvider on:login={() => {}} />
               {:else if activeTab === "tokens"}
-                <TokenList />
+                <TokenList tokens={tokensData} />
               {:else if activeTab === "pools"}
-                <PoolList />
+                <PoolList pools={poolsData} />
               {:else if activeTab === "history"}
-                <TransactionHistory />
+                <TransactionHistory transactions={transactionsData} />
               {/if}
             </div>
           </div>

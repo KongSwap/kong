@@ -2,6 +2,8 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { tooltip } from '$lib/actions/tooltip';
+  import { assetCache } from '$lib/services/assetCache';
+  import { onMount } from 'svelte';
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
   export let size: 'small' | 'medium' | 'big' = 'big';
@@ -13,12 +15,30 @@
   export let width: number | string | 'auto' = 'auto';
   export let tooltipText: string | null = null;
 
+  let cachedUrls = {
+    left: '',
+    middle: '',
+    right: ''
+  };
+
+  let mounted = false;
+
   $: {
     if (size === 'small' && variant === 'blue') {
       size = 'medium';
       console.warn('Small size is not available for blue buttons, falling back to medium');
     }
   }
+
+  $: {
+    if (disabled && state !== 'disabled') {
+      state = 'disabled';
+    } else if (!disabled && state === 'disabled') {
+      state = 'default';
+    }
+  }
+
+  $: buttonClass = `${size} ${variant} ${state === 'disabled' ? 'default' : state} ${className} pixel-button`;
 
   const prefixMap = {
     small: 'btnsmall',
@@ -35,7 +55,29 @@
   function getImagePath(part: string): string {
     const prefix = prefixMap[size];
     const middlePart = part === 'middle' ? middlePartMap[size] : part;
-    return `/pxcomponents/${prefix}-${variant}-${state}-${middlePart}.svg`;
+    return `/pxcomponents/${prefix}-${variant}-${state === 'disabled' ? 'default' : state}-${middlePart}.svg`;
+  }
+
+  async function updateCachedUrls() {
+    try {
+      const [left, middle, right] = await Promise.all([
+        assetCache.getAsset(getImagePath('l')),
+        assetCache.getAsset(getImagePath('mid')),
+        assetCache.getAsset(getImagePath('r'))
+      ]);
+      cachedUrls = { left, middle, right };
+    } catch (error) {
+      console.error('Error updating cached URLs:', error);
+    }
+  }
+
+  onMount(() => {
+    mounted = true;
+    updateCachedUrls();
+  });
+
+  $: if (mounted && (variant || size || state)) {
+    updateCachedUrls();
   }
 
   function formatDimension(value: number | string): string {
@@ -104,7 +146,6 @@
     onClick();
   }
 
-  $: buttonClass = `pixel-button ${size} ${variant} ${state} ${disabled ? 'disabled' : ''} ${className}`;
   $: formattedWidth = formatDimension(width);
 </script>
 
@@ -119,12 +160,16 @@
   data-sveltekit-preload-code="eager"
   style="transform: translateY({$translateY}px); filter: brightness({$brightness}); width: {formattedWidth};"
   aria-disabled={disabled}
+  class:disabled={disabled}
 >
-  <div class="button-container" class:auto-size={width === 'auto'}>
-    <img src={getImagePath('l')} alt="" class="left-part" />
-    <div class="middle-part" style="background-image: url({getImagePath('mid')})"></div>
-    <img src={getImagePath('r')} alt="" class="right-part" />
-    <span class="button-text {state === 'selected' ? 'text-white font-semibold' : ''}">
+  <div class="button-container {state === 'disabled' ? 'grayscale cursor-not-allowed' : 'cursor-pointer'}" class:auto-size={width === 'auto'}>
+    <img src={cachedUrls.left} alt="" class="left-part" loading="eager" decoding="sync" />
+    <div 
+      class="middle-part" 
+      style="background-image: url({cachedUrls.middle}); image-rendering: pixelated;"
+    ></div>
+    <img src={cachedUrls.right} alt="" class="right-part" loading="eager" decoding="sync" />
+    <span class="button-text">
       <slot>{text}</slot>
     </span>
   </div>
@@ -132,7 +177,8 @@
 
 <style scoped lang="postcss">
   .pixel-button {
-    @apply relative border-none bg-none p-0 cursor-pointer inline-flex items-center justify-center transition-transform duration-100 ease-out min-w-fit;
+    filter: grayscale(100%);
+    transition: all 0.2s ease-in-out;
   }
 
   .image-rendering-pixelated {
@@ -140,11 +186,13 @@
   }
 
   .button-container {
-    @apply flex items-stretch w-full relative;
+    @apply relative flex items-stretch;
+    min-width: max-content;
+    margin: 0 0.25rem;
   }
 
   .button-container.auto-size {
-    @apply w-fit;
+    width: max-content;
   }
 
   .left-part,
@@ -157,23 +205,24 @@
   }
 
   .button-text {
-    @apply font-alumni text-2xl uppercase px-3.5 select-none whitespace-nowrap absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center w-auto min-w-max;
+    @apply absolute inset-0 flex items-center justify-center font-alumni text-2xl uppercase select-none;
+    min-width: max-content;
+    padding: 0 0.875rem;
   }
 
   .small {
-    @apply h-6 text-xs;
+    @apply h-6;
+    font-size: 0.75rem;
   }
 
   .medium {
-    @apply h-8 text-sm;
+    @apply h-8;
+    font-size: 0.875rem;
   }
 
   .big {
-    @apply h-12 text-base;
-  }
-
-  .disabled {
-    @apply cursor-not-allowed opacity-50 pointer-events-none;
+    @apply h-12;
+    font-size: 1rem;
   }
 
   .blue {
@@ -184,10 +233,6 @@
     @apply text-black;
   }
 
-  .blue:hover {
-    @apply text-white font-semibold;
-  }
-
   .green .button-text {
     @apply text-white;
     text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.5);
@@ -195,6 +240,9 @@
 
   .yellow .button-text {
     @apply text-black;
-    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+  }
+
+  .yellow.selected .button-text {
+    @apply text-white font-bold;
   }
 </style>

@@ -1,6 +1,10 @@
 <!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
-  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
+  import {
+    tokenStore,
+    formattedTokens,
+    toggleFavoriteToken,
+  } from "$lib/services/tokens/tokenStore";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
@@ -8,62 +12,182 @@
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
-  import { toastStore } from '$lib/stores/toastStore';
-  import { walletStore } from '$lib/services/wallet/walletStore';
+  import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { Principal } from "@dfinity/principal";
+  import { onDestroy } from "svelte";
+
+  // Accept tokens prop for live data
+  export let tokens: any[] = [];
 
   let selectedToken: any = null;
   let isModalOpen = false;
-  let amount = "";
+  let amount: string | number = "";
   let error = "";
   let balance = "0";
-  let destinationPid;
-  
+  let destinationPid = "";
+  let isSending = false;
+
+  function handleInput(value: string) {
+    amount = value;
+    error = ""; // Clear error when user types
+  }
+
+  function validatePrincipal(pid: string): boolean {
+    try {
+      Principal.fromText(pid);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function handleSend() {
+    if (!selectedToken || !amount || !destinationPid) {
+      error = "Please fill in all fields";
+      return;
+    }
+
+    if (!validatePrincipal(destinationPid)) {
+      error = "Invalid destination address";
+      return;
+    }
+
+    const numAmount = parseFloat(amount.toString());
+    if (isNaN(numAmount) || numAmount <= 0) {
+      error = "Invalid amount";
+      return;
+    }
+
+    const maxAmount = parseFloat(balance);
+    if (numAmount > maxAmount) {
+      error = "Insufficient balance";
+      return;
+    }
+
+    isSending = true;
+    error = "";
+
+    try {
+      // Convert amount to bigint with proper decimals
+      const decimals = selectedToken.decimals || 8;
+      const amountBigInt = BigInt(
+        Math.floor(numAmount * Math.pow(10, decimals)),
+      );
+
+      const result = await IcrcService.icrc1Transfer(
+        selectedToken,
+        destinationPid,
+        amountBigInt,
+      );
+
+      if (result?.Ok) {
+        handleCloseModal();
+        toastStore.success("Token sent successfully");
+        // Trigger a token balance refresh
+        tokenStore.loadBalance(
+          selectedToken,
+          $walletStore.account?.owner?.toString(),
+          true,
+        );
+      } else if (result?.Err) {
+        const errMsg =
+          typeof result.Err === "object"
+            ? Object.entries(result.Err)[0][0]
+            : JSON.stringify(result.Err);
+        error = `Failed to send token: ${errMsg}`;
+        toastStore.error(error);
+      }
+    } catch (err) {
+      error = err.message || "Failed to send token";
+      toastStore.error(error);
+    } finally {
+      isSending = false;
+    }
+  }
+
   function handleTokenClick(token: any) {
-    selectedToken = token;
-    isModalOpen = true;
+    if (isModalOpen) {
+      handleCloseModal();
+      // Wait for modal to close before opening new one
+      setTimeout(() => {
+        selectedToken = token;
+        isModalOpen = true;
+      }, 300);
+    } else {
+      selectedToken = token;
+      isModalOpen = true;
+    }
   }
 
   function handleCloseModal() {
     isModalOpen = false;
-    selectedToken = null;
-  }
-
-  function handleInput(event) {
-    const value = event.detail.value;
-    if (parseFloat(value) > parseFloat(balance.toString())) {
-      error = "Insufficient balance";
-    } else {
+    // Reset form state after transition
+    setTimeout(() => {
+      selectedToken = null;
+      amount = "";
+      destinationPid = "";
       error = "";
-    }
+      isSending = false;
+      balance = "0";
+    }, 300); // Match the transition duration
   }
 
-  function handleFavoriteClick(event: MouseEvent, token: any) {
-    tokenStore.toggleFavorite(token.canister_id);
+  function handleFavoriteClick(e: MouseEvent, token: any) {
+    const owner = $walletStore.account?.owner?.toString();
+    if (!owner) return;
+
+    toggleFavoriteToken(token.canister_id);
   }
 
-  const sendToken = async () => {
-    const tx = await IcrcService.icrc1Transfer(selectedToken, destinationPid, BigInt(amount));
-    if(tx.Ok) {
-      toastStore.success('Token sent successfully');
-    } else {
-      toastStore.error('Failed to send token');
-    }
-  }
+  $: balance =
+    processedTokens?.find(
+      (token) => token.canister_id === selectedToken?.canister_id,
+    )?.formattedBalance || "0";
 
-  $: balance = $formattedTokens?.find(
-    (token) => token.canister_id === selectedToken?.canister_id,
-  )?.formattedBalance || "0";
+  // Process and sort tokens data when it changes
+  $: processedTokens = tokens
+    .map((token) => {
+      const formattedToken =
+        $formattedTokens?.find((t) => t.canister_id === token.canister_id) ||
+        token;
+      const favoriteTokens =
+        $tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()] ||
+        [];
+      return {
+        ...formattedToken,
+        logo: $tokenLogoStore[token.canister_id] || null,
+        formattedBalance: formattedToken.formattedBalance || "0",
+        name: formattedToken.name || token.name,
+        symbol: formattedToken.symbol || token.symbol,
+        usdValue: parseFloat(
+          $tokenStore.balances[token.canister_id]?.in_usd || "0",
+        ),
+        isFavorite: favoriteTokens.includes(token.canister_id),
+      };
+    })
+    .sort((a, b) => {
+      // Sort by favorite status first (favorites at top)
+      if (a.isFavorite !== b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+      // Then sort by USD value within each group
+      return b.usdValue - a.usdValue;
+    });
 
+  onDestroy(() => {
+    handleCloseModal();
+  });
 </script>
 
 <div class="token-list w-full">
-  {#if $tokenStore.isLoading && $formattedTokens.length === 0}
+  {#if $tokenStore.isLoading && processedTokens.length === 0}
     <div class="loading"><LoadingIndicator /></div>
   {:else if $tokenStore.error}
     <div class="error">{$tokenStore.error}</div>
   {:else}
-    {#each $formattedTokens as token (token.canister_id)}
+    {#each processedTokens as token (token.canister_id)}
       <div class="token-row-wrapper">
         <div class="flex-grow" on:click={() => handleTokenClick(token)}>
           <TokenRow {token} />
@@ -71,7 +195,11 @@
         <button
           class="favorite-button"
           on:click={(e) => handleFavoriteClick(e, token)}
-          aria-label={$tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()]?.includes(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+          aria-label={$tokenStore.favoriteTokens[
+            $walletStore.account?.owner?.toString()
+          ]?.includes(token.canister_id)
+            ? "Remove from favorites"
+            : "Add to favorites"}
         >
           {#if $tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()]?.includes(token.canister_id)}
             <span class="star filled">★</span>
@@ -84,17 +212,18 @@
   {/if}
 </div>
 
-<Modal
-  show={isModalOpen}
-  onClose={handleCloseModal}
-  title={"Send " + (selectedToken?.symbol || "Token Details")}
-  width="480px"
-  height="auto"
->
-  {#if selectedToken}
-    <div class="token-details w-[380px]">
+{#if isModalOpen && selectedToken}
+  <Modal
+    show={isModalOpen}
+    onClose={handleCloseModal}
+    title={"Send " + (selectedToken?.symbol || "Token Details")}
+    width="480px"
+    height="auto"
+  >
+    <div class="token-details w-[380px]" class:hidden={!isModalOpen}>
       <img
-        src={$tokenLogoStore[selectedToken.canister_id] ?? "/tokens/not_verified.webp"}
+        src={$tokenLogoStore[selectedToken.canister_id] ??
+          "/tokens/not_verified.webp"}
         alt={selectedToken.name}
         class="token-logo"
       />
@@ -103,34 +232,42 @@
           {selectedToken.symbol}
         </h3>
         <p class="text-base">
-          {selectedToken.formattedBalance} {selectedToken.symbol}
+          {selectedToken.formattedBalance}
+          {selectedToken.symbol}
         </p>
         <p class="text-base">${selectedToken.formattedUsdValue}</p>
       </div>
     </div>
 
-    <div class="transfer-section">
-      <TokenQtyInput
-        bind:value={amount}
-        token={selectedToken}
-        {error}
-        onInput={handleInput}
-      />
-      <TextInput
-        id="principal"
-        placeholder="Destination pid"
-        bind:value={destinationPid}
-        required
-        size="lg"
-      />
-    </div>
+    {#key isModalOpen}
+      <div class="transfer-section">
+        <TokenQtyInput
+          bind:value={amount}
+          token={selectedToken}
+          {error}
+          onInput={handleInput}
+        />
+        <TextInput
+          id="principal"
+          placeholder="Destination pid"
+          bind:value={destinationPid}
+          required
+          size="lg"
+        />
+      </div>
+    {/key}
 
     <div class="modal-buttons">
-      <Button text="Close" on:click={handleCloseModal} />
-      <Button text="Send" variant="green" on:click={() => sendToken()} />
+      <Button text="Close" onClick={handleCloseModal} />
+      <Button
+        text={isSending ? "Sending..." : "Send"}
+        variant="green"
+        onClick={() => handleSend()}
+        disabled={isSending || !amount || !destinationPid}
+      />
     </div>
-  {/if}
-</Modal>
+  </Modal>
+{/if}
 
 <style scoped lang="postcss">
   .token-list {

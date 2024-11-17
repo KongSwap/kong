@@ -18,6 +18,9 @@ interface PoolState {
   lastUpdate: number | null;
 }
 
+// Create a stable reference for pools data
+const stablePoolsStore = writable<BE.Pool[]>([]);
+
 function createPoolStore() {
   const CACHE_DURATION = 1000 * 30; // 30 second cache
   const { subscribe, set, update } = writable<PoolState>({
@@ -48,7 +51,6 @@ function createPoolStore() {
     loadPools: async (forceRefresh = false) => {
       // Determine if we should fetch new data
       if (!forceRefresh && !shouldRefetch() && cache.pools.size > 0) {
-        console.log('[PoolStore] Using cached pools data');
         return Array.from(cache.pools.values());
       }
 
@@ -78,10 +80,13 @@ function createPoolStore() {
           }))
         }));
 
-        // Replace the entire pools array to ensure reactivity
+        // Update the stable store first
+        stablePoolsStore.set(pools);
+
+        // Then update the main store
         set({
           pools: pools,
-          userPoolBalances: get(poolStore).userPoolBalances, // Retain existing userPoolBalances
+          userPoolBalances: get(poolStore).userPoolBalances,
           totals: {
             tvl: Number(poolsData.total_tvl) / 1e6,
             rolling_24h_volume: Number(poolsData.total_24h_volume) / 1e6,
@@ -114,7 +119,6 @@ function createPoolStore() {
       }
 
       try {
-        console.log(`[PoolStore] Fetching details for pool ID: ${poolId}`);
         const pool = await PoolService.getPoolDetails(poolId);
         cache.pools.set(poolId, pool);
         // Optionally, update the pools array if necessary
@@ -133,7 +137,6 @@ function createPoolStore() {
       update(state => ({ ...state, isLoading: true, error: null }));
       const tokens = get(tokenStore);
       try {
-        console.log('[PoolStore] Fetching user pool balances...');
         const [balances, tokenPrices] = await Promise.all([
           PoolService.fetchUserPoolBalances(),
           tokens.prices
@@ -147,8 +150,6 @@ function createPoolStore() {
         const processedBalances: FE.UserPoolBalance[] = balances.map(item => {
           const key = Object.keys(item)[0];
           const token = item[key];
-          const poolPrice = tokenPrices[`${token.symbol_0}_${token.symbol_1}`] || 
-                            tokenPrices[`${token.symbol_1}_${token.symbol_0}`];
 
           return {
             name: `${token.symbol_0}/${token.symbol_1}`,
@@ -208,8 +209,9 @@ export const poolTotals: Readable<{ tvl: number; rolling_24h_volume: number; fee
   set($store.totals);
 });
 
-export const poolsList: Readable<BE.Pool[]> = derived(poolStore, ($store, set) => {
-  set($store.pools);
+// Use the stable store for pools list to prevent unnecessary re-renders
+export const poolsList: Readable<BE.Pool[]> = derived(stablePoolsStore, ($pools, set) => {
+  set($pools);
 });
 
 export const poolsLoading: Readable<boolean> = derived(poolStore, $store => $store.isLoading);

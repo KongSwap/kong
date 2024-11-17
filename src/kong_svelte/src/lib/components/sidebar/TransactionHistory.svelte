@@ -8,6 +8,9 @@
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
     import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
 
+    // Accept transactions prop for live data
+    export let transactions: any[] = [];
+
     interface TransactionData {
         ts: bigint;
         txs: Array<any>;
@@ -22,57 +25,21 @@
         receive_amount?: string;
     }
 
-    let transactions: Array<Record<string, TransactionData>> = [];
-    let isLoading = true;
+    let isLoading = false;
     let error: string | null = null;
 
-    function getTransactionData(tx: Record<string, TransactionData>): { type: string, data: TransactionData } {
-        const type = Object.keys(tx)[0];
-        return { type, data: tx[type] };
-    }
+    // Process transactions data when it changes
+    let processedTransactions = transactions
+        .sort((a, b) => Number(b.ts) - Number(a.ts))
+        .map(tx => ({
+            ...tx,
+            formattedDate: new Date(Number(tx.ts)).toLocaleString(),
+            payAmount: tx.pay_amount ? formatTokenAmount(tx.pay_amount) : '',
+            receiveAmount: tx.receive_amount ? formatTokenAmount(tx.receive_amount) : ''
+        }));
 
-    function formatTimestamp(ts: bigint): string {
-        const date = new Date(Number(ts) / 1_000_000);
-        const now = new Date();
-        const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-        if (diffInHours < 24) {
-            return `${Math.round(diffInHours)} hr ago`;
-        } else if (diffInHours < 48) {
-            return 'Yesterday';
-        } else {
-            return date.toLocaleDateString();
-        }
-    }
-
-    function formatAmount(data: TransactionData, type: "pay" | "receive"): string {
-        const token = $tokenStore.tokens.find(t => t.symbol === data[type === "pay" ? "pay_symbol" : "receive_symbol"]);
-        if (!token) return data[type === "pay" ? "pay_amount" : "receive_amount"] || '0';
-        return formatTokenAmount(data[type === "pay" ? "pay_amount" : "receive_amount"] || '0', token.decimals || 8);
-    }
-
-    function getTransactionIcon(type: string): string {
-        switch(type) {
-            case 'Swap': return '🔄';
-            case 'Send': return '↗️';
-            case 'Receive': return '↙️';
-            default: return '📝';
-        }
-    }
-
-    onMount(async () => {
-        try {
-            isLoading = true;
-            const txs = await TokenService.fetchUserTransactions($walletStore.account.owner);
-            if(txs.Ok) {
-                transactions = txs.Ok;
-            } else {
-                error = txs.Err;
-            }
-        } catch (err) {
-            error = 'Failed to load transactions';
-            console.error(err);
-        } finally {
+    onMount(() => {
+        if ($walletStore.isConnected) {
             isLoading = false;
         }
     });
@@ -86,183 +53,80 @@
         </div>
     {:else if error}
         <div class="error-state" in:fade>
-            <span class="error-icon">⚠️</span>
-            <p class="error-text">{error}</p>
+            <p>{error}</p>
         </div>
-    {:else if !transactions || transactions.length === 0}
+    {:else if processedTransactions.length === 0}
         <div class="empty-state" in:fade>
-            <span class="empty-icon">📜</span>
-            <p class="empty-text">No transactions yet</p>
-            <p class="empty-subtext">Your transaction history will appear here</p>
+            <p>No transactions found</p>
         </div>
     {:else}
-        {#each transactions as tx}
-            {@const { type, data } = getTransactionData(tx)}
-            <button 
-                class="transaction-item"
-                class:success={data.status === 'Success'}
-                class:pending={data.status === 'Pending'}
-                class:failed={data.status === 'Failed'}
-                type="button"
-                in:fly={{ x: -20, duration: 300, delay: 100 }}
-            >
-                <div class="tx-info">
-                    {#if type === "Swap"}
-                        <div class="token-pair">
-                            <img
-                                src={$tokenStore.tokens.find(t => t.symbol === data.pay_symbol)?.logo || "/tokens/not_verified.webp"}
-                                alt={data.pay_symbol}
-                                class="h-[48px] w-[48px] rounded-full"
-                            />
-                            <img
-                                src={$tokenStore.tokens.find(t => t.symbol === data.receive_symbol)?.logo || "/tokens/not_verified.webp"}
-                                alt={data.receive_symbol}
-                                class="h-[48px] w-[48px] rounded-full receive-logo"
-                            />
-                        </div>
-                    {:else}
-                        <div class="tx-icon" class:success={data.status === 'Success'}>
-                            {getTransactionIcon(type)}
+        {#each processedTransactions as tx}
+            <div class="transaction-item" in:fade>
+                <div class="transaction-header">
+                    <span class="timestamp">{tx.formattedDate}</span>
+                    <span class="status {tx.status.toLowerCase()}">{tx.status}</span>
+                </div>
+                <div class="transaction-details">
+                    {#if tx.pay_amount}
+                        <div class="amount-row">
+                            <span>Paid:</span>
+                            <span>{tx.payAmount} {tx.pay_symbol}</span>
                         </div>
                     {/if}
-                    
-                    <div class="flex flex-col text-left">
-                        <span class="symbol">{type}</span>
-                        <span class="name text-ellipsis text-xs">
-                            {#if type === "Swap"}
-                                {formatAmount(data, "pay")} {data.pay_symbol} → 
-                                {formatAmount(data, "receive")} {data.receive_symbol}
-                            {/if}
-                        </span>
-                    </div>
+                    {#if tx.receive_amount}
+                        <div class="amount-row">
+                            <span>Received:</span>
+                            <span>{tx.receiveAmount} {tx.receive_symbol}</span>
+                        </div>
+                    {/if}
                 </div>
-
-                <div class="tx-values">
-                    <span class="tx-status" class:success={data.status === 'Success'}>
-                        {data.status}
-                    </span>
-                    <span class="tx-date">{formatTimestamp(data.ts)}</span>
-                </div>
-            </button>
+            </div>
         {/each}
     {/if}
 </div>
 
 <style lang="postcss">
     .transaction-history {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 8px 4px;
-    }
-
-    .loading-state,
-    .error-state,
-    .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-        padding: 32px;
-        background: rgba(0, 0, 0, 0.2);
-        border: 2px solid var(--sidebar-border);
-        border-radius: 8px;
-        text-align: center;
+        @apply flex flex-col gap-4 p-4;
     }
 
     .transaction-item {
-        width: 100%;
-        text-align: left;
-        border: none;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.2s;
+        @apply bg-gray-800/50 rounded-lg p-4;
     }
 
-    .transaction-item:hover {
-        border: 2px solid #f7bf26c8;
-        background: rgba(0, 0, 0, 0.2);
-        padding: 10px;
-        transform: scale(1.02);
+    .transaction-header {
+        @apply flex justify-between items-center mb-2;
     }
 
-    .tx-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .timestamp {
+        @apply text-sm text-gray-400;
     }
 
-    .tx-values {
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        font-size: 0.875rem;
+    .status {
+        @apply text-sm px-2 py-1 rounded;
     }
 
-    .symbol {
-        color: #fbbf24;
-        font-size: 1rem;
-        font-weight: bold;
+    .status.completed {
+        @apply bg-green-500/20 text-green-400;
     }
 
-    .name {
-        opacity: 0.7;
+    .status.pending {
+        @apply bg-yellow-500/20 text-yellow-400;
     }
 
-    .token-pair {
-        position: relative;
-        width: 48px;
-        height: 48px;
+    .status.failed {
+        @apply bg-red-500/20 text-red-400;
     }
 
-    .receive-logo {
-        position: absolute;
-        bottom: -6px;
-        right: -6px;
-        transform: scale(0.9);
+    .transaction-details {
+        @apply space-y-2;
     }
 
-    .tx-icon {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 50%;
+    .amount-row {
+        @apply flex justify-between items-center text-sm;
     }
 
-    .tx-status {
-        font-size: 0.75rem;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background: rgba(251, 191, 36, 0.1);
-        color: #fbbf24;
-    }
-
-    .tx-date {
-        font-size: 0.75rem;
-        opacity: 0.7;
-    }
-
-    @media (max-width: 768px) {
-        .transaction-history {
-            padding: 12px 4px;
-        }
-
-        .transaction-item {
-            padding: 8px;
-        }
-
-        .tx-icon {
-            width: 32px;
-            height: 32px;
-            font-size: 1rem;
-        }
+    .loading-state, .error-state, .empty-state {
+        @apply text-center p-8 text-gray-400;
     }
 </style>

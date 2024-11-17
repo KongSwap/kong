@@ -43,7 +43,6 @@ export class IcrcService {
   public static async checkAndRequestIcrc2Allowances(
     token: FE.Token, 
     payAmount: bigint,
-    gasAmount: bigint = BigInt(0)
   ): Promise<bigint> {
     try {
       const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');

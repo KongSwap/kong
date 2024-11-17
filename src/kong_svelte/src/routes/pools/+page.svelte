@@ -74,9 +74,7 @@
 
           <!-- Table Container -->
           <div class="overflow-x-scroll">
-            {#if $poolsLoading}
-              <LoadingIndicator />
-            {:else if $poolsError}
+            {#if $poolsError}
               <div class="text-center text-red-500 p-4">{$poolsError}</div>
             {:else}
               <table class="w-full text-black font-alumni">
@@ -126,21 +124,16 @@
                               containerClass="mr-2.5"
                             />
                             <span>{pool.symbol_0}/{pool.symbol_1}</span>
-                            {#if pool.is_hot}
-                              <span class="flex items-center text-xs">
-                                <span class="text-xs mr-0.5">🔥</span> HOT
-                              </span>
-                            {/if}
                           </div>
                         </td>
                         <td class="p-2 text-right">
                           ${formatToNonZeroDecimal($tokenStore.prices[pool.address_0] ?? 0)}
                         </td>
                         <td class="p-2 text-right">
-                          ${formatToNonZeroDecimal(pool.tvl)}
+                          ${formatToNonZeroDecimal(Number(pool.balance) / 1e6)}
                         </td>
                         <td class="p-2 text-right">
-                          ${formatToNonZeroDecimal(formatTokenAmount(pool.rolling_24h_volume, 6))}
+                          ${formatToNonZeroDecimal(Number(pool.rolling_24h_volume) / 1e6)}
                         </td>
                         <td class="p-2 text-right">
                           {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
