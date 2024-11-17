@@ -4,7 +4,7 @@
   import { backOut } from "svelte/easing";
   import Button from "$lib/components/common/Button.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";
 
@@ -18,6 +18,17 @@
   let countdown = 4;
   let countdownInterval: ReturnType<typeof setInterval>;
   let isCountdownActive = false;
+
+  $: if (show) {
+    resetAndStartCountdown();
+  }
+
+  function resetAndStartCountdown() {
+    clearInterval(countdownInterval);
+    countdown = 4;
+    isCountdownActive = true;
+    startCountdown();
+  }
 
   function startCountdown() {
     if ($settingsStore.sound_enabled) {
@@ -38,15 +49,14 @@
       }, 900);
     }
 
-    if (isCountdownActive && show) {
-      countdownInterval = setInterval(() => {
-        countdown--;
-        if (countdown <= 0) {
-          clearInterval(countdownInterval);
-          onClose();
-        }
-      }, 1000);
-    }
+    countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(countdownInterval);
+        isCountdownActive = false;
+        onClose();
+      }
+    }, 1000);
   }
 
   function handleClick() {
@@ -58,13 +68,9 @@
     }
   }
 
-  $: if (show) {
-    isCountdownActive = true;
-    startCountdown();
-  }
-
   onDestroy(() => {
     clearInterval(countdownInterval);
+    isCountdownActive = false;
   });
 </script>
 

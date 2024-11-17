@@ -1,5 +1,6 @@
 <script lang="ts">
-	import  TokenImages  from '$lib/components/common/TokenImages.svelte';
+  import TokenImages from '$lib/components/common/TokenImages.svelte';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];
@@ -10,46 +11,55 @@
   export let currentRouteIndex = 0;
   export let progress = 0;
   export let currentStep: string = '';
+
+  let initialPath = routingPath
+  let initialGasFees = gasFees
+  let initialLpFees = lpFees
+
+  function getTokenFromSymbol(symbol: string): FE.Token | undefined {
+    const token = $tokenStore.tokens.find(t => t.symbol.toLowerCase() === symbol.toLowerCase());
+    console.log('Finding token for symbol:', symbol, 'Found:', token);
+    return token;
+  }
+
+  
 </script>
 
 <div class="section">
   <h3 class="section-title">Route</h3>
   <div class="route-visualization">
-    {#each routingPath.slice(0, -1) as token, i}
-      <div 
-        class="route-step" 
-        class:active={i === currentRouteIndex}
-        class:completed={i < currentRouteIndex}
-      >
+    {#each initialPath.slice(0, -1) as currentSymbol, i}
+      <div class="route-step" class:active={i === currentRouteIndex} class:completed={i < currentRouteIndex}>
         <div class="token-pair">
-          <div class="token-badge-small from {token === payToken.symbol ? 'highlight' : ''}">
-            <div class="token-icon-wrapper">
-              <TokenImages
-                tokens={[payToken]}
-                size={24}
-              />
+          {#if i === 0}
+            <div class="token-badge-small from">
+              <div class="token-icon-wrapper">
+                <TokenImages tokens={[payToken]} size={24} />
+              </div>
+              <span class="token-symbol">{initialPath[i]}</span>
             </div>
-            <span class="token-symbol">{token}</span>
-          </div>
-          <div class="arrow-container">
-            <span class="arrow">→</span>
+          {:else}
+            <div class="token-badge-small">
+              <div class="token-icon-wrapper">
+                <TokenImages tokens={[getTokenFromSymbol(initialPath[i])]} size={24} />
+              </div>
+              <span class="token-symbol">{initialPath[i]}</span>
+            </div>
+          {/if}
+          <div class="route-arrow">
             <div class="arrow-line"></div>
           </div>
-          <div class="token-badge-small to {routingPath[i + 1] === receiveToken.symbol ? 'highlight' : ''}">
+          <div class="token-badge-small to {initialPath[i + 1] === receiveToken.symbol ? 'highlight' : ''}">
             <div class="token-icon-wrapper">
-              <TokenImages
-                tokens={[receiveToken]}
-                size={24}
-              />
+              <TokenImages tokens={[getTokenFromSymbol(initialPath[i + 1])]} size={24} />
             </div>
-            <span class="token-symbol">{routingPath[i + 1]}</span>
+            <span class="token-symbol">{initialPath[i + 1]}</span>
           </div>
         </div>
         <div class="step-fees">
-          <span class="fee-text">Gas: {gasFees[i]} {routingPath[i + 1]}</span>
-          <span class="fee-text">LP: {lpFees[i]} {routingPath[i + 1]}</span>
+          <span class="fee-text">Gas: {initialGasFees[i]} {initialPath[i + 1]}</span>
+          <span class="fee-text">LP: {initialLpFees[i]} {initialPath[i + 1]}</span>
         </div>
-        
         {#if i === currentRouteIndex}
           <div class="step-status">
             {currentStep}
@@ -118,12 +128,18 @@
   .token-badge-small {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    z-index: 1;
-    min-width: 100px;
+    gap: 4px;
+  }
+
+  .route-arrow {
+    display: flex;
+    align-items: center;
+  }
+
+  .arrow-line {
+    width: 24px;
+    height: 1px;
+    background-color: #ccc;
   }
 
   .token-icon-wrapper {
@@ -139,31 +155,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 40px;
-  }
-
-  .arrow-container {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 40px;
-  }
-
-  .arrow {
-    color: #ffd700;
-    font-size: 18px;
-    position: relative;
-    z-index: 2;
-  }
-
-  .arrow-line {
-    position: absolute;
-    top: 50%;
-    width: 100%;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.1);
   }
 
   .step-fees {
