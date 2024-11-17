@@ -16,6 +16,10 @@
   let activeTab: 'trade' | 'app' = 'trade';
   let soundEnabled = true;
   let settingsSubscription: () => void;
+  let slippageInputValue: string;
+
+  // Predefined slippage values for quick selection
+  const quickSlippageValues = [0.1, 0.5, 1, 2, 3];
 
   // Subscribe to settings changes using liveQuery
   const settings = liveQuery(async () => {
@@ -34,13 +38,18 @@
     const currentSettings = $settings[0];
     if (currentSettings) {
       soundEnabled = currentSettings.sound_enabled;
-      // Update the settings store
       settingsStore.set(currentSettings);
     }
   }
 
   $: if ($settingsStore) {
     soundEnabled = $settingsStore.sound_enabled;
+    slippageInputValue = $settingsStore.max_slippage?.toString() || '0';
+  }
+
+  function handleQuickSlippageSelect(value: number) {
+    settingsStore.updateSetting('max_slippage', value);
+    toastStore.success(`Slippage updated to ${value}%`);
   }
 
   function handleSlippageChange(e: Event) {
@@ -48,13 +57,27 @@
     const boundedValue = Math.min(Math.max(value, 0), 99);
     if (!isNaN(boundedValue)) {
       settingsStore.updateSetting('max_slippage', boundedValue);
+      slippageInputValue = boundedValue.toString();
     }
   }
 
-  function handleSlippageRelease(e: Event) {
-    const value = parseFloat((e.target as HTMLInputElement).value);
-    const boundedValue = Math.min(Math.max(value, 0), 99);
-    if (!isNaN(boundedValue)) {
+  function handleSlippageInput(e: Event) {
+    const input = (e.target as HTMLInputElement).value;
+    slippageInputValue = input;
+    const value = parseFloat(input);
+    if (!isNaN(value)) {
+      const boundedValue = Math.min(Math.max(value, 0), 99);
+      settingsStore.updateSetting('max_slippage', boundedValue);
+    }
+  }
+
+  function handleSlippageBlur() {
+    const value = parseFloat(slippageInputValue);
+    if (isNaN(value)) {
+      slippageInputValue = $settingsStore.max_slippage?.toString() || '0';
+    } else {
+      const boundedValue = Math.min(Math.max(value, 0), 99);
+      slippageInputValue = boundedValue.toString();
       settingsStore.updateSetting('max_slippage', boundedValue);
       toastStore.success(`Slippage updated to ${boundedValue}%`);
     }
@@ -66,68 +89,52 @@
       soundEnabled = event.detail;
     } else {
       toastStore.error('Please connect your wallet to save settings');
-      // Revert the toggle
       event.preventDefault();
     }
   }
 
   async function clearFavorites() {
-    confirm('Are you sure you want to clear your favorite tokens?') && tokenStore.clearUserData();
-    await tokenStore.loadTokens(true);
+    if (confirm('Are you sure you want to clear your favorite tokens?')) {
+      await tokenStore.clearUserData();
+      await tokenStore.loadTokens(true);
+      toastStore.success('Favorites cleared successfully');
+    }
   }
 
   function toggleTheme() {
     $themeStore = $themeStore === 'pixel' ? 'glass' : 'pixel';
+    toastStore.success(`Theme switched to ${$themeStore} mode`);
   }
 
   async function resetDatabase() {
     if (confirm('Are you sure you want to reset the database? This will clear all cached data.')) {
       try {
-        // Unsubscribe from all live queries
         if (settingsSubscription) {
           settingsSubscription();
         }
         
-        // Close all database connections
         await Promise.all([
           kongDB.close(),
-          // Add any other stores that need cleanup
           tokenStore.cleanup && tokenStore.cleanup(),
         ]);
         
-        // Delete the database
         await Dexie.delete('kong_db');
-        
-        // Clear asset cache
         await assetCache.clearCache();
         
         toastStore.success('Database and asset cache reset successfully. Reloading...');
-        
-        // Force reload the page immediately
         window.location.reload();
       } catch (error) {
         console.error('Error resetting database:', error);
         toastStore.error('Failed to reset database');
         
-        // Try to reopen the database in case of error
         try {
           await kongDB.open();
         } catch (reopenError) {
           console.error('Error reopening database:', reopenError);
-          // Force reload if we can't recover
           window.location.reload();
         }
       }
     }
-  }
-  
-  $: if ($settingsStore.max_slippage !== undefined) {
-    const event = new Event('input');
-    Object.defineProperty(event, 'target', {
-      value: { value: $settingsStore.max_slippage.toString() },
-      enumerable: true
-    });
-    handleSlippageChange(event);
   }
 </script>
 
@@ -169,21 +176,45 @@
         <h3>Slippage Settings</h3>
       </div>
       <div class="setting-content">
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Max Slippage</span>
-            <span class="text-white/90 font-medium">%</span>
+        <div class="flex flex-col gap-4">
+          <!-- Quick select buttons -->
+          <div class="flex gap-2">
+            {#each quickSlippageValues as value}
+              <button
+                class="quick-select-btn"
+                class:active={$settingsStore.max_slippage === value}
+                on:click={() => handleQuickSlippageSelect(value)}
+              >
+                {value}%
+              </button>
+            {/each}
+            <div class="custom-input-container">
+              <input
+                type="text"
+                inputmode="decimal"
+                placeholder="Custom"
+                class="slippage-input"
+                bind:value={slippageInputValue}
+                on:input={handleSlippageInput}
+                on:blur={handleSlippageBlur}
+              />
+              <span class="text-white/90 font-medium">%</span>
+            </div>
           </div>
-          <Slider
-            bind:value={$settingsStore.max_slippage}
-            min={0}
-            max={99}
-            step={1}
-            color="yellow"
-            showInput={true}
-            on:input={handleSlippageChange}
-            on:change={handleSlippageRelease}
-          />
+
+          <!-- Slider -->
+          <div class="flex-1">
+            <input
+              type="range"
+              min="0"
+              max="99"
+              step="0.1"
+              value={$settingsStore.max_slippage}
+              class="slippage-slider"
+              on:input={handleSlippageChange}
+            />
+          </div>
+
           <p class="setting-description">
             Maximum allowed price difference between expected and actual swap price
           </p>
@@ -337,5 +368,48 @@
 
   .theme-toggle {
     @apply bg-blue-500/20 text-blue-400 hover:bg-blue-500/30;
+  }
+
+  .quick-select-btn {
+    @apply px-3 py-2 rounded-lg bg-white/5 text-white/80 
+           transition-all duration-200 flex-1 text-center
+           hover:bg-white/10 hover:text-white
+           border border-white/10;
+    font-family: 'Alumni Sans', sans-serif;
+  }
+
+  .quick-select-btn.active {
+    @apply bg-yellow-400/20 text-yellow-400 border-yellow-400/30;
+  }
+
+  .custom-input-container {
+    @apply flex items-center gap-1 px-2 rounded-lg bg-white/5 border border-white/10;
+  }
+
+  .slippage-input {
+    @apply w-16 py-2 bg-transparent text-white/90 
+           focus:outline-none text-right;
+    font-family: 'Alumni Sans', sans-serif;
+  }
+
+  .slippage-slider {
+    @apply w-full h-2 rounded-lg appearance-none cursor-pointer;
+    background: linear-gradient(to right, 
+      rgb(250 204 21) 0%, 
+      rgb(250 204 21) var(--value-percent, 0%), 
+      rgba(255, 255, 255, 0.1) var(--value-percent, 0%)
+    );
+  }
+
+  .slippage-slider::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-yellow-400 cursor-pointer
+           hover:bg-yellow-500 hover:scale-110 transition-all duration-200;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+  }
+
+  .slippage-slider::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full bg-yellow-400 cursor-pointer
+           hover:bg-yellow-500 hover:scale-110 transition-all duration-200;
+    border: 2px solid rgba(0, 0, 0, 0.2);
   }
 </style>

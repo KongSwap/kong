@@ -1,7 +1,5 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
-  import { tweened } from "svelte/motion";
-  import { cubicOut } from "svelte/easing";
   import { onMount } from "svelte";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
@@ -18,41 +16,20 @@
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { themeStore } from '$lib/stores/themeStore';
   import { get } from "svelte/store";
-  import { writable } from 'svelte/store';
   import { SwapService } from "$lib/services/swap/SwapService";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash/debounce";
 
-  const hoveredState = writable(false);
   let currentSwapId: string | null = null;
-  let isConfirmationOpen = false;
-  let showConfirmation = false;
-  let showSuccessModal = false;
-  let successDetails: any = null;
   let isProcessing = false;
-  let error: string | null = null;
   let isRotating = false;
   let rotationCount = 0;
-  let tooltipMessage = "Reverse trade";
-  let showClickTooltip = false;
-  let manuallySelectedTokens = { pay: false, receive: false };
-  let payToken: FE.Token | null = null;
-  let receiveToken: FE.Token | null = null;
-  let payAmount: string | null = null;
-  let receiveAmount: string | null = null;
-  let showReceiveTokenSelector = false;
-  let lpFees: number = 0;
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
   export let initialFromToken: FE.Token | null = null;
   export let initialToToken: FE.Token | null = null;
-
-  let tweenedReceiveAmount = tweened(0, {
-    duration: 120,
-    easing: cubicOut,
-  });
 
   type PanelType = "pay" | "receive";
   interface PanelConfig {
@@ -145,7 +122,13 @@
         lpFees: $swapState.lpFees,
       });
 
-      return success;
+      if (success) {
+        toastStore.success("Swap successful");
+        return true;
+      } else {
+        toastStore.error("Swap failed");
+        return false;
+      }
     } catch (err) {
       console.error("Swap execution error:", err);
       toastStore.error(err instanceof Error ? err.message : "Swap failed");
@@ -241,7 +224,9 @@
 
   const debouncedGetQuote = debounce(
     async (amount: string) => {
-      await getSwapQuote(amount);
+      if ($swapState.payToken && $swapState.receiveToken) {
+        await SwapService.getSwapQuote($swapState.payToken, $swapState.receiveToken, amount);
+      }
     },
     500,
     {
@@ -422,7 +407,11 @@
 <style lang="postcss">
   .swap-wrapper {
     width: 100%;
-    margin: 0;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
   }
 
   .swap-container {
@@ -433,44 +422,47 @@
 
   .mode-selector {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: 0.75rem;
+    margin-top: clamp(1rem, 2vw, 1.5rem);
+    font-size: clamp(0.875rem, 1.5vw, 1rem);
   }
 
   .panels-container {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    margin-bottom: 1rem;
+    gap: 0.25rem;
     position: relative;
+    padding: clamp(1rem, 2vw, 1.5rem) 0;
   }
 
   .panel-wrapper {
     position: relative;
     z-index: 1;
+    width: 100%;
   }
 
   .switch-button {
     position: absolute;
     left: 50%;
-    top: 50%;
+    top: 43%;
     transform: translate(-50%, -50%);
-    z-index: 2;
+    z-index: 10;
     background: transparent;
     border: none;
-    padding: 1.5rem;
-    transition: all 0.2s ease;
+    cursor: pointer;
+    width: clamp(48px, 8vw, 56px);
+    height: clamp(48px, 8vw, 56px);
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 64px;
-    min-height: 64px;
+    padding: 0;
+    margin: 0;
+    transition: transform 0.3s ease;
   }
 
   .switch-button.modern {
     background: transparent;
     border-radius: 50%;
-    padding: 0.75rem;
   }
 
   .switch-button.modern:hover:not(:disabled) {
@@ -487,14 +479,14 @@
   }
 
   .swap-arrow {
-    width: 56px;
-    height: 64px;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
   }
 
   .swap-arrow.modern {
-    width: 48px;
-    height: 48px;
+    width: 85%;
+    height: 85%;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   }
 
@@ -537,32 +529,6 @@
     animation: rotate 0.3s ease-in-out;
   }
 
-  @media (max-width: 480px) {
-    .swap-wrapper {
-      padding: 0 0.5rem;
-    }
-
-    .switch-button {
-      width: 64px;
-      height: 64px;
-      padding: 14px;
-    }
-
-    .swap-arrow {
-      width: 48px;
-      height: 56px;
-    }
-
-    .swap-footer {
-      margin-top: 1.5rem;
-    }
-
-    .panels-container {
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-  }
-
   .arrow-path {
     transition: fill 0.2s ease;
   }
@@ -576,6 +542,8 @@
   }
 
   .swap-footer {
-    margin-top: 1rem;
+    z-index: 1;
+    margin-top: clamp(1rem, 2vw, 1.5rem);
+    width: 100%;
   }
 </style>

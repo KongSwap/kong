@@ -52,6 +52,7 @@
     align-items: center;
     gap: 8px;
     padding: 0 4px;
+    width: 100%;
   }
 
   .token-logo {
@@ -59,10 +60,14 @@
     height: 24px;
     border-radius: 50%;
     object-fit: contain;
+    flex-shrink: 0;
   }
 
   .token-symbol {
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .selector-icon {
@@ -71,6 +76,6 @@
   }
 
   :global(.token-selector-button) {
-    min-width: 140px;
+    width: 140px;
   }
 </style>
