@@ -90,72 +90,16 @@
 </script>
 
 <nav class="w-full z-50 px-1 py-4 max-w-6xl mx-auto">
-  {#if isMobile}
-    <!-- Mobile Top Navigation -->
-    <div class="flex justify-between gap-4 px-1 mb-4">
-      <div class="relative w-[48%]">
-        <div class="w-full">
-          <Button
-            text="MENU"
-            variant="blue"
-            size="medium"
-            state={navOpen ? "selected" : "default"}
-            onClick={() => navOpen = !navOpen}
-            width="100%"
-          />
-        </div>
-        
-        {#if navOpen}
-          <div 
-            class="absolute top-full left-0 mt-2 w-[200%] bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-xl border border-white/10 z-[60]"
-            transition:fade={{ duration: 150 }}
-            on:click|stopPropagation
-          >
-            <div class="p-2 flex flex-col gap-2">
-              {#each [...tabs, "stats"] as tab}
-                <Button
-                  text={tab.toUpperCase()}
-                  variant="blue"
-                  size="medium"
-                  state={activeTab === tab ? "selected" : "default"}
-                  onClick={() => {
-                    handleTabChange(tab as Tab);
-                    navOpen = false;
-                  }}
-                  width="100%"
-                />
-              {/each}
-              
-              <Button
-                text="SETTINGS"
-                variant="blue"
-                size="medium"
-                onClick={() => {
-                  isModalOpen = true;
-                  navOpen = false;
-                }}
-                width="100%"
-              />
-            </div>
-          </div>
-        {/if}
-      </div>
-      
-      <div class="w-[48%]">
-        <Button
-          text={$walletStore.isConnected ? "WALLET" : "CONNECT"}
-          variant="yellow"
-          size="medium"
-          state={sidebarOpen ? "selected" : "default"}
-          onClick={handleConnect}
-          width="100%"
-        />
-      </div>
-    </div>
-  {/if}
-
   <div class="grid grid-cols-12 gap-4">
-    <div class="col-span-2 flex items-center h-16">
+    <div class="col-span-2 flex items-center">
+      {#if isMobile}
+        <button
+          class="text-3xl text-gray-800 hover:text-gray-600 transition-colors"
+          on:click={() => (navOpen = !navOpen)}
+        >
+          ☰
+        </button>
+      {/if}
       {#if !isMobile}
         <div class="flex gap-6 ml-2">
           {#each tabs as tab}
@@ -177,40 +121,40 @@
           <img
             src={titleImage}
             alt={activeTab}
-            class="object-contain {isMobile ? 'h-12' : 'h-16'}"
+            class="object-contain max-h-16"
           />
         </a>
       </div>
     </div>
 
-    <div class="col-span-2 flex items-center justify-end h-16">
+    <div class="col-span-2 flex gap-6 items-center justify-end mr-2">
       {#if !isMobile}
-        <div class="flex gap-6 items-center justify-end mr-2">
-          <button
-            class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400 nav-icon"
-            class:spinning={isSpinning}
-            aria-label="Settings"
-            on:mouseenter={() => (isSpinning = true)}
-            on:mouseleave={() => (isSpinning = false)}
-            on:click={() => (isModalOpen = true)}
+        <button
+          class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
+          class:spinning={isSpinning}
+          aria-label="Settings"
+          on:mouseenter={() => (isSpinning = true)}
+          on:mouseleave={() => (isSpinning = false)}
+          on:click={() => (isModalOpen = true)}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="text-white"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="text-white"
-            >
-              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-              <path
-                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
-              />
-            </svg>
-          </button>
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+            />
+          </svg>
+        </button>
 
+        <div class="flex items-center space-x-3 nav-buttons">
           <Button
             text="STATS"
             variant="blue"
@@ -233,12 +177,65 @@
     </div>
   </div>
 
-  {#if navOpen}
-    <!-- Backdrop for click outside -->
+  {#if navOpen && isMobile}
     <div
-      class="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
-      on:click={() => (navOpen = false)}
-    />
+      class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex flex-col items-center justify-center gap-8 z-[100]"
+      transition:fade={{ duration: 150 }}
+    >
+      <button
+        class="absolute top-6 right-6 text-white text-2xl hover:text-gray-300 transition-colors"
+        on:click={() => (navOpen = false)}
+      >
+        ✕
+      </button>
+
+      <h2
+        class="text-white text-2xl font-bold uppercase border-b-2 border-sky-300 pb-2"
+      >
+        {$t("common.navigation")}
+      </h2>
+      {#each [...tabs, "stats"] as tab}
+        <Button
+          text={tab.toUpperCase()}
+          variant="blue"
+          state={activeTab === tab ? "selected" : "default"}
+          onClick={() => handleTabChange(tab as Tab)}
+        />
+      {/each}
+      <Button
+        text={$walletStore.isConnected
+          ? $t("common.openDrawer")
+          : $t("common.connect")}
+        variant="yellow"
+        state={sidebarOpen ? "selected" : "default"}
+        onClick={handleConnect}
+      />
+
+      <button
+        class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
+        class:spinning={isSpinning}
+        aria-label="Settings"
+        on:mouseenter={() => (isSpinning = true)}
+        on:mouseleave={() => (isSpinning = false)}
+        on:click={() => (isModalOpen = true)}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          class="text-white"
+        >
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+          />
+        </svg>
+      </button>
+    </div>
   {/if}
 </nav>
 
@@ -268,18 +265,11 @@
     }
   }
 
-  :global(.nav-icon) {
-    @apply text-white;
-    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.8));
+  :global(.nav-buttons .pixel-button:hover:not(.selected) .button-text) {
+    @apply text-black font-semibold;
   }
 
-  :global(.nav-icon svg) {
-    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.8));
-  }
-
-  /* Enhance backdrop blur effect */
-  .backdrop {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+  :global(.nav-buttons .selected .button-text) {
+    @apply text-white font-bold;
   }
 </style>
