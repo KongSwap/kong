@@ -20,6 +20,12 @@
     .filter((token) => {
       if (!token) return false;
       if(!token?.symbol || !token?.name) return false;
+      
+      // Check if search query matches canister ID
+      if (searchQuery.toLowerCase() === token.canister_id.toLowerCase()) {
+        return true;
+      }
+
       const matchesSearch =
         token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         token.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -58,6 +64,15 @@
     tokenStore.toggleFavorite(canisterId);
   }
 
+  async function handlePaste() {
+    try {
+      const text = await navigator.clipboard.readText();
+      searchQuery = text.trim();
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
+  }
+
   // Get favorite count for the button label
   $: favoriteCount = $tokenStore.favoriteTokens[walletId]?.length || 0;
 </script>
@@ -66,16 +81,27 @@
   <div class="space-y-4">
     <div class="w-full">
       <label for="token-search" class="sr-only">Search tokens</label>
-      <input
-        id="token-search"
-        type="text"
-        bind:value={searchQuery}
-        placeholder="Search tokens..."
-        class="w-full bg-black/30 border-2 border-white/10 rounded-xl px-4 py-2 text-white text-lg font-medium 
-               placeholder-white/60 transition-all duration-100 
-               hover:border-white/20 focus:border-yellow-300/50 focus:outline-none"
-        aria-label="Search tokens"
-      />
+      <div class="flex gap-2">
+        <input
+          id="token-search"
+          type="text"
+          bind:value={searchQuery}
+          placeholder="Search tokens..."
+          class="flex-1 bg-black/30 border-2 border-white/10 rounded-xl px-4 py-2 text-white text-lg font-medium 
+                 placeholder-white/60 transition-all duration-100 
+                 hover:border-white/20 focus:border-yellow-300/50 focus:outline-none"
+          aria-label="Search tokens"
+        />
+        <button
+          on:click={handlePaste}
+          class="px-4 py-2 bg-black/30 border-2 border-white/10 rounded-xl text-white/80 font-medium
+                 transition-all duration-100 hover:border-white/20 hover:text-white
+                 focus:border-yellow-300/50 focus:outline-none"
+          aria-label="Paste from clipboard"
+        >
+          Paste
+        </button>
+      </div>
       <div class="flex flex-wrap gap-1 mt-2">
         <button
           class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium

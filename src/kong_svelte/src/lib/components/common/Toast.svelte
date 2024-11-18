@@ -21,7 +21,7 @@
     }
 </script>
 
-<div class="fixed top-20 right-4 z-[9999] flex flex-col items-end gap-3 max-w-lg">
+<div class="fixed top-20 right-4 z-[10000] flex flex-col items-end gap-3 max-w-lg">
     {#each $toastStore as toast (toast.id)}
         <div
             class="toast-container cursor-pointer"
