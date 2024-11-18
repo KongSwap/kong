@@ -1,9 +1,10 @@
 <script lang="ts">
   import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
-  import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
+  import { accountStore } from "$lib/stores/accountStore";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
   import "./colors.css";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
-  import { RefreshCw } from "lucide-svelte";
+  import { RefreshCw, Maximize2, Minimize2 } from "lucide-svelte";
   import { tokenStore, portfolioValue } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
 
@@ -11,10 +12,14 @@
   export let activeTab: "tokens" | "pools" | "history";
   export let setActiveTab: (tab: "tokens" | "pools" | "history") => void;
 
-  let showAccountDetails = false;
   let windowWidth: number;
   let isRefreshing = false;
   let isLoggedIn = false;
+  let isExpanded = false;
+
+  sidebarStore.subscribe(state => {
+    isExpanded = state.isExpanded;
+  });
 
   walletStore.subscribe(async value => {
     isLoggedIn = value.isConnected;
@@ -39,15 +44,13 @@
 <svelte:window bind:innerWidth={windowWidth} />
 
 <header class="min-w-[250px] backdrop-blur-md">
-  <div
-    class="flex flex-col gap-3 p-3"
-  >
+  <div class="flex flex-col gap-3 p-3">
     {#if isLoggedIn}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
-        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-96px)]">
+        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-144px)]">
           <button
             class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-white font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
-            on:click={() => showAccountDetails = true}
+            on:click={() => accountStore.showAccountDetails()}
             aria-label="View account details"
           >
             <span class="flex items-center justify-between w-full">
@@ -68,6 +71,22 @@
           </button>
         </div>
         <div class="flex gap-2">
+          <button
+            class="expand-btn border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
+            on:click={() => sidebarStore.toggleExpand()}
+            aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            <span
+              class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100"
+            >
+              {isExpanded ? "Collapse" : "Expand"}
+            </span>
+            {#if isExpanded}
+              <Minimize2 size={22} />
+            {:else}
+              <Maximize2 size={22} />
+            {/if}
+          </button>
           <button
             class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
             on:click={disconnectWallet}
@@ -111,6 +130,7 @@
               viewBox="0 0 24 24"
               fill="#b53f3f"
               stroke="currentColor"
+              stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
@@ -192,12 +212,6 @@
     {/if}
   </div>
 </header>
-
-<AccountDetails 
-  show={showAccountDetails} 
-  onClose={() => showAccountDetails = false}
-/>
-
 
 <style scoped>
     .portfolio-value {
@@ -298,6 +312,12 @@
     }
     to {
       filter: drop-shadow(0 0 15px #a3e635) drop-shadow(0 0 20px #a3e635);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .expand-btn {
+      display: none;
     }
   }
 </style>
