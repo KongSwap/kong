@@ -18,6 +18,11 @@
   ],
   "dependencies": {
     "@dfinity/ledger-icp": "^2.6.2",
+    "@slide-computer/signer": "^3.6.4",
+    "@slide-computer/signer-agent": "^3.6.4",
+    "@slide-computer/signer-client": "^3.6.4",
+    "@slide-computer/signer-transport-plug": "^3.6.4",
+    "@slide-computer/signer-web": "^3.6.4",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

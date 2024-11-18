@@ -18,8 +18,9 @@ export class PoolService {
   // Data Fetching
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
-      const actor = await getActor();
-      if (!actor) {
+      const wallet = get(walletStore);
+      if (!wallet.agent || !wallet.isConnected) {
+        console.warn('No wallet connected, returning empty pools data');
         return {
           pools: [],
           total_tvl: 0n,
@@ -27,6 +28,8 @@ export class PoolService {
           total_24h_lp_fee: 0n
         };
       }
+
+      const actor = await getActor();
       const result = await actor.pools([]);
 
       if (!result || !result.Ok) {
@@ -40,7 +43,7 @@ export class PoolService {
       // Provide default value for lp_token_symbol if missing
       validatedData.pools = validatedData.pools.map(pool => ({
         ...pool,
-        lp_token_symbol: pool.lp_token_symbol || 'default_symbol' // Provide a default value
+        lp_token_symbol: pool.lp_token_symbol || 'default_symbol'
       }));
 
       return validatedData as BE.PoolResponse;
@@ -239,4 +242,3 @@ export class PoolService {
     }
   }
 }
-
