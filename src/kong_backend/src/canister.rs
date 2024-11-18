@@ -21,7 +21,7 @@ use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_lp_token_ledger::lp_token_ledger_archive::archive_lp_token_ledger;
+use crate::stable_memory::LP_TOKEN_LEDGER_ARCHIVE;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::{archive_transfer_map, remove_transfer_1h_map};
@@ -71,17 +71,6 @@ async fn init() {
         });
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
-
-    // start the background timer to archive LP token ledger
-    let timer_id = set_timer_interval(
-        Duration::from_secs(kong_settings::get().lp_token_ledger_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_lp_token_ledger();
-            });
-        },
-    );
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 }
 
 #[pre_upgrade]
@@ -151,16 +140,9 @@ async fn post_upgrade() {
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
-    // start the background timer to archive LP token ledger
-    let timer_id = set_timer_interval(
-        Duration::from_secs(kong_settings::get().lp_token_ledger_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_lp_token_ledger();
-            });
-        },
-    );
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
+    LP_TOKEN_LEDGER_ARCHIVE.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

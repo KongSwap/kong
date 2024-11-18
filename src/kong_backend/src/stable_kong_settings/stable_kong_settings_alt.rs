@@ -122,7 +122,7 @@ impl Default for StableKongSettingsAlt {
 
 impl Storable for StableKongSettingsAlt {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap_or_default().into()
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {

@@ -6,5 +6,4 @@ pub mod lp_token_impl;
 pub mod stable_token;
 pub mod stable_token_alt;
 pub mod token;
-pub mod token_archive;
 pub mod token_map;

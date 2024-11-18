@@ -2,9 +2,8 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{TRANSFER_ALT_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
+use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-use crate::stable_transfer::stable_transfer_alt::{StableTransferAlt, StableTransferIdAlt};
 use crate::stable_transfer::transfer_map;
 use crate::transfers::transfer_reply::TransferIdReply;
 use crate::transfers::transfer_reply_impl::to_transfer_id;
@@ -60,20 +59,19 @@ fn get_transfers(transfer_id: Option<u64>) -> Result<Vec<TransferIdReply>, Strin
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_transfers(start_transfer_id: u64, end_transfer_id: u64) -> Result<String, String> {
-    TRANSFER_MAP.with(|m| {
+fn remove_archive_transfers(start_transfer_id: u64, end_transfer_id: u64) -> Result<String, String> {
+    TRANSFER_ARCHIVE_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let keys_to_remove: Vec<_> = map
-            .iter()
-            .filter(|(transfer_id, _)| transfer_id.0 >= start_transfer_id && transfer_id.0 <= end_transfer_id)
-            .map(|(transfer_id, _)| transfer_id)
+            .range(StableTransferId(start_transfer_id)..=StableTransferId(end_transfer_id))
+            .map(|(k, _)| k)
             .collect();
-        keys_to_remove.iter().for_each(|transfer_id| {
-            map.remove(transfer_id);
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
         });
     });
 
-    Ok("transfers removed".to_string())
+    Ok("Archive transfers removed".to_string())
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
@@ -86,7 +84,7 @@ fn remove_transfers_by_ts(ts: u64) -> Result<String, String> {
         });
     });
 
-    Ok("transfers removed".to_string())
+    Ok("Archive transfers removed".to_string())
 }
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -108,6 +106,7 @@ fn backup_archive_transfers(transfer_id: Option<u64>, num_requests: Option<u16>)
     })
 }
 
+/*
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn upgrade_transfers() -> Result<String, String> {
     TRANSFER_ALT_MAP.with(|m| {
@@ -142,3 +141,4 @@ fn upgrade_alt_transfers() -> Result<String, String> {
 
     Ok("Alt transfers upgraded".to_string())
 }
+*/

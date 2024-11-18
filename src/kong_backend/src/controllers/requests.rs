@@ -4,10 +4,9 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_impl::to_request_reply;
-use crate::stable_memory::{REQUEST_ALT_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP};
+use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
+use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
-use crate::stable_request::stable_request_alt::{StableRequestAlt, StableRequestIdAlt};
-use crate::stable_request::{request, request_map};
 
 const MAX_REQUESTS: usize = 1_000;
 
@@ -31,16 +30,6 @@ fn backup_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result
     })
 }
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<RequestReply>, String> {
-    let requests = match request_id {
-        Some(request_id) => request_map::get_by_request_and_user_id(request_id, user_id).into_iter().collect(),
-        None => request_map::get_by_user_id(user_id, MAX_REQUESTS),
-    };
-
-    Ok(requests.iter().map(to_request_reply).collect())
-}
-
 /// deserialize REQUEST_MAP and update stable memory
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_requests(stable_requests_json: String) -> Result<String, String> {
@@ -57,6 +46,45 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
     });
 
     Ok("Requests updated".to_string())
+}
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<RequestReply>, String> {
+    let requests = match request_id {
+        Some(request_id) => request_map::get_by_request_and_user_id(request_id, user_id).into_iter().collect(),
+        None => request_map::get_by_user_id(user_id, MAX_REQUESTS),
+    };
+
+    Ok(requests.iter().map(to_request_reply).collect())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_requests(start_request_id: u64, end_request_id: u64) -> Result<String, String> {
+    REQUEST_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map
+            .range(StableRequestId(start_request_id)..=StableRequestId(end_request_id))
+            .map(|(k, _)| k)
+            .collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive requests removed".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_requests_by_ts(ts: u64) -> Result<String, String> {
+    REQUEST_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive requests removed".to_string())
 }
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -78,19 +106,7 @@ fn backup_archive_requests(request_id: Option<u64>, num_requests: Option<u16>) -
     })
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_archive_requests_by_ts(ts: u64) -> Result<String, String> {
-    REQUEST_ARCHIVE_MAP.with(|m| {
-        let mut map = m.borrow_mut();
-        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
-        keys_to_remove.iter().for_each(|k| {
-            map.remove(k);
-        });
-    });
-
-    Ok("Archive requests removed".to_string())
-}
-
+/*
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn upgrade_requests() -> Result<String, String> {
     REQUEST_ALT_MAP.with(|m| {
@@ -126,3 +142,4 @@ fn upgrade_alt_requests() -> Result<String, String> {
 
     Ok("Alt requests upgraded".to_string())
 }
+*/

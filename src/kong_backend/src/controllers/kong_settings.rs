@@ -3,8 +3,7 @@ use ic_cdk::{query, update};
 use crate::helpers::json_helpers;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
-use crate::stable_kong_settings::stable_kong_settings_alt::StableKongSettingsAlt;
-use crate::stable_memory::{KONG_SETTINGS, KONG_SETTINGS_ALT, KONG_SETTINGS_ARCHIVE};
+use crate::stable_memory::KONG_SETTINGS;
 
 /// serialize KONG_SETTINGS for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -25,8 +24,7 @@ fn update_kong_settings(kong_settings: String) -> Result<String, String> {
     };
 
     KONG_SETTINGS.with(|s| {
-        let mut map = s.borrow_mut();
-        _ = map.set(kong_settings);
+        _ = s.borrow_mut().set(kong_settings);
     });
 
     Ok("Kong settings updated".to_string())
@@ -55,15 +53,7 @@ fn set_kong_settings(update_settings: String) -> Result<String, String> {
     })
 }
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_archive_kong_settings() -> Result<String, String> {
-    KONG_SETTINGS_ARCHIVE.with(|m| {
-        let map = m.borrow();
-        let kong_settings = map.get();
-        serde_json::to_string(kong_settings).map_err(|e| format!("Failed to serialize: {}", e))
-    })
-}
-
+/*
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_alt_kong_settings() -> Result<String, String> {
     KONG_SETTINGS_ALT.with(|m| {
@@ -77,9 +67,9 @@ fn backup_alt_kong_settings() -> Result<String, String> {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn upgrade_kong_settings() -> Result<String, String> {
     KONG_SETTINGS_ALT.with(|m| {
-        let kong_settings = &StableKongSettingsAlt::to_stable_kong_settings(m.borrow().get());
+        let kong_settings = StableKongSettingsAlt::to_stable_kong_settings(m.borrow().get());
         KONG_SETTINGS.with(|m| {
-            _ = m.borrow_mut().set(kong_settings.clone());
+            _ = m.borrow_mut().set(kong_settings);
         });
     });
 
@@ -90,11 +80,13 @@ fn upgrade_kong_settings() -> Result<String, String> {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn upgrade_alt_kong_settings() -> Result<String, String> {
     KONG_SETTINGS.with(|m| {
-        let kong_settings = StableKongSettingsAlt::from_stable_kong_settings(m.borrow().get());
+        let kong_settings = m.borrow().get().clone();
         KONG_SETTINGS_ALT.with(|m| {
-            _ = m.borrow_mut().set(kong_settings);
+            let mut kong_settings_alt = m.borrow_mut();
+            _ = kong_settings_alt.set(StableKongSettingsAlt::from_stable_kong_settings(&kong_settings));
         });
     });
 
     Ok("Alt Kong settings upgraded".to_string())
 }
+*/
