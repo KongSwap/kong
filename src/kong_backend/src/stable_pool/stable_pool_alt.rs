@@ -12,6 +12,11 @@ impl StablePoolIdAlt {
         let pool_id_alt = serde_json::to_value(stable_pool_id).unwrap();
         serde_json::from_value(pool_id_alt).unwrap()
     }
+
+    pub fn to_stable_pool_id(&self) -> StablePoolId {
+        let pool_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(pool_id_alt).unwrap()
+    }
 }
 
 impl Storable for StablePoolIdAlt {
@@ -52,6 +57,11 @@ pub struct StablePoolAlt {
 impl StablePoolAlt {
     pub fn from_stable_pool(stable_pool: &StablePool) -> Self {
         let pool_alt = serde_json::to_value(stable_pool).unwrap();
+        serde_json::from_value(pool_alt).unwrap()
+    }
+
+    pub fn to_stable_pool(&self) -> StablePool {
+        let pool_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(pool_alt).unwrap()
     }
 }

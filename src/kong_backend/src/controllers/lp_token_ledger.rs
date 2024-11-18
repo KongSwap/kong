@@ -2,7 +2,6 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_lp_token_ledger::lp_token_ledger_archive::archive_lp_token_ledger;
 use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
 use crate::stable_lp_token_ledger::stable_lp_token_ledger_alt::{StableLPTokenLedgerAlt, StableLPTokenLedgerIdAlt};
 use crate::stable_memory::{LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_ALT, LP_TOKEN_LEDGER_ARCHIVE};
@@ -66,16 +65,39 @@ fn backup_archive_lp_token_ledger(lp_token_id: Option<u64>, num_lp_token_ledger:
     })
 }
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_lp_token_ledger() -> Result<String, String> {
-    archive_lp_token_ledger();
+/// upgrade LP_TOKEN_LEDGER from LP_TOKEN_LEDGER_ALT
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_lp_token_ledger() -> Result<String, String> {
+    LP_TOKEN_LEDGER_ALT.with(|m| {
+        let lp_token_ledger_alt = m.borrow();
+        LP_TOKEN_LEDGER.with(|m| {
+            let mut lp_tokens = m.borrow_mut();
+            lp_tokens.clear_new();
+            for (k, v) in lp_token_ledger_alt.iter() {
+                let lp_token_ledger_id = StableLPTokenLedgerIdAlt::to_stable_lp_token_ledger_id(&k);
+                let lp_token_ledger = StableLPTokenLedgerAlt::to_stable_lp_token_ledger(&v);
+                lp_tokens.insert(lp_token_ledger_id, lp_token_ledger);
+            }
+        });
+    });
 
-    LP_TOKEN_LEDGER.with(|lp_token_ledger| {
-        for (k, v) in lp_token_ledger.borrow().iter() {
-            let lp_token_ledger_id = StableLPTokenLedgerIdAlt::from_stable_lp_token_ledger_id(&k);
-            let lp_token_ledger = StableLPTokenLedgerAlt::from_stable_lp_token_ledger(&v);
-            LP_TOKEN_LEDGER_ALT.with(|m| m.borrow_mut().insert(lp_token_ledger_id, lp_token_ledger));
-        }
+    Ok("LP tokens upgraded".to_string())
+}
+
+/// upgrade LP_TOKEN_LEDGER_ALT from LP_TOKEN_LEDGER
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_lp_token_ledger() -> Result<String, String> {
+    LP_TOKEN_LEDGER.with(|m| {
+        let lp_tokens = m.borrow();
+        LP_TOKEN_LEDGER_ALT.with(|m| {
+            let mut lp_tokens_alt = m.borrow_mut();
+            lp_tokens_alt.clear_new();
+            for (k, v) in lp_tokens.iter() {
+                let lp_token_ledger_id = StableLPTokenLedgerIdAlt::from_stable_lp_token_ledger_id(&k);
+                let lp_token_ledger = StableLPTokenLedgerAlt::from_stable_lp_token_ledger(&v);
+                lp_tokens_alt.insert(lp_token_ledger_id, lp_token_ledger);
+            }
+        });
     });
 
     Ok("Alt LP tokens upgraded".to_string())

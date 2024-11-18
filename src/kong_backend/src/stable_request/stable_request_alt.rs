@@ -15,6 +15,11 @@ impl StableRequestIdAlt {
         let request_id_alt = serde_json::to_value(stable_request_id).unwrap();
         serde_json::from_value(request_id_alt).unwrap()
     }
+
+    pub fn to_stable_request_id(&self) -> StableRequestId {
+        let request_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(request_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableRequestIdAlt {
@@ -42,6 +47,11 @@ pub struct StableRequestAlt {
 impl StableRequestAlt {
     pub fn from_stable_request(stable_request: &StableRequest) -> Self {
         let request_alt = serde_json::to_value(stable_request).unwrap();
+        serde_json::from_value(request_alt).unwrap()
+    }
+
+    pub fn to_stable_request(&self) -> StableRequest {
+        let request_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(request_alt).unwrap()
     }
 }

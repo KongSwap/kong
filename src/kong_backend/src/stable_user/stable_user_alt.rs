@@ -28,6 +28,11 @@ impl StableUserIdAlt {
         let user_id_alt = serde_json::to_value(stable_user_id).unwrap();
         serde_json::from_value(user_id_alt).unwrap()
     }
+
+    pub fn to_stable_user_id(&self) -> StableUserId {
+        let user_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(user_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableUserIdAlt {
@@ -65,6 +70,11 @@ pub struct StableUserAlt {
 impl StableUserAlt {
     pub fn from_stable_user(stable_user: &StableUser) -> Self {
         let user_alt = serde_json::to_value(stable_user).unwrap();
+        serde_json::from_value(user_alt).unwrap()
+    }
+
+    pub fn to_stable_user(&self) -> StableUser {
+        let user_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(user_alt).unwrap()
     }
 }

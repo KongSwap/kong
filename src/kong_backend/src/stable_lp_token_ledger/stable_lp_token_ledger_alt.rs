@@ -12,6 +12,11 @@ impl StableLPTokenLedgerIdAlt {
         let lp_token_ledger_id_alt = serde_json::to_value(stable_lp_token_ledger_id).unwrap();
         serde_json::from_value(lp_token_ledger_id_alt).unwrap()
     }
+
+    pub fn to_stable_lp_token_ledger_id(&self) -> StableLPTokenLedgerId {
+        let lp_token_ledger_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(lp_token_ledger_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableLPTokenLedgerIdAlt {
@@ -38,6 +43,11 @@ pub struct StableLPTokenLedgerAlt {
 impl StableLPTokenLedgerAlt {
     pub fn from_stable_lp_token_ledger(stable_lp_token_ledger: &StableLPTokenLedger) -> Self {
         let lp_token_ledger_alt = serde_json::to_value(stable_lp_token_ledger).unwrap();
+        serde_json::from_value(lp_token_ledger_alt).unwrap()
+    }
+
+    pub fn to_stable_lp_token_ledger(&self) -> StableLPTokenLedger {
+        let lp_token_ledger_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(lp_token_ledger_alt).unwrap()
     }
 }

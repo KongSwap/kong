@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{MESSAGE_ALT_MAP, MESSAGE_ARCHIVE_MAP, MESSAGE_MAP};
-use crate::stable_message::message_archive::archive_message_map;
 use crate::stable_message::message_map;
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use crate::stable_message::stable_message_alt::{StableMessageAlt, StableMessageIdAlt};
@@ -88,17 +87,36 @@ fn backup_archive_messages(message_id: Option<u64>, num_messages: Option<u16>) -
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_messages() -> Result<String, String> {
-    archive_message_map();
+fn upgrade_messages() -> Result<String, String> {
+    MESSAGE_ALT_MAP.with(|m| {
+        let message_alt_map = m.borrow();
+        MESSAGE_MAP.with(|m| {
+            let mut message_map = m.borrow_mut();
+            message_map.clear_new();
+            for (k, v) in message_alt_map.iter() {
+                let message_id = StableMessageIdAlt::to_stable_message_id(&k);
+                let message = StableMessageAlt::to_stable_message(&v);
+                message_map.insert(message_id, message);
+            }
+        });
+    });
 
+    Ok("Messages upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_messages() -> Result<String, String> {
     MESSAGE_MAP.with(|message_map| {
-        for (k, v) in message_map.borrow().iter() {
-            let message_id = StableMessageIdAlt::from_stable_message_id(&k);
-            let message = StableMessageAlt::from_stable_message(&v);
-            MESSAGE_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(message_id, message);
-            });
-        }
+        let message_map = message_map.borrow();
+        MESSAGE_ALT_MAP.with(|m| {
+            let mut message_alt_map = m.borrow_mut();
+            message_alt_map.clear_new();
+            for (k, v) in message_map.iter() {
+                let message_id = StableMessageIdAlt::from_stable_message_id(&k);
+                let message = StableMessageAlt::from_stable_message(&v);
+                message_alt_map.insert(message_id, message);
+            }
+        });
     });
 
     Ok("Alt messages upgraded".to_string())

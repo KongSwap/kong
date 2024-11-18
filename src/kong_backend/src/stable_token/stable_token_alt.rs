@@ -14,6 +14,11 @@ impl StableTokenIdAlt {
         let token_id_alt = serde_json::to_value(stable_token_id).unwrap();
         serde_json::from_value(token_id_alt).unwrap()
     }
+
+    pub fn to_stable_token_id(&self) -> StableTokenId {
+        let token_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(token_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableTokenIdAlt {
@@ -37,6 +42,11 @@ pub enum StableTokenAlt {
 impl StableTokenAlt {
     pub fn from_stable_token(stable_token: &StableToken) -> Self {
         let token_alt = serde_json::to_value(stable_token).unwrap();
+        serde_json::from_value(token_alt).unwrap()
+    }
+
+    pub fn to_stable_token(&self) -> StableToken {
+        let token_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(token_alt).unwrap()
     }
 }

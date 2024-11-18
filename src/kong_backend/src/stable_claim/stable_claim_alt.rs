@@ -14,6 +14,11 @@ impl StableClaimIdAlt {
         let claim_id_alt = serde_json::to_value(stable_claim_id).unwrap();
         serde_json::from_value(claim_id_alt).unwrap()
     }
+
+    pub fn to_stable_claim_id(&self) -> StableClaimId {
+        let claim_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(claim_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableClaimIdAlt {
@@ -53,6 +58,11 @@ pub struct StableClaimAlt {
 impl StableClaimAlt {
     pub fn from_stable_claim(stable_claim: &StableClaim) -> Self {
         let claim_alt = serde_json::to_value(stable_claim).unwrap();
+        serde_json::from_value(claim_alt).unwrap()
+    }
+
+    pub fn to_stable_claim(&self) -> StableClaim {
+        let claim_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(claim_alt).unwrap()
     }
 }

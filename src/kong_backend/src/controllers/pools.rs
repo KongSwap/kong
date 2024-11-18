@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{POOL_ALT_MAP, POOL_ARCHIVE_MAP, POOL_MAP};
-use crate::stable_pool::pool_archive::archive_pool_map;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_pool::stable_pool_alt::{StablePoolAlt, StablePoolIdAlt};
@@ -87,17 +86,36 @@ fn backup_archive_pools(pool_id: Option<u32>, num_pools: Option<u16>) -> Result<
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_pools() -> Result<String, String> {
-    archive_pool_map();
+fn upgrade_pools() -> Result<String, String> {
+    POOL_ALT_MAP.with(|m| {
+        let pool_alt_map = m.borrow();
+        POOL_MAP.with(|m| {
+            let mut pool_map = m.borrow_mut();
+            pool_map.clear_new();
+            for (k, v) in pool_alt_map.iter() {
+                let pool_id = StablePoolIdAlt::to_stable_pool_id(&k);
+                let pool = StablePoolAlt::to_stable_pool(&v);
+                pool_map.insert(pool_id, pool);
+            }
+        });
+    });
 
-    POOL_MAP.with(|pool_map| {
-        for (k, v) in pool_map.borrow().iter() {
-            let pool_id = StablePoolIdAlt::from_stable_pool_id(&k);
-            let pool = StablePoolAlt::from_stable_pool(&v);
-            POOL_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(pool_id, pool);
-            });
-        }
+    Ok("Pools upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_pools() -> Result<String, String> {
+    POOL_MAP.with(|m| {
+        let pool_map = m.borrow();
+        POOL_ALT_MAP.with(|m| {
+            let mut pool_alt_map = m.borrow_mut();
+            pool_alt_map.clear_new();
+            for (k, v) in pool_map.iter() {
+                let pool_id = StablePoolIdAlt::from_stable_pool_id(&k);
+                let pool = StablePoolAlt::from_stable_pool(&v);
+                pool_alt_map.insert(pool_id, pool);
+            }
+        });
     });
 
     Ok("Alt pools upgraded".to_string())

@@ -2,7 +2,6 @@ use ic_cdk::{query, update};
 
 use crate::helpers::json_helpers;
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_kong_settings::kong_settings_archive::archive_kong_settings;
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_kong_settings::stable_kong_settings_alt::StableKongSettingsAlt;
 use crate::stable_memory::{KONG_SETTINGS, KONG_SETTINGS_ALT, KONG_SETTINGS_ARCHIVE};
@@ -74,12 +73,24 @@ fn backup_alt_kong_settings() -> Result<String, String> {
     })
 }
 
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_kong_settings() -> Result<String, String> {
-    archive_kong_settings();
+/// upgrade KONG_SETTINGS from KONG_SETTINGS_ALT
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_kong_settings() -> Result<String, String> {
+    KONG_SETTINGS_ALT.with(|m| {
+        let kong_settings = &StableKongSettingsAlt::to_stable_kong_settings(m.borrow().get());
+        KONG_SETTINGS.with(|m| {
+            _ = m.borrow_mut().set(kong_settings.clone());
+        });
+    });
 
-    KONG_SETTINGS.with(|kong_settings| {
-        let kong_settings = StableKongSettingsAlt::from_stable_kong_settings(kong_settings.borrow().get());
+    Ok("Kong settings upgraded".to_string())
+}
+
+/// upgrade KONG_SETTINGS_ALT from KONG_SETTINGS
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_kong_settings() -> Result<String, String> {
+    KONG_SETTINGS.with(|m| {
+        let kong_settings = StableKongSettingsAlt::from_stable_kong_settings(m.borrow().get());
         KONG_SETTINGS_ALT.with(|m| {
             _ = m.borrow_mut().set(kong_settings);
         });

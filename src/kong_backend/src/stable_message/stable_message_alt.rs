@@ -12,6 +12,11 @@ impl StableMessageIdAlt {
         let message_id_alt = serde_json::to_value(stable_message_id).unwrap();
         serde_json::from_value(message_id_alt).unwrap()
     }
+
+    pub fn to_stable_message_id(&self) -> StableMessageId {
+        let message_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(message_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableMessageIdAlt {
@@ -38,6 +43,11 @@ pub struct StableMessageAlt {
 impl StableMessageAlt {
     pub fn from_stable_message(stable_message: &StableMessage) -> Self {
         let message_alt = serde_json::to_value(stable_message).unwrap();
+        serde_json::from_value(message_alt).unwrap()
+    }
+
+    pub fn to_stable_message(&self) -> StableMessage {
+        let message_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(message_alt).unwrap()
     }
 }

@@ -5,10 +5,9 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_impl::to_request_reply;
 use crate::stable_memory::{REQUEST_ALT_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP};
-use crate::stable_request::request_archive::archive_request_map;
-use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_request::stable_request_alt::{StableRequestAlt, StableRequestIdAlt};
+use crate::stable_request::{request, request_map};
 
 const MAX_REQUESTS: usize = 1_000;
 
@@ -93,17 +92,36 @@ fn remove_archive_requests_by_ts(ts: u64) -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_requests() -> Result<String, String> {
-    archive_request_map();
+fn upgrade_requests() -> Result<String, String> {
+    REQUEST_ALT_MAP.with(|m| {
+        let request_alt_map = m.borrow();
+        REQUEST_MAP.with(|m| {
+            let mut request_map = m.borrow_mut();
+            request_map.clear_new();
+            for (k, v) in request_alt_map.iter() {
+                let request_id = StableRequestIdAlt::to_stable_request_id(&k);
+                let request = StableRequestAlt::to_stable_request(&v);
+                request_map.insert(request_id, request);
+            }
+        });
+    });
 
-    REQUEST_MAP.with(|request_map| {
-        for (k, v) in request_map.borrow().iter() {
-            let request_id = StableRequestIdAlt::from_stable_request_id(&k);
-            let request = StableRequestAlt::from_stable_request(&v);
-            REQUEST_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(request_id, request);
-            });
-        }
+    Ok("Requests upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_requests() -> Result<String, String> {
+    REQUEST_MAP.with(|m| {
+        let request_map = m.borrow();
+        REQUEST_ALT_MAP.with(|m| {
+            let mut request_alt_map = m.borrow_mut();
+            request_alt_map.clear_new();
+            for (k, v) in request_map.iter() {
+                let request_id = StableRequestIdAlt::from_stable_request_id(&k);
+                let request = StableRequestAlt::from_stable_request(&v);
+                request_alt_map.insert(request_id, request);
+            }
+        });
     });
 
     Ok("Alt requests upgraded".to_string())

@@ -57,6 +57,11 @@ impl StableKongSettingsAlt {
         let settings_alt = serde_json::to_value(stable_kong_settings).unwrap();
         serde_json::from_value(settings_alt).unwrap()
     }
+
+    pub fn to_stable_kong_settings(&self) -> StableKongSettings {
+        let settings_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(settings_alt).unwrap()
+    }
 }
 
 impl Default for StableKongSettingsAlt {

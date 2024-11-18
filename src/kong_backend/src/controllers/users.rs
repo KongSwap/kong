@@ -5,7 +5,6 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{USER_ALT_MAP, USER_ARCHIVE_MAP, USER_MAP};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 use crate::stable_user::stable_user_alt::{StableUserAlt, StableUserIdAlt};
-use crate::stable_user::user_archive::archive_user_map;
 
 const MAX_USERS: usize = 1_000;
 
@@ -104,17 +103,36 @@ fn backup_alt_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<Stri
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_users() -> Result<String, String> {
-    archive_user_map();
+fn upgrade_users() -> Result<String, String> {
+    USER_ALT_MAP.with(|m| {
+        let user_alt_map = m.borrow();
+        USER_MAP.with(|m| {
+            let mut user_map = m.borrow_mut();
+            user_map.clear_new();
+            for (k, v) in user_alt_map.iter() {
+                let user_id = StableUserIdAlt::to_stable_user_id(&k);
+                let user = StableUserAlt::to_stable_user(&v);
+                user_map.insert(user_id, user);
+            }
+        });
+    });
 
-    USER_MAP.with(|user_map| {
-        for (k, v) in user_map.borrow().iter() {
-            let user_id = StableUserIdAlt::from_stable_user_id(&k);
-            let user = StableUserAlt::from_stable_user(&v);
-            USER_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(user_id, user);
-            });
-        }
+    Ok("Users upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_users() -> Result<String, String> {
+    USER_MAP.with(|m| {
+        let user_map = m.borrow();
+        USER_ALT_MAP.with(|m| {
+            let mut user_alt_map = m.borrow_mut();
+            user_alt_map.clear_new();
+            for (k, v) in user_map.iter() {
+                let user_id = StableUserIdAlt::from_stable_user_id(&k);
+                let user = StableUserAlt::from_stable_user(&v);
+                user_alt_map.insert(user_id, user);
+            }
+        });
     });
 
     Ok("Alt users upgraded".to_string())

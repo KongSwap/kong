@@ -13,6 +13,11 @@ impl StableTransferIdAlt {
         let transfer_id_alt = serde_json::to_value(stable_transfer_id).unwrap();
         serde_json::from_value(transfer_id_alt).unwrap()
     }
+
+    pub fn to_stable_transfer_id(&self) -> StableTransferId {
+        let transfer_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(transfer_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableTransferIdAlt {
@@ -41,6 +46,11 @@ pub struct StableTransferAlt {
 impl StableTransferAlt {
     pub fn from_stable_transfer(stable_transfer: &StableTransfer) -> Self {
         let transfer_alt = serde_json::to_value(stable_transfer).unwrap();
+        serde_json::from_value(transfer_alt).unwrap()
+    }
+
+    pub fn to_stable_transfer(&self) -> StableTransfer {
+        let transfer_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(transfer_alt).unwrap()
     }
 }

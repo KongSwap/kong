@@ -5,7 +5,6 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TRANSFER_ALT_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_transfer::stable_transfer_alt::{StableTransferAlt, StableTransferIdAlt};
-use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_transfer::transfer_map;
 use crate::transfers::transfer_reply::TransferIdReply;
 use crate::transfers::transfer_reply_impl::to_transfer_id;
@@ -110,17 +109,35 @@ fn backup_archive_transfers(transfer_id: Option<u64>, num_requests: Option<u16>)
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_transfers() -> Result<String, String> {
-    archive_transfer_map();
+fn upgrade_transfers() -> Result<String, String> {
+    TRANSFER_ALT_MAP.with(|m| {
+        let transfer_alt_map = m.borrow();
+        TRANSFER_MAP.with(|m| {
+            let mut transfer_map = m.borrow_mut();
+            transfer_map.clear_new();
+            for (k, v) in transfer_alt_map.iter() {
+                let transfer_id = StableTransferIdAlt::to_stable_transfer_id(&k);
+                let transfer = StableTransferAlt::to_stable_transfer(&v);
+                transfer_map.insert(transfer_id, transfer);
+            }
+        });
+    });
 
-    TRANSFER_MAP.with(|transfer_map| {
-        for (k, v) in transfer_map.borrow().iter() {
-            let transfer_id = StableTransferIdAlt::from_stable_transfer_id(&k);
-            let transfer = StableTransferAlt::from_stable_transfer(&v);
-            TRANSFER_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(transfer_id, transfer);
-            });
-        }
+    Ok("Transfers upgraded".to_string())
+}
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_transfers() -> Result<String, String> {
+    TRANSFER_MAP.with(|m| {
+        let transfer_map = m.borrow();
+        TRANSFER_ALT_MAP.with(|m| {
+            let mut transfer_alt_map = m.borrow_mut();
+            transfer_alt_map.clear_new();
+            for (k, v) in transfer_map.iter() {
+                let transfer_id = StableTransferIdAlt::from_stable_transfer_id(&k);
+                let transfer = StableTransferAlt::from_stable_transfer(&v);
+                transfer_alt_map.insert(transfer_id, transfer);
+            }
+        });
     });
 
     Ok("Alt transfers upgraded".to_string())

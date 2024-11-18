@@ -6,7 +6,6 @@ use crate::stable_memory::{TX_ALT_MAP, TX_ARCHIVE_MAP, TX_MAP};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::stable_tx_alt::{StableTxAlt, StableTxIdAlt};
 use crate::stable_tx::tx::Tx;
-use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_tx::tx_map;
 use crate::txs::txs_reply::TxsReply;
 use crate::txs::txs_reply_impl::to_txs_reply;
@@ -48,12 +47,6 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
     });
 
     Ok("Txs updated".to_string())
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn archive_txs() -> Result<String, String> {
-    archive_tx_map();
-    Ok("txs archived".to_string())
 }
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -117,17 +110,35 @@ fn backup_archive_txs(tx_id: Option<u64>, num_txs: Option<u16>) -> Result<String
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_txs() -> Result<String, String> {
-    archive_tx_map();
+fn upgrade_txs() -> Result<String, String> {
+    TX_ALT_MAP.with(|m| {
+        let tx_alt_map = m.borrow();
+        TX_MAP.with(|m| {
+            let mut tx_map = m.borrow_mut();
+            tx_map.clear_new();
+            for (k, v) in tx_alt_map.iter() {
+                let tx_id = StableTxIdAlt::to_stable_tx_id(&k);
+                let tx = StableTxAlt::to_stable_tx(&v);
+                tx_map.insert(tx_id, tx);
+            }
+        });
+    });
 
-    TX_MAP.with(|tx_map| {
-        for (k, v) in tx_map.borrow().iter() {
-            let tx_id = StableTxIdAlt::from_stable_tx_id(&k);
-            let tx = StableTxAlt::from_stable_tx(&v);
-            TX_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(tx_id, tx);
-            });
-        }
+    Ok("Txs upgraded".to_string())
+}
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_txs() -> Result<String, String> {
+    TX_MAP.with(|m| {
+        let tx_map = m.borrow();
+        TX_ALT_MAP.with(|m| {
+            let mut tx_alt_map = m.borrow_mut();
+            tx_alt_map.clear_new();
+            for (k, v) in tx_map.iter() {
+                let tx_id = StableTxIdAlt::from_stable_tx_id(&k);
+                let tx = StableTxAlt::from_stable_tx(&v);
+                tx_alt_map.insert(tx_id, tx);
+            }
+        });
     });
 
     Ok("Alt txs upgraded".to_string())

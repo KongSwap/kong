@@ -17,6 +17,11 @@ impl StableTxIdAlt {
         let tx_id_alt = serde_json::to_value(stable_tx_id).unwrap();
         serde_json::from_value(tx_id_alt).unwrap()
     }
+
+    pub fn to_stable_tx_id(&self) -> StableTxId {
+        let tx_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(tx_id_alt).unwrap()
+    }
 }
 
 impl Storable for StableTxIdAlt {
@@ -43,6 +48,11 @@ pub enum StableTxAlt {
 impl StableTxAlt {
     pub fn from_stable_tx(stable_tx: &StableTx) -> Self {
         let tx_alt = serde_json::to_value(stable_tx).unwrap();
+        serde_json::from_value(tx_alt).unwrap()
+    }
+
+    pub fn to_stable_tx(&self) -> StableTx {
+        let tx_alt = serde_json::to_value(self).unwrap();
         serde_json::from_value(tx_alt).unwrap()
     }
 }

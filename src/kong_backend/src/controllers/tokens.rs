@@ -5,7 +5,7 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TOKEN_ALT_MAP, TOKEN_ARCHIVE_MAP, TOKEN_MAP};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_token::stable_token_alt::{StableTokenAlt, StableTokenIdAlt};
-use crate::stable_token::token_archive::archive_token_map;
+use crate::stable_token::token;
 
 const MAX_TOKENS: usize = 1_000;
 
@@ -67,17 +67,35 @@ fn backup_archive_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Resu
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_tokens() -> Result<String, String> {
-    archive_token_map();
+fn upgrade_tokens() -> Result<String, String> {
+    TOKEN_ALT_MAP.with(|m| {
+        let token_alt_map = m.borrow();
+        TOKEN_MAP.with(|m| {
+            let mut token_map = m.borrow_mut();
+            token_map.clear_new();
+            for (k, v) in token_alt_map.iter() {
+                let token_id = StableTokenIdAlt::to_stable_token_id(&k);
+                let token = StableTokenAlt::to_stable_token(&v);
+                token_map.insert(token_id, token);
+            }
+        });
+    });
 
-    TOKEN_MAP.with(|token_map| {
-        for (k, v) in token_map.borrow().iter() {
-            let token_id = StableTokenIdAlt::from_stable_token_id(&k);
-            let token = StableTokenAlt::from_stable_token(&v);
-            TOKEN_ALT_MAP.with(|m| {
-                m.borrow_mut().insert(token_id, token);
-            });
-        }
+    Ok("Tokens upgraded".to_string())
+}
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_tokens() -> Result<String, String> {
+    TOKEN_MAP.with(|m| {
+        let token_map = m.borrow();
+        TOKEN_ALT_MAP.with(|m| {
+            let mut token_alt_map = m.borrow_mut();
+            token_alt_map.clear_new();
+            for (k, v) in token_map.iter() {
+                let token_id = StableTokenIdAlt::from_stable_token_id(&k);
+                let token = StableTokenAlt::from_stable_token(&v);
+                token_alt_map.insert(token_id, token);
+            }
+        });
     });
 
     Ok("Alt tokens upgraded".to_string())

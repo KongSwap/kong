@@ -7,10 +7,10 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
     CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_ARCHIVE, LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID,
-    LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP,
-    REQUEST_MEMORY_ARCHIVE_ID, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_1H_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP,
-    TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP, TX_MAP, TX_MEMORY_ARCHIVE_ID,
-    TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
+    LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_ARCHIVE_MAP, MESSAGE_MAP, MESSAGE_MEMORY_ID, POOL_ARCHIVE_MAP, POOL_MAP,
+    POOL_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_MEMORY_ARCHIVE_ID, REQUEST_MEMORY_ID, TOKEN_ARCHIVE_MAP, TOKEN_MAP,
+    TOKEN_MEMORY_ID, TRANSFER_1H_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_ID,
+    TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP, TX_MAP, TX_MEMORY_ARCHIVE_ID, TX_MEMORY_ID, USER_ARCHIVE_MAP, USER_MAP, USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -72,19 +72,24 @@ async fn status() -> Result<String, String> {
             "Stable - LP Token Ledger Map Archive": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID).size())),
             "Stable - Message Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(MESSAGE_MEMORY_ID).size())),
             "# of users": get_number_of_users(),
+            "# of users (archive)": get_number_of_users_archive(),
             "# of tokens": get_number_of_tokens(),
+            "# of tokens (archive)": get_number_of_tokens_archive(),
             "# of pools": get_number_of_pools(),
-            "# of txs": get_number_of_txs(),
-            "# of txs (archive)": get_number_of_txs_archive(),
-            "# of swaps (24h)": get_number_of_swaps_24h(),
+            "# of pools (archive)": get_number_of_pools_archive(),
             "# of requests (1h)": get_number_of_requests(),
             "# of requests (archive)": get_number_of_requests_archive(),
-            "# of transfers": get_number_of_transfers(),
-            "# of transfers (archive)": get_number_of_transfers_archive(),
+            "# of swaps (24h)": get_number_of_swaps_24h(),
+            "# of txs (48h)": get_number_of_txs(),
+            "# of txs (archive)": get_number_of_txs_archive(),
             "# of transfers (1h)": get_number_of_transfers_1h(),
+            "# of transfers (48h)": get_number_of_transfers(),
+            "# of transfers (archive)": get_number_of_transfers_archive(),
             "# of unclaimed claims": get_number_of_unclaimed_claims(),
             "# of LP positions": get_number_of_lp_positions(),
             "# of LP positions (archive)": get_number_of_lp_positions_archive(),
+            "# of messages": get_number_of_messages(),
+            "# of messages (archive)": get_number_of_messages_archive(),
         }
     })
     .map_err(|e| format!("Failed to serialize: {}", e))
@@ -94,12 +99,24 @@ pub fn get_number_of_users() -> u64 {
     USER_MAP.with(|m| m.borrow().len())
 }
 
+pub fn get_number_of_users_archive() -> u64 {
+    USER_ARCHIVE_MAP.with(|m| m.borrow().len())
+}
+
 pub fn get_number_of_tokens() -> u64 {
     TOKEN_MAP.with(|m| m.borrow().len())
 }
 
+pub fn get_number_of_tokens_archive() -> u64 {
+    TOKEN_ARCHIVE_MAP.with(|m| m.borrow().len())
+}
+
 pub fn get_number_of_pools() -> u64 {
     POOL_MAP.with(|m| m.borrow().len())
+}
+
+pub fn get_number_of_pools_archive() -> u64 {
+    POOL_ARCHIVE_MAP.with(|m| m.borrow().len())
 }
 
 pub fn get_number_of_txs() -> u64 {
@@ -149,4 +166,12 @@ pub fn get_number_of_lp_positions() -> u64 {
 
 pub fn get_number_of_lp_positions_archive() -> u64 {
     LP_TOKEN_LEDGER_ARCHIVE.with(|m| m.borrow().len())
+}
+
+pub fn get_number_of_messages() -> u64 {
+    MESSAGE_MAP.with(|m| m.borrow().len())
+}
+
+pub fn get_number_of_messages_archive() -> u64 {
+    MESSAGE_ARCHIVE_MAP.with(|m| m.borrow().len())
 }
