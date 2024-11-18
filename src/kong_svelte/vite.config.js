@@ -13,6 +13,8 @@ dotenv.config({
 
 const ENV = process.env.DFX_NETWORK || 'local';
 
+console.log(ENV);
+
 export default defineConfig({
   build: {
     emptyOutDir: true,

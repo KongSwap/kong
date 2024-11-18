@@ -195,7 +195,7 @@ export class AppLoader {
       const areCached = await assetCache.areAssetsCached(allAssets);
 
       // Core data loading
-      await restoreWalletConnection();
+      // await restoreWalletConnection();
 
       if (!areCached) {
         // Start parallel loading of public data and assets

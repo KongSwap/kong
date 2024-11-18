@@ -72,6 +72,7 @@ export const walletStore = writable<{
   error: Error | null;
   isConnecting: boolean;
   isConnected: boolean;
+  count: number
 }>({
   agent: httpAgent,
   signerAgent: null,
@@ -79,6 +80,7 @@ export const walletStore = writable<{
   error: null,
   isConnecting: false,
   isConnected: false,
+  count: 0
 });
 
 let actorCache: { [key: string]: Actor } = {};
@@ -92,6 +94,8 @@ function updateWalletStore(
     error: Error | null;
     isConnecting: boolean;
     isConnected: boolean;
+    count: number
+    
   }>,
 ) {
   walletStore.update((store) => ({ ...store, ...updates }));
@@ -205,27 +209,19 @@ export async function connectWithInternetIdentity() {
   }
 }
 
-export async function connectWithNFID() {
-  updateWalletStore({ isConnecting: true });
+export async function connectWithNFID(wallet: 'plug' | 'nfid') {
+  updateWalletStore({ isConnecting: true, count: get(walletStore).count + 1 });
+  console.log(get(walletStore).count);
   try {
+    console.log("WALLET", wallet);
     // Setup transport and signer
-    const transport = new PostMessageTransport({
+    const transport = wallet === 'plug' ? new PlugTransport() : new PostMessageTransport({
       url: NFID_RPC,
     });
     const signer = new Signer({ transport });
 
     // First get the user's account to ensure we're authenticated
-    const accounts = await signer.accounts();
-    if (!accounts || accounts.length === 0) {
-      throw new Error("No accounts returned from NFID");
-    }
-    const [account] = accounts;
-    
-    console.log("NFID Account:", account);
-    console.log(
-      "The wallet set the following permission scope:",
-      await signer.permissions(),
-    );
+    // const accounts = await signer.accounts();
 
     // Create session key
     const sessionKey = Ed25519KeyIdentity.generate();
@@ -233,10 +229,6 @@ export async function connectWithNFID() {
     // Get delegation from signer with targets and the account's principal
     const delegationChain = await signer.delegation({
       publicKey: sessionKey.getPublicKey().toDer(),
-      targets: [
-        Principal.fromText(kongFaucetCanisterId),
-        Principal.fromText(kongBackendCanisterId),
-      ],
       maxTimeToLive: BigInt(24 * 60 * 60 * 1000 * 1000 * 1000), // 24 hours
     });
 
@@ -278,7 +270,7 @@ export async function connectWithNFID() {
 
     const signerAgent = SignerAgent.createSync({
       signer,
-      account: account.owner,
+      account: await agent.getPrincipal(),
     });
 
     updateWalletStore({
@@ -442,10 +434,7 @@ export async function connectWithOisy() {
     // Create transport for OISY with proper window opening
     activeTransport = new PostMessageTransport({
       url: OISY_RPC,
-      onError: (error) => {
-        console.error("Transport error:", error);
-        handleConnectionError(error);
-      }
+
     });
 
     const signer = new Signer({ transport: activeTransport });
@@ -658,7 +647,13 @@ export const availableWallets = [
     id: "nfid",
     name: "NFID",
     icon: "/images/wallets/nfid.svg",
-    connect: connectWithNFID,
+    connect: () =>  connectWithNFID('nfid'),
+  },
+  {
+    id: "plug",
+    name: "Plug",
+    icon: "/images/wallets/plug.svg",
+    connect: () => connectWithNFID('plug'),
   },
   {
     id: "oisy",

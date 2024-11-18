@@ -40,6 +40,7 @@ export class IcrcService {
     try {
       // Use unsigned actor for balance checks
       const actor = await this.getActorWithCheck(token.canister_id, "icrc1", false);
+      console.log("Principal:", principal);
       const balance = await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
@@ -77,6 +78,15 @@ export class IcrcService {
       // Create actor with signing capabilities using the standard ICRC2 interface
       const actor = await getActor(token.canister_id, 'icrc2', true);
 
+      const result = await actor.icrc2_allowance({
+        account: { owner: store.account.owner, subaccount: [] },
+        spender: { 
+          owner: Principal.fromText(kongBackendCanisterId), 
+          subaccount: [] 
+        }
+      });
+      console.log('ICRC2 allowance result:', result);
+
       const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
       const totalAmount = payAmount + (token.fee || BigInt(0));
       
@@ -95,8 +105,8 @@ export class IcrcService {
       };
 
       console.log('Sending ICRC2 approve request with args:', approveArgs);
-      const result = await actor.icrc2_approve(approveArgs);
-      console.log('ICRC2 approve result:', result);
+      const result2: any = await actor.icrc2_approve(approveArgs);
+      console.log('ICRC2 approve result:', result2);
 
       if (!result) {
         throw new Error('ICRC2 approve call returned undefined');
@@ -105,11 +115,7 @@ export class IcrcService {
       if ('Err' in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
       }
-      
-      if (!('Ok' in result)) {
-        throw new Error('ICRC2 approve response missing Ok field');
-      }
-      
+
       return result.Ok;
     } catch (error: any) {
       if (error?.message?.includes('wallet')) {

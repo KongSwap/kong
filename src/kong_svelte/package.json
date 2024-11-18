@@ -12,18 +12,22 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@dfinity/agent": "^2.1.3",
-    "@dfinity/candid": "^2.1.3",
-    "@dfinity/principal": "^2.1.3",
+    "@dfinity/agent": "2.1.2",
+    "@dfinity/auth-client": "2.1.2",
+    "@dfinity/candid": "2.1.2",
+    "@dfinity/identity": "2.1.2",
+    "@dfinity/principal": "2.1.2",
+    "@dfinity/utils": "2.6.0",
     "@slide-computer/signer": "^3.6.4",
     "@slide-computer/signer-agent": "^3.6.4",
     "@slide-computer/signer-transport-plug": "^3.6.4",
     "@slide-computer/signer-web": "^3.6.4",
     "@types/pouchdb-core": "^7.0.15",
-    "@windoge98/plug-n-play": "^0.0.6-1",
+    "bignumber.js": "^9.1.2",
     "dexie": "^4.0.9",
     "lightweight-charts": "^4.2.1",
-    "svelte-portal": "^2.2.1"
+    "svelte-portal": "^2.2.1",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.4",
@@ -53,8 +57,38 @@
     "typescript": "^5.6.2",
     "vite": "^5.4.3",
     "vite-plugin-environment": "^1.1.3",
-    "vite-plugin-pwa": "0.21.0",
+    "vite-plugin-pwa": "^0.20.5",
     "vitest": "^2.1.3",
     "zod": "^3.23.8"
+  },
+  "overrides": {
+    "@slide-computer/signer-agent": {
+      "@dfinity/agent": "2.1.2",
+      "@dfinity/candid": "2.1.2",
+      "@dfinity/principal": "2.1.2",
+      "@dfinity/identity": "2.1.2"
+    },
+    "@slide-computer/signer-transport-plug": {
+      "@dfinity/agent": "2.1.2",
+      "@dfinity/candid": "2.1.2",
+      "@dfinity/principal": "2.1.2",
+      "@dfinity/identity": "2.1.2"
+    },
+    "@slide-computer/signer-web": {
+      "@dfinity/agent": "2.1.2",
+      "@dfinity/candid": "2.1.2",
+      "@dfinity/principal": "2.1.2",
+      "@dfinity/identity": "2.1.2"
+    },
+    "@dfinity/identity": {
+      "@dfinity/agent": "2.1.2",
+      "@dfinity/identity": "2.1.2"
+    }
+  },
+  "resolutions": {
+    "@dfinity/agent": "2.1.2",
+    "@dfinity/candid": "2.1.2",
+    "@dfinity/principal": "2.1.2",
+    "@dfinity/identity": "2.1.2"
   }
 }

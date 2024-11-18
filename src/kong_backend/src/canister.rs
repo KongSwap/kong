@@ -186,6 +186,8 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
         String::from("https://www.kongswap.io"),
         #[cfg(feature = "prod")]
         String::from("https://kongswap.io"),
+        #[cfg(feature = "prod")]
+        String::from("http://localhost:5173"),
     ];
 
     Icrc28TrustedOriginsResponse { trusted_origins }

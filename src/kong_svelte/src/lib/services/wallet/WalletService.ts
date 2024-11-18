@@ -20,11 +20,11 @@ export class WalletService {
       return null;
     }
     try {
-      const actor = Actor.createActor(kongIdl, {
-        agent: wallet.signerAgent,
+      const actor = Actor.createActor(kongIdl as any, {
+        agent: wallet.agent,
         canisterId: kongCanisterId
       });
-      const result = await actor.get_user();
+      const result: any = await actor.get_user();
       return result.Ok;
     } catch (error) {
       console.error('Error calling get_user method:', error);

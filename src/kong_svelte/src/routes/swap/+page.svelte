@@ -29,9 +29,7 @@
 
 <section class="flex flex-col items-center justify-center">
 
-  {#if process.env.DFX_NETWORK === 'local'}
     <button on:click={claimTokens}>Claim Tokens</button>
-  {/if}
 
   {#if $tokenStore.tokens}
     <div class="flex justify-center mt-8 md:mt-12">
