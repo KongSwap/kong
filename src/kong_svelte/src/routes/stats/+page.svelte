@@ -15,6 +15,10 @@
   import debounce from "lodash-es/debounce";
   import { ArrowUpDown, TrendingUp, Droplets, DollarSign, LineChart, BarChart, Coins } from 'lucide-svelte';
   import { tokensTableHeaders } from "$lib/constants/statsConstants";
+  import { onMount } from "svelte";
+  import { formatDate } from "$lib/utils/dateUtils";
+  import { toastStore } from "$lib/stores/toastStore";
+  import Toast from "$lib/components/common/Toast.svelte";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -114,96 +118,21 @@
     };
   });
 
-  // Enhanced user stats with improved calculations
-  const userStats = derived([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
-    const calculateUniqueUsers = (balances: any): number => {
-      return balances ? Object.keys(balances).length : 0;
-    };
-
-    const calculateTotalTransactions = (pools: any[]): number => {
-      return pools.reduce((acc, pool) => {
-        return acc + Number(pool.rolling_24h_num_swaps || 0);
-      }, 0);
-    };
-
-    return {
-      totalUsers: calculateUniqueUsers($tokenStore.balances),
-      totalLpPositions: $poolStore.userPoolBalances?.length || 0,
-      totalTx24h: calculateTotalTransactions($poolStore.pools)
-    };
-  });
-
-  // Enhanced pool stats with better APY calculation
-  const poolStats = derived(poolStore, ($poolStore) => {
-    const calculateWeightedApy = (pools: any[]): number => {
-      const poolsWithApy = pools.filter(pool => 
-        pool.rolling_24h_apy && pool.tvl && 
-        pool.rolling_24h_apy > 0 && pool.tvl > 0
-      );
-      
-      const totalTvl = poolsWithApy.reduce((acc, pool) => 
-        acc + Number(pool.tvl || 0), 0);
-      
-      const weightedApySum = poolsWithApy.reduce((acc, pool) => {
-        const weight = Number(pool.tvl || 0) / totalTvl;
-        return acc + (pool.rolling_24h_apy * weight);
-      }, 0);
-      
-      return totalTvl > 0 ? weightedApySum : 0;
-    };
-
-    const calculateLifetimeMetrics = (pools: any[]) => {
-      return pools.reduce((acc, pool) => ({
-        volume: acc.volume + Number(pool.total_volume || 0) / 1e8,
-        fees: acc.fees + Number(pool.total_lp_fee || 0) / 1e8
-      }), { volume: 0, fees: 0 });
-    };
-
-    const lifetimeMetrics = calculateLifetimeMetrics($poolStore.pools);
-
-    return {
-      totalPools: $poolStore.pools.length,
-      averageApy: formatToNonZeroDecimal(calculateWeightedApy($poolStore.pools)),
-      lifetimeVolume: formatToNonZeroDecimal(lifetimeMetrics.volume),
-      lifetimeFees: formatToNonZeroDecimal(lifetimeMetrics.fees)
-    };
-  });
-
   // Enhanced clipboard functionality with better error handling
   async function copyToClipboard(tokenId: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(tokenId);
-      updateCopyState(tokenId, "Copied!");
+      toastStore.success("Token ID copied to clipboard!", 2000);
     } catch (error) {
       console.error("Copy failed:", error);
-      updateCopyState(tokenId, "Copy Failed!");
+      toastStore.error("Failed to copy token ID", 2000);
     }
-  }
-
-  function updateCopyState(tokenId: string, text: string): void {
-    copyStates.update(states => ({ ...states, [tokenId]: text }));
-    setTimeout(() => {
-      copyStates.update(states => ({ ...states, [tokenId]: "Copy" }));
-    }, COPY_TIMEOUT);
   }
 
   // Debounced search with proper typing
   const debouncedSearch = debounce((value: string) => {
     searchQuery.set(value);
   }, DEBOUNCE_DELAY);
-
-  // Enhanced pool sorting
-  const sortedAndFilteredPools = derived(poolStore, ($poolStore) => {
-    return [...$poolStore.pools].sort((a, b) => {
-      const tvlA = Number(a.tvl || 0n);
-      const tvlB = Number(b.tvl || 0n);
-      return tvlB - tvlA;
-    });
-  });
-
-  // Loading and error states for pools
-  const poolsLoading = derived(poolStore, $store => $store.isLoading);
-  const poolsError = derived(poolStore, $store => $store.error);
 
   // Derived store for filtered and sorted tokens with improved performance
   const filteredSortedTokens = derived(
@@ -215,13 +144,31 @@
       return sortTableData(filtered, $sortColumn, $sortDirection);
     }
   );
+
+  // Mock data for volume chart only
+  const mockVolumeData = writable([
+    { date: '11/20', value: 1250000 },
+    { date: '11/21', value: 980000 },
+    { date: '11/22', value: 1450000 },
+    { date: '11/23', value: 2100000 },
+    { date: '11/24', value: 1680000 },
+    { date: '11/25', value: 1890000 },
+    { date: '11/26', value: 2350000 },
+  ]);
+
+  // Replace the existing volumeData with mock data
+  const volumeData = mockVolumeData;
+
+  onMount(() => {
+    // fetchHistoricalData();
+  });
 </script>
 
 <Clouds />
 
 <div class="stats-container">
   <!-- Market Overview Panel -->
-  <Panel variant="green" type="main" className="market-stats-panel">
+  <Panel variant="green" type="main" className="market-stats-panel glass-panel">
     <div class="market-stats-grid">
       <div class="stat-card">
         <div class="stat-icon-wrapper">
@@ -254,7 +201,7 @@
   </Panel>
 
   <!-- Tokens Panel -->
-  <Panel variant="green" type="main" className="content-panel">
+  <Panel variant="green" type="main" className="content-panel glass-panel">
     <div class="flex justify-between items-center mb-4">
       <div class="flex items-center gap-4">
         <h3 class="text-white/80 font-medium">Tokens</h3>
@@ -290,14 +237,22 @@
     {:else}
       <div class="table-container">
         <table class="data-table">
-          <TableHeader 
-            headers={tokensTableHeaders} 
-            bind:sortColumn={$sortColumnStore} 
-            bind:sortDirection={$sortDirectionStore} 
-          />
+          <thead>
+            <tr>
+              <th class="text-left">Token</th>
+              <th class="text-right">Price</th>
+              <th class="text-right">24h Change</th>
+              <th class="text-right actions-header">Actions</th>
+            </tr>
+          </thead>
           <tbody>
             {#each $filteredSortedTokens as token (token.canister_id)}
-              <tr animate:flip={{ duration: ANIMATION_DURATION }}>
+              <tr 
+                animate:flip={{ duration: ANIMATION_DURATION }}
+                on:click={() => copyToClipboard(token.canister_id)}
+                class="token-row"
+                title="Click to copy token ID"
+              >
                 <td class="token-cell">
                   <TokenImages 
                     tokens={[token]} 
@@ -308,25 +263,21 @@
                     <span class="token-name">{token.name}</span>
                     <span class="token-symbol">{token.symbol}</span>
                   </div>
-                  <button 
-                    class="copy-button" 
-                    on:click={() => copyToClipboard(token.canister_id)}
-                    title="Copy token ID"
-                  >
-                    {$copyStates[token.canister_id] || "Copy ID"}
-                  </button>
                 </td>
                 <td class="price-cell" title={formatToNonZeroDecimal(token.price)}>
-                  {formatToNonZeroDecimal(token.price)}
+                  ${formatToNonZeroDecimal(token.price)}
                 </td>
                 <td class="price-change-cell" class:positive={token.price_change_24h > 0} class:negative={token.price_change_24h < 0}>
                   {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
                 </td>
-                <td class="volume-cell" title={formatToNonZeroDecimal(token.volume24h)}>
-                  ${formatToNonZeroDecimal(token.volume24h)}
-                </td>
-                <td class="market-cap-cell" title={formatToNonZeroDecimal(token.market_cap)}>
-                  ${formatToNonZeroDecimal(token.market_cap)}
+                <td class="actions-cell">
+                  <button 
+                    class="copy-button" 
+                    on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
+                    title="Copy token ID"
+                  >
+                    {$copyStates[token.canister_id] || "Copy ID"}
+                  </button>
                 </td>
               </tr>
             {/each}
@@ -336,114 +287,31 @@
     {/if}
   </Panel>
 
-  <!-- Additional Stats Panels -->
-  <div class="panels-grid">
-    <!-- Charts Section -->
-    <div class="charts-grid">
-      <!-- Volume Chart -->
-      <Panel variant="green" type="main" className="chart-panel">
-        <div class="chart-header">
-          <h3 class="panel-title">Volume Trend</h3>
-          <BarChart class="chart-icon" />
-        </div>
-        <div class="chart-placeholder">
-          <div class="chart-bars">
-            {#each Array(CHART_DAYS) as _, i}
-              <div 
-                class="bar" 
-                style="height: {30 + Math.random() * 40}%"
-                title={`Day ${i + 1}: $${formatToNonZeroDecimal(Math.random() * 1000000)}`}
-              />
-            {/each}
-          </div>
-          <div class="chart-labels">
-            {#each Array(CHART_DAYS) as _, i}
-              <div class="label">D-{CHART_DAYS - 1 - i}</div>
-            {/each}
-          </div>
-        </div>
-      </Panel>
-
-      <!-- APY Chart -->
-      <Panel variant="green" type="main" className="chart-panel">
-        <div class="chart-header">
-          <h3 class="panel-title">APY Trend</h3>
-          <LineChart class="chart-icon" />
-        </div>
-        <div class="chart-placeholder">
-          <svg class="line-chart" viewBox="0 0 300 100">
-            <path
-              d="M0,50 C60,40 140,80 300,30"
-              class="chart-line"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            {#each Array(CHART_POINTS) as _, i}
-              <circle
-                cx={i * 75}
-                cy={40 + Math.random() * 20}
-                r="3"
-                class="chart-point"
-                title={`Day ${i + 1}: ${(Math.random() * 100).toFixed(2)}% APY`}
-              />
-            {/each}
-          </svg>
-          <div class="chart-labels">
-            {#each Array(CHART_POINTS) as _, i}
-              <div class="label">D-{CHART_POINTS - 1 - i}</div>
-            {/each}
-          </div>
-        </div>
-      </Panel>
+  <!-- Volume Chart Panel -->
+  <Panel variant="green" type="main" className="chart-panel glass-panel">
+    <div class="chart-header">
+      <h3 class="panel-title">Volume Trend</h3>
+      <BarChart class="chart-icon" />
     </div>
-
-    <!-- User Stats Panel -->
-    <Panel variant="green" type="main" className="stats-panel">
-      <h3 class="panel-title">User Statistics</h3>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span class="stat-label">Total Users</span>
-          <span class="stat-value">{$userStats.totalUsers.toLocaleString()}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">LP Positions</span>
-          <span class="stat-value">{$userStats.totalLpPositions.toLocaleString()}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">24h Transactions</span>
-          <span class="stat-value">{$userStats.totalTx24h.toLocaleString()}</span>
-        </div>
+    <div class="chart-content">
+      <div class="chart-bars">
+        {#each $volumeData as day}
+          {@const maxVolume = Math.max(...$volumeData.map(d => d.value))}
+          {@const height = (day.value / maxVolume * 100)}
+          <div class="bar-wrapper">
+            <div 
+              class="bar" 
+              style="height: {height}%"
+              title="${formatToNonZeroDecimal(day.value)}"
+            >
+              <span class="bar-value">${formatToNonZeroDecimal(day.value)}</span>
+            </div>
+            <span class="bar-label">{day.date}</span>
+          </div>
+        {/each}
       </div>
-    </Panel>
-
-    <!-- Pool Stats Panel -->
-    <Panel variant="green" type="main" className="stats-panel">
-      <h3 class="panel-title">Pool Statistics</h3>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span class="stat-label">Total Pools</span>
-          <span class="stat-value">{$poolStats.totalPools}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Average APY</span>
-          <span class="stat-value">{$poolStats.averageApy}%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Lifetime Volume</span>
-          <span class="stat-value" title={formatToNonZeroDecimal($poolStats.lifetimeVolume)}>
-            ${formatToNonZeroDecimal($poolStats.lifetimeVolume)}
-          </span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Lifetime Fees</span>
-          <span class="stat-value" title={formatToNonZeroDecimal($poolStats.lifetimeFees)}>
-            ${formatToNonZeroDecimal($poolStats.lifetimeFees)}
-          </span>
-        </div>
-      </div>
-    </Panel>
-  </div>
+    </div>
+  </Panel>
 </div>
 
 <style lang="postcss">
@@ -458,9 +326,9 @@
   }
 
   .stat-card {
-    @apply flex items-center gap-4 p-4 rounded-lg bg-white/5 
-           backdrop-blur-sm hover:bg-white/10 transition-all duration-200
-           border border-white/5;
+    @apply flex items-center gap-4 p-4 rounded-lg bg-black/20 
+           backdrop-blur-sm hover:bg-black/30 transition-all duration-200
+           border border-white/10;
   }
 
   .stat-icon-wrapper {
@@ -477,11 +345,6 @@
 
   .stat-content p {
     @apply text-xl font-medium text-white;
-  }
-
-  /* Main Content Panel */
-  .content-panel {
-    @apply p-6 backdrop-blur-sm border border-white/5;
   }
 
   /* Search Input */
@@ -512,7 +375,22 @@
 
   .data-table tbody tr {
     @apply border-b border-white/5 hover:bg-white/5
-           transition-colors duration-200;
+           transition-colors duration-200 cursor-pointer;
+  }
+
+  .token-row {
+    @apply relative;
+  }
+
+  .token-row::after {
+    content: "Click to copy ID";
+    @apply absolute right-2 top-1/2 -translate-y-1/2 
+           text-xs text-white/40 opacity-0 transition-opacity duration-200
+           md:hidden;
+  }
+
+  .token-row:active::after {
+    @apply opacity-100;
   }
 
   .data-table td {
@@ -521,33 +399,30 @@
 
   /* Token Cell Styling */
   .token-cell {
-    @apply flex items-center gap-3 min-w-[200px];
+    @apply flex items-center gap-3;
+    min-width: 180px;
+  }
+
+  @media (max-width: 640px) {
+    .token-cell {
+      min-width: 140px;
+    }
   }
 
   .token-info {
-    @apply flex flex-col min-w-0;
+    @apply flex flex-col;
   }
 
   .token-name {
-    @apply text-white font-medium truncate;
+    @apply text-white font-medium;
   }
 
   .token-symbol {
     @apply text-sm text-white/60;
   }
 
-  .token-image {
-    @apply flex-shrink-0;
-  }
-
-  .copy-button {
-    @apply ml-auto px-2 py-1 text-xs rounded bg-white/5 text-white/60
-           hover:bg-white/10 hover:text-white transition-all duration-200
-           focus:outline-none focus:ring-2 focus:ring-white/20;
-  }
-
-  /* Price & Volume Cells */
-  .price-cell, .volume-cell, .market-cap-cell {
+  /* Price Cells */
+  .price-cell {
     @apply text-right text-white font-medium whitespace-nowrap
            font-mono tracking-tight;
   }
@@ -558,110 +433,37 @@
     &.negative { @apply text-red-400; }
   }
 
-  /* Error Message */
-  .error-message {
-    @apply text-red-400 text-center p-4 flex flex-col items-center gap-3;
+  .actions-cell {
+    @apply text-right;
   }
 
-  .retry-button {
-    @apply px-4 py-2 rounded-lg bg-white/10 text-white
-           hover:bg-white/20 transition-all duration-200
+  .copy-button {
+    @apply px-3 py-1.5 text-xs rounded bg-white/5 text-white/60
+           hover:bg-white/10 hover:text-white transition-all duration-200
            focus:outline-none focus:ring-2 focus:ring-white/20;
   }
 
-  /* Charts Section */
-  .panels-grid {
-    @apply grid gap-6;
-  }
+  @media (max-width: 768px) {
+    .actions-header,
+    .actions-cell {
+      @apply hidden;
+    }
 
-  .charts-grid {
-    @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
-  }
+    .token-name {
+      @apply text-sm;
+    }
 
-  .chart-panel {
-    @apply p-6 backdrop-blur-sm border border-white/5;
-  }
+    .token-symbol {
+      @apply text-xs;
+    }
 
-  .chart-header {
-    @apply flex justify-between items-center mb-4;
-  }
-
-  .chart-icon {
-    @apply w-5 h-5 text-white/60;
-  }
-
-  .panel-title {
-    @apply text-lg font-medium text-white/80;
-  }
-
-  /* Bar Chart */
-  .chart-placeholder {
-    @apply h-48 flex flex-col;
-  }
-
-  .chart-bars {
-    @apply flex-1 flex items-end justify-between gap-2 px-4;
-  }
-
-  .bar {
-    @apply w-8 bg-gradient-to-t from-emerald-500/50 to-emerald-300/50 
-           rounded-t-md transition-all duration-300 
-           hover:from-emerald-500/70 hover:to-emerald-300/70 
-           cursor-pointer;
-  }
-
-  /* Line Chart */
-  .line-chart {
-    @apply flex-1 text-emerald-400/50;
-  }
-
-  .chart-line {
-    @apply transition-all duration-300;
-  }
-
-  .chart-point {
-    @apply fill-emerald-400/50 transition-all duration-300
-           cursor-pointer hover:fill-emerald-400;
-  }
-
-  .chart-labels {
-    @apply flex justify-between px-4 py-2;
-  }
-
-  .label {
-    @apply text-xs text-white/40;
-  }
-
-  /* Stats Panels */
-  .stats-panel {
-    @apply p-6 backdrop-blur-sm border border-white/5;
-  }
-
-  .stats-grid {
-    @apply grid grid-cols-2 lg:grid-cols-4 gap-4;
-  }
-
-  .stat-item {
-    @apply flex flex-col gap-1 p-4 rounded-lg bg-white/5
-           hover:bg-white/10 transition-all duration-200
-           border border-white/5;
-  }
-
-  .stat-label {
-    @apply text-sm text-white/60;
-  }
-
-  .stat-value {
-    @apply text-lg font-medium text-white font-mono tracking-tight;
-  }
-
-  /* Responsive Adjustments */
-  @media (max-width: 1024px) {
-    .stats-grid {
-      @apply grid-cols-2;
+    .price-cell,
+    .price-change-cell {
+      @apply text-sm;
     }
   }
 
+  /* Responsive Adjustments */
   @media (max-width: 768px) {
     .market-stats-grid {
       @apply grid-cols-1;
@@ -715,28 +517,13 @@
 
   .stat-card,
   .content-panel,
-  .chart-panel,
-  .stats-panel {
+  .chart-panel {
     animation: fadeIn 0.3s ease-out forwards;
   }
 
   /* Hover Effects */
   .stat-card:hover .stat-icon-wrapper {
     @apply bg-white/15;
-  }
-
-  .stat-item:hover .stat-value {
-    @apply text-emerald-400;
-  }
-
-  /* Loading State */
-  .loading-indicator {
-    @apply flex items-center justify-center p-8;
-  }
-
-  /* Tooltip Styles */
-  [title] {
-    @apply cursor-help;
   }
 
   /* Custom Scrollbar */
