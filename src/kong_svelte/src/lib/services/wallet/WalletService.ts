@@ -1,3 +1,4 @@
+import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 import { getActor, walletStore } from './walletStore';
 import { get } from 'svelte/store';
 
@@ -13,13 +14,19 @@ export class WalletService {
 
   public static async getWhoami(): Promise<BE.User> {
 
-    const isWalletConnected = get(walletStore).isConnected;
-    if (!isWalletConnected) {
+    const wallet = get(walletStore);
+    if (!wallet.isConnected) {
       return null;
     }
     try {
-      const actor = await getActor();
-      const result = await actor.get_user();
+      const result = await wallet.signerAgent.call(KONG_BACKEND_PRINCIPAL, {
+        methodName: 'get_user',
+        effectiveCanisterId: KONG_BACKEND_PRINCIPAL,
+        arg: null,
+      });
+      if (result.Err) {
+        throw new Error(result.Err);
+      }
       return result.Ok;
     } catch (error) {
       console.error('Error calling get_user method:', error);
