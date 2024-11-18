@@ -1,9 +1,10 @@
 // services/PoolService.ts
-import { getActor, walletStore } from '$lib/services/wallet/walletStore';
+import { getActor, walletStore, queueSignatureRequest } from '$lib/services/wallet/walletStore';
 import { walletValidator } from '$lib/services/wallet/walletValidator';
 import { get } from 'svelte/store';
 import { PoolResponseSchema, UserPoolBalanceSchema } from './poolSchema';
 import { IcrcService } from '../icrc/IcrcService';
+import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 
 export class PoolService {
   protected static instance: PoolService;
@@ -29,7 +30,8 @@ export class PoolService {
         };
       }
 
-      const actor = await getActor();
+      // Use unsigned actor for read-only operation
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, "kong_backend", false);
       const result = await actor.pools([]);
 
       if (!result || !result.Ok) {
@@ -56,7 +58,8 @@ export class PoolService {
   // Pool Operations
   public static async getPoolDetails(poolId: string): Promise<BE.Pool> {
     try {
-      const actor = await getActor();
+      // Use unsigned actor for read-only operation
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, "kong_backend", false);
       return await actor.get_by_pool_id(poolId);
     } catch (error) {
       console.error('Error fetching pool details:', error);
@@ -73,7 +76,8 @@ export class PoolService {
     token1Symbol: string
   ): Promise<any> {
     try {
-      const actor = await getActor();
+      // Use unsigned actor for read-only operation
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, "kong_backend", false);
       const result = await actor.add_liquidity_amounts(
         token0Symbol,
         amount0,
@@ -100,7 +104,8 @@ export class PoolService {
     lpTokenAmount: bigint
   ): Promise<any> {
     try {
-      const actor = await getActor();
+      // Use unsigned actor for read-only operation
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, "kong_backend", false);
       const result = await actor.remove_liquidity_amounts(
         token0Symbol,
         token1Symbol,
@@ -182,7 +187,8 @@ export class PoolService {
    */
   public static async pollRequestStatus(requestId: bigint): Promise<any> {
     try {
-      const actor = await getActor();
+      // Use unsigned actor for read-only operation
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, "kong_backend", false);
       const result = await actor.requests([requestId]);
       
       if (!result.Ok || result.Ok.length === 0) {
@@ -221,7 +227,8 @@ export class PoolService {
       if (!isWalletConnected) {
         return [];
       }
-      const actor = await getActor();
+      // Use unsigned actor for read-only operation
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, "kong_backend", false);
 
       if (!actor) {
         throw new Error('Actor not available');

@@ -1,6 +1,7 @@
-import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 import { getActor, walletStore } from './walletStore';
 import { get } from 'svelte/store';
+import { Actor } from '@dfinity/agent';
+import { idlFactory as kongIdl, canisterId as kongCanisterId } from '../../../../../declarations/kong_backend';
 
 export class WalletService {
   protected static instance: WalletService;
@@ -19,14 +20,11 @@ export class WalletService {
       return null;
     }
     try {
-      const result = await wallet.signerAgent.call(KONG_BACKEND_PRINCIPAL, {
-        methodName: 'get_user',
-        effectiveCanisterId: KONG_BACKEND_PRINCIPAL,
-        arg: null,
+      const actor = Actor.createActor(kongIdl, {
+        agent: wallet.signerAgent,
+        canisterId: kongCanisterId
       });
-      if (result.Err) {
-        throw new Error(result.Err);
-      }
+      const result = await actor.get_user();
       return result.Ok;
     } catch (error) {
       console.error('Error calling get_user method:', error);

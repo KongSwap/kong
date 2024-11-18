@@ -1,25 +1,25 @@
-import { writable, derived, get } from 'svelte/store';
-import { browser } from '$app/environment';
+import { writable, derived, get } from "svelte/store";
+import { browser } from "$app/environment";
 import { locale, loadTranslations } from "../translations/i18nConfig";
-import { kongDB } from '$lib/services/db';
-import type { Settings } from './types';
-import { walletStore } from '../wallet/walletStore';
-type SupportedLocale = 'en' | 'es';
-const supportedLocales: SupportedLocale[] = ['en', 'es'];
-const defaultLocale: SupportedLocale = 'en';
+import { kongDB } from "$lib/services/db";
+import type { Settings } from "./types";
+import { walletStore } from "../wallet/walletStore";
+type SupportedLocale = "en" | "es";
+const supportedLocales: SupportedLocale[] = ["en", "es"];
+const defaultLocale: SupportedLocale = "en";
 
 function getValidLocale(locale: string | null): SupportedLocale {
   if (!locale) return defaultLocale;
-  return supportedLocales.includes(locale as SupportedLocale) 
-    ? (locale as SupportedLocale) 
+  return supportedLocales.includes(locale as SupportedLocale)
+    ? (locale as SupportedLocale)
     : defaultLocale;
 }
 
 // Get initial locale
 function getInitialLocale(): SupportedLocale {
   if (!browser) return defaultLocale;
-  
-  const storedSettings = localStorage.getItem('appSettings');
+
+  const storedSettings = localStorage.getItem("appSettings");
   if (storedSettings) {
     try {
       const parsed = JSON.parse(storedSettings);
@@ -27,17 +27,17 @@ function getInitialLocale(): SupportedLocale {
         return getValidLocale(parsed.language.current);
       }
     } catch (e) {
-      console.error('Failed to parse stored settings:', e);
+      console.error("Failed to parse stored settings:", e);
     }
   }
 
   const browserLocale = navigator.language.split("-")[0];
   const validLocale = getValidLocale(browserLocale);
-  
+
   // Initialize locale immediately
   locale.set(validLocale);
   loadTranslations(validLocale);
-  
+
   return validLocale;
 }
 
@@ -55,38 +55,34 @@ function createSettingsStore() {
     if (browser) {
       const walletId = get(walletStore).account?.owner?.toString();
       if (!walletId) {
-        console.error('Wallet ID is not available.');
+        console.error("Wallet ID is not available.");
         return;
       }
 
-      try {
-        const dbSettings = await kongDB.settings.get(walletId);
-        if (dbSettings) {
-          set(dbSettings);
-          locale.set(dbSettings.default_language);
-          loadTranslations(dbSettings.default_language);
-        } else {
-          // If no settings exist, store default settings
-          await kongDB.settings.put({
-            ...DEFAULT_SETTINGS,
-            principal_id: walletId,
-            timestamp: Date.now()
-          });
-        }
-      } catch (error) {
-        console.error('Error initializing settings:', error);
+      const dbSettings = await kongDB.settings.get(walletId);
+      if (walletId && dbSettings) {
+        set(dbSettings);
+        locale.set(dbSettings.default_language);
+        loadTranslations(dbSettings.default_language);
+      } else {
+        // If no settings exist, store default settings
+        await kongDB.settings.put({
+          ...DEFAULT_SETTINGS,
+          principal_id: walletId,
+          timestamp: Date.now(),
+        });
       }
     }
   }
 
   async function updateSetting(
     key: keyof Settings,
-    value: Settings[keyof Settings]
+    value: Settings[keyof Settings],
   ) {
-    update(settings => {
+    update((settings) => {
       const walletId = get(walletStore).account?.owner?.toString();
       if (!walletId) {
-        console.error('Wallet ID is not available.');
+        console.error("Wallet ID is not available.");
         return settings;
       }
 
@@ -94,24 +90,24 @@ function createSettingsStore() {
         ...settings,
         [key]: value,
       };
-      
+
       if (browser) {
         try {
           kongDB.settings.put({
             ...newSettings,
             principal_id: walletId,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
-          
-          if (key === 'default_language') {
+
+          if (key === "default_language") {
             locale.set(value as string);
             loadTranslations(value as string);
           }
         } catch (error) {
-          console.error('Error updating settings:', error);
+          console.error("Error updating settings:", error);
         }
       }
-      
+
       return newSettings;
     });
   }
@@ -119,7 +115,7 @@ function createSettingsStore() {
   async function reset() {
     const walletId = get(walletStore).account?.owner;
     if (!walletId) {
-      console.error('Wallet ID is not available.');
+      console.error("Wallet ID is not available.");
       return;
     }
 
@@ -128,7 +124,7 @@ function createSettingsStore() {
       await kongDB.settings.put({
         principal_id: walletId,
         ...DEFAULT_SETTINGS,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
       locale.set(DEFAULT_SETTINGS.default_language);
       loadTranslations(DEFAULT_SETTINGS.default_language);
@@ -141,9 +137,15 @@ function createSettingsStore() {
     initializeStore,
     updateSetting,
     reset,
-    soundEnabled: derived({ subscribe }, $settings => $settings.sound_enabled),
-    currentLanguage: derived({ subscribe }, $settings => $settings.default_language),
+    soundEnabled: derived(
+      { subscribe },
+      ($settings) => $settings.sound_enabled,
+    ),
+    currentLanguage: derived(
+      { subscribe },
+      ($settings) => $settings.default_language,
+    ),
   };
 }
 
-export const settingsStore = createSettingsStore(); 
+export const settingsStore = createSettingsStore();

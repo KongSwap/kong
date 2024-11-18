@@ -48,8 +48,8 @@ export class TokenService {
         return cachedTokens;
       }
 
-      // If no valid cache, fetch from network
-      const actor = await getActor();
+      // If no valid cache, fetch from network using anonymous agent
+      const actor = await getActor(undefined, "kong_backend", false);
       const result = await actor.tokens(["all"]);
       const parsed = parseTokens(result);
 

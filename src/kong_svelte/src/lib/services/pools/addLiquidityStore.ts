@@ -4,6 +4,7 @@ import { TokenService } from '$lib/services/tokens/TokenService';
 import { parseTokenAmount } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
 import debounce from 'lodash-es/debounce';
+import { walletStore } from '../wallet/walletStore';
 
 interface AddLiquidityState {
   token0: FE.Token | null;
@@ -78,7 +79,8 @@ function createAddLiquidityStore() {
     if (!state.token0 || !state.token1) return;
 
     try {
-      const balances = await TokenService.fetchBalances([state.token0, state.token1]);
+      const wallet = get(walletStore);
+      const balances = await TokenService.fetchBalances([state.token0, state.token1], wallet.account?.owner?.toString());
       update(s => ({
         ...s,
         token0Balance: balances[state.token0.canister_id]?.in_tokens.toString() || "0",

@@ -1,12 +1,8 @@
 import { get, writable, type Writable } from "svelte/store";
 import { AuthClient } from "@dfinity/auth-client";
 import { Principal } from "@dfinity/principal";
-import {
-  HttpAgent,
-  Actor,
-  type Identity,
-  type ActorSubclass,
-} from "@dfinity/agent";
+import { Ed25519KeyIdentity, DelegationIdentity } from "@dfinity/identity";
+import { HttpAgent, Actor, type Identity, type ActorSubclass } from "@dfinity/agent";
 import { Signer } from "@slide-computer/signer";
 import { PostMessageTransport } from "@slide-computer/signer-web";
 import { SignerAgent } from "@slide-computer/signer-agent";
@@ -16,15 +12,13 @@ import { ICRC2_IDL } from "$lib/idls/icrc2.idl.js";
 import { browser } from "$app/environment";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import {
-  canisterId as kongBackendCanisterId,
   idlFactory as kongBackendIDL,
+  canisterId as kongBackendCanisterId,
 } from "../../../../../declarations/kong_backend";
 import {
   idlFactory as kongFaucetIDL,
   canisterId as kongFaucetCanisterId,
 } from "../../../../../declarations/kong_faucet";
-import { Ed25519KeyIdentity, DelegationIdentity } from "@dfinity/identity";
-import { SignerClient } from "@slide-computer/signer-client";
 
 // Constants
 export const DEV = process.env.DFX_NETWORK === "local";
@@ -48,6 +42,25 @@ export const canisterIDLs = {
   icrc2: ICRC2_IDL,
 };
 
+const httpAgent = HttpAgent.createSync({
+  host: HOST,
+})
+
+if(DEV) {
+  try {
+    httpAgent.fetchRootKey().catch((err) => {
+      console.warn(
+        "Unable to fetch root key. Check to ensure that your local replica is running",
+      );
+      console.error(err);
+    });
+  } catch (error) {
+    console.warn(
+      "Continuing without fetching root key. This is expected in local development.",
+    );
+  }
+}
+
 // Stores
 export const selectedWalletId = writable<string>("");
 export const isReady = writable<boolean>(false);
@@ -60,7 +73,7 @@ export const walletStore = writable<{
   isConnecting: boolean;
   isConnected: boolean;
 }>({
-  agent: null,
+  agent: httpAgent,
   signerAgent: null,
   account: null,
   error: null,
@@ -263,11 +276,17 @@ export async function connectWithNFID() {
     
     console.log("Connected with principal:", principal.toString());
 
+    const signerAgent = SignerAgent.createSync({
+      signer,
+      account: account.owner,
+    });
+
     updateWalletStore({
       agent,
+      signerAgent,
       account: {
-        owner: account.owner, // Use the account from NFID
-        subaccount: account.owner.toHex(),
+        owner: await agent.getPrincipal(), // Use the account from NFID
+        subaccount: (await agent.getPrincipal()).toHex(),
       },
       error: null,
       isConnecting: false,
@@ -286,39 +305,185 @@ export async function connectWithNFID() {
   }
 }
 
-export async function connectWithOisy() {
-  updateWalletStore({ isConnecting: true });
-  try {
-    // Setup transport and signer
-    const transport = new PostMessageTransport({
-      url: OISY_RPC,
-    });
-    const signer = new Signer({ transport });
-    const [account] = await signer.accounts();
+const createDelegationPermissionScope = () => {
+  return {
+    method: "icrc34_delegation",
+    targets: [kongBackendCanisterId.toString(), kongFaucetCanisterId.toString()] // optional array of Principal targets
+  };
+};
 
-    const keys = Ed25519KeyIdentity.generate();
-    signer.delegation({
-      publicKey: account.owner.toUint8Array(),
-      targets: [
-        Principal.fromText(kongFaucetCanisterId),
-        Principal.fromText(kongBackendCanisterId),
-      ],
-      maxTimeToLive: BigInt(24 * 60 * 60 * 1000 * 1000 * 1000), // 24 hours
-    });
-    
-    console.log("Oisy Account:", account);
-    console.log(
-      "The wallet set the following permission scope:",
-      await signer.permissions(),
-    );
+const createAccountsPermissionScope = () => {
+  return {
+    method: "icrc27_accounts"
+  };
+};
 
-    const agent = HttpAgent.createSync({
-      host: HOST,
-      identity: keys
+const createCallCanisterPermissionScope = () => {
+  return {
+    method: "icrc49_call_canister"
+  };
+};
+
+// Track last connection attempt and transport
+let lastConnectionAttempt = 0;
+const CONNECTION_COOLDOWN = 3000; // 3 seconds
+let activeTransport: any | null = null; // Change type to any since PostMessageTransport doesn't expose disconnect
+let isInitializing = false;
+
+// Track agents
+let anonymousAgent: HttpAgent | null = null;
+
+export async function getAnonymousAgent(): Promise<HttpAgent> {
+  if (!anonymousAgent) {
+    anonymousAgent = new HttpAgent({
+      host: HOST
     });
+
     if (DEV) {
       try {
-        await agent.fetchRootKey().catch((err) => {
+        await anonymousAgent.fetchRootKey();
+      } catch (error) {
+        console.warn(
+          "Continuing without fetching root key for anonymous agent. This is expected in local development.",
+        );
+      }
+    }
+  }
+  return anonymousAgent;
+}
+
+// Queue for managing signature requests
+class SignatureQueue {
+  private queue: Array<() => Promise<any>> = [];
+  private isProcessing = false;
+
+  async add<T>(request: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await request();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      this.processQueue();
+    });
+  }
+
+  private async processQueue() {
+    if (this.isProcessing || this.queue.length === 0) return;
+    
+    this.isProcessing = true;
+    try {
+      const request = this.queue.shift();
+      if (request) {
+        await request();
+      }
+    } finally {
+      this.isProcessing = false;
+      if (this.queue.length > 0) {
+        // Process next request after a small delay
+        setTimeout(() => this.processQueue(), 100);
+      }
+    }
+  }
+
+  clear() {
+    this.queue = [];
+    this.isProcessing = false;
+  }
+}
+
+const signatureQueue = new SignatureQueue();
+
+// Export for use in other services
+export const queueSignatureRequest = <T>(request: () => Promise<T>): Promise<T> => {
+  return signatureQueue.add(request);
+};
+
+export async function connectWithOisy() {
+  // Prevent rapid successive connection attempts
+  const now = Date.now();
+  if (now - lastConnectionAttempt < CONNECTION_COOLDOWN) {
+    console.log("Please wait before trying to connect again");
+    return;
+  }
+  lastConnectionAttempt = now;
+
+  try {
+    // Check if already connecting or connected
+    const currentState = get(walletStore);
+    if (currentState.isConnecting || currentState.isConnected || isInitializing) {
+      console.log("Connection already in progress or already connected");
+      return;
+    }
+
+    isInitializing = true;
+
+    // Clean up any existing transport
+    if (activeTransport) {
+      try {
+        activeTransport.disconnect();
+      } catch (e) {
+        console.warn("Error disconnecting existing transport:", e);
+      }
+      activeTransport = null;
+    }
+
+    updateWalletStore({ 
+      isConnecting: true,
+      isConnected: false,
+      error: null,
+      agent: null,
+      account: null
+    });
+    
+    // Create transport for OISY with proper window opening
+    activeTransport = new PostMessageTransport({
+      url: OISY_RPC,
+      onError: (error) => {
+        console.error("Transport error:", error);
+        handleConnectionError(error);
+      }
+    });
+
+    const signer = new Signer({ transport: activeTransport });
+
+    // Request permissions with timeout
+    const permissionPromise = signer.requestPermissions([
+      createAccountsPermissionScope(),
+      createDelegationPermissionScope(),
+      createCallCanisterPermissionScope()
+    ]);
+
+    const permissions = await Promise.race([
+      permissionPromise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Permission request timed out")), 120000)
+      )
+    ]);
+
+    console.log("OISY Permissions:", permissions);
+    // Get accounts only after permissions are granted
+    const accounts = await signer.accounts();
+    if (!accounts.length) {
+      throw new Error("No accounts returned from OISY");
+    }
+    const [account] = accounts;
+    
+    console.log("OISY Account:", account);
+
+    // Create signer agent for direct canister calls
+    const signerAgent = SignerAgent.createSync({
+      signer,
+      account: account.owner,
+    });
+
+    const anonAgent = await getAnonymousAgent();
+    if (DEV) {
+      try {
+        await signerAgent.fetchRootKey().catch((err) => {
           console.warn(
             "Unable to fetch root key. Check to ensure that your local replica is running",
           );
@@ -331,37 +496,46 @@ export async function connectWithOisy() {
       }
     }
 
-    // Create signer agent
-    const signerAgent = SignerAgent.createSync({
-      signer,
-      account: account.owner,
-      agent
-    });
-
     // Verify we're not anonymous
-    console.log("Oisy Principal:", account.owner.toString());
+    const principal = await signerAgent.getPrincipal();
+    console.log("OISY Principal:", principal.toString());
+    if (principal.isAnonymous()) {
+      throw new Error("Failed to authenticate with OISY - got anonymous principal");
+    }
     
+    console.log("Connected with principal:", principal.toString());
+
+    // Update wallet store with connected state
     updateWalletStore({
-      agent,
+      agent: anonAgent,
       signerAgent,
-      account: {
-        owner: account.owner,
-        subaccount: account.owner.toHex(),
-      },
-      error: null,
+      account,
       isConnecting: false,
       isConnected: true,
+      error: null,
     });
 
-    const user = await WalletService.getWhoami();
-    userStore.set(user);
-    isReady.set(true);
+    // Wait a bit before allowing subsequent operations
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    isInitializing = false;
 
-    localStorage.setItem("selectedWalletId", "oisy");
-    selectedWalletId.set("oisy");
+    const user = await WalletService.getWhoami();
+          userStore.set(user);
+          isReady.set(true);
+
+
   } catch (error) {
-    console.error("Oisy connection error:", error);
+    console.error("Error connecting with OISY:", error);
     handleConnectionError(error);
+    isInitializing = false;
+    if (activeTransport) {
+      try {
+        activeTransport.disconnect();
+      } catch (e) {
+        console.warn("Error disconnecting transport after error:", e);
+      }
+      activeTransport = null;
+    }
   }
 }
 
@@ -411,48 +585,55 @@ export async function restoreWalletConnection() {
   }
 }
 
+export type WalletAgent = HttpAgent | SignerAgent<any>;
+
 async function createActor(
   canisterId: string,
   idlFactory: any,
+  agent?: HttpAgent | SignerAgent<any> // Optional agent parameter
 ): Promise<ActorSubclass<any>> {
-  const cacheKey = `${canisterId}-${idlFactory}`;
-  if (actorCache[cacheKey]) {
-    return actorCache[cacheKey];
+  const store = get(walletStore);
+  const effectiveAgent = agent || store.agent;
+  
+  if (!effectiveAgent) {
+    throw new Error("No agent available");
   }
 
-  const wallet = get(walletStore);
-  if (!wallet.agent) {
-    throw new Error("No Agent could be found. Please connect your wallet first.");
-  }
-
-  const actor = Actor.createActor(idlFactory, {
-    agent: wallet.agent,
+  return Actor.createActor(idlFactory, {
+    agent: effectiveAgent,
     canisterId,
   });
-  actorCache[cacheKey] = actor;
-  return actor;
 }
 
 export async function getActor(
   canisterId = kongBackendCanisterId,
   canisterType: CanisterType = "kong_backend",
+  requiresSigning = false // New parameter to determine if we need signing capabilities
 ): Promise<ActorSubclass<any>> {
-  const wallet = get(walletStore);
-  if (!wallet.agent || !wallet.isConnected) {
-    throw new Error("No Agent could be found. Please connect your wallet first.");
+  const store = get(walletStore);
+  
+  let agent: HttpAgent | SignerAgent<any> | null = store.agent;
+  
+  if (requiresSigning) {
+    // For operations requiring signing, use the signer agent
+    agent = store.signerAgent;
+    if (!agent) {
+      throw new Error("No signing agent available. Please connect your wallet.");
+    }
+  } else {
+    // For read operations, try wallet agent first, then fall back to anonymous
+    agent = store.agent;
+
+    if (!agent) {
+      agent = await getAnonymousAgent();
+    }
   }
 
-  const idl = canisterIDLs[canisterType];
-  if (!idl) {
-    throw new Error(`No IDL found for canister type: ${canisterType}`);
+  if(DEV){
+    await agent.fetchRootKey()
   }
 
-  const actor = await createActor(canisterId, idl);
-
-  if (canisterType === "icrc2" && !actor.icrc2_approve) {
-    throw new Error("Created actor does not have ICRC2 methods");
-  }
-
+  const actor = await createActor(canisterId, canisterIDLs[canisterType], agent);
   return actor;
 }
 
@@ -460,7 +641,7 @@ export async function getActor(
 export function isConnected(): boolean {
   let connected = false;
   walletStore.subscribe((store) => {
-    connected = store.isConnected;
+    connected = store?.account?.owner !== null;
   })();
   return connected;
 }
