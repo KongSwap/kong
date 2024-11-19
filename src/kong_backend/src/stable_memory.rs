@@ -6,6 +6,7 @@ use std::cell::{Cell, RefCell};
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
+use crate::stable_lp_token_ledger::stable_lp_token_ledger_alt::{StableLPTokenLedgerAlt, StableLPTokenLedgerIdAlt};
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
@@ -27,6 +28,7 @@ pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_LEDGER_MEMORY_ID: MemoryId = MemoryId::new(8);
 pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
 // archives
+pub const POOL_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(103);
 pub const TX_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(104);
 pub const REQUEST_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(105);
 pub const TRANSFER_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(106);
@@ -114,6 +116,11 @@ thread_local! {
     // Archive Stable Memory
     //
 
+    // stable memory for storing pools backup
+    pub static POOL_ARCHIVE_MAP: RefCell<StableBTreeMap<StablePoolId, StablePool, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableBTreeMap::init(memory_manager.get(POOL_MEMORY_ARCHIVE_ID)))
+    });
+
     // stable memory for storing tx archive
     pub static TX_ARCHIVE_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_ARCHIVE_ID)))
@@ -130,7 +137,7 @@ thread_local! {
     });
 
     // stable memory for storing LP token ledger archive
-    pub static LP_TOKEN_LEDGER_ARCHIVE: RefCell<StableBTreeMap<StableLPTokenLedgerId, StableLPTokenLedger, Memory>> = with_memory_manager(|memory_manager| {
+    pub static LP_TOKEN_LEDGER_ARCHIVE: RefCell<StableBTreeMap<StableLPTokenLedgerIdAlt, StableLPTokenLedgerAlt, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID)))
     });
 
