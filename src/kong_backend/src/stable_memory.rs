@@ -58,9 +58,6 @@ thread_local! {
     // static variable to store the timer id for the background transfer archive timer
     pub static TRANSFER_MAP_ARCHIVE_TIMER_ID: Cell<TimerId> = Cell::default();
 
-    // static variable to store the timer id for the background LP token ledger archive timer
-    pub static LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID: Cell<TimerId> = Cell::default();
-
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
     // return a memory that can be used by stable structures
     pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =

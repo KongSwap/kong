@@ -6,9 +6,8 @@ use serde::Deserialize;
 use std::time::Duration;
 
 use super::stable_memory::{
-    CLAIMS_TIMER_ID, LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, REQUEST_MEMORY_ARCHIVE_OLD_ID, STATS_TIMER_ID,
-    TRANSFER_MAP_ARCHIVE_TIMER_ID, TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_OLD_ID, TX_MAP_ARCHIVE_TIMER_ID,
-    TX_MEMORY_ARCHIVE_OLD_ID,
+    CLAIMS_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, REQUEST_MEMORY_ARCHIVE_OLD_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID,
+    TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_OLD_ID, TX_MAP_ARCHIVE_TIMER_ID, TX_MEMORY_ARCHIVE_OLD_ID,
 };
 use super::{APP_NAME, APP_VERSION};
 
@@ -93,9 +92,6 @@ fn pre_upgrade() {
 
     // clear the background timer for archiving transfer map
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    // clear the background timer for archiving LP token ledger
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
 }
 
 #[post_upgrade]
