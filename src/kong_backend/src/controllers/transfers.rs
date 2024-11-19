@@ -2,7 +2,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_ARCHIVE_OLD_MAP, TRANSFER_MAP};
+use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_transfer::stable_transfer_alt::{StableTransferAlt, StableTransferIdAlt};
 use crate::stable_transfer::transfer_map;
@@ -143,21 +143,3 @@ fn upgrade_alt_transfers() -> Result<String, String> {
     Ok("Alt transfers upgraded".to_string())
 }
 */
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_archive_transfers() -> Result<String, String> {
-    TRANSFER_ARCHIVE_OLD_MAP.with(|m| {
-        let transfer_archive_old_map = m.borrow();
-        TRANSFER_ARCHIVE_MAP.with(|m| {
-            let mut transfer_archive_map = m.borrow_mut();
-            transfer_archive_map.clear_new();
-            for (k, v) in transfer_archive_old_map.iter() {
-                let transfer_id = StableTransferIdAlt::from_stable_transfer_id(&k);
-                let transfer = StableTransferAlt::from_stable_transfer(&v);
-                transfer_archive_map.insert(transfer_id, transfer);
-            }
-        });
-    });
-
-    Ok("Archive transfers upgraded".to_string())
-}

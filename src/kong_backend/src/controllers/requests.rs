@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_impl::to_request_reply;
-use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_ARCHIVE_OLD_MAP, REQUEST_MAP};
+use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_request::stable_request_alt::{StableRequestAlt, StableRequestIdAlt};
@@ -144,40 +144,3 @@ fn upgrade_alt_requests() -> Result<String, String> {
     Ok("Alt requests upgraded".to_string())
 }
 */
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_archive_requests() -> Result<String, String> {
-    REQUEST_ARCHIVE_OLD_MAP.with(|m| {
-        let request_archive_old_map = m.borrow();
-        REQUEST_ARCHIVE_MAP.with(|m| {
-            let mut request_map = m.borrow_mut();
-            request_map.clear_new();
-            for (k, v) in request_archive_old_map.iter() {
-                let request_id = StableRequestIdAlt::from_stable_request_id(&k);
-                let request = StableRequestAlt::from_stable_request(&v);
-                request_map.insert(request_id, request);
-            }
-        });
-    });
-
-    Ok("Archive requests upgraded".to_string())
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_archive_old_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
-    REQUEST_ARCHIVE_OLD_MAP.with(|m| {
-        let map = m.borrow();
-        let requests: BTreeMap<_, _> = match request_id {
-            Some(request_id) => {
-                let start_id = StableRequestId(request_id);
-                let num_requests = num_requests.map_or(1, |n| n as usize);
-                map.range(start_id..).take(num_requests).collect()
-            }
-            None => {
-                let num_requests = num_requests.map_or(MAX_REQUESTS, |n| n as usize);
-                map.iter().take(num_requests).collect()
-            }
-        };
-        serde_json::to_string(&requests).map_err(|e| format!("Failed to serialize requests: {}", e))
-    })
-}

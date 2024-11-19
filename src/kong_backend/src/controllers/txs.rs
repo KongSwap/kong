@@ -2,7 +2,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{TX_ARCHIVE_MAP, TX_ARCHIVE_OLD_MAP, TX_MAP};
+use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::stable_tx_alt::{StableTxAlt, StableTxIdAlt};
 use crate::stable_tx::tx::Tx;
@@ -144,21 +144,3 @@ fn upgrade_alt_txs() -> Result<String, String> {
     Ok("Alt txs upgraded".to_string())
 }
 */
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_archive_txs() -> Result<String, String> {
-    TX_ARCHIVE_OLD_MAP.with(|m| {
-        let tx_archive_old_map = m.borrow();
-        TX_ARCHIVE_MAP.with(|m| {
-            let mut tx_archive_map = m.borrow_mut();
-            tx_archive_map.clear_new();
-            for (k, v) in tx_archive_old_map.iter() {
-                let tx_id = StableTxIdAlt::from_stable_tx_id(&k);
-                let tx = StableTxAlt::from_stable_tx(&v);
-                tx_archive_map.insert(tx_id, tx);
-            }
-        });
-    });
-
-    Ok("Archive txs upgraded".to_string())
-}
