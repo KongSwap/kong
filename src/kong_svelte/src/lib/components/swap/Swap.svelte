@@ -21,16 +21,18 @@
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash/debounce";
   import { writable } from "svelte/store";
+  import { createEventDispatcher } from 'svelte';
 
-  let currentSwapId: string | null = null;
   let isProcessing = false;
-  let isRotating = false;
   let rotationCount = 0;
+  let isRotating = false;
+  let currentSwapId: string | null = null;
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
   export let initialFromToken: FE.Token | null = null;
   export let initialToToken: FE.Token | null = null;
+  export let currentMode: 'normal' | 'pro';
 
   type PanelType = "pay" | "receive";
   interface PanelConfig {
@@ -44,7 +46,9 @@
     { id: "receive", type: "receive", title: "You Receive" },
   ];
 
-  let swapMode = "normal";
+  const dispatch = createEventDispatcher<{
+    modeChange: { mode: 'normal' | 'pro' };
+  }>();
 
   $: userMaxSlippage = $settingsStore.max_slippage;
 
@@ -115,37 +119,44 @@
       return false;
     }
 
-    swapState.setIsProcessing(true);
-    swapState.setError(null);
+    try {
+      swapState.setIsProcessing(true);
+      swapState.setError(null);
 
-    // Create new swap entry and store its ID
-    let swapId = swapStatusStore.addSwap({
-      expectedReceiveAmount: $swapState.receiveAmount,
-      lastPayAmount: $swapState.payAmount,
-      payToken: $swapState.payToken,
-      receiveToken: $swapState.receiveToken,
-      payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
-    });
+      // Create new swap entry and store its ID
+      currentSwapId = swapStatusStore.addSwap({
+        expectedReceiveAmount: $swapState.receiveAmount,
+        lastPayAmount: $swapState.payAmount,
+        payToken: $swapState.payToken,
+        receiveToken: $swapState.receiveToken,
+        payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
+      });
 
-    currentSwapId = swapId;
+      const success = await SwapService.executeSwap({
+        swapId: currentSwapId,
+        payToken: $swapState.payToken,
+        payAmount: $swapState.payAmount,
+        receiveToken: $swapState.receiveToken,
+        receiveAmount: $swapState.receiveAmount,
+        userMaxSlippage,
+        backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        lpFees: $swapState.lpFees,
+      });
 
-    const success = await SwapService.executeSwap({
-      swapId,
-      payToken: $swapState.payToken,
-      payAmount: $swapState.payAmount,
-      receiveToken: $swapState.receiveToken,
-      receiveAmount: $swapState.receiveAmount,
-      userMaxSlippage,
-      backendPrincipal: KONG_BACKEND_PRINCIPAL,
-      lpFees: $swapState.lpFees,
-    });
-
-    if (success) {
-      toastStore.success("Swap successful");
-      return true;
-    } else {
-      toastStore.error("Swap failed");
+      if (success) {
+        toastStore.success("Swap successful");
+        return true;
+      } else {
+        toastStore.error("Swap failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Swap error:", error);
+      toastStore.error("Swap failed: " + (error.message || "Unknown error"));
       return false;
+    } finally {
+      swapState.setIsProcessing(false);
+      currentSwapId = null;
     }
   }
 
@@ -269,12 +280,12 @@
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
-    <div class="mode-selector">
+    <div class="mode-selector" class:mode-selector-pixel={$themeStore === 'pixel'}>
       <Button
         variant="yellow"
         size="medium"
-        state={swapMode === "normal" ? "selected" : "default"}
-        onClick={() => (swapMode = "normal")}
+        state={currentMode === "normal" ? "selected" : "default"}
+        onClick={() => dispatch('modeChange', { mode: 'normal' })}
         width="50%"
       >
         Normal
@@ -282,11 +293,11 @@
       <Button
         variant="yellow"
         size="medium"
-        state="disabled"
-        onClick={() => {}}
+        state={currentMode === "pro" ? "selected" : "default"}
+        onClick={() => dispatch('modeChange', { mode: 'pro' })}
         width="50%"
       >
-        Pro (Soon)
+        Pro
       </Button>
     </div>
 
@@ -428,17 +439,18 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 0 0.5rem;
+    padding: 0;
   }
 
   .mode-selector {
     display: flex;
-    gap: 0.75rem;
-    margin-top: clamp(1rem, 2vw, 1.5rem);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
     font-size: clamp(0.875rem, 1.5vw, 1rem);
-    @media (max-width: 768px) {
-      display: none;
-    }
+  }
+
+  .mode-selector-pixel {
+    margin-bottom: 1.25rem;
   }
 
   .panels-container {
@@ -446,13 +458,17 @@
     flex-direction: column;
     gap: 0.25rem;
     position: relative;
-    padding: clamp(1rem, 2vw, 1.5rem) 0;
   }
 
   .panel-wrapper {
     position: relative;
     z-index: 1;
     width: 100%;
+  }
+
+  .swap-footer {
+    z-index: 1;
+    margin-top: 0.5rem;
   }
 
   .switch-button {
@@ -553,11 +569,5 @@
 
   :global([data-theme="pixel"]) .arrow-path {
     stroke-width: 1;
-  }
-
-  .swap-footer {
-    z-index: 1;
-    margin-top: clamp(1rem, 2vw, 1.5rem);
-    width: 100%;
   }
 </style>

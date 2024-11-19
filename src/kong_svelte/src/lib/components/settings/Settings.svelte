@@ -1,6 +1,4 @@
 <script lang="ts">
-  import LanguageSelector from "../common/LanguageSelector.svelte";
-  import Slider from "../common/Slider.svelte";
   import Toggle from "../common/Toggle.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
@@ -17,11 +15,12 @@
   let activeTab: 'trade' | 'app' = 'trade';
   let soundEnabled = true;
   let settingsSubscription: () => void;
-  let slippageInputValue: string;
+  let slippageValue: number = 2.0;
+  let slippageInputValue = '2.0';
   let isMobile = false;
 
   // Predefined slippage values for quick selection
-  const quickSlippageValues = [0.1, 0.5, 1, 2, 3];
+  const quickSlippageValues = [1, 2, 3, 5, 10];
 
   // Subscribe to settings changes using liveQuery
   const settings = liveQuery(async () => {
@@ -46,53 +45,66 @@
 
   $: if ($settingsStore) {
     soundEnabled = $settingsStore.sound_enabled;
-    slippageInputValue = $settingsStore.max_slippage?.toString() || '0';
+    slippageValue = $settingsStore.max_slippage || 2.0;
+    slippageInputValue = slippageValue.toString();
   }
 
   function handleQuickSlippageSelect(value: number) {
     settingsStore.updateSetting('max_slippage', value);
+    slippageValue = value;
+    slippageInputValue = value.toString();
     toastStore.success(`Slippage updated to ${value}%`);
   }
 
   function handleSlippageChange(e: Event) {
     const value = parseFloat((e.target as HTMLInputElement).value);
-    const boundedValue = Math.min(Math.max(value, 0), 99);
-    if (!isNaN(boundedValue)) {
+    if (!isNaN(value)) {
+      const boundedValue = Math.min(Math.max(value, 0), 99);
       settingsStore.updateSetting('max_slippage', boundedValue);
+      slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
     }
   }
 
   function handleSlippageInput(e: Event) {
     const input = (e.target as HTMLInputElement).value;
-    slippageInputValue = input;
+    // Allow empty input or decimal point for better UX
+    if (input === '' || input === '.') {
+      slippageInputValue = input;
+      return;
+    }
+    
     const value = parseFloat(input);
     if (!isNaN(value)) {
-      const boundedValue = Math.min(Math.max(value, 0), 99);
-      settingsStore.updateSetting('max_slippage', boundedValue);
+      slippageInputValue = input;
+      // Only update settings if the value is valid
+      if (value >= 0 && value <= 99) {
+        settingsStore.updateSetting('max_slippage', value);
+        slippageValue = value;
+      }
     }
   }
 
   function handleSlippageBlur() {
     const value = parseFloat(slippageInputValue);
-    if (isNaN(value)) {
-      slippageInputValue = $settingsStore.max_slippage?.toString() || '0';
+    if (isNaN(value) || value < 0 || value > 99) {
+      // Reset to last valid value from settings
+      slippageInputValue = $settingsStore.max_slippage?.toString() || '2.0';
+      slippageValue = $settingsStore.max_slippage || 2.0;
     } else {
       const boundedValue = Math.min(Math.max(value, 0), 99);
+      slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       settingsStore.updateSetting('max_slippage', boundedValue);
-      toastStore.success(`Slippage updated to ${boundedValue}%`);
+      if (boundedValue !== value) {
+        toastStore.success(`Slippage bounded to ${boundedValue}%`);
+      }
     }
   }
 
   function handleToggleSound(event: CustomEvent<boolean>) {
-    if ($walletStore.isConnected) {
-      settingsStore.updateSetting('sound_enabled', event.detail);
-      soundEnabled = event.detail;
-    } else {
-      toastStore.error('Please connect your wallet to save settings');
-      event.preventDefault();
-    }
+    settingsStore.updateSetting('sound_enabled', event.detail);
+    soundEnabled = event.detail;
   }
 
   async function clearFavorites() {
@@ -194,44 +206,34 @@
       <div class="setting-content">
         <div class="flex flex-col gap-4">
           <!-- Quick select buttons -->
-          <div class="flex gap-2 flex-wrap">
+          <div class="slippage-buttons">
             {#each quickSlippageValues as value}
               <button
-                class="quick-select-btn"
-                class:active={$settingsStore.max_slippage === value}
+                class="slippage-btn"
+                class:active={slippageValue === value}
                 on:click={() => handleQuickSlippageSelect(value)}
               >
                 {value}%
               </button>
             {/each}
-            <div class="custom-input-container">
+          </div>
+
+          <!-- Custom input -->
+          <div class="custom-slippage">
+            <span class="custom-label">Custom slippage</span>
+            <div class="custom-input-wrapper" class:active={!quickSlippageValues.includes(slippageValue)}>
               <input
                 type="text"
                 inputmode="decimal"
-                placeholder="Custom"
+                placeholder="Enter value"
                 class="slippage-input"
                 bind:value={slippageInputValue}
                 on:input={handleSlippageInput}
                 on:blur={handleSlippageBlur}
               />
-              <span class="text-white/90 font-medium">%</span>
+              <span class="percent-symbol">%</span>
             </div>
           </div>
-
-          <!-- Slider - only show on desktop -->
-          {#if !isMobile}
-            <div class="flex-1">
-              <input
-                type="range"
-                min="0"
-                max="99"
-                step="0.1"
-                value={$settingsStore.max_slippage}
-                class="slippage-slider"
-                on:input={handleSlippageChange}
-              />
-            </div>
-          {/if}
 
           <p class="setting-description">
             Maximum allowed price difference between expected and actual swap price
@@ -268,73 +270,111 @@
     <div class="setting-section z-1">
       <div class="setting-header">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
         </svg>
         <h3>App Settings</h3>
       </div>
+      
       <div class="setting-content">
-        <!-- Language -->
-        <div class="flex flex-col gap-4">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Language</span>
-            <LanguageSelector />
+        <!-- Theme Setting -->
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+            </svg>
+            <span>Theme</span>
           </div>
-          <p class="setting-description">
-            Choose your preferred language for the interface
-          </p>
-        </div>
-
-        <!-- Theme -->
-        <div class="flex flex-col gap-4 mt-6">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Theme</span>
-            <button class="theme-toggle" on:click={toggleTheme}>
-              {$themeStore === 'pixel' ? 'Modern' : 'Pixel'}
-            </button>
-          </div>
-          <p class="setting-description">
-            Switch between pixel art and modern glass themes
-          </p>
-        </div>
-
-        <!-- Sound -->
-        <div class="flex flex-col gap-4 mt-6">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Sound</span>
-            <Toggle 
-              checked={soundEnabled}
-              on:change={handleToggleSound}
-            />
-          </div>
-          <p class="setting-description">
-            Enable or disable sound effects
-          </p>
-        </div>
-
-        <!-- Reset Database -->
-        <div class="flex flex-col gap-4 mt-6">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Reset Database</span>
+          <div class="theme-buttons">
             <button
-              class="reset-button"
-              on:click={resetDatabase}
+              class="theme-button"
+              class:active={$themeStore === 'pixel'}
+              on:click={() => themeStore.set('pixel')}
             >
-              Reset
+              Pixel
+            </button>
+            <button
+              class="theme-button"
+              class:active={$themeStore === 'glass'}
+              on:click={() => themeStore.set('glass')}
+            >
+              Glass
             </button>
           </div>
-          <p class="setting-description">
-            Clear all cached data and reset the application
-          </p>
+        </div>
+
+        <!-- Language Setting -->
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m5 8 6 6"/>
+              <path d="m4 14 6-6 2-3"/>
+              <path d="M2 5h12"/>
+              <path d="M7 2h1"/>
+              <path d="m22 22-5-10-5 10"/>
+              <path d="M14 18h6"/>
+            </svg>
+            <span>Language</span>
+          </div>
+          <div class="language-buttons">
+            <button
+              class="lang-button"
+              class:active={$settingsStore.default_language === 'en'}
+              on:click={() => settingsStore.updateSetting('default_language', 'en')}
+            >
+              <span class="flag">🇺🇸</span>
+              <span>English</span>
+            </button>
+            <button
+              class="lang-button"
+              class:active={$settingsStore.default_language === 'es'}
+              on:click={() => settingsStore.updateSetting('default_language', 'es')}
+            >
+              <span class="flag">🇪🇸</span>
+              <span>Español</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sound Setting -->
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 5 6 9H2v6h4l5 4V5z"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+            <span>Sound</span>
+          </div>
+          <Toggle checked={soundEnabled} on:change={handleToggleSound} />
+        </div>
+
+        <!-- Data Management -->
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/>
+              <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/>
+            </svg>
+            <span>Data Management</span>
+          </div>
+          <div class="data-buttons">
+            <button class="data-button" on:click={clearFavorites}>
+              Clear Favorites
+            </button>
+            <button class="data-button warning" on:click={resetDatabase}>
+              Reset Database
+            </button>
+          </div>
         </div>
       </div>
     </div>
+
   {/if}
 </div>
 
 <style lang="postcss">
   .settings-container {
-    @apply flex flex-col gap-4 p-4;
-    min-height: 100%;
+    @apply flex flex-col gap-4 p-4 max-w-2xl mx-auto;
   }
 
   .tabs-container {
@@ -342,92 +382,128 @@
   }
 
   .tab-button {
-    @apply flex items-center gap-2 px-4 py-2 rounded-lg text-white/60 transition-all duration-200;
-  }
-
-  .tab-button:hover {
-    @apply text-white/80;
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-black/5;
   }
 
   .tab-button.active {
-    @apply text-white;
-    background: rgba(255, 255, 255, 0.1);
+    @apply bg-black/10;
   }
 
   .setting-section {
-    @apply bg-black/20 rounded-lg overflow-hidden;
+    @apply bg-white/50 backdrop-blur-md rounded-xl p-6 border-2 border-black/10;
   }
 
   .setting-header {
-    @apply flex items-center gap-3 p-4 bg-black/20;
+    @apply flex items-center gap-2 mb-6 pb-4 border-b border-black/10;
   }
 
   .setting-header h3 {
-    @apply text-lg font-semibold text-white;
+    @apply text-xl font-bold;
   }
 
   .setting-content {
-    @apply p-4;
+    @apply flex flex-col gap-6;
   }
 
-  .setting-label {
-    @apply text-white/90 font-medium;
+  .setting-item {
+    @apply flex flex-col gap-3;
   }
 
-  .setting-description {
-    @apply text-sm text-white/60 mt-2;
+  .setting-item-header {
+    @apply flex items-center gap-2 text-lg font-medium;
   }
 
-  .clear-button,
-  .reset-button,
-  .theme-toggle {
-    @apply px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all duration-200;
+  .theme-button {
+    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
   }
 
-  .theme-toggle {
-    @apply bg-blue-500/20 text-blue-400 hover:bg-blue-500/30;
+  .theme-button.active {
+    @apply bg-[#eece00] text-black;
   }
 
-  .quick-select-btn {
-    @apply px-3 py-2 rounded-lg bg-white/5 text-white/80 
-           transition-all duration-200 text-center min-w-[60px]
-           hover:bg-white/10 hover:text-white
-           border border-white/10;
-    font-family: 'Alumni Sans', sans-serif;
+  .language-buttons {
+    @apply flex gap-2 flex-wrap;
   }
 
-  .quick-select-btn.active {
-    @apply bg-yellow-400/20 text-yellow-400 border-yellow-400/30;
+  .lang-button {
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
   }
 
-  .custom-input-container {
-    @apply flex items-center gap-1 px-2 rounded-lg bg-white/5 border border-white/10 min-w-[80px];
+  .lang-button.active {
+    @apply bg-[#eece00] text-black;
+  }
+
+  .flag {
+    @apply text-lg;
+  }
+
+  .data-buttons {
+    @apply flex gap-2 flex-wrap;
+  }
+
+  .data-button {
+    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
+  }
+
+  .data-button.warning {
+    @apply bg-red-500/10 hover:bg-red-500/20 text-red-600;
+  }
+
+  .slippage-buttons {
+    @apply flex gap-2 flex-wrap;
+  }
+
+  .slippage-btn {
+    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200 font-medium min-w-[60px] text-center;
+  }
+
+  .slippage-btn.active {
+    @apply bg-[#eece00] text-black;
+  }
+
+  .custom-slippage {
+    @apply flex flex-col gap-2;
+  }
+
+  .custom-label {
+    @apply text-sm text-black/60 font-medium;
+  }
+
+  .custom-input-wrapper {
+    @apply flex items-center gap-1 px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200 max-w-[160px];
+  }
+
+  .custom-input-wrapper.active {
+    @apply bg-[#eece00];
   }
 
   .slippage-input {
-    @apply w-16 py-2 bg-transparent text-white/90 
-           focus:outline-none text-right;
-    font-family: 'Alumni Sans', sans-serif;
+    @apply bg-transparent w-full text-left focus:outline-none font-medium;
   }
 
-  .slippage-slider {
-    @apply w-full h-2 rounded-lg appearance-none cursor-pointer;
-    background: linear-gradient(to right, 
-      rgb(250 204 21) 0%, 
-      rgb(250 204 21) var(--value-percent, 0%), 
-      rgba(255, 255, 255, 0.1) var(--value-percent, 0%)
-    );
+  .percent-symbol {
+    @apply text-black/60;
   }
 
-  .slippage-slider::-webkit-slider-thumb {
-    @apply appearance-none w-4 h-4 rounded-full bg-yellow-400 cursor-pointer
-           hover:bg-yellow-500 hover:scale-110 transition-all duration-200;
-    border: 2px solid rgba(0, 0, 0, 0.2);
+  :global([data-theme="pixel"]) .setting-section {
+    @apply bg-white border-2 border-black;
   }
 
-  .slippage-slider::-moz-range-thumb {
-    @apply w-4 h-4 rounded-full bg-yellow-400 cursor-pointer
-           hover:bg-yellow-500 hover:scale-110 transition-all duration-200;
-    border: 2px solid rgba(0, 0, 0, 0.2);
+  :global([data-theme="pixel"]) .tab-button {
+    @apply hover:bg-black/10;
+  }
+
+  :global([data-theme="pixel"]) .tab-button.active {
+    @apply bg-[#eece00];
+  }
+
+  :global([data-theme="pixel"]) .theme-button,
+  :global([data-theme="pixel"]) .lang-button,
+  :global([data-theme="pixel"]) .data-button {
+    @apply border-2 border-black;
+  }
+
+  :global([data-theme="pixel"]) .data-button.warning {
+    @apply border-red-600;
   }
 </style>

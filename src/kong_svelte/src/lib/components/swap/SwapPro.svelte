@@ -1,25 +1,23 @@
 <script lang="ts">
     import { fade } from "svelte/transition";
     import Swap from "./Swap.svelte";
-    import TokenSelectorButton from "./swap_ui/TokenSelectorButton.svelte";
-    import SwapPanel from "./swap_ui/SwapPanel.svelte";
-    import SlippageSection from "./swap_ui/settings/SlippageSection.svelte";
     import TransactionHistory from "../sidebar/TransactionHistory.svelte";
-    import { walletStore } from "$lib/services/wallet/walletStore";
     import Panel from "$lib/components/common/Panel.svelte";
     import { onMount } from "svelte";
-  
+    import { createEventDispatcher } from 'svelte';
+
     export let initialFromToken: FE.Token | null = null;
     export let initialToToken: FE.Token | null = null;
+    export let currentMode: 'normal' | 'pro' = 'pro';
 
     let fromToken = initialFromToken;
     let toToken = initialToToken;
-    let fromAmount = "";
-    let toAmount = "";
-    let slippage = 0.5;
-    let transactions: any[] = [];
-    let container: HTMLElement;
     let chart: any;
+    let activeHistoryTab: 'my' | 'pair' | 'orders' = 'my';
+
+    const dispatch = createEventDispatcher<{
+        modeChange: { mode: 'normal' | 'pro' };
+    }>();
 
     onMount(() => {
         const script = document.createElement('script');
@@ -75,14 +73,9 @@
     function handleToAmountChange(event: CustomEvent) {
         // TODO: Implement amount change
     }
-  </script>
-  
-  
-  <div class="swap-pro-container" in:fade={{ duration: 420 }}>
-    <div class="mode-toggle">
-        <button class="mode-button active">Pro Mode</button>
-    </div>
-    
+</script>
+
+<div class="swap-pro-container" in:fade={{ duration: 420 }}>
     <div class="layout-container">
         <!-- Main content section -->
         <div class="main-content">
@@ -102,26 +95,85 @@
 
             <!-- Right side panels -->
             <div class="right-panels">
-                <Swap initialFromToken={fromToken} initialToToken={toToken} />
+                <Swap 
+                    initialFromToken={fromToken} 
+                    initialToToken={toToken} 
+                    currentMode={currentMode}
+                    on:modeChange
+                />
+                
             </div>
         </div>
 
         <!-- Transaction History Section -->
         <Panel
-            variant="blue"
+            variant="green"
             type="main"
             className="transaction-history"
             width="100%"
-            height="33%"
+            height="40%"
         >
             <div class="history-container">
-                <h2 class="history-title">Transaction History</h2>
-                <TransactionHistory />
+                <div class="history-header">
+                    <div class="tab-navigation">
+                        <button
+                            class="tab-button"
+                            class:active={activeHistoryTab === 'my'}
+                            on:click={() => activeHistoryTab = 'my'}
+                        >
+                            {#if activeHistoryTab === 'my'}
+                                <img src="/stats/banana.webp" class="w-5 h-5 mr-1.5 object-contain" alt="" />
+                            {/if}
+                            My History
+                            {#if activeHistoryTab === 'my'}
+                                <img src="/stats/banana.webp" class="w-5 h-5 ml-1.5 object-contain" alt="" />
+                            {/if}
+                        </button>
+                        <button
+                            class="tab-button"
+                            class:active={activeHistoryTab === 'pair'}
+                            on:click={() => activeHistoryTab = 'pair'}
+                        >
+                            {#if activeHistoryTab === 'pair'}
+                                <img src="/stats/banana.webp" class="w-5 h-5 mr-1.5 object-contain" alt="" />
+                            {/if}
+                            Pair History
+                            {#if activeHistoryTab === 'pair'}
+                                <img src="/stats/banana.webp" class="w-5 h-5 ml-1.5 object-contain" alt="" />
+                            {/if}
+                        </button>
+                        <button
+                            class="tab-button"
+                            class:active={activeHistoryTab === 'orders'}
+                            on:click={() => activeHistoryTab = 'orders'}
+                        >
+                            {#if activeHistoryTab === 'orders'}
+                                <img src="/stats/banana.webp" class="w-5 h-5 mr-1.5 object-contain" alt="" />
+                            {/if}
+                            My Active Orders
+                            {#if activeHistoryTab === 'orders'}
+                                <img src="/stats/banana.webp" class="w-5 h-5 ml-1.5 object-contain" alt="" />
+                            {/if}
+                        </button>
+                    </div>
+                </div>
+                
+                {#if activeHistoryTab === 'my'}
+                    <TransactionHistory />
+                {:else if activeHistoryTab === 'pair'}
+                    <div class="placeholder-content">
+                        <p>Pair history coming soon</p>
+                    </div>
+                {:else}
+                    <div class="placeholder-content">
+                        <p>Active orders coming soon</p>
+                    </div>
+                {/if}
             </div>
         </Panel>
     </div>
 </div>
-  
+
 <style lang="postcss">
     .swap-pro-container {
         width: 100vw;
@@ -130,22 +182,7 @@
         flex-direction: column;
         background: var(--color-background);
     }
-  
-    .mode-toggle {
-        display: flex;
-        justify-content: center;
-        padding: 1rem;
-    }
-  
-    .mode-button {
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--color-border);
-        border-radius: 0.5rem;
-        background: var(--color-primary);
-        color: var(--color-text-inverse);
-        cursor: pointer;
-    }
-  
+
     .layout-container {
         flex: 1;
         display: flex;
@@ -156,7 +193,7 @@
         margin: 0 auto;
         width: 100%;
     }
-  
+
     .main-content {
         display: flex;
         gap: 1rem;
@@ -164,18 +201,12 @@
         min-height: 0;
     }
 
-    .chart-area {
-        flex: 1;
-        min-width: 0;
-        position: relative;
-    }
-
     .chart-wrapper {
         position: relative;
         width: 100%;
         height: 100%;
     }
-  
+
     .chart-placeholder {
         position: absolute;
         inset: 0;
@@ -192,21 +223,73 @@
     .right-panels {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
         width: 400px;
         flex-shrink: 0;
     }
 
     .history-container {
-        padding: 1rem;
         height: 100%;
         overflow-y: auto;
     }
 
-    .history-title {
+    .history-header {
         margin-bottom: 1rem;
-        font-size: 1.2rem;
-        font-weight: bold;
+        border-bottom: 2px solid var(--color-border);
+        padding: 0 0.5rem;
+    }
+
+    .tab-navigation {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: -2px;
+    }
+
+    .tab-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        border: none;
+        color: var(--color-text-secondary);
+        font-size: 1.125rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-button:hover {
+        color: var(--color-text);
+    }
+
+    .tab-button.active {
+        color: var(--color-text);
+        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 2px solid #ffcd1f;
+    }
+
+    :global([data-theme="pixel"]) .tab-button {
+        font-family: 'Press Start 2P', cursive;
+        font-size: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    :global([data-theme="pixel"]) .tab-button.active {
+        background: #ffcd1f;
+        border: 2px solid black;
+        border-bottom: none;
+        margin-bottom: -1px;
+        color: black;
+    }
+
+    .placeholder-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: calc(100% - 3rem);
+        color: var(--color-text-secondary);
+        font-style: italic;
     }
 
     :global(#tradingview_chart),
@@ -219,4 +302,5 @@
         width: 100% !important;
         height: 100% !important;
     }
+
 </style>
