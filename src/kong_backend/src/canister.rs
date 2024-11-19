@@ -160,6 +160,10 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
         format!("https://{}.icp0.io", KONG_BACKEND),
         #[cfg(not(feature = "prod"))]
         format!("http://{}.localhost:4943", KONG_BACKEND),
+        #[cfg(not(feature = "prod"))]
+        format!("http://edoy4-liaaa-aaaar-qakha-cai.localhost:5173"), // svelte FE
+        #[cfg(not(feature = "prod"))]
+        format!("http://localhost:5173"),
         #[cfg(feature = "prod")]
         String::from("https://www.kongswap.io"),
         #[cfg(feature = "prod")]
