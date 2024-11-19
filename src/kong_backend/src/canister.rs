@@ -25,7 +25,7 @@ use crate::stable_memory::MEMORY_MANAGER;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
-use crate::stable_tx::tx_archive::{archive_tx_24h_map, archive_tx_map};
+use crate::stable_tx::tx_archive::archive_tx_map;
 
 #[init]
 async fn init() {
@@ -42,7 +42,6 @@ async fn init() {
     // start the background timer to process stats
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
-            archive_tx_24h_map(); // archive transaction map for the last 24 hours for calculating rolling stats
             update_pool_stats();
         });
     });
@@ -106,7 +105,6 @@ async fn post_upgrade() {
     // start the background timer to process stats
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
-            archive_tx_24h_map(); // archive transaction map for the last 24 hours for calculating rolling stats
             update_pool_stats();
         });
     });
