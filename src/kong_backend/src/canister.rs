@@ -143,7 +143,6 @@ async fn post_upgrade() {
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
-    /*
     POOL_ARCHIVE_MAP.with(|cell| {
         cell.borrow_mut().clear_new();
     });
@@ -151,10 +150,9 @@ async fn post_upgrade() {
         let memory = memory_manager.borrow().get(POOL_MEMORY_ARCHIVE_ID);
         if memory.size() > 0 {
             memory.write(0, &[0]);
+            ic_cdk::println!("Pool archive is freed");
         }
     });
-    */
-    /*
     LP_TOKEN_LEDGER_ARCHIVE.with(|cell| {
         cell.borrow_mut().clear_new();
     });
@@ -162,9 +160,9 @@ async fn post_upgrade() {
         let memory = memory_manager.borrow().get(LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID);
         if memory.size() > 0 {
             memory.write(0, &[0]);
+            ic_cdk::println!("LP token ledger archive is freed");
         }
     });
-    */
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }
