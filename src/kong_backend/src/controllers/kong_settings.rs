@@ -24,8 +24,7 @@ fn update_kong_settings(kong_settings: String) -> Result<String, String> {
     };
 
     KONG_SETTINGS.with(|s| {
-        let mut map = s.borrow_mut();
-        _ = map.set(kong_settings);
+        _ = s.borrow_mut().set(kong_settings);
     });
 
     Ok("Kong settings updated".to_string())
@@ -53,3 +52,41 @@ fn set_kong_settings(update_settings: String) -> Result<String, String> {
         serde_json::to_string(&kong_settings).map_err(|e| format!("Failed to serialize: {}", e))
     })
 }
+
+/*
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_alt_kong_settings() -> Result<String, String> {
+    KONG_SETTINGS_ALT.with(|m| {
+        let map = m.borrow();
+        let kong_settings = map.get();
+        serde_json::to_string(kong_settings).map_err(|e| format!("Failed to serialize: {}", e))
+    })
+}
+
+/// upgrade KONG_SETTINGS from KONG_SETTINGS_ALT
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_kong_settings() -> Result<String, String> {
+    KONG_SETTINGS_ALT.with(|m| {
+        let kong_settings = StableKongSettingsAlt::to_stable_kong_settings(m.borrow().get());
+        KONG_SETTINGS.with(|m| {
+            _ = m.borrow_mut().set(kong_settings);
+        });
+    });
+
+    Ok("Kong settings upgraded".to_string())
+}
+
+/// upgrade KONG_SETTINGS_ALT from KONG_SETTINGS
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_kong_settings() -> Result<String, String> {
+    KONG_SETTINGS.with(|m| {
+        let kong_settings = m.borrow().get().clone();
+        KONG_SETTINGS_ALT.with(|m| {
+            let mut kong_settings_alt = m.borrow_mut();
+            _ = kong_settings_alt.set(StableKongSettingsAlt::from_stable_kong_settings(&kong_settings));
+        });
+    });
+
+    Ok("Alt Kong settings upgraded".to_string())
+}
+*/

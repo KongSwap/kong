@@ -1,6 +1,7 @@
 use candid::{CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_timers::{clear_timer, set_timer_interval};
+use ic_stable_structures::Memory as DefaultMemoryTrait;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -21,7 +22,9 @@ use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_lp_token_ledger::lp_token_ledger_archive::archive_lp_token_ledger;
+use crate::stable_memory::{
+    LP_TOKEN_LEDGER_ARCHIVE, LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID, MEMORY_MANAGER, POOL_ARCHIVE_MAP, POOL_MEMORY_ARCHIVE_ID,
+};
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::{archive_transfer_map, remove_transfer_1h_map};
@@ -71,17 +74,6 @@ async fn init() {
         });
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
-
-    // start the background timer to archive LP token ledger
-    let timer_id = set_timer_interval(
-        Duration::from_secs(kong_settings::get().lp_token_ledger_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_lp_token_ledger();
-            });
-        },
-    );
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 }
 
 #[pre_upgrade]
@@ -151,16 +143,28 @@ async fn post_upgrade() {
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
-    // start the background timer to archive LP token ledger
-    let timer_id = set_timer_interval(
-        Duration::from_secs(kong_settings::get().lp_token_ledger_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_lp_token_ledger();
-            });
-        },
-    );
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
+    /*
+    POOL_ARCHIVE_MAP.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|memory_manager| {
+        let memory = memory_manager.borrow().get(POOL_MEMORY_ARCHIVE_ID);
+        if memory.size() > 0 {
+            memory.write(0, &[0]);
+        }
+    });
+    */
+    /*
+    LP_TOKEN_LEDGER_ARCHIVE.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|memory_manager| {
+        let memory = memory_manager.borrow().get(LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID);
+        if memory.size() > 0 {
+            memory.write(0, &[0]);
+        }
+    });
+    */
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

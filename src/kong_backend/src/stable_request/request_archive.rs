@@ -10,8 +10,8 @@ pub fn archive_request_map() {
     // archive requests
     REQUEST_MAP.with(|request_map| {
         for (request_id, request) in request_map.borrow().iter() {
-            REQUEST_ARCHIVE_MAP.with(|request_map_tmp| {
-                request_map_tmp.borrow_mut().insert(request_id, request);
+            REQUEST_ARCHIVE_MAP.with(|request_archive_map| {
+                request_archive_map.borrow_mut().insert(request_id, request);
             });
         }
     });

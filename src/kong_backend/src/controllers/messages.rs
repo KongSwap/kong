@@ -65,3 +65,41 @@ async fn add_message(args: AddMessageArgs) -> Result<String, String> {
 
     serde_json::to_string(&message).map_err(|e| format!("Failed to serialize: {}", e))
 }
+
+/*
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_messages() -> Result<String, String> {
+    MESSAGE_ALT_MAP.with(|m| {
+        let message_alt_map = m.borrow();
+        MESSAGE_MAP.with(|m| {
+            let mut message_map = m.borrow_mut();
+            message_map.clear_new();
+            for (k, v) in message_alt_map.iter() {
+                let message_id = StableMessageIdAlt::to_stable_message_id(&k);
+                let message = StableMessageAlt::to_stable_message(&v);
+                message_map.insert(message_id, message);
+            }
+        });
+    });
+
+    Ok("Messages upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_messages() -> Result<String, String> {
+    MESSAGE_MAP.with(|m| {
+        let message_map = m.borrow();
+        MESSAGE_ALT_MAP.with(|m| {
+            let mut message_alt_map = m.borrow_mut();
+            message_alt_map.clear_new();
+            for (k, v) in message_map.iter() {
+                let message_id = StableMessageIdAlt::from_stable_message_id(&k);
+                let message = StableMessageAlt::from_stable_message(&v);
+                message_alt_map.insert(message_id, message);
+            }
+        });
+    });
+
+    Ok("Alt messages upgraded".to_string())
+}
+*/

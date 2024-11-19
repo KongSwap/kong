@@ -6,6 +6,7 @@ use std::cell::{Cell, RefCell};
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
+use crate::stable_lp_token_ledger::stable_lp_token_ledger_alt::{StableLPTokenLedgerAlt, StableLPTokenLedgerIdAlt};
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
@@ -26,19 +27,13 @@ pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(6);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_LEDGER_MEMORY_ID: MemoryId = MemoryId::new(8);
 pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
-// archive memories
-#[allow(dead_code)]
-pub const KONG_SETTINGS_ARCHIVE_ID: MemoryId = MemoryId::new(100);
-#[allow(dead_code)]
-pub const USER_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(101);
-#[allow(dead_code)]
-pub const TOKEN_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(102);
-#[allow(dead_code)]
+// archives
 pub const POOL_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(103);
 pub const TX_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(104);
 pub const REQUEST_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(105);
 pub const TRANSFER_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(106);
 pub const LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(108);
+// additional
 pub const TX_MEMORY_24H_ID: MemoryId = MemoryId::new(109);
 pub const TRANSFER_MEMORY_1H_ID: MemoryId = MemoryId::new(110);
 
@@ -117,6 +112,10 @@ thread_local! {
         RefCell::new(StableBTreeMap::init(memory_manager.get(MESSAGE_MEMORY_ID)))
     });
 
+    //
+    // Archive Stable Memory
+    //
+
     // stable memory for storing pools backup
     pub static POOL_ARCHIVE_MAP: RefCell<StableBTreeMap<StablePoolId, StablePool, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(POOL_MEMORY_ARCHIVE_ID)))
@@ -138,9 +137,13 @@ thread_local! {
     });
 
     // stable memory for storing LP token ledger archive
-    pub static LP_TOKEN_LEDGER_ARCHIVE: RefCell<StableBTreeMap<StableLPTokenLedgerId, StableLPTokenLedger, Memory>> = with_memory_manager(|memory_manager| {
+    pub static LP_TOKEN_LEDGER_ARCHIVE: RefCell<StableBTreeMap<StableLPTokenLedgerIdAlt, StableLPTokenLedgerAlt, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID)))
     });
+
+    //
+    // Additional Stable Memory
+    //
 
     // stable memory for storing txs for the last 24 hours. used for calculating rolling stats
     pub static TX_24H_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
@@ -154,6 +157,6 @@ thread_local! {
 }
 
 /// A helper function to access the memory manager.
-fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
+pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
 }

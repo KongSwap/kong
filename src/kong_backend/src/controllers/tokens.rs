@@ -44,3 +44,40 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
 
     Ok("Tokens updated".to_string())
 }
+
+/*
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_tokens() -> Result<String, String> {
+    TOKEN_ALT_MAP.with(|m| {
+        let token_alt_map = m.borrow();
+        TOKEN_MAP.with(|m| {
+            let mut token_map = m.borrow_mut();
+            token_map.clear_new();
+            for (k, v) in token_alt_map.iter() {
+                let token_id = StableTokenIdAlt::to_stable_token_id(&k);
+                let token = StableTokenAlt::to_stable_token(&v);
+                token_map.insert(token_id, token);
+            }
+        });
+    });
+
+    Ok("Tokens upgraded".to_string())
+}
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_tokens() -> Result<String, String> {
+    TOKEN_MAP.with(|m| {
+        let token_map = m.borrow();
+        TOKEN_ALT_MAP.with(|m| {
+            let mut token_alt_map = m.borrow_mut();
+            token_alt_map.clear_new();
+            for (k, v) in token_map.iter() {
+                let token_id = StableTokenIdAlt::from_stable_token_id(&k);
+                let token = StableTokenAlt::from_stable_token(&v);
+                token_alt_map.insert(token_id, token);
+            }
+        });
+    });
+
+    Ok("Alt tokens upgraded".to_string())
+}
+*/

@@ -64,3 +64,41 @@ fn remove_pool(symbol: String) -> Result<String, String> {
 
     Ok(format!("Pool {} removed", symbol))
 }
+
+/*
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_pools() -> Result<String, String> {
+    POOL_ALT_MAP.with(|m| {
+        let pool_alt_map = m.borrow();
+        POOL_MAP.with(|m| {
+            let mut pool_map = m.borrow_mut();
+            pool_map.clear_new();
+            for (k, v) in pool_alt_map.iter() {
+                let pool_id = StablePoolIdAlt::to_stable_pool_id(&k);
+                let pool = StablePoolAlt::to_stable_pool(&v);
+                pool_map.insert(pool_id, pool);
+            }
+        });
+    });
+
+    Ok("Pools upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_pools() -> Result<String, String> {
+    POOL_MAP.with(|m| {
+        let pool_map = m.borrow();
+        POOL_ALT_MAP.with(|m| {
+            let mut pool_alt_map = m.borrow_mut();
+            pool_alt_map.clear_new();
+            for (k, v) in pool_map.iter() {
+                let pool_id = StablePoolIdAlt::from_stable_pool_id(&k);
+                let pool = StablePoolAlt::from_stable_pool(&v);
+                pool_alt_map.insert(pool_id, pool);
+            }
+        });
+    });
+
+    Ok("Alt pools upgraded".to_string())
+}
+*/

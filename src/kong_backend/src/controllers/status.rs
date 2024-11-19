@@ -6,11 +6,11 @@ use crate::helpers::math_helpers::{bytes_to_megabytes, to_trillions};
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
-    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_ARCHIVE, LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID,
-    LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP,
-    REQUEST_MEMORY_ARCHIVE_ID, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_1H_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP,
-    TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP, TX_MAP, TX_MEMORY_ARCHIVE_ID,
-    TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
+    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_MEMORY_ARCHIVE_ID, LP_TOKEN_LEDGER_MEMORY_ID,
+    MEMORY_MANAGER, MESSAGE_MAP, MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_MEMORY_ARCHIVE_ID,
+    REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_1H_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TRANSFER_MEMORY_1H_ID,
+    TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP, TX_MAP, TX_MEMORY_ARCHIVE_ID, TX_MEMORY_ID, USER_MAP,
+    USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -74,17 +74,17 @@ async fn status() -> Result<String, String> {
             "# of users": get_number_of_users(),
             "# of tokens": get_number_of_tokens(),
             "# of pools": get_number_of_pools(),
-            "# of txs": get_number_of_txs(),
-            "# of txs (archive)": get_number_of_txs_archive(),
-            "# of swaps (24h)": get_number_of_swaps_24h(),
             "# of requests (1h)": get_number_of_requests(),
             "# of requests (archive)": get_number_of_requests_archive(),
-            "# of transfers": get_number_of_transfers(),
-            "# of transfers (archive)": get_number_of_transfers_archive(),
+            "# of swaps (24h)": get_number_of_swaps_24h(),
+            "# of txs (48h)": get_number_of_txs(),
+            "# of txs (archive)": get_number_of_txs_archive(),
             "# of transfers (1h)": get_number_of_transfers_1h(),
+            "# of transfers (48h)": get_number_of_transfers(),
+            "# of transfers (archive)": get_number_of_transfers_archive(),
             "# of unclaimed claims": get_number_of_unclaimed_claims(),
             "# of LP positions": get_number_of_lp_positions(),
-            "# of LP positions (archive)": get_number_of_lp_positions_archive(),
+            "# of messages": get_number_of_messages(),
         }
     })
     .map_err(|e| format!("Failed to serialize: {}", e))
@@ -147,6 +147,6 @@ pub fn get_number_of_lp_positions() -> u64 {
     LP_TOKEN_LEDGER.with(|m| m.borrow().len())
 }
 
-pub fn get_number_of_lp_positions_archive() -> u64 {
-    LP_TOKEN_LEDGER_ARCHIVE.with(|m| m.borrow().len())
+pub fn get_number_of_messages() -> u64 {
+    MESSAGE_MAP.with(|m| m.borrow().len())
 }

@@ -62,3 +62,60 @@ fn remove_user(user_id: u32) -> Result<String, String> {
         None => Err("User not found".to_string()),
     }
 }
+
+/*
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn backup_alt_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
+    USER_ALT_MAP.with(|m| {
+        let map = m.borrow();
+        let users: BTreeMap<_, _> = match user_id {
+            Some(user_id) => {
+                let start_id = StableUserIdAlt(user_id);
+                let num_users = num_users.map_or(1, |n| n as usize);
+                map.range(start_id..).take(num_users).collect()
+            }
+            None => {
+                let num_users = num_users.map_or(MAX_USERS, |n| n as usize);
+                map.iter().take(num_users).collect()
+            }
+        };
+        serde_json::to_string(&users).map_err(|e| format!("Failed to serialize users: {}", e))
+    })
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_users() -> Result<String, String> {
+    USER_ALT_MAP.with(|m| {
+        let user_alt_map = m.borrow();
+        USER_MAP.with(|m| {
+            let mut user_map = m.borrow_mut();
+            user_map.clear_new();
+            for (k, v) in user_alt_map.iter() {
+                let user_id = StableUserIdAlt::to_stable_user_id(&k);
+                let user = StableUserAlt::to_stable_user(&v);
+                user_map.insert(user_id, user);
+            }
+        });
+    });
+
+    Ok("Users upgraded".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn upgrade_alt_users() -> Result<String, String> {
+    USER_MAP.with(|m| {
+        let user_map = m.borrow();
+        USER_ALT_MAP.with(|m| {
+            let mut user_alt_map = m.borrow_mut();
+            user_alt_map.clear_new();
+            for (k, v) in user_map.iter() {
+                let user_id = StableUserIdAlt::from_stable_user_id(&k);
+                let user = StableUserAlt::from_stable_user(&v);
+                user_alt_map.insert(user_id, user);
+            }
+        });
+    });
+
+    Ok("Alt users upgraded".to_string())
+}
+*/

@@ -2,15 +2,22 @@ use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
+use std::cmp;
+
+use super::stable_kong_settings::StableKongSettings;
 
 use crate::ic::{
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
     id::{kong_account, kong_backend_id},
 };
+use crate::stable_memory::{
+    CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
+    TX_MAP, USER_MAP,
+};
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct StableKongSettings {
+pub struct StableKongSettingsAlt {
     pub kong_backend_id: String,
     pub kong_backend_account: Account,
     pub maintenance_mode: bool,
@@ -45,16 +52,37 @@ pub struct StableKongSettings {
     pub lp_token_ledger_archive_interval_secs: u64,
 }
 
-impl Default for StableKongSettings {
+impl StableKongSettingsAlt {
+    pub fn from_stable_kong_settings(stable_kong_settings: &StableKongSettings) -> Self {
+        let settings_alt = serde_json::to_value(stable_kong_settings).unwrap();
+        serde_json::from_value(settings_alt).unwrap()
+    }
+
+    pub fn to_stable_kong_settings(&self) -> StableKongSettings {
+        let settings_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(settings_alt).unwrap()
+    }
+}
+
+impl Default for StableKongSettingsAlt {
     fn default() -> Self {
-        let user_map_idx = 0;
-        let token_map_idx = 0;
-        let pool_map_idx = 0;
-        let claim_map_idx = 0;
-        let message_map_idx = 0;
-        let request_map_idx = 0;
-        let transfer_map_idx = 0;
-        let tx_map_idx = 0;
+        let user_map_idx = USER_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let token_map_idx = TOKEN_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let pool_map_idx = POOL_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let claim_map_idx = CLAIM_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let message_map_idx = MESSAGE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let request_map_idx = cmp::max(
+            REQUEST_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
+            REQUEST_ARCHIVE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
+        );
+        let transfer_map_idx = cmp::max(
+            TRANSFER_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
+            TRANSFER_ARCHIVE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
+        );
+        let tx_map_idx = cmp::max(
+            TX_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
+            TX_ARCHIVE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
+        );
         Self {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
@@ -92,13 +120,12 @@ impl Default for StableKongSettings {
     }
 }
 
-impl Storable for StableKongSettings {
+impl Storable for StableKongSettingsAlt {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        // if any error occurs retreiving the StableKongSettings, use the default
         serde_cbor::from_slice(&bytes).unwrap_or_default()
     }
 

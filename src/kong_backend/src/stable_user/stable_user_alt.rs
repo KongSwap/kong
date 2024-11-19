@@ -1,9 +1,10 @@
+use crate::ic::get_time::get_time;
+use crate::ic::id::caller_principal_id;
 use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-use crate::ic::get_time::get_time;
-use crate::ic::id::caller_principal_id;
+use super::stable_user::{StableUser, StableUserId};
 
 // reserved user ids
 // 0: all users - users for stable_messages to broadcast to all users
@@ -20,9 +21,21 @@ pub const SYSTEM_USER_ID: u32 = 2;
 pub const CLAIMS_TIMER_USER_ID: u32 = 3;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct StableUserId(pub u32);
+pub struct StableUserIdAlt(pub u32);
 
-impl Storable for StableUserId {
+impl StableUserIdAlt {
+    pub fn from_stable_user_id(stable_user_id: &StableUserId) -> Self {
+        let user_id_alt = serde_json::to_value(stable_user_id).unwrap();
+        serde_json::from_value(user_id_alt).unwrap()
+    }
+
+    pub fn to_stable_user_id(&self) -> StableUserId {
+        let user_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(user_id_alt).unwrap()
+    }
+}
+
+impl Storable for StableUserIdAlt {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
@@ -35,7 +48,7 @@ impl Storable for StableUserId {
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct StableUser {
+pub struct StableUserAlt {
     pub user_id: u32,
     pub principal_id: String,
     pub user_name: [u16; 3],
@@ -54,9 +67,21 @@ pub struct StableUser {
     pub last_swap_ts: u64,
 }
 
-impl Default for StableUser {
+impl StableUserAlt {
+    pub fn from_stable_user(stable_user: &StableUser) -> Self {
+        let user_alt = serde_json::to_value(stable_user).unwrap();
+        serde_json::from_value(user_alt).unwrap()
+    }
+
+    pub fn to_stable_user(&self) -> StableUser {
+        let user_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(user_alt).unwrap()
+    }
+}
+
+impl Default for StableUserAlt {
     fn default() -> Self {
-        StableUser {
+        StableUserAlt {
             user_id: ANONYMOUS_USER_ID,
             principal_id: caller_principal_id(),
             user_name: [0; 3],
@@ -72,7 +97,7 @@ impl Default for StableUser {
     }
 }
 
-impl Storable for StableUser {
+impl Storable for StableUserAlt {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }

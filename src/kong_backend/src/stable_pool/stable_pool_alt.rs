@@ -2,10 +2,24 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct StablePoolId(pub u32);
+use super::stable_pool::{StablePool, StablePoolId};
 
-impl Storable for StablePoolId {
+#[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct StablePoolIdAlt(pub u32);
+
+impl StablePoolIdAlt {
+    pub fn from_stable_pool_id(stable_pool_id: &StablePoolId) -> Self {
+        let pool_id_alt = serde_json::to_value(stable_pool_id).unwrap();
+        serde_json::from_value(pool_id_alt).unwrap()
+    }
+
+    pub fn to_stable_pool_id(&self) -> StablePoolId {
+        let pool_id_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(pool_id_alt).unwrap()
+    }
+}
+
+impl Storable for StablePoolIdAlt {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
@@ -18,7 +32,7 @@ impl Storable for StablePoolId {
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct StablePool {
+pub struct StablePoolAlt {
     pub pool_id: u32,
     pub token_id_0: u32,
     pub balance_0: Nat,
@@ -40,7 +54,19 @@ pub struct StablePool {
     pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
 }
 
-impl Storable for StablePool {
+impl StablePoolAlt {
+    pub fn from_stable_pool(stable_pool: &StablePool) -> Self {
+        let pool_alt = serde_json::to_value(stable_pool).unwrap();
+        serde_json::from_value(pool_alt).unwrap()
+    }
+
+    pub fn to_stable_pool(&self) -> StablePool {
+        let pool_alt = serde_json::to_value(self).unwrap();
+        serde_json::from_value(pool_alt).unwrap()
+    }
+}
+
+impl Storable for StablePoolAlt {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
