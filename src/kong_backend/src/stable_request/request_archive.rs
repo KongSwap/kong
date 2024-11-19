@@ -1,17 +1,19 @@
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
+use crate::stable_request::stable_request_alt::{StableRequestAlt, StableRequestIdAlt};
 
 pub fn archive_request_map() {
     if not_in_maintenance_mode().is_err() {
         return;
     }
 
-    /*
     // archive requests
     REQUEST_MAP.with(|request_map| {
         for (request_id, request) in request_map.borrow().iter() {
             REQUEST_ARCHIVE_MAP.with(|request_archive_map| {
+                let request_id = StableRequestIdAlt::from_stable_request_id(&request_id);
+                let request = StableRequestAlt::from_stable_request(&request);
                 request_archive_map.borrow_mut().insert(request_id, request);
             });
         }
@@ -31,5 +33,4 @@ pub fn archive_request_map() {
             request_map.borrow_mut().remove(request_id);
         });
     });
-    */
 }

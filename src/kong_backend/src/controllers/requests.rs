@@ -61,10 +61,10 @@ fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<Req
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_archive_requests(start_request_id: u64, end_request_id: u64) -> Result<String, String> {
-    REQUEST_ARCHIVE_OLD_MAP.with(|m| {
+    REQUEST_ARCHIVE_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let keys_to_remove: Vec<_> = map
-            .range(StableRequestId(start_request_id)..=StableRequestId(end_request_id))
+            .range(StableRequestIdAlt(start_request_id)..=StableRequestIdAlt(end_request_id))
             .map(|(k, _)| k)
             .collect();
         keys_to_remove.iter().for_each(|k| {
