@@ -3,6 +3,7 @@ use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{TX_24H_MAP, TX_ARCHIVE_MAP, TX_MAP};
 
 use super::stable_tx::{StableTx, StableTxId};
+use super::stable_tx_alt::{StableTxAlt, StableTxIdAlt};
 use super::tx::Tx;
 
 pub fn archive_tx_map() {
@@ -10,7 +11,6 @@ pub fn archive_tx_map() {
         return;
     }
 
-    /*
     // archive txs
     TX_MAP.with(|tx_map| {
         TX_ARCHIVE_MAP.with(|tx_archive_map| {
@@ -20,7 +20,9 @@ pub fn archive_tx_map() {
             let end_tx_id = tx.last_key_value().map_or(0_u64, |(k, _)| k.0);
             for tx_id in start_tx_id..=end_tx_id {
                 if let Some(tx) = tx.get(&StableTxId(tx_id)) {
-                    tx_archive.insert(StableTxId(tx_id), tx);
+                    let tx_id = StableTxIdAlt::from_stable_tx_id(&StableTxId(tx_id));
+                    let tx = StableTxAlt::from_stable_tx(&tx);
+                    tx_archive.insert(tx_id, tx);
                 }
             }
         });
@@ -40,7 +42,6 @@ pub fn archive_tx_map() {
             tx_map.borrow_mut().remove(tx_id);
         });
     });
-    */
 }
 
 pub fn archive_tx_24h_map() {
@@ -48,7 +49,6 @@ pub fn archive_tx_24h_map() {
         return;
     }
 
-    /*
     let ts_start = get_time() - 86_400_000_000_000; // 24 hours
     TX_MAP.with(|tx_map| {
         let map = tx_map.borrow();
@@ -65,5 +65,4 @@ pub fn archive_tx_24h_map() {
             }
         });
     });
-    */
 }
