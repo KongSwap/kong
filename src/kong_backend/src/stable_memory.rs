@@ -29,13 +29,8 @@ pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(6);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_LEDGER_MEMORY_ID: MemoryId = MemoryId::new(8);
 pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
-// archives
-pub const TX_MEMORY_ARCHIVE_OLD_ID: MemoryId = MemoryId::new(104);
-pub const REQUEST_MEMORY_ARCHIVE_OLD_ID: MemoryId = MemoryId::new(105);
-pub const TRANSFER_MEMORY_ARCHIVE_OLD_ID: MemoryId = MemoryId::new(106);
 // additional
 pub const TX_MEMORY_24H_ID: MemoryId = MemoryId::new(109);
-pub const TRANSFER_MEMORY_1H_ID: MemoryId = MemoryId::new(110);
 // archives
 pub const TX_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(204);
 pub const REQUEST_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(205);
@@ -120,11 +115,6 @@ thread_local! {
     // stable memory for storing txs for the last 24 hours. used for calculating rolling stats
     pub static TX_24H_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_24H_ID)))
-    });
-
-    // static memory for storing transfers for the last 1 hour. used for preventing double receive
-    pub static TRANSFER_1H_MAP: RefCell<StableBTreeMap<StableTransferId, StableTransfer, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_1H_ID)))
     });
 
     //
