@@ -22,7 +22,7 @@ use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_memory::{MEMORY_MANAGER, REQUEST_ARCHIVE_OLD_MAP, TRANSFER_ARCHIVE_OLD_MAP, TX_ARCHIVE_OLD_MAP};
+use crate::stable_memory::MEMORY_MANAGER;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::{archive_transfer_map, remove_transfer_1h_map};
@@ -96,9 +96,6 @@ fn pre_upgrade() {
     // clear the background timer for archiving LP token ledger
     LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
 
-    TRANSFER_ARCHIVE_OLD_MAP.with(|m| {
-        m.borrow_mut().clear_new();
-    });
     MEMORY_MANAGER.with(|mm| {
         let memory = mm.borrow().get(TRANSFER_MEMORY_ARCHIVE_OLD_ID);
         if memory.size() > 0 {
@@ -106,18 +103,12 @@ fn pre_upgrade() {
             memory.write(0, &[0]);
         }
     });
-    REQUEST_ARCHIVE_OLD_MAP.with(|m| {
-        m.borrow_mut().clear_new();
-    });
     MEMORY_MANAGER.with(|mm| {
         let memory = mm.borrow().get(REQUEST_MEMORY_ARCHIVE_OLD_ID);
         if memory.size() > 0 {
             info_log("Archiving request map");
             memory.write(0, &[0]);
         }
-    });
-    TX_ARCHIVE_OLD_MAP.with(|m| {
-        m.borrow_mut().clear_new();
     });
     MEMORY_MANAGER.with(|mm| {
         let memory = mm.borrow().get(TX_MEMORY_ARCHIVE_OLD_ID);
