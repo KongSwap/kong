@@ -1,0 +1,113 @@
+/**
+ * Formats a raw token balance considering its decimals
+ * @param rawBalance The raw balance as a string (big integer format)
+ * @param decimals The number of decimals for the token
+ * @returns Formatted balance string
+ */
+export function formatBalance(rawBalance: string | undefined, decimals: number = 8): string {
+    if (!rawBalance) return "0";
+    
+    // Convert from raw integer (considering decimals)
+    const value = Number(rawBalance) / Math.pow(10, decimals);
+    
+    // Format with appropriate decimal places
+    if (value === 0) return "0";
+    
+    // For very small values, show full precision up to 8 decimals
+    if (value < 0.00001) {
+        return value.toFixed(8).replace(/\.?0+$/, '');
+    }
+    
+    // For small values (under 1), show up to 6 decimals
+    if (value < 1) {
+        return value.toFixed(6).replace(/\.?0+$/, '');
+    }
+    
+    // For larger numbers, use locale string but trim unnecessary decimals
+    const formatted = value.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+    });
+    
+    // Remove trailing zeros after decimal point
+    return formatted.replace(/\.?0+$/, '');
+}
+
+/**
+ * Formats a USD value with appropriate decimal places and suffixes
+ * @param value The USD value to format
+ * @returns Formatted USD string
+ */
+export function formatUsdValue(value: number): string {
+    if (!value) return "$0.00";
+    
+    // For very small values, show up to 8 decimals
+    if (value < 0.00001) {
+        return `$${value.toFixed(8).replace(/\.?0+$/, '')}`;
+    }
+    
+    // For small values (under 1), show up to 6 decimals
+    if (value < 1) {
+        return `$${value.toFixed(6).replace(/\.?0+$/, '')}`;
+    }
+    
+    if (value >= 1000000) {
+        return `$${(value / 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}M`;
+    }
+    if (value >= 1000) {
+        return `$${(value / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}K`;
+    }
+    return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Calculates and formats the USD value of a token amount
+ * @param rawBalance The raw balance as a string (big integer format)
+ * @param price The token price in USD
+ * @param decimals The number of decimals for the token
+ * @returns Formatted USD value string
+ */
+export function formatTokenValue(rawBalance: string, price: number | undefined, decimals: number = 8): string {
+    if (!rawBalance || !price) return "$0.00";
+    const actualBalance = Number(rawBalance) / Math.pow(10, decimals);
+    const value = actualBalance * (price ?? 0);
+    return formatUsdValue(value);
+}
+
+/**
+ * Converts a human-readable amount to raw token amount (considering decimals)
+ * @param amount The amount in human-readable format
+ * @param decimals The number of decimals for the token
+ * @returns Raw amount as a string (big integer format)
+ */
+export function toRawAmount(amount: string | number, decimals: number = 8): string {
+    if (!amount) return "0";
+    const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return (value * Math.pow(10, decimals)).toFixed(0);
+}
+
+/**
+ * Converts a raw token amount to human-readable format
+ * @param rawAmount The raw amount as a string (big integer format)
+ * @param decimals The number of decimals for the token
+ * @returns Human-readable amount as a number
+ */
+export function fromRawAmount(rawAmount: string, decimals: number = 8): number {
+    if (!rawAmount) return 0;
+    return Number(rawAmount) / Math.pow(10, decimals);
+}
+
+/**
+ * Formats a gas/fee amount for display
+ * @param fee The fee amount in raw format
+ * @param token The token information
+ * @returns Formatted fee string
+ */
+export function formatGasFee(fee: string | number | undefined, decimals: number = 8): string {
+    if (!fee) return "0";
+    const value = typeof fee === 'string' ? Number(fee) : fee;
+    const actualFee = value / Math.pow(10, decimals);
+    
+    // Always show at least 8 decimals for fees to be precise
+    return actualFee.toFixed(8).replace(/\.?0+$/, '');
+}

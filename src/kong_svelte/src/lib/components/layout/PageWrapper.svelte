@@ -3,6 +3,8 @@
   import type { Component } from "svelte";
   import { assetCache } from "$lib/services/assetCache";
   import { onMount } from "svelte";
+  import ModalContainer from "$lib/components/common/ModalContainer.svelte";
+  import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
 
   let { page, children } = $props<{
     page?: string;
@@ -49,10 +51,14 @@
 <div
   class="page-wrapper"
   class:changing={isChanging}
-  style={`background-image: ${background.image}; background-color: ${background.color}`}
+  style:background-image={background.image}
+  style:background-color={background.color}
 >
-  {@render children?.()}
+  <slot />
 </div>
+
+<ModalContainer />
+<AccountDetails />
 
 <style>
   .page-wrapper {

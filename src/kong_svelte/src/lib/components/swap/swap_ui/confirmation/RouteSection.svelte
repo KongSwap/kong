@@ -1,5 +1,7 @@
 <script lang="ts">
-	import  TokenImages  from '$lib/components/common/TokenImages.svelte';
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { formatBalance, formatGasFee } from '$lib/utils/tokenFormatters';
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
 
   export let routingPath: string[] = [];
   export let gasFees: string[] = [];
@@ -7,63 +9,65 @@
   export let payToken: FE.Token;
   export let receiveToken: FE.Token;
 
-  export let currentRouteIndex = 0;
-  export let progress = 0;
-  export let currentStep: string = '';
+  // Convert routing path to tokens
+  $: tokens = routingPath.map(symbol => 
+    $tokenStore.tokens.find(t => t.symbol === symbol)
+  ).filter((t): t is FE.Token => t !== undefined);
+
+  // Calculate gas fees per token
+  $: formattedGasFees = tokens.map((token, i) => ({
+    token,
+    amount: gasFees[i] || "0",
+  })).filter(fee => fee.amount !== "0");
+
+  // Calculate LP fees per token
+  $: formattedLpFees = tokens.map((token, i) => ({
+    token,
+    amount: lpFees[i] || "0",
+  })).filter(fee => fee.amount !== "0");
 </script>
 
 <div class="section">
-  <h3 class="section-title">Route</h3>
-  <div class="route-visualization">
-    {#each routingPath.slice(0, -1) as token, i}
-      <div 
-        class="route-step" 
-        class:active={i === currentRouteIndex}
-        class:completed={i < currentRouteIndex}
-      >
-        <div class="token-pair">
-          <div class="token-badge-small from {token === payToken.symbol ? 'highlight' : ''}">
-            <div class="token-icon-wrapper">
-              <TokenImages
-                tokens={[payToken]}
-                size={24}
-              />
-            </div>
-            <span class="token-symbol">{token}</span>
-          </div>
-          <div class="arrow-container">
-            <span class="arrow">→</span>
-            <div class="arrow-line"></div>
-          </div>
-          <div class="token-badge-small to {routingPath[i + 1] === receiveToken.symbol ? 'highlight' : ''}">
-            <div class="token-icon-wrapper">
-              <TokenImages
-                tokens={[receiveToken]}
-                size={24}
-              />
-            </div>
-            <span class="token-symbol">{routingPath[i + 1]}</span>
-          </div>
-        </div>
-        <div class="step-fees">
-          <span class="fee-text">Gas: {gasFees[i]} {routingPath[i + 1]}</span>
-          <span class="fee-text">LP: {lpFees[i]} {routingPath[i + 1]}</span>
-        </div>
-        
-        {#if i === currentRouteIndex}
-          <div class="step-status">
-            {currentStep}
-          </div>
-          <div class="progress-bar">
-            <div 
-              class="progress-fill"
-              style="width: {progress * 100}%"
-            />
-          </div>
-        {/if}
+  <h3>Route</h3>
+  <div class="path">
+    {#each tokens as token, i}
+      <div class="token">
+        <TokenImages tokens={[token]} size={24} />
+        <span class="symbol">{token.symbol}</span>
       </div>
+      {#if i < tokens.length - 1}
+        <span class="arrow">→</span>
+      {/if}
     {/each}
   </div>
+
+  {#if formattedGasFees.length > 0}
+    <div class="fees">
+      <h4>Network Fees</h4>
+      {#each formattedGasFees as fee}
+        <div class="fee-item">
+          <TokenImages tokens={[fee.token]} size={20} />
+          <span class="fee-amount">
+            {formatGasFee(fee.amount, fee.token.decimals)} {fee.token.symbol}
+          </span>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if formattedLpFees.length > 0}
+    <div class="fees">
+      <h4>LP Fees</h4>
+      {#each formattedLpFees as fee}
+        <div class="fee-item">
+          <TokenImages tokens={[fee.token]} size={20} />
+          <span class="fee-amount">
+            {formatBalance(fee.amount, fee.token.decimals)} {fee.token.symbol}
+          </span>
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -71,134 +75,63 @@
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
     padding: 12px;
-    min-width: 320px;
+    margin-top: 12px;
   }
 
-  .section-title {
-    font-size: 0.9rem;
-    margin: 0 0 8px 0;
-    font-weight: 500;
+  h3 {
     color: #ffd700;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 8px;
   }
 
-  .route-visualization {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .route-step {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    opacity: 0.5;
-    transition: all 0.3s ease;
-  }
-
-  .route-step.active {
-    opacity: 1;
-    transform: scale(1.02);
-  }
-
-  .route-step.completed {
+  h4 {
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 8px 0;
     opacity: 0.8;
   }
 
-  .token-pair {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    position: relative;
-    min-height: 48px;
-  }
-
-  .token-badge-small {
+  .path {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    z-index: 1;
-    min-width: 100px;
+    flex-wrap: wrap;
   }
 
-  .token-icon-wrapper {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-  }
-
-  .token-symbol {
-    font-size: 0.9rem;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 40px;
-  }
-
-  .arrow-container {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+  .token {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    width: 40px;
+    gap: 4px;
+  }
+
+  .symbol {
+    color: #ffffff;
+    font-size: 0.9rem;
   }
 
   .arrow {
-    color: #ffd700;
-    font-size: 18px;
-    position: relative;
-    z-index: 2;
-  }
-
-  .arrow-line {
-    position: absolute;
-    top: 50%;
-    width: 100%;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .step-fees {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 4px;
-  }
-
-  .fee-text {
-    font-size: 0.75rem;
     color: #ffffff;
-    font-family: monospace;
-    white-space: nowrap;
+    opacity: 0.5;
   }
 
-  .progress-bar {
-    height: 4px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+  .fees {
     margin-top: 8px;
-    overflow: hidden;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .progress-fill {
-    height: 100%;
-    background: #ffd700;
-    transition: width 0.3s ease;
+  .fee-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px 0;
   }
 
-  .step-status {
-    font-size: 0.8rem;
-    color: #ffd700;
-    text-align: center;
-    margin-top: 4px;
+  .fee-amount {
+    color: #ffffff;
+    font-size: 0.9rem;
+    opacity: 0.8;
   }
 </style>
