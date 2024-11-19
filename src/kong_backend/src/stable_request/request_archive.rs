@@ -7,6 +7,7 @@ pub fn archive_request_map() {
         return;
     }
 
+    /*
     // archive requests
     REQUEST_MAP.with(|request_map| {
         for (request_id, request) in request_map.borrow().iter() {
@@ -30,4 +31,5 @@ pub fn archive_request_map() {
             request_map.borrow_mut().remove(request_id);
         });
     });
+    */
 }

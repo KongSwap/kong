@@ -8,6 +8,7 @@ pub fn archive_transfer_map() {
         return;
     }
 
+    /*
     // archive transfers
     TRANSFER_MAP.with(|transfer_map| {
         TRANSFER_ARCHIVE_MAP.with(|transfer_archive_map| {
@@ -37,6 +38,7 @@ pub fn archive_transfer_map() {
             transfer_map.borrow_mut().remove(transfer_id);
         });
     });
+    */
 }
 
 pub fn remove_transfer_1h_map() {
@@ -44,6 +46,7 @@ pub fn remove_transfer_1h_map() {
         return;
     }
 
+    /*
     let ts_start = get_time() - 3_600_000_000_000; // 1 hour
     TRANSFER_1H_MAP.with(|transfer_map| {
         let mut map = transfer_map.borrow_mut();
@@ -56,4 +59,5 @@ pub fn remove_transfer_1h_map() {
             map.remove(transfer_id);
         });
     });
+    */
 }

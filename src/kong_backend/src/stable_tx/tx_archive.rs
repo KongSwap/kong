@@ -10,6 +10,7 @@ pub fn archive_tx_map() {
         return;
     }
 
+    /*
     // archive txs
     TX_MAP.with(|tx_map| {
         TX_ARCHIVE_MAP.with(|tx_archive_map| {
@@ -39,6 +40,7 @@ pub fn archive_tx_map() {
             tx_map.borrow_mut().remove(tx_id);
         });
     });
+    */
 }
 
 pub fn archive_tx_24h_map() {
@@ -46,6 +48,7 @@ pub fn archive_tx_24h_map() {
         return;
     }
 
+    /*
     let ts_start = get_time() - 86_400_000_000_000; // 24 hours
     TX_MAP.with(|tx_map| {
         let map = tx_map.borrow();
@@ -62,4 +65,5 @@ pub fn archive_tx_24h_map() {
             }
         });
     });
+    */
 }
