@@ -6,8 +6,8 @@ use serde::Deserialize;
 use std::time::Duration;
 
 use super::stable_memory::{
-    CLAIMS_TIMER_ID, LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID,
-    TX_MAP_ARCHIVE_TIMER_ID,
+    CLAIMS_TIMER_ID, LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, REQUEST_MEMORY_ARCHIVE_OLD_ID, STATS_TIMER_ID,
+    TRANSFER_MAP_ARCHIVE_TIMER_ID, TRANSFER_MEMORY_ARCHIVE_OLD_ID, TX_MAP_ARCHIVE_TIMER_ID, TX_MEMORY_ARCHIVE_OLD_ID,
 };
 use super::{APP_NAME, APP_VERSION};
 
@@ -22,6 +22,7 @@ use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
+use crate::stable_memory::MEMORY_MANAGER;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::{archive_transfer_map, remove_transfer_1h_map};
@@ -94,6 +95,30 @@ fn pre_upgrade() {
 
     // clear the background timer for archiving LP token ledger
     LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
+
+    /*
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(TRANSFER_MEMORY_ARCHIVE_OLD_ID);
+        if memory.size() > 0 {
+            info_log("Archiving transfer map");
+            memory.write(0, &[0]);
+        }
+    });
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(REQUEST_MEMORY_ARCHIVE_OLD_ID);
+        if memory.size() > 0 {
+            info_log("Archiving request map");
+            memory.write(0, &[0]);
+        }
+    });
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(TX_MEMORY_ARCHIVE_OLD_ID);
+        if memory.size() > 0 {
+            info_log("Archiving tx map");
+            memory.write(0, &[0]);
+        }
+    });
+    */
 }
 
 #[post_upgrade]

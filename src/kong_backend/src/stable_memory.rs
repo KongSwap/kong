@@ -30,16 +30,16 @@ pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_LEDGER_MEMORY_ID: MemoryId = MemoryId::new(8);
 pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
 // archives
-pub const TX_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(104);
-pub const REQUEST_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(105);
-pub const TRANSFER_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(106);
+pub const TX_MEMORY_ARCHIVE_OLD_ID: MemoryId = MemoryId::new(104);
+pub const REQUEST_MEMORY_ARCHIVE_OLD_ID: MemoryId = MemoryId::new(105);
+pub const TRANSFER_MEMORY_ARCHIVE_OLD_ID: MemoryId = MemoryId::new(106);
 // additional
 pub const TX_MEMORY_24H_ID: MemoryId = MemoryId::new(109);
 pub const TRANSFER_MEMORY_1H_ID: MemoryId = MemoryId::new(110);
 // real archives
-pub const TX_MEMORY_ARCHIVE2_ID: MemoryId = MemoryId::new(204);
-pub const REQUEST_MEMORY_ARCHIVE2_ID: MemoryId = MemoryId::new(205);
-pub const TRANSFER_MEMORY_ARCHIVE2_ID: MemoryId = MemoryId::new(206);
+pub const TX_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(204);
+pub const REQUEST_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(205);
+pub const TRANSFER_MEMORY_ARCHIVE_ID: MemoryId = MemoryId::new(206);
 
 thread_local! {
     // static variable to store the timer id for the background claims timer
@@ -122,32 +122,32 @@ thread_local! {
 
     // stable memory for storing tx archive
     pub static TX_ARCHIVE_OLD_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_ARCHIVE_ID)))
+        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_ARCHIVE_OLD_ID)))
     });
 
     // stable memory for storing request archive
     pub static REQUEST_ARCHIVE_OLD_MAP: RefCell<StableBTreeMap<StableRequestId, StableRequest, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(REQUEST_MEMORY_ARCHIVE_ID)))
+        RefCell::new(StableBTreeMap::init(memory_manager.get(REQUEST_MEMORY_ARCHIVE_OLD_ID)))
     });
 
     // stable memory for storing transfer archive
     pub static TRANSFER_ARCHIVE_OLD_MAP: RefCell<StableBTreeMap<StableTransferId, StableTransfer, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_ARCHIVE_ID)))
+        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_ARCHIVE_OLD_ID)))
     });
 
     // stable memory for storing tx archive
     pub static TX_ARCHIVE_MAP: RefCell<StableBTreeMap<StableTxIdAlt, StableTxAlt, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_ARCHIVE2_ID)))
+        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_ARCHIVE_ID)))
     });
 
     // stable memory for storing request archive
     pub static REQUEST_ARCHIVE_MAP: RefCell<StableBTreeMap<StableRequestIdAlt, StableRequestAlt, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(REQUEST_MEMORY_ARCHIVE2_ID)))
+        RefCell::new(StableBTreeMap::init(memory_manager.get(REQUEST_MEMORY_ARCHIVE_ID)))
     });
 
     // stable memory for storing transfer archive
     pub static TRANSFER_ARCHIVE_MAP: RefCell<StableBTreeMap<StableTransferIdAlt, StableTransferAlt, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_ARCHIVE2_ID)))
+        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_ARCHIVE_ID)))
     });
 
     //
