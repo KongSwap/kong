@@ -19,7 +19,8 @@ pub fn archive_request_map() {
         }
     });
 
-    let one_hour_ago = get_time() - 3_600_000_000_000; // 1 hour
+    // only keep requests from the last hour
+    let one_hour_ago = get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     REQUEST_MAP.with(|request_map| {
         request_map.borrow().iter().for_each(|(request_id, request)| {

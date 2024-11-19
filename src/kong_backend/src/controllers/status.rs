@@ -8,8 +8,8 @@ use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
     CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MAP,
     MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_MEMORY_ARCHIVE_ID, REQUEST_MEMORY_ID, TOKEN_MAP,
-    TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP,
-    TX_ARCHIVE_MAP, TX_MAP, TX_MEMORY_ARCHIVE_ID, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
+    TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP,
+    TX_MAP, TX_MEMORY_ARCHIVE_ID, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -65,7 +65,6 @@ async fn status() -> Result<String, String> {
             "Stable - Request Map Archive": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(REQUEST_MEMORY_ARCHIVE_ID).size())),
             "Stable - Transfer Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_MEMORY_ID).size())),
             "Stable - Transfer Map Archive": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_MEMORY_ARCHIVE_ID).size())),
-            "Stable - Transfer Map (1h)": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_MEMORY_1H_ID).size())),
             "Stable - Claim Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(CLAIM_MEMORY_ID).size())),
             "Stable - LP Token Ledger Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_LEDGER_MEMORY_ID).size())),
             "Stable - Message Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(MESSAGE_MEMORY_ID).size())),
