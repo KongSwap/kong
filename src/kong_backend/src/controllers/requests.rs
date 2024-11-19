@@ -162,3 +162,22 @@ fn upgrade_archive_requests() -> Result<String, String> {
 
     Ok("Archive requests upgraded".to_string())
 }
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_archive_old_requests(request_id: Option<u64>, num_requests: Option<u16>) -> Result<String, String> {
+    REQUEST_ARCHIVE_OLD_MAP.with(|m| {
+        let map = m.borrow();
+        let requests: BTreeMap<_, _> = match request_id {
+            Some(request_id) => {
+                let start_id = StableRequestId(request_id);
+                let num_requests = num_requests.map_or(1, |n| n as usize);
+                map.range(start_id..).take(num_requests).collect()
+            }
+            None => {
+                let num_requests = num_requests.map_or(MAX_REQUESTS, |n| n as usize);
+                map.iter().take(num_requests).collect()
+            }
+        };
+        serde_json::to_string(&requests).map_err(|e| format!("Failed to serialize requests: {}", e))
+    })
+}
