@@ -75,8 +75,8 @@ fn remove_archive_transfers(start_transfer_id: u64, end_transfer_id: u64) -> Res
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_transfers_by_ts(ts: u64) -> Result<String, String> {
-    TRANSFER_MAP.with(|m| {
+fn remove_archive_transfers_by_ts(ts: u64) -> Result<String, String> {
+    TRANSFER_ARCHIVE_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
         keys_to_remove.iter().for_each(|k| {
