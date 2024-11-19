@@ -6,7 +6,6 @@ mod lp_token_ledger;
 mod messages;
 mod pools;
 mod requests;
-mod stats;
 mod status;
 mod tokens;
 mod transfers;
