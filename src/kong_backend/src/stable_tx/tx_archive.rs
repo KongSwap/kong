@@ -28,7 +28,8 @@ pub fn archive_tx_map() {
         });
     });
 
-    let one_hour_ago = get_time() - 3_600_000_000_000; // 1 hour
+    // only keep txs from the last hour
+    let one_hour_ago = get_time() - 3_600_000_000_000;
     let mut remove_list = Vec::new();
     TX_MAP.with(|tx_map| {
         tx_map.borrow().iter().for_each(|(tx_id, tx)| {
