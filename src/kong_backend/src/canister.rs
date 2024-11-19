@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use super::stable_memory::{
     CLAIMS_TIMER_ID, LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, REQUEST_MEMORY_ARCHIVE_OLD_ID, STATS_TIMER_ID,
-    TRANSFER_MAP_ARCHIVE_TIMER_ID, TRANSFER_MEMORY_ARCHIVE_OLD_ID, TX_MAP_ARCHIVE_TIMER_ID, TX_MEMORY_ARCHIVE_OLD_ID,
+    TRANSFER_MAP_ARCHIVE_TIMER_ID, TRANSFER_MEMORY_1H_ID, TRANSFER_MEMORY_ARCHIVE_OLD_ID, TX_MAP_ARCHIVE_TIMER_ID,
+    TX_MEMORY_ARCHIVE_OLD_ID,
 };
 use super::{APP_NAME, APP_VERSION};
 
@@ -22,10 +23,10 @@ use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_memory::MEMORY_MANAGER;
+use crate::stable_memory::{MEMORY_MANAGER, TRANSFER_1H_MAP};
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
-use crate::stable_transfer::transfer_archive::{archive_transfer_map, remove_transfer_1h_map};
+use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::{archive_tx_24h_map, archive_tx_map};
 
 #[init]
@@ -95,28 +96,6 @@ fn pre_upgrade() {
 
     // clear the background timer for archiving LP token ledger
     LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    MEMORY_MANAGER.with(|mm| {
-        let memory = mm.borrow().get(TRANSFER_MEMORY_ARCHIVE_OLD_ID);
-        if memory.size() > 0 {
-            info_log("Archiving transfer map");
-            memory.write(0, &[0]);
-        }
-    });
-    MEMORY_MANAGER.with(|mm| {
-        let memory = mm.borrow().get(REQUEST_MEMORY_ARCHIVE_OLD_ID);
-        if memory.size() > 0 {
-            info_log("Archiving request map");
-            memory.write(0, &[0]);
-        }
-    });
-    MEMORY_MANAGER.with(|mm| {
-        let memory = mm.borrow().get(TX_MEMORY_ARCHIVE_OLD_ID);
-        if memory.size() > 0 {
-            info_log("Archiving tx map");
-            memory.write(0, &[0]);
-        }
-    });
 }
 
 #[post_upgrade]
@@ -158,10 +137,41 @@ async fn post_upgrade() {
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().transfers_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_transfer_map();
-            remove_transfer_1h_map();
         });
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
+
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(TRANSFER_MEMORY_ARCHIVE_OLD_ID);
+        if memory.size() > 0 {
+            info_log("Archiving transfer map");
+            memory.write(0, &[0]);
+        }
+    });
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(REQUEST_MEMORY_ARCHIVE_OLD_ID);
+        if memory.size() > 0 {
+            info_log("Archiving request map");
+            memory.write(0, &[0]);
+        }
+    });
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(TX_MEMORY_ARCHIVE_OLD_ID);
+        if memory.size() > 0 {
+            info_log("Archiving tx map");
+            memory.write(0, &[0]);
+        }
+    });
+    TRANSFER_1H_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|mm| {
+        let memory = mm.borrow().get(TRANSFER_MEMORY_1H_ID);
+        if memory.size() > 0 {
+            info_log("Archiving transfer 1H map");
+            memory.write(0, &[0]);
+        }
+    });
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

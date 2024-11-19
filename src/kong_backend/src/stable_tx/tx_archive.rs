@@ -28,11 +28,11 @@ pub fn archive_tx_map() {
         });
     });
 
-    let two_days_ago = get_time() - 172_800_000_000_000; // 2 days
+    let one_hour_ago = get_time() - 3_600_000_000_000; // 1 hour
     let mut remove_list = Vec::new();
     TX_MAP.with(|tx_map| {
         tx_map.borrow().iter().for_each(|(tx_id, tx)| {
-            if tx.ts() < two_days_ago {
+            if tx.ts() < one_hour_ago {
                 remove_list.push(tx_id);
             }
         });

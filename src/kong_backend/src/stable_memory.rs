@@ -117,6 +117,20 @@ thread_local! {
     });
 
     //
+    // Additional Stable Memory
+    //
+
+    // stable memory for storing txs for the last 24 hours. used for calculating rolling stats
+    pub static TX_24H_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_24H_ID)))
+    });
+
+    // static memory for storing transfers for the last 1 hour. used for preventing double receive
+    pub static TRANSFER_1H_MAP: RefCell<StableBTreeMap<StableTransferId, StableTransfer, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_1H_ID)))
+    });
+
+    //
     // Archive Stable Memory
     //
 
@@ -133,20 +147,6 @@ thread_local! {
     // stable memory for storing transfer archive
     pub static TRANSFER_ARCHIVE_MAP: RefCell<StableBTreeMap<StableTransferIdAlt, StableTransferAlt, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_ARCHIVE_ID)))
-    });
-
-    //
-    // Additional Stable Memory
-    //
-
-    // stable memory for storing txs for the last 24 hours. used for calculating rolling stats
-    pub static TX_24H_MAP: RefCell<StableBTreeMap<StableTxId, StableTx, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TX_MEMORY_24H_ID)))
-    });
-
-    // static memory for storing transfers for the last 1 hour. used for preventing double receive
-    pub static TRANSFER_1H_MAP: RefCell<StableBTreeMap<StableTransferId, StableTransfer, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_MEMORY_1H_ID)))
     });
 }
 
