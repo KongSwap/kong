@@ -89,8 +89,8 @@
                         sortColumn={$sortColumnStore}
                         sortDirection={$sortDirectionStore}
                         onsort={({ column, direction }) => {
-                          sortColumnStore.set(column);
-                          sortDirectionStore.set(direction);
+                          $sortColumnStore = column;
+                          $sortDirectionStore = direction;
                         }}
                       />
                     {/each}

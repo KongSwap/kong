@@ -40,9 +40,12 @@ export interface SwapStore extends Writable<SwapState> {
   initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null): void;
   setPayAmount(amount: string): void;
   setReceiveAmount(amount: string): void;
+  setPayToken(token: FE.Token | null): void;
+  setReceiveToken(token: FE.Token | null): void;
   setIsProcessing(isProcessing: boolean): void;
   setShowConfirmation(show: boolean): void;
   setShowSuccessModal(show: boolean): void;
+  setError(error: string | null): void;
   updateSuccessDetails(details: SwapState['successDetails']): void;
   reset(): void;
 }
@@ -152,6 +155,14 @@ function createSwapStore(): SwapStore {
       return;
     },
 
+    setPayToken(token: FE.Token | null) {
+      update(state => ({ ...state, payToken: token }));
+    },
+
+    setReceiveToken(token: FE.Token | null) {
+      update(state => ({ ...state, receiveToken: token }));
+    },
+
     setIsProcessing(isProcessing: boolean) {
       update(state => ({ ...state, isProcessing }));
     },
@@ -162,6 +173,10 @@ function createSwapStore(): SwapStore {
 
     setShowSuccessModal(show: boolean) {
       update(state => ({ ...state, showSuccessModal: show }));
+    },
+
+    setError(error: string | null) {
+      update(state => ({ ...state, error }));
     },
 
     updateSuccessDetails(details: SwapState['successDetails']) {

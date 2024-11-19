@@ -5,16 +5,23 @@
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
-  import { kongDB, KongDB } from '$lib/services/db';
+  import { themeStore } from '$lib/stores/themeStore';
+  import { kongDB } from '$lib/services/db';
   import Dexie from 'dexie';
   import { assetCache } from '$lib/services/assetCache';
   import { onMount, onDestroy } from "svelte";
   import { walletStore } from '$lib/services/wallet/walletStore';
   import { liveQuery } from "dexie";
-  
+  import { browser } from '$app/environment';
+
   let activeTab: 'trade' | 'app' = 'trade';
   let soundEnabled = true;
   let settingsSubscription: () => void;
+  let slippageInputValue: string;
+  let isMobile = false;
+
+  // Predefined slippage values for quick selection
+  const quickSlippageValues = [0.1, 0.5, 1, 2, 3];
 
   // Subscribe to settings changes using liveQuery
   const settings = liveQuery(async () => {
@@ -33,13 +40,18 @@
     const currentSettings = $settings[0];
     if (currentSettings) {
       soundEnabled = currentSettings.sound_enabled;
-      // Update the settings store
       settingsStore.set(currentSettings);
     }
   }
 
   $: if ($settingsStore) {
     soundEnabled = $settingsStore.sound_enabled;
+    slippageInputValue = $settingsStore.max_slippage?.toString() || '0';
+  }
+
+  function handleQuickSlippageSelect(value: number) {
+    settingsStore.updateSetting('max_slippage', value);
+    toastStore.success(`Slippage updated to ${value}%`);
   }
 
   function handleSlippageChange(e: Event) {
@@ -47,13 +59,27 @@
     const boundedValue = Math.min(Math.max(value, 0), 99);
     if (!isNaN(boundedValue)) {
       settingsStore.updateSetting('max_slippage', boundedValue);
+      slippageInputValue = boundedValue.toString();
     }
   }
 
-  function handleSlippageRelease(e: Event) {
-    const value = parseFloat((e.target as HTMLInputElement).value);
-    const boundedValue = Math.min(Math.max(value, 0), 99);
-    if (!isNaN(boundedValue)) {
+  function handleSlippageInput(e: Event) {
+    const input = (e.target as HTMLInputElement).value;
+    slippageInputValue = input;
+    const value = parseFloat(input);
+    if (!isNaN(value)) {
+      const boundedValue = Math.min(Math.max(value, 0), 99);
+      settingsStore.updateSetting('max_slippage', boundedValue);
+    }
+  }
+
+  function handleSlippageBlur() {
+    const value = parseFloat(slippageInputValue);
+    if (isNaN(value)) {
+      slippageInputValue = $settingsStore.max_slippage?.toString() || '0';
+    } else {
+      const boundedValue = Math.min(Math.max(value, 0), 99);
+      slippageInputValue = boundedValue.toString();
       settingsStore.updateSetting('max_slippage', boundedValue);
       toastStore.success(`Slippage updated to ${boundedValue}%`);
     }
@@ -65,65 +91,67 @@
       soundEnabled = event.detail;
     } else {
       toastStore.error('Please connect your wallet to save settings');
-      // Revert the toggle
       event.preventDefault();
     }
   }
 
   async function clearFavorites() {
-    confirm('Are you sure you want to clear your favorite tokens?') && tokenStore.clearUserData();
-    await tokenStore.loadTokens(true);
+    if (confirm('Are you sure you want to clear your favorite tokens?')) {
+      await tokenStore.clearUserData();
+      await tokenStore.loadTokens(true);
+      toastStore.success('Favorites cleared successfully');
+    }
+  }
+
+  function toggleTheme() {
+    $themeStore = $themeStore === 'pixel' ? 'glass' : 'pixel';
+    toastStore.success(`Theme switched to ${$themeStore} mode`);
   }
 
   async function resetDatabase() {
     if (confirm('Are you sure you want to reset the database? This will clear all cached data.')) {
       try {
-        // Unsubscribe from all live queries
         if (settingsSubscription) {
           settingsSubscription();
         }
         
-        // Close all database connections
         await Promise.all([
           kongDB.close(),
-          // Add any other stores that need cleanup
           tokenStore.cleanup && tokenStore.cleanup(),
         ]);
         
-        // Delete the database
         await Dexie.delete('kong_db');
-        
-        // Clear asset cache
         await assetCache.clearCache();
         
         toastStore.success('Database and asset cache reset successfully. Reloading...');
-        
-        // Force reload the page immediately
         window.location.reload();
       } catch (error) {
         console.error('Error resetting database:', error);
         toastStore.error('Failed to reset database');
         
-        // Try to reopen the database in case of error
         try {
           await kongDB.open();
         } catch (reopenError) {
           console.error('Error reopening database:', reopenError);
-          // Force reload if we can't recover
           window.location.reload();
         }
       }
     }
   }
-  
-  $: if ($settingsStore.max_slippage !== undefined) {
-    const event = new Event('input');
-    Object.defineProperty(event, 'target', {
-      value: { value: $settingsStore.max_slippage.toString() },
-      enumerable: true
-    });
-    handleSlippageChange(event);
+
+  function handleResize() {
+    if (browser) {
+      isMobile = window.innerWidth <= 768;
+    }
   }
+
+  onMount(() => {
+    handleResize();
+    if (browser) {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  });
 </script>
 
 <div class="settings-container relative">
@@ -164,21 +192,47 @@
         <h3>Slippage Settings</h3>
       </div>
       <div class="setting-content">
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="setting-label">Max Slippage</span>
-            <span class="text-white/90 font-medium">%</span>
+        <div class="flex flex-col gap-4">
+          <!-- Quick select buttons -->
+          <div class="flex gap-2 flex-wrap">
+            {#each quickSlippageValues as value}
+              <button
+                class="quick-select-btn"
+                class:active={$settingsStore.max_slippage === value}
+                on:click={() => handleQuickSlippageSelect(value)}
+              >
+                {value}%
+              </button>
+            {/each}
+            <div class="custom-input-container">
+              <input
+                type="text"
+                inputmode="decimal"
+                placeholder="Custom"
+                class="slippage-input"
+                bind:value={slippageInputValue}
+                on:input={handleSlippageInput}
+                on:blur={handleSlippageBlur}
+              />
+              <span class="text-white/90 font-medium">%</span>
+            </div>
           </div>
-          <Slider
-            bind:value={$settingsStore.max_slippage}
-            min={0}
-            max={99}
-            step={1}
-            color="yellow"
-            showInput={true}
-            on:input={handleSlippageChange}
-            on:change={handleSlippageRelease}
-          />
+
+          <!-- Slider - only show on desktop -->
+          {#if !isMobile}
+            <div class="flex-1">
+              <input
+                type="range"
+                min="0"
+                max="99"
+                step="0.1"
+                value={$settingsStore.max_slippage}
+                class="slippage-slider"
+                on:input={handleSlippageChange}
+              />
+            </div>
+          {/if}
+
           <p class="setting-description">
             Maximum allowed price difference between expected and actual swap price
           </p>
@@ -210,149 +264,110 @@
       </div>
     </div>
   {:else}
-    <!-- Language Section -->
-    <div class="setting-section relative z-[10]">
-      <div class="setting-header">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          <path d="M2 12h20"/>
-        </svg>
-        <h3>Language Settings</h3>
-      </div>
-      <div class="setting-content">
-        <LanguageSelector />
-      </div>
-    </div>
-
-    <!-- Sound Section -->
-    <div class="setting-section z-1">
-      <div class="setting-header">
-        {#if $settingsStore.sound_enabled}
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 5 6 9H2v6h4l5 4V5z"/>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          </svg>
-        {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 5 6 9H2v6h4l5 4V5z"/>
-            <line x1="23" y1="9" x2="17" y2="15"/>
-            <line x1="17" y1="9" x2="23" y2="15"/>
-          </svg>
-        {/if}
-        <h3>Sound Settings</h3>
-      </div>
-      <div class="setting-content">
-        <div class="flex items-center justify-between">
-          <span class="setting-label">Enable Sound</span>
-          <Toggle
-            checked={soundEnabled}
-            color="yellow"
-            on:change={handleToggleSound}
-            disabled={!$walletStore.isConnected}
-          />
-        </div>
-        <p class="setting-description">
-          Toggle sound effects for notifications and interactions
-        </p>
-      </div>
-    </div>
-
-    <!-- Database Section -->
+    <!-- App Settings -->
     <div class="setting-section z-1">
       <div class="setting-header">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <ellipse cx="12" cy="5" rx="9" ry="3"/>
-          <path d="M3 5V19A9 3 0 0 0 21 19V5"/>
-          <path d="M3 12A9 3 0 0 0 21 12"/>
+          <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
         </svg>
-        <h3>Database Settings</h3>
+        <h3>App Settings</h3>
       </div>
       <div class="setting-content">
-        <div class="flex items-center justify-between">
-          <span class="setting-label">Reset Database</span>
-          <button
-            class="clear-button"
-            on:click={resetDatabase}
-          >
-            Reset
-          </button>
+        <!-- Language -->
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="setting-label">Language</span>
+            <LanguageSelector />
+          </div>
+          <p class="setting-description">
+            Choose your preferred language for the interface
+          </p>
         </div>
-        <p class="setting-description">
-          Reset the local database and clear all cached data
-        </p>
+
+        <!-- Theme -->
+        <div class="flex flex-col gap-4 mt-6">
+          <div class="flex items-center justify-between">
+            <span class="setting-label">Theme</span>
+            <button class="theme-toggle" on:click={toggleTheme}>
+              {$themeStore === 'pixel' ? 'Modern' : 'Pixel'}
+            </button>
+          </div>
+          <p class="setting-description">
+            Switch between pixel art and modern glass themes
+          </p>
+        </div>
+
+        <!-- Sound -->
+        <div class="flex flex-col gap-4 mt-6">
+          <div class="flex items-center justify-between">
+            <span class="setting-label">Sound</span>
+            <Toggle 
+              checked={soundEnabled}
+              on:change={handleToggleSound}
+            />
+          </div>
+          <p class="setting-description">
+            Enable or disable sound effects
+          </p>
+        </div>
+
+        <!-- Reset Database -->
+        <div class="flex flex-col gap-4 mt-6">
+          <div class="flex items-center justify-between">
+            <span class="setting-label">Reset Database</span>
+            <button
+              class="reset-button"
+              on:click={resetDatabase}
+            >
+              Reset
+            </button>
+          </div>
+          <p class="setting-description">
+            Clear all cached data and reset the application
+          </p>
+        </div>
       </div>
     </div>
   {/if}
-
-  <!-- Version Info -->
-  <div class="version-info">
-    <span>Version 0.0.1</span>
-  </div>
 </div>
 
-<style lang="postcss" scoped>
+<style lang="postcss">
   .settings-container {
-    @apply flex flex-col gap-6 p-2;
+    @apply flex flex-col gap-4 p-4;
+    min-height: 100%;
   }
 
   .tabs-container {
-    @apply flex gap-2;
+    @apply flex gap-2 mb-4;
   }
 
   .tab-button {
-    @apply flex items-center justify-center gap-2 px-4 py-2 rounded-lg 
-           bg-white/5 backdrop-blur-sm
-           text-white/60 transition-all duration-200
-           hover:bg-white/10 hover:text-white/90 w-full;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 1rem;
-  }
-
-  .tab-button.active {
-    @apply bg-yellow-400/20 text-yellow-400;
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg text-white/60 transition-all duration-200;
   }
 
   .tab-button:hover {
-    transform: translateY(-1px);
+    @apply text-white/80;
   }
 
-  .tab-button:active {
-    transform: translateY(0px);
-  }
-
-  .tab-button svg {
-    @apply w-4 h-4;
+  .tab-button.active {
+    @apply text-white;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .setting-section {
-    @apply bg-white/5 backdrop-blur-sm rounded-xl p-6 transition-all duration-300;
-    border: 2px solid transparent;
-  }
-
-  .setting-section:hover {
-    @apply bg-white/10;
-    border-color: theme(colors.yellow.400/70%);
-    transform: translateY(-1px);
+    @apply bg-black/20 rounded-lg overflow-hidden;
   }
 
   .setting-header {
-    @apply flex items-center gap-3 mb-4;
-  }
-
-  .setting-header svg {
-    @apply text-yellow-400 w-6 h-6;
+    @apply flex items-center gap-3 p-4 bg-black/20;
   }
 
   .setting-header h3 {
-    @apply text-lg font-bold text-yellow-400;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.9rem;
+    @apply text-lg font-semibold text-white;
   }
 
   .setting-content {
-    @apply space-y-4;
+    @apply p-4;
   }
 
   .setting-label {
@@ -360,50 +375,59 @@
   }
 
   .setting-description {
-    @apply text-white/60 text-sm mt-2;
+    @apply text-sm text-white/60 mt-2;
   }
 
-  .version-info {
-    @apply mt-4 text-center text-white/40 text-sm;
-    font-family: monospace;
+  .clear-button,
+  .reset-button,
+  .theme-toggle {
+    @apply px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all duration-200;
   }
 
-  .clear-button {
-    @apply px-4 py-2 rounded-lg bg-red-600/70 text-red-100 
-           hover:bg-red-600/90 transition-all duration-200
-           border border-red-500/30 hover:border-red-500/50;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 0.7rem;
+  .theme-toggle {
+    @apply bg-blue-500/20 text-blue-400 hover:bg-blue-500/30;
   }
 
-  .clear-button:hover {
-    transform: translateY(-1px);
+  .quick-select-btn {
+    @apply px-3 py-2 rounded-lg bg-white/5 text-white/80 
+           transition-all duration-200 text-center min-w-[60px]
+           hover:bg-white/10 hover:text-white
+           border border-white/10;
+    font-family: 'Alumni Sans', sans-serif;
   }
 
-  .clear-button:active {
-    transform: translateY(0px);
+  .quick-select-btn.active {
+    @apply bg-yellow-400/20 text-yellow-400 border-yellow-400/30;
   }
 
-  @media (max-width: 640px) {
-    .setting-header h3 {
-      font-size: 0.8rem;
-    }
+  .custom-input-container {
+    @apply flex items-center gap-1 px-2 rounded-lg bg-white/5 border border-white/10 min-w-[80px];
+  }
 
-    .setting-content {
-      @apply space-y-3;
-    }
+  .slippage-input {
+    @apply w-16 py-2 bg-transparent text-white/90 
+           focus:outline-none text-right;
+    font-family: 'Alumni Sans', sans-serif;
+  }
 
-    .setting-section {
-      @apply p-4;
-    }
-    
-    .tab-button {
-      @apply px-3 py-2;
-      font-size: 0.6rem;
-    }
-    
-    .tab-button svg {
-      @apply w-3 h-3;
-    }
+  .slippage-slider {
+    @apply w-full h-2 rounded-lg appearance-none cursor-pointer;
+    background: linear-gradient(to right, 
+      rgb(250 204 21) 0%, 
+      rgb(250 204 21) var(--value-percent, 0%), 
+      rgba(255, 255, 255, 0.1) var(--value-percent, 0%)
+    );
+  }
+
+  .slippage-slider::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-yellow-400 cursor-pointer
+           hover:bg-yellow-500 hover:scale-110 transition-all duration-200;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+  }
+
+  .slippage-slider::-moz-range-thumb {
+    @apply w-4 h-4 rounded-full bg-yellow-400 cursor-pointer
+           hover:bg-yellow-500 hover:scale-110 transition-all duration-200;
+    border: 2px solid rgba(0, 0, 0, 0.2);
   }
 </style>

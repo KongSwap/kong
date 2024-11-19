@@ -1,243 +1,760 @@
-<!-- src/kong_svelte/src/routes/stats/+page.svelte -->
 <script lang="ts">
   import { writable, derived } from "svelte/store";
   import { t } from "$lib/services/translations";
+  import Panel from "$lib/components/common/Panel.svelte";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
-  import { tokensTableHeaders } from "$lib/constants/statsConstants";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import Clouds from "$lib/components/stats/Clouds.svelte";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { poolStore } from "$lib/services/pools/poolStore";
+  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce";
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { poolStore } from "$lib/services/pools/poolStore";
-  import { walletStore } from "$lib/services/wallet/walletStore";
-  import Clouds from "$lib/components/stats/Clouds.svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { ArrowUpDown, TrendingUp, Droplets, DollarSign, LineChart, BarChart, Coins } from 'lucide-svelte';
+  import { tokensTableHeaders } from "$lib/constants/statsConstants";
 
-  const searchQuery = writable("");
-  const copyStates = writable<Record<string, string>>({});
+  // Constants
+  const DEBOUNCE_DELAY = 300;
+  const COPY_TIMEOUT = 1000;
+  const ANIMATION_DURATION = 300;
+  const CHART_DAYS = 7;
+  const CHART_POINTS = 5;
 
-  const debouncedSearch = debounce((value: string) => {
-    searchQuery.set(value);
-  }, 300);
+  // Store initialization with TypeScript types
+  interface CopyStates {
+    [key: string]: string;
+  }
 
-  const sortColumnStore = writable("formattedUsdValue");
+  interface MarketStats {
+    totalVolume: string;
+    totalLiquidity: string;
+    totalFees: string;
+  }
+
+  // Base stores
+  const searchQuery = writable<string>("");
+  const activeView = writable<"tokens" | "pools">("tokens");
+  const sortColumnStore = writable<string>("formattedUsdValue");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
+  const copyStates = writable<CopyStates>({});
 
-  // Loading state
+  // Enhanced loading state with type safety
   const tokensLoading = derived(
     [tokenStore, poolStore, formattedTokens],
-    ([$tokenStore, $poolStore, $formattedTokens]) => 
+    ([$tokenStore, $poolStore, $formattedTokens]): boolean => 
       $tokenStore.isLoading || 
       $poolStore.isLoading || 
       !$formattedTokens?.length
   );
 
-  // Error state with null check
+  // Improved error handling with null checks
   const tokensError = derived(
     [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]) => $tokenStore.error || $poolStore.error
+    ([$tokenStore, $poolStore]): string | null => 
+      $tokenStore.error || $poolStore.error || null
   );
 
-  // Modified filtered tokens store to handle undefined or null values
+  // Enhanced market stats calculation
+  const marketStats = derived<[typeof tokenStore, typeof poolStore], MarketStats>(
+    [tokenStore, poolStore], 
+    ([$tokenStore, $poolStore]) => {
+      const calculateVolume = (pools: any[]): number => {
+        return pools.reduce((acc, pool) => {
+          const volume = Number(pool.rolling_24h_volume || 0n) / 1e8;
+          return acc + volume;
+        }, 0);
+      };
+
+      const calculateLiquidity = (pools: any[]): number => {
+        return pools.reduce((acc, pool) => {
+          const tvl = Number(pool.tvl || 0n) / 1e8;
+          return acc + tvl;
+        }, 0);
+      };
+
+      const calculateFees = (pools: any[]): number => {
+        return pools.reduce((acc, pool) => {
+          const fees = Number(pool.rolling_24h_lp_fee || 0n) / 1e8;
+          return acc + fees;
+        }, 0);
+      };
+
+      return {
+        totalVolume: formatToNonZeroDecimal(calculateVolume($poolStore.pools)),
+        totalLiquidity: formatToNonZeroDecimal(calculateLiquidity($poolStore.pools)),
+        totalFees: formatToNonZeroDecimal(calculateFees($poolStore.pools))
+      };
+    }
+  );
+
+  // Enhanced token stats with better type safety
+  const tokenStats = derived(tokenStore, ($tokenStore) => {
+    const calculateActiveTokens = (tokens: any[], balances: any): number => {
+      return tokens?.filter(token => 
+        balances[token.canister_id]?.in_tokens > 0n ||
+        token.total_24h_volume > 0n
+      ).length || 0;
+    };
+
+    const calculateMarketCap = (tokens: any[], prices: any): number => {
+      return tokens?.reduce((acc, token) => {
+        const price = prices[token.canister_id] || 0;
+        const supply = Number(token.total_supply || 0) / Math.pow(10, token.decimals || 8);
+        return acc + (price * supply);
+      }, 0) || 0;
+    };
+
+    return {
+      totalTokens: $tokenStore.tokens?.length || 0,
+      activeTokens: calculateActiveTokens($tokenStore.tokens, $tokenStore.balances),
+      marketCap: formatToNonZeroDecimal(calculateMarketCap($tokenStore.tokens, $tokenStore.prices))
+    };
+  });
+
+  // Enhanced user stats with improved calculations
+  const userStats = derived([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
+    const calculateUniqueUsers = (balances: any): number => {
+      return balances ? Object.keys(balances).length : 0;
+    };
+
+    const calculateTotalTransactions = (pools: any[]): number => {
+      return pools.reduce((acc, pool) => {
+        return acc + Number(pool.rolling_24h_num_swaps || 0);
+      }, 0);
+    };
+
+    return {
+      totalUsers: calculateUniqueUsers($tokenStore.balances),
+      totalLpPositions: $poolStore.userPoolBalances?.length || 0,
+      totalTx24h: calculateTotalTransactions($poolStore.pools)
+    };
+  });
+
+  // Enhanced pool stats with better APY calculation
+  const poolStats = derived(poolStore, ($poolStore) => {
+    const calculateWeightedApy = (pools: any[]): number => {
+      const poolsWithApy = pools.filter(pool => 
+        pool.rolling_24h_apy && pool.tvl && 
+        pool.rolling_24h_apy > 0 && pool.tvl > 0
+      );
+      
+      const totalTvl = poolsWithApy.reduce((acc, pool) => 
+        acc + Number(pool.tvl || 0), 0);
+      
+      const weightedApySum = poolsWithApy.reduce((acc, pool) => {
+        const weight = Number(pool.tvl || 0) / totalTvl;
+        return acc + (pool.rolling_24h_apy * weight);
+      }, 0);
+      
+      return totalTvl > 0 ? weightedApySum : 0;
+    };
+
+    const calculateLifetimeMetrics = (pools: any[]) => {
+      return pools.reduce((acc, pool) => ({
+        volume: acc.volume + Number(pool.total_volume || 0) / 1e8,
+        fees: acc.fees + Number(pool.total_lp_fee || 0) / 1e8
+      }), { volume: 0, fees: 0 });
+    };
+
+    const lifetimeMetrics = calculateLifetimeMetrics($poolStore.pools);
+
+    return {
+      totalPools: $poolStore.pools.length,
+      averageApy: formatToNonZeroDecimal(calculateWeightedApy($poolStore.pools)),
+      lifetimeVolume: formatToNonZeroDecimal(lifetimeMetrics.volume),
+      lifetimeFees: formatToNonZeroDecimal(lifetimeMetrics.fees)
+    };
+  });
+
+  // Enhanced clipboard functionality with better error handling
+  async function copyToClipboard(tokenId: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(tokenId);
+      updateCopyState(tokenId, "Copied!");
+    } catch (error) {
+      console.error("Copy failed:", error);
+      updateCopyState(tokenId, "Copy Failed!");
+    }
+  }
+
+  function updateCopyState(tokenId: string, text: string): void {
+    copyStates.update(states => ({ ...states, [tokenId]: text }));
+    setTimeout(() => {
+      copyStates.update(states => ({ ...states, [tokenId]: "Copy" }));
+    }, COPY_TIMEOUT);
+  }
+
+  // Debounced search with proper typing
+  const debouncedSearch = debounce((value: string) => {
+    searchQuery.set(value);
+  }, DEBOUNCE_DELAY);
+
+  // Enhanced pool sorting
+  const sortedAndFilteredPools = derived(poolStore, ($poolStore) => {
+    return [...$poolStore.pools].sort((a, b) => {
+      const tvlA = Number(a.tvl || 0n);
+      const tvlB = Number(b.tvl || 0n);
+      return tvlB - tvlA;
+    });
+  });
+
+  // Loading and error states for pools
+  const poolsLoading = derived(poolStore, $store => $store.isLoading);
+  const poolsError = derived(poolStore, $store => $store.error);
+
+  // Derived store for filtered and sorted tokens with improved performance
   const filteredSortedTokens = derived(
     [formattedTokens, searchQuery, sortColumnStore, sortDirectionStore],
     ([$formattedTokens, $searchQuery, $sortColumn, $sortDirection]) => {
       if (!$formattedTokens) return [];
-
+      
       const filtered = filterTokens($formattedTokens, $searchQuery);
       return sortTableData(filtered, $sortColumn, $sortDirection);
     }
   );
-
-  // Function to copy text to clipboard
-  function copyToClipboard(tokenId: string) {
-    navigator.clipboard.writeText(tokenId).then(
-      () => {
-        updateCopyState(tokenId, "Copied!");
-      },
-      (err) => {
-        updateCopyState(tokenId, "Copy Failed!");
-      }
-    );
-  }
-
-  // Update the copy state for a specific token
-  function updateCopyState(tokenId: string, text: string) {
-    copyStates.update(states => {
-      return { ...states, [tokenId]: text };
-    });
-    setTimeout(() => {
-      copyStates.update(states => {
-        return { ...states, [tokenId]: "Copy" };
-      });
-    }, 1000);
-  }
 </script>
 
 <Clouds />
-<section class="flex min-h-[94vh] relative w-full justify-center">
-  <!-- Main Content -->
-  <div class="z-10 flex pt-10 justify-center w-full md:w-100 px-2 md:px-0 max-w-5xl">
-    <div class="flex flex-col w-full">
-      <div
-        class="inner-border bg-k-light-blue bg-opacity-40 backdrop-blur-md border-[5px] border-black p-0.5 w-full mx-auto"
-      >
-        <div class="p-4 w-full max-h-[68vh] overflow-y-auto pb-8">
-          <!-- Header and Search Bar -->
-          <div class="grid grid-cols-3 items-center mb-2 md:mb-0 pb-2">
-            <h2
-              class="pl-1 mt-2 font-black col-span-3 md:col-span-2 text-3xl text-center md:text-left text-white mb-4 text-outline-2"
-            >
-              {$t("stats.statsTableTitle")}
-            </h2>
 
-            <div
-              class="col-span-3 md:col-span-1 flex justify-center md:justify-end"
-            >
-              <input
-                type="text"
-                placeholder="Search by symbol or name"
-                on:input={(e) => debouncedSearch(e.currentTarget.value)}
-                class="w-1/2 bg-sky-200/30 placeholder:text-gray-600 font-alumni text-xl text-black border-none rounded-xl min-w-[160px] focus:ring-green-700 focus:ring-2 p-2.5"
-                aria-label="Search Tokens by Symbol or Name"
-              />
-            </div>
-          </div>
-
-          <!-- Table Container -->
-          <div class="overflow-x-scroll">
-            {#if $tokensError}
-              <div class="text-center text-red-500 p-4">{$tokensError}</div>
-            {:else}
-              <table class="w-full text-black font-alumni">
-                <thead>
-                  <tr class="border-b-4 border-black text-3xl uppercase">
-                    {#each tokensTableHeaders as header}
-                      <TableHeader
-                        label={header.label}
-                        column={header.column}
-                        textClass={header.textClass}
-                        requiresAuth={header.requiresAuth}
-                        sortColumn={$sortColumnStore}
-                        sortDirection={$sortDirectionStore}
-                        onsort={({ column, direction }) => {
-                          sortColumnStore.set(column);
-                          sortDirectionStore.set(direction);
-                        }}
-                      />
-                    {/each}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {#if $filteredSortedTokens && $filteredSortedTokens.length > 0}
-                    {#each $filteredSortedTokens as token, index (token.canister_id + '-' + token.symbol + '-' + index)}
-                      <tr
-                        class="border-b-2 border-black text-xl md:text-3xl cursor-pointer !h-[4.75rem]"
-                        animate:flip={{ duration: 300 }}
-                        tabindex="0"
-                        aria-label={`View details for token ${token.symbol || 'Unknown'}`}
-                      >
-                        <td class="uppercase font-bold pl-2 focused:ring-0 ring-0 focused:border-none active:border-none">
-                          <div class="flex items-center">
-                            {#if token}
-                              <TokenImages
-                                tokens={[token]}
-                                containerClass="mr-2.5"
-                              />
-                              <div class="flex flex-col">
-                                <span>{token.symbol || 'Unknown'}</span>
-                                <div class="flex items-center font-mono text-xs">
-                                  <span class="text-sm font-normal">{token.canister_id || 'N/A'}</span>
-                                  <button
-                                    class="ml-2 text-xs bg-blue-200/60 hover:bg-yellow-400/90 font-mono rounded px-1"
-                                    on:click={(e) => {
-                                      e.stopPropagation();
-                                      if (token.canister_id) copyToClipboard(token.canister_id);
-                                    }}
-                                    aria-label="Copy Canister ID"
-                                  >
-                                    {$copyStates[token.canister_id] || "Copy"}
-                                  </button>
-                                </div>
-                              </div>
-                            {/if}
-                          </div>
-                        </td>
-                        <td class="p-2 text-right">${formatToNonZeroDecimal($tokenStore.prices[token.canister_id] || 0)}</td>
-                        <td class="p-2 text-right">
-                          ${formatToNonZeroDecimal(formatTokenAmount(token.total_24h_volume || 0n, 6))}
-                        </td>
-                        {#if $walletStore.isConnected}
-                          <td class="p-2 text-right">
-                            <div class="flex flex-col items-end justify-center">
-                              <span class="text-2xl">
-                                {formatToNonZeroDecimal(token?.formattedBalance || '0')} {token?.symbol || ''}
-                              </span>
-                              <span class="text-sm">(${token?.formattedUsdValue || '0'})</span>
-                            </div>
-                          </td>
-                        {/if}
-                      </tr>
-                    {/each}
-  
-                  {/if}
-
-                  {#if $tokensLoading && !$filteredSortedTokens.length}
-                    <!-- Display skeleton loaders or placeholders -->
-                    {#each Array(10) as _, index}
-                      <tr class="border-b-2 border-black text-xl md:text-3xl animate-pulse">
-                        <td class="p-2">
-                          <div class="h-4 bg-gray-300 rounded w-3/4"></div>
-                        </td>
-                        <td class="p-2">
-                          <div class="h-4 bg-gray-300 rounded"></div>
-                        </td>
-                        <td class="p-2">
-                          <div class="h-4 bg-gray-300 rounded"></div>
-                        </td>
-                        <!-- Add more cells as needed -->
-                      </tr>
-                    {/each}
-                  {/if}
-                </tbody>
-              </table>
-            {/if}
-          </div>
+<div class="stats-container">
+  <!-- Market Overview Panel -->
+  <Panel variant="green" type="main" className="market-stats-panel">
+    <div class="market-stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon-wrapper">
+          <BarChart class="stat-icon" />
+        </div>
+        <div class="stat-content">
+          <h3>Total Volume (24h)</h3>
+          <p>${formatToNonZeroDecimal($marketStats.totalVolume)}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrapper">
+          <Droplets class="stat-icon" />
+        </div>
+        <div class="stat-content">
+          <h3>Total Liquidity</h3>
+          <p>${formatToNonZeroDecimal($marketStats.totalLiquidity)}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrapper">
+          <DollarSign class="stat-icon" />
+        </div>
+        <div class="stat-content">
+          <h3>Total Fees (24h)</h3>
+          <p>${formatToNonZeroDecimal($marketStats.totalFees)}</p>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </Panel>
 
-<div class="absolute bottom-0 left-0 w-full h-[10vh] bg-gradient-to-t from-transparent to-white">
-  <img src="/backgrounds/grass.webp" class="w-full h-full object-cover" />
+  <!-- Tokens Panel -->
+  <Panel variant="green" type="main" className="content-panel">
+    <div class="flex justify-between items-center mb-4">
+      <div class="flex items-center gap-4">
+        <h3 class="text-white/80 font-medium">Tokens</h3>
+        {#if $tokenStats.totalTokens}
+          <span class="text-sm text-white/50">({$tokenStats.totalTokens} total)</span>
+        {/if}
+      </div>
+      <div class="search-container">
+        <input
+          type="text"
+          placeholder="Search tokens..."
+          class="search-input"
+          on:input={(e) => debouncedSearch(e.target.value)}
+        />
+      </div>
+    </div>
+
+    {#if $tokensLoading}
+      <LoadingIndicator />
+    {:else if $tokensError}
+      <div class="error-message">
+        <p>Error loading tokens: {$tokensError}</p>
+        <button 
+          class="retry-button"
+          on:click={() => {
+            tokenStore.refresh();
+            poolStore.refresh();
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    {:else}
+      <div class="table-container">
+        <table class="data-table">
+          <TableHeader 
+            headers={tokensTableHeaders} 
+            bind:sortColumn={$sortColumnStore} 
+            bind:sortDirection={$sortDirectionStore} 
+          />
+          <tbody>
+            {#each $filteredSortedTokens as token (token.canister_id)}
+              <tr animate:flip={{ duration: ANIMATION_DURATION }}>
+                <td class="token-cell">
+                  <TokenImages 
+                    tokens={[token]} 
+                    containerClass="token-image" 
+                    size={32}
+                  />
+                  <div class="token-info">
+                    <span class="token-name">{token.name}</span>
+                    <span class="token-symbol">{token.symbol}</span>
+                  </div>
+                  <button 
+                    class="copy-button" 
+                    on:click={() => copyToClipboard(token.canister_id)}
+                    title="Copy token ID"
+                  >
+                    {$copyStates[token.canister_id] || "Copy ID"}
+                  </button>
+                </td>
+                <td class="price-cell" title={formatToNonZeroDecimal(token.price)}>
+                  {formatToNonZeroDecimal(token.price)}
+                </td>
+                <td class="price-change-cell" class:positive={token.price_change_24h > 0} class:negative={token.price_change_24h < 0}>
+                  {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
+                </td>
+                <td class="volume-cell" title={formatToNonZeroDecimal(token.volume24h)}>
+                  ${formatToNonZeroDecimal(token.volume24h)}
+                </td>
+                <td class="market-cap-cell" title={formatToNonZeroDecimal(token.market_cap)}>
+                  ${formatToNonZeroDecimal(token.market_cap)}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+  </Panel>
+
+  <!-- Additional Stats Panels -->
+  <div class="panels-grid">
+    <!-- Charts Section -->
+    <div class="charts-grid">
+      <!-- Volume Chart -->
+      <Panel variant="green" type="main" className="chart-panel">
+        <div class="chart-header">
+          <h3 class="panel-title">Volume Trend</h3>
+          <BarChart class="chart-icon" />
+        </div>
+        <div class="chart-placeholder">
+          <div class="chart-bars">
+            {#each Array(CHART_DAYS) as _, i}
+              <div 
+                class="bar" 
+                style="height: {30 + Math.random() * 40}%"
+                title={`Day ${i + 1}: $${formatToNonZeroDecimal(Math.random() * 1000000)}`}
+              />
+            {/each}
+          </div>
+          <div class="chart-labels">
+            {#each Array(CHART_DAYS) as _, i}
+              <div class="label">D-{CHART_DAYS - 1 - i}</div>
+            {/each}
+          </div>
+        </div>
+      </Panel>
+
+      <!-- APY Chart -->
+      <Panel variant="green" type="main" className="chart-panel">
+        <div class="chart-header">
+          <h3 class="panel-title">APY Trend</h3>
+          <LineChart class="chart-icon" />
+        </div>
+        <div class="chart-placeholder">
+          <svg class="line-chart" viewBox="0 0 300 100">
+            <path
+              d="M0,50 C60,40 140,80 300,30"
+              class="chart-line"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            {#each Array(CHART_POINTS) as _, i}
+              <circle
+                cx={i * 75}
+                cy={40 + Math.random() * 20}
+                r="3"
+                class="chart-point"
+                title={`Day ${i + 1}: ${(Math.random() * 100).toFixed(2)}% APY`}
+              />
+            {/each}
+          </svg>
+          <div class="chart-labels">
+            {#each Array(CHART_POINTS) as _, i}
+              <div class="label">D-{CHART_POINTS - 1 - i}</div>
+            {/each}
+          </div>
+        </div>
+      </Panel>
+    </div>
+
+    <!-- User Stats Panel -->
+    <Panel variant="green" type="main" className="stats-panel">
+      <h3 class="panel-title">User Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Total Users</span>
+          <span class="stat-value">{$userStats.totalUsers.toLocaleString()}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">LP Positions</span>
+          <span class="stat-value">{$userStats.totalLpPositions.toLocaleString()}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">24h Transactions</span>
+          <span class="stat-value">{$userStats.totalTx24h.toLocaleString()}</span>
+        </div>
+      </div>
+    </Panel>
+
+    <!-- Pool Stats Panel -->
+    <Panel variant="green" type="main" className="stats-panel">
+      <h3 class="panel-title">Pool Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Total Pools</span>
+          <span class="stat-value">{$poolStats.totalPools}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Average APY</span>
+          <span class="stat-value">{$poolStats.averageApy}%</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Lifetime Volume</span>
+          <span class="stat-value" title={formatToNonZeroDecimal($poolStats.lifetimeVolume)}>
+            ${formatToNonZeroDecimal($poolStats.lifetimeVolume)}
+          </span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Lifetime Fees</span>
+          <span class="stat-value" title={formatToNonZeroDecimal($poolStats.lifetimeFees)}>
+            ${formatToNonZeroDecimal($poolStats.lifetimeFees)}
+          </span>
+        </div>
+      </div>
+    </Panel>
+  </div>
 </div>
 
-<style scoped>
-  .inner-border {
-    box-shadow: inset 0 0 0 2px white;
+<style lang="postcss">
+  /* Container & Layout */
+  .stats-container {
+    @apply flex flex-col gap-6 p-4 relative z-10 max-w-[1440px] mx-auto;
   }
 
-  tr {
-    transition:
-      background-color 0.3s ease,
-      transform 0.3s ease;
+  /* Market Stats Section */
+  .market-stats-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3;
   }
 
-  tbody tr:hover {
-    background-image: linear-gradient(
-      to right,
-      rgba(27, 224, 99, 0.5),
-      rgba(255, 225, 0, 0.509)
-    );
+  .stat-card {
+    @apply flex items-center gap-4 p-4 rounded-lg bg-white/5 
+           backdrop-blur-sm hover:bg-white/10 transition-all duration-200
+           border border-white/5;
   }
 
-  /* Accessibility Enhancements */
-  tr:focus {
-    outline: 2px solid #3b82f6; /* Tailwind blue-500 */
-    outline-offset: -2px;
+  .stat-icon-wrapper {
+    @apply p-3 rounded-lg bg-white/10 text-white/80;
+  }
+
+  .stat-content {
+    @apply flex flex-col;
+  }
+
+  .stat-content h3 {
+    @apply text-sm text-white/60 font-medium;
+  }
+
+  .stat-content p {
+    @apply text-xl font-medium text-white;
+  }
+
+  /* Main Content Panel */
+  .content-panel {
+    @apply p-6 backdrop-blur-sm border border-white/5;
+  }
+
+  /* Search Input */
+  .search-container {
+    @apply relative;
+  }
+
+  .search-input {
+    @apply w-64 px-4 py-2 rounded-lg bg-white/5 text-white 
+           placeholder-white/40 border border-white/10 
+           focus:border-white/20 focus:outline-none
+           transition-all duration-200;
+  }
+
+  /* Table Styling */
+  .table-container {
+    @apply overflow-x-auto rounded-lg;
+  }
+
+  .data-table {
+    @apply w-full border-collapse;
+  }
+
+  .data-table thead th {
+    @apply px-4 py-3 text-left text-sm font-medium text-white/60
+           border-b border-white/10 whitespace-nowrap;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-white/5 hover:bg-white/5
+           transition-colors duration-200;
+  }
+
+  .data-table td {
+    @apply px-4 py-3 text-sm text-white/80;
+  }
+
+  /* Token Cell Styling */
+  .token-cell {
+    @apply flex items-center gap-3 min-w-[200px];
+  }
+
+  .token-info {
+    @apply flex flex-col min-w-0;
+  }
+
+  .token-name {
+    @apply text-white font-medium truncate;
+  }
+
+  .token-symbol {
+    @apply text-sm text-white/60;
+  }
+
+  .token-image {
+    @apply flex-shrink-0;
+  }
+
+  .copy-button {
+    @apply ml-auto px-2 py-1 text-xs rounded bg-white/5 text-white/60
+           hover:bg-white/10 hover:text-white transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-white/20;
+  }
+
+  /* Price & Volume Cells */
+  .price-cell, .volume-cell, .market-cap-cell {
+    @apply text-right text-white font-medium whitespace-nowrap
+           font-mono tracking-tight;
+  }
+
+  .price-change-cell {
+    @apply text-right font-medium whitespace-nowrap;
+    &.positive { @apply text-green-400; }
+    &.negative { @apply text-red-400; }
+  }
+
+  /* Error Message */
+  .error-message {
+    @apply text-red-400 text-center p-4 flex flex-col items-center gap-3;
+  }
+
+  .retry-button {
+    @apply px-4 py-2 rounded-lg bg-white/10 text-white
+           hover:bg-white/20 transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-white/20;
+  }
+
+  /* Charts Section */
+  .panels-grid {
+    @apply grid gap-6;
+  }
+
+  .charts-grid {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
+  }
+
+  .chart-panel {
+    @apply p-6 backdrop-blur-sm border border-white/5;
+  }
+
+  .chart-header {
+    @apply flex justify-between items-center mb-4;
+  }
+
+  .chart-icon {
+    @apply w-5 h-5 text-white/60;
+  }
+
+  .panel-title {
+    @apply text-lg font-medium text-white/80;
+  }
+
+  /* Bar Chart */
+  .chart-placeholder {
+    @apply h-48 flex flex-col;
+  }
+
+  .chart-bars {
+    @apply flex-1 flex items-end justify-between gap-2 px-4;
+  }
+
+  .bar {
+    @apply w-8 bg-gradient-to-t from-emerald-500/50 to-emerald-300/50 
+           rounded-t-md transition-all duration-300 
+           hover:from-emerald-500/70 hover:to-emerald-300/70 
+           cursor-pointer;
+  }
+
+  /* Line Chart */
+  .line-chart {
+    @apply flex-1 text-emerald-400/50;
+  }
+
+  .chart-line {
+    @apply transition-all duration-300;
+  }
+
+  .chart-point {
+    @apply fill-emerald-400/50 transition-all duration-300
+           cursor-pointer hover:fill-emerald-400;
+  }
+
+  .chart-labels {
+    @apply flex justify-between px-4 py-2;
+  }
+
+  .label {
+    @apply text-xs text-white/40;
+  }
+
+  /* Stats Panels */
+  .stats-panel {
+    @apply p-6 backdrop-blur-sm border border-white/5;
+  }
+
+  .stats-grid {
+    @apply grid grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  .stat-item {
+    @apply flex flex-col gap-1 p-4 rounded-lg bg-white/5
+           hover:bg-white/10 transition-all duration-200
+           border border-white/5;
+  }
+
+  .stat-label {
+    @apply text-sm text-white/60;
+  }
+
+  .stat-value {
+    @apply text-lg font-medium text-white font-mono tracking-tight;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 1024px) {
+    .stats-grid {
+      @apply grid-cols-2;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .market-stats-grid {
+      @apply grid-cols-1;
+    }
+
+    .search-input {
+      @apply w-full max-w-[200px];
+    }
+
+    .data-table {
+      @apply text-sm;
+    }
+
+    .token-name {
+      @apply text-sm;
+    }
+
+    .token-symbol {
+      @apply text-xs;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stats-container {
+      @apply p-2;
+    }
+
+    .content-panel {
+      @apply p-3;
+    }
+
+    .data-table td, 
+    .data-table th {
+      @apply px-2 py-2;
+    }
+
+    .copy-button {
+      @apply hidden;
+    }
+
+    .chart-panel {
+      @apply p-4;
+    }
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-card,
+  .content-panel,
+  .chart-panel,
+  .stats-panel {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  /* Hover Effects */
+  .stat-card:hover .stat-icon-wrapper {
+    @apply bg-white/15;
+  }
+
+  .stat-item:hover .stat-value {
+    @apply text-emerald-400;
+  }
+
+  /* Loading State */
+  .loading-indicator {
+    @apply flex items-center justify-center p-8;
+  }
+
+  /* Tooltip Styles */
+  [title] {
+    @apply cursor-help;
+  }
+
+  /* Custom Scrollbar */
+  .table-container {
+    @apply overflow-x-auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .table-container::-webkit-scrollbar {
+    @apply h-1.5;
+  }
+
+  .table-container::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .table-container::-webkit-scrollbar-thumb {
+    @apply bg-white/20 rounded-full hover:bg-white/30;
   }
 </style>

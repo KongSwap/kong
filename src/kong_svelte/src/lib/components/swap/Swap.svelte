@@ -1,12 +1,10 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
-  import { tweened } from "svelte/motion";
-  import { cubicOut } from "svelte/easing";
   import { onMount } from "svelte";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { walletStore } from "$lib/services/wallet/walletStore";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import { getButtonText } from "./utils";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
@@ -16,10 +14,18 @@
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { settingsStore } from "$lib/services/settings/settingsStore";
+  import { themeStore } from '$lib/stores/themeStore';
   import { get } from "svelte/store";
+  import { SwapService } from "$lib/services/swap/SwapService";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { swapStatusStore } from "$lib/services/swap/swapStore";
+  import debounce from "lodash/debounce";
   import { writable } from "svelte/store";
 
-  const hoveredState = writable(false);
+  let currentSwapId: string | null = null;
+  let isProcessing = false;
+  let isRotating = false;
+  let rotationCount = 0;
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
@@ -38,12 +44,9 @@
     { id: "receive", type: "receive", title: "You Receive" },
   ];
 
-  $: userMaxSlippage = $settingsStore.max_slippage;
+  let swapMode = "normal";
 
-  let rotationCount = 0;
-  let isRotating = false;
-  let tooltipMessage = "Reverse trade";
-  let showClickTooltip = false;
+  $: userMaxSlippage = $settingsStore.max_slippage;
 
   onMount(() => {
     const init = async () => {
@@ -112,33 +115,36 @@
       return false;
     }
 
-    try {
-      swapState.setIsProcessing(true);
-      const success = await SwapLogicService.executeSwap({
-        payToken: $swapState.payToken,
-        payAmount: $swapState.payAmount,
-        receiveToken: $swapState.receiveToken,
-        receiveAmount: $swapState.receiveAmount,
-        userMaxSlippage,
-        backendPrincipal: KONG_BACKEND_PRINCIPAL,
-        lpFees: $swapState.lpFees,
-      });
+    swapState.setIsProcessing(true);
+    swapState.setError(null);
 
-      if (success) {
-        swapState.update((state) => ({
-          ...state,
-          isProcessing: false,
-        }));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error(error);
-      swapState.update((state) => ({
-        ...state,
-        error: error instanceof Error ? error.message : "Swap failed",
-        isProcessing: false,
-      }));
+    // Create new swap entry and store its ID
+    let swapId = swapStatusStore.addSwap({
+      expectedReceiveAmount: $swapState.receiveAmount,
+      lastPayAmount: $swapState.payAmount,
+      payToken: $swapState.payToken,
+      receiveToken: $swapState.receiveToken,
+      payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
+    });
+
+    currentSwapId = swapId;
+
+    const success = await SwapService.executeSwap({
+      swapId,
+      payToken: $swapState.payToken,
+      payAmount: $swapState.payAmount,
+      receiveToken: $swapState.receiveToken,
+      receiveAmount: $swapState.receiveAmount,
+      userMaxSlippage,
+      backendPrincipal: KONG_BACKEND_PRINCIPAL,
+      lpFees: $swapState.lpFees,
+    });
+
+    if (success) {
+      toastStore.success("Swap successful");
+      return true;
+    } else {
+      toastStore.error("Swap failed");
       return false;
     }
   }
@@ -176,141 +182,190 @@
     }
 
     // Otherwise just update the selected token
-    if (panelType === "pay") {
-      swapState.update((s) => ({
-        ...s,
-        payToken: token,
-        showPayTokenSelector: false,
-      }));
+    if (panelType === 'pay') {
+      swapState.setPayToken(token);
+      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+      if (token.canister_id) {
+        updateTokenInURL('from', token.canister_id);
+      }
     } else {
-      swapState.update((s) => ({
-        ...s,
-        receiveToken: token,
-        showReceiveTokenSelector: false,
-      }));
+      swapState.setReceiveToken(token);
+      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
+      if (token.canister_id) {
+        updateTokenInURL('to', token.canister_id);
+      }
+    }
+
+    if ($swapState.payAmount) {
+      debouncedGetQuote($swapState.payAmount);
     }
   }
 
-  function handleReverseTokens() {
+  async function handleReverseTokens() {
+    if ($swapState.isProcessing) return;
+    
     isRotating = true;
-    rotationCount += 1;
-    tooltipMessage = "Reversed!";
-    showClickTooltip = true;
-
+    rotationCount++;
+    
+    const tempPayToken = $swapState.payToken;
+    const tempPayAmount = $swapState.payAmount;
+    
+    swapState.setPayToken($swapState.receiveToken);
+    swapState.setReceiveToken(tempPayToken);
+    
+    if (tempPayAmount) {
+      await swapState.setPayAmount(tempPayAmount);
+    }
+    
+    // Update URL params if both tokens are present
+    if ($swapState.payToken?.canister_id && $swapState.receiveToken?.canister_id) {
+      updateTokenInURL('from', $swapState.payToken.canister_id);
+      updateTokenInURL('to', $swapState.receiveToken.canister_id);
+    }
+    
     setTimeout(() => {
       isRotating = false;
-      setTimeout(() => {
-        tooltipMessage = "Reverse trade";
-        showClickTooltip = false;
-      }, 2000);
-    }, 200);
-
-    const currentState = get(swapState);
-    swapState.update((state) => ({
-      ...state,
-      payToken: state.receiveToken,
-      receiveToken: state.payToken,
-      payAmount: "",
-      receiveAmount: "",
-    }));
+    }, 300);
   }
+
+  function updateTokenInURL(param: 'from' | 'to', tokenId: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(param, tokenId);
+    history.replaceState({}, '', url.toString());
+  }
+
+  const debouncedGetQuote = debounce(
+    async (amount: string) => {
+      if ($swapState.payToken && $swapState.receiveToken) {
+        await SwapService.getSwapQuote($swapState.payToken, $swapState.receiveToken, amount);
+      }
+    },
+    500,
+    {
+      leading: false,
+      trailing: true,
+      maxWait: 1000,
+    },
+  );
+
+  // Update arrow configurations
+  const PixelArrow = {
+    viewBox: "0 0 35 42",
+    path: "M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
+  };
+
+  const ModernArrow = {
+    viewBox: "0 0 48 48",
+    paths: [
+      // Main circle
+      "M24 44c11.046 0 20-8.954 20-20S35.046 4 24 4 4 12.954 4 24s8.954 20 20 20z",
+      // Top arrow
+      "M24 15l7 7H17l7-7z",
+      // Bottom arrow
+      "M24 33l-7-7h14l-7 7z"
+    ]
+  };
 </script>
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
-    <div class="panels-container relative">
-      {#each panels as panel}
-        <SwapPanel
-          title={panel.title}
-          token={panel.type === "pay"
-            ? $swapState.payToken
-            : $swapState.receiveToken}
-          amount={panel.type === "pay"
-            ? $swapState.payAmount
-            : $swapState.receiveAmount}
-          onAmountChange={handleAmountChange}
-          onTokenSelect={() => handleTokenSelect(panel.type)}
-          showPrice={panel.type === "receive"}
-          slippage={$swapState.swapSlippage}
-          disabled={false}
-          panelType={panel.type}
-        />
-
-        {#if panel.type === "pay"}
-          <div class="reverse-button-wrapper" class:rotating={isRotating}>
-            <div
-              class="tooltip font-mono"
-              class:show={showClickTooltip || (!isRotating && $hoveredState)}
-            >
-              {tooltipMessage}
-            </div>
-            <button
-              class="reverse-button"
-              style="transform: translate(-50%, -50%) rotate({rotationCount *
-                -360}deg)"
-              on:click={handleReverseTokens}
-              aria-label="Reverse tokens"
-              on:mouseenter={() => hoveredState.set(true)}
-              on:mouseleave={() => hoveredState.set(false)}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="72"
-                height="72"
-                viewBox="0 0 24 24"
-                fill="#FFD722"
-                stroke="#FFD722"
-                style="pointer-events: none;"
-              >
-                <g
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <!-- Down arrow (always visible) -->
-                  <path
-                    class="down-arrow"
-                    d="M12 8V20M12 20L16 16M12 20L8 16"
-                    stroke="black"
-                    stroke-width="4.5"
-                  />
-                  <path
-                    class="down-arrow"
-                    d="M12 8V20M12 20L16 16M12 20L8 16"
-                    stroke="#FFD722"
-                    stroke-width="3"
-                  />
-
-                  <!-- Up arrow (visible on hover) -->
-                  <path
-                    class="up-arrow"
-                    d="M12 16V4M12 4L16 8M12 4L8 8"
-                    stroke="black"
-                    stroke-width="4.5"
-                  />
-                  <path
-                    class="up-arrow"
-                    d="M12 16V4M12 4L16 8M12 4L8 8"
-                    stroke="#FFD722"
-                    stroke-width="3"
-                  />
-                </g>
-              </svg>
-            </button>
-          </div>
-        {/if}
-      {/each}
+    <div class="mode-selector">
+      <Button
+        variant="yellow"
+        size="medium"
+        state={swapMode === "normal" ? "selected" : "default"}
+        onClick={() => (swapMode = "normal")}
+        width="50%"
+      >
+        Normal
+      </Button>
+      <Button
+        variant="yellow"
+        size="medium"
+        state="disabled"
+        onClick={() => {}}
+        width="50%"
+      >
+        Pro (Soon)
+      </Button>
     </div>
 
-    <div class="swap-footer">
-      <Button
-        variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
-        disabled={isSwapButtonDisabled}
-        onClick={handleSwapClick}
-        width="100%"
+    <div class="panels-container relative">
+      {#each panels as panel (panel.id)}
+        <div class="panel-wrapper">
+          <SwapPanel
+            title={panel.title}
+            token={panel.type === 'pay' ? $swapState.payToken : $swapState.receiveToken}
+            amount={panel.type === 'pay' ? $swapState.payAmount : $swapState.receiveAmount}
+            onAmountChange={handleAmountChange}
+            onTokenSelect={() => handleTokenSelect(panel.type)}
+            showPrice={panel.type === 'receive'}
+            slippage={$swapState.swapSlippage}
+            disabled={false}
+            panelType={panel.type}
+          />
+        </div>
+      {/each}
+
+      <button
+        class="switch-button"
+        class:modern={$themeStore !== 'pixel'}
+        on:click={handleReverseTokens}
+        disabled={isProcessing}
+        aria-label="Switch tokens"
       >
-        {buttonText}
-      </Button>
+        {#if $themeStore === 'pixel'}
+          <svg
+            width="56"
+            height="64"
+            viewBox={PixelArrow.viewBox}
+            xmlns="http://www.w3.org/2000/svg"
+            class="swap-arrow"
+          >
+            <path
+              d={PixelArrow.path}
+              stroke="#000000"
+              stroke-width="1"
+              fill="#ffcd1f"
+              class="arrow-path"
+            />
+          </svg>
+        {:else}
+          <svg
+            width="48"
+            height="48"
+            viewBox={ModernArrow.viewBox}
+            xmlns="http://www.w3.org/2000/svg"
+            class="swap-arrow modern"
+          >
+            <!-- Background circle -->
+            <path
+              d={ModernArrow.paths[0]}
+              class="arrow-background"
+            />
+            <!-- Arrows -->
+            <path
+              d={ModernArrow.paths[1]}
+              class="arrow-symbol"
+            />
+            <path
+              d={ModernArrow.paths[2]}
+              class="arrow-symbol"
+            />
+          </svg>
+        {/if}
+      </button>
+
+      <div class="swap-footer">
+        <Button
+          variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
+          disabled={isSwapButtonDisabled}
+          onClick={handleSwapClick}
+          width="100%"
+        >
+          {buttonText}
+        </Button>
+      </div>
     </div>
   </div>
 </div>
@@ -368,126 +423,141 @@
   onClose={() => swapState.setShowSuccessModal(false)}
 />
 
-<style scoped lang="postcss">
-  .swap-wrapper {
-    width: 100%;
-    margin: 0;
-  }
-
+<style lang="postcss">
   .swap-container {
     position: relative;
     display: flex;
     flex-direction: column;
+    padding: 0 0.5rem;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: clamp(1rem, 2vw, 1.5rem);
+    font-size: clamp(0.875rem, 1.5vw, 1rem);
+    @media (max-width: 768px) {
+      display: none;
+    }
   }
 
   .panels-container {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-    margin-bottom: 1rem;
+    gap: 0.25rem;
     position: relative;
+    padding: clamp(1rem, 2vw, 1.5rem) 0;
   }
 
-  .reverse-button-wrapper {
+  .panel-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+  }
+
+  .switch-button {
     position: absolute;
     left: 50%;
-    top: 50%;
-    width: 80px;
-    height: 80px;
+    top: 43%;
     transform: translate(-50%, -50%);
-    z-index: 20;
-  }
-
-  :global(.swap-panel) {
-    position: relative;
     z-index: 10;
-  }
-
-  .reverse-button {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    border-radius: 50%;
-    width: 80px;
-    height: 80px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    width: clamp(48px, 8vw, 56px);
+    height: clamp(48px, 8vw, 56px);
     display: flex;
-    padding: 0.3rem;
     align-items: center;
     justify-content: center;
-    color: #ffd722;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    pointer-events: all;
+    padding: 0;
+    margin: 0;
+    transition: transform 0.3s ease;
   }
 
-  .reverse-button svg {
-    display: block;
-    transform: scaleX(-1);
+  .switch-button.modern {
+    background: transparent;
+    border-radius: 50%;
+  }
+
+  .switch-button.modern:hover:not(:disabled) {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+
+  .switch-button.modern:active:not(:disabled) {
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+
+  .switch-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .swap-arrow {
+    width: 100%;
+    height: 100%;
     pointer-events: none;
   }
 
-  .reverse-button path {
-    pointer-events: none;
+  .swap-arrow.modern {
+    width: 85%;
+    height: 85%;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   }
 
-  .tooltip {
-    position: absolute;
-    top: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s ease;
+  .arrow-background {
+    fill: #ffcd1f;
+    transition: all 0.3s ease;
   }
 
-  .tooltip.show {
-    opacity: 1;
+  .arrow-symbol {
+    fill: #000000;
+    transition: all 0.3s ease;
   }
 
-  .reverse-button-wrapper:hover .tooltip {
-    opacity: 1;
+  .switch-button.modern:hover:not(:disabled) .arrow-background {
+    fill: #ffe380;
   }
 
-  .reverse-button-wrapper.rotating .tooltip {
-    opacity: 0;
+  .switch-button.modern:active:not(:disabled) .arrow-background {
+    fill: #ffc107;
   }
 
-  .down-arrow {
-    transition: all 0.2s ease;
-    transform-origin: center;
-    transform: scale(1.2) translateX(0);
+  .switch-button.modern:disabled .arrow-background {
+    fill: #e0e0e0;
   }
 
-  .up-arrow {
-    opacity: 0;
-    transition: all 0.2s ease;
-    transform: translateX(-5px);
+  .switch-button.modern:disabled .arrow-symbol {
+    fill: #999999;
   }
 
-  .reverse-button:hover .down-arrow {
-    transform: scale(1) translateX(5px);
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(180deg);
+    }
   }
 
-  .reverse-button:hover .up-arrow {
-    opacity: 1;
-    transform: translateX(-5px);
+  .switch-button.modern:hover:not(:disabled) .swap-arrow.modern {
+    animation: rotate 0.3s ease-in-out;
   }
 
-  .reverse-button:hover {
-    background: rgba(255, 215, 34, 0.2);
+  .arrow-path {
+    transition: fill 0.2s ease;
   }
 
-  .reverse-button:active {
-    transform: translate(-50%, -50%) scale(0.95) rotate(var(--rotation));
+  :global([data-theme="minimal"]) .arrow-path {
+    stroke-width: 2;
+  }
+
+  :global([data-theme="pixel"]) .arrow-path {
+    stroke-width: 1;
   }
 
   .swap-footer {
-    margin-top: -𝟴px;
+    z-index: 1;
+    margin-top: clamp(1rem, 2vw, 1.5rem);
+    width: 100%;
   }
 </style>
