@@ -31,8 +31,8 @@
     if ($wallet?.account?.owner) {
       setTimeout(async () => {
         await Promise.all([
-          tokenStore.loadBalances(),
-          tokenStore.loadFavorites(),
+          tokenStore.loadBalances($wallet?.account?.owner),
+          tokenStore.loadFavorites($wallet?.account?.owner),
         ]);
       }, 1000);
     }

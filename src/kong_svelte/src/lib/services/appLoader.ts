@@ -1,7 +1,7 @@
 import { browser } from "$app/environment";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { poolStore } from "$lib/services/pools/poolStore";
-import { walletStore, restoreWalletConnection } from "$lib/services/wallet/walletStore";
+import { walletStore, restoreWalletConnection, initializePNP } from "$lib/services/wallet/walletStore";
 import { derived, get, writable } from "svelte/store";
 import { settingsStore } from "$lib/services/settings/settingsStore";
 import { assetCache } from "$lib/services/assetCache";
@@ -88,9 +88,10 @@ export class AppLoader {
   }
 
   private async executeAuthenticatedAPICalls(): Promise<void> {
+    const store = get(walletStore);
     try {
       await Promise.all([
-        tokenStore.loadBalances(),
+        store.account?.owner.isAnonymous() ? null : tokenStore.loadBalances(store.account.owner),
         tokenStore.loadPrices(),
         settingsStore.initializeStore()
       ]);
@@ -190,6 +191,7 @@ export class AppLoader {
     });
 
     try {
+      initializePNP(true);
       const svgComponents = assets?.svgComponents || this.generateRequiredComponents();
       const allAssets = [...this.backgrounds, ...svgComponents];
       const areCached = await assetCache.areAssetsCached(allAssets);

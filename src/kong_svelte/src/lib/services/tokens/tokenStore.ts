@@ -9,6 +9,7 @@ import { toastStore } from "$lib/stores/toastStore";
 import { eventBus } from './eventBus';
 import { walletStore } from "$lib/services/wallet/walletStore";
 import { liveQuery } from "dexie";
+import { Principal } from "@dfinity/principal";
 
 BigNumber.config({
   DECIMAL_PLACES: 36,
@@ -67,8 +68,10 @@ function createTokenStore() {
     balanceUpdateInterval = window.setInterval(() => {
       const currentStore = get(store);
       const walletId = getCurrentWalletId();
-      if (walletId && currentStore.tokens.length > 0) {
-        loadBalances().catch(error => {
+      if(Principal.fromText(walletId).isAnonymous()) {
+        return;
+      } else if (walletId && currentStore.tokens.length > 0) {
+        loadBalances(Principal.fromText(walletId)).catch(error => {
           console.error("Error in periodic balance update:", error);
         });
       }
@@ -78,15 +81,16 @@ function createTokenStore() {
   const getCurrentWalletId = (): string => {
     let walletId = '';
     const unsubscribe = walletStore.subscribe(($wallet) => {
-      walletId = $wallet?.account?.owner?.toString() || "anonymous";
+      walletId = $wallet?.account?.owner?.toString() || undefined;
     });
     unsubscribe();
     return walletId;
   };
 
-  const loadBalances = async () => {
+  const  loadBalances = async (principal: Principal) => {
     const currentStore = get(store);
-    const walletId = getCurrentWalletId();
+    const walletId = principal.toString();
+    console.log("wallet:", walletId);
     if (!walletId) return {};
     try {
       const balances = await TokenService.fetchBalances(
@@ -117,6 +121,7 @@ function createTokenStore() {
     }));
 
     try {
+      const wallet = get(walletStore);
       const enrichedTokens = await TokenService.enrichTokenWithMetadata(fetchedTokens);
       const validTokens = enrichedTokens
         .filter((result) => result.status === "fulfilled")
@@ -126,12 +131,14 @@ function createTokenStore() {
         ...s,
         tokens: validTokens,
       }));
-
-      const balances = await loadBalances();
+      if(!wallet.account?.owner.isAnonymous()) {
+      const balances = await loadBalances(wallet.account.owner);
+      
       store.update((s) => ({
         ...s,
         balances,
       }));
+    }
     } catch (error: any) {
       console.error("Error enriching tokens:", error);
       store.update((s) => ({
@@ -141,14 +148,6 @@ function createTokenStore() {
       }));
       toastStore.error("Failed to enrich tokens");
     }
-  });
-
-  eventBus.on('tokensUpdated', async (updatedTokens: FE.Token[]) => {
-    store.update((s) => ({
-      ...s,
-      tokens: updatedTokens,
-    }));
-    await loadBalances();
   });
 
   return {
@@ -338,8 +337,9 @@ function createTokenStore() {
       return currentState.favoriteTokens[walletId] || [];
     },
     claimFaucetTokens: async () => {
+      const wallet = get(walletStore);
       await TokenService.claimFaucetTokens();
-      await loadBalances();
+      await loadBalances(wallet.account?.owner);
     },
     cleanup: async () => {
       // Cleanup any active subscriptions or connections
@@ -355,7 +355,7 @@ export const tokenStore: {
   subscribe: (run: (value: TokenState) => void) => () => void;
   update: (updater: (state: TokenState) => TokenState) => void;
   loadTokens: (forceRefresh?: boolean) => Promise<FE.Token[]>;
-  loadBalances: () => Promise<Record<string, FE.TokenBalance>>;
+  loadBalances: (principal: Principal) => Promise<Record<string, FE.TokenBalance>>;
   loadBalance: (
     token: FE.Token,
     principalId?: string,

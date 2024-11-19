@@ -14,12 +14,15 @@
   "dependencies": {
     "@dfinity/agent": "^2.1.3",
     "@dfinity/candid": "^2.1.3",
+    "@dfinity/identity": "^2.1.3",
+    "@dfinity/ledger-icp": "^2.6.2",
     "@dfinity/principal": "^2.1.3",
     "@types/pouchdb-core": "^7.0.15",
-    "@windoge98/plug-n-play": "^0.0.6-1",
     "dexie": "^4.0.9",
     "lightweight-charts": "^4.2.1",
-    "svelte-portal": "^2.2.1"
+    "qrcode": "^1.5.4",
+    "svelte-portal": "^2.2.1",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.4",
@@ -28,6 +31,7 @@
     "@tailwindcss/forms": "^0.5.9",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.8.7",
+    "@types/qrcode": "^1.5.5",
     "autoprefixer": "^10.4.20",
     "dotenv": "^16.4.5",
     "eslint": "^9.13.0",

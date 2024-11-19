@@ -5,6 +5,7 @@
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
   import { page } from '$app/stores';
+  import { walletStore } from '$lib/services/wallet/walletStore';
 
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
@@ -19,7 +20,7 @@
 
   const claimTokens = async () => {
     await tokenStore.claimFaucetTokens();
-    await tokenStore.loadBalances();
+    await tokenStore.loadBalances($walletStore.account?.owner);
   };
 
   onDestroy(() => {
@@ -29,9 +30,8 @@
 
 <section class="flex flex-col items-center justify-center">
 
-  {#if process.env.DFX_NETWORK === 'local'}
     <button on:click={claimTokens}>Claim Tokens</button>
-  {/if}
+  
 
   {#if $tokenStore.tokens}
     <div class="flex justify-center mt-8 md:mt-12">

@@ -4,8 +4,8 @@
   import { onMount } from "svelte";
   import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
   import { get } from "svelte/store";
-  import AddLiquidityForm from "$lib/components/liquidity/AddLiquidityForm.svelte";
-  import TokenSelectionModal from "$lib/components/liquidity/TokenSelectionModal.svelte";
+  import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
+  import TokenSelectionModal from "$lib/components/liquidity/add_liquidity/TokenSelectionModal.svelte";
   import { debounce } from "lodash-es";
   import {
     parseTokenAmount,
@@ -13,6 +13,7 @@
   } from "$lib/utils/numberFormatUtils";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
+  import { walletStore } from "$lib/services/wallet/walletStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -71,7 +72,7 @@
 
   onMount(async () => {
     try {
-      await Promise.all([initializeFromParams(), tokenStore.loadBalances()]);
+      await Promise.all([initializeFromParams(), tokenStore.loadBalances($walletStore?.account?.owner)]);
       tokens = get(formattedTokens);
     } catch (err) {
       console.error("Error initializing:", err);

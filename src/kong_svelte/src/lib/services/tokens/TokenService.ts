@@ -49,7 +49,8 @@ export class TokenService {
       }
 
       // If no valid cache, fetch from network
-      const actor = await getActor();
+      const actor: any = await getActor();
+      console.log("tokens actor", actor);
       const result = await actor.tokens(["all"]);
       const parsed = parseTokens(result);
 
@@ -225,9 +226,6 @@ export class TokenService {
     tokens: FE.Token[],
     principalId: string = null,
   ): Promise<Record<string, FE.TokenBalance>> {
-    const wallet = get(walletStore);
-    if (!wallet.isConnected) return {};
-
     if (!principalId) {
       return {};
     }
@@ -238,37 +236,60 @@ export class TokenService {
         let balance: bigint;
 
         if (token.icrc1 && principalId) {
-          balance = await IcrcService.getIcrc1Balance(
-            token,
-            Principal.fromText(principalId),
-          );
+          try {
+            balance = await IcrcService.getIcrc1Balance(
+              token,
+              Principal.fromText(principalId),
+            );
+          } catch (error) {
+            // Handle specific token errors more gracefully
+            console.warn(
+              `Unable to fetch balance for ${token.symbol} (${token.canister_id}):`,
+              error.message
+            );
+            balance = BigInt(0);
+          }
         } else {
-          // Handle other token types if necessary
-          balance = BigInt(0); // Default fallback or handle appropriately
+          balance = BigInt(0);
         }
 
         const actualBalance = formatTokenAmount(
           balance.toString(),
           token.decimals,
         );
-        const price = await this.fetchPrice(token);
+        
+        let price = 0;
+        try {
+          price = await this.fetchPrice(token);
+        } catch (priceError) {
+          console.warn(`Failed to fetch price for ${token.symbol}:`, priceError.message);
+        }
+        
         const usdValue = parseFloat(actualBalance) * price;
 
         return {
           canister_id: token.canister_id,
           balance: {
-            in_tokens: balance || BigInt(0),
+            in_tokens: balance,
             in_usd: formatToNonZeroDecimal(usdValue),
+            error: null
           },
         };
       } catch (err) {
-        console.error(`Error fetching balance for ${token.symbol} - (${token.canister_id}):`, err);
-        // Optionally provide more details from 'err'
+        // Log detailed error information for debugging
+        console.error(`Error processing token ${token.symbol}:`, {
+          error: err,
+          type: err.constructor.name,
+          message: err.message,
+          code: err.code
+        });
+        
         return {
           canister_id: token.canister_id,
           balance: {
             in_tokens: BigInt(0),
             in_usd: formatToNonZeroDecimal(0),
+            error: err.message || 'Failed to fetch balance'
           },
         };
       }

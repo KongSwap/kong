@@ -1,3 +1,4 @@
+import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 import { getActor, walletStore } from './walletStore';
 import { get } from 'svelte/store';
 
@@ -18,7 +19,7 @@ export class WalletService {
       return null;
     }
     try {
-      const actor = await getActor();
+      const actor = await getActor(KONG_BACKEND_PRINCIPAL, 'kong_backend', true)
       const result = await actor.get_user();
       return result.Ok;
     } catch (error) {

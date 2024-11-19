@@ -21,7 +21,8 @@ export class IcrcService {
       return BigInt(0);
     }
     try {
-      const actor = await getActor(token.canister_id, 'icrc1');
+      // Use ICRC-2 actor since it's a superset of ICRC-1
+      const actor = await getActor(token.canister_id, 'icrc2');
       return actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
