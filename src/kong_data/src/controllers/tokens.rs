@@ -1,9 +1,9 @@
-use ic_cdk::{query, update};
-use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
+use ic_cdk::query;
+use kong_lib::stable_token::stable_token::StableTokenId;
 use std::collections::BTreeMap;
 
-use super::guards::caller_is_kingkong;
-use super::stable_memory::TOKEN_MAP;
+use crate::ic::guards::caller_is_kingkong;
+use crate::stable_memory::TOKEN_MAP;
 
 const MAX_TOKENS: usize = 1_000;
 
@@ -22,24 +22,6 @@ fn backup_tokens(token_id: Option<u32>, num_tokens: Option<u16>) -> Result<Strin
                 map.iter().take(num_tokens).collect()
             }
         };
-
         serde_json::to_string(&tokens).map_err(|e| format!("Failed to serialize tokens: {}", e))
     })
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn update_tokens(stable_tokens: String) -> Result<String, String> {
-    let tokens: BTreeMap<StableTokenId, StableToken> = match serde_json::from_str(&stable_tokens) {
-        Ok(tokens) => tokens,
-        Err(e) => return Err(format!("Invalid tokens: {}", e)),
-    };
-
-    TOKEN_MAP.with(|user_map| {
-        let mut map = user_map.borrow_mut();
-        for (k, v) in tokens.into_iter() {
-            map.insert(k, v);
-        }
-    });
-
-    Ok("Tokens update".to_string())
 }

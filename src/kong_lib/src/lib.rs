@@ -7,6 +7,7 @@ mod claims;
 pub mod ic;
 mod remove_liquidity;
 mod remove_liquidity_amounts;
+pub mod requests;
 mod send;
 pub mod stable_claim;
 pub mod stable_kong_settings;

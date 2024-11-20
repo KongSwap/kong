@@ -2,9 +2,8 @@ use candid::Principal;
 use kong_lib::ic::canister_address::KONG_BACKEND;
 use kong_lib::ic::id::{caller, is_caller_controller};
 
-use super::user_map;
-
 use crate::stable_memory::KONG_SETTINGS;
+use crate::stable_user::user_map;
 
 /// guard to make sure caller is King Kong
 pub fn caller_is_kingkong() -> Result<(), String> {
@@ -15,6 +14,14 @@ pub fn caller_is_kingkong() -> Result<(), String> {
     let user = user_map::get_by_caller().ok().flatten().unwrap_or_default();
     if !KONG_SETTINGS.with(|s| s.borrow().get().kingkong.iter().any(|k| *k == user.user_id)) {
         return Err("Caller is not King Kong".to_string());
+    }
+    Ok(())
+}
+
+/// Guard to ensure caller is not anonymous
+pub fn caller_is_not_anonymous() -> Result<(), String> {
+    if caller() == Principal::anonymous() {
+        return Err("Anonymous user".to_string());
     }
     Ok(())
 }

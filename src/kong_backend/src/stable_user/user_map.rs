@@ -1,6 +1,4 @@
-use rand::distributions::{Alphanumeric, DistString};
-use rand::rngs::StdRng;
-
+use super::referral_code::{generate_referral_code, REFERRAL_INTERVAL};
 use super::stable_user::{StableUser, StableUserId};
 
 use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
@@ -8,12 +6,6 @@ use crate::ic::{get_time::get_time, management::get_pseudo_seed};
 use crate::stable_kong_settings::kong_settings;
 use crate::stable_memory::USER_MAP;
 use crate::user::user_name::generate_user_name;
-
-// default referral interval is 180 days
-// 180 days = 24 * 60 * 60 * 1_000_000_000
-const REFERRAL_INTERVAL: u64 = 15550000000000000;
-// referral code length
-const REFERRAL_LENGTH: usize = 8;
 
 /// return StableUser by user_id
 ///
@@ -105,7 +97,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
             let mut user = StableUser::default();
             let mut rng = get_pseudo_seed()?;
             user.user_name = generate_user_name(&mut rng);
-            user.my_referral_code = generate_user_referral_code(&mut rng);
+            user.my_referral_code = generate_referral_code(&mut rng);
             // leave user.user_id as 0, will be set below
             // if referred_by is provided, check if it is a valid referral code
             if let Some(referred_by) = referred_by {
@@ -133,14 +125,4 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
         map.insert(StableUserId(user_id), user);
         Ok(user_id)
     })
-}
-
-fn generate_user_referral_code(rng: &mut StdRng) -> String {
-    loop {
-        let referral_code = Alphanumeric.sample_string(rng, REFERRAL_LENGTH);
-        let code_exists = USER_MAP.with(|m| m.borrow().iter().any(|(_, v)| v.my_referral_code == referral_code));
-        if !code_exists {
-            return referral_code;
-        }
-    }
 }

@@ -2,11 +2,11 @@ use ic_cdk::query;
 use ic_stable_structures::Memory;
 use serde_json::json;
 
-use super::guards::caller_is_kingkong;
-use super::math_helpers::{bytes_to_megabytes, to_trillions};
+use crate::helpers::math_helpers::{bytes_to_megabytes, to_trillions};
+use crate::ic::guards::caller_is_kingkong;
 
 use crate::stable_memory::{
-    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MAP,
+    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MAP,
     MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_MAP,
     TRANSFER_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
@@ -54,7 +54,7 @@ async fn status() -> Result<String, String> {
             "Kong Data Cycles Balance": format!("{} T", to_trillions(get_cycles())),
             "Heap Memory": format!("{} MiB", bytes_to_megabytes(get_heap_memory_size())),
             "Stable Memory": format!("{} MiB", bytes_to_megabytes(get_stable_memory_size())),
-            "Stable - Kong Settings": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(KONG_SETTINGS_ID).size())),
+            "Stable - Kong Settings": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(KONG_SETTINGS_MEMORY_ID).size())),
             "Stable - User Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(USER_MEMORY_ID).size())),
             "Stable - Token Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TOKEN_MEMORY_ID).size())),
             "Stable - Pool Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(POOL_MEMORY_ID).size())),

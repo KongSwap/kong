@@ -1,6 +1,17 @@
+use crate::stable_request::reply::Reply;
+use crate::stable_request::request::Request;
 use crate::stable_request::stable_request::StableRequest;
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
 
-use super::request_reply::RequestReply;
+#[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
+pub struct RequestReply {
+    pub request_id: u64,
+    pub statuses: Vec<String>,
+    pub request: Request,
+    pub reply: Reply,
+    pub ts: u64,
+}
 
 // creates a RequestReply from a StableRequest
 pub fn to_request_reply(request: &StableRequest) -> RequestReply {

@@ -1,14 +1,14 @@
 use ic_cdk::query;
+use kong_lib::requests::request_reply::{to_request_reply, RequestReply};
 
-use super::request_reply::{to_request_reply, RequestReply};
+use super::request_map;
 
-use crate::ic::guards::not_in_maintenance_mode_and_caller_is_not_anonymous;
-use crate::stable_request::request_map;
+use crate::ic::guards::caller_is_not_anonymous;
 use crate::stable_user::user_map;
 
-const MAX_REQUESTS: usize = 20;
+const MAX_REQUESTS: usize = 100;
 
-#[query(guard = "not_in_maintenance_mode_and_caller_is_not_anonymous")]
+#[query(guard = "caller_is_not_anonymous")]
 pub async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> {
     let user_id = match user_map::get_by_caller() {
         Ok(Some(caller)) => caller.user_id,

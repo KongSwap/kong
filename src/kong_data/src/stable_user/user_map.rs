@@ -1,7 +1,21 @@
 use kong_lib::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
-use kong_lib::stable_user::stable_user::StableUser;
+use kong_lib::stable_user::stable_user::{StableUser, StableUserId};
 
 use crate::stable_memory::USER_MAP;
+
+/// return StableUser by user_id
+///
+/// # Arguments
+///
+/// * `user_id` - user_id of the user
+///
+/// # Returns
+///
+/// * `Some(StableUser)` if user with user_id exists
+/// * `None` if user with user_id does not exist
+pub fn get_by_user_id(user_id: u32) -> Option<StableUser> {
+    USER_MAP.with(|m| m.borrow().get(&StableUserId(user_id)))
+}
 
 /// return StableUser by principal_id
 ///
@@ -31,4 +45,22 @@ pub fn get_by_principal_id(principal_id: &str) -> Result<Option<StableUser>, Str
 /// * `Err(String)` if user is anonymous
 pub fn get_by_caller() -> Result<Option<StableUser>, String> {
     get_by_principal_id(&caller_principal_id())
+}
+
+/// return StableUser by referral code
+///
+/// # Arguments
+///
+/// * `referral_code` - referral code of the user
+///
+/// # Returns
+///
+/// * `Some(StableUser)` if user with referral code exists
+/// * `None` if user with referral code does not exist
+pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
+    USER_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .find_map(|(_, v)| if v.my_referral_code == referral_code { Some(v) } else { None })
+    })
 }
