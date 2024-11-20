@@ -111,3 +111,20 @@ export function formatGasFee(fee: string | number | undefined, decimals: number 
     // Always show at least 8 decimals for fees to be precise
     return actualFee.toFixed(8).replace(/\.?0+$/, '');
 }
+
+/**
+ * Formats a number as a percentage with appropriate decimal places
+ * @param value The value to format as a percentage
+ * @returns Formatted percentage string
+ */
+export function formatPercentage(value: number): string {
+    if (!value && value !== 0) return '0%';
+    
+    // For very small values, show more decimals
+    if (Math.abs(value) < 0.01) {
+        return `${value.toFixed(4)}%`;
+    }
+    
+    // For normal values, show 2 decimal places
+    return `${value.toFixed(2)}%`;
+}
