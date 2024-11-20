@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
-use crate::stable_memory::LP_TOKEN_LEDGER;
+use crate::stable_memory::{LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_OLD};
 
 const MAX_LP_TOKEN_LEDGER: usize = 1_000;
 
@@ -64,23 +64,23 @@ fn upgrade_lp_token_ledger() -> Result<String, String> {
 
     Ok("LP tokens upgraded".to_string())
 }
+*/
 
 /// upgrade LP_TOKEN_LEDGER_ALT from LP_TOKEN_LEDGER
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_lp_token_ledger() -> Result<String, String> {
-    LP_TOKEN_LEDGER.with(|m| {
-        let lp_tokens = m.borrow();
-        LP_TOKEN_LEDGER_ALT.with(|m| {
-            let mut lp_tokens_alt = m.borrow_mut();
-            lp_tokens_alt.clear_new();
-            for (k, v) in lp_tokens.iter() {
-                let lp_token_ledger_id = StableLPTokenLedgerIdAlt::from_stable_lp_token_ledger_id(&k);
-                let lp_token_ledger = StableLPTokenLedgerAlt::from_stable_lp_token_ledger(&v);
-                lp_tokens_alt.insert(lp_token_ledger_id, lp_token_ledger);
+pub fn upgrade_lp_token_ledger() -> Result<String, String> {
+    LP_TOKEN_LEDGER_OLD.with(|m| {
+        let lp_tokens_old = m.borrow();
+        LP_TOKEN_LEDGER.with(|m| {
+            let mut lp_tokens = m.borrow_mut();
+            lp_tokens.clear_new();
+            for (k, v) in lp_tokens_old.iter() {
+                let lp_token_ledger_id = StableLPTokenLedgerId::from_old(&k);
+                let lp_token_ledger = StableLPTokenLedger::from_old(&v);
+                lp_tokens.insert(lp_token_ledger_id, lp_token_ledger);
             }
         });
     });
 
-    Ok("Alt LP tokens upgraded".to_string())
+    Ok("Old LP tokens upgraded".to_string())
 }
-*/

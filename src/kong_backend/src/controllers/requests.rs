@@ -4,10 +4,9 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_impl::to_request_reply;
-use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
+use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_OLD_MAP};
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
-use crate::stable_request::stable_request_alt::{StableRequestAlt, StableRequestIdAlt};
 
 const MAX_REQUESTS: usize = 1_000;
 
@@ -64,7 +63,7 @@ fn remove_archive_requests(start_request_id: u64, end_request_id: u64) -> Result
     REQUEST_ARCHIVE_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let keys_to_remove: Vec<_> = map
-            .range(StableRequestIdAlt(start_request_id)..=StableRequestIdAlt(end_request_id))
+            .range(StableRequestId(start_request_id)..=StableRequestId(end_request_id))
             .map(|(k, _)| k)
             .collect();
         keys_to_remove.iter().for_each(|k| {
@@ -94,7 +93,7 @@ fn backup_archive_requests(request_id: Option<u64>, num_requests: Option<u16>) -
         let map = m.borrow();
         let requests: BTreeMap<_, _> = match request_id {
             Some(request_id) => {
-                let start_id = StableRequestIdAlt(request_id);
+                let start_id = StableRequestId(request_id);
                 let num_requests = num_requests.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_requests).collect()
             }
@@ -125,22 +124,22 @@ fn upgrade_requests() -> Result<String, String> {
 
     Ok("Requests upgraded".to_string())
 }
+*/
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_requests() -> Result<String, String> {
-    REQUEST_MAP.with(|m| {
-        let request_map = m.borrow();
-        REQUEST_ALT_MAP.with(|m| {
-            let mut request_alt_map = m.borrow_mut();
-            request_alt_map.clear_new();
-            for (k, v) in request_map.iter() {
-                let request_id = StableRequestIdAlt::from_stable_request_id(&k);
-                let request = StableRequestAlt::from_stable_request(&v);
-                request_alt_map.insert(request_id, request);
+pub fn upgrade_requests() -> Result<String, String> {
+    REQUEST_OLD_MAP.with(|m| {
+        let request_old_map = m.borrow();
+        REQUEST_MAP.with(|m| {
+            let mut request_map = m.borrow_mut();
+            request_map.clear_new();
+            for (k, v) in request_old_map.iter() {
+                let request_id = StableRequestId::from_old(&k);
+                let request = StableRequest::from_old(&v);
+                request_map.insert(request_id, request);
             }
         });
     });
 
-    Ok("Alt requests upgraded".to_string())
+    Ok("Old requests upgraded".to_string())
 }
-*/

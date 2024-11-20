@@ -1,8 +1,8 @@
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
-use crate::stable_transfer::stable_transfer::StableTransferId;
-use crate::stable_transfer::stable_transfer_alt::{StableTransferAlt, StableTransferIdAlt};
+
+use super::stable_transfer::StableTransferId;
 
 pub fn archive_transfer_map() {
     if not_in_maintenance_mode().is_err() {
@@ -18,9 +18,7 @@ pub fn archive_transfer_map() {
             let end_transfer_id = transfer.last_key_value().map_or(0_u64, |(k, _)| k.0);
             for transfer_id in start_transfer_id..=end_transfer_id {
                 if let Some(transfer) = transfer.get(&StableTransferId(transfer_id)) {
-                    let transfer_id = StableTransferIdAlt::from_stable_transfer_id(&StableTransferId(transfer_id));
-                    let transfer = StableTransferAlt::from_stable_transfer(&transfer);
-                    transfer_archive.insert(transfer_id, transfer);
+                    transfer_archive.insert(StableTransferId(transfer_id), transfer);
                 }
             }
         });
