@@ -4,6 +4,6 @@ pub mod lp_token;
 pub mod lp_token_impl;
 #[allow(clippy::module_inception)]
 pub mod stable_token;
-pub mod stable_token_alt;
+pub mod stable_token_old;
 pub mod token;
 pub mod token_map;

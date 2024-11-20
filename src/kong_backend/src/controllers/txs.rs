@@ -2,9 +2,9 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
+use crate::stable_memory::{TX_24H_MAP, TX_24H_OLD_MAP, TX_ARCHIVE_MAP, TX_MAP, TX_OLD_MAP};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
-use crate::stable_tx::stable_tx_alt::{StableTxAlt, StableTxIdAlt};
+use crate::stable_tx::stable_tx_old::{StableTxIdOld, StableTxOld};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_map;
 use crate::txs::txs_reply::TxsReply;
@@ -63,10 +63,7 @@ pub fn get_txs(tx_id: Option<u64>, user_id: Option<u32>, token_id: Option<u32>) 
 fn remove_archive_txs(start_tx_id: u64, end_tx_id: u64) -> Result<String, String> {
     TX_ARCHIVE_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let keys_to_remove: Vec<_> = map
-            .range(StableTxIdAlt(start_tx_id)..=StableTxIdAlt(end_tx_id))
-            .map(|(k, _)| k)
-            .collect();
+        let keys_to_remove: Vec<_> = map.range(StableTxId(start_tx_id)..=StableTxId(end_tx_id)).map(|(k, _)| k).collect();
         keys_to_remove.iter().for_each(|k| {
             map.remove(k);
         });
@@ -95,7 +92,7 @@ fn backup_archive_txs(tx_id: Option<u64>, num_txs: Option<u16>) -> Result<String
         let map = m.borrow();
         let txs: BTreeMap<_, _> = match tx_id {
             Some(tx_id) => {
-                let start_id = StableTxIdAlt(tx_id);
+                let start_id = StableTxId(tx_id);
                 let num_txs = num_txs.map_or(1, |n| n as usize);
                 map.range(start_id..).take(num_txs).collect()
             }
@@ -126,21 +123,42 @@ fn upgrade_txs() -> Result<String, String> {
 
     Ok("Txs upgraded".to_string())
 }
+*/
+
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_txs() -> Result<String, String> {
-    TX_MAP.with(|m| {
-        let tx_map = m.borrow();
-        TX_ALT_MAP.with(|m| {
-            let mut tx_alt_map = m.borrow_mut();
-            tx_alt_map.clear_new();
-            for (k, v) in tx_map.iter() {
-                let tx_id = StableTxIdAlt::from_stable_tx_id(&k);
-                let tx = StableTxAlt::from_stable_tx(&v);
-                tx_alt_map.insert(tx_id, tx);
+pub fn upgrade_txs() -> Result<String, String> {
+    TX_OLD_MAP.with(|m| {
+        let tx_old_map = m.borrow();
+        TX_MAP.with(|m| {
+            let mut tx_map = m.borrow_mut();
+            tx_map.clear_new();
+            for (k, v) in tx_old_map.iter() {
+                let tx_id = StableTxId::from_old(&k);
+                let tx = StableTx::from_old(&v);
+                tx_map.insert(tx_id, tx);
             }
         });
     });
 
-    Ok("Alt txs upgraded".to_string())
+    Ok("Old txs upgraded".to_string())
 }
-*/
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+pub fn upgrade_24h_txs() -> Result<String, String> {
+    TX_24H_OLD_MAP.with(|m| {
+        let tx_old_map = m.borrow();
+        TX_24H_MAP.with(|m| {
+            let mut tx_map = m.borrow_mut();
+            tx_map.clear_new();
+            for (k, v) in tx_old_map.iter() {
+                let tx_id = StableTxId::from_old(&k);
+                let tx = StableTx::from_old(&v);
+                if let StableTx::Swap(_) = tx {
+                    tx_map.insert(tx_id, tx);
+                }
+            }
+        });
+    });
+
+    Ok("Old 24h txs upgraded".to_string())
+}

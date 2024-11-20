@@ -1,33 +1,31 @@
-use candid::{CandidType, Nat};
+use candid::{CandidType, Decode, Encode, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
-use super::stable_pool_old::{StablePoolIdOld, StablePoolOld};
+const POOL_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct StablePoolId(pub u32);
+pub struct StablePoolIdOld(pub u32);
 
-impl StablePoolId {
-    pub fn from_old(stable_pool_id: &StablePoolIdOld) -> Self {
-        let pool_id_old = serde_json::to_value(stable_pool_id).unwrap();
-        serde_json::from_value(pool_id_old).unwrap()
-    }
-}
-
-impl Storable for StablePoolId {
+impl Storable for StablePoolIdOld {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        self.0.to_bytes() // u32 is already Storable
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        Self(u32::from_bytes(bytes))
     }
 
-    const BOUND: Bound = Bound::Unbounded;
+    // u32 is fixed size
+    const BOUND: Bound = Bound::Bounded {
+        max_size: POOL_ID_SIZE,
+        is_fixed_size: true,
+    };
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct StablePool {
+pub struct StablePoolOld {
     pub pool_id: u32,
     pub token_id_0: u32,
     pub balance_0: Nat,
@@ -49,21 +47,15 @@ pub struct StablePool {
     pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
 }
 
-impl StablePool {
-    pub fn from_old(stable_pool: &StablePoolOld) -> Self {
-        let pool_old = serde_json::to_value(stable_pool).unwrap();
-        serde_json::from_value(pool_old).unwrap()
-    }
-}
-
-impl Storable for StablePool {
+impl Storable for StablePoolOld {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        Cow::Owned(Encode!(self).unwrap())
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        Decode!(bytes.as_ref(), Self).unwrap()
     }
 
+    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }
