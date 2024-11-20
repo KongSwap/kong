@@ -129,13 +129,6 @@
               {formatPercentage(priceChange24h)}
             </span>
           </div>
-          <div class="metric">
-            <span class="label">Volume</span>
-            <span class="value mono">
-              <ArrowUpDown size={12} />
-              {formatUsdValue(volume24h)}
-            </span>
-          </div>
         </div>
       {/if}
     </div>
@@ -239,7 +232,7 @@
   }
 
   .market-section {
-    @apply grid grid-cols-3 gap-2;
+    @apply grid grid-cols-2 gap-2;
   }
 
   .market-section .metric {
@@ -270,6 +263,11 @@
     @apply text-red-400;
   }
 
+  /* Make all SVG icons inherit text color */
+  :global(svg) {
+    @apply text-current stroke-current;
+  }
+
   @media (max-width: 768px) {
     .token-footer.expanded {
       @apply grid-cols-1 gap-3;
@@ -284,7 +282,7 @@
     }
 
     .market-section {
-      @apply grid-cols-1;
+      @apply grid-cols-2;
     }
 
     .market-section .metric {

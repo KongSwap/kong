@@ -54,6 +54,7 @@
     gap: 8px;
     padding: 0 4px;
     width: 100%;
+    color: white;
   }
 
   .token-logo {
@@ -70,16 +71,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     text-align: center;
-  }
-
-  .selector-icon {
-    font-size: 0.8em;
-    opacity: 0.7;
-  }
-
-  :global(.token-selector-button) {
-    min-width: 160px;
-    width: 100%;
-    max-width: 200px;
+    color: white;
   }
 </style>

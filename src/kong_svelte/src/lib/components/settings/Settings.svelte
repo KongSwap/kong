@@ -121,7 +121,7 @@
   }
 
   function toggleTheme() {
-    $themeStore = $themeStore === 'pixel' ? 'glass' : 'pixel';
+    $themeStore = $themeStore === 'pixel' ? 'modern' : 'pixel';
     toastStore.success(`Theme switched to ${$themeStore} mode`);
   }
 
@@ -300,10 +300,10 @@
             </button>
             <button
               class="theme-button"
-              class:active={$themeStore === 'glass'}
-              on:click={() => themeStore.set('glass')}
+              class:active={$themeStore === 'modern'}
+              on:click={() => themeStore.set('modern')}
             >
-              Glass
+              Modern
             </button>
           </div>
         </div>
@@ -488,6 +488,4 @@
   .setting-description {
     @apply text-sm text-black/70;
   }
-
-
 </style>

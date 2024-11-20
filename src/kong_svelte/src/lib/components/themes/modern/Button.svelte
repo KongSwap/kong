@@ -66,26 +66,32 @@
   }}
 >
   <div class="button-content">
-    <span class="button-text">{text}</span>
+    <slot>
+      <span class="button-text">{text}</span>
+    </slot>
   </div>
   <div class="button-glow"></div>
 </button>
 
 <style lang="postcss">
   .glass-button {
-    @apply relative rounded-lg border border-white/10 backdrop-blur-lg
-           transition-all duration-200 overflow-hidden;
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.1),
-      rgba(255, 255, 255, 0.05)
-    );
+    @apply relative rounded-lg transition-all duration-200 overflow-hidden;
+    background: #111827;
+    border: 1px solid #4ade80;
     height: 48px;
     min-width: 160px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    color: white;
+  }
+
+  /* Force white text for all child elements */
+  .glass-button :global(*) {
+    color: white;
   }
 
   .glass-button:focus-visible {
-    @apply outline-none ring-2 ring-white/20;
+    @apply outline-none;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.3);
   }
 
   .glass-button.small {
@@ -104,8 +110,8 @@
   }
 
   .button-text {
-    @apply font-medium text-white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    @apply font-medium;
+    color: white;
   }
 
   .glass-button.small .button-text {
@@ -117,80 +123,67 @@
     transition: opacity 0.2s ease-out;
     background: radial-gradient(
       circle at var(--x, 50%) var(--y, 50%),
-      currentColor 0%,
+      rgba(74, 222, 128, 0.15) 0%,
       transparent 70%
     );
-    opacity: calc(0.15 * var(--progress));
+    opacity: calc(0.8 * var(--progress));
   }
 
   /* Variant styles */
   .glass-button.blue {
-    @apply border-blue-500/20;
-    background: linear-gradient(
-      135deg,
-      rgba(37, 99, 235, 0.2),
-      rgba(37, 99, 235, 0.1)
-    );
-    color: rgb(59, 130, 246);
+    border-color: #3B82F6;
   }
 
   .glass-button.green {
-    @apply border-emerald-500/20;
-    background: linear-gradient(
-      135deg,
-      rgba(16, 185, 129, 0.2),
-      rgba(16, 185, 129, 0.1)
-    );
-    color: rgb(16, 185, 129);
+    border-color: #4ade80;
   }
 
   .glass-button.yellow {
-    @apply border-amber-500/20;
-    background: linear-gradient(
-      135deg,
-      rgba(245, 158, 11, 0.2),
-      rgba(245, 158, 11, 0.1)
-    );
-    color: rgb(245, 158, 11);
+    border-color: #F59E0B;
   }
 
   /* State styles */
   .glass-button.disabled {
     @apply cursor-not-allowed opacity-50;
+    border-color: #374151;
   }
 
   .glass-button.pressed:not(.disabled) {
     transform: translateY(1px);
-    @apply border-opacity-30 shadow-inner;
   }
 
   .glass-button.selected:not(.disabled) {
-    @apply border-opacity-30;
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0.1)
-    );
+    background: #1f2937;
+    border-color: #86efac;
+    box-shadow: 
+      0 4px 20px rgba(134, 239, 172, 0.15),
+      0 0 0 1px rgba(134, 239, 172, 0.3),
+      inset 0 0 20px rgba(134, 239, 172, 0.1);
   }
 
   /* Hover effects */
   @media (hover: hover) {
     .glass-button:not(.disabled):hover {
-      @apply border-opacity-30;
-      background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.15),
-        rgba(255, 255, 255, 0.1)
-      );
+      background: #1a2438;
+      border-color: #86efac;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                  0 0 0 1px rgba(134, 239, 172, 0.2);
+    }
+
+    .glass-button.blue:not(.disabled):hover {
+      border-color: #60A5FA;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                  0 0 0 1px rgba(96, 165, 250, 0.2);
+    }
+
+    .glass-button.yellow:not(.disabled):hover {
+      border-color: #FBBF24;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                  0 0 0 1px rgba(251, 191, 36, 0.2);
     }
 
     .glass-button:not(.disabled):hover:active {
-      @apply border-opacity-40;
-      background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.1),
-        rgba(255, 255, 255, 0.05)
-      );
+      background: #1f2937;
     }
   }
 

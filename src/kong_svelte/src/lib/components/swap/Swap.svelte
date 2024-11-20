@@ -468,7 +468,7 @@
 
   .swap-footer {
     z-index: 1;
-    margin-top: 0.5rem;
+    margin-top: 0.3rem;
   }
 
   .switch-button {
