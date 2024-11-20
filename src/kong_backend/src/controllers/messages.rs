@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{MESSAGE_MAP, MESSAGE_OLD_MAP};
+use crate::stable_memory::MESSAGE_MAP;
 use crate::stable_message::message_map;
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 
@@ -64,42 +64,4 @@ async fn add_message(args: AddMessageArgs) -> Result<String, String> {
     let message = message_map::get_by_message_id(message_id).ok_or_else(|| format!("Failed to add message {}", args.title))?;
 
     serde_json::to_string(&message).map_err(|e| format!("Failed to serialize: {}", e))
-}
-
-/*
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_messages() -> Result<String, String> {
-    MESSAGE_ALT_MAP.with(|m| {
-        let message_alt_map = m.borrow();
-        MESSAGE_MAP.with(|m| {
-            let mut message_map = m.borrow_mut();
-            message_map.clear_new();
-            for (k, v) in message_alt_map.iter() {
-                let message_id = StableMessageIdAlt::to_stable_message_id(&k);
-                let message = StableMessageAlt::to_stable_message(&v);
-                message_map.insert(message_id, message);
-            }
-        });
-    });
-
-    Ok("Messages upgraded".to_string())
-}
-*/
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-pub fn upgrade_messages() -> Result<String, String> {
-    MESSAGE_OLD_MAP.with(|m| {
-        let message_old_map = m.borrow();
-        MESSAGE_MAP.with(|m| {
-            let mut message_map = m.borrow_mut();
-            message_map.clear_new();
-            for (k, v) in message_old_map.iter() {
-                let message_id = StableMessageId::from_old(&k);
-                let message = StableMessage::from_old(&v);
-                message_map.insert(message_id, message);
-            }
-        });
-    });
-
-    Ok("Old messages upgraded".to_string())
 }

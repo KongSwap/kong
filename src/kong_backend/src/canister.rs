@@ -18,22 +18,12 @@ use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
-use crate::controllers::claims::upgrade_claims;
-use crate::controllers::kong_settings::upgrade_kong_settings;
-use crate::controllers::lp_token_ledger::upgrade_lp_token_ledger;
-use crate::controllers::messages::upgrade_messages;
-use crate::controllers::pools::upgrade_pools;
-use crate::controllers::requests::upgrade_requests;
-use crate::controllers::tokens::upgrade_tokens;
-use crate::controllers::transfers::upgrade_transfers;
-use crate::controllers::txs::{upgrade_24h_txs, upgrade_txs};
-use crate::controllers::users::upgrade_users;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
 use crate::stable_memory::{
-    CLAIM_OLD_MAP, CLAIM_OLD_MEMORY_ID, KONG_SETTINGS_OLD_ID, MEMORY_MANAGER, MESSAGE_OLD_MAP, MESSAGE_OLD_MEMORY_ID, POOL_OLD_MAP,
-    POOL_OLD_MEMORY_ID, TOKEN_OLD_MAP, TOKEN_OLD_MEMORY_ID, TX_24H_OLD_MAP, TX_24H_OLD_MEMORY_ID, TX_OLD_MAP, TX_OLD_MEMORY_ID,
+    LP_TOKEN_LEDGER_OLD, LP_TOKEN_LEDGER_OLD_MEMORY_ID, MEMORY_MANAGER, REQUEST_OLD_MAP, REQUEST_OLD_MEMORY_ID, TRANSFER_OLD_MAP,
+    TRANSFER_OLD_MEMORY_ID, USER_OLD_MAP, USER_OLD_MEMORY_ID,
 };
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
@@ -162,7 +152,7 @@ async fn post_upgrade() {
     info_log("Tokens are upgraded");
     _ = upgrade_pools();
     info_log("Pools are upgraded");
-    */
+
     TX_24H_OLD_MAP.with(|m| {
         m.borrow_mut().clear_new();
     });
@@ -243,7 +233,9 @@ async fn post_upgrade() {
         }
         info_log("Pools cleared");
     });
+    */
 
+    /*
     _ = upgrade_lp_token_ledger();
     info_log("LP token ledger is upgraded");
     _ = upgrade_users();
@@ -252,6 +244,55 @@ async fn post_upgrade() {
     info_log("Requests are upgraded");
     _ = upgrade_transfers();
     info_log("Transfers are upgraded");
+    */
+
+    LP_TOKEN_LEDGER_OLD.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(LP_TOKEN_LEDGER_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("LP token ledger cleared");
+    });
+
+    USER_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(USER_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Users cleared");
+    });
+
+    REQUEST_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(REQUEST_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Requests cleared");
+    });
+
+    TRANSFER_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(TRANSFER_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Transfers cleared");
+    });
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

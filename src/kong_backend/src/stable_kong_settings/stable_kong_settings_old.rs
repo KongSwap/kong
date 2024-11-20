@@ -11,7 +11,7 @@ use crate::ic::{
     id::{kong_account, kong_backend_id},
 };
 use crate::stable_memory::{
-    CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_OLD_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
+    CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
     TX_MAP, USER_MAP,
 };
 
@@ -54,7 +54,7 @@ pub struct StableKongSettingsOld {
 impl Default for StableKongSettingsOld {
     fn default() -> Self {
         let user_map_idx = USER_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
-        let token_map_idx = TOKEN_OLD_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let token_map_idx = TOKEN_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let pool_map_idx = POOL_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let claim_map_idx = CLAIM_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let message_map_idx = MESSAGE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
