@@ -7,9 +7,9 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::stable_claim::ClaimStatus;
 use crate::stable_memory::{
     CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_ID, LP_TOKEN_LEDGER, LP_TOKEN_LEDGER_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MAP,
-    MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_MEMORY_ARCHIVE_ID, REQUEST_MEMORY_ID, TOKEN_MAP,
-    TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP, TX_ARCHIVE_MAP,
-    TX_MAP, TX_MEMORY_ARCHIVE_ID, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
+    MESSAGE_MEMORY_ID, POOL_MAP, POOL_OLD_MEMORY_ID, REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_MEMORY_ARCHIVE_ID, REQUEST_MEMORY_ID,
+    TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TRANSFER_MEMORY_ARCHIVE_ID, TRANSFER_MEMORY_ID, TX_24H_MAP,
+    TX_ARCHIVE_MAP, TX_MAP, TX_MEMORY_ARCHIVE_ID, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -58,7 +58,7 @@ async fn status() -> Result<String, String> {
             "Stable - Kong Settings": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(KONG_SETTINGS_ID).size())),
             "Stable - User Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(USER_MEMORY_ID).size())),
             "Stable - Token Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TOKEN_MEMORY_ID).size())),
-            "Stable - Pool Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(POOL_MEMORY_ID).size())),
+            "Stable - Pool Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(POOL_OLD_MEMORY_ID).size())),
             "Stable - Tx Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TX_MEMORY_ID).size())),
             "Stable - Tx Map Archive": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TX_MEMORY_ARCHIVE_ID).size())),
             "Stable - Request Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(REQUEST_MEMORY_ID).size())),

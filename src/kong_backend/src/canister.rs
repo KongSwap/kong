@@ -18,6 +18,12 @@ use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
+use crate::controllers::claims::upgrade_claims;
+use crate::controllers::kong_settings::upgrade_kong_settings;
+use crate::controllers::messages::upgrade_messages;
+use crate::controllers::pools::upgrade_pools;
+use crate::controllers::tokens::upgrade_tokens;
+use crate::controllers::txs::{upgrade_24h_txs, upgrade_txs};
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
@@ -133,6 +139,21 @@ async fn post_upgrade() {
         });
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
+
+    _ = upgrade_24h_txs();
+    info_log("24h transactions are upgraded");
+    _ = upgrade_txs();
+    info_log("Txs are upgraded");
+    _ = upgrade_claims();
+    info_log("Claims are upgraded");
+    _ = upgrade_messages();
+    info_log("Messages are upgraded");
+    _ = upgrade_kong_settings();
+    info_log("Kong settings are upgraded");
+    _ = upgrade_tokens();
+    info_log("Tokens are upgraded");
+    _ = upgrade_pools();
+    info_log("Pools are upgraded");
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

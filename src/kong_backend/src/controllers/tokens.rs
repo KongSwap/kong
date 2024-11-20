@@ -2,7 +2,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::TOKEN_MAP;
+use crate::stable_memory::{TOKEN_MAP, TOKEN_OLD_MAP};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 
 const MAX_TOKENS: usize = 1_000;
@@ -63,21 +63,22 @@ fn upgrade_tokens() -> Result<String, String> {
 
     Ok("Tokens upgraded".to_string())
 }
+*/
+
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_tokens() -> Result<String, String> {
-    TOKEN_MAP.with(|m| {
-        let token_map = m.borrow();
-        TOKEN_ALT_MAP.with(|m| {
-            let mut token_alt_map = m.borrow_mut();
-            token_alt_map.clear_new();
-            for (k, v) in token_map.iter() {
-                let token_id = StableTokenIdAlt::from_stable_token_id(&k);
-                let token = StableTokenAlt::from_stable_token(&v);
-                token_alt_map.insert(token_id, token);
+pub fn upgrade_tokens() -> Result<String, String> {
+    TOKEN_OLD_MAP.with(|m| {
+        let token_old_map = m.borrow();
+        TOKEN_MAP.with(|m| {
+            let mut token_map = m.borrow_mut();
+            token_map.clear_new();
+            for (k, v) in token_old_map.iter() {
+                let token_id = StableTokenId::from_old(&k);
+                let token = StableToken::from_old(&v);
+                token_map.insert(token_id, token);
             }
         });
     });
 
-    Ok("Alt tokens upgraded".to_string())
+    Ok("Old tokens upgraded".to_string())
 }
-*/

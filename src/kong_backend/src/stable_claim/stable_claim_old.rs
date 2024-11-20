@@ -1,30 +1,29 @@
-use candid::{CandidType, Nat};
+use candid::{CandidType, Decode, Encode, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
-use super::stable_claim_old::{StableClaimIdOld, StableClaimOld};
 use crate::ic::address::Address;
 
+const CLAIM_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
+
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct StableClaimId(pub u64);
+pub struct StableClaimIdOld(pub u64);
 
-impl StableClaimId {
-    pub fn from_old(stable_claim_id: &StableClaimIdOld) -> Self {
-        let claim_id_old = serde_json::to_value(stable_claim_id).unwrap();
-        serde_json::from_value(claim_id_old).unwrap()
-    }
-}
-
-impl Storable for StableClaimId {
+impl Storable for StableClaimIdOld {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        self.0.to_bytes() // u64 is already Storable
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        Self(u64::from_bytes(bytes))
     }
 
-    const BOUND: Bound = Bound::Unbounded;
+    // u64 is fixed size
+    const BOUND: Bound = Bound::Bounded {
+        max_size: CLAIM_ID_SIZE,
+        is_fixed_size: true,
+    };
 }
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,7 +35,7 @@ pub enum ClaimStatus {
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct StableClaim {
+pub struct StableClaimOld {
     pub claim_id: u64,
     pub user_id: u32,
     pub status: ClaimStatus,
@@ -49,21 +48,15 @@ pub struct StableClaim {
     pub ts: u64,
 }
 
-impl StableClaim {
-    pub fn from_old(stable_claim: &StableClaimOld) -> Self {
-        let claim_old = serde_json::to_value(stable_claim).unwrap();
-        serde_json::from_value(claim_old).unwrap()
-    }
-}
-
-impl Storable for StableClaim {
+impl Storable for StableClaimOld {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        serde_cbor::to_vec(self).unwrap().into()
+        Cow::Owned(Encode!(self).unwrap())
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        serde_cbor::from_slice(&bytes).unwrap()
+        Decode!(bytes.as_ref(), Self).unwrap()
     }
 
+    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
-use crate::stable_memory::CLAIM_MAP;
+use crate::stable_memory::{CLAIM_MAP, CLAIM_OLD_MAP};
 
 const MAX_CLAIMS: usize = 1_000;
 
@@ -105,23 +105,23 @@ fn upgrade_claims() -> Result<String, String> {
 
     Ok("Claims upgraded".to_string())
 }
+*/
 
 /// upgrade CLAIM_ALT_MAP from CLAIM_MAP
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_claims() -> Result<String, String> {
-    CLAIM_MAP.with(|m| {
-        let claim_map = m.borrow();
-        CLAIM_ALT_MAP.with(|m| {
-            let mut claim_alt_map = m.borrow_mut();
-            claim_alt_map.clear_new();
-            for (k, v) in claim_map.iter() {
-                let claim_id = StableClaimIdAlt::from_stable_claim_id(&k);
-                let claim = StableClaimAlt::from_stable_claim(&v);
-                claim_alt_map.insert(claim_id, claim);
+pub fn upgrade_claims() -> Result<String, String> {
+    CLAIM_OLD_MAP.with(|m| {
+        let claim_old_map = m.borrow();
+        CLAIM_MAP.with(|m| {
+            let mut claim_map = m.borrow_mut();
+            claim_map.clear_new();
+            for (k, v) in claim_old_map.iter() {
+                let claim_id = StableClaimId::from_old(&k);
+                let claim = StableClaim::from_old(&v);
+                claim_map.insert(claim_id, claim);
             }
         });
     });
 
-    Ok("Alt claims upgraded".to_string())
+    Ok("Old claims upgraded".to_string())
 }
-*/

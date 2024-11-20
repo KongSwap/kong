@@ -1,30 +1,31 @@
-use candid::{CandidType, Decode, Encode};
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 use super::ic_token::ICToken;
 use super::lp_token::LPToken;
-
-const TOKEN_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
+use super::stable_token_old::{StableTokenIdOld, StableTokenOld};
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableTokenId(pub u32);
 
+impl StableTokenId {
+    pub fn from_old(stable_token_id: &StableTokenIdOld) -> Self {
+        let token_id_old = serde_json::to_value(stable_token_id).unwrap();
+        serde_json::from_value(token_id_old).unwrap()
+    }
+}
+
 impl Storable for StableTokenId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        self.0.to_bytes() // u32 is already Storable
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(u32::from_bytes(bytes))
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // u32 is fixed size
-    const BOUND: Bound = Bound::Bounded {
-        max_size: TOKEN_ID_SIZE,
-        is_fixed_size: true,
-    };
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -33,15 +34,21 @@ pub enum StableToken {
     IC(ICToken), // IC tokens
 }
 
+impl StableToken {
+    pub fn from_old(stable_token: &StableTokenOld) -> Self {
+        let token_old = serde_json::to_value(stable_token).unwrap();
+        serde_json::from_value(token_old).unwrap()
+    }
+}
+
 impl Storable for StableToken {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }
