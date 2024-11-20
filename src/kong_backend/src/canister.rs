@@ -20,14 +20,21 @@ use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
 use crate::controllers::claims::upgrade_claims;
 use crate::controllers::kong_settings::upgrade_kong_settings;
+use crate::controllers::lp_token_ledger::upgrade_lp_token_ledger;
 use crate::controllers::messages::upgrade_messages;
 use crate::controllers::pools::upgrade_pools;
+use crate::controllers::requests::upgrade_requests;
 use crate::controllers::tokens::upgrade_tokens;
+use crate::controllers::transfers::upgrade_transfers;
 use crate::controllers::txs::{upgrade_24h_txs, upgrade_txs};
+use crate::controllers::users::upgrade_users;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_memory::MEMORY_MANAGER;
+use crate::stable_memory::{
+    CLAIM_OLD_MAP, CLAIM_OLD_MEMORY_ID, KONG_SETTINGS_OLD_ID, MEMORY_MANAGER, MESSAGE_OLD_MAP, MESSAGE_OLD_MEMORY_ID, POOL_OLD_MAP,
+    POOL_OLD_MEMORY_ID, TOKEN_OLD_MAP, TOKEN_OLD_MEMORY_ID, TX_24H_OLD_MAP, TX_24H_OLD_MEMORY_ID, TX_OLD_MAP, TX_OLD_MEMORY_ID,
+};
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
@@ -140,6 +147,7 @@ async fn post_upgrade() {
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
+    /*
     _ = upgrade_24h_txs();
     info_log("24h transactions are upgraded");
     _ = upgrade_txs();
@@ -154,6 +162,96 @@ async fn post_upgrade() {
     info_log("Tokens are upgraded");
     _ = upgrade_pools();
     info_log("Pools are upgraded");
+    */
+    TX_24H_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(TX_24H_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("24h transactions cleared");
+    });
+
+    TX_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(TX_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Txs cleared");
+    });
+
+    CLAIM_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(CLAIM_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Claims cleared");
+    });
+
+    MESSAGE_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(MESSAGE_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Messages cleared");
+    });
+
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(KONG_SETTINGS_OLD_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Kong settings cleared");
+    });
+
+    TOKEN_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(TOKEN_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Tokens cleared");
+    });
+
+    POOL_OLD_MAP.with(|m| {
+        m.borrow_mut().clear_new();
+    });
+    MEMORY_MANAGER.with(|m| {
+        let memory_manager = m.borrow();
+        let mem = memory_manager.get(POOL_OLD_MEMORY_ID);
+        if mem.size() > 0 {
+            mem.write(0, &[0]);
+        }
+        info_log("Pools cleared");
+    });
+
+    _ = upgrade_lp_token_ledger();
+    info_log("LP token ledger is upgraded");
+    _ = upgrade_users();
+    info_log("Users are upgraded");
+    _ = upgrade_requests();
+    info_log("Requests are upgraded");
+    _ = upgrade_transfers();
+    info_log("Transfers are upgraded");
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

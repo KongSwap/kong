@@ -1,29 +1,30 @@
-use candid::{CandidType, Decode, Encode, Nat};
+use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
+use super::stable_transfer_old::{StableTransferIdOld, StableTransferOld};
 use super::tx_id::TxId;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableTransferId(pub u64);
 
-const TRANSFER_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
+impl StableTransferId {
+    pub fn from_old(stable_transfer_id: &StableTransferIdOld) -> Self {
+        let transfer_id_old = serde_json::to_value(stable_transfer_id).unwrap();
+        serde_json::from_value(transfer_id_old).unwrap()
+    }
+}
 
 impl Storable for StableTransferId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        self.0.to_bytes() // u64 is already Storable
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(u64::from_bytes(bytes))
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // u64 is fixed size
-    const BOUND: Bound = Bound::Bounded {
-        max_size: TRANSFER_ID_SIZE,
-        is_fixed_size: true,
-    };
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -37,15 +38,21 @@ pub struct StableTransfer {
     pub ts: u64,
 }
 
+impl StableTransfer {
+    pub fn from_old(stable_transfer: &StableTransferOld) -> Self {
+        let transfer_old = serde_json::to_value(stable_transfer).unwrap();
+        serde_json::from_value(transfer_old).unwrap()
+    }
+}
+
 impl Storable for StableTransfer {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }

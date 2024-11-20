@@ -1,7 +1,8 @@
 use crate::ic::get_time::get_time;
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
-use crate::stable_request::stable_request_alt::{StableRequestAlt, StableRequestIdAlt};
+
+use super::stable_request::StableRequestId;
 
 pub fn archive_request_map() {
     if not_in_maintenance_mode().is_err() {
@@ -10,13 +11,17 @@ pub fn archive_request_map() {
 
     // archive requests
     REQUEST_MAP.with(|request_map| {
-        for (request_id, request) in request_map.borrow().iter() {
-            REQUEST_ARCHIVE_MAP.with(|request_archive_map| {
-                let request_id = StableRequestIdAlt::from_stable_request_id(&request_id);
-                let request = StableRequestAlt::from_stable_request(&request);
-                request_archive_map.borrow_mut().insert(request_id, request);
-            });
-        }
+        REQUEST_ARCHIVE_MAP.with(|request_archive_map| {
+            let request = request_map.borrow();
+            let mut request_archive = request_archive_map.borrow_mut();
+            let start_request_id = request_archive.last_key_value().map_or(0_u64, |(k, _)| k.0);
+            let end_request_id = request.last_key_value().map_or(0_u64, |(k, _)| k.0);
+            for request_id in start_request_id..=end_request_id {
+                if let Some(request) = request.get(&StableRequestId(request_id)) {
+                    request_archive.insert(StableRequestId(request_id), request);
+                }
+            }
+        });
     });
 
     // only keep requests from the last hour

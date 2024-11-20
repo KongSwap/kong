@@ -2,7 +2,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::USER_MAP;
+use crate::stable_memory::{USER_MAP, USER_OLD_MAP};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
@@ -100,22 +100,22 @@ fn upgrade_users() -> Result<String, String> {
 
     Ok("Users upgraded".to_string())
 }
+*/
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_alt_users() -> Result<String, String> {
-    USER_MAP.with(|m| {
-        let user_map = m.borrow();
-        USER_ALT_MAP.with(|m| {
-            let mut user_alt_map = m.borrow_mut();
-            user_alt_map.clear_new();
-            for (k, v) in user_map.iter() {
-                let user_id = StableUserIdAlt::from_stable_user_id(&k);
-                let user = StableUserAlt::from_stable_user(&v);
-                user_alt_map.insert(user_id, user);
+pub fn upgrade_users() -> Result<String, String> {
+    USER_OLD_MAP.with(|m| {
+        let user_old_map = m.borrow();
+        USER_MAP.with(|m| {
+            let mut user_map = m.borrow_mut();
+            user_map.clear_new();
+            for (k, v) in user_old_map.iter() {
+                let user_id = StableUserId::from_old(&k);
+                let user = StableUser::from_old(&v);
+                user_map.insert(user_id, user);
             }
         });
     });
 
-    Ok("Alt users upgraded".to_string())
+    Ok("Old users upgraded".to_string())
 }
-*/

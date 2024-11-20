@@ -1,31 +1,32 @@
-use candid::{CandidType, Decode, Encode};
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 use super::reply::Reply;
 use super::request::Request;
+use super::stable_request_old::{StableRequestIdOld, StableRequestOld};
 use super::status::Status;
-
-const REQUEST_ID_SIZE: u32 = std::mem::size_of::<u64>() as u32;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableRequestId(pub u64);
 
+impl StableRequestId {
+    pub fn from_old(stable_request_id: &StableRequestIdOld) -> Self {
+        let request_id_old = serde_json::to_value(stable_request_id).unwrap();
+        serde_json::from_value(request_id_old).unwrap()
+    }
+}
+
 impl Storable for StableRequestId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        self.0.to_bytes() // u64 is already Storable
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(u64::from_bytes(bytes))
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // u64 is fixed size
-    const BOUND: Bound = Bound::Bounded {
-        max_size: REQUEST_ID_SIZE,
-        is_fixed_size: true,
-    };
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -38,15 +39,21 @@ pub struct StableRequest {
     pub ts: u64,
 }
 
+impl StableRequest {
+    pub fn from_old(stable_request: &StableRequestOld) -> Self {
+        let request_old = serde_json::to_value(stable_request).unwrap();
+        serde_json::from_value(request_old).unwrap()
+    }
+}
+
 impl Storable for StableRequest {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }
