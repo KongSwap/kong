@@ -4,7 +4,7 @@ use ic_agent::Agent;
 
 use super::kong_update::KongUpdate;
 
-const KONG_DATA_STAGING: &str = "bd3sg-teaaa-aaaaa-qaaba-cai";
+const KONG_DATA_LOCAL: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
 const KONG_DATA_PROD: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
 
 #[derive(Clone)]
@@ -18,7 +18,7 @@ impl KongData {
         let canister_id = if is_mainnet {
             Principal::from_text(KONG_DATA_PROD).unwrap()
         } else {
-            Principal::from_text(KONG_DATA_STAGING).unwrap()
+            Principal::from_text(KONG_DATA_LOCAL).unwrap()
         };
         KongData {
             agent: agent.clone(),
