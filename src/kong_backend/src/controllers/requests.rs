@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_impl::to_request_reply;
-use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP, REQUEST_OLD_MAP};
+use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
@@ -104,42 +104,4 @@ fn backup_archive_requests(request_id: Option<u64>, num_requests: Option<u16>) -
         };
         serde_json::to_string(&requests).map_err(|e| format!("Failed to serialize requests: {}", e))
     })
-}
-
-/*
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_requests() -> Result<String, String> {
-    REQUEST_ALT_MAP.with(|m| {
-        let request_alt_map = m.borrow();
-        REQUEST_MAP.with(|m| {
-            let mut request_map = m.borrow_mut();
-            request_map.clear_new();
-            for (k, v) in request_alt_map.iter() {
-                let request_id = StableRequestIdAlt::to_stable_request_id(&k);
-                let request = StableRequestAlt::to_stable_request(&v);
-                request_map.insert(request_id, request);
-            }
-        });
-    });
-
-    Ok("Requests upgraded".to_string())
-}
-*/
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-pub fn upgrade_requests() -> Result<String, String> {
-    REQUEST_OLD_MAP.with(|m| {
-        let request_old_map = m.borrow();
-        REQUEST_MAP.with(|m| {
-            let mut request_map = m.borrow_mut();
-            request_map.clear_new();
-            for (k, v) in request_old_map.iter() {
-                let request_id = StableRequestId::from_old(&k);
-                let request = StableRequest::from_old(&v);
-                request_map.insert(request_id, request);
-            }
-        });
-    });
-
-    Ok("Old requests upgraded".to_string())
 }

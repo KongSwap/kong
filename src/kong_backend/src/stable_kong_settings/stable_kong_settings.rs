@@ -4,8 +4,6 @@ use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 
-use super::stable_kong_settings_old::StableKongSettingsOld;
-
 use crate::ic::{
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
@@ -50,13 +48,6 @@ pub struct StableKongSettings {
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
     pub lp_token_ledger_archive_interval_secs: u64,
-}
-
-impl StableKongSettings {
-    pub fn from_old(stable_kong_settings: &StableKongSettingsOld) -> Self {
-        let settings_old = serde_json::to_value(stable_kong_settings).unwrap();
-        serde_json::from_value(settings_old).unwrap()
-    }
 }
 
 impl Default for StableKongSettings {

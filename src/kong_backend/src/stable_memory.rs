@@ -6,25 +6,16 @@ use std::cell::{Cell, RefCell};
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
-use crate::stable_lp_token_ledger::stable_lp_token_ledger_old::{StableLPTokenLedgerIdOld, StableLPTokenLedgerOld};
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
-use crate::stable_request::stable_request_old::{StableRequestIdOld, StableRequestOld};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-use crate::stable_transfer::stable_transfer_old::{StableTransferIdOld, StableTransferOld};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
-use crate::stable_user::stable_user_old::{StableUserIdOld, StableUserOld};
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
-// old
-pub const USER_OLD_MEMORY_ID: MemoryId = MemoryId::new(1);
-pub const REQUEST_OLD_MEMORY_ID: MemoryId = MemoryId::new(5);
-pub const TRANSFER_OLD_MEMORY_ID: MemoryId = MemoryId::new(6);
-pub const LP_TOKEN_LEDGER_OLD_MEMORY_ID: MemoryId = MemoryId::new(8);
 // stable memory
 pub const KONG_SETTINGS_MEMORY_ID: MemoryId = MemoryId::new(20);
 pub const USER_MEMORY_ID: MemoryId = MemoryId::new(21);
@@ -63,30 +54,6 @@ thread_local! {
     // return a memory that can be used by stable structures
     pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
         RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
-
-    // stable memory for storing user profiles
-    pub static USER_OLD_MAP: RefCell<StableBTreeMap<StableUserIdOld, StableUserOld, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(USER_OLD_MEMORY_ID)))
-    });
-
-    // stable memory for storing all requests made by users
-    pub static REQUEST_OLD_MAP: RefCell<StableBTreeMap<StableRequestIdOld, StableRequestOld, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(REQUEST_OLD_MEMORY_ID)))
-    });
-
-    // stable memory for storing all on-chain transfers with block_id. used to prevent accepting transfer twice (double receive)
-    pub static TRANSFER_OLD_MAP: RefCell<StableBTreeMap<StableTransferIdOld, StableTransferOld, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(TRANSFER_OLD_MEMORY_ID)))
-    });
-
-    // stable memory for storing all LP tokens for users
-    pub static LP_TOKEN_LEDGER_OLD: RefCell<StableBTreeMap<StableLPTokenLedgerIdOld, StableLPTokenLedgerOld, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_LEDGER_OLD_MEMORY_ID)))
-    });
-
-    //
-    // New Stable Memory
-    //
 
     // stable memory for storing Kong settings
     pub static KONG_SETTINGS: RefCell<StableCell<StableKongSettings, Memory>> = with_memory_manager(|memory_manager| {

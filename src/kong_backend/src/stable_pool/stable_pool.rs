@@ -2,17 +2,8 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-use super::stable_pool_old::{StablePoolIdOld, StablePoolOld};
-
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StablePoolId(pub u32);
-
-impl StablePoolId {
-    pub fn from_old(stable_pool_id: &StablePoolIdOld) -> Self {
-        let pool_id_old = serde_json::to_value(stable_pool_id).unwrap();
-        serde_json::from_value(pool_id_old).unwrap()
-    }
-}
 
 impl Storable for StablePoolId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
@@ -47,13 +38,6 @@ pub struct StablePool {
     pub rolling_24h_apy: f64,
     pub total_volume: Nat, // lifetime volume of the pool in token_1
     pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
-}
-
-impl StablePool {
-    pub fn from_old(stable_pool: &StablePoolOld) -> Self {
-        let pool_old = serde_json::to_value(stable_pool).unwrap();
-        serde_json::from_value(pool_old).unwrap()
-    }
 }
 
 impl Storable for StablePool {

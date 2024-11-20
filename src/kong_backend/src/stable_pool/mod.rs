@@ -4,4 +4,3 @@ pub mod pool_stats;
 #[allow(clippy::module_inception)]
 pub mod stable_pool;
 pub mod stable_pool_impl;
-pub mod stable_pool_old;
