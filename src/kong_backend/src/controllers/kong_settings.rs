@@ -3,7 +3,7 @@ use ic_cdk::{query, update};
 use crate::helpers::json_helpers;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
-use crate::stable_memory::{KONG_SETTINGS, KONG_SETTINGS_OLD};
+use crate::stable_memory::KONG_SETTINGS;
 
 /// serialize KONG_SETTINGS for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -51,42 +51,4 @@ fn set_kong_settings(update_settings: String) -> Result<String, String> {
             .map_err(|_| "Failed to update Kong settings".to_string())?;
         serde_json::to_string(&kong_settings).map_err(|e| format!("Failed to serialize: {}", e))
     })
-}
-
-/*
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_alt_kong_settings() -> Result<String, String> {
-    KONG_SETTINGS_ALT.with(|m| {
-        let map = m.borrow();
-        let kong_settings = map.get();
-        serde_json::to_string(kong_settings).map_err(|e| format!("Failed to serialize: {}", e))
-    })
-}
-
-/// upgrade KONG_SETTINGS from KONG_SETTINGS_ALT
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_kong_settings() -> Result<String, String> {
-    KONG_SETTINGS_ALT.with(|m| {
-        let kong_settings = StableKongSettingsAlt::to_stable_kong_settings(m.borrow().get());
-        KONG_SETTINGS.with(|m| {
-            _ = m.borrow_mut().set(kong_settings);
-        });
-    });
-
-    Ok("Kong settings upgraded".to_string())
-}
-*/
-
-/// upgrade KONG_SETTINGS_ALT from KONG_SETTINGS
-#[update(hidden = true, guard = "caller_is_kingkong")]
-pub fn upgrade_kong_settings() -> Result<String, String> {
-    KONG_SETTINGS_OLD.with(|m| {
-        let kong_settings_old = m.borrow().get().clone();
-        KONG_SETTINGS.with(|m| {
-            let mut kong_settings = m.borrow_mut();
-            _ = kong_settings.set(StableKongSettings::from_old(&kong_settings_old));
-        });
-    });
-
-    Ok("Old Kong settings upgraded".to_string())
 }

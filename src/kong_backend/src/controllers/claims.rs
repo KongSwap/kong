@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
-use crate::stable_memory::{CLAIM_MAP, CLAIM_OLD_MAP};
+use crate::stable_memory::CLAIM_MAP;
 
 const MAX_CLAIMS: usize = 1_000;
 
@@ -65,63 +65,4 @@ fn change_claim_status(claim_id: u64, status: String) -> Result<String, String> 
         map.insert(StableClaimId(claim_id), claim);
         Ok("Claim status changed".to_string())
     })
-}
-
-/*
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn backup_alt_claims(claim_id: Option<u64>, num_claims: Option<u16>) -> Result<String, String> {
-    CLAIM_ALT_MAP.with(|m| {
-        let map = m.borrow();
-        let claims: BTreeMap<_, _> = match claim_id {
-            Some(claim_id) => {
-                let start_id = StableClaimIdAlt(claim_id);
-                let num_claims = num_claims.map_or(1, |n| n as usize);
-                map.range(start_id..).take(num_claims).collect()
-            }
-            None => {
-                let num_claims = num_claims.map_or(MAX_CLAIMS, |n| n as usize);
-                map.iter().take(num_claims).collect()
-            }
-        };
-        serde_json::to_string(&claims).map_err(|e| format!("Failed to serialize claims: {}", e))
-    })
-}
-
-/// upgrade CLAIM_MAP from CLAIM_ALT_MAP
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_claims() -> Result<String, String> {
-    CLAIM_ALT_MAP.with(|m| {
-        let claim_alt_map = m.borrow();
-        CLAIM_MAP.with(|m| {
-            let mut claim_map = m.borrow_mut();
-            claim_map.clear_new();
-            for (k, v) in claim_alt_map.iter() {
-                let claim_id = StableClaimIdAlt::to_stable_claim_id(&k);
-                let claim = StableClaimAlt::to_stable_claim(&v);
-                claim_map.insert(claim_id, claim);
-            }
-        });
-    });
-
-    Ok("Claims upgraded".to_string())
-}
-*/
-
-/// upgrade CLAIM_ALT_MAP from CLAIM_MAP
-#[update(hidden = true, guard = "caller_is_kingkong")]
-pub fn upgrade_claims() -> Result<String, String> {
-    CLAIM_OLD_MAP.with(|m| {
-        let claim_old_map = m.borrow();
-        CLAIM_MAP.with(|m| {
-            let mut claim_map = m.borrow_mut();
-            claim_map.clear_new();
-            for (k, v) in claim_old_map.iter() {
-                let claim_id = StableClaimId::from_old(&k);
-                let claim = StableClaim::from_old(&v);
-                claim_map.insert(claim_id, claim);
-            }
-        });
-    });
-
-    Ok("Old claims upgraded".to_string())
 }

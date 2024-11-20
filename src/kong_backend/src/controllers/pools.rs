@@ -3,7 +3,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::{POOL_MAP, POOL_OLD_MAP};
+use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 
@@ -63,42 +63,4 @@ fn remove_pool(symbol: String) -> Result<String, String> {
     pool_map::remove(&pool)?;
 
     Ok(format!("Pool {} removed", symbol))
-}
-
-/*
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn upgrade_pools() -> Result<String, String> {
-    POOL_ALT_MAP.with(|m| {
-        let pool_alt_map = m.borrow();
-        POOL_MAP.with(|m| {
-            let mut pool_map = m.borrow_mut();
-            pool_map.clear_new();
-            for (k, v) in pool_alt_map.iter() {
-                let pool_id = StablePoolIdAlt::to_stable_pool_id(&k);
-                let pool = StablePoolAlt::to_stable_pool(&v);
-                pool_map.insert(pool_id, pool);
-            }
-        });
-    });
-
-    Ok("Pools upgraded".to_string())
-}
-*/
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-pub fn upgrade_pools() -> Result<String, String> {
-    POOL_OLD_MAP.with(|m| {
-        let pool_old_map = m.borrow();
-        POOL_MAP.with(|m| {
-            let mut pool_map = m.borrow_mut();
-            pool_map.clear_new();
-            for (k, v) in pool_old_map.iter() {
-                let pool_id = StablePoolId::from_old(&k);
-                let pool = StablePool::from_old(&v);
-                pool_map.insert(pool_id, pool);
-            }
-        });
-    });
-
-    Ok("Old pools upgraded".to_string())
 }
