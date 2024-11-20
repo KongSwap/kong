@@ -2,18 +2,10 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-use super::stable_claim_old::{StableClaimIdOld, StableClaimOld};
 use crate::ic::address::Address;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableClaimId(pub u64);
-
-impl StableClaimId {
-    pub fn from_old(stable_claim_id: &StableClaimIdOld) -> Self {
-        let claim_id_old = serde_json::to_value(stable_claim_id).unwrap();
-        serde_json::from_value(claim_id_old).unwrap()
-    }
-}
 
 impl Storable for StableClaimId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
@@ -47,13 +39,6 @@ pub struct StableClaim {
     pub attempt_request_id: Vec<u64>,
     pub transfer_ids: Vec<u64>,
     pub ts: u64,
-}
-
-impl StableClaim {
-    pub fn from_old(stable_claim: &StableClaimOld) -> Self {
-        let claim_old = serde_json::to_value(stable_claim).unwrap();
-        serde_json::from_value(claim_old).unwrap()
-    }
 }
 
 impl Storable for StableClaim {
