@@ -6,10 +6,8 @@ use super::request_map;
 use crate::ic::guards::caller_is_not_anonymous;
 use crate::stable_user::user_map;
 
-const MAX_REQUESTS: usize = 100;
-
 #[query(guard = "caller_is_not_anonymous")]
-pub async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> {
+async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> {
     let user_id = match user_map::get_by_caller() {
         Ok(Some(caller)) => caller.user_id,
         Ok(None) | Err(_) => return Ok(Vec::new()),
@@ -20,7 +18,7 @@ pub async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, Stri
             .iter()
             .map(to_request_reply)
             .collect(),
-        None => request_map::get_by_user_id(Some(user_id), MAX_REQUESTS)
+        None => request_map::get_by_user_id(Some(user_id), None)
             .iter()
             .map(to_request_reply)
             .collect(),

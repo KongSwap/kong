@@ -2,6 +2,8 @@ use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
 
 use crate::stable_memory::REQUEST_MAP;
 
+const MAX_REQUESTS: usize = 20;
+
 /// get a request by request_id of the caller
 pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Option<StableRequest> {
     REQUEST_MAP.with(|m| {
@@ -17,7 +19,8 @@ pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Opti
 }
 
 /// get requests filtered by user_id
-pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRequest> {
+pub fn get_by_user_id(user_id: Option<u32>, num_requests: Option<usize>) -> Vec<StableRequest> {
+    let num_requests = num_requests.unwrap_or(MAX_REQUESTS);
     REQUEST_MAP.with(|m| {
         m.borrow()
             .iter()
@@ -28,7 +31,7 @@ pub fn get_by_user_id(user_id: Option<u32>, num_requests: usize) -> Vec<StableRe
                         return None;
                     }
                 }
-                Some(v.clone())
+                Some(v)
             })
             .take(num_requests)
             .collect()
