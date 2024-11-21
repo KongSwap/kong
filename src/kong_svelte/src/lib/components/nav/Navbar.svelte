@@ -55,37 +55,47 @@
   }
 </script>
 
-{#if $themeStore === "modern"}
-  <ModernNavbar
-    {activeTab}
-    {sidebarOpen}
-    {isModalOpen}
-    {isMobile}
-    onTabChange={handleTabChange}
-    onConnect={handleConnect}
-    onOpenSettings={handleOpenSettings}
-  />
-{:else}
-  <PixelNavbar
-    {activeTab}
-    {sidebarOpen}
-    {isModalOpen}
-    {isMobile}
-    onTabChange={handleTabChange}
-    onConnect={handleConnect}
-    onOpenSettings={handleOpenSettings}
-  />
-{/if}
+<div class="nav-wrapper">
+  {#if $themeStore === "modern"}
+    <ModernNavbar
+      {activeTab}
+      {sidebarOpen}
+      {isModalOpen}
+      {isMobile}
+      onTabChange={handleTabChange}
+      onConnect={handleConnect}
+      onOpenSettings={handleOpenSettings}
+    />
+  {:else}
+    <PixelNavbar
+      {activeTab}
+      {sidebarOpen}
+      {isModalOpen}
+      {isMobile}
+      onTabChange={handleTabChange}
+      onConnect={handleConnect}
+      onOpenSettings={handleOpenSettings}
+    />
+  {/if}
 
-<Sidebar {sidebarOpen} onClose={() => (sidebarOpen = false)} />
+  <Sidebar {sidebarOpen} onClose={() => (sidebarOpen = false)} />
 
-<Modal
-  bind:isOpen={isModalOpen}
-  onClose={() => (isModalOpen = false)}
-  title="Settings"
->
-  <Settings />
-</Modal>
+  <Modal
+    bind:isOpen={isModalOpen}
+    onClose={() => (isModalOpen = false)}
+    title="Settings"
+  >
+    <Settings />
+  </Modal>
+</div>
 
 <style>
+  .nav-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--color-background);
+  }
 </style>

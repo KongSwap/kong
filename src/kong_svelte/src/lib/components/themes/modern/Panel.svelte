@@ -33,38 +33,60 @@
         <div class="panel-accent"></div>
     </div>
 </div>
-
 <style lang="postcss">
   .modern-panel {
     @apply relative rounded-xl overflow-hidden;
-    background: #0f172a;
-    border: 1px solid rgba(74, 222, 128, 0.3);
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 24px 48px -12px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(24px);
     transition: all 0.2s ease-out;
     color: white;
   }
 
   .modern-panel.green {
-    border-color: rgba(74, 222, 128, 0.3);
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(32, 201, 151, 0.15);
+    box-shadow: 
+      0 24px 48px -12px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(32, 201, 151, 0.08);
   }
 
   .modern-panel.blue {
-    border-color: rgba(59, 130, 246, 0.3);
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    box-shadow: 
+      0 24px 48px -12px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(59, 130, 246, 0.08);
   }
 
   .modern-panel.yellow {
-    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(250, 204, 21, 0.15);
+    box-shadow: 
+      0 24px 48px -12px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(250, 204, 21, 0.08);
   }
 
   .modern-panel.main {
-    @apply backdrop-blur-sm;
-    background: rgba(15, 23, 42, 0.95);
+    @apply backdrop-blur-2xl;
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+      0 24px 48px -12px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
   .modern-panel.secondary {
-    background: rgba(15, 23, 42, 0.8);
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+      0 16px 32px -8px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .panel-container {
@@ -87,16 +109,16 @@
   }
 
   :global(.modern-panel *::-webkit-scrollbar-track) {
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 3px;
   }
 
   :global(.modern-panel *::-webkit-scrollbar-thumb) {
-    background: rgba(74, 222, 128, 0.3);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
   }
 
   :global(.modern-panel *::-webkit-scrollbar-thumb:hover) {
-    background: rgba(74, 222, 128, 0.5);
+    background: rgba(255, 255, 255, 0.15);
   }
 </style>

@@ -317,7 +317,7 @@
 <style lang="postcss">
   /* Container & Layout */
   .stats-container {
-    @apply flex flex-col gap-6 p-4 relative z-10 max-w-[1440px] mx-auto;
+    @apply flex flex-col gap-6 relative z-10 mx-auto;
   }
 
   /* Market Stats Section */

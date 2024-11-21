@@ -18,6 +18,8 @@
   let slippageValue: number = 2.0;
   let slippageInputValue = '2.0';
   let isMobile = false;
+  let isIcNetwork = process.env.DFX_NETWORK === 'ic';
+  let showClaimButton = !isIcNetwork;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [0.1, 0.5, 1, 2, 3];
@@ -119,6 +121,12 @@
       toastStore.success('Favorites cleared successfully');
     }
   }
+
+  const claimTokens = async () => {
+    await tokenStore.claimFaucetTokens();
+    await tokenStore.loadBalances();
+    toastStore.success('Test tokens claimed successfully');
+  };
 
   function toggleTheme() {
     $themeStore = $themeStore === 'pixel' ? 'modern' : 'pixel';
@@ -255,6 +263,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Development Tools Section -->
+    {#if !isIcNetwork}
+      <div class="setting-section">
+        <div class="setting-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M2 12h20"/>
+          </svg>
+          <h3>Development Tools</h3>
+        </div>
+        <div class="setting-content">
+          <p class="setting-description mb-4">
+            Tools for local development and testing
+          </p>
+          <div class="flex items-center justify-between">
+            <button
+              class="claim-button"
+              on:click={claimTokens}
+            >
+              Claim Test Tokens
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <!-- Favorites Section -->
     <div class="setting-section">
@@ -487,5 +520,9 @@
 
   .setting-description {
     @apply text-sm text-black/70;
+  }
+
+  .claim-button {
+    @apply px-4 py-2 rounded-lg bg-[#eece00] text-black hover:bg-[#eece00]/90 transition-colors duration-200 font-medium;
   }
 </style>

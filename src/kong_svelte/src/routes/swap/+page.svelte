@@ -19,11 +19,6 @@
     return () => unsubscribe();
   });
 
-  const claimTokens = async () => {
-    await tokenStore.claimFaucetTokens();
-    await tokenStore.loadBalances();
-  };
-
   const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
     currentMode = event.detail.mode;
   };
@@ -33,11 +28,9 @@
   });
 </script>
 
-<section class="flex flex-col items-center justify-center">
-    <button on:click={claimTokens}>Claim Tokens</button>
-
+<section class="swap-container">
   {#if $tokenStore.tokens}
-    <div class="flex justify-center mt-8 md:mt-12">
+    <div class="swap-wrapper">
       {#if currentMode === 'normal'}
         <Swap 
           initialFromToken={fromToken} 
@@ -60,4 +53,16 @@
 </section>
 
 <style lang="postcss">
+  .swap-container {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .swap-wrapper {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
 </style>
