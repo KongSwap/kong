@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { CanisterService } from '../services/canisterService';
 import { tokenRoutes } from './tokenRoutes';
-import { poolRoutes } from './poolRoutes';
+import poolRoutes from './poolRoutes';
 import { transactionRoutes } from './transactionRoutes';
 
 export async function registerRoutes(fastify: FastifyInstance, opts: { canisterService: CanisterService }) {

@@ -20,10 +20,14 @@ export class TokenService {
         const tokens = result.Ok;
 
         for (const token of tokens) {
-          const tokenData = "LP" in token ? token.LP : token.IC;
           const type = "LP" in token ? "LP" : "IC";
-
-          await this.upsertToken(type, tokenData);
+          const tokenData = type === "LP" ? token.LP : token.IC;
+          
+          if (tokenData) {
+            await this.upsertToken(type, tokenData);
+          } else {
+            console.warn("Received token without LP or IC data:", token);
+          }
         }
       }
     } catch (error) {

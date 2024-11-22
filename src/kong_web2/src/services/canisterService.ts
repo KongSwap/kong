@@ -13,21 +13,26 @@ type TransactionType = "AddPool" | "AddLiquidity" | "RemoveLiquidity" | "Swap";
 
 export class CanisterService implements ICanisterActor {
   private agent: HttpAgent;
-  private actor: any;
+  public actor: any;
   private isRunning: boolean = false;
   private tokenService: TokenService;
   private poolService: PoolService;
   private transactionService: TransactionService;
 
-  constructor() {
+  constructor(actor?: any, prismaClient?: PrismaClient) {
     this.agent = HttpAgent.createSync();
-    this.actor = Actor.createActor(idlFactory as any, {
-      agent: HttpAgent.createSync(),
-      canisterId: "2ipq2-uqaaa-aaaar-qailq-cai",
-    });
-    this.tokenService = new TokenService(this, prisma);
-    this.poolService = new PoolService(this, prisma);
-    this.transactionService = new TransactionService(this, prisma);
+    if (actor) {
+      this.actor = actor;
+    } else {
+      this.actor = Actor.createActor(idlFactory as any, {
+        agent: HttpAgent.createSync(),
+        canisterId: "2ipq2-uqaaa-aaaar-qailq-cai",
+      });
+    }
+    const db = prismaClient || prisma;
+    this.tokenService = new TokenService(this, db);
+    this.poolService = new PoolService(this, db);
+    this.transactionService = new TransactionService(this, db);
   }
 
   async fetchAndStoreTokens() {
@@ -96,6 +101,10 @@ export class CanisterServiceImpl implements ICanisterActor {
     this.tokenService = new TokenService(canisterActor, prisma);
     this.poolService = new PoolService(canisterActor, prisma);
     this.transactionService = new TransactionService(canisterActor, prisma);
+  }
+
+  get actor() {
+    return this.canisterActor.actor;
   }
 
   async getTokens() {

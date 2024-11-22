@@ -2,8 +2,17 @@ import { Actor } from "@dfinity/agent";
 
 export type TransactionType = "AddPool" | "AddLiquidity" | "RemoveLiquidity" | "Swap";
 
+export type TokenResponse = {
+  LP?: TokenData;
+  IC?: TokenData;
+};
+
 export interface ICanisterActor {
-  actor: Actor;
+  actor: {
+    txs: (args: [boolean]) => Promise<{ Ok: any[] } | { Err: any }>;
+    pools: (args: []) => Promise<{ Ok: { pools: PoolData[] } } | { Err: any }>;
+    tokens: (args: ['all']) => Promise<{ Ok: TokenResponse[] } | { Err: any }>;
+  };
 }
 
 export interface TokenData {
