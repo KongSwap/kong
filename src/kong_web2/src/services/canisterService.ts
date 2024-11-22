@@ -20,12 +20,12 @@ export class CanisterService implements ICanisterActor {
   private transactionService: TransactionService;
 
   constructor(actor?: any, prismaClient?: PrismaClient) {
-    this.agent = HttpAgent.createSync();
+    this.agent = new HttpAgent();
     if (actor) {
       this.actor = actor;
     } else {
       this.actor = Actor.createActor(idlFactory as any, {
-        agent: HttpAgent.createSync(),
+        agent: new HttpAgent(),
         canisterId: "2ipq2-uqaaa-aaaar-qailq-cai",
       });
     }

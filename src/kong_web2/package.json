@@ -2,7 +2,7 @@
   "name": "kong_web2",
   "version": "1.0.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "20.x"
   },
   "description": "Kong data",
   "main": "index.js",
@@ -10,10 +10,13 @@
     "start": "ts-node src/index.ts",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "test:canister": "tsx src/test-canister.ts"
   },
   "dependencies": {
-    "@dfinity/agent": "^0.15.6",
+    "@dfinity/agent": "^0.20.2",
+    "@dfinity/principal": "^0.20.2",
+    "@fastify/cors": "^8.3.0",
     "@prisma/client": "^5.3.1",
     "fastify": "^4.23.2",
     "node-cron": "^3.0.2"
@@ -25,6 +28,7 @@
     "nodemon": "^3.0.1",
     "prisma": "^5.3.1",
     "ts-node": "^10.9.1",
+    "tsx": "^3.12.7",
     "typescript": "^5.2.2"
   }
 }
