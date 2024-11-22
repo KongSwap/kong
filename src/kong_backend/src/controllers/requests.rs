@@ -45,7 +45,46 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
         }
     });
 
-    Ok("Requests archived".to_string())
+    Ok("Requests updated".to_string())
+}
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<RequestReply>, String> {
+    let requests = match request_id {
+        Some(request_id) => request_map::get_by_request_and_user_id(request_id, user_id).into_iter().collect(),
+        None => request_map::get_by_user_id(user_id, MAX_REQUESTS),
+    };
+
+    Ok(requests.iter().map(to_request_reply).collect())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_requests(start_request_id: u64, end_request_id: u64) -> Result<String, String> {
+    REQUEST_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map
+            .range(StableRequestId(start_request_id)..=StableRequestId(end_request_id))
+            .map(|(k, _)| k)
+            .collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive requests removed".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_archive_requests_by_ts(ts: u64) -> Result<String, String> {
+    REQUEST_ARCHIVE_MAP.with(|m| {
+        let mut map = m.borrow_mut();
+        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
+        keys_to_remove.iter().for_each(|k| {
+            map.remove(k);
+        });
+    });
+
+    Ok("Archive requests removed".to_string())
 }
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -65,27 +104,4 @@ fn backup_archive_requests(request_id: Option<u64>, num_requests: Option<u16>) -
         };
         serde_json::to_string(&requests).map_err(|e| format!("Failed to serialize requests: {}", e))
     })
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<RequestReply>, String> {
-    let requests = match request_id {
-        Some(request_id) => request_map::get_by_request_and_user_id(request_id, user_id).into_iter().collect(),
-        None => request_map::get_by_user_id(user_id, MAX_REQUESTS),
-    };
-
-    Ok(requests.iter().map(to_request_reply).collect())
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_archive_requests_by_ts(ts: u64) -> Result<String, String> {
-    REQUEST_ARCHIVE_MAP.with(|m| {
-        let mut map = m.borrow_mut();
-        let keys_to_remove: Vec<_> = map.iter().filter(|(_, v)| v.ts < ts).map(|(k, _)| k).collect();
-        keys_to_remove.iter().for_each(|k| {
-            map.remove(k);
-        });
-    });
-
-    Ok("requests removed".to_string())
 }

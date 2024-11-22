@@ -2,25 +2,19 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-const POOL_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
-
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StablePoolId(pub u32);
 
 impl Storable for StablePoolId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        self.0.to_bytes() // u32 is already Storable
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(u32::from_bytes(bytes))
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // u32 is fixed size
-    const BOUND: Bound = Bound::Bounded {
-        max_size: POOL_ID_SIZE,
-        is_fixed_size: true,
-    };
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -55,6 +49,5 @@ impl Storable for StablePool {
         serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }

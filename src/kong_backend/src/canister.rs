@@ -5,8 +5,7 @@ use serde::Deserialize;
 use std::time::Duration;
 
 use super::stable_memory::{
-    CLAIMS_TIMER_ID, LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID,
-    TX_MAP_ARCHIVE_TIMER_ID,
+    CLAIMS_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID, TX_MAP_ARCHIVE_TIMER_ID,
 };
 use super::{APP_NAME, APP_VERSION};
 
@@ -21,11 +20,10 @@ use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_lp_token_ledger::lp_token_ledger_archive::archive_lp_token_ledger;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
-use crate::stable_transfer::transfer_archive::{archive_transfer_map, remove_transfer_1h_map};
-use crate::stable_tx::tx_archive::{archive_tx_24h_map, archive_tx_map};
+use crate::stable_transfer::transfer_archive::archive_transfer_map;
+use crate::stable_tx::tx_archive::archive_tx_map;
 
 #[init]
 async fn init() {
@@ -42,7 +40,6 @@ async fn init() {
     // start the background timer to process stats
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
-            archive_tx_24h_map(); // archive transaction map for the last 24 hours for calculating rolling stats
             update_pool_stats();
         });
     });
@@ -71,17 +68,6 @@ async fn init() {
         });
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
-
-    // start the background timer to archive LP token ledger
-    let timer_id = set_timer_interval(
-        Duration::from_secs(kong_settings::get().lp_token_ledger_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_lp_token_ledger();
-            });
-        },
-    );
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 }
 
 #[pre_upgrade]
@@ -102,9 +88,6 @@ fn pre_upgrade() {
 
     // clear the background timer for archiving transfer map
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    // clear the background timer for archiving LP token ledger
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
 }
 
 #[post_upgrade]
@@ -120,7 +103,6 @@ async fn post_upgrade() {
     // start the background timer to process stats
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
-            archive_tx_24h_map(); // archive transaction map for the last 24 hours for calculating rolling stats
             update_pool_stats();
         });
     });
@@ -146,21 +128,9 @@ async fn post_upgrade() {
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().transfers_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_transfer_map();
-            remove_transfer_1h_map();
         });
     });
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
-
-    // start the background timer to archive LP token ledger
-    let timer_id = set_timer_interval(
-        Duration::from_secs(kong_settings::get().lp_token_ledger_archive_interval_secs),
-        || {
-            ic_cdk::spawn(async {
-                archive_lp_token_ledger();
-            });
-        },
-    );
-    LP_TOKEN_LEDGER_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }
@@ -182,6 +152,12 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
         format!("https://{}.icp0.io", KONG_BACKEND),
         #[cfg(not(feature = "prod"))]
         format!("http://{}.localhost:4943", KONG_BACKEND),
+        #[cfg(not(feature = "prod"))]
+        format!("http://edoy4-liaaa-aaaar-qakha-cai.localhost:5173"), // svelte FE
+        #[cfg(not(feature = "prod"))]
+        format!("http://edoy4-liaaa-aaaar-qakha-cai.icp0.io"), // svelte FE
+        #[cfg(not(feature = "prod"))]
+        format!("http://localhost:5173"),
         #[cfg(feature = "prod")]
         String::from("https://www.kongswap.io"),
         #[cfg(feature = "prod")]

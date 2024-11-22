@@ -24,8 +24,7 @@ fn update_kong_settings(kong_settings: String) -> Result<String, String> {
     };
 
     KONG_SETTINGS.with(|s| {
-        let mut map = s.borrow_mut();
-        _ = map.set(kong_settings);
+        _ = s.borrow_mut().set(kong_settings);
     });
 
     Ok("Kong settings updated".to_string())

@@ -1,9 +1,8 @@
-use crate::ic::id::caller_principal_id;
 use crate::ic::get_time::get_time;
-use candid::{CandidType, Decode, Encode};
+use crate::ic::id::caller_principal_id;
+use candid::CandidType;
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 // reserved user ids
 // 0: all users - users for stable_messages to broadcast to all users
@@ -19,25 +18,19 @@ pub const SYSTEM_USER_ID: u32 = 2;
 #[allow(dead_code)]
 pub const CLAIMS_TIMER_USER_ID: u32 = 3;
 
-const USER_ID_SIZE: u32 = std::mem::size_of::<u32>() as u32;
-
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StableUserId(pub u32);
 
 impl Storable for StableUserId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        self.0.to_bytes() // u64 is already Storable
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Self(u32::from_bytes(bytes))
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // u32 is fixed size
-    const BOUND: Bound = Bound::Bounded {
-        max_size: USER_ID_SIZE,
-        is_fixed_size: true,
-    };
+    const BOUND: Bound = Bound::Unbounded;
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -80,13 +73,12 @@ impl Default for StableUser {
 
 impl Storable for StableUser {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
-        Cow::Owned(Encode!(self).unwrap())
+        serde_cbor::to_vec(self).unwrap().into()
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
-        Decode!(bytes.as_ref(), Self).unwrap()
+        serde_cbor::from_slice(&bytes).unwrap()
     }
 
-    // unbounded size
     const BOUND: Bound = Bound::Unbounded;
 }

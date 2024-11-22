@@ -87,6 +87,17 @@ impl KongUpdate for KongBackend {
     }
 
     #[allow(dead_code)]
+    async fn update_claims(&self, claims: &str) -> Result<String> {
+        let result = self
+            .agent
+            .update(&self.canister_id, "update_claims")
+            .with_arg(Encode!(&claims)?)
+            .await?;
+        let call_result = Decode!(result.as_slice(), Result<String, String>)?;
+        call_result.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    #[allow(dead_code)]
     async fn update_requests(&self, requests: &str) -> Result<String> {
         let result = self
             .agent
