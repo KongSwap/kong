@@ -301,6 +301,7 @@ const App = () => {
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
+      paca_backend,
       kong_ledger_backend,
     },
     isInitialized,
@@ -596,6 +597,7 @@ const App = () => {
       updateBalance(ckshib_backend, "ckSHIB"),
       updateBalance(dod_backend, "DOD"),
       updateBalance(kong_ledger_backend, "KONG"),
+      updateBalance(paca_backend, "PACA"),
     ]);
 
     // Convert the Map to an object
@@ -662,6 +664,7 @@ const App = () => {
     ckpepe_backend,
     ckshib_backend,
     dod_backend,
+    paca_backend,
     kong_backend,
     kong_ledger_backend,
   ]);

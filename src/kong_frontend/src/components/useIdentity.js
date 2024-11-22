@@ -49,6 +49,7 @@ import {
   useCKSHIBBackendPlug,
   useDODBackendPlug,
   useKONGBackendPlug,
+  usePACABackendPlug
 } from '../Actors/plugActorProviders';
 import { useCkbtcBackend } from '../Actors/CKBTC-ACTOR';
 import { useKingKongFaucetBackend } from '../Actors/KONG-FAUCET-ACTOR';
@@ -99,6 +100,7 @@ import { useCKPEPEBackend } from '../Actors/CKPEPEActor';
 import { useCKSHIBBackend } from '../Actors/CKSHIBActor';
 import { useDODBackend } from '../Actors/DODActor';
 import { useKONGBackend } from '../Actors/KONGActor';
+import { usePacaBackend } from '../Actors/PACA-ACTOR';
 
 import {
   getActor as kong_backend
@@ -164,6 +166,7 @@ const useIdentity = () => {
   const { actor: ckshib_backend } = useCKSHIBBackend();
   const { actor: dod_backend } = useDODBackend();
   const { actor: kong_ledger_backend } = useKONGBackend();
+  const { actor: paca_backend } = usePacaBackend();
 
   const { plugActor: backendKingKongPlug, isInitialized: isInitializedKingKongPlug } = useKingKongBackendPlug();
   const { plugActor: backendKingKongFaucetPlug, isInitialized: isInitializedKingKongFaucetPlug } = useKingKongFaucetBackendPlug();
@@ -213,6 +216,7 @@ const useIdentity = () => {
   const { plugActor: ckshib_backendPlug, isInitialized: isInitializedCkshibPlug } = useCKSHIBBackendPlug();
   const { plugActor: dod_backendPlug, isInitialized: isInitializedDodPlug } = useDODBackendPlug();
   const { plugActor: kong_backendPlug, isInitialized: isInitializedKongPlug } = useKONGBackendPlug();
+  const { plugActor: paca_backendPlug, isInitialized: isInitializedPacaPlug } = usePACABackendPlug();
 
   useEffect(() => {
     // Handle identity changes and session expiration in one effect
@@ -328,6 +332,7 @@ const useIdentity = () => {
       ckshib_backend: identityType === 'ii' ? ckshib_backend : ckshib_backendPlug,
       dod_backend: identityType === 'ii' ? dod_backend : dod_backendPlug,
       kong_ledger_backend: identityType === 'ii' ? kong_ledger_backend : kong_backendPlug,
+      paca_backend: identityType === 'ii' ? paca_backend : paca_backendPlug,
     },
     isInitialized: identityType === 'ii'
     ? !!backendKingKong

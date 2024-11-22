@@ -48,6 +48,7 @@ import { idlFactory as ckpepeIdlFactory, canisterId as ckpepeCanisterId } from '
 import { idlFactory as ckshibIdlFactory, canisterId as ckshibCanisterId } from '../../../declarations/ckshib_ledger/index.js';
 import { idlFactory as dodIdlFactory, canisterId as dodCanisterId } from '../../../declarations/dod_ledger/index.js';
 import { idlFactory as kongIdlFactory, canisterId as kongCanisterId } from '../../../declarations/kong_ledger/index.js';
+import { idlFactory as pacaIdlFactory, canisterId as pacaCanisterId } from '../../../declarations/paca_ledger/index.js';
 
 export const {
   PlugWalletActorProvider: CkbtcActorProviderPlug,
@@ -288,3 +289,8 @@ export const {
   PlugWalletActorProvider: KONGActorProviderPlug,
   usePlugWalletActor: useKONGBackendPlug,
 } = createPlugWalletActorProvider(kongIdlFactory, kongCanisterId);
+
+export const {
+  PlugWalletActorProvider: PACAActorProviderPlug,
+  usePlugWalletActor: usePACABackendPlug,
+} = createPlugWalletActorProvider(pacaIdlFactory, pacaCanisterId);

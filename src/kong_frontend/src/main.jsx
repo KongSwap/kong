@@ -105,6 +105,7 @@ import {
 } from "./Actors/plugActorProviders";
 import NICPActor from "./Actors/NICPActor";
 import WTNActor from "./Actors/WTNActor";
+import PACAActor from "./Actors/PACAActor";
 import NotFoundPage from "./components/NotFoundPage";
 
 const router = createBrowserRouter([
@@ -234,15 +235,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                                                                                                                                                                                               <GHOSTActor>
                                                                                                                                                                                                 <GLDTActor>
                                                                                                                                                                                                   <DODActor>
-                                                                                                                                                                                                    <KONGActorProviderPlug>
+                                                                                                                                                                                                    <PACAActor>
+                                                                                                                                                                                                      <KONGActorProviderPlug>
                                                                                                                                                                                                         <KONGActor>
-                                                                                                                                                                                                            <RouterProvider
-                                                                                                                                                                                                              router={
-                                                                                                                                                                                                                router
-                                                                                                                                                                                                              }
-                                                                                                                                                                                                            ></RouterProvider>
+                                                                                                                                                                                                          <RouterProvider
+                                                                                                                                                                                                            router={
+                                                                                                                                                                                                              router
+                                                                                                                                                                                                            }
+                                                                                                                                                                                                          ></RouterProvider>
                                                                                                                                                                                                         </KONGActor>
-                                                                                                                                                                                                    </KONGActorProviderPlug>
+                                                                                                                                                                                                      </KONGActorProviderPlug>
+                                                                                                                                                                                                    </PACAActor>
                                                                                                                                                                                                   </DODActor>
                                                                                                                                                                                                 </GLDTActor>
                                                                                                                                                                                               </GHOSTActor>
