@@ -1,6 +1,7 @@
 import { kongDB } from '../db';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
-import { createAnonymousActorHelper, canisterIDLs } from '../auth';
+import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
+import { canisterIDLs } from '$lib/services/pnp/PnpInitializer';
 import { writable, get } from 'svelte/store';
 import type { KongImage } from './types';
 

@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Token Models
+model Token {
+  id        Int      @id @default(autoincrement())
+  tokenId   Int      @map("token_id")
+  poolSymbol String  @map("pool_symbol")
+  name      String
+  chain     String
+  symbol    String
+  token     String
+  onKong    Boolean  @map("on_kong")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Discriminator for token type
+  type      String   // "LP" or "IC"
+
+  // LP Token specific fields
+  poolIdOf    Int?     @map("pool_id_of")
+  address     String?
+  decimals    Int?
+  fee         Decimal?  @db.Decimal(65,0)
+  totalSupply Decimal?  @db.Decimal(65,0) @map("total_supply")
+
+  // IC Token specific fields
+  canisterId  String?  @map("canister_id")
+  icrc1       Boolean? 
+  icrc2       Boolean?
+  icrc3       Boolean?
+
+  @@unique([tokenId, type])
+  @@map("tokens")
+}
+
+// Pool Models
+model Pool {
+  id                Int      @id @default(autoincrement())
+  poolId           Int      @unique @map("pool_id")
+  name             String
+  symbol           String
+  balance          Decimal   @db.Decimal(65,0) // USD value
+  
+  // Token 0 info
+  chain0           String   @map("chain_0")
+  symbol0          String   @map("symbol_0")
+  address0         String   @map("address_0")
+  balance0         Decimal  @db.Decimal(65,0) @map("balance_0")
+  lpFee0           Decimal  @db.Decimal(65,0) @map("lp_fee_0")
+  
+  // Token 1 info
+  chain1           String   @map("chain_1")
+  symbol1          String   @map("symbol_1")
+  address1         String   @map("address_1")
+  balance1         Decimal  @db.Decimal(65,0) @map("balance_1")
+  lpFee1           Decimal  @db.Decimal(65,0) @map("lp_fee_1")
+  
+  price            Float
+  lpFeeBps         Int      @map("lp_fee_bps")
+  
+  // 24h stats
+  rolling24hVolume     Decimal   @db.Decimal(65,0) @map("rolling_24h_volume")
+  rolling24hLpFee      Decimal   @db.Decimal(65,0) @map("rolling_24h_lp_fee")
+  rolling24hNumSwaps   Int       @map("rolling_24h_num_swaps")
+  rolling24hApy        Float     @map("rolling_24h_apy")
+  
+  // LP token info
+  lpTokenSymbol    String   @map("lp_token_symbol")
+  lpTokenSupply    Decimal  @db.Decimal(65,0) @map("lp_token_supply")
+  
+  // Lifetime stats
+  totalVolume      Decimal  @db.Decimal(65,0) @map("total_volume")
+  totalLpFee       Decimal  @db.Decimal(65,0) @map("total_lp_fee")
+  
+  onKong           Boolean  @map("on_kong")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  transactions     Transaction[]
+
+  @@map("pools")
+}
+
+// Transaction Models
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  txId      Decimal  @unique @db.Decimal(65,0) @map("tx_id")
+  type      String   // "AddPool", "AddLiquidity", "RemoveLiquidity", "Swap"
+  poolId    Int?     @map("pool_id")
+  pool      Pool?    @relation(fields: [poolId], references: [poolId])
+  timestamp DateTime @default(now())
+  
+  // Common fields that might be used across different transaction types
+  amount0   Decimal?
+  amount1   Decimal?
+  
+  // Additional metadata
+  metadata  Json?    // Store type-specific data as JSON
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("transactions")
+}
+
+// Stats/Metrics for Pools
+model PoolStats {
+  id              Int      @id @default(autoincrement())
+  totalTvl        Decimal  @db.Decimal(65,0) @map("total_tvl")
+  total24hVolume  Decimal  @db.Decimal(65,0) @map("total_24h_volume")
+  total24hLpFee   Decimal  @db.Decimal(65,0) @map("total_24h_lp_fee")
+  total24hNumSwaps Int     @map("total_24h_num_swaps")
+  timestamp       DateTime @default(now())
+
+  @@map("pool_stats")
+}

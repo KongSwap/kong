@@ -6,7 +6,6 @@ export const parseTokens = (
     return { Err: data.Err };
   }
   try {
-    console.log('Parsing token data:', data);
     // Extract IC tokens and map them to FE.Token[]
     const icTokens: FE.Token[] = data.Ok.filter(
       (token): token is { IC: BE.ICToken } => {
@@ -38,8 +37,6 @@ export const parseTokens = (
       } as FE.Token;
       return result;
     });
-
-    console.log('Final parsed tokens:', icTokens);
     return { Ok: icTokens };
   } catch (error) {
     console.error('Error parsing tokens:', error);

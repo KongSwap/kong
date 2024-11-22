@@ -13,6 +13,7 @@ import { idlFactory as icrc2idl } from "../../../../declarations/ckusdt_ledger";
 import { Actor, HttpAgent, AnonymousIdentity } from "@dfinity/agent";
 import { getPnpInstance } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 
 // Export the list of available wallets
 export const availableWallets = walletsList;
@@ -30,21 +31,21 @@ export const canisterIDLs = {
 };
 
 // Helper function to create anonymous actor
-export const createAnonymousActorHelper = async (canisterId: string, idl: any) => {
-  const agent = HttpAgent.createSync({
-    host: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://icp0.io",
-  });
+// export const createAnonymousActorHelper = async (canisterId: string, idl: any) => {
+//   const agent = HttpAgent.createSync({
+//     host: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://icp0.io",
+//   });
 
-  // Always fetch root key in local development
-  if (process.env.DFX_NETWORK !== "ic") {
-    await agent.fetchRootKey().catch(console.error);
-  }
+//   // Always fetch root key in local development
+//   if (process.env.DFX_NETWORK !== "ic") {
+//     await agent.fetchRootKey().catch(console.error);
+//   }
 
-  return Actor.createActor(idl as any, {
-    agent,
-    canisterId,
-  });
-};
+//   return Actor.createActor(idl as any, {
+//     agent,
+//     canisterId,
+//   });
+// };
 
 function createAuthStore(pnp: PNP) {
   // Create a single source of truth for the store

@@ -20,6 +20,7 @@ import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { canisterIDLs } from "../pnp/PnpInitializer";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -45,14 +46,9 @@ export class TokenService {
 
       while (retries > 0) {
         try {
-          actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
-            anon: true, // Use anonymous actor to avoid identity issues
-          });
-          console.log("Got actor:", actor);
+          actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
           const result = await actor.tokens(["all"]);
-          console.log("Raw token result:", result);
           const parsed = parseTokens(result);
-          console.log("Parsed tokens:", parsed);
 
           if (parsed.Err) {
             console.error('Error parsing tokens:', parsed.Err);
@@ -60,7 +56,6 @@ export class TokenService {
           }
 
           const deduplicatedTokens = this.deduplicateTokens(parsed.Ok);
-          console.log('Final tokens:', deduplicatedTokens);
 
           // Cache the tokens
           await Promise.all(
@@ -568,7 +563,7 @@ export class TokenService {
 
   public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
     try {
-      const actor = await auth.getActor(canisterId, "icrc1", {anon: true});
+      const actor = await createAnonymousActorHelper(canisterId, "icrc1");
       return await actor.icrc1_metadata();
     } catch (error) {
       console.error("Error getting icrc1 token metadata:", error);
@@ -580,14 +575,14 @@ export class TokenService {
     principalId: string,
     tokenId = "",
   ): Promise<any> {
-    const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
+    const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
     return await actor.txs([true]);
   }
 
   public static async claimFaucetTokens(): Promise<any> {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
-      const actor = await auth.getActor(kongFaucetId, canisterIDLs.kong_faucet, {anon: false});
+      const actor = await createAnonymousActorHelper(kongFaucetId, canisterIDLs.kong_faucet);
       return await actor.claim();
     } catch (error) {
       console.error("Error claiming faucet tokens:", error);
@@ -655,9 +650,9 @@ export class TokenService {
         // ICP's fee is typically 10,000 e8s (0.0001 ICP)
         return BigInt(10000);
       } else {
-        const actor = await auth.getActor(token.canister_id, "icrc1", {anon: true});
+        const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
         const fee = await actor.icrc1_fee();
-        return fee;
+        return BigInt(fee.toString());
       }
     } catch (error) {
       console.error(`Error fetching fee for ${token.symbol}:`, error);
