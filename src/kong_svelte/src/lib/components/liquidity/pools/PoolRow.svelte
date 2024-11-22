@@ -40,7 +40,7 @@
     });
   
     function handleAddLiquidity() {
-      showPoolDetails = true;
+      onAddLiquidity(pool.address_0, pool.address_1);
     }
   
     function handleAddLiquidityClose() {

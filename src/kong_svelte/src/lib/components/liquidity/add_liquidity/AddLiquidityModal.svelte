@@ -12,8 +12,15 @@
     import { page } from '$app/stores';
     import Modal from "$lib/components/common/Modal.svelte";
   
-    let token0: FE.Token | null = null;
-    let token1: FE.Token | null = null;
+    // Props
+    export let showModal = false;
+    export let onClose: () => void;
+    export let initialToken0: FE.Token | null = null;
+    export let initialToken1: FE.Token | null = null;
+
+    // Local state
+    let token0 = initialToken0;
+    let token1 = initialToken1;
     let amount0: string = "";
     let amount1: string = "";
     let loading = false;
@@ -39,10 +46,14 @@
     let statusMessage: string = "";
   
     let previewMode = false;
-  
-    // Add confirmation modal state
     let showReview = false;
-  
+
+    // Update tokens when props change
+    $: {
+      if (initialToken0 !== token0) token0 = initialToken0;
+      if (initialToken1 !== token1) token1 = initialToken1;
+    }
+
     // Handle URL parameters
     async function initializeFromParams() {
       const token0Id = $page.url.searchParams.get('token0');
@@ -359,23 +370,14 @@
       const currentStep = statusSteps.find(step => !step.completed);
       return currentStep ? currentStep.label : 'Success';
     }
-  
-    export let showModal = false;
-    export let onClose: () => void;
-  
+
     function handleClose() {
-        showModal = false;
-        onClose?.();
+      showModal = false;
+      onClose?.();
     }
   </script>
   
-  <Modal
-    show={showModal}
-    title="Add Liquidity"
-    onClose={handleClose}
-    variant="green"
-    width="800px"
-  >
+  <Modal {onClose} isOpen={showModal} title="Add Liquidity" variant="green" width="800px">
     <div class="min-w-3xl w-full flex flex-col justify-center space-y-8">
       <div class="bg-white dark:bg-emerald-900/70 dark:bg-opacity-80 dark:backdrop-blur-md rounded-2xl shadow-lg p-6 w-full">
         <AddLiquidityForm
@@ -384,19 +386,15 @@
           {amount0}
           {amount1}
           {loading}
-          {previewMode}
           {error}
-          {statusSteps}
-          {showReview}
+          {poolShare}
           {token0Balance}
           {token1Balance}
-          getCurrentStep={getCurrentStep}
-          onTokenSelect={handleTokenSelect}
-          onInput={handleInput}
-          onSubmit={handleSubmit}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
           {isProcessingOutput}
+          on:updateAmount0={(e) => calculateLiquidityAmount(e.detail, 0)}
+          on:updateAmount1={(e) => calculateLiquidityAmount(e.detail, 1)}
+          on:selectToken0={() => handleTokenSelect(0)}
+          on:selectToken1={() => handleTokenSelect(1)}
         />
       </div>
     </div>
@@ -412,3 +410,12 @@
     onSelect={selectToken}
   />
   
+  <style>
+    :global(.dark) .dark\:bg-emerald-800 {
+      background-color: rgba(6, 95, 70, var(--tw-bg-opacity));
+    }
+    
+    :global(.dark) .dark\:hover\:bg-gray-700:hover {
+      background-color: rgba(55, 65, 81, var(--tw-bg-opacity));
+    }
+  </style>
