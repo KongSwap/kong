@@ -1,5 +1,7 @@
 import { getActor, walletStore } from './walletStore';
 import { get } from 'svelte/store';
+import { Actor } from '@dfinity/agent';
+import { idlFactory as kongIdl, canisterId as kongCanisterId } from '../../../../../declarations/kong_backend';
 
 export class WalletService {
   protected static instance: WalletService;
@@ -13,13 +15,16 @@ export class WalletService {
 
   public static async getWhoami(): Promise<BE.User> {
 
-    const isWalletConnected = get(walletStore).isConnected;
-    if (!isWalletConnected) {
+    const wallet = get(walletStore);
+    if (!wallet.isConnected) {
       return null;
     }
     try {
-      const actor = await getActor();
-      const result = await actor.get_user();
+      const actor = Actor.createActor(kongIdl as any, {
+        agent: wallet.agent,
+        canisterId: kongCanisterId
+      });
+      const result: any = await actor.get_user();
       return result.Ok;
     } catch (error) {
       console.error('Error calling get_user method:', error);

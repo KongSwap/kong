@@ -5,7 +5,7 @@
   import { fade, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
 
-  export let show = false;
+  export let isOpen = false;
   export let title: string;
   export let onClose: () => void;
   export let variant: "green" | "yellow" = "green";
@@ -19,44 +19,45 @@
   onMount(() => {
     if (browser) {
       const updateDimensions = () => {
-        const windowWidth = window.innerWidth;
-        if (windowWidth <= 768) {
-          const calculatedWidth = Math.max(300, Math.min(windowWidth - 25, 600));
-          modalWidth = `${calculatedWidth}px`;
-          modalHeight = "90vh";
-        } else {
-          modalWidth = width;
-          modalHeight = height;
-        }
-        isMobile = windowWidth <= 768;
+        isMobile = window.innerWidth <= 768;
+        modalWidth = isMobile ? "100%" : width;
+        modalHeight = isMobile ? "100%" : height;
       };
-      
       updateDimensions();
       window.addEventListener('resize', updateDimensions);
-      
-      return () => {
-        window.removeEventListener('resize', updateDimensions);
-      };
+      return () => window.removeEventListener('resize', updateDimensions);
     }
   });
+
+  function handleBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  }
+
+  function handleEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      onClose();
+    }
+  }
 </script>
 
-{#if show}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div 
-    class="modal-overlay" 
-    on:click={onClose}
+<svelte:window on:keydown={handleEscape} />
+
+{#if isOpen}
+  <div
+    class="modal-overlay"
+    on:click={handleBackdropClick}
+    transition:fade={{ duration: 200 }}
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
-    transition:fade={{ duration: 200 }}
   >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div 
+    <div
       class="modal-container"
       on:click|stopPropagation
       transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
+      style="width: {modalWidth}; height: {modalHeight};"
     >
       <Panel 
         variant={variant}

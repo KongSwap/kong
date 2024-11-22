@@ -9,6 +9,7 @@ import { toastStore } from "$lib/stores/toastStore";
 import { eventBus } from './eventBus';
 import { walletStore } from "$lib/services/wallet/walletStore";
 import { liveQuery } from "dexie";
+import { queueSignatureRequest } from '../wallet/walletStore';
 
 BigNumber.config({
   DECIMAL_PLACES: 36,

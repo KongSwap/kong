@@ -1,39 +1,60 @@
 import { getActor, type CanisterType } from '$lib/services/wallet/walletStore';
 import { Principal } from '@dfinity/principal';
-import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
+import { canisterId as kongBackendCanisterId, idlFactory as kongBackendIdl } from '../../../../../declarations/kong_backend';
+import { idlFactory as icrcIdl } from '../../../../../declarations/ckusdt_ledger';
+import { Actor } from '@dfinity/agent';
+import { get } from 'svelte/store';
+import { walletStore } from '$lib/services/wallet/walletStore';
 
 export class IcrcService {
-  private static async getActorWithCheck(canister_id: string, interfaceName: CanisterType) {
-    const actor = await getActor(canister_id, interfaceName);
-    if (!actor) {
-      throw new Error(`Actor for ${interfaceName} not available`);
+  private static async getActorWithCheck(canister_id: string, interfaceName: CanisterType, signed = true) {
+    try {
+      const store = get(walletStore);
+      if (signed && !store.isConnected) {
+        throw new Error('Wallet connection required for this operation');
+      }
+
+      const actor = await getActor(canister_id, interfaceName, signed);
+      if (!actor) {
+        throw new Error(`Actor for ${interfaceName} not available`);
+      }
+      return actor;
+    } catch (error) {
+      console.error(`Error getting actor for ${interfaceName}:`, error);
+      throw new Error(`Failed to initialize actor for ${interfaceName}. Please ensure your wallet is connected.`);
     }
-    return actor;
   }
 
   private static handleError(methodName: string, error: any) {
     console.error(`Error in ${methodName}:`, error);
+    if (error?.message?.includes('body') || error?.message?.includes('Wallet connection required')) {
+      throw new Error('Please connect your wallet to proceed with this operation.');
+    }
     throw error;
   }
 
-  public static async getIcrc1Balance(token: FE.Token, principal: Principal): Promise<bigint> {
-    if (!token?.canister_id) {
-      return BigInt(0);
-    }
+  public static async getIcrc1Balance(
+    token: FE.Token,
+    principal: Principal,
+  ): Promise<bigint> {
     try {
-      const actor = await getActor(token.canister_id, 'icrc1');
-      return actor.icrc1_balance_of({
+      // Use unsigned actor for balance checks
+      const actor = await this.getActorWithCheck(token.canister_id, "icrc1", false);
+      console.log("Principal:", principal);
+      const balance = await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
       });
+      return balance;
     } catch (error) {
-      this.handleError('getIcrc1Balance', error);
+      console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
+      return BigInt(0);
     }
   }
 
   public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
     try {
-      const actor = await getActor(canister_id, 'icrc1');
+      const actor = await this.getActorWithCheck(canister_id, 'icrc1', false);
       return await actor.icrc1_metadata();
     } catch (error) {
       this.handleError('getIcrc1TokenMetadata', error);
@@ -44,10 +65,31 @@ export class IcrcService {
     token: FE.Token, 
     payAmount: bigint,
   ): Promise<bigint> {
+    if (!token?.canister_id) {
+      throw new Error('Invalid token: missing canister_id');
+    }
+
     try {
-      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
+      const store = get(walletStore);
+      if (!store.isConnected || !store.signerAgent) {
+        throw new Error('Please connect your wallet to proceed with this operation.');
+      }
+
+      // Create actor with signing capabilities using the standard ICRC2 interface
+      const actor = await getActor(token.canister_id, 'icrc2', true);
+
+      const result = await actor.icrc2_allowance({
+        account: { owner: store.account.owner, subaccount: [] },
+        spender: { 
+          owner: Principal.fromText(kongBackendCanisterId), 
+          subaccount: [] 
+        }
+      });
+      console.log('ICRC2 allowance result:', result);
+
       const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
-      const totalAmount = payAmount + token.fee;
+      const totalAmount = payAmount + (token.fee || BigInt(0));
+      
       const approveArgs = {
         fee: [],
         memo: [],
@@ -61,13 +103,27 @@ export class IcrcService {
           subaccount: [] 
         }
       };
-      const result = await actor.icrc2_approve(approveArgs);
+
+      console.log('Sending ICRC2 approve request with args:', approveArgs);
+      const result2: any = await actor.icrc2_approve(approveArgs);
+      console.log('ICRC2 approve result:', result2);
+
+      if (!result) {
+        throw new Error('ICRC2 approve call returned undefined');
+      }
+      
       if ('Err' in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
       }
+
       return result.Ok;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.includes('wallet')) {
+        throw error; // Pass through wallet connection errors directly
+      }
+      console.error('ICRC2 approve error:', error);
       this.handleError('checkAndRequestIcrc2Allowances', error);
+      throw error;
     }
   }
 
@@ -77,7 +133,7 @@ export class IcrcService {
     spender: Principal
   ): Promise<bigint> {
     try {
-      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
+      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2', false);
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
         spender: { 

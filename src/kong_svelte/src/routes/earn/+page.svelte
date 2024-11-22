@@ -110,7 +110,6 @@
 
   .pools-content {
     width: 100%;
-    max-width: 1200px;
   }
 
   .section-selector {
@@ -121,21 +120,7 @@
     z-index: 10;
   }
 
-  .mode-selector {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    position: relative;
-    z-index: 10;
-  }
-
   @media (max-width: 768px) {
-    .pools-container {
-      padding: 12px;
-    }
-  }
-
-  @media (min-width: 769px) {
     .pools-container {
       padding: 12px;
     }

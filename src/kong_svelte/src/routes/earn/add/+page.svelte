@@ -4,8 +4,8 @@
   import { onMount } from "svelte";
   import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
   import { get } from "svelte/store";
-  import AddLiquidityForm from "$lib/components/liquidity/AddLiquidityForm.svelte";
-  import TokenSelectionModal from "$lib/components/liquidity/TokenSelectionModal.svelte";
+  import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
+  import TokenSelectionModal from "$lib/components/liquidity/add_liquidity/TokenSelectionModal.svelte";
   import { debounce } from "lodash-es";
   import {
     parseTokenAmount,
