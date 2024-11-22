@@ -75,7 +75,7 @@ export class TransactionService {
         take: Math.min(limit, 1000), // Cap at 1000 to prevent overload
         skip: offset,
         orderBy: {
-          timestamp: 'desc'
+          txId: 'asc'  // Order by transaction ID ascending to match canister order
         }
       });
 

@@ -15,7 +15,7 @@ export async function transactionRoutes(fastify: FastifyInstance, opts: { canist
 
   // Get transactions with pagination
   fastify.get('/', async (request, reply) => {
-    const { limit = '10', offset = '0' } = request.query as { limit?: string, offset?: string };
+    const { limit = '100', offset = '0' } = request.query as { limit?: string, offset?: string };
     try {
       const transactions = await opts.canisterService.getTransactions(
         parseInt(limit),
