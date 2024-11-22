@@ -563,7 +563,7 @@ export async function restoreWalletConnection() {
       if (storedWalletId === "ii") {
         await connectWithInternetIdentity();
       } else if (storedWalletId === "nfid") {
-        await connectWithNFID();
+        await connectWithNFID('nfid');
       } else if (storedWalletId === "oisy") {
         await connectWithOisy();
       }
