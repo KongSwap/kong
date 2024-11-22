@@ -1,14 +1,25 @@
 export const parseTokens = (
   data: Result<BE.Token[]>,
 ): Result<FE.Token[]> => {
-  if (data.Err) return { Err: data.Err };
+  if (data.Err) {
+    console.error('Error in token data:', data.Err);
+    return { Err: data.Err };
+  }
   try {
+    console.log('Parsing token data:', data);
     // Extract IC tokens and map them to FE.Token[]
     const icTokens: FE.Token[] = data.Ok.filter(
-      (token): token is { IC: BE.ICToken } => token.IC !== undefined,
+      (token): token is { IC: BE.ICToken } => {
+        const hasIC = token.IC !== undefined;
+        if (!hasIC) {
+          console.log('Filtered out non-IC token:', token);
+        }
+        return hasIC;
+      }
     ).map((token) => {
+      console.log('Processing token:', token);
       const icToken = token.IC;
-      return {
+      const result = {
         canister_id: icToken.canister_id,
         name: icToken.name,
         symbol: icToken.symbol,
@@ -30,10 +41,14 @@ export const parseTokens = (
         tvl: 0,
         balance: 0n,
       } as FE.Token;
+      console.log('Processed token:', result);
+      return result;
     });
 
+    console.log('Final parsed tokens:', icTokens);
     return { Ok: icTokens };
   } catch (error) {
+    console.error('Error parsing tokens:', error);
     return {
       Err: error instanceof Error ? error.message : "Failed to serialize token",
     };

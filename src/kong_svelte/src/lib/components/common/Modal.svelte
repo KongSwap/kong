@@ -4,6 +4,7 @@
   import Panel from './Panel.svelte';
   import { fade, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
+  import Portal from "svelte-portal";
 
   export let show = false;
   export let title: string;
@@ -41,6 +42,7 @@
   });
 </script>
 
+<Portal target="body">
 {#if show}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -98,6 +100,7 @@
     </div>
   </div>
 {/if}
+</Portal> 
 
 <style>
   .modal-overlay {

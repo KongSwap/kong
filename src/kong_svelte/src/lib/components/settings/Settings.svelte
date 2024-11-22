@@ -10,7 +10,7 @@
   import Dexie from 'dexie';
   import { assetCache } from '$lib/services/assetCache';
   import { onMount, onDestroy } from "svelte";
-  import { walletStore } from '$lib/services/wallet/walletStore';
+  import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
 
@@ -86,7 +86,7 @@
   }
 
   function handleToggleSound(event: CustomEvent<boolean>) {
-    if ($walletStore.isConnected) {
+    if ($auth.isConnected) {
       settingsStore.updateSetting('sound_enabled', event.detail);
       soundEnabled = event.detail;
     } else {

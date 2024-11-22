@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
   
-  $: connectionStatus = $walletStore.isConnected ? 'Connected' : 'Disconnected';
+  $: connectionStatus = $auth?.isConnected ? 'Connected' : 'Disconnected';
 </script>
 
 <div class="tab-panel">
@@ -11,14 +11,11 @@
       <div class="status-item">
         <span class="status-label">Status:</span>
         <p class="status">
-          <span class="status-dot" class:connected={$walletStore.isConnected}></span>
+          <span class="status-dot" class:connected={$auth.isConnected}></span>
           {connectionStatus}
         </p>
       </div>
 
-      {#if $walletStore.error}
-        <p class="error-message">Error: {$walletStore.error.message}</p>
-      {/if}
     </div>
   </div>
 </div>

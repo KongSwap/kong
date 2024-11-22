@@ -1,15 +1,10 @@
-import { getActor, type CanisterType } from '$lib/services/wallet/walletStore';
+import { auth, type CanisterType } from '$lib/services/auth';
+import { canisterIDLs } from '$lib/services/pnp/PnpInitializer';
 import { Principal } from '@dfinity/principal';
 import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
+import { get } from 'svelte/store';
 
 export class IcrcService {
-  private static async getActorWithCheck(canister_id: string, interfaceName: CanisterType) {
-    const actor = await getActor(canister_id, interfaceName);
-    if (!actor) {
-      throw new Error(`Actor for ${interfaceName} not available`);
-    }
-    return actor;
-  }
 
   private static handleError(methodName: string, error: any) {
     console.error(`Error in ${methodName}:`, error);
@@ -22,8 +17,9 @@ export class IcrcService {
     }
     try {
       // Use ICRC-2 actor since it's a superset of ICRC-1
-      const actor = await getActor(token.canister_id, 'icrc2');
-      return actor.icrc1_balance_of({
+      const wallet = get(auth);
+      const actor = await auth.getActor(token.canister_id, canisterIDLs['icrc2'], {anon: true});
+      return await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
       });
@@ -34,7 +30,8 @@ export class IcrcService {
 
   public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
     try {
-      const actor = await getActor(canister_id, 'icrc1');
+      const wallet = get(auth);
+      const actor = await auth.getActor(canister_id, canisterIDLs['icrc1']);
       return await actor.icrc1_metadata();
     } catch (error) {
       this.handleError('getIcrc1TokenMetadata', error);
@@ -46,15 +43,59 @@ export class IcrcService {
     payAmount: bigint,
   ): Promise<bigint> {
     try {
-      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
+
+      console.log("[ICRC Debug] Checking allowances:", {
+        token: token.symbol,
+        payAmount: payAmount.toString()
+      });
+  
+      const wallet = get(auth);
+      const principal = await wallet.account.owner
+      
+      console.log("[ICRC Debug] Current principal:", principal.toString());
+      
+      // Create actor with retries
+      let actor;
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          actor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
+            anon: false,
+          });
+          console.log("[ICRC Debug] WALLET", wallet);
+          console.log("[ICRC Debug] Got actor for allowance check");
+
+          break;
+        } catch (error) {
+          console.warn(`Actor creation attempt failed, ${retries - 1} retries left:`, error);
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s between retries
+        }
+      }
+      
       const expiresAt = BigInt(Date.now()) * BigInt(1_000_000) + BigInt(60_000_000_000);
       const totalAmount = payAmount + token.fee;
+
+      // First check if we already have sufficient allowance
+      console.log('Checking allowance for', wallet.account.owner.toString());
+      const currentAllowance = await this.checkIcrc2Allowance(
+        token,
+        wallet.account.owner,
+        Principal.fromText(kongBackendCanisterId)
+      );
+
+      if (currentAllowance >= totalAmount) {
+        console.log('Sufficient allowance already exists:', currentAllowance.toString());
+        return currentAllowance;
+      }
+
       const approveArgs = {
         fee: [],
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: totalAmount,
+        amount: BigInt(totalAmount),
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: { 
@@ -62,10 +103,57 @@ export class IcrcService {
           subaccount: [] 
         }
       };
-      const result = await actor.icrc2_approve(approveArgs);
-      if ('Err' in result) {
-        throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
+
+      // Fetch balance with retries
+      let balance;
+      retries = 3;
+      while (retries > 0) {
+        try {
+          balance = await actor.icrc1_balance_of({
+            owner: wallet.account.owner,
+            subaccount: [],
+          });
+          break;
+        } catch (error) {
+          console.warn(`Balance check attempt failed, ${retries - 1} retries left:`, error);
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
+      
+      console.log("BALANCE", balance);
+
+      // Approve with retries
+      let result;
+      retries = 3;
+      while (retries > 0) {
+        try {
+          actor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
+            anon: false,
+          });
+          result = await actor.icrc2_approve(approveArgs);
+          break;
+        } catch (error) {
+          console.warn(`Approve attempt failed, ${retries - 1} retries left:`, error);
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if ('Err' in result) {
+        // Convert BigInt to string in the error object
+        const serializedError = JSON.stringify(result.Err, (key, value) => 
+            typeof value === 'bigint' ? value.toString() : value
+        , 2);
+        
+        console.error('ICRC2 approve error:', serializedError);
+        throw new Error(`ICRC2 approve error: ${serializedError}`);
+    }
+    
+      
+      console.log('ICRC2 approve success:', result.Ok.toString());
       return result.Ok;
     } catch (error) {
       this.handleError('checkAndRequestIcrc2Allowances', error);
@@ -78,7 +166,12 @@ export class IcrcService {
     spender: Principal
   ): Promise<bigint> {
     try {
-      const actor = await this.getActorWithCheck(token.canister_id, 'icrc2');
+      console.log('Checking allowance for', owner.toString());
+      console.log('Spender:', spender.toString());
+      console.log('Token:', token.canister_id);
+      const wallet = get(auth);
+      const walletId = wallet.account?.owner?.toString() || "anonymous";
+      const actor = await auth.getActor(token.canister_id, canisterIDLs['icrc2']);
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
         spender: { 
@@ -104,7 +197,7 @@ export class IcrcService {
     } = {}
   ): Promise<Result<bigint>> {
     try {
-      const actor = await this.getActorWithCheck(token.canister_id, 'icrc1');
+      const actor = await auth.getActor(token.canister_id, 'icrc1');
       const toPrincipal = typeof to === 'string' ? Principal.fromText(to) : to;
 
       const transferArgs = {
@@ -142,7 +235,7 @@ export class IcrcService {
     } = {}
   ): Promise<{ Ok?: bigint; Err?: any }> {
     try {
-      const actor = await this.getActorWithCheck(canister_id, 'icrc2');
+      const actor = await auth.getActor(canister_id, 'icrc2');
       const transferArgs = {
         from: {
           owner: from,

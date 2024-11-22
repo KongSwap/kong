@@ -1,6 +1,6 @@
 import { kongDB } from '../db';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
-import { getActor } from '../wallet/walletStore';
+import { createAnonymousActorHelper, auth, canisterIDLs } from '../auth';
 import { writable, get } from 'svelte/store';
 import type { KongImage } from './types';
 
@@ -201,19 +201,39 @@ export async function fetchTokenLogo(token: FE.Token): Promise<string> {
       return DEFAULT_LOGOS[ICP_CANISTER_ID];
     }
 
-    const actor = await getActor(token.canister_id, 'icrc1');
-    const res = await actor.icrc1_metadata();
+    // First try to get from cache
+    const cachedLogo = await kongDB.images.where('canister_id').equals(token.canister_id).first();
+    if (cachedLogo && Date.now() - cachedLogo.timestamp < IMAGE_CACHE_DURATION) {
+      return cachedLogo.image_url;
+    }
+
+    // If not in cache or expired, fetch from canister
+    const wallet = get(auth);
+    const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, { anon: true });
+    const res: any = await actor.icrc1_metadata();
+    console.log('Got icrc1 metadata:', res);
     const logoEntry = res.find(
       ([key]) => key === 'icrc1:logo' || key === 'icrc1_logo'
     );
 
+    let logoUrl = DEFAULT_LOGOS.DEFAULT;
     if (logoEntry && logoEntry[1]?.Text) {
-      return logoEntry[1].Text;
+      logoUrl = logoEntry[1].Text;
+      // Cache the logo
+      await kongDB.images.put({
+        canister_id: token.canister_id,
+        image_url: logoUrl,
+        timestamp: Date.now()
+      });
     }
 
-    return DEFAULT_LOGOS.DEFAULT;
+    return logoUrl;
   } catch (error) {
-    console.error('Error getting icrc1 token metadata:', token);
+    // Log the error but don't throw, return default logo instead
+    console.warn('Error getting icrc1 token metadata:', {
+      canister_id: token.canister_id,
+      error: error?.message || error
+    });
     return DEFAULT_LOGOS.DEFAULT;
   }
 }

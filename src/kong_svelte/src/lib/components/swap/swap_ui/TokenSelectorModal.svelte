@@ -2,8 +2,9 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { walletStore } from '$lib/services/wallet/walletStore';
+  import { auth } from '$lib/services/auth';
   import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
+    import { AnonymousIdentity } from "@dfinity/agent";
 
   export let show = false;
   export let onSelect: (token: FE.Token) => void;
@@ -14,7 +15,7 @@
   let standardFilter = "all";
 
   // Get current wallet ID for favorites
-  $: walletId = $walletStore?.account?.owner?.toString() || 'anonymous';
+  $: walletId = $auth?.account?.owner?.toString() || null;
 
   $: filteredTokens = $formattedTokens
     .filter((token) => {

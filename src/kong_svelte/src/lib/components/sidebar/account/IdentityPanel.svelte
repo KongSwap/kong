@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import QRCode from 'qrcode';
-  import { userStore } from "$lib/services/wallet/walletStore";
-    import { toastStore } from "$lib/stores/toastStore";
+  import { auth } from "$lib/services/auth";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { onMount } from "svelte";
+  import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../../declarations/kong_backend";
 
   let showCopied = false;
   let showAccountCopied = false;
@@ -16,22 +17,6 @@
     { id: 'principal', label: 'Principal ID' },
     { id: 'account', label: 'Account ID' }
   ];
-
-  onMount(async () => {
-    try {
-      principalId = $userStore?.principal_id || '';
-      accountId = $userStore?.account_id || '';
-      
-      if (principalId) {
-        principalQR = await generateQR(principalId);
-      }
-      if (accountId) {
-        accountQR = await generateQR(accountId);
-      }
-    } catch (error) {
-      console.error('Error loading identity details:', error);
-    }
-  });
 
   async function generateQR(text: string) {
     try {
@@ -59,6 +44,17 @@
       console.error('Failed to copy:', error);
     }
   };
+
+  onMount(async () => {
+    const actor = await auth.getActor(kongBackendId, kongBackendIDL, {
+      anon: false,
+    });
+    const res = await actor.get_user();
+    principalId = res.Ok.principal_id;
+    accountId = res.Ok.account_id;
+    principalQR = await generateQR(principalId);
+    accountQR = await generateQR(accountId);
+  });
 </script>
 
 <div class="tab-panel">

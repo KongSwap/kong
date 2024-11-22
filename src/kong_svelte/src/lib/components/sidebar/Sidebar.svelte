@@ -4,7 +4,6 @@
   import { cubicOut } from "svelte/easing";
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
-  import { walletStore } from "$lib/services/wallet/walletStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
@@ -14,6 +13,9 @@
   import PoolList from "./PoolList.svelte";
   import { kongDB } from "$lib/services/db";
   import { liveQuery } from "dexie";
+  import { auth } from "$lib/services/auth";
+  import { tick } from "svelte";
+  
 
   // Exported props
   export let sidebarOpen: boolean;
@@ -134,6 +136,8 @@
       localStorage.setItem("sidebarActiveTab", tab);
     }
   }
+
+  $: console.log("ISCONNECTED", $auth.isConnected);
 </script>
 
 {#if sidebarOpen}
@@ -177,8 +181,13 @@
 
           <div class="sidebar-content">
             <div class="scroll-container">
-              {#if !$walletStore.isConnected}
-                <WalletProvider on:login={() => {}} />
+              {#if !$auth.isConnected}
+                <WalletProvider on:login={async () => {
+                  // Wait for next tick to ensure auth state is updated
+                  await tick();
+                  // Switch to tokens tab after login
+                  setActiveTab('tokens');
+                }} />
               {:else if activeTab === "tokens"}
                 <TokenList tokens={tokensData} />
               {:else if activeTab === "pools"}

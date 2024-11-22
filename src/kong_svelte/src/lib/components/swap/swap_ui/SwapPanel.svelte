@@ -13,7 +13,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import TokenSelectorButton from "./TokenSelectorButton.svelte";
   import BigNumber from "bignumber.js";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
 
   // Props with proper TypeScript types
   export let title: string;
@@ -68,13 +68,13 @@
   $: formattedBalance = calculateFormattedBalance();
 
   function calculateFormattedBalance() {
-    if (!$walletStore?.account) return "0";
+    if (!$auth?.account) return "0";
 
     const balance =
       $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens ||
       tokenStore.loadBalance(
         tokenInfo,
-        $walletStore.account.owner.toString(),
+        $auth.account.owner.toString(),
         false,
       );
 

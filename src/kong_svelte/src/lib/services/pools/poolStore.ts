@@ -4,6 +4,7 @@ import { formatPoolData } from '$lib/utils/statsUtils';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
 import BigNumber from 'bignumber.js';
 import { get } from 'svelte/store';
+import { auth } from '../auth';
 
 interface PoolState {
   pools: BE.Pool[];
@@ -22,7 +23,7 @@ interface PoolState {
 const stablePoolsStore = writable<BE.Pool[]>([]);
 
 function createPoolStore() {
-  const CACHE_DURATION = 1000 * 30; // 30 second cache
+  const CACHE_DURATION = 1000 * 60; // 30 second cache
   const { subscribe, set, update } = writable<PoolState>({
     pools: [],
     userPoolBalances: [],
@@ -135,10 +136,11 @@ function createPoolStore() {
 
     loadUserPoolBalances: async () => {
       update(state => ({ ...state, isLoading: true, error: null }));
+      const pnp = get(auth);
       const tokens = get(tokenStore);
       try {
         const [balances, tokenPrices] = await Promise.all([
-          PoolService.fetchUserPoolBalances(),
+          pnp.isConnected ? PoolService.fetchUserPoolBalances() : [],
           tokens.prices
         ]);
 
@@ -165,19 +167,17 @@ function createPoolStore() {
         // Update the store with processed balances
         update(state => ({
           ...state,
-          userPoolBalances: processedBalances,
+          userPoolBalances: balances || [],
           isLoading: false,
-          lastUpdate: Date.now(),
           error: null
         }));
-        console.log('[PoolStore] User pool balances updated successfully');
-
       } catch (error) {
-        console.error('[PoolStore] Error loading user pool balances:', error);
+        console.error('Error loading user pool balances:', error);
         update(state => ({
           ...state,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          userPoolBalances: [],
           isLoading: false,
+          error: 'Failed to load pool balances'
         }));
       }
     },

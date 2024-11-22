@@ -1,11 +1,9 @@
 <script lang="ts">
   import {
-    walletStore,
-    connectWallet,
-    disconnectWallet,
-    availableWallets,
-    selectedWalletId,
-  } from "$lib/services/wallet/walletStore";
+    auth,
+    selectedWalletId
+  } from "$lib/services/auth";
+  import { walletsList as availableWallets } from "@windoge98/plug-n-play";
   import { t } from "$lib/services/translations";
   import { onMount } from "svelte";
   import { uint8ArrayToHexString } from "@dfinity/utils";
@@ -16,7 +14,7 @@
   // Initialize selectedWalletId from localStorage inside onMount
   onMount(async () => {
     if (typeof window !== "undefined") {
-      const storedWalletId = localStorage.getItem("selectedWalletId");
+      const storedWalletId = localStorage.getItem("kongSelectedWallet");
       if (storedWalletId) {
         selectedWalletId.set(storedWalletId);
       }
@@ -24,7 +22,7 @@
   });
 
   // Check if wallet is already connected
-  $: if ($walletStore.account) {
+  $: if ($auth.isConnected) {
     loadUser();
   }
 
@@ -43,8 +41,8 @@
 
     try {
       selectedWalletId.set(walletId);
-      localStorage.setItem("selectedWalletId", walletId);
-      await connectWallet(walletId);
+      localStorage.setItem("kongSelectedWallet", walletId);
+      await auth.connect(walletId);
     } catch (error) {
       console.error("Failed to connect wallet:", error);
     }
@@ -52,9 +50,9 @@
 
   async function handleDisconnect() {
     try {
-      await disconnectWallet();
+      await $auth.disconnect();
       selectedWalletId.set("");
-      localStorage.removeItem("selectedWalletId");
+      localStorage.removeItem("kongSelectedWallet");
     } catch (error) {
       console.error("Failed to disconnect wallet:", error);
     }
@@ -62,15 +60,13 @@
 </script>
 
 <div class="wallet-section">
-  {#if $walletStore.isConnecting}
-    <p>{$t("common.connecting")}</p>
-  {:else if $walletStore.account}
+  {#if $auth.isConnected}
     <div class="my-4">
       <h2 class="text-lg font-black uppercase">From Wallet Library</h2>
-      {$t("common.connectedTo")}: {$walletStore.account.owner.toString()}
+      {$t("common.connectedTo")}: {$auth.account.owner.toString()}
       <br />
       {$t("common.subaccount")}: {uint8ArrayToHexString(
-        $walletStore.account.subaccount,
+        $auth.account.subaccount,
       )}
     </div>
     <div class="mb-4">
@@ -110,9 +106,4 @@
     </div>
   {/if}
 
-  {#if $walletStore.error}
-    <p class="text-red-500">
-      {$t("common.error")}: {$walletStore.error.message}
-    </p>
-  {/if}
 </div>

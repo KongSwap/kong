@@ -6,40 +6,39 @@
   import Toast from "$lib/components/common/Toast.svelte";
   import { t } from "$lib/services/translations";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
-  import { walletStore } from "$lib/services/wallet/walletStore";
   import { appLoader } from "$lib/services/appLoader";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import LoadingScreen from "$lib/components/common/LoadingScreen.svelte";
+  import { auth } from "$lib/services/auth";
 
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
   let { children } = $props();
 
+  let isInitialized = false;
 
   // Initialize app
   onMount(() => {
     const init = async () => {
       await appLoader.initialize();
+      isInitialized = true;
     };
     
     init().catch(console.error);
   });
 
-  // Load favorites when wallet connects
-  walletStore.subscribe(($wallet) => {
-    if ($wallet?.account?.owner) {
-      setTimeout(async () => {
-        await Promise.all([
-          tokenStore.loadBalances($wallet?.account?.owner),
-          tokenStore.loadFavorites($wallet?.account?.owner),
-        ]);
-      }, 1000);
+  // Load favorites when wallet connects and PNP is initialized
+  auth.subscribe(($auth) => {
+    if ($auth?.account?.owner && isInitialized) {
+      // Ensure PNP is initialized before loading balances
+      tokenStore.loadBalances($auth.account.owner).catch(console.error);
+      tokenStore.loadFavorites().catch(console.error);
     }
   });
 
   onDestroy(() => {
-    appLoader.cleanup();
+    appLoader.destroy();
   });
 </script>
 

@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 import { locale, loadTranslations } from "../translations/i18nConfig";
 import { kongDB } from '$lib/services/db';
 import type { Settings } from './types';
-import { walletStore } from '../wallet/walletStore';
+import { auth } from '../auth';
 type SupportedLocale = 'en' | 'es';
 const supportedLocales: SupportedLocale[] = ['en', 'es'];
 const defaultLocale: SupportedLocale = 'en';
@@ -53,7 +53,8 @@ function createSettingsStore() {
 
   async function initializeStore() {
     if (browser) {
-      const walletId = get(walletStore).account?.owner?.toString();
+      const pnp = get(auth);
+      const walletId = pnp?.account?.owner?.toString();
       if (!walletId) {
         console.error('Wallet ID is not available.');
         return;
@@ -84,7 +85,7 @@ function createSettingsStore() {
     value: Settings[keyof Settings]
   ) {
     update(settings => {
-      const walletId = get(walletStore).account?.owner?.toString();
+      const walletId = get(auth).account?.owner?.toString();
       if (!walletId) {
         console.error('Wallet ID is not available.');
         return settings;
@@ -117,7 +118,7 @@ function createSettingsStore() {
   }
 
   async function reset() {
-    const walletId = get(walletStore).account?.owner;
+    const walletId = get(auth).account?.owner;
     if (!walletId) {
       console.error('Wallet ID is not available.');
       return;

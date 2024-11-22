@@ -5,7 +5,7 @@
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
   import { page } from '$app/stores';
-  import { walletStore } from '$lib/services/wallet/walletStore';
+  import { auth } from '$lib/services/auth';
 
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
@@ -20,7 +20,7 @@
 
   const claimTokens = async () => {
     await tokenStore.claimFaucetTokens();
-    await tokenStore.loadBalances($walletStore.account?.owner);
+    await tokenStore.loadBalances($auth.account?.owner);
   };
 
   onDestroy(() => {

@@ -6,7 +6,7 @@
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
   import { t } from "$lib/services/translations";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
   import { fade } from "svelte/transition";
   import Modal from "../common/Modal.svelte";
   import Settings from "../settings/Settings.svelte";
@@ -164,7 +164,7 @@
           />
 
           <Button
-            text={$walletStore.isConnected
+            text={$auth.isConnected
               ? $t("common.openDrawer")
               : $t("common.connect")}
             variant="yellow"
@@ -203,7 +203,7 @@
         />
       {/each}
       <Button
-        text={$walletStore.isConnected
+        text={$auth.isConnected
           ? $t("common.openDrawer")
           : $t("common.connect")}
         variant="yellow"

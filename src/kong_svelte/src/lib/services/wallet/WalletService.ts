@@ -1,5 +1,5 @@
 import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
-import { getActor, walletStore } from './walletStore';
+import { auth } from '../auth';
 import { get } from 'svelte/store';
 
 export class WalletService {
@@ -12,19 +12,26 @@ export class WalletService {
     return WalletService.instance;
   }
 
-  public static async getWhoami(): Promise<BE.User> {
-
-    const isWalletConnected = get(walletStore).isConnected;
+  public static async getWhoami(): Promise<User> {
+    const isWalletConnected = get(auth).isConnected;
     if (!isWalletConnected) {
       return null;
     }
     try {
-      const actor = await getActor(KONG_BACKEND_PRINCIPAL, 'kong_backend', true)
+      const actor = await auth.getActor(KONG_BACKEND_PRINCIPAL, 'kong_backend', {anon: true});
+      if (!actor) {
+        console.warn('No actor available for get_user call');
+        return null;
+      }
       const result = await actor.get_user();
+      if (!result.Ok) {
+        console.warn('get_user returned error:', result.Err);
+        return null;
+      }
       return result.Ok;
     } catch (error) {
       console.error('Error calling get_user method:', error);
-      throw error;
+      return null;
     }
   }
 

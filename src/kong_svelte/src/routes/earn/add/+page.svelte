@@ -11,9 +11,9 @@
     parseTokenAmount,
     formatTokenAmount,
   } from "$lib/utils/numberFormatUtils";
-  import { goto } from "$app/navigation";
+  import { goto, replaceState } from "$app/navigation";
   import { page } from "$app/stores";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -72,7 +72,7 @@
 
   onMount(async () => {
     try {
-      await Promise.all([initializeFromParams(), tokenStore.loadBalances($walletStore?.account?.owner)]);
+      await Promise.all([initializeFromParams(), tokenStore.loadBalances($auth?.account?.owner)]);
       tokens = get(formattedTokens);
     } catch (err) {
       console.error("Error initializing:", err);
@@ -377,7 +377,7 @@
     if (token0) params.set("token0", token0.canister_id);
     if (token1) params.set("token1", token1.canister_id);
     const newUrl = `/pools/add${params.toString() ? "?" + params.toString() : ""}`;
-    window.history.replaceState(null, "", newUrl);
+    replaceState(newUrl, null);
     updateBalances();
   }
 

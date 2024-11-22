@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
 
   // Accept pools prop for live data
@@ -31,12 +31,12 @@
   }
 
   onMount(() => {
-    if ($walletStore.isConnected) {
+    if ($auth.isConnected) {
       loadPoolBalances();
     }
   });
 
-  $: if ($walletStore.isConnected) {
+  $: if ($auth.isConnected) {
     loadPoolBalances();
   }
 </script>

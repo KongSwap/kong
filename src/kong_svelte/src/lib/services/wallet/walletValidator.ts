@@ -1,8 +1,10 @@
-import { isConnected } from '$lib/services/wallet/walletStore';
+import { auth } from '$lib/services/auth';
+import { get } from 'svelte/store';
 
 class WalletValidator {
   public static async requireWalletConnection(): Promise<void> {
-    const connected = isConnected();
+    const pnp = get(auth);
+    const connected = pnp.isConnected;
     if (!connected) {
       throw new Error('Wallet is not connected.');
     }

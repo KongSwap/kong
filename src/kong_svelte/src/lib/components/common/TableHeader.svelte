@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/services/translations";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
 
   export let variant: "default" | "stats" = "default";
   export let textClass: string = "text-left";
@@ -20,7 +20,7 @@
   }
 
   $: variantClass = variant === "stats" ? "font-alumni text-3xl uppercase" : "";
-  $: showHeader = requiresAuth ? $walletStore.isConnected : true;
+  $: showHeader = requiresAuth ? auth.pnp.isConnected : true;
 </script>
 
 {#if showHeader}

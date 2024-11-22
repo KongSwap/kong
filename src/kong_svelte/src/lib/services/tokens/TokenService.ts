@@ -1,4 +1,4 @@
-import { getActor, walletStore } from "$lib/services/wallet/walletStore";
+import { auth } from "$lib/services/auth";
 import { PoolService } from "../../services/pools/PoolService";
 import {
   formatToNonZeroDecimal,
@@ -18,6 +18,8 @@ import {
 } from "./tokenLogos";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
+import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { canisterIDLs } from "../pnp/PnpInitializer";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -37,33 +39,63 @@ export class TokenService {
 
   public static async fetchTokens(): Promise<FE.Token[]> {
     try {
-      // Try to get cached tokens
-      const currentTime = Date.now();
-      const cachedTokens = await kongDB.tokens
-        .where("timestamp")
-        .above(currentTime - this.TOKEN_CACHE_DURATION)
-        .toArray();
+      const wallet = get(auth);
+      let retries = 3;
+      let actor;
 
-      if (cachedTokens.length > 0) {
-        return cachedTokens;
+      while (retries > 0) {
+        try {
+          actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
+            anon: true, // Use anonymous actor to avoid identity issues
+          });
+          console.log("Got actor:", actor);
+          const result = await actor.tokens(["all"]);
+          console.log("Raw token result:", result);
+          const parsed = parseTokens(result);
+          console.log("Parsed tokens:", parsed);
+
+          if (parsed.Err) {
+            console.error('Error parsing tokens:', parsed.Err);
+            throw parsed.Err;
+          }
+
+          const deduplicatedTokens = this.deduplicateTokens(parsed.Ok);
+          console.log('Final tokens:', deduplicatedTokens);
+
+          // Cache the tokens
+          await Promise.all(
+            deduplicatedTokens.map((token) =>
+              kongDB.tokens.put({
+                ...token,
+                timestamp: Date.now(),
+              })
+            )
+          );
+
+          return deduplicatedTokens;
+        } catch (error) {
+          console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-
-      // If no valid cache, fetch from network
-      const actor: any = await getActor();
-      console.log("tokens actor", actor);
-      const result = await actor.tokens(["all"]);
-      const parsed = parseTokens(result);
-
-      if (parsed.Err) throw parsed.Err;
-
-      // Cache the results
-      await this.cacheTokens(parsed.Ok);
-
-      return parsed.Ok;
     } catch (error) {
       console.error("Error fetching tokens:", error);
-      throw error;
+      // Return empty array instead of throwing to prevent app from crashing
+      return [];
     }
+  }
+
+  private static deduplicateTokens(tokens: FE.Token[]): FE.Token[] {
+    // First, sort tokens by priority (on_kong first, then by canister_id)
+    const sortedTokens = [...tokens].sort((a, b) => {
+      if (a.on_kong && !b.on_kong) return -1;
+      if (!a.on_kong && b.on_kong) return 1;
+      return a.canister_id.localeCompare(b.canister_id);
+    })
+
+    return Array.from(sortedTokens.values());
   }
 
   private static async cacheTokens(tokens: FE.Token[]): Promise<void> {
@@ -536,7 +568,8 @@ export class TokenService {
 
   public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
     try {
-      const actor = await getActor(canisterId, "icrc1");
+      const wallet = get(auth);
+      const actor = await auth.getActor(canisterId, "icrc1", {anon: true});
       return await actor.icrc1_metadata();
     } catch (error) {
       console.error("Error getting icrc1 token metadata:", error);
@@ -548,14 +581,16 @@ export class TokenService {
     principalId: string,
     tokenId = "",
   ): Promise<any> {
-    const actor = await getActor();
+    const wallet = get(auth);
+    const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
     return await actor.txs([true]);
   }
 
   public static async claimFaucetTokens(): Promise<any> {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
-      const actor = await getActor(kongFaucetId, "kong_faucet");
+      const wallet = get(auth);
+      const actor = await auth.getActor(kongFaucetId, canisterIDLs.kong_faucet, {anon: false});
       return await actor.claim();
     } catch (error) {
       console.error("Error claiming faucet tokens:", error);
@@ -623,7 +658,8 @@ export class TokenService {
         // ICP's fee is typically 10,000 e8s (0.0001 ICP)
         return BigInt(10000);
       } else {
-        const actor = await getActor(token.canister_id, "icrc1");
+        const wallet = get(auth);
+        const actor = await auth.getActor(token.canister_id, "icrc1", {anon: true});
         const fee = await actor.icrc1_fee();
         return fee;
       }

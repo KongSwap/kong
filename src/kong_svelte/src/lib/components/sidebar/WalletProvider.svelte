@@ -1,38 +1,30 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { browser } from "$app/environment";
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import {
-    walletStore,
-    connectWallet,
-    disconnectWallet,
+    auth,
+    userStore,
     availableWallets,
     selectedWalletId,
-  } from "$lib/services/wallet/walletStore";
+  } from "$lib/services/auth";
   import { t } from "$lib/services/translations";
   import { uint8ArrayToHexString } from "@dfinity/utils";
-  import { WalletService } from "$lib/services/wallet/WalletService";
 
   const dispatch = createEventDispatcher();
 
   let user: any;
+  let connecting = false;
 
-  onMount(() => {
-    if (browser) {
-      const storedWalletId = localStorage.getItem("selectedWalletId");
-      if (storedWalletId) {
-        selectedWalletId.set(storedWalletId);
-      }
+  $: {
+    console.log("Auth state changed:", $auth);
+    if ($auth.isConnected && $auth.account?.owner) {
+      loadUser();
     }
-  });
-
-  $: if ($walletStore.account) {
-    loadUser();
   }
 
   async function loadUser() {
     try {
-      user = await WalletService.getWhoami();
+      user = $userStore;
+      console.log("User loaded:", user);
     } catch (error) {
       console.error("Error loading user data:", error);
     }
@@ -43,19 +35,39 @@
       return console.error("No wallet selected");
     }
 
+    if (connecting) {
+      console.log("Already connecting, please wait...");
+      return;
+    }
+
     try {
+      connecting = true;
+      console.log("Connecting wallet:", walletId);
       selectedWalletId.set(walletId);
       localStorage.setItem("selectedWalletId", walletId);
-      await connectWallet(walletId);
-      dispatch("login");
+      const result = await auth.connect(walletId);
+      console.log("Wallet connected result:", result);
+      
+      // Wait for a tick to ensure store is updated
+      await tick();
+      console.log("Auth state after tick:", $auth);
+      
+      if ($auth.isConnected) {
+        dispatch("login");
+      } else {
+        console.error("Wallet connected but auth state not updated");
+      }
     } catch (error) {
       console.error("Failed to connect wallet:", error);
+      selectedWalletId.set("");
+    } finally {
+      connecting = false;
     }
   }
 
   async function handleDisconnect() {
     try {
-      await disconnectWallet();
+      await auth.disconnect();
       selectedWalletId.set("");
       localStorage.removeItem("selectedWalletId");
     } catch (error) {
@@ -65,19 +77,17 @@
 </script>
 
 <div class="wallet-section">
-  {#if $walletStore.isConnecting}
-    <p class="status-text">{$t("common.connecting")}</p>
-  {:else if $walletStore.account}
+  {#if $auth.isConnected}
     <div class="wallet-info">
       <div class="info-section">
         <h2 class="section-title">From Wallet Library</h2>
         <p class="info-text">
-          {$t("common.connectedTo")}: {$walletStore.account.owner.toString()}
+          {$t("common.connectedTo")}: {$auth.account?.owner?.toString()}
         </p>
         <p class="info-text">
-          {$t("common.subaccount")}: {uint8ArrayToHexString(
-            $walletStore.account.subaccount,
-          )}
+          {$t("common.subaccount")}: {$auth.account?.subaccount ? uint8ArrayToHexString(
+            $auth.account.subaccount
+          ) : ""}
         </p>
       </div>
 
@@ -112,12 +122,6 @@
         <p class="status-text">{$t("common.noWalletsAvailable")}</p>
       {/if}
     </div>
-  {/if}
-
-  {#if $walletStore.error}
-    <p class="error-text">
-      {$t("common.error")}: {$walletStore.error.message}
-    </p>
   {/if}
 </div>
 

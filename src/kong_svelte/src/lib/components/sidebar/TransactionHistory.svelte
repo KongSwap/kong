@@ -1,12 +1,11 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { TokenService } from '$lib/services/tokens/TokenService';
-    import { tokenStore } from '$lib/services/tokens/tokenStore';
-    import { walletStore } from '$lib/services/wallet/walletStore';
+    import { auth } from '$lib/services/auth';
     import { fly, fade } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
     import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+    import { tokenStore } from '$lib/services/tokens';
 
     // Accept transactions prop for live data
     export let transactions: any[] = [];
@@ -34,12 +33,12 @@
         .map(tx => ({
             ...tx,
             formattedDate: new Date(Number(tx.ts)).toLocaleString(),
-            payAmount: tx.pay_amount ? formatTokenAmount(tx.pay_amount) : '',
-            receiveAmount: tx.receive_amount ? formatTokenAmount(tx.receive_amount) : ''
+            payAmount: tx.pay_amount ? formatTokenAmount(tx.pay_amount, $tokenStore.tokens.find(t => t.symbol === tx.pay_symbol)?.decimals) : '',
+            receiveAmount: tx.receive_amount ? formatTokenAmount(tx.receive_amount, $tokenStore.tokens.find(t => t.symbol === tx.receive_symbol)?.decimals) : ''
         }));
 
     onMount(() => {
-        if ($walletStore.isConnected) {
+        if ($auth.isConnected) {
             isLoading = false;
         }
     });

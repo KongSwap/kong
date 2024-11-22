@@ -1,5 +1,7 @@
 // Utility functions for swap operations
 
+import { replaceState } from "$app/navigation";
+
 export function getButtonText(params: {
   isCalculating: boolean;
   isValidInput: boolean;
@@ -37,5 +39,5 @@ export function updateURL(params: { from: string; to: string }) {
   const url = new URL(window.location.href);
   url.searchParams.set("from", params.from);
   url.searchParams.set("to", params.to);
-  window.history.replaceState({}, "", url.toString());
+  replaceState(url.toString(), {});
 }

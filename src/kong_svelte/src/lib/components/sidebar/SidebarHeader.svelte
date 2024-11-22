@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { walletStore, disconnectWallet } from "$lib/services/wallet/walletStore";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import "./colors.css";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { RefreshCw } from "lucide-svelte";
   import { tokenStore, portfolioValue } from "$lib/services/tokens/tokenStore";
+  import { auth } from "$lib/services/auth";
   import { onMount } from "svelte";
 
   export let onClose: () => void;
@@ -14,14 +14,28 @@
   let showAccountDetails = false;
   let windowWidth: number;
   let isRefreshing = false;
-  let isLoggedIn = false;
+  let loadingInitialBalances = true;
 
-  walletStore.subscribe(async value => {
-    isLoggedIn = value.isConnected;
-    if (isLoggedIn) {
-      await tokenStore.loadBalances()
+  // Subscribe to auth changes to reload balances when needed
+  $: if ($auth.isConnected) {
+    loadInitialBalances();
+  }
+
+  onMount(() => {
+    if ($auth.isConnected) {
+      loadInitialBalances();
     }
   });
+
+  async function loadInitialBalances() {
+    if (loadingInitialBalances) {
+      try {
+        await tokenStore.loadBalances($auth?.account?.owner);
+      } finally {
+        loadingInitialBalances = false;
+      }
+    }
+  }
 
   const tabs: ("tokens" | "pools" | "history")[] = [
     "tokens",
@@ -30,9 +44,20 @@
   ];
 
   async function handleReload() {
-    isRefreshing = true;
-    await tokenStore.loadBalances();
-    isRefreshing = false;
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        await tokenStore.loadBalances($auth?.account?.owner);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+  }
+
+  async function handleDisconnect() {
+    await auth.disconnect();
+    showAccountDetails = false;
+    onClose();
   }
 </script>
 
@@ -42,7 +67,7 @@
   <div
     class="flex flex-col gap-3 p-3"
   >
-    {#if isLoggedIn}
+    {#if $auth.isConnected}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
         <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-96px)]">
           <button
@@ -70,7 +95,7 @@
         <div class="flex gap-2">
           <button
             class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
-            on:click={disconnectWallet}
+            on:click={handleDisconnect}
             aria-label="Disconnect wallet"
           >
             <span
@@ -111,6 +136,7 @@
               viewBox="0 0 24 24"
               fill="#b53f3f"
               stroke="currentColor"
+              stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
@@ -197,7 +223,6 @@
   show={showAccountDetails} 
   onClose={() => showAccountDetails = false}
 />
-
 
 <style scoped>
     .portfolio-value {
