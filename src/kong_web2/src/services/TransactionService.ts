@@ -17,24 +17,20 @@ export class TransactionService {
       const result = await this.canisterActor.actor.txs([false]);
       console.log("Transactions result:", result);
       if ("Ok" in result) {
-        const transactions = result.Ok;
+        // Sort transactions by txId ascending so oldest are processed first
+        const transactions = result.Ok.sort((a: any, b: any) => {
+          return parseInt(a.Swap.tx_id) - parseInt(b.Swap.tx_id);  // Sort ascending
+        });
+
+        // Clear existing transactions to reset IDs
+        await this.prisma.transaction.deleteMany({});
 
         for (const tx of transactions) {
           console.log("Processing transaction:", tx);
           if (!tx.Swap) continue; // Skip non-swap transactions for now
           
           const txId = tx.Swap.tx_id.toString(); // Convert BigInt to string for Prisma Decimal
-          const existingTx = await this.prisma.transaction.findUnique({
-            where: { txId },
-          });
-
-          if (existingTx) {
-            console.log(`Skipping existing transaction with tx_id: ${txId}`);
-            continue;
-          }
-
-          const txType = this.determineTransactionType(tx);
-          await this.storeSingleTransaction(tx, txType);
+          await this.storeSingleTransaction(tx, "Swap");
         }
       }
     } catch (error) {
@@ -70,14 +66,15 @@ export class TransactionService {
       // Get total count for pagination
       const total = await this.prisma.transaction.count();
       
-      // Get transactions with pagination
+      // Get transactions with pagination and convert txId to number for correct sorting
       const transactions = await this.prisma.transaction.findMany({
         take: Math.min(limit, 1000), // Cap at 1000 to prevent overload
         skip: offset,
         orderBy: {
-          txId: 'asc'  // Order by transaction ID ascending to match canister order
+          id: 'desc'
         }
       });
+
 
       return {
         total,

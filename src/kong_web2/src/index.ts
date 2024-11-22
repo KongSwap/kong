@@ -4,7 +4,6 @@ import { PrismaClient } from '@prisma/client';
 import { Actor } from '@dfinity/agent';
 import { CanisterService } from './services/canisterService.js';
 import { registerRoutes } from './routes/index.js';
-import cron from 'node-cron';
 
 const server = fastify();
 const port = process.env.PORT || 3000;
@@ -14,18 +13,26 @@ const prisma = new PrismaClient();
 const actor = {} as Actor; // Replace with actual actor initialization
 const canisterService = new CanisterService(actor, prisma);
 
-// Schedule periodic tasks
-cron.schedule('*/1 * * * *', async () => {
+// Run tasks function
+const runTasks = async () => {
   try {
     console.log('Running scheduled tasks...');
-    await canisterService.fetchAndStoreTransactions();
-    await canisterService.fetchAndStoreTokens();
-    await canisterService.fetchAndStorePools();
+    await Promise.all([
+      canisterService.fetchAndStoreTransactions(),
+      canisterService.fetchAndStoreTokens(),
+      canisterService.fetchAndStorePools()
+    ]);
     console.log('Scheduled tasks completed successfully');
   } catch (error) {
     console.error('Error in scheduled tasks:', error);
   }
-});
+};
+
+// Run immediately on startup
+runTasks();
+
+// Then run every 30 seconds
+setInterval(runTasks, 30 * 1000);
 
 // Handle shutdown gracefully
 process.on('SIGINT', async () => {
@@ -34,18 +41,18 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
+// Configure CORS
+server.register(cors, {
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+});
+
+// Register routes
+server.register(registerRoutes, { canisterService });
+
 // Start server
 const start = async () => {
   try {
-    // Register plugins
-    await server.register(cors, {
-      origin: true // Allow all origins in development
-    });
-
-    // Register routes
-    await server.register(registerRoutes, { canisterService });
-
-    // Start listening
     await server.listen({ port: Number(port), host: '0.0.0.0' });
     console.log(`Server is running on http://localhost:${port}`);
   } catch (err) {
