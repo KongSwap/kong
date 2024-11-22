@@ -100,7 +100,7 @@ import { useCKPEPEBackend } from '../Actors/CKPEPEActor';
 import { useCKSHIBBackend } from '../Actors/CKSHIBActor';
 import { useDODBackend } from '../Actors/DODActor';
 import { useKONGBackend } from '../Actors/KONGActor';
-import { usePacaBackend } from '../Actors/PACAActor';
+import { usePACABackend } from '../Actors/PACAActor';
 
 import {
   getActor as kong_backend
@@ -166,7 +166,7 @@ const useIdentity = () => {
   const { actor: ckshib_backend } = useCKSHIBBackend();
   const { actor: dod_backend } = useDODBackend();
   const { actor: kong_ledger_backend } = useKONGBackend();
-  const { actor: paca_backend } = usePacaBackend();
+  const { actor: paca_backend } = usePACABackend();
 
   const { plugActor: backendKingKongPlug, isInitialized: isInitializedKingKongPlug } = useKingKongBackendPlug();
   const { plugActor: backendKingKongFaucetPlug, isInitialized: isInitializedKingKongFaucetPlug } = useKingKongFaucetBackendPlug();

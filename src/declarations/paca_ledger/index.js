@@ -10,7 +10,7 @@ export { idlFactory } from "./paca.did.js";
  * beginning in dfx 0.15.0
  */
 export const canisterId =
-  process.env.CANISTER_ID_BITS_LEDGER;
+  process.env.CANISTER_ID_PACA_LEDGER;
 
 export const createActor = (canisterId, options = {}) => {
   const agent = options.agent || new HttpAgent({ ...options.agentOptions });
@@ -39,4 +39,4 @@ export const createActor = (canisterId, options = {}) => {
   });
 };
 
-export const bits_ledger = canisterId ? createActor(canisterId) : undefined;
+export const paca_ledger = canisterId ? createActor(canisterId) : undefined;

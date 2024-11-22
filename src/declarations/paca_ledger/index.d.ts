@@ -47,4 +47,4 @@ export declare const createActor: (
  * Intialized Actor using default settings, ready to talk to a canister using its candid interface
  * @constructs {@link ActorSubClass}
  */
-export declare const bits_ledger: ActorSubclass<_SERVICE>;
+export declare const paca_ledger: ActorSubclass<_SERVICE>;

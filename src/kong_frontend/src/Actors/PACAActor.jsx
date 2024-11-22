@@ -14,10 +14,10 @@ import { toast } from "react-toastify";
 
 const HOST = (process.env.DFX_NETWORK !== "ic") ? "http://localhost:4943" : "https://icp-api.io";
 
-const actorPaca = createActorContext();
-export const usePacaBackend = createUseActorHook(actorPaca);
+const actorPACA = createActorContext();
+export const usePACABackend = createUseActorHook(actorPACA);
 
-const BITSActor = ({ children }) => {
+const PACAActor = ({ children }) => {
     const { identity: iiIdentity, clear } = useInternetIdentity();
 
     const handleRequest = (data) => {
@@ -50,7 +50,7 @@ window.location.reload()
         <ActorProvider
             httpAgentOptions={{ host: HOST }}
             canisterId={canisterId}
-            context={actorPaca}
+            context={actorPACA}
             identity={iiIdentity}
             idlFactory={idlFactory}
             onRequest={handleRequest}
@@ -63,4 +63,4 @@ window.location.reload()
     );
 }
 
-export default BITSActor;
+export default PACAActor;
