@@ -6,6 +6,7 @@
   import { themeStore } from "$lib/stores/themeStore";
   import ModalContainer from "$lib/components/common/ModalContainer.svelte";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
+    import { browser } from "$app/environment";
 
   let { page, children } = $props<{
     page?: string;
@@ -146,6 +147,18 @@
     });
   }
 
+  // Add requestAnimationFrame polyfill
+  const requestAnimFrame = (function() {
+    if(browser) {
+      return window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        function(callback) {
+          window.setTimeout(callback, 1000 / 60);
+        };
+    }
+  })();
+
   function animate() {
     ctx.clearRect(0, 0, constellationCanvas.width, constellationCanvas.height);
     
@@ -199,7 +212,8 @@
       tryCreateConstellation();
     }
 
-    requestAnimFrame(animate);
+    // Request next frame
+    requestAnimFrame(() => animate());
   }
 
   let resizeTimeout;

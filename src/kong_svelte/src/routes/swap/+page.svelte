@@ -6,7 +6,7 @@
   import Swap from '$lib/components/swap/Swap.svelte';
   import SwapPro from '$lib/components/swap/SwapPro.svelte';
   import { page } from '$app/stores';
-  import { auth } from '$lib/services/auth';
+  import { auth, requireWalletConnection } from '$lib/services/auth';
 
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;

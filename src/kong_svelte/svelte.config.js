@@ -31,6 +31,16 @@ const config = {
         }
         // otherwise fail the build
         throw new Error(message);
+      },
+      handleMissingId: ({ id, path, referrers }) => {
+        // Ignore missing hash links for specific routes
+        if (id === 'swap' || id === 'pools' || id === 'stats' || id === 'earn') {
+          return;
+        }
+        // Otherwise, fail the build
+        throw new Error(
+          `Missing ID "${id}" for link in ${referrers.join(', ')} pointing to ${path}`
+        );
       }
     },
   },

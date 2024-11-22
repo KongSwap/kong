@@ -2,10 +2,11 @@ import { browser } from "$app/environment";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { derived, get, writable } from "svelte/store";
-import { auth, canisterIDLs, userStore } from "$lib/services/auth";
+import { auth, canisterIDLs } from "$lib/services/auth";
 import { settingsStore } from "$lib/services/settings/settingsStore";
 import { assetCache } from "$lib/services/assetCache";
 import { canisterId as kongBackendCanisterId } from '../../../../declarations/kong_backend';
+import { getPnpInstance } from "$lib/services/pnp/PnpInitializer";
 
 export class AppLoader {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -21,17 +22,6 @@ export class AppLoader {
     totalAssets: 0,
     errors: [] as string[]
   });
-
-  constructor() {
-    if (browser) {
-      // Subscribe to auth store changes
-      userStore.subscribe((user) => {
-        if (user && !this.isInitialized) {
-          this.initialize().catch(console.error);
-        }
-      });
-    }
-  }
 
   private async initializeWallet(): Promise<void> {
     try {
@@ -78,7 +68,62 @@ export class AppLoader {
     }
   }
 
+  // Component assets configuration
+  private buttonSizeVariants = {
+    small: ['green', 'yellow'],  // btnsmall only has green and yellow
+    medium: ['blue', 'green', 'yellow'],
+    big: ['blue', 'green', 'yellow']
+  };
+
+  private buttonStates = ['default', 'pressed', 'selected'];
+  private mainPanelVariants = ['green', 'red'];
+  private secondaryPanelVariants = ['green'];
+  private panelParts = ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'];
+
+  private generateRequiredComponents(): string[] {
+    const components: string[] = [];
+
+    // Generate button components
+    Object.entries(this.buttonSizeVariants).forEach(([size, variants]) =>
+      variants.forEach(variant =>
+        this.buttonStates.forEach(state => {
+          const prefix = size === 'small' ? 'btnsmall' : size === 'big' ? 'bigbtn' : 'btn';
+          components.push(
+            `/pxcomponents/${prefix}-${variant}-${state}-l.svg`,
+            `/pxcomponents/${prefix}-${variant}-${state}-mid.svg`,
+            `/pxcomponents/${prefix}-${variant}-${state}-r.svg`
+          );
+        })
+      )
+    );
+
+    // Add main panel components
+    this.mainPanelVariants.forEach(variant => {
+      this.panelParts.forEach(part => {
+        components.push(`/pxcomponents/panel-${variant}-main-${part}.svg`);
+      });
+    });
+
+    // Add secondary panel components (no ml/mr parts)
+    this.secondaryPanelVariants.forEach(variant => {
+      this.panelParts.forEach(part => {
+        if (!['ml', 'mr'].includes(part)) {
+          components.push(`/pxcomponents/panel-s-${variant}-${part}.svg`);
+        }
+      });
+    });
+
+    return components;
+  }
+
+  private backgrounds = [
+    "/backgrounds/pools.webp",
+    "/backgrounds/kong_jungle2.webp",
+    "/backgrounds/grass.webp"
+  ];
+
   public async initialize(): Promise<void> {
+    getPnpInstance();
     if (this.isInitialized) {
       console.log('App already initialized');
       return;
@@ -92,6 +137,24 @@ export class AppLoader {
         totalAssets: 0,
         errors: []
       });
+
+      await this.initializeWallet().catch(error => {
+        console.error('Wallet initialization failed:', error);
+        throw error;
+      });
+      
+      // Load and cache required assets
+      const svgComponents = this.generateRequiredComponents();
+      const allAssets = [...this.backgrounds, ...svgComponents];
+      const areCached = await assetCache.areAssetsCached(allAssets);
+
+      if (!areCached) {
+        // Start parallel loading of assets
+        await Promise.all([
+          this.batchPreloadAssets(this.backgrounds, 'image', 5),
+          this.batchPreloadAssets(svgComponents, 'svg', 20)
+        ]);
+      }
 
       // Initialize stores in the correct order:
       // 1. Settings (independent)
@@ -130,12 +193,20 @@ export class AppLoader {
     }
   }
 
+  private async batchPreloadAssets(assets: string[], type: 'image' | 'svg', batchSize: number = 5): Promise<void> {
+    const batches = [];
+    for (let i = 0; i < assets.length; i += batchSize) {
+      const batch = assets.slice(i, i + batchSize);
+      batches.push(Promise.all(batch.map(url => this.preloadAsset(url, type))));
+    }
+    await Promise.all(batches);
+  }
+
   private async initializeTokens(): Promise<void> {
     try {
       // Wait for wallet connection first since we need it for token operations
       // Initialize tokens using auth service
       // Add your token initialization logic here
-      const pnp = get(auth);
       tokenStore.loadPrices()
       tokenStore.loadTokens();
     } catch (error) {
@@ -149,7 +220,6 @@ export class AppLoader {
       // Wait for tokens to be loaded since pools depend on token information
       // Initialize pools using auth service
       // Add your pool initialization logic here
-      const pnp = get(auth);
       poolStore.loadPools();
       poolStore.loadUserPoolBalances();
     } catch (error) {

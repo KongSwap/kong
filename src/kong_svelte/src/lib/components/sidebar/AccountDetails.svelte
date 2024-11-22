@@ -6,8 +6,9 @@
   import UserDetailsPanel from "./account/UserDetailsPanel.svelte";
   import { accountStore } from "$lib/stores/accountStore";
 
-  let show = false;
+  export let show = false;
   let activeTab = 'identity';
+  export let onClose = () => {};
 
   accountStore.subscribe(state => {
     show = state.showDetails;
@@ -23,7 +24,7 @@
 </script>
 
 <Modal 
-  {show} 
+  isOpen={show} 
   title="Account Details" 
   onClose={() => accountStore.hideAccountDetails()} 
   variant="green"

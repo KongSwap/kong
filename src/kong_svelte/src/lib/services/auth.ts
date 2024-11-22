@@ -40,13 +40,7 @@ export const createAnonymousActorHelper = async (canisterId: string, idl: any) =
     await agent.fetchRootKey().catch(console.error);
   }
 
-  // Handle both function and object IDLs
-  const interfaceFactory = typeof idl === 'function' ? idl : idl.idlFactory || idl;
-  if (typeof interfaceFactory !== 'function') {
-    throw new Error('Invalid IDL factory provided');
-  }
-
-  return Actor.createActor(interfaceFactory, {
+  return Actor.createActor(idl as any, {
     agent,
     canisterId,
   });
@@ -149,35 +143,15 @@ export const auth = createAuthStore(getPnpInstance());
 // Create a writable store for user data
 const userDataStore = writable<any>(null);
 
-// Function to fetch user data
-async function fetchUserData() {
-  try {
-    if (!auth.isWalletConnected()) {
-      console.log("No wallet connected, setting user data to null");
-      userDataStore.set(null);
-      return;
-    }
-    
-    console.log("Fetching user data with authenticated actor...");
-    const actor = await auth.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false });
-    console.log("Got authenticated actor, fetching user...");
-    const result = await actor.get_user();
-    console.log("User data result:", result);
-    
-    if ('Ok' in result) {
-      userDataStore.set(result.Ok);
-    } else {
-      console.log("No Ok result in response, setting user data to null");
-      userDataStore.set(null);
-    }
-  } catch (error) {
-    console.error("Error fetching user data:", error);
-    userDataStore.set(null);
-  }
-}
-
-
 // Export the readable user store
 export const userStore = {
   subscribe: userDataStore.subscribe
 };
+
+export async function requireWalletConnection(): Promise<void> {
+  const pnp = get(auth);
+  const connected = pnp.isConnected;
+  if (!connected) {
+    throw new Error('Wallet is not connected.');
+  }
+}

@@ -139,7 +139,7 @@ function createTokenStore() {
         ...s,
         tokens: validTokens,
       }));
-      if(wallet.account && wallet.account.owner && !wallet.account.owner.isAnonymous()) {
+      if(wallet.account && wallet.account.owner) {
         const balances = await loadBalances(wallet.account.owner);
         
         store.update((s) => ({

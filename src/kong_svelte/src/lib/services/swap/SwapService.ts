@@ -1,6 +1,4 @@
 // src/lib/services/swap/SwapService.ts
-
-import { walletValidator } from "$lib/services/wallet/walletValidator";
 import {
   tokenStore,
   getTokenDecimals,
@@ -14,6 +12,7 @@ import { swapStatusStore } from "./swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
 import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { requireWalletConnection } from "$lib/services/auth";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -214,7 +213,7 @@ export class SwapService {
     try {
       const wallet = get(auth);
       await Promise.allSettled([
-        walletValidator.requireWalletConnection(),
+        requireWalletConnection(),
         tokenStore.loadBalances(wallet?.account?.owner),
       ]);
       const tokens = get(tokenStore).tokens;

@@ -10,14 +10,9 @@ export const parseTokens = (
     // Extract IC tokens and map them to FE.Token[]
     const icTokens: FE.Token[] = data.Ok.filter(
       (token): token is { IC: BE.ICToken } => {
-        const hasIC = token.IC !== undefined;
-        if (!hasIC) {
-          console.log('Filtered out non-IC token:', token);
-        }
-        return hasIC;
+        return token.IC !== undefined;
       }
     ).map((token) => {
-      console.log('Processing token:', token);
       const icToken = token.IC;
       const result = {
         canister_id: icToken.canister_id,
@@ -41,7 +36,6 @@ export const parseTokens = (
         tvl: 0,
         balance: 0n,
       } as FE.Token;
-      console.log('Processed token:', result);
       return result;
     });
 

@@ -1,6 +1,6 @@
 import { kongDB } from '../db';
 import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
-import { createAnonymousActorHelper, auth, canisterIDLs } from '../auth';
+import { createAnonymousActorHelper, canisterIDLs } from '../auth';
 import { writable, get } from 'svelte/store';
 import type { KongImage } from './types';
 
@@ -208,8 +208,7 @@ export async function fetchTokenLogo(token: FE.Token): Promise<string> {
     }
 
     // If not in cache or expired, fetch from canister
-    const wallet = get(auth);
-    const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, { anon: true });
+    const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
     const res: any = await actor.icrc1_metadata();
     console.log('Got icrc1 metadata:', res);
     const logoEntry = res.find(

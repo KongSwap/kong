@@ -20,7 +20,6 @@ export class IcrcService {
   ): Promise<bigint> {
     try {
       // Use ICRC-2 actor since it's a superset of ICRC-1
-      const wallet = get(auth);
       const actor = await auth.getActor(token.canister_id, canisterIDLs['icrc2'], {anon: true});
       return await actor.icrc1_balance_of({
         owner: principal,
@@ -34,7 +33,6 @@ export class IcrcService {
 
   public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
     try {
-      const wallet = get(auth);
       const actor = await auth.getActor(canister_id, canisterIDLs['icrc1']);
       return await actor.icrc1_metadata();
     } catch (error) {
@@ -182,8 +180,6 @@ export class IcrcService {
       console.log('Checking allowance for', owner.toString());
       console.log('Spender:', spender.toString());
       console.log('Token:', token.canister_id);
-      const wallet = get(auth);
-      const walletId = wallet.account?.owner?.toString() || "anonymous";
       const actor = await auth.getActor(token.canister_id, canisterIDLs['icrc2']);
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },

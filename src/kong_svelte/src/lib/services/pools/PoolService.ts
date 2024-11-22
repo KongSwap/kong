@@ -1,6 +1,5 @@
 // services/PoolService.ts
-import { auth } from '$lib/services/auth';
-import { walletValidator } from '$lib/services/wallet/walletValidator';
+import { auth, requireWalletConnection} from '$lib/services/auth';
 import { get } from 'svelte/store';
 import { PoolResponseSchema, UserPoolBalanceSchema } from './poolSchema';
 import { IcrcService } from '../icrc/IcrcService';
@@ -21,7 +20,7 @@ export class PoolService {
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
       const pnp = get(auth);
-      const actor =  await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
+      const actor =  await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
       if (!actor) {
         return {
           pools: [],
@@ -138,7 +137,7 @@ export class PoolService {
     tx_id_0?: number[];
     tx_id_1?: number[];
   }): Promise<bigint> {
-    await walletValidator.requireWalletConnection();
+    await requireWalletConnection();
     
     try {
       if (!params.token_0 || !params.token_1) {
@@ -197,7 +196,7 @@ export class PoolService {
   }
 
   public static async removeLiquidity(params: any): Promise<string> {
-    await walletValidator.requireWalletConnection();
+    await requireWalletConnection();
     try {
       const actor =  await auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true});
       const result = await actor.remove_liquidity_async({

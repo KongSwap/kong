@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AccountDetails from "./AccountDetails.svelte";
   import { accountStore } from "$lib/stores/accountStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import "./colors.css";
@@ -17,6 +18,7 @@
   let loadingInitialBalances = true;
   let isLoggedIn = false;
   let isExpanded = false;
+  let showAccountDetails = false;
 
   sidebarStore.subscribe(state => {
     isExpanded = state.isExpanded;
@@ -238,6 +240,10 @@
     {/if}
   </div>
 </header>
+
+<AccountDetails 
+  onClose={() => showAccountDetails = false}
+/>
 
 <style scoped>
     .portfolio-value {

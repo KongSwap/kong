@@ -29,15 +29,6 @@
     init().catch(console.error);
   });
 
-  // Load favorites when wallet connects and PNP is initialized
-  auth.subscribe(($auth) => {
-    if ($auth?.account?.owner && isInitialized) {
-      // Ensure PNP is initialized before loading balances
-      tokenStore.loadBalances($auth.account.owner).catch(console.error);
-      tokenStore.loadFavorites().catch(console.error);
-    }
-  });
-
   onDestroy(() => {
     appLoader.destroy();
   });

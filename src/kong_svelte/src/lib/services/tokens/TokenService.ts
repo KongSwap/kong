@@ -568,7 +568,6 @@ export class TokenService {
 
   public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
     try {
-      const wallet = get(auth);
       const actor = await auth.getActor(canisterId, "icrc1", {anon: true});
       return await actor.icrc1_metadata();
     } catch (error) {
@@ -581,7 +580,6 @@ export class TokenService {
     principalId: string,
     tokenId = "",
   ): Promise<any> {
-    const wallet = get(auth);
     const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
     return await actor.txs([true]);
   }
@@ -589,7 +587,6 @@ export class TokenService {
   public static async claimFaucetTokens(): Promise<any> {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
-      const wallet = get(auth);
       const actor = await auth.getActor(kongFaucetId, canisterIDLs.kong_faucet, {anon: false});
       return await actor.claim();
     } catch (error) {
@@ -658,7 +655,6 @@ export class TokenService {
         // ICP's fee is typically 10,000 e8s (0.0001 ICP)
         return BigInt(10000);
       } else {
-        const wallet = get(auth);
         const actor = await auth.getActor(token.canister_id, "icrc1", {anon: true});
         const fee = await actor.icrc1_fee();
         return fee;
