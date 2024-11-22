@@ -47,6 +47,8 @@
     transition: all 0.2s ease-out;
     color: white;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .modern-panel.no-rounded {
@@ -94,7 +96,7 @@
 
   .modern-panel.secondary {
     background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0);
     box-shadow: 
       0 16px 32px -8px rgba(0, 0, 0, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -180,5 +182,27 @@
 
   :global(.modern-panel *::-webkit-scrollbar-thumb:hover) {
     background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Glass panel styling */
+  .modern-panel.glass-panel {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .panel-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 </style>

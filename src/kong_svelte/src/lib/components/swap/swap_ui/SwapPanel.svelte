@@ -12,8 +12,10 @@
   } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import TokenSelectorButton from "./TokenSelectorButton.svelte";
+  import TokenSelectorModal from "./TokenSelectorModal.svelte";
   import BigNumber from "bignumber.js";
   import { auth } from "$lib/services/auth";
+  import { swapState } from "$lib/services/swap/SwapStateService";
 
   // Props with proper TypeScript types
   export let title: string;
@@ -290,6 +292,27 @@
     </footer>
   </div>
 </Panel>
+
+<TokenSelectorModal
+  show={panelType === "pay" ? $swapState.showPayTokenSelector : $swapState.showReceiveTokenSelector}
+  onSelect={(selectedToken) => {
+    if (panelType === "pay") {
+      swapState.setPayToken(selectedToken);
+      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+    } else {
+      swapState.setReceiveToken(selectedToken);
+      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
+    }
+  }}
+  onClose={() => {
+    if (panelType === "pay") {
+      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+    } else {
+      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
+    }
+  }}
+  currentToken={token}
+/>
 
 <style scoped lang="postcss">
   .clickable:hover {

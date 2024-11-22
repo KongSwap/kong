@@ -318,6 +318,28 @@
 <style lang="postcss">
   .token-list {
     @apply w-full flex flex-col gap-2 px-3 py-4;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .token-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .token-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .token-list::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .token-list::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
   }
 
   .token-list.expanded {
@@ -326,6 +348,7 @@
 
   .filter-bar {
     @apply flex flex-col sm:flex-row gap-4 mb-4 sticky top-0 bg-black/90 backdrop-blur-md p-4 rounded-lg border border-white/5;
+    z-index: 10;
   }
 
   .search-box {

@@ -101,7 +101,6 @@
     width: 100%;
   }
   .nav-container {
-    max-width: 1200px;
     width: 100%;
   }
 </style>
