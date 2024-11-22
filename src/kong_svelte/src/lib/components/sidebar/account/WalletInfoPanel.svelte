@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { availableWallets, selectedWalletId } from "$lib/services/wallet/walletStore";
+  import { availableWallets, selectedWalletId } from "$lib/services/auth";
 
   let networkType = process.env.DFX_NETWORK === 'local' ? 'Local' : 'Mainnet';
   let networkHost = process.env.DFX_NETWORK === 'local' ? 'http://localhost:4943' : 'https://ic0.app';

@@ -1,12 +1,12 @@
 import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
 import { locale, loadTranslations } from "../translations/i18nConfig";
-import { kongDB } from "$lib/services/db";
-import type { Settings } from "./types";
-import { walletStore } from "../wallet/walletStore";
-type SupportedLocale = "en" | "es";
-const supportedLocales: SupportedLocale[] = ["en", "es"];
-const defaultLocale: SupportedLocale = "en";
+import { kongDB } from '$lib/services/db';
+import type { Settings } from './types';
+import { auth } from '../auth';
+type SupportedLocale = 'en' | 'es';
+const supportedLocales: SupportedLocale[] = ['en', 'es'];
+const defaultLocale: SupportedLocale = 'en';
 
 function getValidLocale(locale: string | null): SupportedLocale {
   if (!locale) return defaultLocale;
@@ -53,20 +53,29 @@ function createSettingsStore() {
 
   async function initializeStore() {
     if (browser) {
-      const walletId = get(walletStore).account?.owner?.toString() || 'default-user';
-      const dbSettings = await kongDB.settings.get(walletId);
-      
-      if (dbSettings) {
-        set(dbSettings);
-        locale.set(dbSettings.default_language);
-        loadTranslations(dbSettings.default_language);
-      } else {
-        // If no settings exist, store default settings
-        await kongDB.settings.put({
-          ...DEFAULT_SETTINGS,
-          principal_id: walletId,
-          timestamp: Date.now(),
-        });
+      const pnp = get(auth);
+      const walletId = pnp?.account?.owner?.toString();
+      if (!walletId) {
+        console.error('Wallet ID is not available.');
+        return;
+      }
+
+      try {
+        const dbSettings = await kongDB.settings.get(walletId);
+        if (dbSettings) {
+          set(dbSettings);
+          locale.set(dbSettings.default_language);
+          loadTranslations(dbSettings.default_language);
+        } else {
+          // If no settings exist, store default settings
+          await kongDB.settings.put({
+            ...DEFAULT_SETTINGS,
+            principal_id: walletId,
+            timestamp: Date.now()
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing settings:', error);
       }
     }
   }
@@ -75,8 +84,13 @@ function createSettingsStore() {
     key: keyof Settings,
     value: Settings[keyof Settings],
   ) {
-    update((settings) => {
-      const walletId = get(walletStore).account?.owner?.toString() || 'default-user';
+    update(settings => {
+      const walletId = get(auth).account?.owner?.toString();
+      if (!walletId) {
+        console.error('Wallet ID is not available.');
+        return settings;
+      }
+
       const newSettings = {
         ...settings,
         [key]: value,
@@ -104,7 +118,12 @@ function createSettingsStore() {
   }
 
   async function reset() {
-    const walletId = get(walletStore).account?.owner?.toString() || 'default-user';
+    const walletId = get(auth).account?.owner;
+    if (!walletId) {
+      console.error('Wallet ID is not available.');
+      return;
+    }
+
     set(DEFAULT_SETTINGS);
     
     if (browser) {

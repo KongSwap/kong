@@ -5,7 +5,7 @@
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { sidebarStore } from '$lib/stores/sidebarStore';
   import { Star, TrendingUp, ArrowUpDown, ArrowUpRight, ArrowDownLeft } from 'lucide-svelte';
-  import { walletStore } from '$lib/services/wallet/walletStore';
+  import { auth } from '$lib/services/auth';
   import { derived } from 'svelte/store';
   import { formatBalance, formatUsdValue, formatTokenValue, formatPercentage } from '$lib/utils/tokenFormatters';
 
@@ -38,7 +38,7 @@
     console.log('Receive clicked for', token.symbol);
   }
 
-  const isFavorite = $derived($tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()]?.includes(token.canister_id) ?? false);
+  const isFavorite = $derived($tokenStore.favoriteTokens[$auth.account?.owner?.toString()]?.includes(token.canister_id) ?? false);
   
   // Calculate 24h change percentage (mock data for now)
   const priceChange24h = Math.random() * 20 - 10; // Random value between -10 and 10

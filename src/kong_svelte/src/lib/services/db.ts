@@ -9,19 +9,25 @@ export class KongDB extends Dexie {
   images!: Table<KongImage, number>; // Table<KongImage, primary key type>
   favorite_tokens!: Table<FavoriteToken, string>; // Table<FavoriteToken, primary key type>
   settings!: Table<Settings, string>; // Add settings table
+  pools!: Table<BE.Pool, string>;
+  transactions: Table<FE.Transaction, number>;
 
   constructor() {
     super('kong_db'); // Database name
     this.version(1).stores({
       tokens: 'canister_id, timestamp',
       images: '++id, canister_id, timestamp',
+      pools: 'id, address_0, address_1',
+      transactions: 'id',
       favorite_tokens: '[canister_id+wallet_id], wallet_id, timestamp',
       settings: 'principal_id, timestamp' 
     });
     this.tokens = this.table('tokens');
     this.images = this.table('images');
+    this.pools = this.table('pools');
     this.favorite_tokens = this.table('favorite_tokens');
     this.settings = this.table('settings');
+    this.transactions = this.table('transactions')
   }
 }
 

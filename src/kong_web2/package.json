@@ -1,0 +1,30 @@
+{
+  "name": "kong_web2",
+  "version": "1.0.0",
+  "description": "Fastify Prisma PostgreSQL API",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test:canister": "tsx src/test-canister.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@dfinity/agent": "^0.20.2",
+    "@dfinity/principal": "^0.20.2",
+    "@fastify/cors": "^8.3.0",
+    "@prisma/client": "^5.2.0",
+    "fastify": "^4.22.2",
+    "node-cron": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.9",
+    "@types/node-cron": "^3.0.8",
+    "prisma": "^5.2.0",
+    "tsx": "^3.12.8",
+    "typescript": "^5.2.2"
+  }
+}

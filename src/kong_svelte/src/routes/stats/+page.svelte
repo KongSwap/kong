@@ -7,7 +7,7 @@
   import Clouds from "$lib/components/stats/Clouds.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools/poolStore";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
@@ -227,8 +227,8 @@
         <button 
           class="retry-button"
           on:click={() => {
-            tokenStore.refresh();
-            poolStore.refresh();
+            tokenStore.loadTokens();
+            poolStore.loadPools();
           }}
         >
           Retry
@@ -255,7 +255,7 @@
               >
                 <td class="token-cell">
                   <TokenImages 
-                    tokens={[token]} 
+                    tokens={[token as FE.Token]} 
                     containerClass="token-image" 
                     size={32}
                   />

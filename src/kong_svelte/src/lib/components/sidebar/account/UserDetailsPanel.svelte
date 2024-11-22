@@ -1,11 +1,25 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
-  import { userStore } from "$lib/services/wallet/walletStore";
-  
-  $: userDetails = $userStore ? JSON.stringify($userStore, null, 2) : 'No user data';
+  import { auth } from "$lib/services/auth";
+  import { onMount } from "svelte";
+  import {
+    canisterId as kongBackendId,
+    idlFactory as kongBackendIDL,
+  } from "../../../../../../declarations/kong_backend";
+
+  let userDetails;
+  onMount(async () => {
+    const actor = await auth.getActor(kongBackendId, kongBackendIDL, {
+      anon: false,
+    });
+    console.log("actor:", actor);
+    const res = await actor.get_user();
+    userDetails = JSON.stringify(res.Ok, null, 2);
+    console.log("User details:", userDetails);
+  });
 </script>
 
-<div class="tab-panel">
+<div class="tab-panel" transition:fly={{ y: 20, duration: 300 }}>
   <div class="detail-section">
     <h3>User Details</h3>
     <div class="user-details-container">
@@ -70,7 +84,11 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
-</style> 
+</style>

@@ -14,11 +14,11 @@
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
   import { toastStore } from "$lib/stores/toastStore";
-  import { walletStore } from "$lib/services/wallet/walletStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { ArrowUpDown, Search } from 'lucide-svelte';
   import { Principal } from "@dfinity/principal";
   import { onDestroy } from "svelte";
+    import { auth } from "$lib/services/auth";
 
   // Accept tokens prop for live data
   export let tokens: any[] = [];
@@ -90,7 +90,7 @@
         // Trigger a token balance refresh
         tokenStore.loadBalance(
           selectedToken,
-          $walletStore.account?.owner?.toString(),
+          $auth.account?.owner?.toString(),
           true,
         );
       } else if (result?.Err) {
@@ -137,7 +137,7 @@
   }
 
   function handleFavoriteClick(e: MouseEvent, token: any) {
-    const owner = $walletStore.account?.owner?.toString();
+    const owner = $auth?.account?.owner?.toString();
     if (!owner) return;
 
     toggleFavoriteToken(token.canister_id);
@@ -155,7 +155,7 @@
         $formattedTokens?.find((t) => t.canister_id === token.canister_id) ||
         token;
       const favoriteTokens =
-        $tokenStore.favoriteTokens[$walletStore.account?.owner?.toString()] ||
+        $tokenStore.favoriteTokens[$auth?.account?.owner?.toString()] ||
         [];
       return {
         ...formattedToken,
@@ -260,7 +260,7 @@
 
 {#if isModalOpen && selectedToken}
   <Modal
-    show={isModalOpen}
+    isOpen={isModalOpen}
     onClose={handleCloseModal}
     title={"Send " + (selectedToken?.symbol || "Token Details")}
     width="480px"

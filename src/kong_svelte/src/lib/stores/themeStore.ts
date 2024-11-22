@@ -2,11 +2,11 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 // Get theme and mode from localStorage or default values
-const storedTheme = browser ? localStorage.getItem('theme') : 'pixel';
-const storedMode = browser ? localStorage.getItem('themeMode') : 'light';
+const storedTheme = browser ? localStorage.getItem('theme') : 'modern';
+const storedMode = browser ? localStorage.getItem('themeMode') : 'dark';
 
-export const themeStore = writable(storedTheme || 'pixel');
-export const themeModeStore = writable(storedMode || 'light');
+export const themeStore = writable(storedTheme || 'modern');
+export const themeModeStore = writable(storedMode || 'dark');
 
 // Subscribe to changes and update localStorage
 if (browser) {

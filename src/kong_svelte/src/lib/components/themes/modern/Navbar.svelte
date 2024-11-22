@@ -5,7 +5,7 @@
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
   import { t } from "$lib/services/translations";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
   import { fade, slide } from "svelte/transition";
 
   export let activeTab: "swap" | "earn" | "stats";
@@ -100,7 +100,7 @@
           </button>
 
           <Button
-            text={$walletStore.isConnected ? $t("common.openDrawer") : $t("common.connect")}
+            text={$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
             variant="yellow"
             size="medium"
             state={sidebarOpen ? "selected" : "default"}
@@ -149,7 +149,7 @@
 
       <div class="mobile-menu-footer">
         <Button
-          text={$walletStore.isConnected ? $t("common.openDrawer") : $t("common.connect")}
+          text={$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
           variant="yellow"
           size="medium"
           state={sidebarOpen ? "selected" : "default"}

@@ -31,6 +31,10 @@ interface SwapStatus {
         lp: BigNumber;
         token?: string;
     };
+    pay_symbol?: string;
+    receive_symbol?: string;
+    pay_amount?: bigint;
+    receive_amount?: bigint;
 }
 
 function createSwapStatusStore() {

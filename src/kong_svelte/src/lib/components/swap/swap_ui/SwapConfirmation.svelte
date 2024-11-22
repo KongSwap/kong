@@ -191,7 +191,7 @@
 </script>
 
 <Modal
-  show={true}
+  isOpen={true}
   title="Review Swap"
   {onClose}
   variant="green"

@@ -3,6 +3,9 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
+  import { t } from "$lib/services/translations";
+  import { auth } from "$lib/services/auth";
+  import { fade } from "svelte/transition";
   import Modal from "../common/Modal.svelte";
   import Settings from "../settings/Settings.svelte";
   import { themeStore } from "$lib/stores/themeStore";

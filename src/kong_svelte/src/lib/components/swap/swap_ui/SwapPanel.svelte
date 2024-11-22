@@ -13,8 +13,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import TokenSelectorButton from "./TokenSelectorButton.svelte";
   import BigNumber from "bignumber.js";
-  import { walletStore } from "$lib/services/wallet/walletStore";
-  import { formatBalance, formatUsdValue, formatTokenValue, toRawAmount, fromRawAmount } from '$lib/utils/tokenFormatters';
+  import { auth } from "$lib/services/auth";
 
   // Props with proper TypeScript types
   export let title: string;
@@ -42,11 +41,6 @@
   let calculatedUsdValue = 0;
   let pendingAnimation: any = null;
 
-  // Token info
-  $: tokenInfo = token;
-  $: decimals = tokenInfo?.decimals || DEFAULT_DECIMALS;
-  $: isIcrc1 = tokenInfo?.icrc1 && !tokenInfo?.icrc2;
-
   // Animated values
   const animatedUsdValue = tweened(0, {
     duration: ANIMATION_BASE_DURATION,
@@ -63,55 +57,50 @@
     easing: cubicOut,
   });
 
-  // Format the balance for display
-  $: formattedBalance = tokenInfo 
-    ? formatBalance($tokenStore.balances[tokenInfo.canister_id]?.in_tokens.toString(), tokenInfo.decimals)
-    : "0";
+  // Reactive declarations
+  $: tokenInfo = $tokenStore.tokens.find(
+    (t) => t.canister_id === token?.canister_id,
+  );
+  $: decimals = tokenInfo?.decimals || DEFAULT_DECIMALS;
+  $: isIcrc1 = tokenInfo?.icrc1 && !tokenInfo?.icrc2;
 
-  // Format USD value
-  $: {
-    if (amount && token?.price) {
-      const rawAmount = toRawAmount(amount, token.decimals);
-      calculatedUsdValue = fromRawAmount(rawAmount, token.decimals) * token.price;
-      
-      const duration = Math.min(
-        ANIMATION_BASE_DURATION + Math.abs(calculatedUsdValue - $animatedUsdValue) * ANIMATION_VALUE_MULTIPLIER,
-        ANIMATION_MAX_DURATION
+  // Balance calculations
+  $: formattedBalance = calculateFormattedBalance();
+
+  function calculateFormattedBalance() {
+    if (!$auth?.account) return "0";
+
+    const balance =
+      $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens ||
+      tokenStore.loadBalance(
+        tokenInfo,
+        $auth.account.owner.toString(),
+        false,
       );
-      
-      animatedUsdValue.set(calculatedUsdValue, { duration });
-    } else {
-      calculatedUsdValue = 0;
-      animatedUsdValue.set(0, { duration: ANIMATION_BASE_DURATION });
-    }
+
+    const feesInTokens = tokenInfo?.fee
+      ? BigInt(tokenInfo.fee) * (isIcrc1 ? 1n : 2n)
+      : 0n;
+
+    if (balance.toString() === "0") return "0";
+
+    return formatTokenAmount(
+      new BigNumber(balance.toString())
+        .minus(fromTokenDecimals(amount || "0", decimals))
+        .minus(feesInTokens.toString())
+        .toString(),
+      decimals,
+    );
   }
-
-  // Format the animated USD value
-  $: formattedUsdValue = formatUsdValue($animatedUsdValue);
-
-  // Calculate price impact
-  function calculatePriceImpact(amount: string, price: number | undefined): number {
-    if (!amount || !price || amount === "0") return 0;
-    
-    const value = Number(amount) * (price ?? 0);
-    if (value === 0) return 0;
-
-    const marketValue = value;
-    const actualValue = calculatedUsdValue;
-    
-    if (marketValue === 0) return 0;
-    
-    const impact = ((marketValue - actualValue) / marketValue) * 100;
-    return Math.max(0, impact);
-  }
-
-  // Calculate impact percentage
-  $: priceImpact = calculatePriceImpact(amount, token?.price);
 
   // Animation and value updates
   $: {
     const balance =
       $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || 0n;
+    formattedUsdValue =
+      $tokenStore.balances[tokenInfo?.canister_id]?.in_usd || "0";
+    calculatedUsdValue = parseFloat(formattedUsdValue);
+
     if (pendingAnimation && amount === "0") {
       pendingAnimation = null;
     }
@@ -282,7 +271,12 @@
             class:clickable={title === "You Pay" && !disabled}
             on:click={handleMaxClick}
           >
-            {formattedBalance}
+            {formatTokenAmount(
+              $tokenStore.balances[
+                tokenInfo?.canister_id
+              ]?.in_tokens?.toString() || "0",
+              decimals,
+            )}
             {token?.symbol}
           </button>
         </div>

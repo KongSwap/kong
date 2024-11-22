@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import { walletStore } from "$lib/services/wallet/walletStore";
+  import { auth } from "$lib/services/auth";
   import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import { getButtonText } from "./utils";
@@ -20,8 +20,10 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash/debounce";
+    import { replaceState } from "$app/navigation";
   import { writable } from "svelte/store";
   import { createEventDispatcher } from 'svelte';
+  import Portal from 'svelte-portal';
 
   let isProcessing = false;
   let rotationCount = 0;
@@ -68,7 +70,7 @@
   });
 
   $: isSwapButtonDisabled =
-    !$walletStore.isConnected ||
+    !$auth?.account?.owner ||
     !$swapState.payToken ||
     !$swapState.receiveToken ||
     !$swapState.payAmount ||
@@ -76,9 +78,7 @@
     get(swapState.isInputExceedingBalance) ||
     $swapState.swapSlippage > userMaxSlippage;
 
-  $: buttonText = get(swapState.isInputExceedingBalance)
-    ? "Insufficient Balance"
-    : $swapState.swapSlippage > userMaxSlippage
+  $: buttonText = $swapState.swapSlippage > userMaxSlippage
       ? `Slippage (${$swapState.swapSlippage.toFixed(2)}%) Exceeds Limit (${userMaxSlippage}%)`
       : getButtonText({
           isCalculating: $swapState.isCalculating,
@@ -87,7 +87,7 @@
           error: $swapState.error,
           swapSlippage: $swapState.swapSlippage,
           userMaxSlippage,
-          isConnected: $walletStore.isConnected,
+          isConnected: $auth.isConnected,
           payTokenSymbol: $swapState.payToken?.symbol || "",
           receiveTokenSymbol: $swapState.receiveToken?.symbol || "",
         });
@@ -242,7 +242,7 @@
   function updateTokenInURL(param: 'from' | 'to', tokenId: string) {
     const url = new URL(window.location.href);
     url.searchParams.set(param, tokenId);
-    history.replaceState({}, '', url.toString());
+    replaceState(url.toString(), {});
   }
 
   const debouncedGetQuote = debounce(
@@ -402,6 +402,7 @@
 {/if}
 
 {#if $swapState.showConfirmation}
+<Portal target="body">
   <SwapConfirmation
     payToken={$swapState.payToken}
     payAmount={$swapState.payAmount}
@@ -422,6 +423,7 @@
       }));
     }}
   />
+</Portal>
 {/if}
 
 {#if $swapState.showBananaRain}

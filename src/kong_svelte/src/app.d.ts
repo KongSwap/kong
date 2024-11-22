@@ -1,5 +1,6 @@
 // See https://kit.svelte.dev/docs/types#app
-// for information about these interfaces
+/// <reference path="./types/index.d.ts" />
+
 declare global {
   interface CanisterIdIcpLedger {
     [key: string]: any;

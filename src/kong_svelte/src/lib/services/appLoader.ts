@@ -1,10 +1,12 @@
 import { browser } from "$app/environment";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { poolStore } from "$lib/services/pools/poolStore";
-import { walletStore, restoreWalletConnection } from "$lib/services/wallet/walletStore";
 import { derived, get, writable } from "svelte/store";
+import { auth, canisterIDLs } from "$lib/services/auth";
 import { settingsStore } from "$lib/services/settings/settingsStore";
 import { assetCache } from "$lib/services/assetCache";
+import { canisterId as kongBackendCanisterId } from '../../../../declarations/kong_backend';
+import { getPnpInstance } from "$lib/services/pnp/PnpInitializer";
 
 export class AppLoader {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -13,14 +15,6 @@ export class AppLoader {
   private pendingAssets = new Set<string>();
   private loadingErrors: string[] = [];
 
-  // Create a derived store for auth state
-  private authState = derived(walletStore, ($wallet) => ({
-    isConnected: $wallet.isConnected,
-    owner: $wallet?.account?.owner
-  }));
-
-  private unsubscribeAuth: (() => void) | null = null;
-
   // Enhanced loading state store
   public loadingState = writable({ 
     isLoading: true,
@@ -28,6 +22,19 @@ export class AppLoader {
     totalAssets: 0,
     errors: [] as string[]
   });
+
+  private async initializeWallet(): Promise<void> {
+    try {
+      // Initialize wallet connection using auth service
+      // Add your wallet initialization logic here
+    } catch (error) {
+      console.error('Failed to initialize wallet:', error);
+      this.loadingState.update(state => ({
+        ...state,
+        errors: [...state.errors, 'Failed to initialize wallet']
+      }));
+    }
+  }
 
   // Asset preloading with priority, batching, and tracking
   private async preloadAsset(url: string, type: 'image' | 'svg' = 'image', priority: 'high' | 'low' = 'high'): Promise<void> {
@@ -45,84 +52,20 @@ export class AppLoader {
       
       this.preloadedAssets.add(url);
       this.pendingAssets.delete(url);
+      
       this.loadingState.update(state => ({
         ...state,
-        assetsLoaded: this.preloadedAssets.size
+        assetsLoaded: this.preloadedAssets.size,
+        totalAssets: this.pendingAssets.size + this.preloadedAssets.size
       }));
     } catch (error) {
-      const errorMsg = `Failed to preload asset: ${url}`;
-      console.error(errorMsg, error);
-      this.loadingErrors.push(errorMsg);
+      console.error(`Failed to preload asset ${url}:`, error);
+      this.loadingErrors.push(`Failed to load ${url}`);
       this.loadingState.update(state => ({
         ...state,
-        errors: [...state.errors, errorMsg]
-      }));
-      this.pendingAssets.delete(url);
-    }
-  }
-
-  private async batchPreloadAssets(assets: string[], type: 'image' | 'svg', batchSize: number = 5): Promise<void> {
-    const batches = [];
-    for (let i = 0; i < assets.length; i += batchSize) {
-      const batch = assets.slice(i, i + batchSize);
-      batches.push(Promise.all(batch.map(url => this.preloadAsset(url, type))));
-    }
-    await Promise.all(batches);
-  }
-
-  // API polling - split into authenticated and public calls
-  private async executePublicAPICalls(): Promise<void> {
-    try {
-      await Promise.all([
-        tokenStore.loadTokens(),
-        poolStore.loadPools()
-      ]);
-    } catch (error) {
-      console.error("Error updating public data:", error);
-      this.loadingErrors.push(`Error loading public data: ${error.message}`);
-      this.loadingState.update(state => ({
-        ...state,
-        errors: [...state.errors, `Error loading public data: ${error.message}`]
+        errors: [...state.errors, `Failed to load ${url}`]
       }));
     }
-  }
-
-  private async executeAuthenticatedAPICalls(): Promise<void> {
-    try {
-      await Promise.all([
-        tokenStore.loadBalances(),
-        tokenStore.loadPrices(),
-        settingsStore.initializeStore()
-      ]);
-    } catch (error) {
-      console.error("Error updating authenticated data:", error);
-      this.loadingErrors.push(`Error loading authenticated data: ${error.message}`);
-      this.loadingState.update(state => ({
-        ...state,
-        errors: [...state.errors, `Error loading authenticated data: ${error.message}`]
-      }));
-    }
-  }
-
-  private async pollData(): Promise<void> {
-    const auth = get(this.authState);
-
-    try {
-      // Always fetch public data
-      await this.executePublicAPICalls();
-
-      // Only fetch authenticated data if user is connected
-      if (auth.isConnected) {
-        await this.executeAuthenticatedAPICalls();
-      }
-    } finally {
-      this.timeoutId = setTimeout(() => this.pollData(), 7000);
-    }
-  }
-
-  public startPolling(): void {
-    if (this.timeoutId) clearTimeout(this.timeoutId);
-    this.pollData();
   }
 
   // Component assets configuration
@@ -179,91 +122,130 @@ export class AppLoader {
     "/backgrounds/grass.webp"
   ];
 
-  public async initialize(assets?: { backgrounds: string[], svgComponents: string[] }): Promise<void> {
-    if (this.isInitialized) return;
-
-    this.loadingState.set({
-      isLoading: true,
-      assetsLoaded: 0,
-      totalAssets: 0,
-      errors: []
-    });
+  public async initialize(): Promise<void> {
+    getPnpInstance();
+    if (this.isInitialized) {
+      console.log('App already initialized');
+      return;
+    }
 
     try {
-      const svgComponents = assets?.svgComponents || this.generateRequiredComponents();
+      console.log('Starting app initialization...');
+      this.loadingState.set({
+        isLoading: true,
+        assetsLoaded: 0,
+        totalAssets: 0,
+        errors: []
+      });
+
+      await this.initializeWallet().catch(error => {
+        console.error('Wallet initialization failed:', error);
+        throw error;
+      });
+      
+      // Load and cache required assets
+      const svgComponents = this.generateRequiredComponents();
       const allAssets = [...this.backgrounds, ...svgComponents];
       const areCached = await assetCache.areAssetsCached(allAssets);
 
-      // Core data loading
-      // await restoreWalletConnection();
-
       if (!areCached) {
-        // Start parallel loading of public data and assets
-        const [assetLoadingPromise, publicDataPromise] = await Promise.allSettled([
-          Promise.all([
-            this.batchPreloadAssets(this.backgrounds, 'image', 5),
-            this.batchPreloadAssets(svgComponents, 'svg', 20)
-          ]),
-          this.executePublicAPICalls()
+        // Start parallel loading of assets
+        await Promise.all([
+          this.batchPreloadAssets(this.backgrounds, 'image', 5),
+          this.batchPreloadAssets(svgComponents, 'svg', 20)
         ]);
-
-        // Handle any errors from the parallel loading
-        for (const result of [publicDataPromise, assetLoadingPromise]) {
-          if (result.status === 'rejected') {
-            this.loadingErrors.push(`Failed to load data: ${result.reason}`);
-          }
-        }
-      } else {
-        // Just load public data if assets are cached
-        await this.executePublicAPICalls();
       }
 
-      // Update loading state with any errors
-      if (this.loadingErrors.length > 0) {
-        this.loadingState.update(state => ({
-          ...state,
-          errors: this.loadingErrors
-        }));
-      }
+      // Initialize stores in the correct order:
+      // 1. Settings (independent)
+      // 2. Tokens (depends on wallet)
+      // 3. Pools (depends on tokens)
+      await Promise.all([
+        this.initializeSettings().catch(error => {
+          console.warn('Settings initialization failed:', error);
+          settingsStore.initializeStore()
+        }),
+        this.initializeTokens().catch(error => {
+          console.error('Token initialization failed:', error);
+          throw error;
+        })
+      ]);
 
-      // Start polling after assets are loaded
-      this.startPolling();
-      this.isInitialized = true;
-
-      // Update final loading state
-      this.loadingState.set({
-        isLoading: false,
-        assetsLoaded: this.preloadedAssets.size,
-        totalAssets: this.preloadedAssets.size,
-        errors: this.loadingErrors
+      await this.initializePools().catch(error => {
+        console.error('Pool initialization failed:', error);
+        throw error;
       });
 
+      console.log('App initialization complete');
+      this.isInitialized = true;
     } catch (error) {
       console.error('Error during initialization:', error);
-      this.loadingErrors.push(`Initialization error: ${error}`);
-      
-      // Make sure to update loading state even on error
-      this.loadingState.set({
-        isLoading: false,
-        assetsLoaded: this.preloadedAssets.size,
-        totalAssets: this.preloadedAssets.size,
-        errors: this.loadingErrors
-      });
+      this.loadingState.update(state => ({
+        ...state,
+        errors: [...state.errors, `Initialization failed: ${error.message}`]
+      }));
+      throw error;
+    } finally {
+      this.loadingState.update(state => ({
+        ...state,
+        isLoading: false
+      }));
     }
   }
 
-  public cleanup(): void {
+  private async batchPreloadAssets(assets: string[], type: 'image' | 'svg', batchSize: number = 5): Promise<void> {
+    const batches = [];
+    for (let i = 0; i < assets.length; i += batchSize) {
+      const batch = assets.slice(i, i + batchSize);
+      batches.push(Promise.all(batch.map(url => this.preloadAsset(url, type))));
+    }
+    await Promise.all(batches);
+  }
+
+  private async initializeTokens(): Promise<void> {
+    try {
+      // Wait for wallet connection first since we need it for token operations
+      // Initialize tokens using auth service
+      // Add your token initialization logic here
+      tokenStore.loadPrices()
+      tokenStore.loadTokens();
+    } catch (error) {
+      console.error('Failed to initialize tokens:', error);
+      throw new Error(`Token initialization failed: ${error.message}`);
+    }
+  }
+
+  private async initializePools(): Promise<void> {
+    try {
+      // Wait for tokens to be loaded since pools depend on token information
+      // Initialize pools using auth service
+      // Add your pool initialization logic here
+      poolStore.loadPools();
+      poolStore.loadUserPoolBalances();
+    } catch (error) {
+      console.error('Failed to initialize pools:', error);
+      throw new Error(`Pool initialization failed: ${error.message}`);
+    }
+  }
+
+  private async initializeSettings(): Promise<void> {
+    try {
+      console.log('Initializing settings...');
+      const kongBackendActor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: true });
+      // Initialize settings using the actor
+      // Add your settings initialization logic here
+      console.log('Settings initialized successfully');
+    } catch (error) {
+      console.error('Settings initialization error:', error);
+      throw error;
+    }
+  }
+
+  public destroy(): void {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
-    if (this.unsubscribeAuth) {
-      this.unsubscribeAuth();
-      this.unsubscribeAuth = null;
-    }
-    this.preloadedAssets.clear();
-    this.pendingAssets.clear();
-    this.loadingErrors = [];
   }
 }
 

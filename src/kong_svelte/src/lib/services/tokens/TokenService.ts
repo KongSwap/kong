@@ -1,4 +1,4 @@
-import { getActor, walletStore } from "$lib/services/wallet/walletStore";
+import { auth } from "$lib/services/auth";
 import { PoolService } from "../../services/pools/PoolService";
 import {
   formatToNonZeroDecimal,
@@ -18,6 +18,9 @@ import {
 } from "./tokenLogos";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
+import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { canisterIDLs } from "../pnp/PnpInitializer";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -37,32 +40,57 @@ export class TokenService {
 
   public static async fetchTokens(): Promise<FE.Token[]> {
     try {
-      // Try to get cached tokens
-      const currentTime = Date.now();
-      const cachedTokens = await kongDB.tokens
-        .where("timestamp")
-        .above(currentTime - this.TOKEN_CACHE_DURATION)
-        .toArray();
+      const wallet = get(auth);
+      let retries = 3;
+      let actor;
 
-      if (cachedTokens.length > 0) {
-        return cachedTokens;
+      while (retries > 0) {
+        try {
+          actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
+          const result = await actor.tokens(["all"]);
+          const parsed = parseTokens(result);
+
+          if (parsed.Err) {
+            console.error('Error parsing tokens:', parsed.Err);
+            throw parsed.Err;
+          }
+
+          const deduplicatedTokens = this.deduplicateTokens(parsed.Ok);
+
+          // Cache the tokens
+          await Promise.all(
+            deduplicatedTokens.map((token) =>
+              kongDB.tokens.put({
+                ...token,
+                timestamp: Date.now(),
+              })
+            )
+          );
+
+          return deduplicatedTokens;
+        } catch (error) {
+          console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-
-      // If no valid cache, fetch from network using anonymous agent
-      const actor = await getActor(undefined, "kong_backend", false);
-      const result = await actor.tokens(["all"]);
-      const parsed = parseTokens(result);
-
-      if (parsed.Err) throw parsed.Err;
-
-      // Cache the results
-      await this.cacheTokens(parsed.Ok);
-
-      return parsed.Ok;
     } catch (error) {
       console.error("Error fetching tokens:", error);
-      throw error;
+      // Return empty array instead of throwing to prevent app from crashing
+      return [];
     }
+  }
+
+  private static deduplicateTokens(tokens: FE.Token[]): FE.Token[] {
+    // First, sort tokens by priority (on_kong first, then by canister_id)
+    const sortedTokens = [...tokens].sort((a, b) => {
+      if (a.on_kong && !b.on_kong) return -1;
+      if (!a.on_kong && b.on_kong) return 1;
+      return a.canister_id.localeCompare(b.canister_id);
+    })
+
+    return Array.from(sortedTokens.values());
   }
 
   private static async cacheTokens(tokens: FE.Token[]): Promise<void> {
@@ -225,9 +253,6 @@ export class TokenService {
     tokens: FE.Token[],
     principalId: string = null,
   ): Promise<Record<string, FE.TokenBalance>> {
-    const wallet = get(walletStore);
-    if (!wallet.isConnected) return {};
-
     if (!principalId) {
       return {};
     }
@@ -238,37 +263,60 @@ export class TokenService {
         let balance: bigint;
 
         if (token.icrc1 && principalId) {
-          balance = await IcrcService.getIcrc1Balance(
-            token,
-            Principal.fromText(principalId),
-          );
+          try {
+            balance = await IcrcService.getIcrc1Balance(
+              token,
+              Principal.fromText(principalId),
+            );
+          } catch (error) {
+            // Handle specific token errors more gracefully
+            console.warn(
+              `Unable to fetch balance for ${token.symbol} (${token.canister_id}):`,
+              error.message
+            );
+            balance = BigInt(0);
+          }
         } else {
-          // Handle other token types if necessary
-          balance = BigInt(0); // Default fallback or handle appropriately
+          balance = BigInt(0);
         }
 
         const actualBalance = formatTokenAmount(
           balance.toString(),
           token.decimals,
         );
-        const price = await this.fetchPrice(token);
+        
+        let price = 0;
+        try {
+          price = await this.fetchPrice(token);
+        } catch (priceError) {
+          console.warn(`Failed to fetch price for ${token.symbol}:`, priceError.message);
+        }
+        
         const usdValue = parseFloat(actualBalance) * price;
 
         return {
           canister_id: token.canister_id,
           balance: {
-            in_tokens: balance || BigInt(0),
+            in_tokens: balance,
             in_usd: formatToNonZeroDecimal(usdValue),
+            error: null
           },
         };
       } catch (err) {
-        console.error(`Error fetching balance for ${token.symbol} - (${token.canister_id}):`, err);
-        // Optionally provide more details from 'err'
+        // Log detailed error information for debugging
+        console.error(`Error processing token ${token.symbol}:`, {
+          error: err,
+          type: err.constructor.name,
+          message: err.message,
+          code: err.code
+        });
+        
         return {
           canister_id: token.canister_id,
           balance: {
             in_tokens: BigInt(0),
             in_usd: formatToNonZeroDecimal(0),
+            error: err.message || 'Failed to fetch balance'
           },
         };
       }
@@ -515,7 +563,7 @@ export class TokenService {
 
   public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
     try {
-      const actor = await getActor(canisterId, "icrc1");
+      const actor = await createAnonymousActorHelper(canisterId, "icrc1");
       return await actor.icrc1_metadata();
     } catch (error) {
       console.error("Error getting icrc1 token metadata:", error);
@@ -527,14 +575,14 @@ export class TokenService {
     principalId: string,
     tokenId = "",
   ): Promise<any> {
-    const actor = await getActor();
+    const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
     return await actor.txs([true]);
   }
 
   public static async claimFaucetTokens(): Promise<any> {
     try {
       const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
-      const actor = await getActor(kongFaucetId, "kong_faucet");
+      const actor = await createAnonymousActorHelper(kongFaucetId, canisterIDLs.kong_faucet);
       return await actor.claim();
     } catch (error) {
       console.error("Error claiming faucet tokens:", error);
@@ -602,9 +650,9 @@ export class TokenService {
         // ICP's fee is typically 10,000 e8s (0.0001 ICP)
         return BigInt(10000);
       } else {
-        const actor = await getActor(token.canister_id, "icrc1");
+        const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
         const fee = await actor.icrc1_fee();
-        return fee;
+        return BigInt(fee.toString());
       }
     } catch (error) {
       console.error(`Error fetching fee for ${token.symbol}:`, error);

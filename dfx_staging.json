@@ -38,14 +38,13 @@
     },
     "kong_svelte": {
       "dependencies": [
-        "kong_backend"
       ],
       "source": [
         "src/kong_svelte/dist"
       ],
       "type": "assets",
       "workspace": "kong_svelte",
-      "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
+      "specified_id": "edoy4-liaaa-aaaar-qakha-cai",
 			"metadata": [
 				{
 					"name": "candid:service"

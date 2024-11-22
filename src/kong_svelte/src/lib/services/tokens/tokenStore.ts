@@ -7,9 +7,12 @@ import { TokenService } from "./TokenService";
 import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 import { toastStore } from "$lib/stores/toastStore";
 import { eventBus } from './eventBus';
-import { walletStore } from "$lib/services/wallet/walletStore";
+import { auth } from "$lib/services/auth";
 import { liveQuery } from "dexie";
-import { queueSignatureRequest } from '../wallet/walletStore';
+import { Principal } from "@dfinity/principal";
+import { AnonymousIdentity } from "@dfinity/agent";
+import { poolStore } from "$lib/services/pools/poolStore";
+import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
 
 BigNumber.config({
   DECIMAL_PLACES: 36,
@@ -68,26 +71,34 @@ function createTokenStore() {
     balanceUpdateInterval = window.setInterval(() => {
       const currentStore = get(store);
       const walletId = getCurrentWalletId();
-      if (walletId && currentStore.tokens.length > 0) {
-        loadBalances().catch(error => {
+      if(walletId) {
+        return;
+      } else if (walletId && currentStore.tokens.length > 0) {
+        loadBalances(walletId).catch(error => {
           console.error("Error in periodic balance update:", error);
         });
       }
     }, 10000); // Update every 10 seconds
   }
 
-  const getCurrentWalletId = (): string => {
-    let walletId = '';
-    const unsubscribe = walletStore.subscribe(($wallet) => {
-      walletId = $wallet?.account?.owner?.toString() || "anonymous";
-    });
-    unsubscribe();
+  const getCurrentWalletId = (): Principal => {
+    let walletId;
+    const wallet = get(auth);
+    if (wallet && wallet.account && wallet.account.owner) {
+      walletId = wallet.account.owner;
+    } else {
+      walletId = new AnonymousIdentity().getPrincipal();
+    }
     return walletId;
   };
 
-  const loadBalances = async () => {
+  const  loadBalances = async (principal: Principal) => {
     const currentStore = get(store);
-    const walletId = getCurrentWalletId();
+    if (!principal) {
+      console.warn("No principal provided to loadBalances");
+      return {};
+    }
+    const walletId = principal.toString();
     if (!walletId) return {};
     try {
       const balances = await TokenService.fetchBalances(
@@ -118,6 +129,7 @@ function createTokenStore() {
     }));
 
     try {
+      const wallet = get(auth);
       const enrichedTokens = await TokenService.enrichTokenWithMetadata(fetchedTokens);
       const validTokens = enrichedTokens
         .filter((result) => result.status === "fulfilled")
@@ -127,12 +139,14 @@ function createTokenStore() {
         ...s,
         tokens: validTokens,
       }));
-
-      const balances = await loadBalances();
-      store.update((s) => ({
-        ...s,
-        balances,
-      }));
+      if(wallet.account && wallet.account.owner) {
+        const balances = await loadBalances(wallet.account.owner);
+        
+        store.update((s) => ({
+          ...s,
+          balances,
+        }));
+      }
     } catch (error: any) {
       console.error("Error enriching tokens:", error);
       store.update((s) => ({
@@ -142,14 +156,6 @@ function createTokenStore() {
       }));
       toastStore.error("Failed to enrich tokens");
     }
-  });
-
-  eventBus.on('tokensUpdated', async (updatedTokens: FE.Token[]) => {
-    store.update((s) => ({
-      ...s,
-      tokens: updatedTokens,
-    }));
-    await loadBalances();
   });
 
   return {
@@ -173,6 +179,38 @@ function createTokenStore() {
         }));
         toastStore.error("Failed to load tokens");
         return [];
+      }
+    },
+    loadPrices: async () => {
+      try {
+        const currentStore = get(store);
+        if (!currentStore.tokens) return;
+
+        const prices = await TokenService.fetchPrices(currentStore.tokens);
+        store.update((s) => ({
+          ...s,
+          prices,
+        }));
+
+        // After prices are loaded, update USD values in balances
+        const balances = { ...currentStore.balances };
+        for (const token of currentStore.tokens) {
+          if (balances[token.canister_id]) {
+            const price = prices[token.canister_id] || 0;
+            const amount = parseFloat(formatTokenAmount(balances[token.canister_id].in_tokens.toString(), token.decimals));
+            balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
+          }
+        }
+
+        store.update((s) => ({
+          ...s,
+          balances,
+        }));
+
+        return prices;
+      } catch (error) {
+        console.error("Error loading prices:", error);
+        toastStore.error("Failed to load prices");
       }
     },
     loadBalances,
@@ -212,64 +250,8 @@ function createTokenStore() {
         };
       },
     ),
-    loadPrices: async () => {
-      const currentStore = get(store);
-      try {
-        const [prices, updatedTokens] = await Promise.all([
-          TokenService.fetchPrices(currentStore.tokens),
-          TokenService.fetchTokens()
-        ]);
-
-        // Enrich tokens with volume data
-        const enrichedTokens = await TokenService.enrichTokenWithMetadata(updatedTokens);
-        const validTokens = enrichedTokens
-          .filter((result) => result.status === "fulfilled")
-          .map((result) => (result as PromiseFulfilledResult<FE.Token>).value);
-
-        eventBus.emit('tokensUpdated', validTokens);
-
-        store.update((s) => ({
-          ...s,
-          prices,
-          tokens: validTokens,  // Use the enriched tokens with updated volume
-        }));
-      } catch (error) {
-        console.error("Error loading prices and volumes:", error);
-      }
-    },
-    getToken: (canister_id: string): FE.Token | null => {
-      return (
-        get(store).tokens.find((token) => token.canister_id === canister_id) ||
-        null
-      );
-    },
-    refetchPrice: async (token: FE.Token): Promise<number> => {
-      const price = await TokenService.fetchPrice(token);
-      store.update((s) => ({
-        ...s,
-        prices: { ...s.prices, [token.canister_id]: price },
-      }));
-      return price;
-    },
-    clearUserData: () => {
-      if (typeof window !== 'undefined' && balanceUpdateInterval) {
-        window.clearInterval(balanceUpdateInterval);
-      }
-      store.update((s) => ({
-        ...initialState,
-        tokens: s.tokens,
-      }));
-    },
-    clearCache: async () => {
-      await kongDB.tokens.clear();
-      await kongDB.favorite_tokens
-        .where("wallet_id")
-        .equals(getCurrentWalletId())
-        .delete();
-      store.set(initialState);
-    },
     loadFavorites: async () => {
-      const walletId = getCurrentWalletId();
+      const walletId = getCurrentWalletId().toString();
       const favorites = await kongDB.favorite_tokens
         .where("wallet_id")
         .equals(walletId)
@@ -284,7 +266,7 @@ function createTokenStore() {
     },
     toggleFavorite: async (canister_id: string) => {
       try {
-        const wallet = get(walletStore);
+        const wallet = get(auth);
         const walletId = wallet?.account?.owner?.toString() || "anonymous";
         const store = get(tokenStore);
         const currentFavorites = store?.favoriteTokens[walletId] || [];
@@ -329,18 +311,50 @@ function createTokenStore() {
     },
     isFavorite: (canister_id: string): boolean => {
       const currentState = get(store);
-      const walletId = getCurrentWalletId();
+      const walletId = getCurrentWalletId().toString(); 
       return (
         currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false
       );
     },
-    getFavorites: (walletId: string = getCurrentWalletId()) => {
+    getFavorites: (walletId: string = getCurrentWalletId().toString()) => {
       const currentState = get(store);
       return currentState.favoriteTokens[walletId] || [];
     },
     claimFaucetTokens: async () => {
       await TokenService.claimFaucetTokens();
-      await loadBalances();
+      const pnp = get(auth);
+      await loadBalances(pnp?.account?.owner);
+    },
+    clearUserData: () => {
+      if (typeof window !== 'undefined' && balanceUpdateInterval) {
+        window.clearInterval(balanceUpdateInterval);
+      }
+      store.update((s) => ({
+        ...initialState,
+        tokens: s.tokens,
+      }));
+    },
+    clearCache: async () => {
+      await kongDB.tokens.clear();
+      await kongDB.favorite_tokens
+        .where("wallet_id")
+        .equals(getCurrentWalletId().toString())  
+        .delete();
+      store.set(initialState);
+    },
+    getToken: (canister_id: string): FE.Token | null => {
+      return (
+        get(store).tokens.find((token) => token.canister_id === canister_id) ||
+        null
+      );
+    },
+    refetchPrice: async (token: FE.Token): Promise<number> => {
+      const price = await TokenService.fetchPrice(token);
+      store.update((s) => ({
+        ...s,
+        prices: { ...s.prices, [token.canister_id]: price },
+      }));
+      return price;
     },
     cleanup: async () => {
       // Cleanup any active subscriptions or connections
@@ -356,13 +370,13 @@ export const tokenStore: {
   subscribe: (run: (value: TokenState) => void) => () => void;
   update: (updater: (state: TokenState) => TokenState) => void;
   loadTokens: (forceRefresh?: boolean) => Promise<FE.Token[]>;
-  loadBalances: () => Promise<Record<string, FE.TokenBalance>>;
+  loadBalances: (principal: Principal) => Promise<Record<string, FE.TokenBalance>>;
   loadBalance: (
     token: FE.Token,
     principalId?: string,
     forceRefresh?: boolean,
   ) => Promise<FE.TokenBalance>;
-  loadPrices: () => Promise<void>;
+  loadPrices: () => Promise<Record<string, number>>;
   refetchPrice: (token: FE.Token) => Promise<number>;
   clearUserData: () => void;
   clearCache: () => Promise<void>;
@@ -391,7 +405,7 @@ export const formattedTokens = derived(
   ([$tokenStore, $liveTokens]) => {
     if (!$liveTokens) return [];
     
-    const wallet = get(walletStore);
+    const wallet = get(auth);
     const walletId = wallet?.account?.owner?.toString() || "anonymous";
     const favorites = $tokenStore?.favoriteTokens[walletId] || [];
     
@@ -429,9 +443,9 @@ export const formattedTokens = derived(
 export const favoriteTokens = derived(
   tokenStore,
   ($store) => {
-    const wallet = get(walletStore);
+    const wallet = get(auth);
     console.log("Derived favoriteTokens - tokenStore:", $store);
-    console.log("Derived favoriteTokens - walletStore:", wallet);
+    console.log("Derived favoriteTokens - auth:", wallet);
     if (!$store || !wallet) return [];
     const walletId = wallet.account?.owner?.toString() || "anonymous";
     return (
@@ -442,17 +456,16 @@ export const favoriteTokens = derived(
   }
 );
 
-export const portfolioValue = derived(tokenStore, ($store) => {
-  if (!$store?.tokens) return "0.00";
+export const portfolioValue = derived([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
+  if (!$tokenStore?.tokens || !$poolStore?.pools) return "0.00";
   let totalValue = 0;
 
-  for (const token of $store.tokens) {
+  for (const token of $tokenStore.tokens) {
     const usdValue = parseFloat(
-      $store.balances[token.canister_id]?.in_usd || "0",
+      $tokenStore.balances[token.canister_id]?.in_usd || "0",
     );
     totalValue += usdValue;
   }
-
   return formatToNonZeroDecimal(totalValue);
 });
 
@@ -460,7 +473,7 @@ export const tokenPrices = derived(tokenStore, ($store) => $store?.prices ?? {})
 
 export const toggleFavoriteToken = async (canister_id: string) => {
   try {
-    const wallet = get(walletStore);
+    const wallet = get(auth);
     const walletId = wallet?.account?.owner?.toString() || "anonymous";
     const currentState = get(tokenStore);
     const currentFavorites = currentState?.favoriteTokens[walletId] || [];
@@ -506,13 +519,13 @@ export const toggleFavoriteToken = async (canister_id: string) => {
 
 export const isTokenFavorite = (canister_id: string): boolean => {
   const state = get(tokenStore);
-  const wallet = get(walletStore);
+  const wallet = get(auth);
   const walletId = wallet?.account?.owner?.toString();
   return state.favoriteTokens[walletId]?.includes(canister_id) ?? false;
 };
 
 export const getFavoritesForWallet = derived(tokenStore, ($store) => {
-  const wallet = get(walletStore);
+  const wallet = get(auth);
   const walletId = wallet?.account?.owner?.toString() || "anonymous";
   return $store?.favoriteTokens[walletId] || [];
 });

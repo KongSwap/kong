@@ -6,6 +6,7 @@
   import Swap from '$lib/components/swap/Swap.svelte';
   import SwapPro from '$lib/components/swap/SwapPro.svelte';
   import { page } from '$app/stores';
+  import { auth, requireWalletConnection } from '$lib/services/auth';
 
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
@@ -18,6 +19,11 @@
     });
     return () => unsubscribe();
   });
+
+  const claimTokens = async () => {
+    await tokenStore.claimFaucetTokens();
+    await tokenStore.loadBalances($auth.account?.owner)
+  };
 
   const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
     currentMode = event.detail.mode;
@@ -35,14 +41,14 @@
         <Swap 
           initialFromToken={fromToken} 
           initialToToken={toToken} 
-          mode={currentMode}
+          {currentMode}
           on:modeChange={handleModeChange}
         />
       {:else}
         <SwapPro 
           initialFromToken={fromToken} 
           initialToToken={toToken}
-          mode={currentMode}
+          {currentMode}
           on:modeChange={handleModeChange}
         />
       {/if}
