@@ -14,9 +14,5 @@
   "type": "module",
   "workspaces": [
     "src/kong_svelte"
-  ],
-  "dependencies": {
-  },
-  "devDependencies": {
-  }
+  ]
 }

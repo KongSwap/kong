@@ -4,11 +4,15 @@
   import WalletInfoPanel from "./account/WalletInfoPanel.svelte";
   import ConnectionPanel from "./account/ConnectionPanel.svelte";
   import UserDetailsPanel from "./account/UserDetailsPanel.svelte";
+  import { accountStore } from "$lib/stores/accountStore";
 
-  export let show = false;
-  export let onClose: () => void;
-
+  let show = false;
   let activeTab = 'identity';
+
+  accountStore.subscribe(state => {
+    show = state.showDetails;
+    activeTab = state.activeTab;
+  });
 
   const tabs = [
     { id: 'identity', label: 'Identity' },
@@ -18,14 +22,19 @@
   ];
 </script>
 
-<Modal {show} title="Account Details" {onClose} variant="green">
+<Modal 
+  {show} 
+  title="Account Details" 
+  onClose={() => accountStore.hideAccountDetails()} 
+  variant="green"
+>
   <div class="account-details">
     <div class="tabs">
       {#each tabs as tab}
         <button
           class="tab-button"
           class:active={activeTab === tab.id}
-          on:click={() => activeTab = tab.id}
+          on:click={() => accountStore.setActiveTab(tab.id)}
         >
           {tab.label}
         </button>

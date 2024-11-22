@@ -1,12 +1,12 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
-  import Panel from './Panel.svelte';
-  import { fade, scale } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
+  import Panel from "./Panel.svelte";
+  import { fade, scale } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
 
-  export let show = false;
+  export let isOpen = false;
   export let title: string;
   export let onClose: () => void;
   export let variant: "green" | "yellow" = "green";
@@ -20,87 +20,92 @@
   onMount(() => {
     if (browser) {
       const updateDimensions = () => {
-        const windowWidth = window.innerWidth;
-        if (windowWidth <= 768) {
-          const calculatedWidth = Math.max(300, Math.min(windowWidth - 25, 600));
-          modalWidth = `${calculatedWidth}px`;
-          modalHeight = "90vh";
-        } else {
-          modalWidth = width;
-          modalHeight = height;
-        }
-        isMobile = windowWidth <= 768;
+        isMobile = window.innerWidth <= 768;
+        modalWidth = isMobile ? "100%" : width;
+        modalHeight = isMobile ? "100%" : height;
       };
-      
       updateDimensions();
-      window.addEventListener('resize', updateDimensions);
-      
-      return () => {
-        window.removeEventListener('resize', updateDimensions);
-      };
+      window.addEventListener("resize", updateDimensions);
+      return () => window.removeEventListener("resize", updateDimensions);
     }
   });
+
+  function handleBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  }
+
+  function handleEscape(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      onClose();
+    }
+  }
 </script>
 
+<svelte:window on:keydown={handleEscape} />
 <Portal target="body">
-{#if show}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div 
-    class="modal-overlay" 
-    on:click={onClose}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="modal-title"
-    transition:fade={{ duration: 200 }}
-  >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div 
-      class="modal-container"
-      on:click|stopPropagation
-      transition:scale={{ duration: 200, start: 0.95, opacity: 0, easing: cubicOut }}
+  {#if isOpen}
+    <div
+      class="modal-overlay"
+      on:click={handleBackdropClick}
+      transition:fade={{ duration: 200 }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
     >
-      <Panel 
-        variant={variant}
-        width={modalWidth}
-        height={modalHeight}
-        className="modal-panel"
+      <div
+        class="modal-container"
+        on:click|stopPropagation
+        transition:scale={{
+          duration: 200,
+          start: 0.95,
+          opacity: 0,
+          easing: cubicOut,
+        }}
+        style="width: {modalWidth}; height: {modalHeight};"
       >
-        <div class="modal-content">
-          <header class="modal-header">
-            <h2 id="modal-title" class="modal-title">{title}</h2>
-            <button 
-              class="action-button close-button !border-0 !shadow-none group relative"
-              on:click={onClose}
-              aria-label="Close modal"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="#ff4444"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
+        <Panel
+          {variant}
+          width={modalWidth}
+          height={modalHeight}
+          className="modal-panel"
+        >
+          <div class="modal-content">
+            <header class="modal-header">
+              <h2 id="modal-title" class="modal-title">{title}</h2>
+              <button
+                class="action-button close-button !border-0 !shadow-none group relative"
+                on:click={onClose}
+                aria-label="Close modal"
               >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </header>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="#ff4444"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </header>
 
-          <div class="modal-body">
-            <slot />
+            <div class="modal-body">
+              <slot />
+            </div>
           </div>
-        </div>
-      </Panel>
+        </Panel>
+      </div>
     </div>
-  </div>
-{/if}
-</Portal> 
+  {/if}
+</Portal>
 
 <style>
   .modal-overlay {
@@ -137,7 +142,7 @@
   }
 
   .modal-title {
-    font-family: 'Alumni Sans', sans-serif;
+    font-family: "Alumni Sans", sans-serif;
     font-size: 2rem;
     font-weight: 500;
     color: white;

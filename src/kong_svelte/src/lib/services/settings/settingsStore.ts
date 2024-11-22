@@ -1,5 +1,5 @@
-import { writable, derived, get } from 'svelte/store';
-import { browser } from '$app/environment';
+import { writable, derived, get } from "svelte/store";
+import { browser } from "$app/environment";
 import { locale, loadTranslations } from "../translations/i18nConfig";
 import { kongDB } from '$lib/services/db';
 import type { Settings } from './types';
@@ -10,16 +10,16 @@ const defaultLocale: SupportedLocale = 'en';
 
 function getValidLocale(locale: string | null): SupportedLocale {
   if (!locale) return defaultLocale;
-  return supportedLocales.includes(locale as SupportedLocale) 
-    ? (locale as SupportedLocale) 
+  return supportedLocales.includes(locale as SupportedLocale)
+    ? (locale as SupportedLocale)
     : defaultLocale;
 }
 
 // Get initial locale
 function getInitialLocale(): SupportedLocale {
   if (!browser) return defaultLocale;
-  
-  const storedSettings = localStorage.getItem('appSettings');
+
+  const storedSettings = localStorage.getItem("appSettings");
   if (storedSettings) {
     try {
       const parsed = JSON.parse(storedSettings);
@@ -27,17 +27,17 @@ function getInitialLocale(): SupportedLocale {
         return getValidLocale(parsed.language.current);
       }
     } catch (e) {
-      console.error('Failed to parse stored settings:', e);
+      console.error("Failed to parse stored settings:", e);
     }
   }
 
   const browserLocale = navigator.language.split("-")[0];
   const validLocale = getValidLocale(browserLocale);
-  
+
   // Initialize locale immediately
   locale.set(validLocale);
   loadTranslations(validLocale);
-  
+
   return validLocale;
 }
 
@@ -82,7 +82,7 @@ function createSettingsStore() {
 
   async function updateSetting(
     key: keyof Settings,
-    value: Settings[keyof Settings]
+    value: Settings[keyof Settings],
   ) {
     update(settings => {
       const walletId = get(auth).account?.owner?.toString();
@@ -95,24 +95,24 @@ function createSettingsStore() {
         ...settings,
         [key]: value,
       };
-      
+
       if (browser) {
         try {
           kongDB.settings.put({
             ...newSettings,
             principal_id: walletId,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
-          
-          if (key === 'default_language') {
+
+          if (key === "default_language") {
             locale.set(value as string);
             loadTranslations(value as string);
           }
         } catch (error) {
-          console.error('Error updating settings:', error);
+          console.error("Error updating settings:", error);
         }
       }
-      
+
       return newSettings;
     });
   }
@@ -125,11 +125,12 @@ function createSettingsStore() {
     }
 
     set(DEFAULT_SETTINGS);
+    
     if (browser) {
       await kongDB.settings.put({
-        principal_id: walletId,
         ...DEFAULT_SETTINGS,
-        timestamp: Date.now()
+        principal_id: walletId,
+        timestamp: Date.now(),
       });
       locale.set(DEFAULT_SETTINGS.default_language);
       loadTranslations(DEFAULT_SETTINGS.default_language);
@@ -142,9 +143,15 @@ function createSettingsStore() {
     initializeStore,
     updateSetting,
     reset,
-    soundEnabled: derived({ subscribe }, $settings => $settings.sound_enabled),
-    currentLanguage: derived({ subscribe }, $settings => $settings.default_language),
+    soundEnabled: derived(
+      { subscribe },
+      ($settings) => $settings.sound_enabled,
+    ),
+    currentLanguage: derived(
+      { subscribe },
+      ($settings) => $settings.default_language,
+    ),
   };
 }
 
-export const settingsStore = createSettingsStore(); 
+export const settingsStore = createSettingsStore();

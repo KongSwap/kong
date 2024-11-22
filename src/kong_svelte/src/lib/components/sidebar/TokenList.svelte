@@ -14,6 +14,8 @@
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
   import { toastStore } from "$lib/stores/toastStore";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { ArrowUpDown, Search } from 'lucide-svelte';
   import { Principal } from "@dfinity/principal";
   import { onDestroy } from "svelte";
     import { auth } from "$lib/services/auth";
@@ -176,45 +178,89 @@
       return b.usdValue - a.usdValue;
     });
 
+  $: sortedAndFilteredTokens = processedTokens
+    .filter(token => {
+      if (!$sidebarStore.filterText) return true;
+      const searchText = $sidebarStore.filterText.toLowerCase();
+      return token.name.toLowerCase().includes(searchText) ||
+             token.symbol.toLowerCase().includes(searchText);
+    })
+    .sort((a, b) => {
+      const direction = $sidebarStore.sortDirection === 'asc' ? 1 : -1;
+      switch ($sidebarStore.sortBy) {
+        case 'name':
+          return direction * a.name.localeCompare(b.name);
+        case 'balance':
+          return direction * (Number(a.balance) - Number(b.balance));
+        case 'value':
+          return direction * ((Number(a.balance) * (a.price ?? 0)) - (Number(b.balance) * (b.price ?? 0)));
+        case 'price':
+          return direction * ((a.price ?? 0) - (b.price ?? 0));
+        default:
+          return 0;
+      }
+    });
+
+  const sortOptions = [
+    { id: 'value', label: 'Value' },
+    { id: 'balance', label: 'Balance' },
+    { id: 'name', label: 'Name' },
+    { id: 'price', label: 'Price' }
+  ];
+
   onDestroy(() => {
     handleCloseModal();
   });
 </script>
 
-<div class="token-list w-full">
+<div class="token-list" class:expanded={$sidebarStore.isExpanded}>
   {#if $tokenStore.isLoading && processedTokens.length === 0}
     <div class="loading"><LoadingIndicator /></div>
-  {:else if $tokenStore.error}
-    <div class="error">{$tokenStore.error}</div>
   {:else}
-    {#each processedTokens as token (token.canister_id)}
-      <div class="token-row-wrapper">
-        <div class="flex-grow" on:click={() => handleTokenClick(token)}>
-          <TokenRow {token} />
+    {#if $sidebarStore.isExpanded}
+      <div class="filter-bar">
+        <div class="search-box">
+          <Search size={18} class="text-white/40" />
+          <input
+            type="text"
+            placeholder="Search tokens..."
+            bind:value={$sidebarStore.filterText}
+            class="bg-transparent border-none outline-none text-white placeholder-white/40 w-full"
+          />
         </div>
-        <button
-          class="favorite-button"
-          on:click={(e) => handleFavoriteClick(e, token)}
-          aria-label={$tokenStore.favoriteTokens[
-            $auth?.account?.owner?.toString()
-          ]?.includes(token.canister_id)
-            ? "Remove from favorites"
-            : "Add to favorites"}
-        >
-          {#if $tokenStore.favoriteTokens[$auth?.account?.owner?.toString()]?.includes(token.canister_id)}
-            <span class="star filled">★</span>
-          {:else}
-            <span class="star outline">☆</span>
-          {/if}
-        </button>
+        <div class="sort-options">
+          {#each sortOptions as option}
+            <button
+              class="sort-button"
+              class:active={$sidebarStore.sortBy === option.id}
+              on:click={() => sidebarStore.setSortBy(option.id)}
+            >
+              {option.label}
+              {#if $sidebarStore.sortBy === option.id}
+                <div class="transform transition-transform" class:rotate-180={$sidebarStore.sortDirection === 'desc'}>
+                  <ArrowUpDown size={14} />
+                </div>
+              {/if}
+            </button>
+          {/each}
+        </div>
       </div>
-    {/each}
+    {/if}
+
+    <div class="token-grid">
+      {#each sortedAndFilteredTokens as token (token.canister_id)}
+        <TokenRow
+          {token}
+          onClick={() => handleTokenClick(token)}
+        />
+      {/each}
+    </div>
   {/if}
 </div>
 
 {#if isModalOpen && selectedToken}
   <Modal
-    show={isModalOpen}
+    isOpen={isModalOpen}
     onClose={handleCloseModal}
     title={"Send " + (selectedToken?.symbol || "Token Details")}
     width="480px"
@@ -269,96 +315,80 @@
   </Modal>
 {/if}
 
-<style scoped lang="postcss">
+<style lang="postcss">
   .token-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    @apply w-full flex flex-col gap-2 px-3 py-4;
   }
 
-  .token-row-wrapper {
-    display: flex;
-    align-items: center;
-    padding: 8px;
-    border-radius: 8px;
-    transition: background-color 0.2s;
-    cursor: pointer;
+  .token-list.expanded {
+    @apply px-6;
   }
 
-  .token-row-wrapper:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+  .filter-bar {
+    @apply flex flex-col sm:flex-row gap-4 mb-4 sticky top-0 bg-black/90 backdrop-blur-md p-4 rounded-lg border border-white/5;
   }
 
-  .favorite-button {
-    background: transparent;
-    border: none;
-    padding: 4px 8px;
-    cursor: pointer;
-    color: rgba(255, 255, 255, 0.5);
-    transition: all 100ms;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .search-box {
+    @apply flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg flex-1;
   }
 
-  .favorite-button:hover {
-    color: rgb(253, 224, 71);
-    transform: scale(1.1);
+  .sort-options {
+    @apply flex flex-wrap gap-2;
   }
 
-  .star {
-    font-size: 1.25rem;
-    border: none;
-    outline: none;
-    line-height: 1;
+  .sort-button {
+    @apply px-3 py-1.5 rounded-md bg-white/5 text-sm text-white/60
+           hover:bg-white/10 hover:text-white flex items-center gap-1.5
+           transition-all duration-200;
   }
 
-  .star.filled {
-    color: rgb(253, 224, 71);
+  .sort-button.active {
+    @apply bg-white/20 text-white;
   }
 
-  .loading,
-  .error {
-    text-align: center;
-    padding: 16px;
+  .token-list.expanded .token-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
   }
 
-  .token-details {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem;
+  .token-grid {
+    @apply flex flex-col gap-2 transition-all duration-300;
   }
 
-  .token-logo {
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
+  .loading {
+    @apply flex justify-center items-center p-4;
   }
 
-  .token-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  @media (min-width: 1400px) {
+    .token-list.expanded .token-grid {
+      @apply grid-cols-3;
+    }
   }
 
-  .token-info h3 {
-    font-family: "Press Start 2P", monospace;
-    margin: 0;
+  @media (min-width: 1800px) {
+    .token-list.expanded .token-grid {
+      @apply grid-cols-4;
+    }
   }
 
-  .token-info p {
-    margin: 0;
-    opacity: 0.8;
-  }
+  @media (max-width: 768px) {
+    .token-list {
+      @apply px-2 py-3;
+    }
 
-  .modal-buttons {
-    @apply flex justify-center gap-4;
-    @apply pb-2.5 mt-4;
-  }
+    .token-list.expanded {
+      @apply px-3;
+    }
 
-  .transfer-section {
-    @apply flex flex-col gap-4;
-    @apply mt-2 pb-4;
+    .token-list.expanded .token-grid {
+      @apply grid-cols-1;
+    }
+
+    .filter-bar {
+      @apply flex-col p-2;
+    }
+
+    .sort-options {
+      @apply overflow-x-auto pb-2 flex-nowrap;
+    }
   }
 </style>

@@ -1,6 +1,8 @@
 import { KONG_BACKEND_PRINCIPAL } from '$lib/constants/canisterConstants';
 import { auth } from '../auth';
 import { get } from 'svelte/store';
+import { Actor } from '@dfinity/agent';
+import { idlFactory as kongIdl, canisterId as kongCanisterId } from '../../../../../declarations/kong_backend';
 
 export class WalletService {
   protected static instance: WalletService;

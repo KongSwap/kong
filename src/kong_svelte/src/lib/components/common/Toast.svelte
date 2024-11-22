@@ -25,7 +25,7 @@
     {#each $toastStore as toast (toast.id)}
         <div
             class="toast-container cursor-pointer"
-            in:fly={{ x: 50, duration: 400 }}
+            in:fly={{ x: 150, duration: 400 }}
             out:fade={{ duration: 300 }}
             on:click={() => dismissToast(toast.id)}
         >

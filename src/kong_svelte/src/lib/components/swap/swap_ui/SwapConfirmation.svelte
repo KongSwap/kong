@@ -10,6 +10,7 @@
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { onMount, onDestroy } from "svelte";
+  import { formatTokenValue } from '$lib/utils/tokenFormatters';
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -36,6 +37,9 @@
     payToken: payToken,
     receiveToken: receiveToken,
   };
+
+  $: payUsdValue = formatTokenValue(payAmount.toString(), payToken?.price, payToken?.decimals);
+  $: receiveUsdValue = formatTokenValue(receiveAmount.toString(), receiveToken?.price, receiveToken?.decimals);
 
   onMount(async () => {
     cleanComponent();
@@ -187,7 +191,7 @@
 </script>
 
 <Modal
-  show={true}
+  isOpen={true}
   title="Review Swap"
   {onClose}
   variant="green"
@@ -218,8 +222,8 @@
           {receiveToken}
         />
         <FeesSection
-          {totalGasFee}
-          {totalLPFee}
+          totalGasFee={totalGasFee}
+          totalLPFee={totalLPFee}
           {userMaxSlippage}
           {receiveToken}
         />

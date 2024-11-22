@@ -15,7 +15,7 @@
   import { liveQuery } from "dexie";
   import { auth } from "$lib/services/auth";
   import { tick } from "svelte";
-  
+  import { sidebarStore } from "$lib/stores/sidebarStore";
 
   // Exported props
   export let sidebarOpen: boolean;
@@ -33,7 +33,12 @@
     : "tokens";
   let isMobile = false;
   let sidebarWidth = 500;
-  let dragTimeout: number;
+  let isExpanded = false;
+
+  sidebarStore.subscribe(state => {
+    isExpanded = state.isExpanded;
+    sidebarWidth = state.width;
+  });
 
   // Live database subscriptions
   const tokens = liveQuery(async () => {
@@ -53,82 +58,45 @@
   $: poolsData = $pools || [];
   $: transactionsData = $transactions || [];
 
-  // Debounce utility
-  function debounce(fn: Function, ms: number) {
-    let timeoutId: ReturnType<typeof setTimeout>;
-    return function (...args: any[]) {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => fn.apply(this, args), ms);
+  onMount(() => {
+    const updateDimensions = () => {
+      isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        sidebarStore.setWidth(window.innerWidth);
+      }
     };
-  }
 
-  const debouncedResize = debounce(() => {
-    isMobile = window.innerWidth <= 768;
-    sidebarWidth = isMobile
-      ? window.innerWidth
-      : Math.min(500, window.innerWidth - 64);
-  }, 100);
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  });
 
-  // Drag event handlers
-  function startDragging(event: MouseEvent) {
+  function startResize(event: MouseEvent) {
+    if (isExpanded) return; // Disable resizing when expanded
     isDragging = true;
-    startX = event.clientX;
+    startX = event.pageX;
     startWidth = sidebarWidth;
-    document.addEventListener("mousemove", handleDragging, { passive: true });
-    document.addEventListener("mouseup", stopDragging);
-    document.body.style.cursor = "ew-resize";
-    event.stopPropagation();
+    window.addEventListener("mousemove", handleResize);
+    window.addEventListener("mouseup", stopResize);
   }
 
-  function handleDragging(event: MouseEvent) {
+  function handleResize(event: MouseEvent) {
     if (!isDragging) return;
-    if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
-    dragTimeout = window.requestAnimationFrame(() => {
-      const delta = event.clientX - startX;
-      sidebarWidth = Math.max(400, Math.min(800, startWidth - delta));
-    });
+    const delta = startX - event.pageX;
+    const newWidth = Math.max(400, Math.min(800, startWidth - delta));
+    sidebarStore.setWidth(newWidth);
   }
 
-  function stopDragging() {
+  function stopResize() {
     isDragging = false;
-    if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
-    document.removeEventListener("mousemove", handleDragging);
-    document.removeEventListener("mouseup", stopDragging);
-    document.body.style.cursor = "default";
+    window.removeEventListener("mousemove", handleResize);
+    window.removeEventListener("mouseup", stopResize);
   }
 
-  // Custom action for resize handle
-  function resizeHandle(node) {
-    const handleMouseDown = (event: MouseEvent) => startDragging(event);
-    node.addEventListener("mousedown", handleMouseDown);
-
-    return {
-      destroy() {
-        node.removeEventListener("mousedown", handleMouseDown);
-      },
-    };
+  function handleClose() {
+    sidebarStore.collapse();
+    onClose();
   }
-
-  // Combine all onMount logic
-  onMount(async () => {
-    if (browser) {
-      window.addEventListener("resize", debouncedResize, { passive: true });
-    }
-
-    // Initialize resize on mount
-    debouncedResize();
-  });
-
-  // Clean up on destroy
-  onDestroy(() => {
-    if (browser) {
-      document.removeEventListener("mousemove", handleDragging);
-      document.removeEventListener("mouseup", stopDragging);
-      document.body.style.cursor = "default";
-      if (dragTimeout) window.cancelAnimationFrame(dragTimeout);
-      window.removeEventListener("resize", debouncedResize);
-    }
-  });
 
   function setActiveTab(tab: "tokens" | "pools" | "history") {
     activeTab = tab;
@@ -145,33 +113,32 @@
     class="sidebar-overlay"
     role="dialog"
     aria-modal="true"
-    aria-label="Sidebar Menu"
-    transition:fade|local={{ duration: 300, easing: cubicOut }}
+    transition:fade={{ duration: 200 }}
   >
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <button
-      class="overlay-button"
-      on:click={onClose}
+      class="overlay-close"
+      on:click={handleClose}
       aria-label="Close sidebar"
     />
-
     <div
       class="sidebar-wrapper"
-      class:is-dragging={isDragging}
+      transition:fly={{ x: 300, duration: 200, easing: cubicOut }}
       style="width: {sidebarWidth}px"
-      in:fly={{ x: 500, duration: 300, easing: cubicOut }}
-      out:fly={{ x: 500, duration: 300, easing: cubicOut }}
     >
-      <div class="resize-handle" use:resizeHandle aria-label="Resize sidebar">
-        <div class="resize-line" />
-        <div class="resize-dots" />
+      <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+      <div
+        class="resize-handle"
+        class:hidden={isExpanded}
+        use:startResize
+        aria-label="Resize sidebar"
+      >
         <div class="resize-line" />
       </div>
 
       <Panel
-        variant="green"
-        type="main"
         width={isMobile ? "100%" : `${sidebarWidth}px`}
-        height={isMobile ? "100vh" : "90vh"}
+        height="100%"
         className="sidebar-panel"
       >
         <div class="sidebar-layout">
@@ -180,28 +147,26 @@
           </header>
 
           <div class="sidebar-content">
-            <div class="scroll-container">
-              {#if !$auth.isConnected}
-                <WalletProvider on:login={async () => {
+            {#if !$auth.isConnected}
+              <WalletProvider
+                on:login={async () => {
                   // Wait for next tick to ensure auth state is updated
                   await tick();
                   // Switch to tokens tab after login
-                  setActiveTab('tokens');
-                }} />
-              {:else if activeTab === "tokens"}
-                <TokenList tokens={tokensData} />
-              {:else if activeTab === "pools"}
-                <PoolList pools={poolsData} />
-              {:else if activeTab === "history"}
-                <TransactionHistory transactions={transactionsData} />
-              {/if}
-            </div>
+                  setActiveTab("tokens");
+                }}
+              />
+            {:else if activeTab === "tokens"}
+              <TokenList tokens={tokensData} />
+            {:else if activeTab === "pools"}
+              <PoolList pools={poolsData} />
+            {:else if activeTab === "history"}
+              <TransactionHistory transactions={transactionsData} />
+            {/if}
           </div>
 
           <footer class="sidebar-footer">
-            <div class="footer-actions">
-              <SocialSection />
-            </div>
+            <SocialSection />
           </footer>
         </div>
       </Panel>
@@ -209,80 +174,91 @@
   </div>
 {/if}
 
-<style scoped lang="postcss">
+<style>
   .sidebar-overlay {
-    @apply fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 grid place-items-center overflow-hidden;
-  }
-
-  .overlay-button {
-    @apply absolute inset-0 bg-transparent border-none cursor-pointer;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 50;
   }
 
   .sidebar-wrapper {
-    @apply absolute top-[5vh] right-8 h-[90vh] min-w-[420px] max-w-[min(800px,calc(100vw-50px))] origin-right bg-transparent flex flex-col grid-rows-[auto_1fr_auto] box-border p-2;
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    transition: all 0.3s ease-out;
+  }
+
+  .sidebar-wrapper :global(.panel) {
+    background-color: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
   }
 
   .sidebar-layout {
-    @apply flex flex-col h-full;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100vh;
   }
 
   .sidebar-header {
-    @apply flex flex-col gap-4 w-full max-w-full;
+    flex-shrink: 0;
   }
 
   .sidebar-content {
-    @apply flex flex-col flex-1 w-full relative mb-1;
-  }
-
-  .scroll-container {
-    @apply absolute inset-0 overflow-y-auto;
-  }
-
-  .scroll-container::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-
-  .scroll-container::-webkit-scrollbar-thumb {
-    @apply bg-white bg-opacity-20 rounded;
+    flex-grow: 1;
+    overflow-y: auto;
+    position: relative;
   }
 
   .resize-handle {
-    @apply absolute left-0 top-1/2 transform -translate-y-1/2 w-3 h-32 cursor-ew-resize flex flex-col items-center justify-center gap-1 z-50 p-1 transition-colors duration-200 rounded-r;
+    position: absolute;
+    top: 0;
+    left: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 60;
   }
 
-  .resize-handle:hover {
-    @apply bg-white bg-opacity-10;
+  .resize-handle.hidden {
+    display: none;
   }
 
   .resize-line {
-    @apply w-px h-4 bg-white bg-opacity-30 transition-colors duration-200;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(-50%);
   }
 
-  .resize-dots {
-    @apply w-0.5 h-3 bg-center bg-no-repeat opacity-50 transition-opacity duration-200;
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
-    background-size: 2px 2px;
-  }
-
-  .resize-handle:hover .resize-dots {
-    @apply opacity-100;
-  }
-
-  .resize-handle:hover .resize-line {
-    @apply bg-opacity-50;
+  .overlay-close {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
   }
 
   .sidebar-footer {
-    @apply flex justify-center items-center p-3 mt-auto rounded w-full box-border bg-black bg-opacity-10 border-t border-white border-opacity-10;
-  }
-
-  .footer-actions {
-    @apply flex justify-center items-center rounded w-full box-border;
+    flex-shrink: 0;
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   @media (max-width: 768px) {
     .sidebar-wrapper {
-      @apply top-0 right-0 w-full min-w-full max-w-full h-screen;
+      width: 100% !important;
     }
 
     .resize-handle {

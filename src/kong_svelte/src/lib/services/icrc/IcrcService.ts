@@ -8,13 +8,16 @@ export class IcrcService {
 
   private static handleError(methodName: string, error: any) {
     console.error(`Error in ${methodName}:`, error);
+    if (error?.message?.includes('body') || error?.message?.includes('Wallet connection required')) {
+      throw new Error('Please connect your wallet to proceed with this operation.');
+    }
     throw error;
   }
 
-  public static async getIcrc1Balance(token: FE.Token, principal: Principal): Promise<bigint> {
-    if (!token?.canister_id) {
-      return BigInt(0);
-    }
+  public static async getIcrc1Balance(
+    token: FE.Token,
+    principal: Principal,
+  ): Promise<bigint> {
     try {
       // Use ICRC-2 actor since it's a superset of ICRC-1
       const wallet = get(auth);
@@ -24,7 +27,8 @@ export class IcrcService {
         subaccount: [],
       });
     } catch (error) {
-      this.handleError('getIcrc1Balance', error);
+      console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
+      return BigInt(0);
     }
   }
 
@@ -42,6 +46,10 @@ export class IcrcService {
     token: FE.Token, 
     payAmount: bigint,
   ): Promise<bigint> {
+    if (!token?.canister_id) {
+      throw new Error('Invalid token: missing canister_id');
+    }
+
     try {
 
       console.log("[ICRC Debug] Checking allowances:", {
@@ -155,8 +163,13 @@ export class IcrcService {
       
       console.log('ICRC2 approve success:', result.Ok.toString());
       return result.Ok;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.includes('wallet')) {
+        throw error; // Pass through wallet connection errors directly
+      }
+      console.error('ICRC2 approve error:', error);
       this.handleError('checkAndRequestIcrc2Allowances', error);
+      throw error;
     }
   }
 

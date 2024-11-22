@@ -21,7 +21,7 @@ export class PoolService {
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
       const pnp = get(auth);
-      const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      const actor =  await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
       if (!actor) {
         return {
           pools: [],
@@ -43,7 +43,7 @@ export class PoolService {
       // Provide default value for lp_token_symbol if missing
       validatedData.pools = validatedData.pools.map(pool => ({
         ...pool,
-        lp_token_symbol: pool.lp_token_symbol || 'default_symbol' // Provide a default value
+        lp_token_symbol: pool.lp_token_symbol
       }));
 
       return validatedData as BE.PoolResponse;

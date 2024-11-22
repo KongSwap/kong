@@ -4,11 +4,13 @@
   import { onMount, onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
+  import SwapPro from '$lib/components/swap/SwapPro.svelte';
   import { page } from '$app/stores';
   import { auth } from '$lib/services/auth';
 
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
+  let currentMode: 'normal' | 'pro' = 'normal';
 
   onMount(() => {
     const unsubscribe = page.subscribe(($page) => {
@@ -20,7 +22,11 @@
 
   const claimTokens = async () => {
     await tokenStore.claimFaucetTokens();
-    await tokenStore.loadBalances($auth.account?.owner);
+    await tokenStore.loadBalances($auth.account?.owner)
+  };
+
+  const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
+    currentMode = event.detail.mode;
   };
 
   onDestroy(() => {
@@ -28,14 +34,24 @@
   });
 </script>
 
-<section class="flex flex-col items-center justify-center">
-
-    <button on:click={claimTokens}>Claim Tokens</button>
-  
-
+<section class="swap-container">
   {#if $tokenStore.tokens}
-    <div class="flex justify-center mt-8 md:mt-12">
-      <Swap initialFromToken={fromToken} initialToToken={toToken} />
+    <div class="swap-wrapper">
+      {#if currentMode === 'normal'}
+        <Swap 
+          initialFromToken={fromToken} 
+          initialToToken={toToken} 
+          {currentMode}
+          on:modeChange={handleModeChange}
+        />
+      {:else}
+        <SwapPro 
+          initialFromToken={fromToken} 
+          initialToToken={toToken}
+          {currentMode}
+          on:modeChange={handleModeChange}
+        />
+      {/if}
     </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>
@@ -43,4 +59,16 @@
 </section>
 
 <style lang="postcss">
+  .swap-container {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .swap-wrapper {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
 </style>
