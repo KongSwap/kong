@@ -19,7 +19,6 @@
     { id: 'identity', label: 'Identity' },
     { id: 'wallet', label: 'Wallet Info' },
     { id: 'connection', label: 'Connection' },
-    { id: 'details', label: 'User Details' }
   ];
 </script>
 

@@ -28,7 +28,7 @@
 </script>
 
 <section class="flex justify-center w-full">
-  <div class="z-10 flex justify-center w-full max-w-[1200px] mx-auto">
+  <div class="z-10 flex justify-center w-full max-w-[1400px] mx-auto">
     <div class="flex flex-col w-full gap-3">
       <!-- Section Navigation -->
       <div class="section-selector">

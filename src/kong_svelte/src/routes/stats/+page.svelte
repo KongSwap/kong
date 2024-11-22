@@ -19,6 +19,9 @@
   import { formatDate } from "$lib/utils/dateUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import Toast from "$lib/components/common/Toast.svelte";
+  import { modalStore } from "$lib/stores/modalStore";
+  import { swapState } from "$lib/services/swap/SwapStateService";
+  import TokenSelectorModal from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -44,6 +47,7 @@
   const sortColumnStore = writable<string>("formattedUsdValue");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const copyStates = writable<CopyStates>({});
+  const selectedTokenId = writable<string | null>(null);
 
   // Enhanced loading state with type safety
   const tokensLoading = derived(
@@ -159,13 +163,22 @@
   // Replace the existing volumeData with mock data
   const volumeData = mockVolumeData;
 
+  function handleTokenSelect(token: FE.Token) {
+    swapState.setPayToken(token);
+    swapState.update(s => ({ ...s, showPayTokenSelector: true }));
+  }
+
+  function handleTokenSelectClose() {
+    swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+  }
+
   onMount(() => {
     // fetchHistoricalData();
   });
 </script>
 
 <section class="flex justify-center w-full">
-  <div class="z-10 flex justify-center w-full max-w-[1200px] mx-auto">
+  <div class="z-10 flex justify-center w-full max-w-[1400px] mx-auto">
     <div class="flex flex-col w-full gap-6">
       <!-- Market Overview Panel -->
       <Panel variant="green" type="main" className="market-stats-panel glass-panel">
@@ -249,7 +262,8 @@
                 {#each $filteredSortedTokens as token (token.canister_id)}
                   <tr 
                     animate:flip={{ duration: ANIMATION_DURATION }}
-                    class="token-row"
+                    class="token-row cursor-pointer"
+                    on:click={() => handleTokenSelect(token)}
                   >
                     <td class="token-cell">
                       <TokenImages 
@@ -271,7 +285,7 @@
                     <td class="actions-cell">
                       <button 
                         class="copy-button" 
-                        on:click={() => copyToClipboard(token.canister_id)}
+                        on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
                         title="Copy token ID"
                       >
                         {$copyStates[token.canister_id] || "Copy ID"}
@@ -288,6 +302,17 @@
     </div>
   </div>
 </section>
+
+{#if $swapState.showPayTokenSelector}
+  <TokenSelectorModal
+    show={$swapState.showPayTokenSelector}
+    onClose={handleTokenSelectClose}
+    onSelect={(token) => {
+      swapState.setPayToken(token);
+      handleTokenSelectClose();
+    }}
+  />
+{/if}
 
 <style lang="postcss">
   /* Market Stats Section */

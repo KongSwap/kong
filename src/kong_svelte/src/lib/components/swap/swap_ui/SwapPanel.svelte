@@ -257,7 +257,17 @@
           />
         </div>
         <div class="flex gap-2 items-center">
-          <TokenSelectorButton {token} onClick={onTokenSelect} {disabled} />
+          <TokenSelectorButton 
+            {token} 
+            onClick={() => {
+              if (panelType === "pay") {
+                swapState.update(s => ({ ...s, showPayTokenSelector: true }));
+              } else {
+                swapState.update(s => ({ ...s, showReceiveTokenSelector: true }));
+              }
+            }} 
+            {disabled} 
+          />
         </div>
       </div>
     </div>
