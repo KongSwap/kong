@@ -1,11 +1,11 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { PrismaClient, Prisma } from "@prisma/client";
 import cron from "node-cron";
-import { canisterId, idlFactory } from "../idl/kong_backend";
-import { TokenService } from "./TokenService";
-import { PoolService } from "./PoolService";
-import { TransactionService } from "./TransactionService";
-import { ICanisterActor } from "./types";
+import { canisterId, idlFactory } from "../idl/kong_backend/index.js";
+import { TokenService } from "./TokenService.js";
+import { PoolService } from "./PoolService.js";
+import { TransactionService } from "./TransactionService.js";
+import { ICanisterActor } from "./types.js";
 
 const prisma = new PrismaClient();
 

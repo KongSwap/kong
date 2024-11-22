@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { ICanisterActor, PoolData } from "./types";
-import { convertBigIntsToStrings } from "./utils";
+import { ICanisterActor, PoolData } from "./types.js";
+import { convertBigIntsToStrings } from "./utils.js";
 
 export class PoolService {
   private prisma: PrismaClient;

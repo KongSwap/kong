@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { ICanisterActor, TokenData } from "./types";
-import { convertBigIntsToStrings } from "./utils";
+import { ICanisterActor, TokenData } from "./types.js";
+import { convertBigIntsToStrings } from "./utils.js";
 
 export class TokenService {
   private prisma: PrismaClient;

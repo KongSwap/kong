@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
-import { CanisterService } from "../services/canisterService";
+import { CanisterService } from "../services/canisterService.js";
 
 interface PoolRouteOptions {
   canisterService: CanisterService;

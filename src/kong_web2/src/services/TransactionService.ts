@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { ICanisterActor, TransactionType } from "./types";
-import { convertBigIntsToStrings } from "./utils";
+import { ICanisterActor, TransactionType } from "./types.js";
+import { convertBigIntsToStrings } from "./utils.js";
 
 export class TransactionService {
   private prisma: PrismaClient;

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { CanisterService } from '../services/canisterService';
+import { CanisterService } from '../services/canisterService.js';
 
 export async function transactionRoutes(fastify: FastifyInstance, opts: { canisterService: CanisterService }) {
   // Fetch and store transactions

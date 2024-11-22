@@ -1,8 +1,8 @@
 import { FastifyInstance } from 'fastify';
-import { CanisterService } from '../services/canisterService';
-import { tokenRoutes } from './tokenRoutes';
-import poolRoutes from './poolRoutes';
-import { transactionRoutes } from './transactionRoutes';
+import { CanisterService } from '../services/canisterService.js';
+import { tokenRoutes } from './tokenRoutes.js';
+import poolRoutes from './poolRoutes.js';
+import { transactionRoutes } from './transactionRoutes.js';
 
 export async function registerRoutes(fastify: FastifyInstance, opts: { canisterService: CanisterService }) {
   // Health check endpoint

@@ -1,4 +1,4 @@
-import { CanisterService } from './services/canisterService';
+import { CanisterService } from './services/canisterService.js';
 
 const CANISTER_ID = '2ipq2-uqaaa-aaaar-qailq-cai';
 

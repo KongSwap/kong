@@ -2,8 +2,8 @@ import fastify from 'fastify';
 import cors from '@fastify/cors';
 import { PrismaClient } from '@prisma/client';
 import { Actor } from '@dfinity/agent';
-import { CanisterService } from './services/canisterService';
-import { registerRoutes } from './routes';
+import { CanisterService } from './services/canisterService.js';
+import { registerRoutes } from './routes/index.js';
 import cron from 'node-cron';
 
 const server = fastify();
