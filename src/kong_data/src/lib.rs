@@ -2,8 +2,8 @@ mod canister;
 mod controllers;
 mod helpers;
 mod ic;
-mod requests;
 mod stable_memory;
+mod stable_request;
 mod stable_user;
 
 pub const APP_NAME: &str = "Kong Data";

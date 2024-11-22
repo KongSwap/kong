@@ -4,8 +4,8 @@ use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::requests::request_map;
 use crate::stable_memory::REQUEST_MAP;
+use crate::stable_request::request_map;
 
 const MAX_REQUESTS: usize = 100;
 
@@ -47,11 +47,11 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
 }
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
-fn get_requests(request_id: Option<u64>, user_id: Option<u32>) -> Result<Vec<RequestReply>, String> {
-    let requests = match request_id {
-        Some(request_id) => request_map::get_by_request_and_user_id(request_id, user_id).into_iter().collect(),
-        None => request_map::get_by_user_id(user_id, Some(MAX_REQUESTS)),
-    };
-
-    Ok(requests.iter().map(to_request_reply).collect())
+fn get_requests(request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<u16>) -> Result<Vec<RequestReply>, String> {
+    let num_requests = num_requests.map(|n| n as usize);
+    let requests = request_map::get_by_request_and_user_id(request_id, user_id, num_requests)
+        .iter()
+        .map(to_request_reply)
+        .collect();
+    Ok(requests)
 }
