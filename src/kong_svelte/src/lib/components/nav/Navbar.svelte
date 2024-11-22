@@ -59,27 +59,29 @@
 </script>
 
 <div class="nav-wrapper">
-  {#if $themeStore === "modern"}
-    <ModernNavbar
-      {activeTab}
-      {sidebarOpen}
-      {isModalOpen}
-      {isMobile}
-      onTabChange={handleTabChange}
-      onConnect={handleConnect}
-      onOpenSettings={handleOpenSettings}
-    />
-  {:else}
-    <PixelNavbar
-      {activeTab}
-      {sidebarOpen}
-      {isModalOpen}
-      {isMobile}
-      onTabChange={handleTabChange}
-      onConnect={handleConnect}
-      onOpenSettings={handleOpenSettings}
-    />
-  {/if}
+  <div class="nav-container">
+    {#if $themeStore === "modern"}
+      <ModernNavbar
+        {activeTab}
+        {sidebarOpen}
+        {isModalOpen}
+        {isMobile}
+        onTabChange={handleTabChange}
+        onConnect={handleConnect}
+        onOpenSettings={handleOpenSettings}
+      />
+    {:else}
+      <PixelNavbar
+        {activeTab}
+        {sidebarOpen}
+        {isModalOpen}
+        {isMobile}
+        onTabChange={handleTabChange}
+        onConnect={handleConnect}
+        onOpenSettings={handleOpenSettings}
+      />
+    {/if}
+  </div>
 
   <Sidebar {sidebarOpen} onClose={() => (sidebarOpen = false)} />
 
@@ -94,11 +96,12 @@
 
 <style>
   .nav-wrapper {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    background: var(--color-background);
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+  .nav-container {
+    max-width: 1200px;
+    width: 100%;
   }
 </style>

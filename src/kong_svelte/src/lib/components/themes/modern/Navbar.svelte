@@ -10,7 +10,7 @@
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
-  export let isModalOpen: boolean;
+  let isModalOpen: boolean;
   export let isMobile: boolean;
   export let onTabChange: (tab: "swap" | "earn" | "stats") => void;
   export let onConnect: () => void;
@@ -25,92 +25,95 @@
   }
 </script>
 
-<div class="navbar-wrapper">
-  <Panel variant="blue" type="main" className="modern-nav">
-    <div class="nav-container">
-      {#if isMobile}
-        <div class="left-section">
-          <button
-            class="mobile-icon-btn"
-            on:click={() => (navOpen = !navOpen)}
-            aria-label="Menu"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" y1="12" x2="20" y2="12"></line>
-              <line x1="4" y1="6" x2="20" y2="6"></line>
-              <line x1="4" y1="18" x2="20" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      {:else}
-        <div class="left-section">
-          <nav class="nav-tabs">
-            {#each tabs as tab}
-              <a
-                href="#{tab}"
-                class="nav-link {activeTab === tab ? 'active' : ''}"
-                on:click|preventDefault={() => onTabChange(tab)}
-              >
-                {tab.toUpperCase()}
-              </a>
-            {/each}
-            <a
-              href="#stats"
-              class="nav-link {activeTab === 'stats' ? 'active' : ''}"
-              on:click|preventDefault={() => onTabChange('stats')}
-            >
-              STATS
-            </a>
-          </nav>
-        </div>
-      {/if}
-
-      <div class="center-section">
-        <a href="/" class="logo-link">
-          <img src="/titles/logo-white-wide.png" alt="Kong Logo" class="logo-wide" />
-        </a>
+<Panel 
+  variant="blue" 
+  type="main" 
+  className="modern-nav {isMobile ? 'modern-nav-mobile' : 'mt-4'}" 
+  roundedBorders={!isMobile}
+>
+  <div class="nav-container">
+    {#if isMobile}
+      <div class="left-section">
+        <button
+          class="mobile-icon-btn"
+          on:click={() => (navOpen = !navOpen)}
+          aria-label="Menu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="18" x2="20" y2="18"></line>
+          </svg>
+        </button>
       </div>
-
-      {#if isMobile}
-        <div class="right-section">
-          <button
-            class="mobile-icon-btn"
-            on:click={onConnect}
-            aria-label="Wallet"
+    {:else}
+      <div class="left-section">
+        <nav class="nav-tabs">
+          {#each tabs as tab}
+            <a
+              href="#{tab}"
+              class="nav-link {activeTab === tab ? 'active' : ''}"
+              on:click|preventDefault={() => onTabChange(tab)}
+            >
+              {tab.toUpperCase()}
+            </a>
+          {/each}
+          <a
+            href="#stats"
+            class="nav-link {activeTab === 'stats' ? 'active' : ''}"
+            on:click|preventDefault={() => onTabChange('stats')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-              <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
-              <path d="M20 8v8" />
-            </svg>
-          </button>
-        </div>
-      {:else}
-        <div class="right-section">
-          <button
-            class="settings-btn"
-            class:spinning={isSpinning}
-            on:click={onOpenSettings}
-            aria-label="Settings"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
-            </svg>
-          </button>
+            STATS
+          </a>
+        </nav>
+      </div>
+    {/if}
 
-          <Button
-            text={$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
-            variant="yellow"
-            size="medium"
-            state={sidebarOpen ? "selected" : "default"}
-            onClick={onConnect}
-          />
-        </div>
-      {/if}
+    <div class="center-section">
+      <a href="/" class="logo-link">
+        <img src="/titles/logo-white-wide.png" alt="Kong Logo" class="logo-wide" />
+      </a>
     </div>
-  </Panel>
-</div>
+
+    {#if isMobile}
+      <div class="right-section">
+        <button
+          class="mobile-icon-btn"
+          on:click={onConnect}
+          aria-label="Wallet"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+            <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
+            <path d="M20 8v8" />
+          </svg>
+        </button>
+      </div>
+    {:else}
+      <div class="right-section">
+        <button
+          class="settings-btn"
+          class:spinning={isSpinning}
+          on:click={onOpenSettings}
+          aria-label="Settings"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+          </svg>
+        </button>
+
+        <Button
+          text={$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
+          variant="yellow"
+          size="medium"
+          state={sidebarOpen ? "selected" : "default"}
+          onClick={onConnect}
+        />
+      </div>
+    {/if}
+  </div>
+</Panel>
 
 {#if navOpen && isMobile}
   <div class="mobile-menu" transition:fade={{ duration: 200 }}>
@@ -171,18 +174,7 @@
     font-style: normal;
   }
 
-  /* Core Layout */
-  .navbar-wrapper {
-    position: fixed;
-    inset: 0 0 auto 0;
-    z-index: 50;
-  }
-
   .nav-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -449,5 +441,10 @@
     /* Update existing mobile-menu-overlay styles */
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
+  }
+
+  .modern-nav-mobile {
+    width: 100vw !important;
+    margin: 0 !important;
   }
 </style>

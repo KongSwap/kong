@@ -52,15 +52,18 @@
 
 <style>
   .nav-container {
-    height: 64px; /* Match this with your navbar height */
+    content: normal;
   }
 
   .content-container {
-    padding-top: 64px; /* Match this with your navbar height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
 
   :global(body) {
-    min-height: 100vh;
+    min-height: 99vh; /* helps with unwanted scrollbars */
     margin: 0;
     background-color: #0f172a;
   }

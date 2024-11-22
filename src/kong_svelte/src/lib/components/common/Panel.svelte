@@ -11,6 +11,7 @@
     export let content: string = '';
     export let className: string = '';
     export let zIndex: number = 10;
+    export let roundedBorders: boolean = true;
 </script>
 
 {#if $themeStore === 'pixel'}
@@ -34,6 +35,7 @@
         {content}
         {className}
         {zIndex}
+        {roundedBorders}
     >
         <slot>{content}</slot>
     </ModernPanel>

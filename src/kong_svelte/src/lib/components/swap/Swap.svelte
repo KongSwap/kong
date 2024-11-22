@@ -441,7 +441,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 48px;
   }
 
   .mode-selector {
