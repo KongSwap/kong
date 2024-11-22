@@ -100,7 +100,7 @@ import { useCKPEPEBackend } from '../Actors/CKPEPEActor';
 import { useCKSHIBBackend } from '../Actors/CKSHIBActor';
 import { useDODBackend } from '../Actors/DODActor';
 import { useKONGBackend } from '../Actors/KONGActor';
-import { usePacaBackend } from '../Actors/PACA-ACTOR';
+import { usePacaBackend } from '../Actors/PACAActor';
 
 import {
   getActor as kong_backend
