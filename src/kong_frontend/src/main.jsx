@@ -102,9 +102,11 @@ import {
   CKSHIBActorProviderPlug,
   DODActorProviderPlug,
   KONGActorProviderPlug,
+  PACAActorProviderPlug,
 } from "./Actors/plugActorProviders";
 import NICPActor from "./Actors/NICPActor";
 import WTNActor from "./Actors/WTNActor";
+import PACAActor from "./Actors/PACAActor";
 import NotFoundPage from "./components/NotFoundPage";
 
 const router = createBrowserRouter([
@@ -220,43 +222,47 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                                                                                                                                                                   <GHOSTActorProviderPlug>
                                                                                                                                                                     <GLDTActorProviderPlug>
                                                                                                                                                                       <DODActorProviderPlug>
-                                                                                                                                                                        <CKSHIBActor>
-                                                                                                                                                                          <CKPEPEActor>
-                                                                                                                                                                            <MOTOKOActor>
-                                                                                                                                                                              <TRAXActor>
-                                                                                                                                                                                <DOLRActor>
-                                                                                                                                                                                  <KINICActor>
-                                                                                                                                                                                    <PANDAActor>
-                                                                                                                                                                                      <ESTActor>
-                                                                                                                                                                                        <DOGMIActor>
-                                                                                                                                                                                          <ELNAActor>
-                                                                                                                                                                                            <CTZActor>
-                                                                                                                                                                                              <GHOSTActor>
-                                                                                                                                                                                                <GLDTActor>
-                                                                                                                                                                                                  <DODActor>
-                                                                                                                                                                                                    <KONGActorProviderPlug>
-                                                                                                                                                                                                        <KONGActor>
+                                                                                                                                                                        <PACAActorProviderPlug>
+                                                                                                                                                                          <CKSHIBActor>
+                                                                                                                                                                            <CKPEPEActor>
+                                                                                                                                                                              <MOTOKOActor>
+                                                                                                                                                                                <TRAXActor>
+                                                                                                                                                                                  <DOLRActor>
+                                                                                                                                                                                    <KINICActor>
+                                                                                                                                                                                      <PANDAActor>
+                                                                                                                                                                                        <ESTActor>
+                                                                                                                                                                                          <DOGMIActor>
+                                                                                                                                                                                            <ELNAActor>
+                                                                                                                                                                                              <CTZActor>
+                                                                                                                                                                                                <GHOSTActor>
+                                                                                                                                                                                                  <GLDTActor>
+                                                                                                                                                                                                    <DODActor>
+                                                                                                                                                                                                      <PACAActor>
+                                                                                                                                                                                                        <KONGActorProviderPlug>
+                                                                                                                                                                                                          <KONGActor>
                                                                                                                                                                                                             <RouterProvider
                                                                                                                                                                                                               router={
                                                                                                                                                                                                                 router
                                                                                                                                                                                                               }
                                                                                                                                                                                                             ></RouterProvider>
-                                                                                                                                                                                                        </KONGActor>
-                                                                                                                                                                                                    </KONGActorProviderPlug>
-                                                                                                                                                                                                  </DODActor>
-                                                                                                                                                                                                </GLDTActor>
-                                                                                                                                                                                              </GHOSTActor>
-                                                                                                                                                                                            </CTZActor>
-                                                                                                                                                                                          </ELNAActor>
-                                                                                                                                                                                        </DOGMIActor>
-                                                                                                                                                                                      </ESTActor>
-                                                                                                                                                                                    </PANDAActor>
-                                                                                                                                                                                  </KINICActor>
-                                                                                                                                                                                </DOLRActor>
-                                                                                                                                                                              </TRAXActor>
-                                                                                                                                                                            </MOTOKOActor>
-                                                                                                                                                                          </CKPEPEActor>
-                                                                                                                                                                        </CKSHIBActor>
+                                                                                                                                                                                                          </KONGActor>
+                                                                                                                                                                                                        </KONGActorProviderPlug>
+                                                                                                                                                                                                      </PACAActor>
+                                                                                                                                                                                                    </DODActor>
+                                                                                                                                                                                                  </GLDTActor>
+                                                                                                                                                                                                </GHOSTActor>
+                                                                                                                                                                                              </CTZActor>
+                                                                                                                                                                                            </ELNAActor>
+                                                                                                                                                                                          </DOGMIActor>
+                                                                                                                                                                                        </ESTActor>
+                                                                                                                                                                                      </PANDAActor>
+                                                                                                                                                                                    </KINICActor>
+                                                                                                                                                                                  </DOLRActor>
+                                                                                                                                                                                </TRAXActor>
+                                                                                                                                                                              </MOTOKOActor>
+                                                                                                                                                                            </CKPEPEActor>
+                                                                                                                                                                          </CKSHIBActor>
+                                                                                                                                                                        </PACAActorProviderPlug>
                                                                                                                                                                       </DODActorProviderPlug>
                                                                                                                                                                     </GLDTActorProviderPlug>
                                                                                                                                                                   </GHOSTActorProviderPlug>

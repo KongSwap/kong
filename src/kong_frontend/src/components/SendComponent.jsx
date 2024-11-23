@@ -90,6 +90,7 @@ const SendComponent = ({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
+      paca_backend,
       kong_ledger_backend,
     },
   } = useIdentity();
@@ -311,6 +312,8 @@ const SendComponent = ({
           return dod_backend;
         case "KONG":
           return kong_ledger_backend;
+        case "PACA":
+          return paca_backend;
         default:
           return null;
       }
@@ -360,6 +363,7 @@ const SendComponent = ({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
+      paca_backend,
       gldt_backend,
       kong_ledger_backend,
     ]

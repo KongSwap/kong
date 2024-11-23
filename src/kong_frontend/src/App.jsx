@@ -170,6 +170,7 @@ const tokenImages = {
   NTN: tokenNtnImage,
   OGY: tokenOrigynImage,
   OWL: tokenOwlImage,
+  PACA: tokenAlpacalbImage,
   PANDA: tokenPandaImage,
   PARTY: tokenPartyImage,
   PEPE: tokenPepeImage,
@@ -237,6 +238,7 @@ export const tokenBalancesSelector = {
   ckPEPE: "ckpepeBalance",
   ckSHIB: "ckshibBalance",
   DOD: "dodBalance",
+  PACA: "pacaBalance",
   KONG: "kongBalance",
 };
 
@@ -301,6 +303,7 @@ const App = () => {
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
+      paca_backend,
       kong_ledger_backend,
     },
     isInitialized,
@@ -596,6 +599,7 @@ const App = () => {
       updateBalance(ckshib_backend, "ckSHIB"),
       updateBalance(dod_backend, "DOD"),
       updateBalance(kong_ledger_backend, "KONG"),
+      updateBalance(paca_backend, "PACA"),
     ]);
 
     // Convert the Map to an object
@@ -662,6 +666,7 @@ const App = () => {
     ckpepe_backend,
     ckshib_backend,
     dod_backend,
+    paca_backend,
     kong_backend,
     kong_ledger_backend,
   ]);
@@ -1444,6 +1449,19 @@ const App = () => {
           priceRoundedPool(
             tokenPrices["KONG_ckUSDT"],
             tokenPrices["KONG_ckUSDT"]
+          ) || 0,
+      },
+      {
+        symbol: "PACA",
+        balance: shownBalances.pacaBalance,
+        usdBalance: parseBalance(shownBalances.pacaBalance)
+          .multipliedBy(parsePrice(tokenPrices["PACA_ckUSDT"]))
+          .toFixed(2),
+        image: tokenImages["PACA"],
+        price:
+          priceRoundedPool(
+            tokenPrices["PACA_ckUSDT"],
+            tokenPrices["PACA_ckUSDT"]
           ) || 0,
       },
     ].sort((a, b) => parseFloat(b.usdBalance) - parseFloat(a.usdBalance));

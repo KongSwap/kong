@@ -96,6 +96,7 @@ const SwapComponent = memo(({
       ckpepe_backend,
       ckshib_backend,
       dod_backend,
+      paca_backend,
       kong_ledger_backend,
     },
   } = useIdentity();
@@ -491,6 +492,7 @@ const SwapComponent = memo(({
 
   const approvePayToken = useCallback(
     async (pay_amount, gas_amount, ledger_auth) => {
+      console.log("approvePayToken ledger_auth", await ledger_auth);
       try {
         let expires_at = Date.now() * 1000000 + 60000000000; // 30 seconds from now in nanoseconds
 
@@ -783,6 +785,8 @@ const SwapComponent = memo(({
           return ckshib_backend;
         case "DOD":
           return dod_backend;
+        case "PACA":
+          return paca_backend;
         case "KONG":
           return kong_ledger_backend;
         default:
@@ -881,6 +885,7 @@ const SwapComponent = memo(({
     ckpepe_backend,
     ckshib_backend,
     dod_backend,
+    paca_backend,
     gldt_backend,
     kong_ledger_backend,
   ]);

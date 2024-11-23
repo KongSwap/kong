@@ -47,6 +47,7 @@ import { idlFactory as motokoIdlFactory, canisterId as motokoCanisterId } from '
 import { idlFactory as ckpepeIdlFactory, canisterId as ckpepeCanisterId } from '../../../declarations/ckpepe_ledger/index.js';
 import { idlFactory as ckshibIdlFactory, canisterId as ckshibCanisterId } from '../../../declarations/ckshib_ledger/index.js';
 import { idlFactory as dodIdlFactory, canisterId as dodCanisterId } from '../../../declarations/dod_ledger/index.js';
+import { idlFactory as pacaIdlFactory, canisterId as pacaCanisterId } from '../../../declarations/paca_ledger/index.js';
 import { idlFactory as kongIdlFactory, canisterId as kongCanisterId } from '../../../declarations/kong_ledger/index.js';
 
 export const {
@@ -283,6 +284,11 @@ export const {
   PlugWalletActorProvider: DODActorProviderPlug,
   usePlugWalletActor: useDODBackendPlug,
 } = createPlugWalletActorProvider(dodIdlFactory, dodCanisterId);
+
+export const {
+  PlugWalletActorProvider: PACAActorProviderPlug,
+  usePlugWalletActor: usePACABackendPlug,
+} = createPlugWalletActorProvider(pacaIdlFactory, pacaCanisterId);
 
 export const {
   PlugWalletActorProvider: KONGActorProviderPlug,
