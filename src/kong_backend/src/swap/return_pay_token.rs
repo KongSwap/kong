@@ -1,6 +1,5 @@
 use candid::Nat;
 
-use super::swap_reply::SwapReply;
 use super::swap_reply_helpers::create_swap_reply_failed;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
