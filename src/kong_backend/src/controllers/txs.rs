@@ -7,7 +7,7 @@ use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_map;
 use crate::txs::txs_reply::TxsReply;
-use crate::txs::txs_reply_impl::to_txs_reply;
+use crate::txs::txs_reply_helpers::to_txs_reply;
 
 const MAX_TXS: usize = 1_000;
 

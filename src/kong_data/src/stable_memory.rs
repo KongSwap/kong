@@ -14,7 +14,7 @@ use std::cell::RefCell;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 
-pub const KONG_SETTINGS_ID: MemoryId = MemoryId::new(0);
+pub const KONG_SETTINGS_MEMORY_ID: MemoryId = MemoryId::new(0);
 pub const USER_MEMORY_ID: MemoryId = MemoryId::new(1);
 pub const TOKEN_MEMORY_ID: MemoryId = MemoryId::new(2);
 pub const POOL_MEMORY_ID: MemoryId = MemoryId::new(3);
@@ -33,7 +33,7 @@ thread_local! {
 
     // stable memory for storing Kong settings
     pub static KONG_SETTINGS: RefCell<StableCell<StableKongSettings, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableCell::init(memory_manager.get(KONG_SETTINGS_ID), StableKongSettings::default()).expect("Failed to initialize Kong settings"))
+        RefCell::new(StableCell::init(memory_manager.get(KONG_SETTINGS_MEMORY_ID), StableKongSettings::default()).expect("Failed to initialize Kong settings"))
     });
 
     // stable memory for storing user profiles

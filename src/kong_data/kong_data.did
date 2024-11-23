@@ -1,4 +1,177 @@
+type TxId = variant {
+    BlockIndex : nat;
+    TransactionId : text;
+};
+
+type ICTransferReply = record {
+    chain : text;
+    symbol : text;
+    is_send : bool;
+    amount : nat;
+    canister_id : text;
+    block_index : nat;
+};
+type TransferReply = variant {
+    IC : ICTransferReply;
+};
+type TransferIdReply = record {
+    transfer_id : nat64;
+    transfer : TransferReply
+};
+
+type RequestRequest = variant {
+    AddPool : AddPoolArgs;
+    AddLiquidity : AddLiquidityArgs;
+    RemoveLiquidity : RemoveLiquidityArgs;
+    Swap : SwapArgs;
+};
+
+type RequestReply = variant {
+    Pending;
+    AddPool : AddPoolReply;
+    AddLiquidity : AddLiquidityReply;
+    RemoveLiquidity : RemoveLiquidityReply;
+    Swap : SwapReply;
+};
+
+type RequestsReply = record {
+    request_id : nat64;
+    statuses : vec text;
+    request : RequestRequest;
+    reply : RequestReply;
+    ts : nat64;
+};
+type RequestsResult = variant { Ok : vec RequestsReply; Err : text };
+
+type AddPoolArgs = record {
+    token_0 : text;
+    amount_0 : nat;
+    tx_id_0 : opt TxId;
+    token_1 : text;
+    amount_1 : nat;
+    tx_id_1 : opt TxId;
+    lp_fee_bps : opt nat8;
+    on_kong : opt bool;
+};
+type AddPoolReply = record {
+    tx_id : nat64;
+    symbol : text;
+    request_id : nat64;
+    status : text;
+    balance : nat;
+    chain_0 : text;
+    symbol_0 : text;
+    amount_0 : nat;
+    chain_1 : text;
+    symbol_1 : text;
+    amount_1 : nat;
+    add_lp_token_amount : nat;
+    lp_fee_bps : nat8;
+    lp_token_symbol : text;
+    lp_token_supply : nat;
+    transfer_ids : vec TransferIdReply;
+    claim_ids : vec nat64;
+    on_kong : bool;
+    ts : nat64;
+};
+
+type AddLiquidityArgs = record {
+    token_0 : text;
+    amount_0 : nat;
+    tx_id_0 : opt TxId;
+    token_1 : text;
+    amount_1 : nat;
+    tx_id_1 : opt TxId;
+};
+type AddLiquidityReply = record {
+    tx_id : nat64;
+    symbol : text;
+    request_id : nat64;
+    status : text;
+    chain_0 : text;
+    symbol_0 : text;
+    amount_0 : nat;
+    chain_1 : text;
+    symbol_1 : text;
+    amount_1 : nat;
+    add_lp_token_amount : nat;
+    transfer_ids : vec TransferIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+
+type RemoveLiquidityArgs = record {
+    token_0 : text;
+    token_1 : text;
+    remove_lp_token_amount : nat;
+};
+type RemoveLiquidityReply = record {
+    tx_id : nat64;
+    symbol : text;
+    request_id : nat64;
+    status : text;
+    chain_0 : text;
+    symbol_0 : text;
+    amount_0 : nat;
+    lp_fee_0 : nat;
+    chain_1 : text;
+    symbol_1 : text;
+    amount_1 : nat;
+    lp_fee_1 : nat;
+    remove_lp_token_amount : nat;
+    transfer_ids : vec TransferIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+
+type SwapArgs = record {
+    pay_token : text;
+    pay_amount : nat;
+    pay_tx_id : opt TxId;
+    receive_token : text;
+    receive_amount : opt nat;
+    receive_address : opt text;
+    max_slippage : opt float64;
+    referred_by : opt text;
+};
+type SwapTxReply = record {
+    pool_symbol : text;
+    pay_chain : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    price : float64;
+    lp_fee : nat;
+    gas_fee : nat;
+    ts : nat64;
+};
+type SwapReply = record {
+    tx_id : nat64;
+    request_id : nat64;
+    status : text;
+    pay_chain : text;
+    pay_symbol : text;
+    pay_amount : nat;
+    receive_chain : text;
+    receive_symbol : text;
+    receive_amount : nat;
+    mid_price : float64;
+    price : float64;
+    slippage : float64;
+    txs : vec SwapTxReply;
+    transfer_ids : vec TransferIdReply;
+    claim_ids : vec nat64;
+    ts : nat64;
+};
+
 service : {
-    // canister information
+    // icrc1 standards
     icrc1_name : () -> (text) query;
+
+    // requests(request_id, num_requests) - returns specific request or all requests of the user
+    requests : (opt nat64, opt nat16) -> (RequestsResult) query;
+
+    get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
 }

@@ -1,19 +1,11 @@
 mod canister;
-mod claims;
-mod guards;
-mod kong_settings;
-mod lp_token_ledger;
-mod math_helpers;
-mod messages;
-mod pools;
+mod controllers;
+mod helpers;
+mod ic;
 mod requests;
 mod stable_memory;
-mod status;
-mod tokens;
-mod transfers;
-mod txs;
-mod user_map;
-mod users;
+mod stable_request;
+mod stable_user;
 
 pub const APP_NAME: &str = "Kong Data";
 pub const APP_VERSION: &str = "v0.0.12";

@@ -1,7 +1,7 @@
 use ic_cdk::query;
 
 use super::txs_reply::TxsReply;
-use super::txs_reply_impl::to_txs_reply;
+use super::txs_reply_helpers::to_txs_reply;
 
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_tx::tx_map;
