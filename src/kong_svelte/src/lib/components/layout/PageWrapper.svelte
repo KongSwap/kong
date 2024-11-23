@@ -7,6 +7,7 @@
   import ModalContainer from "$lib/components/common/ModalContainer.svelte";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import { browser } from "$app/environment";
+  import Clouds from "../stats/Clouds.svelte";
 
   let { page, children } = $props<{
     page?: string;
@@ -75,49 +76,59 @@
 </script>
 
 <div class="page-wrapper">
-  <div class="background"></div>
-  <div class="night-sky">
-    {#each Array(100) as _, i}
-      <div 
-        class="star-particle"
-        style="
-          --size: {1 + Math.random() * 2}px;
-          --top: {Math.random() * 100}%;
-          --left: {Math.random() * 100}%;
-          --delay: {Math.random() * 5}s;
-          --duration: {3 + Math.random() * 4}s;"
+  {#if $themeStore === 'modern'}
+    <div class="background"></div>
+    <div class="night-sky">
+      {#each Array(100) as _, i}
+        <div 
+          class="star-particle"
+          style="
+            --size: {1 + Math.random() * 2}px;
+            --top: {Math.random() * 100}%;
+            --left: {Math.random() * 100}%;
+            --delay: {Math.random() * 5}s;
+            --duration: {3 + Math.random() * 4}s;"
+        />
+      {/each}
+    </div>
+    <div class="premium-overlay"></div>
+    <div class="stars"></div>
+    <div class="accent-light"></div>
+    <div class="skyline-container">
+      <div class="city-lights"></div>
+      <div class="glow-effect" style="transform: translate({mouseX * 0.05}px, {mouseY * 0.05}px)"></div>
+      <img 
+        src={skylineUrl} 
+        alt="" 
+        class="skyline" 
+        style="transform: translate3d({mouseX * 0.1}px, calc({Math.sin(scrollY * 0.002) * 5}px + {mouseY * 0.1}px), 0)"
       />
-    {/each}
-  </div>
-  <div class="premium-overlay"></div>
-  <div class="stars"></div>
-  <div class="accent-light"></div>
-  <div class="skyline-container">
-    <div class="city-lights"></div>
-    <div class="glow-effect" style="transform: translate({mouseX * 0.05}px, {mouseY * 0.05}px)"></div>
-    <img 
-      src={skylineUrl} 
-      alt="" 
-      class="skyline" 
-      style="transform: translate3d({mouseX * 0.1}px, calc({Math.sin(scrollY * 0.002) * 5}px + {mouseY * 0.1}px), 0)"
-    />
-  </div>
-  <div class="falling-stars">
-    {#each Array(6) as _, i}
-      <div 
-        class="falling-star" 
-        style="
-          animation: fallingStar var(--duration) linear infinite;
-          --duration: {6 + Math.random() * 4}s; 
-          --trail-length: {120 + Math.random() * 40}px;
-          --glow-width: {18 + Math.random() * 4}px;
-          --glow-height: {1.2 + Math.random() * 0.6}px;
-          top: {Math.random() * -20}%; 
-          left: {60 + Math.random() * 40}%;
-          animation-delay: {Math.random() * -20}s;"
-      />
-    {/each}
-  </div>
+    </div>
+    <div class="falling-stars">
+      {#each Array(6) as _, i}
+        <div 
+          class="falling-star" 
+          style="
+            animation: fallingStar var(--duration) linear infinite;
+            --duration: {6 + Math.random() * 4}s; 
+            --trail-length: {120 + Math.random() * 40}px;
+            --glow-width: {18 + Math.random() * 4}px;
+            --glow-height: {1.2 + Math.random() * 0.6}px;
+            top: {Math.random() * -20}%; 
+            left: {60 + Math.random() * 40}%;
+            animation-delay: {Math.random() * -20}s;"
+        />
+      {/each}
+    </div>
+  {:else}
+    <div class="pixel-background" style="background-image: url({background.image})">
+      <div class="retro-overlay"></div>
+    </div>
+    {#if $themeStore === 'pixel'}
+      <Clouds/>
+    {/if}
+  {/if}
+  
   <div class="content">
     {#if $themeStore === 'modern'}
       <div class="background-gradient" />
@@ -153,6 +164,20 @@
     overflow-y: auto;
     z-index: 0;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .pixel-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #5bb2cf;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    z-index: 1;
   }
 
   .background {
@@ -405,7 +430,7 @@
 
   .content {
     position: relative;
-    z-index: 1;
+    z-index: 10;
     min-height: 100%;
     -webkit-transform: translateZ(0);
     transform: translateZ(0);

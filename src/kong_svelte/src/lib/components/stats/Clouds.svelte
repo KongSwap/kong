@@ -8,72 +8,85 @@
     src: string;
     top: string;
     left: string;
-    animationDuration: string;
+    duration: string;
     delay: string;
-    direction: number;
-    size: number;
+    scale: number;
+    opacity: number;
   }
 
-  const clouds: Array<Cloud> = Array.from({ length: 14 }, (_, i) => ({
-    src: [cloud1, cloud2, cloud3, cloud4][i % 4],
-    top: `${Math.random() * 85}%`,
-    left: Math.random() > 0.5 ? '-20%' : '120%',
-    animationDuration: `${200 + Math.random() * 900}s`,
-    delay: `-${Math.random() * 1000}s`,
-    direction: Math.random() > 0.5 ? 1 : -1,
-    size: 0.7 + Math.random() * 1.3,
-  }));
+  const CLOUD_IMAGES = [cloud1, cloud2, cloud3, cloud4];
+  const NUM_CLOUDS = 10;
+
+  const clouds: Cloud[] = Array.from({ length: NUM_CLOUDS }, () => {
+    const isLeftToRight = Math.random() > 0.5;
+    return {
+      src: CLOUD_IMAGES[Math.floor(Math.random() * CLOUD_IMAGES.length)],
+      top: `${Math.random() * 70}%`,
+      left: isLeftToRight ? '-20%' : '120%',
+      duration: `${150 + Math.random() * 200}s`,
+      delay: `-${Math.random() * 200}s`,
+      scale: 0.6 + Math.random() * 0.8,
+      opacity: 0.4 + Math.random() * 0.3
+    };
+  });
 </script>
 
-<div class="floating-clouds overflow-hidden z-[0] bg-transparent">
+<div class="clouds-container">
   {#each clouds as cloud}
     <img
       src={cloud.src}
-      alt="Cloud"
+      alt=""
       class="cloud"
       style="
         --top: {cloud.top};
         --left: {cloud.left};
-        --animation-duration: {cloud.animationDuration};
-        --animation-delay: {cloud.delay};
-        --animation-direction: {cloud.direction === 1 ? 'normal' : 'reverse'};
-        --scale: {cloud.size};
+        --duration: {cloud.duration};
+        --delay: {cloud.delay};
+        --scale: {cloud.scale};
+        --opacity: {cloud.opacity};
       "
     />
   {/each}
 </div>
 
-<style scoped>
-  .floating-clouds {
-    position: absolute;
+<style lang="postcss">
+  .clouds-container {
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1;
     pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
   }
 
   .cloud {
     position: absolute;
     top: var(--top);
     left: var(--left);
-    animation-name: float;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-duration: var(--animation-duration);
-    animation-delay: var(--animation-delay);
-    animation-direction: var(--animation-direction);
     transform: scale(var(--scale));
+    opacity: var(--opacity);
+    animation: float var(--duration) linear infinite;
+    animation-delay: var(--delay);
     will-change: transform;
+    filter: brightness(1.1) contrast(0.95);
+    image-rendering: pixelated;
   }
 
   @keyframes float {
     from {
-      transform: translateX(-120vw);
+      transform: translateX(0) scale(var(--scale));
     }
     to {
-      transform: translateX(130vw);
+      transform: translateX(140vw) scale(var(--scale));
+    }
+  }
+
+  /* Optimize performance */
+  @media (prefers-reduced-motion: reduce) {
+    .cloud {
+      animation: none;
     }
   }
 </style>
