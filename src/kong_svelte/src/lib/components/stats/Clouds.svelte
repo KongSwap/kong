@@ -1,7 +1,6 @@
 <script lang="ts">
   import cloud1 from '$lib/assets/clouds/cloud1.webp';
   import cloud2 from '$lib/assets/clouds/cloud2.webp';
-  import cloud3 from '$lib/assets/clouds/cloud3.webp';
   import cloud4 from '$lib/assets/clouds/cloud4.webp';
 
   interface Cloud {
@@ -14,7 +13,7 @@
     opacity: number;
   }
 
-  const CLOUD_IMAGES = [cloud1, cloud2, cloud3, cloud4];
+  const CLOUD_IMAGES = [cloud1, cloud2, cloud4];
   const NUM_CLOUDS = 10;
 
   const clouds: Cloud[] = Array.from({ length: NUM_CLOUDS }, () => {
