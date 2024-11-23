@@ -22,7 +22,7 @@ use crate::stable_request::{reply::Reply, request::Request, request_map, stable_
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_user::stable_user::CLAIMS_TIMER_USER_ID;
-use crate::transfers::transfer_reply_impl::to_transfer_ids;
+use crate::transfers::transfer_reply_helpers::to_transfer_ids;
 
 /// send out outstanding claims
 pub async fn process_claims() {

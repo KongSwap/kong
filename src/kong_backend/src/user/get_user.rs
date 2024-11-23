@@ -1,7 +1,7 @@
 use ic_cdk::query;
 
 use super::user_reply::UserReply;
-use super::user_reply_impl::to_user_reply;
+use super::user_reply_helpers::to_user_reply;
 
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_user::user_map;

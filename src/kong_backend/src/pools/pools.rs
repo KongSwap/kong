@@ -1,7 +1,7 @@
 use ic_cdk::query;
 
 use super::pools_reply::PoolsReply;
-use super::pools_reply_impl::{to_pool_reply, to_pools_reply};
+use super::pools_reply_helpers::{to_pool_reply, to_pools_reply};
 
 use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_pool::pool_map;
