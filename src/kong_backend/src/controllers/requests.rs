@@ -2,7 +2,8 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::requests::request_reply::{to_request_reply, RequestReply};
+use crate::requests::request_reply::RequestReply;
+use crate::requests::request_reply_helpers::to_request_reply;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};

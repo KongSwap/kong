@@ -1,8 +1,10 @@
 use ic_cdk::{init, post_upgrade, pre_upgrade, query};
 use kong_lib::ic::logging::info_log;
-use kong_lib::requests::request_reply::{to_request_reply, RequestReply};
+use kong_lib::requests::request_reply::RequestReply;
 
 use super::{APP_NAME, APP_VERSION};
+
+use crate::requests::request_reply_helpers::to_request_reply;
 
 use crate::ic::guards::caller_is_not_anonymous;
 use crate::stable_request::request_map;

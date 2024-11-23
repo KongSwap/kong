@@ -1,11 +1,14 @@
 use candid::Nat;
 
 use super::swap_reply::SwapReply;
+use super::swap_reply_helpers::create_swap_reply_failed;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::ic::{address::Address, id::caller_id, logging::error_log, transfer::icrc1_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_request::{reply::Reply, request_map, status::StatusCode};
+use crate::stable_request::reply::Reply;
+use crate::stable_request::request_map;
+use crate::stable_request::status::StatusCode;
 use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 
@@ -60,6 +63,6 @@ pub async fn return_pay_token(
         }
     };
 
-    let reply = SwapReply::new_failed(request_id, pay_token, pay_amount, receive_token, transfer_ids, &claim_ids, ts);
+    let reply = create_swap_reply_failed(request_id, pay_token, pay_amount, receive_token, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::Swap(reply));
 }

@@ -1,9 +1,10 @@
 use ic_cdk::{query, update};
-use kong_lib::requests::request_reply::{to_request_reply, RequestReply};
+use kong_lib::requests::request_reply::RequestReply;
 use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
+use crate::requests::request_reply_helpers::to_request_reply;
 use crate::stable_memory::REQUEST_MAP;
 use crate::stable_request::request_map;
 
