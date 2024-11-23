@@ -294,43 +294,57 @@
       </Button>
     </div>
 
-    <div class="panels-container relative">
-      {#each panels as panel (panel.id)}
-        <div class="panel-wrapper">
+    <div class="panels-container">
+      <div class="panels-wrapper">
+        <div class="panel">
           <SwapPanel
-            title={panel.title}
-            token={panel.type === 'pay' ? $swapState.payToken : $swapState.receiveToken}
-            amount={panel.type === 'pay' ? $swapState.payAmount : $swapState.receiveAmount}
+            title={panels[0].title}
+            token={$swapState.payToken}
+            amount={$swapState.payAmount}
             onAmountChange={handleAmountChange}
-            onTokenSelect={() => handleTokenSelect(panel.type)}
-            showPrice={panel.type === 'receive'}
+            onTokenSelect={() => handleTokenSelect("pay")}
+            showPrice={false}
             slippage={$swapState.swapSlippage}
             disabled={false}
-            panelType={panel.type}
+            panelType="pay"
           />
         </div>
-      {/each}
 
-      <button
-        class="switch-button"
-        class:rotating={isRotating}
-        on:click={handleReverseTokens}
-        disabled={isProcessing}
-        aria-label="Switch tokens"
-      >
-        <svg
-          width="48"
-          height="48"
-          viewBox={ModernArrow.viewBox}
-          xmlns="http://www.w3.org/2000/svg"
-          class="swap-arrow"
+        <div class="panel">
+          <SwapPanel
+            title={panels[1].title}
+            token={$swapState.receiveToken}
+            amount={$swapState.receiveAmount}
+            onAmountChange={handleAmountChange}
+            onTokenSelect={() => handleTokenSelect("receive")}
+            showPrice={true}
+            slippage={$swapState.swapSlippage}
+            disabled={false}
+            panelType="receive"
+          />
+        </div>
+
+        <button
+          class="switch-button"
+          class:rotating={isRotating}
+          on:click={handleReverseTokens}
+          disabled={isProcessing}
+          aria-label="Switch tokens"
         >
-          <g class="arrow-group">
-            <circle class="arrow-circle" cx="24" cy="24" r="20" />
-            <path class="arrow-path" d={ModernArrow.paths[1]} />
-          </g>
-        </svg>
-      </button>
+          <svg
+            width="42"
+            height="42"
+            viewBox={ModernArrow.viewBox}
+            xmlns="http://www.w3.org/2000/svg"
+            class="swap-arrow"
+          >
+            <g class="arrow-group">
+              <circle class="arrow-circle" cx="24" cy="24" r="20" />
+              <path class="arrow-path" d={ModernArrow.paths[1]} />
+            </g>
+          </svg>
+        </button>
+      </div>
 
       <div class="swap-footer">
         <Button
@@ -422,29 +436,30 @@
   .panels-container {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    position: relative;
+    gap: 12px;
   }
 
-  .panel-wrapper {
+  .panels-wrapper {
     position: relative;
-    z-index: 1;
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
-  .swap-footer {
+  .panel {
+    position: relative;
     z-index: 1;
-    margin-top: 0.2rem;
   }
 
   .switch-button {
     position: absolute;
     left: 50%;
-    top: 43%;
+    top: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
-    background: transparent;
-    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
     cursor: pointer;
     width: 42px;
     height: 42px;
@@ -452,12 +467,14 @@
     align-items: center;
     justify-content: center;
     padding: 0;
-    margin: 0;
     transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
   }
 
   .switch-button:hover:not(:disabled) {
     transform: translate(-50%, -50%) scale(1.1);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .switch-button:active:not(:disabled) {
@@ -467,6 +484,10 @@
   .switch-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .swap-footer {
+    margin-top: 4px;
   }
 
   .swap-arrow {
@@ -481,24 +502,24 @@
   }
 
   .arrow-circle {
-    fill: rgba(255, 255, 255, 0.1);
+    fill: rgba(255, 255, 255, 0.05);
     stroke: rgba(255, 255, 255, 0.2);
     stroke-width: 1;
     transition: all 0.3s ease;
   }
 
   .arrow-path {
-    fill: rgba(255, 255, 255, 0.8);
+    fill: rgba(255, 255, 255, 0.9);
     transition: all 0.3s ease;
   }
 
   .switch-button:hover:not(:disabled) .arrow-circle {
-    fill: rgba(255, 255, 255, 0.15);
+    fill: rgba(255, 255, 255, 0.1);
     stroke: rgba(255, 255, 255, 0.3);
   }
 
   .switch-button:hover:not(:disabled) .arrow-path {
-    fill: rgba(255, 255, 255, 0.9);
+    fill: #ffffff;
   }
 
   .rotating .arrow-group {
@@ -506,15 +527,6 @@
   }
 
   @keyframes rotateArrow {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(180deg);
-    }
-  }
-
-  @keyframes rotate {
     from {
       transform: rotate(0deg);
     }
