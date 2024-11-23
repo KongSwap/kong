@@ -122,7 +122,23 @@
     </div>
   {:else}
     <div class="pixel-background" style="background-image: url({background.image})">
-      <div class="retro-overlay"></div>
+      <div class="floating-pixels">
+        {#each Array(15) as _, i}
+          <div 
+            class="pixel-square"
+            style="
+              --delay: {Math.random() * 5}s;
+              --duration: {4 + Math.random() * 3}s;
+              --top: {Math.random() * 100}%;
+              --left: {Math.random() * 100}%;
+              --size: {8 + Math.random() * 12}px;
+              --hue: {180 + Math.random() * 40};"
+          />
+        {/each}
+      </div>
+      {#if !background.image}
+        <div class="retro-mountains"></div>
+      {/if}
     </div>
     {#if $themeStore === 'pixel'}
       <Clouds/>
@@ -178,6 +194,100 @@
     background-repeat: no-repeat;
     image-rendering: pixelated;
     z-index: 1;
+    background: linear-gradient(180deg, 
+      #87CEEB 0%,
+      #5bb2cf 100%
+    );
+    overflow: hidden;
+  }
+
+  .retro-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(0deg, 
+        rgba(255, 255, 255, 0.1) 0%, 
+        transparent 10%
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.05) 2px,
+        rgba(255, 255, 255, 0.05) 4px
+      );
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.1),
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+      animation: scanline 10s linear infinite;
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes scanline {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  .floating-pixels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .pixel-square {
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+    background: hsla(var(--hue), 80%, 75%, 0.3);
+    top: var(--top);
+    left: var(--left);
+    animation: floatPixel var(--duration) ease-in-out infinite;
+    animation-delay: var(--delay);
+    box-shadow: 
+      inset 0 0 2px rgba(255, 255, 255, 0.6),
+      0 0 4px rgba(255, 255, 255, 0.2);
+    image-rendering: pixelated;
+  }
+
+  @keyframes floatPixel {
+    0%, 100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    50% {
+      transform: translate(20px, -20px) rotate(90deg);
+    }
+  }
+
+  .retro-mountains {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 25%;
+    background-image: 
+      linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%),
+      linear-gradient(-45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%),
+      linear-gradient(45deg, #4a90a8 50%, transparent 50%),
+      linear-gradient(-45deg, #4a90a8 50%, transparent 50%);
+    background-size: 32px 32px, 32px 32px, 16px 16px, 16px 16px;
+    background-position: 0 0, 0 0, 16px 0, -16px 0;
+    background-repeat: repeat-x;
+    image-rendering: pixelated;
   }
 
   .background {
