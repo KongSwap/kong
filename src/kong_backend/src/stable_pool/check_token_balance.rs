@@ -5,6 +5,7 @@ use crate::helpers::nat_helpers::nat_add;
 use crate::helpers::nat_helpers::nat_zero;
 use crate::ic::ledger::get_backend_canister_balance;
 use crate::stable_claim::stable_claim::ClaimStatus;
+use crate::stable_claim::stable_claim_helpers;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_token::stable_token::StableToken;
@@ -66,7 +67,7 @@ pub async fn check_token_balance(token: &StableToken) -> Result<(StableToken, Na
     // add unclaimed claims back to balances
     CLAIM_MAP.with(|m| {
         for (_, v) in m.borrow().iter() {
-            if v.get_token().token_id() == token_id && v.status == ClaimStatus::Unclaimed {
+            if stable_claim_helpers::get_token(&v).token_id() == token_id && v.status == ClaimStatus::Unclaimed {
                 expected_balance.unclaimed_claims += v.amount
             }
         }

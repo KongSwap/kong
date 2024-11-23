@@ -1,5 +1,6 @@
 use candid::Principal;
 
+use super::canister_address::KONG_BACKEND;
 use super::id::{caller, is_caller_controller};
 
 use crate::stable_memory::KONG_SETTINGS;
@@ -44,6 +45,18 @@ pub fn caller_is_not_anonymous() -> Result<(), String> {
 pub fn caller_is_controller() -> Result<(), String> {
     if !is_caller_controller() {
         return Err("Caller is not a controller".to_string());
+    }
+    Ok(())
+}
+
+pub fn kong_backend() -> Principal {
+    Principal::from_text(KONG_BACKEND).unwrap()
+}
+
+/// Guard to ensure caller is Kong backend
+pub fn caller_is_kong_backend() -> Result<(), String> {
+    if caller() != kong_backend() {
+        return Err("Caller is not Kong backend".to_string());
     }
     Ok(())
 }
