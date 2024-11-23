@@ -31,21 +31,33 @@
       };
     }
 
-    const defaultBg = { image: 'none', color: '#5bb2cf', gradient: 'none' };
-    if (!page) return defaultBg;
-    
-    if (page.includes("pools")) {
-      return poolsBgUrl 
-        ? { image: `url(${poolsBgUrl})`, color: '#5bb2cf', gradient: 'none' }
-        : defaultBg;
+    if ($themeStore === 'pixel') {
+      const defaultBg = { 
+        image: 'none', 
+        color: '#5bb2cf',
+        gradient: `linear-gradient(180deg, 
+          #a7e3ff 0%, 
+          #87CEEB 35%, 
+          #5bb2cf 100%)`
+      };
+      
+      if (!page) return defaultBg;
+      
+      if (page.includes("pools")) {
+        return poolsBgUrl 
+          ? { image: `url(${poolsBgUrl})`, color: '#5bb2cf', gradient: defaultBg.gradient }
+          : defaultBg;
+      }
+      if (page.includes("swap")) {
+        return jungleBgUrl
+          ? { image: `url(${jungleBgUrl})`, color: '#5bb2cf', gradient: defaultBg.gradient }
+          : defaultBg;
+      }
+      if (page.includes("stats")) return defaultBg;
+      return defaultBg;
     }
-    if (page.includes("swap")) {
-      return jungleBgUrl
-        ? { image: `url(${jungleBgUrl})`, color: '#5bb2cf', gradient: 'none' }
-        : defaultBg;
-    }
-    if (page.includes("stats")) return { image: 'none', color: '#5bb2cf', gradient: 'none' };
-    return defaultBg;
+
+    return { image: 'none', color: '#030407', gradient: 'none' };
   });
 
   $effect(() => {
@@ -121,7 +133,12 @@
       {/each}
     </div>
   {:else}
-    <div class="pixel-background" style="background-image: url({background.image})">
+    <div 
+      class="pixel-background" 
+      style:background={background.image !== 'none' 
+        ? background.image 
+        : background.gradient}
+    >
       <div class="floating-pixels">
         {#each Array(15) as _, i}
           <div 
@@ -188,17 +205,40 @@
     left: 0;
     width: 100%;
     height: 100%;
+    z-index: 1;
+    overflow: hidden;
+    image-rendering: pixelated;
     background-color: #5bb2cf;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    image-rendering: pixelated;
-    z-index: 1;
-    background: linear-gradient(180deg, 
-      #87CEEB 0%,
-      #5bb2cf 100%
+  }
+
+  .pixel-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at 50% 150%, 
+      rgba(255, 255, 255, 0.15) 0%,
+      transparent 70%
     );
-    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .pixel-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 50%,
+      transparent 100%
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    opacity: 0.5;
   }
 
   .retro-overlay {
