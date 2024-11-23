@@ -6,7 +6,7 @@
   import { themeStore } from "$lib/stores/themeStore";
   import ModalContainer from "$lib/components/common/ModalContainer.svelte";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
-    import { browser } from "$app/environment";
+  import { browser } from "$app/environment";
 
   let { page, children } = $props<{
     page?: string;
@@ -15,7 +15,11 @@
 
   let poolsBgUrl = $state("");
   let jungleBgUrl = $state("");
+  let skylineUrl = $state("");
   let isChanging = $state(false);
+  let scrollY = $state(0);
+  let mouseX = $state(0);
+  let mouseY = $state(0);
 
   let background = $derived.by(() => {
     if ($themeStore === 'modern') {
@@ -57,186 +61,47 @@
       poolsBgUrl = await assetCache.getAsset("/backgrounds/pools.webp");
       jungleBgUrl = await assetCache.getAsset("/backgrounds/kong_jungle2.webp");
     }
-  });
-
-  let constellationCanvas;
-  let ctx;
-  let stars = [];
-  let constellations = [];
-  const MAX_CONNECTION_DISTANCE = 150; // Maximum distance for star connections
-  
-  onMount(() => {
-    if (constellationCanvas) {
-      ctx = constellationCanvas.getContext('2d', { alpha: true });
-      ctx.imageSmoothingEnabled = true;
-      if (ctx.webkitImageSmoothingEnabled) ctx.webkitImageSmoothingEnabled = true;
-      
-      initCanvas();
-      generateStars();
-      animate();
-      
-      window.addEventListener('resize', handleResize, { passive: true });
-      
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        if (resizeTimeout) clearTimeout(resizeTimeout);
-      };
+    skylineUrl = await assetCache.getAsset("/backgrounds/skyline.svg");
+    if (browser) {
+      window.addEventListener('scroll', () => {
+        scrollY = window.scrollY;
+      }, { passive: true });
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
+        mouseY = (e.clientY / window.innerHeight - 0.5) * 20;
+      }, { passive: true });
     }
   });
-
-  function initCanvas() {
-    constellationCanvas.width = window.innerWidth;
-    constellationCanvas.height = window.innerHeight;
-    
-    window.addEventListener('resize', handleResize);
-  }
-
-  function generateStars() {
-    stars = [];
-    for (let i = 0; i < 40; i++) {
-      stars.push({
-        x: Math.random() * constellationCanvas.width,
-        y: Math.random() * constellationCanvas.height,
-        radius: Math.random() * 1 + 0.5,
-        originalRadius: Math.random() * 1 + 0.5,
-        brightness: Math.random() * 0.3 + 0.7,
-        alpha: Math.random(),
-        increasing: true
-      });
-    }
-  }
-
-  function findNearbyStars(star, count = 2) {
-    return stars
-      .filter(s => s !== star)
-      .map(s => ({
-        star: s,
-        distance: Math.hypot(s.x - star.x, s.y - star.y)
-      }))
-      .filter(s => s.distance < MAX_CONNECTION_DISTANCE)
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, count)
-      .map(s => s.star);
-  }
-
-  function tryCreateConstellation() {
-    if (constellations.length >= 3) return; // Limit active constellations
-    
-    const startStar = stars[Math.floor(Math.random() * stars.length)];
-    const nearbyStars = findNearbyStars(startStar, 2);
-    
-    if (nearbyStars.length < 2) return;
-    
-    // Check if these stars form a good triangle
-    const side1 = Math.hypot(nearbyStars[0].x - startStar.x, nearbyStars[0].y - startStar.y);
-    const side2 = Math.hypot(nearbyStars[1].x - startStar.x, nearbyStars[1].y - startStar.y);
-    const side3 = Math.hypot(nearbyStars[1].x - nearbyStars[0].x, nearbyStars[1].y - nearbyStars[0].y);
-    
-    // Check if triangle is relatively equilateral
-    const avgSide = (side1 + side2 + side3) / 3;
-    const variance = Math.max(Math.abs(side1 - avgSide), Math.abs(side2 - avgSide), Math.abs(side3 - avgSide));
-    
-    if (variance > avgSide * 0.3) return; // Skip if triangle is too irregular
-
-    constellations.push({
-      stars: [startStar, ...nearbyStars],
-      alpha: 0,
-      growing: true,
-      lifeTime: 0,
-      maxLife: Math.random() * 300 + 200
-    });
-  }
-
-  // Add requestAnimationFrame polyfill
-  const requestAnimFrame = (function() {
-    if(browser) {
-      return window.requestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame ||
-        function(callback) {
-          window.setTimeout(callback, 1000 / 60);
-        };
-    }
-  })();
-
-  function animate() {
-    ctx.clearRect(0, 0, constellationCanvas.width, constellationCanvas.height);
-    
-    // Animate stars
-    stars.forEach(star => {
-      star.alpha += star.increasing ? 0.005 : -0.005;
-      
-      if (star.alpha >= 1) {
-        star.increasing = false;
-      } else if (star.alpha <= 0.7) {
-        star.increasing = true;
-      }
-      
-      star.radius = star.originalRadius * (0.9 + star.alpha * 0.2);
-      
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha * star.brightness})`;
-      ctx.fill();
-    });
-
-    // Animate constellations
-    constellations = constellations.filter(constellation => {
-      constellation.lifeTime++;
-      
-      if (constellation.growing) {
-        constellation.alpha += 0.005;
-        if (constellation.alpha >= 0.3) constellation.growing = false;
-      } else {
-        constellation.alpha -= 0.005;
-      }
-
-      if (constellation.lifeTime >= constellation.maxLife || constellation.alpha <= 0) return false;
-
-      // Draw constellation lines
-      ctx.beginPath();
-      ctx.moveTo(constellation.stars[0].x, constellation.stars[0].y);
-      constellation.stars.forEach(star => {
-        ctx.lineTo(star.x, star.y);
-      });
-      ctx.closePath();
-      ctx.strokeStyle = `rgba(255, 255, 255, ${constellation.alpha * 0.5})`;
-      ctx.lineWidth = 0.3;
-      ctx.stroke();
-
-      return true;
-    });
-
-    // Randomly create new constellation
-    if (Math.random() < 0.005) {
-      tryCreateConstellation();
-    }
-
-    // Request next frame
-    requestAnimFrame(() => animate());
-  }
-
-  let resizeTimeout;
-  function handleResize() {
-    if (resizeTimeout) {
-      clearTimeout(resizeTimeout);
-    }
-    resizeTimeout = setTimeout(() => {
-      if (constellationCanvas) {
-        constellationCanvas.width = window.innerWidth;
-        constellationCanvas.height = window.innerHeight;
-        generateStars();
-      }
-    }, 250);
-  }
 </script>
 
 <div class="page-wrapper">
   <div class="background"></div>
+  <div class="night-sky">
+    {#each Array(100) as _, i}
+      <div 
+        class="star-particle"
+        style="
+          --size: {1 + Math.random() * 2}px;
+          --top: {Math.random() * 100}%;
+          --left: {Math.random() * 100}%;
+          --delay: {Math.random() * 5}s;
+          --duration: {3 + Math.random() * 4}s;"
+      />
+    {/each}
+  </div>
   <div class="premium-overlay"></div>
   <div class="stars"></div>
   <div class="accent-light"></div>
-  <canvas class="constellation-canvas" bind:this={constellationCanvas}></canvas>
+  <div class="skyline-container">
+    <div class="city-lights"></div>
+    <div class="glow-effect" style="transform: translate({mouseX * 0.05}px, {mouseY * 0.05}px)"></div>
+    <img 
+      src={skylineUrl} 
+      alt="" 
+      class="skyline" 
+      style="transform: translate3d({mouseX * 0.1}px, calc({Math.sin(scrollY * 0.002) * 5}px + {mouseY * 0.1}px), 0)"
+    />
+  </div>
   <div class="falling-stars">
     {#each Array(6) as _, i}
       <div 
@@ -287,7 +152,7 @@
     background: #070a10;
     overflow-y: auto;
     z-index: 0;
-    -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+    -webkit-overflow-scrolling: touch;
   }
 
   .background {
@@ -296,19 +161,6 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
-      /* Sophisticated base gradient */
-      -webkit-radial-gradient(circle at 50% 50%, 
-        rgba(18, 22, 33, 0.97) 0%,
-        rgba(12, 15, 24, 0.98) 100%),
-      -webkit-radial-gradient(circle at 20% 20%,
-        rgba(88, 107, 164, 0.1) 0%,
-        rgba(66, 89, 152, 0.07) 45%,
-        transparent 100%),
-      -webkit-radial-gradient(circle at 80% 80%,
-        rgba(114, 135, 206, 0.1) 0%,
-        rgba(92, 111, 177, 0.07) 45%,
-        transparent 100%);
     background: 
       radial-gradient(circle at 50% 50%, 
         rgba(18, 22, 33, 0.97) 0%,
@@ -321,11 +173,51 @@
         rgba(114, 135, 206, 0.1) 0%,
         rgba(92, 111, 177, 0.07) 45%,
         transparent 100%);
-    -webkit-animation: subtleBreathing 15s ease-in-out infinite;
     animation: subtleBreathing 15s ease-in-out infinite;
-    will-change: transform, opacity; /* Performance optimization */
+    will-change: transform, opacity;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+  }
+
+  .night-sky {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+      radial-gradient(circle at 50% 0%, 
+        rgba(61, 85, 255, 0.1) 0%,
+        transparent 50%),
+      radial-gradient(circle at 80% 20%, 
+        rgba(120, 0, 255, 0.05) 0%,
+        transparent 50%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .star-particle {
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+    background: #fff;
+    border-radius: 50%;
+    top: var(--top);
+    left: var(--left);
+    animation: twinkle var(--duration) ease-in-out infinite;
+    animation-delay: var(--delay);
+    will-change: opacity, transform;
+  }
+
+  @keyframes twinkle {
+    0%, 100% {
+      opacity: 0.2;
+      transform: scale(0.8);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   .falling-stars {
@@ -337,7 +229,7 @@
     pointer-events: none;
     overflow: hidden;
     -webkit-transform: translateZ(0);
-    transform: translateZ(0); /* Force GPU acceleration */
+    transform: translateZ(0);
   }
 
   .falling-star {
@@ -434,49 +326,83 @@
     }
   }
 
-  .constellation-canvas {
+  .skyline-container {
     position: fixed;
-    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+  }
+
+  @keyframes cityLightsPulse {
+    0%, 100% {
+      opacity: 0.8;
+      filter: blur(1px) brightness(1);
+    }
+    50% {
+      opacity: 1;
+      filter: blur(1.5px) brightness(1.2);
+    }
+  }
+
+  .glow-effect {
+    position: absolute;
+    bottom: 0;
     left: 0;
     width: 100%;
     height: 100%;
+    background: 
+      linear-gradient(to bottom,
+        transparent 0%,
+        rgba(88, 107, 164, 0.08) 40%,
+        rgba(114, 135, 206, 0.12) 70%,
+        rgba(147, 168, 255, 0.18) 100%
+      ),
+      radial-gradient(
+        circle at 50% 100%,
+        rgba(147, 168, 255, 0.25) 0%,
+        transparent 70%
+      );
+    animation: glowPulse 8s ease-in-out infinite;
     pointer-events: none;
-    z-index: 1;
-    opacity: 0.8;
-    -webkit-transform: translateZ(0);
+    mix-blend-mode: screen;
+    transition: transform 0.2s ease-out;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% {
+      opacity: 0.7;
+      filter: blur(20px) brightness(1);
+    }
+    50% {
+      opacity: 0.9;
+      filter: blur(25px) brightness(1.2);
+    }
+  }
+
+  .skyline {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     transform: translateZ(0);
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
+    will-change: transform;
+    opacity: 0.9;
+    animation: floatSkyline 15s ease-in-out infinite;
+    filter: 
+      drop-shadow(0 0 10px rgba(88, 107, 164, 0.3))
+      drop-shadow(0 0 20px rgba(147, 168, 255, 0.1));
+    transition: transform 0.2s ease-out;
   }
 
-  /* Add these browser-specific animation keyframes for all animations */
-  @-webkit-keyframes subtleBreathing {
+  @keyframes floatSkyline {
     0%, 100% {
-      opacity: 1;
-      -webkit-transform: scale(1);
+      transform: translateY(0) rotate3d(1, 0, 0, 0deg);
     }
     50% {
-      opacity: 0.98;
-      -webkit-transform: scale(1.02);
+      transform: translateY(-5px) rotate3d(1, 0, 0, 0.5deg);
     }
   }
 
-  @-webkit-keyframes subtleStarTwinkle {
-    0%, 100% {
-      opacity: 0.5;
-    }
-    50% {
-      opacity: 0.6;
-    }
-  }
-
-  @-webkit-keyframes crossFade {
-    0% { opacity: 1; }
-    50% { opacity: 0.95; }
-    100% { opacity: 1; }
-  }
-
-  /* Add performance optimizations */
   .content {
     position: relative;
     z-index: 1;
