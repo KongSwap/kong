@@ -48,7 +48,7 @@
     <div class="token-header">
       <button class="token-info" on:click={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
         <div class="token-image">
-          <TokenImages tokens={[token]} />
+          <TokenImages tokens={[token]} size={32} containerClass="!w-8" />
         </div>
         <div class="flex flex-col text-left overflow-hidden">
           <span class="symbol">{token.symbol}</span>
@@ -127,13 +127,11 @@
   }
 
   .token-image {
-    @apply flex-shrink-0 w-8 h-8 rounded-full overflow-hidden 
-           bg-black/20 flex items-center justify-center
-           ring-1 ring-white/5;
+    @apply flex-shrink-0 w-8 h-8 rounded-full overflow-hidden;
   }
 
   .token-image :global(img) {
-    @apply w-full h-full object-cover;
+    @apply w-auto h-auto;
   }
 
   .symbol {

@@ -93,7 +93,7 @@
         <img
           src={titleImage}
           alt={activeTab}
-          class="title-image"
+          class="title-image glow-effect"
         />
       </button>
     </div>
@@ -217,7 +217,7 @@
     </div>
 {/if}
 
-<style>
+<style lang="postcss">
   .navbar {
     width: 100%;
     z-index: 50;
@@ -402,5 +402,10 @@
   .settings-button-mobile:hover {
     transform: scale(1.05);
     color: #38bdf8;
+  }
+
+  .glow-effect {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3))
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
   }
 </style>
