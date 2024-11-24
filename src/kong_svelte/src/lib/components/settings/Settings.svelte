@@ -217,9 +217,6 @@
         <h3>Slippage Settings</h3>
       </div>
       <div class="setting-content">
-        <p class="setting-description mb-4">
-          Maximum allowed price difference between expected and actual swap price
-        </p>
         <div class="flex flex-col gap-4">
           <!-- Quick select buttons -->
           <div class="flex gap-2 flex-wrap">
@@ -245,21 +242,6 @@
               <span class="text-white/90 font-medium">%</span>
             </div>
           </div>
-
-          <!-- Slider - only show on desktop -->
-          {#if !isMobile}
-            <div class="flex-1">
-              <input
-                type="range"
-                min="0"
-                max="99"
-                step="0.1"
-                value={slippageValue}
-                class="slippage-slider"
-                on:input={handleSlippageChange}
-              />
-            </div>
-          {/if}
         </div>
       </div>
     </div>
@@ -274,9 +256,6 @@
           <h3>Development Tools</h3>
         </div>
         <div class="setting-content">
-          <p class="setting-description mb-4">
-            Tools for local development and testing
-          </p>
           <div class="flex items-center justify-between">
             <button
               class="claim-button"
@@ -298,9 +277,6 @@
         <h3>Favorite Tokens</h3>
       </div>
       <div class="setting-content">
-        <p class="setting-description mb-4">
-          Remove all favorite tokens for the current wallet
-        </p>
         <div class="flex items-center justify-between">
           <button
             class="clear-button"
@@ -342,41 +318,6 @@
         </div>
       </div>
 
-      <!-- Language Section -->
-      <div class="setting-section">
-        <div class="setting-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m5 8 6 6"/>
-            <path d="m4 14 6-6 2-3"/>
-            <path d="M2 5h12"/>
-            <path d="M7 2h1"/>
-            <path d="m22 22-5-10-5 10"/>
-            <path d="M14 18h6"/>
-          </svg>
-          <h3>Language</h3>
-        </div>
-        <div class="setting-content">
-          <div class="language-buttons">
-            <button
-              class="lang-button"
-              class:active={$settingsStore.default_language === 'en'}
-              on:click={() => settingsStore.updateSetting('default_language', 'en')}
-            >
-              <span class="flag">🇺🇸</span>
-              <span>English</span>
-            </button>
-            <button
-              class="lang-button"
-              class:active={$settingsStore.default_language === 'es'}
-              on:click={() => settingsStore.updateSetting('default_language', 'es')}
-            >
-              <span class="flag">🇪🇸</span>
-              <span>Español</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Sound Section -->
       <div class="setting-section">
         <div class="setting-header">
@@ -403,11 +344,11 @@
           <h3>Data Management</h3>
         </div>
         <div class="setting-content">
-          <div class="data-buttons">
-            <button class="data-button" on:click={clearFavorites}>
-              Clear Favorites
-            </button>
-            <button class="data-button warning" on:click={resetDatabase}>
+          <div class="flex items-center justify-between">
+            <button
+              class="data-button"
+              on:click={resetDatabase}
+            >
               Reset Database
             </button>
           </div>
@@ -462,18 +403,6 @@
     @apply bg-[#eece00] text-black;
   }
 
-  .language-buttons {
-    @apply flex gap-2 flex-wrap;
-  }
-
-  .lang-button {
-    @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
-  }
-
-  .lang-button.active {
-    @apply bg-[#eece00] text-black;
-  }
-
   .clear-button {
     @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
   }
@@ -504,22 +433,6 @@
 
   .slippage-input {
     @apply bg-transparent w-16 text-center focus:outline-none font-medium;
-  }
-
-  .slippage-slider {
-    @apply w-full h-2 rounded-lg appearance-none cursor-pointer bg-black/5;
-  }
-
-  .slippage-slider::-webkit-slider-thumb {
-    @apply appearance-none w-4 h-4 rounded-full bg-[#eece00] cursor-pointer;
-  }
-
-  .slippage-slider::-moz-range-thumb {
-    @apply w-4 h-4 rounded-full bg-[#eece00] cursor-pointer border-none;
-  }
-
-  .setting-description {
-    @apply text-sm text-black/70;
   }
 
   .claim-button {
