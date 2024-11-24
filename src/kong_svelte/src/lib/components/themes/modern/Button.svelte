@@ -154,10 +154,10 @@
   /* State styles */
   .glass-button.disabled {
     @apply cursor-not-allowed;
-    opacity: 0.4;
-    background: rgba(17, 24, 39, 0.05);
-    border-color: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.4);
+    opacity: 0.85;
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .glass-button.pressed:not(.disabled) {
@@ -228,5 +228,29 @@
       height: 48px;
       min-width: 160px;
     }
+  }
+
+  /* Update the disabled state styles */
+  .glass-button.disabled {
+    @apply cursor-not-allowed;
+    opacity: 0.85;
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Add specific styles for error states in different variants */
+  .glass-button.blue.disabled {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+  }
+
+  .glass-button.yellow.disabled {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+  }
+
+  .glass-button.disabled .button-text {
+    @apply font-medium;
   }
 </style>

@@ -70,13 +70,19 @@
 
     <div class="col-span-8 flex justify-center items-center">
       <div class="w-full flex items-center justify-center">
-        <a href={`/${activeTab}`} class="hover:opacity-90 transition-opacity">
+        <button 
+          class="hover:opacity-90 transition-opacity"
+          on:click={() => {
+            onTabChange('swap');
+            goto('/swap');
+          }}
+        >
           <img
             src={titleImage}
             alt={activeTab}
             class="object-contain max-h-16"
           />
-        </a>
+        </button>
       </div>
     </div>
 

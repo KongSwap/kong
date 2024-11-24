@@ -182,108 +182,112 @@
 <div class="settings-container">
   <!-- Tab Navigation -->
   <div class="tabs-container">
-    <button 
-      class="tab-button" 
-      class:active={activeTab === 'trade'}
-      on:click={() => activeTab = 'trade'}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 3v18h18"/>
-        <path d="m19 9-5 5-4-4-3 3"/>
-      </svg>
-      Trade
-    </button>
-    <button 
-      class="tab-button" 
-      class:active={activeTab === 'app'}
-      on:click={() => activeTab = 'app'}
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      
-      App
-    </button>
+    <div class="tabs-wrapper">
+      <button 
+        class="tab-button" 
+        class:active={activeTab === 'trade'}
+        on:click={() => activeTab = 'trade'}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18"/>
+          <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <span>Trade</span>
+      </button>
+      <button 
+        class="tab-button" 
+        class:active={activeTab === 'app'}
+        on:click={() => activeTab = 'app'}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>App</span>
+      </button>
+    </div>
   </div>
 
   {#if activeTab === 'trade'}
-    <!-- Slippage Section -->
-    <div class="setting-section z-1">
-      <div class="setting-header">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <text x="4" y="19" font-size="18" font-weight="bold">%</text>
-        </svg>
-        <h3>Slippage Settings</h3>
-      </div>
-      <div class="setting-content">
-        <div class="flex flex-col gap-4">
-          <!-- Quick select buttons -->
-          <div class="flex gap-2 flex-wrap">
-            {#each quickSlippageValues as value}
-              <button
-                class="quick-select-btn"
-                class:active={slippageValue === value}
-                on:click={() => handleQuickSlippageSelect(value)}
-              >
-                {value}%
-              </button>
-            {/each}
-            <div class="custom-input-container" class:active={!quickSlippageValues.includes(slippageValue)}>
-              <input
-                type="text"
-                inputmode="decimal"
-                placeholder="Custom"
-                class="slippage-input"
-                bind:value={slippageInputValue}
-                on:input={handleSlippageInput}
-                on:blur={handleSlippageBlur}
-              />
-              <span class="text-white/90 font-medium">%</span>
+    <!-- Trade Settings -->
+    <div class="setting-sections">
+      <!-- Slippage Section -->
+      <div class="setting-section">
+        <div class="setting-header">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <text x="4" y="19" font-size="18" font-weight="bold">%</text>
+          </svg>
+          <h3>Slippage Settings</h3>
+        </div>
+        <div class="setting-content">
+          <div class="grid gap-4">
+            <!-- Quick select buttons -->
+            <div class="grid grid-flow-col auto-cols-max gap-2">
+              {#each quickSlippageValues as value}
+                <button
+                  class="quick-select-btn"
+                  class:active={slippageValue === value}
+                  on:click={() => handleQuickSlippageSelect(value)}
+                >
+                  {value}%
+                </button>
+              {/each}
+              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/20 border border-white/10 hover:border-white/20 transition-colors duration-200" class:active={!quickSlippageValues.includes(slippageValue)}>
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="Custom"
+                  class="slippage-input"
+                  bind:value={slippageInputValue}
+                  on:input={handleSlippageInput}
+                  on:blur={handleSlippageBlur}
+                />
+                <span class="text-white/90 font-medium">%</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Development Tools Section -->
-    {#if !isIcNetwork}
+      <!-- Development Tools Section -->
+      {#if !isIcNetwork}
+        <div class="setting-section">
+          <div class="setting-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M2 12h20"/>
+            </svg>
+            <h3>Development Tools</h3>
+          </div>
+          <div class="setting-content">
+            <div class="grid grid-flow-col justify-between items-center">
+              <button
+                class="claim-button"
+                on:click={claimTokens}
+              >
+                Claim Test Tokens
+              </button>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Favorites Section -->
       <div class="setting-section">
         <div class="setting-header">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v20M2 12h20"/>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
           </svg>
-          <h3>Development Tools</h3>
+          <h3>Favorite Tokens</h3>
         </div>
         <div class="setting-content">
-          <div class="flex items-center justify-between">
+          <div class="grid grid-flow-col justify-between items-center">
             <button
-              class="claim-button"
-              on:click={claimTokens}
+              class="clear-button"
+              on:click={clearFavorites}
             >
-              Claim Test Tokens
+              Clear Favorites
             </button>
           </div>
-        </div>
-      </div>
-    {/if}
-
-    <!-- Favorites Section -->
-    <div class="setting-section">
-      <div class="setting-header">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>
-        <h3>Favorite Tokens</h3>
-      </div>
-      <div class="setting-content">
-        <div class="flex items-center justify-between">
-          <button
-            class="clear-button"
-            on:click={clearFavorites}
-          >
-            Clear Favorites
-          </button>
         </div>
       </div>
     </div>
@@ -299,7 +303,7 @@
           <h3>Theme</h3>
         </div>
         <div class="setting-content">
-          <div class="theme-buttons">
+          <div class="grid grid-flow-col auto-cols-max gap-2">
             <button
               class="theme-button"
               class:active={$themeStore === 'pixel'}
@@ -328,7 +332,7 @@
           <h3>Sound</h3>
         </div>
         <div class="setting-content">
-          <div class="setting-item">
+          <div class="grid grid-flow-col justify-between items-center">
             <Toggle checked={soundEnabled} on:change={handleToggleSound} />
           </div>
         </div>
@@ -344,7 +348,7 @@
           <h3>Data Management</h3>
         </div>
         <div class="setting-content">
-          <div class="flex items-center justify-between">
+          <div class="grid grid-flow-col justify-between items-center">
             <button
               class="data-button"
               on:click={resetDatabase}
@@ -360,45 +364,56 @@
 
 <style lang="postcss">
   .settings-container {
-    @apply flex flex-col gap-6 max-w-2xl mx-auto text-white;
-  }
-
-  @media (max-width: 768px) {
-    .settings-container {
-      @apply w-full gap-4;
-    }
+    @apply w-full text-white;
   }
 
   .tabs-container {
-    @apply flex gap-2;
+    @apply w-full bg-black/20 border-b border-white/10 mb-6 rounded-lg overflow-hidden;
+  }
+
+  .tabs-wrapper {
+    @apply grid grid-cols-2 w-full;
   }
 
   .tab-button {
-    @apply flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 
-           text-white/90 hover:bg-white/10 font-medium;
+    @apply flex items-center justify-center gap-2 py-3 px-4 w-full
+           text-white/90 hover:bg-white/5 font-medium transition-colors duration-200
+           border-r border-white/10 last:border-r-0;
   }
 
   .tab-button.active {
-    @apply bg-white/15 text-white;
+    @apply bg-white/10 text-white;
+  }
+
+  .tab-button span {
+    @apply text-center;
   }
 
   .setting-sections {
-    @apply flex flex-col gap-6;
+    @apply grid gap-6;
   }
 
   @media (max-width: 768px) {
+    .tabs-container {
+      @apply mb-4;
+    }
+
+    .tab-button {
+      @apply py-2;
+    }
+
     .setting-sections {
       @apply gap-4;
     }
   }
 
   .setting-section {
-    @apply flex flex-col gap-4 bg-black/20 rounded-lg p-4 
+    @apply grid gap-4 bg-black/20 rounded-lg p-4 
            border border-white/10 backdrop-blur-sm;
   }
 
   .setting-header {
-    @apply flex items-center gap-2 border-b border-white/15 pb-3;
+    @apply grid grid-flow-col auto-cols-max items-center gap-2 border-b border-white/15 pb-3;
   }
 
   .setting-header h3 {
@@ -412,11 +427,11 @@
   }
 
   .setting-content {
-    @apply flex flex-col gap-4;
+    @apply grid gap-4;
   }
 
   .theme-buttons {
-    @apply flex gap-2;
+    @apply grid grid-flow-col auto-cols-max gap-2;
   }
 
   .theme-button {
@@ -430,7 +445,7 @@
   }
 
   .setting-item {
-    @apply flex items-center justify-between;
+    @apply grid grid-flow-col justify-between items-center;
   }
 
   .quick-select-btn {
@@ -444,7 +459,7 @@
   }
 
   .custom-input-container {
-    @apply flex items-center gap-2 px-3 py-1.5 rounded-lg 
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
            bg-black/20 border border-white/10
            hover:border-white/20 transition-colors duration-200;
   }

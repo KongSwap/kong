@@ -38,7 +38,7 @@
   {#if $tokenStore.tokens}
     <div class="swap-wrapper">
       {#if currentMode === 'normal'}
-      <div class="pt-16">
+      <div class="pt-8">
         <Swap 
           initialFromToken={fromToken} 
           initialToToken={toToken} 

@@ -458,7 +458,7 @@
   .panels-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 
   .panels-wrapper {
@@ -495,6 +495,14 @@
     border: none !important;
     backdrop-filter: none !important;
     transform: translate(-50%, -50%) !important;
+  }
+
+  :global([data-theme="pixel"]) .swap-footer {
+    padding: 0px;
+  }
+
+  :global([data-theme="pixel"]) .panels-container {
+    gap: 4px;
   }
 
   :global([data-theme="pixel"]) .switch-button:hover:not(:disabled) {
@@ -597,4 +605,6 @@
   :global([data-theme="pixel"]) .arrow-path {
     stroke-width: 1;
   }
+
+
 </style>
