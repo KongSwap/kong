@@ -179,7 +179,7 @@
   });
 </script>
 
-<div class="settings-container relative">
+<div class="settings-container">
   <!-- Tab Navigation -->
   <div class="tabs-container">
     <button 
@@ -360,82 +360,107 @@
 
 <style lang="postcss">
   .settings-container {
-    @apply flex flex-col gap-6 p-4 max-w-2xl mx-auto;
+    @apply flex flex-col gap-6 max-w-2xl mx-auto text-white;
+  }
+
+  @media (max-width: 768px) {
+    .settings-container {
+      @apply w-full gap-4;
+    }
   }
 
   .tabs-container {
-    @apply flex gap-2 mb-4;
+    @apply flex gap-2;
   }
 
   .tab-button {
-    @apply flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-black/5;
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 
+           text-white/90 hover:bg-white/10 font-medium;
   }
 
   .tab-button.active {
-    @apply bg-black/10;
+    @apply bg-white/15 text-white;
   }
 
   .setting-sections {
     @apply flex flex-col gap-6;
   }
 
+  @media (max-width: 768px) {
+    .setting-sections {
+      @apply gap-4;
+    }
+  }
+
   .setting-section {
-    @apply flex flex-col gap-4 bg-black/5 rounded-lg p-4;
+    @apply flex flex-col gap-4 bg-black/20 rounded-lg p-4 
+           border border-white/10 backdrop-blur-sm;
   }
 
   .setting-header {
-    @apply flex items-center gap-2 border-b border-black/10 pb-3;
+    @apply flex items-center gap-2 border-b border-white/15 pb-3;
   }
 
   .setting-header h3 {
-    @apply text-lg font-semibold;
+    @apply text-lg font-semibold text-white;
+  }
+
+  @media (max-width: 768px) {
+    .setting-header h3 {
+      @apply text-base;
+    }
   }
 
   .setting-content {
     @apply flex flex-col gap-4;
   }
 
+  .theme-buttons {
+    @apply flex gap-2;
+  }
+
   .theme-button {
-    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
+    @apply px-4 py-2 rounded-lg bg-black/20 hover:bg-black/30 
+           transition-colors duration-200 text-white/90
+           border border-white/10 hover:border-white/20;
   }
 
   .theme-button.active {
-    @apply bg-[#eece00] text-black;
+    @apply bg-white/15 text-white border-white/20;
   }
 
-  .clear-button {
-    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
-  }
-
-  .data-button {
-    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
-  }
-
-  .data-button.warning {
-    @apply bg-red-500/10 hover:bg-red-500/20 text-red-600;
+  .setting-item {
+    @apply flex items-center justify-between;
   }
 
   .quick-select-btn {
-    @apply px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200 font-medium;
+    @apply px-3 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 
+           transition-colors duration-200 text-white/90
+           border border-white/10 hover:border-white/20;
   }
 
   .quick-select-btn.active {
-    @apply bg-[#eece00] text-black;
+    @apply bg-white/15 text-white border-white/20;
   }
 
   .custom-input-container {
-    @apply flex items-center gap-1 px-4 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors duration-200;
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-lg 
+           bg-black/20 border border-white/10
+           hover:border-white/20 transition-colors duration-200;
   }
 
   .custom-input-container.active {
-    @apply bg-[#eece00];
+    @apply bg-white/15 border-white/20;
   }
 
   .slippage-input {
-    @apply bg-transparent w-16 text-center focus:outline-none font-medium;
+    @apply bg-transparent w-16 text-white/90 focus:text-white
+           focus:outline-none;
   }
 
-  .claim-button {
-    @apply px-4 py-2 rounded-lg bg-[#eece00] text-black hover:bg-[#eece00]/90 transition-colors duration-200 font-medium;
+  .data-button, .clear-button, .claim-button {
+    @apply px-4 py-2 rounded-lg bg-black/20 hover:bg-black/30 
+           transition-colors duration-200 text-white/90
+           border border-white/10 hover:border-white/20;
   }
 </style>

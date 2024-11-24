@@ -132,13 +132,15 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    padding: 1.5rem;
   }
 
   .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    margin-bottom: 0;
   }
 
   .modal-title {
@@ -155,6 +157,8 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    margin: 0 -1.5rem;
+    padding: 0 1.5rem;
   }
 
   .action-button {
@@ -185,11 +189,20 @@
 
   @media (max-width: 768px) {
     .modal-content {
-      padding: 0.5rem;
+      padding: 1rem;
+    }
+
+    .modal-header {
+      padding-bottom: 1rem;
     }
 
     .modal-title {
       font-size: 1.75rem;
+    }
+
+    .modal-body {
+      margin: 0 -1rem;
+      padding: 0 1rem;
     }
   }
 </style>
