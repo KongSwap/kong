@@ -66,13 +66,12 @@
       class="backdrop"
       in:fade|local={{ duration: 150 }}
       out:fade|local={{ duration: 150 }}
+      on:click={handleClose}
+      role="button"
+      tabindex="-1"
+      aria-label="Close sidebar"
     />
     <div class="sidebar-container" role="dialog" aria-modal="true">
-      <button
-        class="overlay-close"
-        on:click={handleClose}
-        aria-label="Close sidebar"
-      />
       <div
         class={`sidebar-wrapper ${isExpanded ? 'expanded' : ''}`}
         in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
@@ -131,6 +130,7 @@
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     pointer-events: auto;
+    cursor: pointer;
   }
 
   .sidebar-container {
