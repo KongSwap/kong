@@ -2,15 +2,73 @@
   import { fade } from "svelte/transition";
   import { appLoader } from "$lib/services/appLoader";
   import { derived } from "svelte/store";
+  import { onMount } from "svelte";
   import kongLogo from "$lib/assets/kong_logo.png";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
 
-  // Get the loading state store
+  const loadingMessages = [
+    "DEX INITIALIZATION IN PROGRESS",
+    "CONNECTING TO BLOCKCHAIN",
+    "LOADING SMART CONTRACTS",
+    "SYNCING LIQUIDITY POOLS",
+    "OPTIMIZING SWAP ROUTES",
+    "CALIBRATING PRICE FEEDS",
+    "SECURING TRADING ENGINE",
+    "PREPARING USER INTERFACE",
+  ];
+
+  let currentMessageIndex = 0;
+  let currentLogoIndex = 0;
+  $: currentMessage = loadingMessages[currentMessageIndex];
+  let messageInterval: ReturnType<typeof setInterval>;
+  let logoInterval: ReturnType<typeof setInterval>;
+  let currentLogo = kongLogo;
+
   const loadingState = appLoader.loadingState;
 
-  // Derive loading progress as a percentage
   const loadingProgress = derived(loadingState, ($state) => {
     if (!$state.totalAssets) return 0;
-    return Math.min(100, Math.round(($state.assetsLoaded / $state.totalAssets) * 100));
+    return Math.min(
+      100,
+      Math.round(($state.assetsLoaded / $state.totalAssets) * 100),
+    );
+  });
+
+  $: availableTokens = $tokenStore.tokens || [];
+  $: tokenLogos = availableTokens
+    .map((token) => $tokenLogoStore[token.canister_id])
+    .filter((logo) => logo !== undefined && logo !== null);
+
+  $: if (tokenLogos.length > 0 && !logoInterval) {
+    startLogoInterval();
+  }
+
+  function startLogoInterval() {
+    if (logoInterval) {
+      clearInterval(logoInterval);
+    }
+    logoInterval = setInterval(() => {
+      currentLogoIndex = (currentLogoIndex + 1) % (tokenLogos.length + 1);
+      currentLogo =
+        currentLogoIndex === tokenLogos.length
+          ? kongLogo
+          : tokenLogos[currentLogoIndex];
+    }, 300);
+  }
+
+  onMount(() => {
+    messageInterval = setInterval(() => {
+      currentMessageIndex = (currentMessageIndex + 1) % loadingMessages.length;
+      currentMessage = loadingMessages[currentMessageIndex];
+    }, 1000);
+
+    return () => {
+      clearInterval(messageInterval);
+      if (logoInterval) {
+        clearInterval(logoInterval);
+      }
+    };
   });
 
   $: showLoadingScreen = $loadingState.isLoading;
@@ -18,41 +76,68 @@
 
 {#if showLoadingScreen}
   <div
-    class="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
-    transition:fade={{ duration: 200 }}
+    class="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm will-change-transform crt"
+    transition:fade={{ duration: 150 }}
   >
     <div class="flex flex-col items-center">
-      <div class="logo-container mb-8">
-        <div class="glitch">
-          <div class="logo-piece piece-1">
-            <img src={kongLogo} alt="Kong Logo" class="w-48" />
-          </div>
-          <div class="logo-piece piece-2">
-            <img src={kongLogo} alt="Kong Logo" class="w-48" />
-          </div>
-          <div class="logo-piece piece-3">
-            <img src={kongLogo} alt="Kong Logo" class="w-48" />
-          </div>
+      <div class="logo-container chrome-frame mb-8">
+        <div class="logo-inner">
+          <img
+            src={currentLogo}
+            alt="Current Logo"
+            class="logo-image pixelated rounded-full"
+          />
         </div>
       </div>
-      <h2 class="text-4xl font-bold text-lime-500 mb-2 uppercase font-alumni">KongSwap</h2>
-      <p class="text-gray-400">Please wait while we initialize the app...</p>
-
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: {$loadingProgress}%"></div>
+      <h2 class="text-4xl font-bold mb-2 uppercase font-alumni neon-text">
+        KongSwap
+      </h2>
+      <div class="message-container h-8 flex items-center justify-center mb-4">
+        {#key currentMessage}
+          <p
+            class="cyber-text"
+            in:fade={{ duration: 100 }}
+            out:fade={{ duration: 100 }}
+          >
+            {currentMessage}
+          </p>
+        {/key}
       </div>
-      <p class="text-gray-400 text-sm mt-2">
+      <div class="progress-container mt-4">
+        <div class="progress-bar">
+          <div class="progress-track">
+            <div
+              class="progress-fill"
+              style:transform="translateX({$loadingProgress - 100}%)"
+            >
+              <div class="progress-glow"></div>
+            </div>
+          </div>
+          <div class="progress-lines">
+            {#each Array(Math.ceil($loadingProgress / 5) + 1) as _, i}
+              <div class="line" style="left: {i * 5}%"></div>
+            {/each}
+          </div>
+        </div>
+        <div class="progress-numbers">
+          <span class="start">0</span>
+          <span class="current">{$loadingProgress}%</span>
+          <span class="end">100</span>
+        </div>
+      </div>
+
+      <p class="cyber-text text-sm mt-2">
         {#if $loadingState.totalAssets}
-          Loading assets: {$loadingProgress}%
+          <span class="blink">></span> LOADING ASSETS: {$loadingProgress}%
         {:else}
-          Loading...
+          <span class="blink">></span> LOADING...
         {/if}
       </p>
 
       {#if $loadingState.errors.length > 0}
         <div class="errors mt-4">
           {#each $loadingState.errors as error}
-            <p class="text-red-500 text-sm">{error}</p>
+            <p class="text-red-500 text-sm blink">> ERROR: {error}</p>
           {/each}
         </div>
       {/if}
@@ -60,178 +145,367 @@
   </div>
 {/if}
 
-<style lang="postcss">
-  @keyframes colorShift {
+<style scoped lang="postcss">
+  @keyframes neonFlicker {
+    0%,
+    100% {
+      text-shadow:
+        0 0 7px #fff,
+        0 0 10px #fff,
+        0 0 21px #fff,
+        0 0 42px #24b844,
+        0 0 82px #24b844,
+        0 0 92px #24b844,
+        0 0 102px #24b844,
+        0 0 151px #24b844;
+    }
+    5%,
+    95% {
+      text-shadow: none;
+    }
+  }
+
+  @keyframes shine {
     0% {
-      filter: hue-rotate(0deg) brightness(1);
+      transform: translateX(-100%) skewX(-15deg);
+    }
+    100% {
+      transform: translateX(200%) skewX(-15deg);
+    }
+  }
+
+  @keyframes scanline {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes blink {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes flicker {
+    0% {
+      opacity: 0.97;
+    }
+    5% {
+      opacity: 0.95;
+    }
+    10% {
+      opacity: 0.9;
+    }
+    15% {
+      opacity: 0.95;
+    }
+    20% {
+      opacity: 1;
     }
     25% {
-      filter: hue-rotate(90deg) brightness(1.2);
+      opacity: 0.95;
+    }
+    30% {
+      opacity: 1;
+    }
+    35% {
+      opacity: 0.95;
+    }
+    40% {
+      opacity: 0.98;
+    }
+    45% {
+      opacity: 0.95;
     }
     50% {
-      filter: hue-rotate(180deg) brightness(0.8);
+      opacity: 1;
     }
-    75% {
-      filter: hue-rotate(270deg) brightness(1.1);
+    51% {
+      opacity: 0.98;
+    }
+    60% {
+      opacity: 0.95;
+    }
+    70% {
+      opacity: 0.9;
+    }
+    80% {
+      opacity: 0.95;
+    }
+    90% {
+      opacity: 0.98;
     }
     100% {
-      filter: hue-rotate(360deg) brightness(1);
+      opacity: 0.95;
     }
   }
 
-  .logo-piece {
-    position: absolute;
-    inset: 0;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    will-change: clip-path, transform;
+  .bg-gradient-radial {
+    background: radial-gradient(
+      circle at center,
+      #536157 0%,
+      #1a1a1a 50%,
+      #000000 100%
+    );
   }
 
-  .piece-1 {
-    clip-path: polygon(0 0, 33% 0, 45% 100%, 0 100%);
-    animation: piece1 1.5s ease-in-out infinite;
-  }
-
-  .piece-2 {
-    clip-path: polygon(33% 0, 66% 0, 75% 100%, 45% 100%);
-    animation: piece2 1.5s ease-in-out infinite;
-  }
-
-  .piece-3 {
-    clip-path: polygon(66% 0, 100% 0, 100% 100%, 75% 100%);
-    animation: piece3 1.5s ease-in-out infinite;
-  }
-
-  @keyframes piece1 {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
-    }
-    50% {
-      transform: translate3d(-10px, 5px, 20px) rotateX(2deg) rotateY(-3deg);
-    }
-  }
-
-  @keyframes piece2 {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
-    }
-    50% {
-      transform: translate3d(5px, -8px, -15px) rotateX(-3deg) rotateY(2deg);
-    }
-  }
-
-  @keyframes piece3 {
-    0%,
-    100% {
-      transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
-    }
-    50% {
-      transform: translate3d(8px, 10px, 25px) rotateX(3deg) rotateY(4deg);
-    }
-  }
-
-  .glitch {
-    position: relative;
+  .scanlines::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    animation: colorShift 3s ease-in-out infinite;
-    will-change: filter;
-  }
-
-  .glitch::before,
-  .glitch::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    mix-blend-mode: overlay;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15) 0px,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
     pointer-events: none;
   }
 
-  .glitch::before {
-    animation: glitch 2s cubic-bezier(0.2, 0, 0.8, 1) infinite;
-    clip-path: polygon(
-      0 15%,
-      100% 15%,
-      100% 30%,
-      0 30%,
-      0 45%,
-      100% 45%,
-      100% 65%,
-      0 65%
+  .scanlines::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%,
+      rgba(0, 0, 0, 0.25) 50%
     );
-    transform: translate(3px);
-    opacity: 0.7;
-  }
-
-  .glitch::after {
-    animation: glitch 2.2s cubic-bezier(0.2, 0, 0.8, 1) infinite reverse;
-    clip-path: polygon(
-      0 10%,
-      100% 10%,
-      100% 20%,
-      0 20%,
-      0 55%,
-      100% 55%,
-      100% 70%,
-      0 70%
-    );
-    transform: translate(-3px);
-    opacity: 0.7;
+    background-size: 100% 4px;
+    pointer-events: none;
   }
 
   .logo-container {
+    @apply relative p-1 rounded-2xl;
+    background: linear-gradient(45deg, #00ff9580, #00ff9520);
+    box-shadow: 0 0 20px #00ff95;
     position: relative;
-    width: 8rem;
-    height: 8rem;
-    perspective: 500px;
-    transform-style: preserve-3d;
   }
 
-  @keyframes glitch {
-    0% {
-      transform: translate(0);
+  .logo-inner {
+    @apply bg-black/50 p-4 rounded-xl backdrop-blur-sm;
+    border: 1px solid #00ff9550;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-inner::before {
+    content: "";
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    background: conic-gradient(
+      from 0deg,
+      transparent,
+      #00ff9530,
+      #00ff9550,
+      #00ff9530,
+      transparent
+    );
+    animation: orbit 4s linear infinite;
+    top: -25%;
+    left: -25%;
+  }
+
+  .logo-image {
+    @apply w-48 h-48;
+    object-fit: contain;
+    object-position: center;
+    position: relative;
+    filter: drop-shadow(0 0 15px #00ff95);
+    animation: pulse-glow 2s ease-in-out infinite;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+
+  @keyframes orbit {
+    from {
+      transform: rotate(0deg);
     }
-    20% {
-      transform: translate(-2px, 2px);
+    to {
+      transform: rotate(360deg);
     }
-    40% {
-      transform: translate(2px, -2px);
-    }
-    60% {
-      transform: skew(2deg);
-    }
-    80% {
-      transform: skew(-2deg);
-    }
+  }
+
+  @keyframes pulse-glow {
+    0%,
     100% {
-      transform: translate(0);
+      filter: drop-shadow(0 0 15px #00ff95);
     }
+    50% {
+      filter: drop-shadow(0 0 25px #00ff95);
+    }
+  }
+
+  .neon-text {
+    color: #fff;
+    animation: neonFlicker 2s infinite;
+    text-shadow:
+      0 0 7px #fff,
+      0 0 10px #fff,
+      0 0 21px #fff,
+      0 0 42px #24b844,
+      0 0 82px #24b844,
+      0 0 92px #24b844,
+      0 0 102px #24b844,
+      0 0 151px #24b844;
+  }
+
+  .cyber-text {
+    font-family: "Courier New", monospace;
+    letter-spacing: 0.1em;
+    color: #e0ffe5;
+    text-shadow:
+      0 0 5px rgba(36, 184, 68, 0.5),
+      1px 1px 0px rgba(0, 0, 0, 0.3);
+    font-weight: 500;
+  }
+
+  .blink {
+    animation: blink 1s step-start infinite;
+    color: #24b844;
+  }
+
+  .progress-container {
+    @apply w-96 relative;
   }
 
   .progress-bar {
-    width: 200px;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 1rem;
+    @apply relative;
+  }
+
+  .progress-track {
+    @apply relative overflow-hidden rounded-lg;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow:
+      inset 0 0 5px rgba(0, 0, 0, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .progress-fill {
-    height: 100%;
-    background: theme(colors.lime.500);
-    transition: width 0.3s ease-out;
+    @apply h-full bg-emerald-500;
+    width: 100%;
+    transform-origin: left;
+    will-change: transform;
+    transition: transform 0.2s ease-out;
+    background: linear-gradient(90deg, rgb(36, 184, 68), rgb(48, 200, 77));
   }
 
-  .errors {
-    color: theme(colors.red.500);
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
+  .progress-glow {
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(36, 184, 68, 0.4),
+      transparent
+    );
+    animation: glow 2s linear infinite;
+  }
+
+  .progress-lines {
+    @apply absolute inset-0;
+    pointer-events: none;
+  }
+
+  .line {
+    @apply absolute top-0 bottom-0;
+    width: 2px;
+    background: rgba(0, 0, 0, 0.2);
+    transform: scaleY(1.2);
+  }
+
+  .line.active {
+    background: rgba(36, 184, 68, 0.4);
+  }
+
+  .progress-numbers {
+    @apply flex justify-between mt-2 text-sm font-mono;
+    color: rgb(36, 184, 68);
+    text-shadow: 0 0 10px rgba(36, 184, 68, 0.3);
+  }
+
+  @keyframes glow {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  .crt {
+    animation: flicker 0.15s infinite;
+    overflow: hidden;
+    &::before {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.25) 50%
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    &::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: rgba(18, 16, 16, 0.1);
+      opacity: 0;
+      z-index: 2;
+      pointer-events: none;
+      animation: flicker 0.15s infinite;
+    }
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+  }
+
+  .crt::before {
+    animation: scanline 6s linear infinite;
+  }
+
+  .message-container {
+    min-height: 2rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .cyber-text {
+    @apply text-sm font-mono text-white/80;
+    position: relative;
+    text-align: center;
+    text-shadow: 0 0 5px rgba(0, 255, 149, 0.8);
   }
 </style>

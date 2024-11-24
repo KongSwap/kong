@@ -5,6 +5,7 @@ interface AssetCache {
   id: string;
   blob: Blob;
   timestamp: number;
+  objectUrl?: string;
 }
 
 class AssetCacheDatabase extends Dexie {
@@ -20,21 +21,27 @@ class AssetCacheDatabase extends Dexie {
 }
 
 class AssetCacheService {
+  private static instance: AssetCacheService;
   private db: AssetCacheDatabase | null = null;
-  private cache: Map<string, string> = new Map();
   private CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
   private dbInitPromise: Promise<void> | null = null;
 
-  constructor() {
+  private constructor() {
     if (browser) {
       this.dbInitPromise = this.initializeDb();
     }
   }
 
+  public static getInstance(): AssetCacheService {
+    if (!AssetCacheService.instance) {
+      AssetCacheService.instance = new AssetCacheService();
+    }
+    return AssetCacheService.instance;
+  }
+
   private async initializeDb(): Promise<void> {
     try {
       this.db = new AssetCacheDatabase();
-      // Test the connection by performing a simple operation
       await this.db.assets.count();
     } catch (error) {
       console.error('Failed to initialize IndexedDB:', error);
@@ -48,95 +55,108 @@ class AssetCacheService {
     }
   }
 
+  private isBase64Image(url: string): boolean {
+    return url.startsWith('data:image/');
+  }
+
+  private isBlobUrl(url: string): boolean {
+    return url.startsWith('blob:');
+  }
+
+  private shouldSkipCaching(url: string): boolean {
+    return this.isBase64Image(url) || this.isBlobUrl(url);
+  }
+
   private getFullUrl(url: string): string {
-    if (url.startsWith('http')) {
+    if (url.startsWith('http') || this.shouldSkipCaching(url)) {
       return url;
     }
-    // Get the base URL from the current location
     const baseUrl = window.location.origin;
-    // Remove any leading slash to avoid double slashes
     const cleanPath = url.startsWith('/') ? url.slice(1) : url;
     return `${baseUrl}/${cleanPath}`;
   }
 
   private async fetchAndCache(url: string): Promise<string> {
     if (typeof window === 'undefined') {
-      return url; // Return the URL directly during SSR
+      return url;
+    }
+
+    // Return base64 images and blob URLs directly without caching
+    if (this.shouldSkipCaching(url)) {
+      return url;
     }
 
     try {
-      // Check memory cache first
-      if (this.cache.has(url)) {
-        return this.cache.get(url)!;
-      }
-
-      // Get the full URL
       const fullUrl = this.getFullUrl(url);
-
-      // Fetch the asset
       const response = await fetch(fullUrl);
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch asset: ${fullUrl}`);
       }
 
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
-      
-      // Store in memory cache
-      this.cache.set(url, objectUrl);
 
-      // Try to store in IndexedDB if available
       if (this.db) {
         try {
-          await this.db.assets.put({ id: url, blob, timestamp: Date.now() });
+          await this.db.assets.put({ 
+            id: url, 
+            blob, 
+            timestamp: Date.now(),
+            objectUrl 
+          });
         } catch (error) {
           console.warn('Failed to store asset in IndexedDB:', error);
-          // Continue since we still have the memory cache
+          URL.revokeObjectURL(objectUrl);
+          return url;
         }
       }
 
       return objectUrl;
     } catch (error) {
       console.error('Error fetching and caching asset:', error);
-      return url; // Fallback to original URL
+      return url;
     }
   }
 
   async getAsset(url: string): Promise<string> {
-    // Check memory cache first
-    if (this.cache.has(url)) {
-      return this.cache.get(url)!;
+    // Return base64 images and blob URLs directly without caching
+    if (this.shouldSkipCaching(url)) {
+      return url;
     }
 
     try {
-      // Check IndexedDB cache if available
       if (this.db && browser) {
-        try {
-          const cached = await this.db.assets.get(url);
+        await this.ensureDbReady();
+        const cached = await this.db.assets.get(url);
+        
+        if (cached) {
+          const age = Date.now() - cached.timestamp;
           
-          if (cached) {
-            const age = Date.now() - cached.timestamp;
-            
-            if (age < this.CACHE_DURATION) {
-              const objectUrl = URL.createObjectURL(cached.blob);
-              this.cache.set(url, objectUrl);
-              return objectUrl;
-            } else {
-              // Cache expired, remove it
-              await this.db.assets.delete(url);
+          if (age < this.CACHE_DURATION) {
+            // If there's an existing objectUrl, revoke it to prevent memory leaks
+            if (cached.objectUrl) {
+              URL.revokeObjectURL(cached.objectUrl);
             }
+            
+            // Always create a fresh blob URL
+            cached.objectUrl = URL.createObjectURL(cached.blob);
+            cached.timestamp = Date.now(); // Update timestamp
+            await this.db.assets.put(cached);
+            return cached.objectUrl;
+          } else {
+            if (cached.objectUrl) {
+              URL.revokeObjectURL(cached.objectUrl);
+            }
+            await this.db.assets.delete(url);
           }
-        } catch (error) {
-          console.debug('Error accessing IndexedDB:', error);
-          // Continue to fetch if IndexedDB fails
         }
       }
 
-      // Fetch and cache if not found or expired
       return await this.fetchAndCache(url);
     } catch (error) {
       console.debug('Error getting asset:', error);
-      return ''; // Return empty string for failed assets
+      return url; // Return original URL as fallback instead of empty string
     }
   }
 
@@ -148,10 +168,8 @@ class AssetCacheService {
     await this.ensureDbReady();
 
     try {
-      // Filter out duplicate URLs
-      const uniqueUrls = [...new Set(urls)];
-      
-      // First check which assets need to be loaded
+      // Filter out base64 images, blob URLs, and duplicates
+      const uniqueUrls = [...new Set(urls.filter(url => !this.shouldSkipCaching(url)))];
       const currentTime = Date.now();
       const existingAssets = await this.db.assets
         .where('id')
@@ -162,7 +180,6 @@ class AssetCacheService {
       const existingUrls = new Set(existingAssets.map(asset => asset.id));
       const urlsToLoad = uniqueUrls.filter(url => !existingUrls.has(url));
 
-      // Load missing assets
       if (urlsToLoad.length > 0) {
         const loadPromises = urlsToLoad.map(async url => {
           try {
@@ -174,14 +191,11 @@ class AssetCacheService {
             const blob = await response.blob();
             const objectUrl = URL.createObjectURL(blob);
             
-            // Store in memory cache
-            this.cache.set(url, objectUrl);
-            
-            // Store in IndexedDB
             await this.db!.assets.put({
               id: url,
               blob,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              objectUrl
             });
           } catch (error) {
             console.error('Error loading asset:', url, error);
@@ -203,21 +217,20 @@ class AssetCacheService {
     await this.ensureDbReady();
 
     if (!urls?.length) {
-      return true; // Return true for empty arrays since there's nothing to cache
+      return true;
     }
 
-    const uniqueUrls = [...new Set(urls)];
+    // Filter out base64 images and blob URLs since they don't need caching
+    const urlsToCheck = urls.filter(url => !this.shouldSkipCaching(url));
+    
+    if (!urlsToCheck.length) {
+      return true; // All URLs were base64 or blobs, no need to check cache
+    }
+
+    const uniqueUrls = [...new Set(urlsToCheck)];
     const currentTime = Date.now();
 
     try {
-      // First check memory cache
-      const allInMemoryCache = uniqueUrls.every(url => this.cache.has(url));
-
-      if (allInMemoryCache) {
-        return true;
-      }
-
-      // Check IndexedDB cache
       const cachedAssets = await this.db.assets
         .where('id')
         .anyOf(uniqueUrls)
@@ -232,15 +245,14 @@ class AssetCacheService {
   }
 
   async clearCache(): Promise<void> {
-    // Clear memory cache
-    for (const objectUrl of this.cache.values()) {
-      URL.revokeObjectURL(objectUrl);
-    }
-    this.cache.clear();
-
-    // Clear IndexedDB cache if available
     if (this.db) {
       try {
+        const assets = await this.db.assets.toArray();
+        for (const asset of assets) {
+          if (asset.objectUrl) {
+            URL.revokeObjectURL(asset.objectUrl);
+          }
+        }
         await this.db.assets.clear();
       } catch (error) {
         console.error('Error clearing IndexedDB cache:', error);
@@ -249,4 +261,4 @@ class AssetCacheService {
   }
 }
 
-export const assetCache = new AssetCacheService();
+export const assetCache = AssetCacheService.getInstance();

@@ -105,7 +105,7 @@ function createAuthStore(pnp: PNP) {
       }
     },
 
-    getActor(canisterId: string, idl: any, options: { anon?: boolean } = {}) {
+    getActor(canisterId: string, idl: any, options: { anon?: boolean, requiresSigning?: boolean } = {}) {
       if (options.anon) {
         return createAnonymousActorHelper(canisterId, idl);
       }
@@ -121,7 +121,7 @@ function createAuthStore(pnp: PNP) {
       const createActorWithRetry = async () => {
         while (attempt < maxRetries) {
           try {
-            const actor = await pnp.getActor(canisterId, idl, { anon: false });
+            const actor = await pnp.getActor(canisterId, idl, { anon: options.anon, requiresSigning: options.requiresSigning });
             return actor;
           } catch (error) {
             attempt++;

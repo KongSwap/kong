@@ -6,42 +6,73 @@
     import { fade } from 'svelte/transition';
     import { flip } from 'svelte/animate';
     import TokenImages from '$lib/components/common/TokenImages.svelte';
+    import { browser } from '$app/environment';
 
     let swaps: SwapEvent[] = [];
-    let interval: NodeJS.Timeout;
+    let isComponentMounted = false;
+    let controller: AbortController | null = null;
 
-    // Subscribe to the store
+    // Subscribe to the store with cleanup
     const unsubscribe = swapActivityStore.subscribe(value => {
-        swaps = value;
+        if (isComponentMounted) {
+            swaps = value;
+        }
     });
 
     async function fetchSwapData() {
+        if (!isComponentMounted) return;
+        
         try {
-            const response = await fetch('http://18.170.224.113:8080/api/dexscreener_swap');
+            // Cancel any ongoing fetch
+            if (controller) {
+                controller.abort();
+            }
+            controller = new AbortController();
+
+            const response = await fetch('http://18.170.224.113:8080/api/dexscreener_swap', {
+                signal: controller.signal
+            });
+            
+            if (!isComponentMounted) return;
+
             const data = await response.json();
             
             // Add each new swap to the store
             if (Array.isArray(data)) {
-                data.forEach(swap => {
-                    swapActivityStore.addSwap(swap);
-                });
+                const uniqueSwaps = data.filter(swap => 
+                    !swaps.some(existingSwap => existingSwap.txnId === swap.txnId)
+                );
+                
+                if (uniqueSwaps.length > 0) {
+                    uniqueSwaps.forEach(swap => {
+                        swapActivityStore.addSwap(swap);
+                    });
+                }
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                // Ignore abort errors
+                return;
+            }
             console.error('Error fetching swap data:', error);
         }
     }
 
     onMount(() => {
-        // Fetch initial data
-        fetchSwapData();
-        
-        // Set up polling every 10 seconds
-        interval = setInterval(fetchSwapData, 10000);
+        if (browser) {
+            isComponentMounted = true;
+            // Fetch initial data
+            fetchSwapData();
+        }
     });
 
     onDestroy(() => {
+        isComponentMounted = false;
         unsubscribe();
-        if (interval) clearInterval(interval);
+        if (controller) {
+            controller.abort();
+            controller = null;
+        }
     });
 
     function formatPairId(pairId: string): string {
@@ -62,7 +93,7 @@
                 in:fade={{ duration: 300 }}
             >
                 <div class="swap-header">
-                    <span class="swap-time">{formatDate(swap.blockTimestamp * 1000)}</span>
+                    <span class="swap-time">{formatDate(new Date(swap.blockTimestamp * 1000))}</span>
                     <span class="swap-maker">{shortenAddress(swap.maker)}</span>
                 </div>
                 <div class="swap-details">

@@ -5,6 +5,7 @@ import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
+import viteCompression from 'vite-plugin-compression';
 
 dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
@@ -22,7 +23,21 @@ export default defineConfig(({ mode }) => {
   return {
     build: {
       emptyOutDir: true,
-      sourcemap: true
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor': ['svelte'],
+          },
+        },
+      },
+      // Optimize build for production
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+        },
+      },
     },
     optimizeDeps: {
       esbuildOptions: {
@@ -33,15 +48,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        "/api/v2/canister": {
-          target: "https://icp-api.io",
-          changeOrigin: true
+        "/api": {
+          target: "http://127.0.0.1:4943",
+          changeOrigin: true,
         },
-        "/api/v2/status": {
-          target: "https://icp-api.io",
-          changeOrigin: true
-        }
-      }
+      },
     },
     plugins: [
       sveltekit(),
@@ -70,6 +81,24 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff,woff2,ttf,json}'],
         },
+      }),
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 6400,
+        algorithm: 'gzip',
+        ext: '.gz',
+        compressionOptions: { level: 8 },
+        deleteOriginFile: false
+      }),
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 6400,
+        algorithm: 'brotliCompress',
+        ext: '.br',
+        compressionOptions: { level: 11 },
+        deleteOriginFile: false
       }),
     ],
     resolve: {

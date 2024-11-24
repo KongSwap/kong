@@ -11,6 +11,7 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import LoadingScreen from "$lib/components/common/LoadingScreen.svelte";
   import { auth } from "$lib/services/auth";
+  import { updateWorkerService } from "$lib/services/updateWorkerService";
 
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
@@ -23,6 +24,7 @@
   onMount(() => {
     const init = async () => {
       await appLoader.initialize();
+      updateWorkerService.initialize();
       isInitialized = true;
     };
     
@@ -31,6 +33,7 @@
 
   onDestroy(() => {
     appLoader.destroy();
+    updateWorkerService.destroy();
   });
 </script>
 

@@ -29,7 +29,7 @@ Ensure you have the following installed on your development environment:
 
 1. **Operating System**: Linux/MacOS (e.g., Ubuntu 24.04.01)
 2. **Rust/Cargo**: Version 1.80.1
-3. **Node.js/npm**: Node v22.9.0, npm 10.8.3
+3. **Node.js/pnpm**: Node v22.9.0, pnpm 10.8.3
 4. **Dfinity CDK (dfx)**: Version 0.24.0
 5. **jq**: Command-line JSON processor
 

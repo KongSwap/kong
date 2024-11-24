@@ -64,22 +64,7 @@ function createTokenStore() {
 
   const store = writable<TokenState>(initialState);
   
-  // Set up periodic balance updates
-  let balanceUpdateInterval: number;
-  
-  if (typeof window !== 'undefined') {
-    balanceUpdateInterval = window.setInterval(() => {
-      const currentStore = get(store);
-      const walletId = getCurrentWalletId();
-      if(walletId) {
-        return;
-      } else if (walletId && currentStore.tokens.length > 0) {
-        loadBalances(walletId).catch(error => {
-          console.error("Error in periodic balance update:", error);
-        });
-      }
-    }, 10000); // Update every 10 seconds
-  }
+  // Remove periodic balance updates setup since it's now handled by the worker
 
   const getCurrentWalletId = (): Principal => {
     let walletId;
@@ -213,6 +198,14 @@ function createTokenStore() {
         toastStore.error("Failed to load prices");
       }
     },
+    loadPrice: async (token: FE.Token): Promise<number> => {
+      const price = await TokenService.fetchPrice(token);
+      store.update((s) => ({
+        ...s,
+        prices: { ...s.prices, [token.canister_id]: price },
+      }));
+      return price;
+    },
     loadBalances,
     loadBalance: debounce(
       async (
@@ -326,9 +319,6 @@ function createTokenStore() {
       await loadBalances(pnp?.account?.owner);
     },
     clearUserData: () => {
-      if (typeof window !== 'undefined' && balanceUpdateInterval) {
-        window.clearInterval(balanceUpdateInterval);
-      }
       store.update((s) => ({
         ...initialState,
         tokens: s.tokens,
@@ -358,13 +348,13 @@ function createTokenStore() {
     },
     cleanup: async () => {
       // Cleanup any active subscriptions or connections
-      if (typeof window !== 'undefined' && balanceUpdateInterval) {
-        window.clearInterval(balanceUpdateInterval);
-      }
       store.set(initialState);
     },
   };
 }
+
+export const cleanup = () => {
+};
 
 export const tokenStore: {
   subscribe: (run: (value: TokenState) => void) => () => void;
@@ -377,6 +367,7 @@ export const tokenStore: {
     forceRefresh?: boolean,
   ) => Promise<FE.TokenBalance>;
   loadPrices: () => Promise<Record<string, number>>;
+  loadPrice: (token: FE.Token) => Promise<number>;
   refetchPrice: (token: FE.Token) => Promise<number>;
   clearUserData: () => void;
   clearCache: () => Promise<void>;
@@ -444,9 +435,9 @@ export const favoriteTokens = derived(
   tokenStore,
   ($store) => {
     const wallet = get(auth);
-    console.log("Derived favoriteTokens - tokenStore:", $store);
-    console.log("Derived favoriteTokens - auth:", wallet);
+
     if (!$store || !wallet) return [];
+
     const walletId = wallet.account?.owner?.toString() || "anonymous";
     return (
       $store?.tokens?.filter((token) =>
@@ -458,15 +449,18 @@ export const favoriteTokens = derived(
 
 export const portfolioValue = derived([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
   if (!$tokenStore?.tokens || !$poolStore?.pools) return "0.00";
-  let totalValue = 0;
+  let totalValue = 0.0;
 
   for (const token of $tokenStore.tokens) {
-    const usdValue = parseFloat(
-      $tokenStore.balances[token.canister_id]?.in_usd || "0",
+    const usdValue = Number(
+      $tokenStore?.balances[token.canister_id]?.in_usd?.replace(/,/g, '') || "0",
     );
     totalValue += usdValue;
   }
-  return formatToNonZeroDecimal(totalValue);
+  return totalValue.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
 });
 
 export const tokenPrices = derived(tokenStore, ($store) => $store?.prices ?? {});
