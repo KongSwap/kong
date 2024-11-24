@@ -42,19 +42,33 @@
   }
 </script>
 
-<nav class="w-full z-50 px-1 py-4 max-w-6xl mx-auto">
-  <div class="grid grid-cols-12 gap-4">
-    <div class="col-span-2 flex items-center">
+<nav class="navbar">
+  <div class="navbar-grid">
+    <div class="nav-section left">
       {#if isMobile}
         <button
-          class="text-3xl text-gray-800 hover:text-gray-600 transition-colors"
+          class="menu-button"
           on:click={() => (navOpen = !navOpen)}
+          aria-label="Menu"
         >
-          ☰
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="menu-icon"
+          >
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
         </button>
       {/if}
       {#if !isMobile}
-        <div class="flex gap-6 ml-2">
+        <div class="nav-buttons">
           {#each tabs as tab}
             <Button
               text={tab.toUpperCase()}
@@ -68,28 +82,26 @@
       {/if}
     </div>
 
-    <div class="col-span-8 flex justify-center items-center">
-      <div class="w-full flex items-center justify-center">
-        <button 
-          class="hover:opacity-90 transition-opacity"
-          on:click={() => {
-            onTabChange('swap');
-            goto('/swap');
-          }}
-        >
-          <img
-            src={titleImage}
-            alt={activeTab}
-            class="object-contain max-h-16"
-          />
-        </button>
-      </div>
+    <div class="nav-section center">
+      <button 
+        class="title-button"
+        on:click={() => {
+          onTabChange('swap');
+          goto('/swap');
+        }}
+      >
+        <img
+          src={titleImage}
+          alt={activeTab}
+          class="title-image"
+        />
+      </button>
     </div>
 
-    <div class="col-span-2 flex gap-6 items-center justify-end mr-2">
+    <div class="nav-section right">
       {#if !isMobile}
         <button
-          class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
+          class="settings-button"
           class:spinning={isSpinning}
           aria-label="Settings"
           on:mouseenter={() => (isSpinning = true)}
@@ -104,7 +116,7 @@
             fill="none"
             stroke="currentColor"
             stroke-width="2"
-            class="text-white"
+            class="settings-icon"
           >
             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
             <path
@@ -113,7 +125,7 @@
           </svg>
         </button>
 
-        <div class="flex items-center space-x-3 nav-buttons">
+        <div class="nav-buttons">
           <Button
             text="STATS"
             variant="blue"
@@ -135,97 +147,259 @@
       {/if}
     </div>
   </div>
+</nav>
 
-  {#if navOpen && isMobile}
-    <div
-      class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex flex-col items-center justify-center gap-8 z-[100]"
-      transition:fade={{ duration: 150 }}
+{#if navOpen && isMobile}
+  <div
+    class="mobile-menu"
+    transition:fade={{ duration: 150 }}
+  >
+    <button
+      class="close-button"
+      on:click={handleNavClose}
     >
-      <button
-        class="absolute top-6 right-6 text-white text-2xl hover:text-gray-300 transition-colors"
-        on:click={handleNavClose}
-      >
-        ✕
-      </button>
+      ✕
+    </button>
 
-      <h2
-        class="text-white text-2xl font-bold uppercase border-b-2 border-sky-300 pb-2"
-      >
-        {$t("common.navigation")}
-      </h2>
-      {#each [...tabs, "stats"] as tab}
-        <Button
-          text={tab.toUpperCase()}
-          variant="blue"
-          state={activeTab === tab ? "selected" : "default"}
-          onClick={() => {
-            onTabChange(tab as "swap" | "earn" | "stats");
-            handleNavClose();
-          }}
-        />
-      {/each}
+    <h2 class="menu-title">
+      {$t("common.navigation")}
+    </h2>
+    {#each [...tabs, "stats"] as tab}
       <Button
-        text={$auth.isConnected
-          ? $t("common.openDrawer")
-          : $t("common.connect")}
-        variant="yellow"
-        state={sidebarOpen ? "selected" : "default"}
+        text={tab.toUpperCase()}
+        variant="blue"
+        state={activeTab === tab ? "selected" : "default"}
         onClick={() => {
-          onConnect();
+          onTabChange(tab as "swap" | "earn" | "stats");
           handleNavClose();
         }}
       />
+    {/each}
+    <Button
+      text={$auth.isConnected
+        ? $t("common.openDrawer")
+        : $t("common.connect")}
+      variant="yellow"
+      state={sidebarOpen ? "selected" : "default"}
+      onClick={() => {
+        onConnect();
+        handleNavClose();
+      }}
+    />
 
-      <button
-        class="p-2 flex items-center justify-center transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 hover:text-sky-400"
-        class:spinning={isSpinning}
-        aria-label="Settings"
-        on:mouseenter={() => (isSpinning = true)}
-        on:mouseleave={() => (isSpinning = false)}
-        on:click={() => {
-          onOpenSettings();
-          handleNavClose();
-        }}
+    <button
+      class="settings-button-mobile"
+      class:spinning={isSpinning}
+      aria-label="Settings"
+      on:mouseenter={() => (isSpinning = true)}
+      on:mouseleave={() => (isSpinning = false)}
+      on:click={() => {
+        onOpenSettings();
+        handleNavClose();
+      }}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        class="settings-icon"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          class="text-white"
-        >
-          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-          <path
-            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+        <path
+          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
           />
         </svg>
       </button>
     </div>
-  {/if}
-</nav>
+{/if}
 
-<style lang="postcss">
-  :global(.spinning) {
-    animation: spin 1s linear infinite;
+<style>
+  .navbar {
+    width: 100%;
+    z-index: 50;
+    padding: 1rem 0.25rem;
+    max-width: 72rem;
+    margin: 0 auto;
+    transition: all 0.3s ease-in-out;
   }
 
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
+  .navbar-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+  }
+
+  .nav-section {
+    display: flex;
+    align-items: center;
+  }
+
+  .left {
+    grid-column: span 2;
+  }
+
+  .center {
+    grid-column: span 8;
+    justify-content: center;
+  }
+
+  .right {
+    grid-column: span 2;
+    justify-content: flex-end;
+  }
+
+  @media (min-width: 768px) {
+    .left {
+      grid-column: span 3;
     }
-    to {
-      transform: rotate(360deg);
+    .center {
+      grid-column: span 6;
+    }
+    .right {
+      grid-column: span 3;
     }
   }
 
-  :global(.nav-buttons .pixel-button:hover:not(.selected) .button-text) {
-    @apply text-black font-semibold;
+  .nav-buttons {
+    display: flex;
+    gap: 0.5rem;
   }
 
-  :global(.nav-buttons .selected .button-text) {
-    @apply text-white font-bold;
+  .menu-button {
+    height: 38px;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+    background-color: rgba(31, 41, 55, 0.2);
+    border-radius: 0.5rem;
+    margin-left: 0.69rem;
+  }
+
+  .menu-icon {
+    color: white;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  }
+
+  .menu-button:hover {
+    transform: scale(1.05);
+    background-color: rgba(31, 41, 55, 0.3);
+    color: #38bdf8;
+  }
+
+  .menu-button:active {
+    transform: scale(0.95);
+  }
+
+  .title-button {
+    transition: all 0.3s ease-in-out;
+  }
+
+  .title-button:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+
+  .title-button:active {
+    transform: scale(0.95);
+  }
+
+  .title-image {
+    max-height: 3.5rem;
+    object-fit: contain;
+    filter: brightness(100%);
+    transition: all 0.3s ease-in-out;
+  }
+
+  .title-image:hover {
+    filter: brightness(110%);
+  }
+
+  @media (min-width: 768px) {
+    .title-image {
+      max-height: 4rem;
+    }
+  }
+
+  .settings-button {
+    height: 38px;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+    border-radius: 0.5rem;
+    margin-top: 8px;
+  }
+
+  .settings-button:hover {
+    transform: scale(1.05);
+    background-color: rgba(31, 41, 55, 0.3);
+    color: #38bdf8;
+  }
+
+  .settings-button:active {
+    transform: scale(0.95);
+  }
+
+  .settings-icon {
+    color: white;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  }
+
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    z-index: 100;
+  }
+
+  .close-button {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    color: white;
+    font-size: 1.5rem;
+    transition: color 0.2s ease-in-out;
+  }
+
+  .close-button:hover {
+    color: #d1d5db;
+  }
+
+  .menu-title {
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 2px solid #7dd3fc;
+    padding-bottom: 0.5rem;
+  }
+
+  .settings-button-mobile {
+    height: 38px;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease-in-out;
+    color: white;
+    margin-top: 1rem;
+  }
+
+  .settings-button-mobile:hover {
+    transform: scale(1.05);
+    color: #38bdf8;
   }
 </style>

@@ -8,7 +8,6 @@
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import { getButtonText } from "./utils";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
-  import Button from "$lib/components/common/Button.svelte";
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
@@ -20,10 +19,11 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash/debounce";
-    import { replaceState } from "$app/navigation";
+  import { replaceState } from "$app/navigation";
   import { writable } from "svelte/store";
   import { createEventDispatcher } from 'svelte';
   import Portal from 'svelte-portal';
+  import Button from "$lib/components/common/Button.svelte";
 
   let isProcessing = false;
   let rotationCount = 0;
@@ -370,13 +370,14 @@
       <div class="swap-footer">
         <Button
           variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
-          disabled={isSwapButtonDisabled}
-          onClick={handleSwapClick}
-          width="100%"
           size="big"
-        >
-          {buttonText}
-        </Button>
+          state={isSwapButtonDisabled ? "disabled" : "default"}
+          onClick={handleSwapClick}
+          text={buttonText}
+          disabled={isSwapButtonDisabled}
+          width="100%"
+          className="swap-button"
+        />
       </div>
     </div>
   </div>
@@ -606,5 +607,16 @@
     stroke-width: 1;
   }
 
+  .swap-footer {
+    padding: 0px;
+  }
 
+  .swap-footer :global(.swap-button) {
+    font-size: 1.4rem !important;
+  }
+
+  :global([data-theme="pixel"]) .swap-footer :global(.swap-button) {
+    font-size: 1.4rem !important;
+    min-height: 4rem;
+  }
 </style>
