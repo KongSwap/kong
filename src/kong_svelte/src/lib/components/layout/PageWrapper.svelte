@@ -164,14 +164,15 @@
 <style lang="postcss">
   .page-wrapper {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     background: #070a10;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 0;
     -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
   }
 
   .pixel-background {
@@ -180,7 +181,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1;
+    z-index: 0;
     overflow: hidden;
     image-rendering: pixelated;
     background-color: #5bb2cf;
@@ -555,11 +556,16 @@
 
   .content {
     position: relative;
-    z-index: 10;
-    min-height: 100%;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    will-change: transform;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 2;
+  }
+
+  :global(.clouds-container) {
+    z-index: 1;
   }
 
   /* Add touch-action for better mobile handling */
