@@ -220,9 +220,8 @@
           <h3>Slippage Settings</h3>
         </div>
         <div class="setting-content">
-          <div class="grid gap-4">
-            <!-- Quick select buttons -->
-            <div class="grid grid-flow-col auto-cols-max gap-2">
+          <div class="slippage-container">
+            <div class="quick-select-row">
               {#each quickSlippageValues as value}
                 <button
                   class="quick-select-btn"
@@ -232,7 +231,9 @@
                   {value}%
                 </button>
               {/each}
-              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/20 border border-white/10 hover:border-white/20 transition-colors duration-200" class:active={!quickSlippageValues.includes(slippageValue)}>
+            </div>
+            <div class="custom-row">
+              <div class="custom-input-wrapper">
                 <input
                   type="text"
                   inputmode="decimal"
@@ -245,6 +246,11 @@
                 <span class="text-white/90 font-medium">%</span>
               </div>
             </div>
+            {#if parseFloat(slippageInputValue) > 5}
+              <div class="warning-message">
+                ⚠️ High slippage increases risk of price impact
+              </div>
+            {/if}
           </div>
         </div>
       </div>
@@ -390,7 +396,7 @@
   }
 
   .setting-sections {
-    @apply grid gap-6;
+    @apply grid gap-6 max-w-full;
   }
 
   @media (max-width: 768px) {
@@ -399,17 +405,34 @@
     }
 
     .tab-button {
-      @apply py-2;
+      @apply py-2 px-3;
     }
 
     .setting-sections {
-      @apply gap-4;
+      @apply gap-3;
+    }
+
+    .quick-select-btn {
+      @apply px-2 py-1 text-sm;
+    }
+
+    .custom-input-container {
+      @apply px-2 py-1;
+    }
+
+    .slippage-input {
+      @apply w-12 text-sm;
+    }
+
+    .theme-button, .data-button, .clear-button, .claim-button {
+      @apply px-3 py-1.5 text-sm;
     }
   }
 
   .setting-section {
     @apply grid gap-4 bg-black/20 rounded-lg p-4 
-           border border-white/10 backdrop-blur-sm;
+           border border-white/10 backdrop-blur-sm
+           w-full max-w-full overflow-hidden;
   }
 
   .setting-header {
@@ -427,7 +450,7 @@
   }
 
   .setting-content {
-    @apply grid gap-4;
+    @apply grid gap-4 w-full max-w-full;
   }
 
   .theme-buttons {
@@ -448,29 +471,61 @@
     @apply grid grid-flow-col justify-between items-center;
   }
 
+  .slippage-container {
+    @apply grid gap-3;
+  }
+
+  .quick-select-row {
+    @apply grid grid-cols-5 gap-2;
+  }
+
+  .custom-row {
+    @apply flex items-center justify-center gap-4 
+           px-3 py-2 rounded-lg bg-black/20 
+           border border-white/10 hover:border-white/20
+           transition-colors duration-200;
+  }
+
+  .custom-input-wrapper {
+    @apply flex items-center gap-2;
+  }
+
   .quick-select-btn {
-    @apply px-3 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 
-           transition-colors duration-200 text-white/90
-           border border-white/10 hover:border-white/20;
+    @apply w-full px-3 py-2 rounded-lg 
+           bg-black/20 text-white/90 text-base font-medium
+           border border-white/10 transition-colors duration-200
+           hover:border-white/20 hover:bg-black/30;
   }
 
   .quick-select-btn.active {
-    @apply bg-white/15 text-white border-white/20;
-  }
-
-  .custom-input-container {
-    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
-           bg-black/20 border border-white/10
-           hover:border-white/20 transition-colors duration-200;
-  }
-
-  .custom-input-container.active {
-    @apply bg-white/15 border-white/20;
+    @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50;
   }
 
   .slippage-input {
-    @apply bg-transparent w-16 text-white/90 focus:text-white
-           focus:outline-none;
+    @apply bg-transparent w-24 text-center text-white/90 text-base font-medium
+           focus:text-white focus:outline-none;
+  }
+
+  .warning-message {
+    @apply text-sm text-yellow-300/90 text-center;
+  }
+
+  @media (max-width: 768px) {
+    .quick-select-row {
+      @apply grid-cols-5;
+    }
+
+    .quick-select-btn {
+      @apply px-2 py-2 text-sm;
+    }
+
+    .custom-row {
+      @apply px-2 py-2;
+    }
+
+    .slippage-input {
+      @apply w-20 text-sm;
+    }
   }
 
   .data-button, .clear-button, .claim-button {
