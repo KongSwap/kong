@@ -33,15 +33,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        "/api/v2/canister": {
-          target: "https://icp-api.io",
-          changeOrigin: true
+        "/api": {
+          target: "http://127.0.0.1:4943",
+          changeOrigin: true,
         },
-        "/api/v2/status": {
-          target: "https://icp-api.io",
-          changeOrigin: true
-        }
-      }
+      },
     },
     plugins: [
       sveltekit(),

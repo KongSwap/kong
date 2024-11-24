@@ -211,7 +211,6 @@ export async function fetchTokenLogo(token: FE.Token): Promise<string> {
     // If not in cache or expired, fetch from canister
     const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
     const res: any = await actor.icrc1_metadata();
-    console.log('Got icrc1 metadata:', res);
     const logoEntry = res.find(
       ([key]) => key === 'icrc1:logo' || key === 'icrc1_logo'
     );
