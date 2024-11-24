@@ -23,6 +23,7 @@
     "@slide-computer/signer-transport-plug": "^3.7.0",
     "@slide-computer/signer-web": "^3.7.0",
     "@types/pouchdb-core": "^7.0.15",
+    "@windoge98/plug-n-play": "^0.0.6-1",
     "bignumber.js": "^9.1.2",
     "dexie": "^4.0.9",
     "lightweight-charts": "^4.2.1",

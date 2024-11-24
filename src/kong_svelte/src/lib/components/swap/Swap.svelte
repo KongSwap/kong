@@ -260,21 +260,18 @@
   );
 
   // Update arrow configurations
-  const PixelArrow = {
-    viewBox: "0 0 35 42",
-    path: "M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
-  };
-
   const ModernArrow = {
     viewBox: "0 0 48 48",
     paths: [
-      // Main circle
       "M24 44c11.046 0 20-8.954 20-20S35.046 4 24 4 4 12.954 4 24s8.954 20 20 20z",
-      // Top arrow
-      "M24 15l7 7H17l7-7z",
-      // Bottom arrow
-      "M24 33l-7-7h14l-7 7z"
+      // Inner design - arrows
+      "M24 16l8 8H16l8-8z M24 32l-8-8h16l-8 8z"
     ]
+  };
+
+  const PixelArrow = {
+    viewBox: "0 0 35 42",
+    path: "M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
   };
 </script>
 
@@ -301,71 +298,74 @@
       </Button>
     </div>
 
-    <div class="panels-container relative">
-      {#each panels as panel (panel.id)}
-        <div class="panel-wrapper">
+    <div class="panels-container">
+      <div class="panels-wrapper">
+        <div class="panel">
           <SwapPanel
-            title={panel.title}
-            token={panel.type === 'pay' ? $swapState.payToken : $swapState.receiveToken}
-            amount={panel.type === 'pay' ? $swapState.payAmount : $swapState.receiveAmount}
+            title={panels[0].title}
+            token={$swapState.payToken}
+            amount={$swapState.payAmount}
             onAmountChange={handleAmountChange}
-            onTokenSelect={() => handleTokenSelect(panel.type)}
-            showPrice={panel.type === 'receive'}
+            onTokenSelect={() => handleTokenSelect("pay")}
+            showPrice={false}
             slippage={$swapState.swapSlippage}
             disabled={false}
-            panelType={panel.type}
+            panelType="pay"
           />
         </div>
-      {/each}
 
-      <button
-        class="switch-button"
-        class:modern={$themeStore !== 'pixel'}
-        on:click={handleReverseTokens}
-        disabled={isProcessing}
-        aria-label="Switch tokens"
-      >
-        {#if $themeStore === 'pixel'}
-          <svg
-            width="56"
-            height="64"
-            viewBox={PixelArrow.viewBox}
-            xmlns="http://www.w3.org/2000/svg"
-            class="swap-arrow"
-          >
-            <path
-              d={PixelArrow.path}
-              stroke="#000000"
-              stroke-width="1"
-              fill="#ffcd1f"
-              class="arrow-path"
-            />
-          </svg>
-        {:else}
-          <svg
-            width="48"
-            height="48"
-            viewBox={ModernArrow.viewBox}
-            xmlns="http://www.w3.org/2000/svg"
-            class="swap-arrow modern"
-          >
-            <!-- Background circle -->
-            <path
-              d={ModernArrow.paths[0]}
-              class="arrow-background"
-            />
-            <!-- Arrows -->
-            <path
-              d={ModernArrow.paths[1]}
-              class="arrow-symbol"
-            />
-            <path
-              d={ModernArrow.paths[2]}
-              class="arrow-symbol"
-            />
-          </svg>
-        {/if}
-      </button>
+        <div class="panel">
+          <SwapPanel
+            title={panels[1].title}
+            token={$swapState.receiveToken}
+            amount={$swapState.receiveAmount}
+            onAmountChange={handleAmountChange}
+            onTokenSelect={() => handleTokenSelect("receive")}
+            showPrice={true}
+            slippage={$swapState.swapSlippage}
+            disabled={false}
+            panelType="receive"
+          />
+        </div>
+
+        <button
+          class="switch-button"
+          class:rotating={isRotating}
+          on:click={handleReverseTokens}
+          disabled={isProcessing}
+          aria-label="Switch tokens"
+        >
+          {#if $themeStore === 'pixel'}
+            <svg
+              width="64"
+              height="72"
+              viewBox={PixelArrow.viewBox}
+              xmlns="http://www.w3.org/2000/svg"
+              class="swap-arrow pixel"
+              style="image-rendering: pixelated;"
+            >
+              <path
+                d={PixelArrow.path}
+                fill="#ffd700"
+                class="arrow-path"
+              />
+            </svg>
+          {:else}
+            <svg
+              width="42"
+              height="42"
+              viewBox={ModernArrow.viewBox}
+              xmlns="http://www.w3.org/2000/svg"
+              class="swap-arrow modern"
+            >
+              <g class="arrow-group">
+                <circle class="arrow-circle" cx="24" cy="24" r="20" />
+                <path class="arrow-path" d={ModernArrow.paths[1]} />
+              </g>
+            </svg>
+          {/if}
+        </button>
+      </div>
 
       <div class="swap-footer">
         <Button
@@ -441,7 +441,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 48px;
   }
 
   .mode-selector {
@@ -458,50 +457,86 @@
   .panels-container {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    position: relative;
+    gap: 12px;
   }
 
-  .panel-wrapper {
+  .panels-wrapper {
     position: relative;
-    z-index: 1;
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
-  .swap-footer {
+  .panel {
+    position: relative;
     z-index: 1;
-    margin-top: 0.3rem;
   }
 
   .switch-button {
     position: absolute;
     left: 50%;
-    top: 43%;
+    top: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
-    background: transparent;
-    border: none;
     cursor: pointer;
-    width: clamp(48px, 8vw, 56px);
-    height: clamp(48px, 8vw, 56px);
+    padding: 0;
+    margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    margin: 0;
-    transition: transform 0.3s ease;
   }
 
-  .switch-button.modern {
-    background: transparent;
+  /* Pixel Theme Styles */
+  :global([data-theme="pixel"]) .switch-button {
+    width: 64px !important;
+    height: 72px !important;
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  :global([data-theme="pixel"]) .switch-button:hover:not(:disabled) {
+    transform: translate(-50%, -50%) scale(1.1) !important;
+  }
+
+  :global([data-theme="pixel"]) .switch-button:active:not(:disabled) {
+    transform: translate(-50%, -50%) !important;
+  }
+
+  :global([data-theme="pixel"]) .swap-arrow.pixel {
+    width: 64px !important;
+    height: 72px !important;
+  }
+
+  :global([data-theme="pixel"]) .arrow-path {
+    fill: #ffd700 !important;
+    transition: fill 0.2s ease;
+  }
+
+  :global([data-theme="pixel"]) .switch-button:hover:not(:disabled) .arrow-path {
+    fill: #ffe44d !important;
+  }
+
+  :global([data-theme="pixel"]) .switch-button:active:not(:disabled) .arrow-path {
+    fill: #ffd700 !important;
+  }
+
+  /* Modern Theme Styles */
+  :global(:not([data-theme="pixel"])) .switch-button {
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50%;
+    backdrop-filter: blur(4px);
   }
 
-  .switch-button.modern:hover:not(:disabled) {
+  .switch-button:hover:not(:disabled) {
     transform: translate(-50%, -50%) scale(1.1);
   }
 
-  .switch-button.modern:active:not(:disabled) {
+  .switch-button:active:not(:disabled) {
     transform: translate(-50%, -50%) scale(0.95);
   }
 
@@ -516,53 +551,42 @@
     pointer-events: none;
   }
 
-  .swap-arrow.modern {
-    width: 85%;
-    height: 85%;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  .rotating .swap-arrow {
+    animation: rotateArrow 0.3s ease-in-out;
   }
 
-  .arrow-background {
-    fill: #ffcd1f;
+  :global([data-theme="pixel"]) .rotating .swap-arrow {
+    animation: none !important;
+  }
+
+  .arrow-group {
+    transform-origin: center;
+    transition: transform 0.3s ease;
+  }
+
+  .arrow-circle {
+    fill: rgba(255, 255, 255, 0.05);
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 1;
     transition: all 0.3s ease;
-  }
-
-  .arrow-symbol {
-    fill: #000000;
-    transition: all 0.3s ease;
-  }
-
-  .switch-button.modern:hover:not(:disabled) .arrow-background {
-    fill: #ffe380;
-  }
-
-  .switch-button.modern:active:not(:disabled) .arrow-background {
-    fill: #ffc107;
-  }
-
-  .switch-button.modern:disabled .arrow-background {
-    fill: #e0e0e0;
-  }
-
-  .switch-button.modern:disabled .arrow-symbol {
-    fill: #999999;
-  }
-
-  @keyframes rotate {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(180deg);
-    }
-  }
-
-  .switch-button.modern:hover:not(:disabled) .swap-arrow.modern {
-    animation: rotate 0.3s ease-in-out;
   }
 
   .arrow-path {
-    transition: fill 0.2s ease;
+    fill: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+  }
+
+  .switch-button:hover:not(:disabled) .arrow-circle {
+    fill: rgba(255, 255, 255, 0.1);
+    stroke: rgba(255, 255, 255, 0.3);
+  }
+
+  .switch-button:hover:not(:disabled) .arrow-path {
+    fill: #ffffff;
+  }
+
+  .rotating .arrow-group {
+    animation: rotateArrow 0.3s ease-in-out;
   }
 
   :global([data-theme="minimal"]) .arrow-path {

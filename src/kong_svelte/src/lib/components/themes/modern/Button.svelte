@@ -76,22 +76,20 @@
 <style lang="postcss">
   .glass-button {
     @apply relative rounded-lg transition-all duration-200 overflow-hidden;
-    background: #111827;
-    border: 1px solid #4ade80;
+    background: rgba(17, 24, 39, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     height: 48px;
     min-width: 160px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    color: white;
+    color: rgba(255, 255, 255, 0.8);
   }
 
   /* Force white text for all child elements */
   .glass-button :global(*) {
-    color: white;
+    color: inherit;
   }
 
   .glass-button:focus-visible {
-    @apply outline-none;
-    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.3);
+    @apply outline-none ring-2 ring-white ring-opacity-20;
   }
 
   .glass-button.small {
@@ -111,7 +109,6 @@
 
   .button-text {
     @apply font-medium;
-    color: white;
   }
 
   .glass-button.small .button-text {
@@ -123,29 +120,38 @@
     transition: opacity 0.2s ease-out;
     background: radial-gradient(
       circle at var(--x, 50%) var(--y, 50%),
-      rgba(74, 222, 128, 0.15) 0%,
+      rgba(255, 255, 255, 0.2) 0%,
       transparent 70%
     );
-    opacity: calc(0.8 * var(--progress));
+    opacity: calc(var(--progress));
   }
 
   /* Variant styles */
   .glass-button.blue {
-    border-color: #3B82F6;
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.2);
+    color: rgba(255, 255, 255, 0.8);
   }
 
   .glass-button.green {
-    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.08);
+    border-color: rgba(74, 222, 128, 0.2);
+    color: rgba(255, 255, 255, 0.8);
   }
 
   .glass-button.yellow {
-    border-color: #F59E0B;
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.2);
+    color: rgba(255, 255, 255, 0.8);
   }
 
   /* State styles */
   .glass-button.disabled {
-    @apply cursor-not-allowed opacity-50;
-    border-color: #374151;
+    @apply cursor-not-allowed;
+    opacity: 0.4;
+    background: rgba(17, 24, 39, 0.05);
+    border-color: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .glass-button.pressed:not(.disabled) {
@@ -153,37 +159,45 @@
   }
 
   .glass-button.selected:not(.disabled) {
-    background: #1f2937;
-    border-color: #86efac;
-    box-shadow: 
-      0 4px 20px rgba(134, 239, 172, 0.15),
-      0 0 0 1px rgba(134, 239, 172, 0.3),
-      inset 0 0 20px rgba(134, 239, 172, 0.1);
+    background: rgba(31, 41, 55, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
+  .glass-button.blue.selected:not(.disabled) {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: white;
+  }
+
+  .glass-button.yellow.selected:not(.disabled) {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: white;
   }
 
   /* Hover effects */
   @media (hover: hover) {
     .glass-button:not(.disabled):hover {
-      background: #1a2438;
-      border-color: #86efac;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
-                  0 0 0 1px rgba(134, 239, 172, 0.2);
+      background: rgba(31, 41, 55, 0.2);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: white;
     }
 
     .glass-button.blue:not(.disabled):hover {
-      border-color: #60A5FA;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
-                  0 0 0 1px rgba(96, 165, 250, 0.2);
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: white;
     }
 
     .glass-button.yellow:not(.disabled):hover {
-      border-color: #FBBF24;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
-                  0 0 0 1px rgba(251, 191, 36, 0.2);
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: white;
     }
 
     .glass-button:not(.disabled):hover:active {
-      background: #1f2937;
+      background: rgba(31, 41, 55, 0.3);
     }
   }
 

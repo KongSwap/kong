@@ -8,6 +8,7 @@
     export let content: string = '';
     export let className: string = '';
     export let zIndex: number = 10;
+    export let roundedBorders: boolean = true;
 
     function formatDimension(value: number | string): string {
         return value === 'auto' ? 'auto' : typeof value === 'number' ? `${value}px` : value;
@@ -23,7 +24,7 @@
 
 <div 
     id="panel"
-    class="panel modern-panel {variant} {type} {className}"
+    class="panel modern-panel {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
     style="width: {formattedWidth}; height: {formattedHeight};"
 >
     <div class="panel-container min-w-full" class:auto-size={isAutoSize}>
@@ -45,30 +46,42 @@
     backdrop-filter: blur(24px);
     transition: all 0.2s ease-out;
     color: white;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modern-panel.no-rounded {
+    @apply rounded-none;
+    border: none !important;
+    border-radius: 0 !important;
   }
 
   .modern-panel.green {
     background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
     border: 1px solid rgba(32, 201, 151, 0.15);
-    box-shadow: 
-      0 24px 48px -12px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 rgba(32, 201, 151, 0.08);
   }
 
-  .modern-panel.blue {
-    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
-    border: 1px solid rgba(59, 130, 246, 0.15);
-    box-shadow: 
-      0 24px 48px -12px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 rgba(59, 130, 246, 0.08);
+  .modern-panel.green.no-rounded {
+    border: none;
   }
 
   .modern-panel.yellow {
     background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
-    border: 1px solid rgba(250, 204, 21, 0.15);
-    box-shadow: 
-      0 24px 48px -12px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 rgba(250, 204, 21, 0.08);
+    border: 1px solid rgba(255, 207, 0, 0.15);
+  }
+
+  .modern-panel.yellow.no-rounded {
+    border: none;
+  }
+
+  .modern-panel.blue {
+    background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
+    border: 1px solid rgba(0, 122, 255, 0.15);
+  }
+
+  .modern-panel.blue.no-rounded {
+    border: none;
   }
 
   .modern-panel.main {
@@ -83,7 +96,7 @@
 
   .modern-panel.secondary {
     background: linear-gradient(180deg, rgba(20, 22, 36, 0.98) 0%, rgba(14, 16, 26, 0.98) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0);
     box-shadow: 
       0 16px 32px -8px rgba(0, 0, 0, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -91,17 +104,19 @@
   }
 
   .panel {
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 16px;
-    padding: 16px;
     position: relative;
     backdrop-filter: blur(20px);
     transition: all 0.3s ease;
+    padding: 16px;
+  }
 
+  .panel:not(.no-rounded) {
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
   }
 
   /* Premium edge highlight */
-  .panel::before {
+  .panel:not(.no-rounded)::before {
     content: '';
     position: absolute;
     top: 0;
@@ -121,23 +136,6 @@
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
-  }
-
-  /* Hover effect */
-  .panel:hover {
-    transform: translateY(-1px);
-    box-shadow: 
-      0 6px 28px -1px rgba(0, 0, 0, 0.35),
-      0 0 1px 0 rgba(255, 255, 255, 0.09);
-  }
-
-  .panel:hover::before {
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.12) 0%,
-      rgba(255, 255, 255, 0.06) 50%,
-      rgba(255, 255, 255, 0.03) 100%
-    );
   }
 
   /* Inner glow effect */
@@ -164,7 +162,6 @@
   }
 
   .auto-size {
-    min-height: 100px;
   }
 
   /* Custom scrollbar styles */
@@ -185,5 +182,27 @@
 
   :global(.modern-panel *::-webkit-scrollbar-thumb:hover) {
     background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Glass panel styling */
+  .modern-panel.glass-panel {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .panel-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 </style>

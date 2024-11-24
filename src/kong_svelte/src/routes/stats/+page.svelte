@@ -19,6 +19,9 @@
   import { formatDate } from "$lib/utils/dateUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import Toast from "$lib/components/common/Toast.svelte";
+  import { modalStore } from "$lib/stores/modalStore";
+  import { swapState } from "$lib/services/swap/SwapStateService";
+  import TokenSelectorModal from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -44,6 +47,7 @@
   const sortColumnStore = writable<string>("formattedUsdValue");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const copyStates = writable<CopyStates>({});
+  const selectedTokenId = writable<string | null>(null);
 
   // Enhanced loading state with type safety
   const tokensLoading = derived(
@@ -159,170 +163,161 @@
   // Replace the existing volumeData with mock data
   const volumeData = mockVolumeData;
 
+  function handleTokenSelect(token: FE.Token) {
+    swapState.setPayToken(token);
+    swapState.update(s => ({ ...s, showPayTokenSelector: true }));
+  }
+
+  function handleTokenSelectClose() {
+    swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+  }
+
   onMount(() => {
     // fetchHistoricalData();
   });
 </script>
 
-<Clouds />
-
-<div class="stats-container">
-  <!-- Market Overview Panel -->
-  <Panel variant="green" type="main" className="market-stats-panel glass-panel">
-    <div class="market-stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon-wrapper">
-          <BarChart class="stat-icon" />
-        </div>
-        <div class="stat-content">
-          <h3>Total Volume (24h)</h3>
-          <p>${formatToNonZeroDecimal($marketStats.totalVolume)}</p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon-wrapper">
-          <Droplets class="stat-icon" />
-        </div>
-        <div class="stat-content">
-          <h3>Total Liquidity</h3>
-          <p>${formatToNonZeroDecimal($marketStats.totalLiquidity)}</p>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon-wrapper">
-          <DollarSign class="stat-icon" />
-        </div>
-        <div class="stat-content">
-          <h3>Total Fees (24h)</h3>
-          <p>${formatToNonZeroDecimal($marketStats.totalFees)}</p>
-        </div>
-      </div>
-    </div>
-  </Panel>
-
-  <!-- Tokens Panel -->
-  <Panel variant="green" type="main" className="content-panel glass-panel">
-    <div class="flex justify-between items-center mb-4">
-      <div class="flex items-center gap-4">
-        <h3 class="text-white/80 font-medium">Tokens</h3>
-        {#if $tokenStats.totalTokens}
-          <span class="text-sm text-white/50">({$tokenStats.totalTokens} total)</span>
-        {/if}
-      </div>
-      <div class="search-container">
-        <input
-          type="text"
-          placeholder="Search tokens..."
-          class="search-input"
-          on:input={(e) => debouncedSearch(e.target.value)}
-        />
-      </div>
-    </div>
-
-    {#if $tokensLoading}
-      <LoadingIndicator />
-    {:else if $tokensError}
-      <div class="error-message">
-        <p>Error loading tokens: {$tokensError}</p>
-        <button 
-          class="retry-button"
-          on:click={() => {
-            tokenStore.loadTokens();
-            poolStore.loadPools();
-          }}
-        >
-          Retry
-        </button>
-      </div>
-    {:else}
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="text-left">Token</th>
-              <th class="text-right">Price</th>
-              <th class="text-right">24h Change</th>
-              <th class="text-right actions-header">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each $filteredSortedTokens as token (token.canister_id)}
-              <tr 
-                animate:flip={{ duration: ANIMATION_DURATION }}
-                on:click={() => copyToClipboard(token.canister_id)}
-                class="token-row"
-                title="Click to copy token ID"
-              >
-                <td class="token-cell">
-                  <TokenImages 
-                    tokens={[token as FE.Token]} 
-                    containerClass="token-image" 
-                    size={32}
-                  />
-                  <div class="token-info">
-                    <span class="token-name">{token.name}</span>
-                    <span class="token-symbol">{token.symbol}</span>
-                  </div>
-                </td>
-                <td class="price-cell" title={formatToNonZeroDecimal(token.price)}>
-                  ${formatToNonZeroDecimal(token.price)}
-                </td>
-                <td class="price-change-cell" class:positive={token.price_change_24h > 0} class:negative={token.price_change_24h < 0}>
-                  {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
-                </td>
-                <td class="actions-cell">
-                  <button 
-                    class="copy-button" 
-                    on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
-                    title="Copy token ID"
-                  >
-                    {$copyStates[token.canister_id] || "Copy ID"}
-                  </button>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </Panel>
-
-  <!-- Volume Chart Panel -->
-  <Panel variant="green" type="main" className="chart-panel glass-panel">
-    <div class="chart-header">
-      <h3 class="panel-title">Volume Trend</h3>
-      <BarChart class="chart-icon" />
-    </div>
-    <div class="chart-content">
-      <div class="chart-bars">
-        {#each $volumeData as day}
-          {@const maxVolume = Math.max(...$volumeData.map(d => d.value))}
-          {@const height = (day.value / maxVolume * 100)}
-          <div class="bar-wrapper">
-            <div 
-              class="bar" 
-              style="height: {height}%"
-              title="${formatToNonZeroDecimal(day.value)}"
-            >
-              <span class="bar-value">${formatToNonZeroDecimal(day.value)}</span>
+<section class="flex justify-center w-full">
+  <div class="z-10 flex justify-center w-full max-w-[1400px] mx-auto">
+    <div class="flex flex-col w-full gap-6">
+      <!-- Market Overview Panel -->
+      <Panel variant="green" type="main" className="market-stats-panel glass-panel">
+        <div class="market-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper">
+              <BarChart class="stat-icon" />
             </div>
-            <span class="bar-label">{day.date}</span>
+            <div class="stat-content">
+              <h3>Total Volume (24h)</h3>
+              <p>${formatToNonZeroDecimal($marketStats.totalVolume)}</p>
+            </div>
           </div>
-        {/each}
-      </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper">
+              <Droplets class="stat-icon" />
+            </div>
+            <div class="stat-content">
+              <h3>Total Liquidity</h3>
+              <p>${formatToNonZeroDecimal($marketStats.totalLiquidity)}</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrapper">
+              <DollarSign class="stat-icon" />
+            </div>
+            <div class="stat-content">
+              <h3>Total Fees (24h)</h3>
+              <p>${formatToNonZeroDecimal($marketStats.totalFees)}</p>
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      <!-- Tokens Panel -->
+      <Panel variant="green" type="secondary  " className="content-panel glass-panel">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center gap-4">
+            <h3 class="text-white/80 font-medium">Tokens</h3>
+            {#if $tokenStats.totalTokens}
+              <span class="text-sm text-white/50">({$tokenStats.totalTokens} total)</span>
+            {/if}
+          </div>
+          <div class="search-container">
+            <input
+              type="text"
+              placeholder="Search tokens..."
+              class="search-input"
+              on:input={(e) => debouncedSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {#if $tokensLoading}
+          <LoadingIndicator />
+        {:else if $tokensError}
+          <div class="error-message">
+            <p>Error loading tokens: {$tokensError}</p>
+            <button 
+              class="retry-button"
+              on:click={() => {
+                tokenStore.loadTokens();
+                poolStore.loadPools();
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        {:else}
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Token</th>
+                  <th class="text-right">Price</th>
+                  <th class="text-right">24h Change</th>
+                  <th class="text-right actions-header">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each $filteredSortedTokens as token (token.canister_id)}
+                  <tr 
+                    animate:flip={{ duration: ANIMATION_DURATION }}
+                    class="token-row cursor-pointer"
+                    on:click={() => handleTokenSelect(token)}
+                  >
+                    <td class="token-cell">
+                      <TokenImages 
+                        tokens={[token as FE.Token]} 
+                        containerClass="token-image" 
+                        size={32}
+                      />
+                      <div class="token-info">
+                        <span class="token-name">{token.name}</span>
+                        <span class="token-symbol">{token.symbol}</span>
+                      </div>
+                    </td>
+                    <td class="price-cell" title={formatToNonZeroDecimal(token.price)}>
+                      ${formatToNonZeroDecimal(token.price)}
+                    </td>
+                    <td class="price-change-cell" class:positive={token.price_change_24h > 0} class:negative={token.price_change_24h < 0}>
+                      {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
+                    </td>
+                    <td class="actions-cell">
+                      <button 
+                        class="copy-button" 
+                        on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
+                        title="Copy token ID"
+                      >
+                        {$copyStates[token.canister_id] || "Copy ID"}
+                      </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </Panel>
+
     </div>
-  </Panel>
-</div>
+  </div>
+</section>
+
+{#if $swapState.showPayTokenSelector}
+  <TokenSelectorModal
+    show={$swapState.showPayTokenSelector}
+    onClose={handleTokenSelectClose}
+    onSelect={(token) => {
+      swapState.setPayToken(token);
+      handleTokenSelectClose();
+    }}
+  />
+{/if}
 
 <style lang="postcss">
-  /* Container & Layout */
-  .stats-container {
-    @apply flex flex-col gap-6 relative z-10 mx-auto;
-  }
-
   /* Market Stats Section */
   .market-stats-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3;
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3;
   }
 
   .stat-card {
@@ -487,14 +482,6 @@
   }
 
   @media (max-width: 640px) {
-    .stats-container {
-      @apply p-2;
-    }
-
-    .content-panel {
-      @apply p-3;
-    }
-
     .data-table td, 
     .data-table th {
       @apply px-2 py-2;
@@ -502,10 +489,6 @@
 
     .copy-button {
       @apply hidden;
-    }
-
-    .chart-panel {
-      @apply p-4;
     }
   }
 
@@ -515,9 +498,7 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .stat-card,
-  .content-panel,
-  .chart-panel {
+  .stat-card {
     animation: fadeIn 0.3s ease-out forwards;
   }
 

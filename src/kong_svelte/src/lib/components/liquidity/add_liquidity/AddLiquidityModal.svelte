@@ -11,9 +11,16 @@
     import { goto, replaceState } from '$app/navigation';
     import { page } from '$app/stores';
     import Modal from "$lib/components/common/Modal.svelte";
-  
-    let token0: FE.Token | null = null;
-    let token1: FE.Token | null = null;
+
+    // Props
+    export let showModal = false;
+    export let onClose: () => void;
+    export let initialToken0: FE.Token | null = null;
+    export let initialToken1: FE.Token | null = null;
+
+    // Local state
+    let token0 = initialToken0;
+    let token1 = initialToken1;
     let amount0: string = "";
     let amount1: string = "";
     let loading = false;
@@ -22,42 +29,46 @@
     let token0Balance: string = "0";
     let token1Balance: string = "0";
     let isProcessingOutput = false;
-  
+
     // Modal state variables
     let statusSteps = [
       { label: 'Sending Tokens', completed: false },
       { label: 'Updating LPs', completed: false },
       { label: 'Success', completed: false }
     ];
-  
+
     let showTokenModal = false;
     let activeTokenIndex: 0 | 1 = 0;
     let searchQuery = "";
     let tokens: FE.Token[] = [];
-  
+
     let activeInput: 0 | 1 | null = null;
     let statusMessage: string = "";
-  
+
     let previewMode = false;
-  
-    // Add confirmation modal state
     let showReview = false;
-  
+
+    // Update tokens when props change
+    $: {
+      if (initialToken0 !== token0) token0 = initialToken0;
+      if (initialToken1 !== token1) token1 = initialToken1;
+    }
+
     // Handle URL parameters
     async function initializeFromParams() {
       const token0Id = $page.url.searchParams.get('token0');
       const token1Id = $page.url.searchParams.get('token1');
-  
+
       if (token0Id || token1Id) {
         const allTokens = get(formattedTokens);
-  
+
         if (token0Id) {
           const foundToken0 = allTokens.find(t => t.canister_id === token0Id);
           if (foundToken0) {
             token0 = foundToken0;
           }
         }
-  
+
         if (token1Id) {
           const foundToken1 = allTokens.find(t => t.canister_id === token1Id);
           if (foundToken1) {
@@ -66,7 +77,7 @@
         }
       }
     }
-  
+
     onMount(async () => {
       try {
         await Promise.all([initializeFromParams(), tokenStore.loadBalances()]);
@@ -76,18 +87,18 @@
         error = "Failed to initialize tokens";
       }
     });
-  
+
     function handleTokenSelect(index: 0 | 1) {
       activeTokenIndex = index;
       searchQuery = ""; // Reset search query
       showTokenModal = true;
     }
-  
+
     function closeModal() {
       showTokenModal = false;
       searchQuery = ""; // Reset search query when closing
     }
-  
+
     function selectToken(token: FE.Token) {
       if (activeTokenIndex === 0) {
         token0 = token;
@@ -97,7 +108,7 @@
       closeModal();
       error = null;
     }
-  
+
     // Debounced calculation to prevent excessive API calls
     const debouncedCalculate = debounce(async (amount: string, index: 0 | 1) => {
       if (!amount || isNaN(parseFloat(amount))) {
@@ -107,7 +118,7 @@
       }
       await calculateLiquidityAmount(amount, index);
     }, 300);
-  
+
     function handleInput(index: 0 | 1, value: string) {
       if (index === 0) {
         amount0 = value;
@@ -117,30 +128,30 @@
       activeInput = index;
       debouncedCalculate(value, index);
     }
-  
+
     async function calculateLiquidityAmount(amount: string, index: 0 | 1) {
       if (!token0 || !token1) {
         error = "Please select both tokens.";
         return;
       }
-  
+
       try {
         loading = true;
         error = null;
         isProcessingOutput = true;
-  
+
         const balance0 = tokenStore.getBalance(token0.canister_id);
         const balance1 = tokenStore.getBalance(token1.canister_id);
-  
+
         if (index === 0) {
           const requiredAmount = await PoolService.addLiquidityAmounts(
             token0.token,
             parseTokenAmount(amount, token0.decimals),
             token1.token,
           );
-  
+
           const requiredAmount1 = requiredAmount.Ok.amount_1;
-          
+
           // Check if token1 amount exceeds balance
           if (balance1.in_tokens - token1.fee < requiredAmount1) {
             // If it exceeds, calculate backwards from token1's max balance
@@ -160,9 +171,9 @@
             parseTokenAmount(amount, token1.decimals),
             token0.token,
           );
-  
+
           const requiredAmount0 = requiredAmount.Ok.amount_1;
-  
+
           // Check if token0 amount exceeds balance
           if (balance0.in_tokens - token0.fee < requiredAmount0) {
             // If it exceeds, calculate backwards from token0's max balance
@@ -184,15 +195,15 @@
         isProcessingOutput = false;
       }
     }
-  
+
     async function handleSubmit() {
       showReview = true;
     }
-  
+
     function handleCancel() {
       showReview = false;
     }
-  
+
     async function handleConfirm() {
       showReview = false;
       loading = true;
@@ -200,7 +211,7 @@
       previewMode = true;
       statusMessage = "Submitting liquidity request...";
       statusSteps = statusSteps.map(step => ({ ...step, completed: false }));
-  
+
       try {
           const params = {
               token_0: token0,
@@ -208,16 +219,16 @@
               token_1: token1,
               amount_1: parseTokenAmount(amount1, token1.decimals),
           };
-  
+
           const requestId = await PoolService.addLiquidity(params);
-  
+
           // Poll for request status
           const checkStatus = async () => {
               try {
                   const requestStatus = await PoolService.pollRequestStatus(requestId);
-  
+
                   updateStatusSteps(requestStatus.statuses);
-  
+
                   // Check for failure states first
                   if (requestStatus.statuses.some(s => 
                       s.toLowerCase().includes('failed') || 
@@ -235,7 +246,7 @@
                       }));
                       return;
                   }
-  
+
                   if (requestStatus.statuses.includes('Success')) {
                       loading = false;
                       setTimeout(() => {
@@ -259,9 +270,9 @@
                   }));
               }
           };
-  
+
           checkStatus(); // Start polling
-  
+
       } catch (err) {
           console.error("Error adding liquidity:", err);
           error = err.message;
@@ -275,7 +286,7 @@
           }));
       }
     }
-  
+
     function updateStatusSteps(rawStatuses: string[]) {
       const stepsToMatch = {
         'Sending Tokens': [
@@ -292,13 +303,13 @@
         ],
         'Success': ['Success']
       };
-  
+
       // Check for any failure states in the raw statuses
       const hasFailure = rawStatuses.some(status => 
           status.toLowerCase().includes('failed') || 
           status.toLowerCase().includes('error')
       );
-  
+
       // Update steps based on latest statuses
       statusSteps = statusSteps.map(step => {
           const matches = stepsToMatch[step.label];
@@ -319,7 +330,7 @@
                   failed: token0Failed || token1Failed
               };
           }
-  
+
           return {
               ...step,
               completed: isCompleted,
@@ -327,10 +338,10 @@
           };
       });
     }
-  
+
     async function updateBalances() {
       if (!token0 || !token1) return;
-  
+
       try {
         const balances = await TokenService.fetchBalances([token0, token1]);
         if (token0) {
@@ -345,7 +356,7 @@
         console.error("Error fetching balances:", err);
       }
     }
-  
+
     $: if (token0 || token1) {
       const params = new URLSearchParams();
       if (token0) params.set('token0', token0.canister_id);
@@ -354,61 +365,52 @@
       replaceState(newUrl, null);
       updateBalances();
     }
-  
+
     function getCurrentStep(): string {
       const currentStep = statusSteps.find(step => !step.completed);
       return currentStep ? currentStep.label : 'Success';
     }
-  
-    export let showModal = false;
-    export let onClose: () => void;
-  
+
     function handleClose() {
-        showModal = false;
-        onClose?.();
+      showModal = false;
+      onClose?.();
     }
   </script>
-  
+
   <Modal
-    show={showModal}
+    isOpen={showModal}
+    onClose={onClose}
     title="Add Liquidity"
-    onClose={handleClose}
     variant="green"
-    width="800px"
+    width="600px"
   >
-    <div class="min-w-3xl w-full flex flex-col justify-center space-y-8">
-      <div class="bg-white dark:bg-emerald-900/70 dark:bg-opacity-80 dark:backdrop-blur-md rounded-2xl shadow-lg p-6 w-full">
-        <AddLiquidityForm
-          {token0}
-          {token1}
-          {amount0}
-          {amount1}
-          {loading}
-          {previewMode}
-          {error}
-          {statusSteps}
-          {showReview}
-          {token0Balance}
-          {token1Balance}
-          getCurrentStep={getCurrentStep}
-          onTokenSelect={handleTokenSelect}
-          onInput={handleInput}
-          onSubmit={handleSubmit}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-          {isProcessingOutput}
-        />
-      </div>
-    </div>
+    <AddLiquidityForm
+      bind:token0
+      bind:token1
+      bind:amount0
+      bind:amount1
+      bind:loading
+      bind:error
+      {token0Balance}
+      {token1Balance}
+      onTokenSelect={handleTokenSelect}
+      onInput={handleInput}
+      onSubmit={handleConfirm}
+      previewMode={previewMode}
+    />
   </Modal>
-  
-  <!-- Token selection modal -->
-  <TokenSelectionModal
-    show={showTokenModal}
-    {tokens}
-    helperText={activeTokenIndex === 1 ? "Only ICP and ckUSDT pairs are supported" : ""}
-    bind:searchQuery
-    onClose={closeModal}
-    onSelect={selectToken}
-  />
-  
+
+  {#if showTokenModal}
+    <TokenSelectionModal
+      show={showTokenModal}
+      onSelect={selectToken}
+      onClose={closeModal}
+      currentToken={activeTokenIndex === 0 ? token1?.canister_id : token0?.canister_id}
+    />
+  {/if}
+
+  <style lang="postcss">
+    :global(.modal-body) {
+      @apply p-0 flex flex-col;
+    }
+  </style>

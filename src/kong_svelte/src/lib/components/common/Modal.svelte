@@ -44,7 +44,7 @@
 </script>
 
 <svelte:window on:keydown={handleEscape} />
-<Portal target="body">
+<Portal target="#portal-target">
   {#if isOpen}
     <div
       class="modal-overlay"

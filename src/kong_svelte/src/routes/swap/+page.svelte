@@ -38,12 +38,14 @@
   {#if $tokenStore.tokens}
     <div class="swap-wrapper">
       {#if currentMode === 'normal'}
+      <div class="pt-16">
         <Swap 
           initialFromToken={fromToken} 
           initialToToken={toToken} 
           {currentMode}
           on:modeChange={handleModeChange}
         />
+      </div>
       {:else}
         <SwapPro 
           initialFromToken={fromToken} 

@@ -78,7 +78,7 @@
   $: favoriteCount = $tokenStore.favoriteTokens[walletId]?.length || 0;
 </script>
 
-<Modal {show} title="Select Token" {onClose} variant="green">
+<Modal isOpen={show} title="Select Token" {onClose} variant="green">
   <div class="space-y-4">
     <div class="w-full">
       <label for="token-search" class="sr-only">Search tokens</label>

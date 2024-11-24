@@ -91,8 +91,6 @@
 
 <div 
     class="swap-pro-container" 
-    in:fade={{ duration: 420 }}
-    style="--nav-height: {NAV_HEIGHT}px;"
 >
     <div class="layout-container">
         <div class="main-content" class:mobile={isMobile}>
@@ -204,14 +202,12 @@
         background: var(--color-background);
         overflow: hidden;
         position: relative;
+        padding: 0 1rem;
     }
 
     .layout-container {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
-        min-height: 0;
-        width: 100%;
         overflow: hidden;
     }
 
@@ -219,9 +215,7 @@
         display: flex;
         gap: 0.5rem;
         flex: 1;
-        min-height: 0;
         overflow: hidden;
-        height: calc(100% - 0.5rem); /* Account for gap */
     }
 
     .chart-controls {
@@ -335,8 +329,7 @@
     .right-panels {
         display: flex;
         flex-direction: column;
-        min-width: fit-content;
-        max-width: 500px;
+        min-width: 500px;
         flex: 1;
         min-height: 0;
         overflow: hidden;
@@ -347,10 +340,21 @@
         flex: 0 0 auto;
     }
 
+    .history-header {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    /* Modern theme specific styles */
+    :global([data-theme="modern"]) .history-header {
+        min-height: 140px;
+    }
+
     .history-content {
         flex: 1;
         overflow: auto;
-        padding: 0.5rem;
     }
 
     .history-header {

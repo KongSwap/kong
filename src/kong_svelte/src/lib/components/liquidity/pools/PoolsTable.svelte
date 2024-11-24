@@ -266,9 +266,11 @@
 {#if showAddLiquidityModal}
   <AddLiquidityModal
     showModal={showAddLiquidityModal}
-    onClose={() => showAddLiquidityModal = false}
-    token0={tokenMap.get(selectedTokens.token0)}
-    token1={tokenMap.get(selectedTokens.token1)}
+    onClose={() => {
+      showAddLiquidityModal = false;
+    }}
+    initialToken0={tokenMap.get(selectedTokens.token0)}
+    initialToken1={tokenMap.get(selectedTokens.token1)}
   />
 {/if}
 

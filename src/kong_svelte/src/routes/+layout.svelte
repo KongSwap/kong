@@ -52,23 +52,20 @@
 
 <style>
   .nav-container {
-    height: 64px; /* Match this with your navbar height */
+    content: normal;
+    margin-bottom: 1rem;
   }
 
   .content-container {
-    padding-top: 64px; /* Match this with your navbar height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    
   }
 
   :global(body) {
-    min-height: 100vh;
     margin: 0;
     background-color: #0f172a;
-  }
-
-  :global(body[data-theme="modern"]) {
-    background: radial-gradient(circle at 50% -50%, rgba(99, 102, 241, 0.15) 0%, rgba(28, 27, 38, 0) 50%),
-                radial-gradient(circle at 0% 100%, rgba(74, 222, 128, 0.1) 0%, rgba(28, 27, 38, 0) 50%),
-                radial-gradient(circle at 100% 100%, rgba(245, 158, 11, 0.1) 0%, rgba(28, 27, 38, 0) 50%),
-                #1c1b26;
   }
 </style>

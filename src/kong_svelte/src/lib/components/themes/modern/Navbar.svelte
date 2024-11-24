@@ -10,7 +10,7 @@
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
-  export let isModalOpen: boolean;
+  let isModalOpen: boolean;
   export let isMobile: boolean;
   export let onTabChange: (tab: "swap" | "earn" | "stats") => void;
   export let onConnect: () => void;
@@ -25,8 +25,13 @@
   }
 </script>
 
-<div class="navbar-wrapper">
-  <Panel variant="blue" type="main" className="modern-nav">
+<Panel 
+  variant="blue" 
+  type="main" 
+  className="modern-nav-mobile" 
+  roundedBorders={false}
+>
+  <div class="nav-container-wrapper">
     <div class="nav-container">
       {#if isMobile}
         <div class="left-section">
@@ -109,8 +114,8 @@
         </div>
       {/if}
     </div>
-  </Panel>
-</div>
+  </div>
+</Panel>
 
 {#if navOpen && isMobile}
   <div class="mobile-menu" transition:fade={{ duration: 200 }}>
@@ -171,21 +176,19 @@
     font-style: normal;
   }
 
-  /* Core Layout */
-  .navbar-wrapper {
-    position: fixed;
-    inset: 0 0 auto 0;
-    z-index: 50;
+  .nav-container-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
   }
 
   .nav-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 5rem;
+    width: 100%;
+    max-width: 1200px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 1rem;
   }
 
   /* Section Layout */
@@ -255,15 +258,17 @@
     padding: 0.75rem;
     color: rgba(255, 255, 255, 0.8);
     border-radius: 0.75rem;
-    transition: all 0.3s;
-  }
-  .settings-btn {
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   .settings-btn:hover {
     color: white;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
     transform: scale(1.05);
+  }
+  .settings-btn:active {
+    transform: scale(0.95);
   }
 
   /* Mobile Icons */
@@ -326,6 +331,7 @@
     .nav-container { 
       padding: 0 1rem;
       justify-content: space-between;
+      max-width: 100%;
     }
     
     .left-section,
@@ -450,4 +456,5 @@
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
   }
+
 </style>

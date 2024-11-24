@@ -11,7 +11,7 @@ interface SidebarState {
 function createSidebarStore() {
     const { subscribe, update, set } = writable<SidebarState>({
         isExpanded: false,
-        width: 500,
+        width: 527,
         sortBy: 'value',
         sortDirection: 'desc',
         filterText: ''
@@ -29,7 +29,7 @@ function createSidebarStore() {
             update(state => ({
                 ...state,
                 isExpanded: !state.isExpanded,
-                width: state.isExpanded ? 500 : window.innerWidth - 24 // fullscreen with small margin
+                width: state.isExpanded ? 527 : window.innerWidth - 32 // 1rem margin on each side (16px * 2)
             }));
         },
         setWidth: (width: number) => {
@@ -49,7 +49,7 @@ function createSidebarStore() {
             update(state => ({ ...state, filterText }));
         },
         collapse: () => {
-            update(state => ({ ...state, isExpanded: false, width: 500 }));
+            update(state => ({ ...state, isExpanded: false, width: 527 }));
         }
     };
 }
