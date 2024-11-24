@@ -7,6 +7,7 @@ import { settingsStore } from "$lib/services/settings/settingsStore";
 import { assetCache } from "$lib/services/assetCache";
 import { canisterId as kongBackendCanisterId } from '../../../../declarations/kong_backend';
 import { getPnpInstance } from "$lib/services/pnp/PnpInitializer";
+import { DEFAULT_LOGOS } from '$lib/services/tokens/tokenLogos';
 
 export class AppLoader {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -122,6 +123,21 @@ export class AppLoader {
     "/backgrounds/grass.webp"
   ];
 
+  private defaultTokenLogos = Object.values(DEFAULT_LOGOS);
+
+  private async getAllTokenLogos(): Promise<string[]> {
+    try {
+      const tokens = await tokenStore.loadTokens();
+      const logos = tokens
+        .map(token => token.logo)
+        .filter((logo): logo is string => typeof logo === 'string' && logo.length > 0);
+      return [...new Set([...this.defaultTokenLogos, ...logos])];
+    } catch (error) {
+      console.error('Error fetching token logos:', error);
+      return this.defaultTokenLogos;
+    }
+  }
+
   public async initialize(): Promise<void> {
     getPnpInstance();
     if (this.isInitialized) {
@@ -149,10 +165,14 @@ export class AppLoader {
       const areCached = await assetCache.areAssetsCached(allAssets);
 
       if (!areCached) {
+        // Get all token logos first
+        const allTokenLogos = await this.getAllTokenLogos();
+        
         // Start parallel loading of assets
         await Promise.all([
-          this.batchPreloadAssets(this.backgrounds, 'image', 5),
-          this.batchPreloadAssets(svgComponents, 'svg', 20)
+          this.batchPreloadAssets(this.backgrounds, 'image', 10),
+          this.batchPreloadAssets(svgComponents, 'svg', 50),
+          this.batchPreloadAssets(allTokenLogos, 'image', 20)
         ]);
       }
 

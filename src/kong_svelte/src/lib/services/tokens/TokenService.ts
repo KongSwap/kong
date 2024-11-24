@@ -40,57 +40,60 @@ export class TokenService {
 
   public static async fetchTokens(): Promise<FE.Token[]> {
     try {
-      const wallet = get(auth);
-      let retries = 3;
-      let actor;
+      // Try to get cached tokens first
+      const cachedTokens = await kongDB.tokens
+        .where('timestamp')
+        .above(Date.now() - this.TOKEN_CACHE_DURATION)
+        .toArray();
 
-      while (retries > 0) {
-        try {
-          actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
-          const result = await actor.tokens(["all"]);
-          const parsed = parseTokens(result);
-
-          if (parsed.Err) {
-            console.error('Error parsing tokens:', parsed.Err);
-            throw parsed.Err;
-          }
-
-          const deduplicatedTokens = this.deduplicateTokens(parsed.Ok);
-
-          // Cache the tokens
-          await Promise.all(
-            deduplicatedTokens.map((token) =>
-              kongDB.tokens.put({
-                ...token,
-                timestamp: Date.now(),
-              })
-            )
-          );
-
-          return deduplicatedTokens;
-        } catch (error) {
-          console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
-          retries--;
-          if (retries === 0) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+      if (cachedTokens.length > 0) {
+        console.log('Using cached tokens');
+        // Refresh in background after returning cached data
+        setTimeout(() => this.fetchFromNetwork(), 0);
+        return cachedTokens;
       }
+
+      return await this.fetchFromNetwork();
     } catch (error) {
       console.error("Error fetching tokens:", error);
-      // Return empty array instead of throwing to prevent app from crashing
       return [];
     }
   }
 
-  private static deduplicateTokens(tokens: FE.Token[]): FE.Token[] {
-    // First, sort tokens by priority (on_kong first, then by canister_id)
-    const sortedTokens = [...tokens].sort((a, b) => {
-      if (a.on_kong && !b.on_kong) return -1;
-      if (!a.on_kong && b.on_kong) return 1;
-      return a.canister_id.localeCompare(b.canister_id);
-    })
+  private static async fetchFromNetwork(): Promise<FE.Token[]> {
+    let retries = 3;
+    let actor;
 
-    return Array.from(sortedTokens.values());
+    while (retries > 0) {
+      try {
+        actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
+        const result = await actor.tokens(["all"]);
+        const parsed = parseTokens(result);
+
+        if (parsed.Err) {
+          console.error('Error parsing tokens:', parsed.Err);
+          throw parsed.Err;
+        }
+
+        // Cache the tokens
+        await Promise.all(
+          parsed.Ok.map((token) =>
+            kongDB.tokens.put({
+              ...token,
+              timestamp: Date.now(),
+            })
+          )
+        );
+
+        return parsed.Ok;
+      } catch (error) {
+        console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
+        retries--;
+        if (retries === 0) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    return [];
   }
 
   private static async cacheTokens(tokens: FE.Token[]): Promise<void> {

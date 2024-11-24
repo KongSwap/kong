@@ -466,6 +466,8 @@ export const portfolioValue = derived([tokenStore, poolStore], ([$tokenStore, $p
     );
     totalValue += usdValue;
   }
+  console.log("balances", $tokenStore.balances)
+
   return formatToNonZeroDecimal(totalValue);
 });
 

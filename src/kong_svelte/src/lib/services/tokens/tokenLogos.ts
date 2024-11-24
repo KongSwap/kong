@@ -198,41 +198,50 @@ export async function cleanupExpiredTokenLogos(): Promise<void> {
 
 export async function fetchTokenLogo(token: FE.Token): Promise<string> {
   try {
+    // Check default logos first
     if (token.canister_id === ICP_CANISTER_ID) {
       return DEFAULT_LOGOS[ICP_CANISTER_ID];
     }
 
-    // First try to get from cache
-    const cachedLogo = await kongDB.images.where('canister_id').equals(token.canister_id).first();
-    if (cachedLogo && Date.now() - cachedLogo.timestamp < IMAGE_CACHE_DURATION) {
-      return cachedLogo.image_url;
+    // Check store first
+    const storeLogos = get(tokenLogoStore);
+    if (storeLogos[token.canister_id]) {
+      return storeLogos[token.canister_id];
     }
 
-    // If not in cache or expired, fetch from canister
-    const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
-    const res: any = await actor.icrc1_metadata();
-    const logoEntry = res.find(
-      ([key]) => key === 'icrc1:logo' || key === 'icrc1_logo'
-    );
-
-    let logoUrl = DEFAULT_LOGOS.DEFAULT;
-    if (logoEntry && logoEntry[1]?.Text) {
-      logoUrl = logoEntry[1].Text;
-      // Cache the logo
-      await kongDB.images.put({
-        canister_id: token.canister_id,
-        image_url: logoUrl,
-        timestamp: Date.now()
-      });
+    // Then check DB cache
+    const cachedLogo = await getTokenLogo(token.canister_id);
+    if (cachedLogo) {
+      return cachedLogo;
     }
 
-    return logoUrl;
+    // If no logo in cache, check if token has a logo URL
+    if (token.logo) {
+      await saveTokenLogo(token.canister_id, token.logo);
+      return token.logo;
+    }
+
+    // If all else fails, fetch from backend
+    try {
+      const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc_ledger, { anon: true });
+      const metadata = await actor.icrc1_metadata();
+      const logoResult = metadata.find(([key]) => key === 'icrc1:logo');
+      
+      if (logoResult) {
+        const [_, value] = logoResult;
+        if ('Text' in value) {
+          await saveTokenLogo(token.canister_id, value.Text);
+          return value.Text;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch logo for token ${token.canister_id}:`, error);
+    }
+
+    // Use default logo as fallback
+    return DEFAULT_LOGOS.DEFAULT;
   } catch (error) {
-    // Log the error but don't throw, return default logo instead
-    console.warn('Error getting icrc1 token metadata:', {
-      canister_id: token.canister_id,
-      error: error?.message || error
-    });
+    console.error('Error in fetchTokenLogo:', error);
     return DEFAULT_LOGOS.DEFAULT;
   }
 }

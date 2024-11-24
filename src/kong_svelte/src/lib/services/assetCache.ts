@@ -34,8 +34,11 @@ class AssetCacheService {
   private async initializeDb(): Promise<void> {
     try {
       this.db = new AssetCacheDatabase();
-      // Test the connection by performing a simple operation
-      await this.db.assets.count();
+      // Don't block on DB count, just ensure the connection works
+      this.db.assets.count().catch(error => {
+        console.error('Failed to access IndexedDB:', error);
+        this.db = null;
+      });
     } catch (error) {
       console.error('Failed to initialize IndexedDB:', error);
       this.db = null;
