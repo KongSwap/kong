@@ -12,8 +12,10 @@
   interface TokenRowProps {
     token: FE.Token;
     onClick?: () => void;
+    onSendClick?: () => void;
+    onReceiveClick?: () => void;
   }
-  let { token, onClick }: TokenRowProps = $props();
+  let { token, onClick, onSendClick, onReceiveClick }: TokenRowProps = $props();
   let logoUrl = '/tokens/not_verified.webp';  
 
   $effect(() => {
@@ -27,12 +29,12 @@
 
   function handleSend(e: MouseEvent) {
     e.stopPropagation();
-    console.log('Send clicked for', token.symbol);
+    onSendClick?.();
   }
 
   function handleReceive(e: MouseEvent) {
     e.stopPropagation();
-    console.log('Receive clicked for', token.symbol);
+    onReceiveClick?.();
   }
 
   const isFavorite = $derived($tokenStore.favoriteTokens[$auth.account?.owner?.toString()]?.includes(token.canister_id) ?? false);
