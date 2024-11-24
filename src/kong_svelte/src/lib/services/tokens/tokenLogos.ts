@@ -10,7 +10,7 @@ export const DEFAULT_LOGOS = {
   [ICP_CANISTER_ID]: '/tokens/icp.webp',
   DEFAULT: '/tokens/not_verified.webp'
 } as const;
-export const tokenLogoStore = writable<Record<string, string>>({});
+export const tokenLogoStore = writable<Record<string, string>>(DEFAULT_LOGOS);
 
 export async function saveTokenLogo(canister_id: string, image_url: string): Promise<void> {
   try {
@@ -215,23 +215,36 @@ export async function fetchTokenLogo(token: FE.Token): Promise<string> {
       return cachedLogo;
     }
 
-    // If no logo in cache, check if token has a logo URL
-    if (token.logo) {
-      await saveTokenLogo(token.canister_id, token.logo);
-      return token.logo;
-    }
-
     // If all else fails, fetch from backend
     try {
-      const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc_ledger, { anon: true });
-      const metadata = await actor.icrc1_metadata();
-      const logoResult = metadata.find(([key]) => key === 'icrc1:logo');
+      const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
+      const metadata: Array<[string, { Text?: string; Blob?: Uint8Array }]> = await actor.icrc1_metadata();
+      // First try icrc1:logo
+      let logoResult = metadata.find(([key]) => key === 'icrc1:logo' || key === 'icrc1:icrc1_logo');
+    
+      // If not found, try logo
+      if (!logoResult) {
+        logoResult = metadata.find(([key]) => key === 'logo');
+      }
       
       if (logoResult) {
-        const [_, value] = logoResult;
-        if ('Text' in value) {
+        const [_, value] = logoResult;        
+        if ('Text' in value && value.Text) {
+          // Handle base64 images
+          if (value.Text.startsWith('data:image/')) {
+            await saveTokenLogo(token.canister_id, value.Text);
+            return value.Text;
+          }
+          
           await saveTokenLogo(token.canister_id, value.Text);
           return value.Text;
+        } else if ('Blob' in value && value.Blob) {
+          // Convert Blob to base64
+          const base64 = btoa(String.fromCharCode(...value.Blob));
+          const mimeType = 'image/png'; // Assume PNG for blob data
+          const dataUrl = `data:${mimeType};base64,${base64}`;
+          await saveTokenLogo(token.canister_id, dataUrl);
+          return dataUrl;
         }
       }
     } catch (error) {

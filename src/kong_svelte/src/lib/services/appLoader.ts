@@ -129,139 +129,90 @@ export class AppLoader {
     "/backgrounds/grass.webp"
   ];
 
-  private async preloadTokenImages(): Promise<void> {
+  private async preloadTokenLogos(): Promise<void> {
     try {
-      // Get all tokens first
-      const store = get(tokenStore);
-      const tokens = store.tokens;
-      
-      // Fetch and preload logos for each token
-      const logoPromises = tokens.map(async token => {
+      const tokens = get(tokenStore);
+      if (!tokens?.tokens?.length) return;
+
+      // Update loading state with token logos
+      this.loadingState.update(state => ({
+        ...state,
+        totalAssets: state.totalAssets + tokens.tokens.length
+      }));
+
+      // Preload default token logos first
+      const defaultLogos = Object.values(DEFAULT_LOGOS);
+      await Promise.all(defaultLogos.map(logo => 
+        this.preloadAsset(logo, 'image', 'high')
+      ));
+
+      // Then preload other token logos
+      for (const token of tokens.tokens) {
         try {
-          // First try to get from cache using getTokenLogo
-          token.logo = await getTokenLogo(token.canister_id);
+          if (!token?.canister_id) continue;
           
-          // If not in cache, fetch from canister and save to cache
-          if (!token.logo) {
-            token.logo = await fetchTokenLogo(token);
-          }
-          
-          // Only preload if it's a URL and not a base64 string
-          if (token.logo && !token.logo.startsWith('data:')) {
-            await this.preloadAsset(token.logo, 'image', 'high');
+          const logo = await getTokenLogo(token.canister_id);
+          if (logo && !this.shouldSkipPreload(logo)) {
+            await this.preloadAsset(logo, 'image', 'low');
           }
         } catch (error) {
-          console.error(`Failed to preload logo for token ${token.canister_id}:`, error);
+          console.warn(`Failed to preload logo for token ${token.canister_id}:`, error);
         }
-      });
-      
-      // Wait for all logos to be fetched and preloaded
-      await Promise.all(logoPromises);
+      }
     } catch (error) {
-      console.error('Error preloading token images:', error);
+      console.error('Failed to preload token logos:', error);
       this.loadingState.update(state => ({
         ...state,
-        errors: [...state.errors, 'Failed to preload token images']
-      }));
-    }
-  }
-
-  private async preloadTokens(): Promise<void> {
-    try {
-      // Load all tokens first
-      const tokens = await tokenStore.loadTokens(true);
-      
-      // Extract and preload all token logos, filtering out base64 and blob URLs
-      const logoUrls = tokens
-        .map(token => token.logo)
-        .filter((logo): logo is string => 
-          typeof logo === 'string' && 
-          logo.length > 0 && 
-          !this.shouldSkipPreload(logo)
-        );
-      
-      // Add default logos
-      const allLogos = [...new Set([...Object.values(DEFAULT_LOGOS), ...logoUrls])];
-      
-      // Preload all logos in batches
-      await this.batchPreloadAssets(allLogos, 'image', 20);
-    } catch (error) {
-      console.error('Error preloading tokens:', error);
-      this.loadingState.update(state => ({
-        ...state,
-        errors: [...state.errors, 'Failed to preload tokens']
+        errors: [...state.errors, 'Failed to preload token logos']
       }));
     }
   }
 
   public async initialize(): Promise<void> {
-    getPnpInstance();
-    if (this.isInitialized) {
-      console.log('App already initialized');
+    if (this.isInitialized || !browser) {
       return;
     }
 
+    this.loadingState.set({
+      isLoading: true,
+      assetsLoaded: 0,
+      totalAssets: 0,
+      errors: []
+    });
+
     try {
-      console.log('Starting app initialization...');
-      this.loadingState.set({
-        isLoading: true,
-        assetsLoaded: 0,
-        totalAssets: 0,
-        errors: []
-      });
-
-      await this.initializeWallet().catch(error => {
-        console.error('Wallet initialization failed:', error);
-        throw error;
-      });
+      // Initialize core services
+      await this.initializeWallet();
       
-      // Generate required component paths
-      const svgComponents = this.generateRequiredComponents();
-      const allAssets = [...this.backgrounds, ...svgComponents];
-      const areCached = await assetCache.areAssetsCached(allAssets);
+      // Initialize settings first
+      await this.initializeSettings();
 
-      if (!areCached) {
-        // Start parallel loading of assets and token images
-        await Promise.all([
-          this.preloadTokenImages(),
-          this.batchPreloadAssets(this.backgrounds, 'image', 10),
-          this.batchPreloadAssets(svgComponents, 'svg', 50),
-        ]);
-      }
+      // Load tokens with a delay to ensure DB is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await tokenStore.loadTokens(true);
+      
+      // Load UI components in parallel with token operations
+      const components = this.generateRequiredComponents();
+      const componentPromise = Promise.all(
+        components.map(component => this.preloadAsset(component, 'svg', 'high'))
+      );
 
-      // Initialize stores in the correct order:
-      // 1. Settings (independent)
-      // 2. Tokens (depends on wallet)
-      // 3. Pools (depends on tokens)
-      await Promise.all([
-        this.initializeSettings().catch(error => {
-          console.warn('Settings initialization failed:', error);
-          settingsStore.initializeStore()
-        }),
-        this.preloadTokens().catch(error => {
-          console.error('Token initialization failed:', error);
-          throw error;
-        }),
-        this.initializeTokens().catch(error => {
-          console.error('Token initialization failed:', error);
-          throw error;
-        })
-      ]);
+      // Preload token logos after tokens are loaded
+      await this.preloadTokenLogos();
+      
+      // Wait for components to finish loading
+      await componentPromise;
 
-      await this.initializePools().catch(error => {
-        console.error('Pool initialization failed:', error);
-        throw error;
-      });
+      // Load pools after tokens are fully loaded
+      await poolStore.loadPools();
 
-      console.log('App initialization complete');
       this.isInitialized = true;
     } catch (error) {
-      console.error('Error during initialization:', error);
+      console.error('Failed to initialize app:', error);
       this.loadingState.update(state => ({
         ...state,
-        errors: [...state.errors, `Initialization failed: ${error.message}`]
+        errors: [...state.errors, 'Failed to initialize app']
       }));
-      throw error;
     } finally {
       this.loadingState.update(state => ({
         ...state,

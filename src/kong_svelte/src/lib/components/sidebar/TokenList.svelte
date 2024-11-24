@@ -12,13 +12,13 @@
   import TextInput from "$lib/components/common/TextInput.svelte";
   import TokenQtyInput from "$lib/components/common/TokenQtyInput.svelte";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
-  import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
+  import { tokenLogoStore, fetchTokenLogo } from "$lib/services/tokens/tokenLogos";
   import { toastStore } from "$lib/stores/toastStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { ArrowUpDown, Search } from 'lucide-svelte';
   import { Principal } from "@dfinity/principal";
-  import { onDestroy } from "svelte";
-    import { auth } from "$lib/services/auth";
+  import { onMount, onDestroy } from "svelte";
+  import { auth } from "$lib/services/auth";
 
   // Accept tokens prop for live data
   export let tokens: any[] = [];
@@ -207,6 +207,15 @@
     { id: 'name', label: 'Name' },
     { id: 'price', label: 'Price' }
   ];
+
+  // Preload token logos
+  onMount(async () => {
+    for (const token of tokens) {
+      if (token?.canister_id) {
+        await fetchTokenLogo(token);
+      }
+    }
+  });
 
   onDestroy(() => {
     handleCloseModal();

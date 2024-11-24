@@ -4,6 +4,7 @@
   import { clickOutside } from '$lib/actions/clickOutside';
   import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { writable } from 'svelte/store';
+  import { getTokenLogo } from '$lib/services/tokens/tokenLogos';
 
   let searchQuery = '';
   let searchInput: HTMLInputElement;
@@ -124,7 +125,7 @@
             tabindex="0"
           >
             <div class="token-info">
-              <img src={token.logo} alt={token.symbol} class="token-logo" />
+              <img src={await getTokenLogo(token.canister_id)} alt={token.symbol} class="token-logo" />
               <div class="token-details">
                 <div class="token-header">
                   <span class="token-symbol">{token.symbol}</span>
@@ -135,7 +136,7 @@
             <div class="token-actions">
               <div class="token-balance">
                 {#if token.balance !== undefined}
-                  <span class="balance-amount">{formatTokenAmount(token.balance)}</span>
+                  <span class="balance-amount">{formatTokenAmount(token.balance.toString(), token.decimals)}</span>
                 {/if}
               </div>
               <button 

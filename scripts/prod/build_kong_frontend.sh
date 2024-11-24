@@ -4,6 +4,6 @@ NETWORK="--network ic"
 
 ./switch_prod.sh
 
-npm i kong_frontend
+pnpm i kong_frontend
 
 dfx build ${NETWORK} ${IDENTITY} kong_frontend

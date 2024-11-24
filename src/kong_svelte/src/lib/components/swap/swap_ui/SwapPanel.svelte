@@ -191,13 +191,13 @@
   // Display calculations
   $: displayAmount =
     title === "You Receive"
-      ? amount || null
+      ? amount || "0"
       : isAnimating
         ? $animatedAmount.toFixed(decimals)
-        : amount || null;
+        : amount || "0";
 
   $: parsedAmount = parseFloat(displayAmount || "0");
-  $: tradeUsdValue = $tokenStore.prices[tokenInfo?.canister_id] * parsedAmount;
+  $: tradeUsdValue = $tokenStore?.prices[tokenInfo?.canister_id] * parsedAmount;
 </script>
 
 <Panel

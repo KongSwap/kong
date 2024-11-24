@@ -382,16 +382,19 @@
     animation: twinkle var(--duration) ease-in-out infinite;
     animation-delay: var(--delay);
     will-change: opacity, transform;
+    transform-style: preserve-3d;
+    box-shadow: 0 0 2px #fff;
+    opacity: 0;
   }
 
   @keyframes twinkle {
     0%, 100% {
       opacity: 0.2;
-      transform: scale(0.8);
+      transform: scale(0.8) translateZ(0);
     }
     50% {
       opacity: 1;
-      transform: scale(1);
+      transform: scale(1) translateZ(0);
     }
   }
 

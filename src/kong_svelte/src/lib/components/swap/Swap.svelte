@@ -19,7 +19,7 @@
   import { SwapService } from "$lib/services/swap/SwapService";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
-  import debounce from "lodash/debounce";
+  import debounce from "lodash-es/debounce";
     import { replaceState } from "$app/navigation";
   import { writable } from "svelte/store";
   import { createEventDispatcher } from 'svelte';

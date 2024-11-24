@@ -9,7 +9,6 @@
     import { browser } from '$app/environment';
 
     let swaps: SwapEvent[] = [];
-    let interval: NodeJS.Timeout | null = null;
     let isComponentMounted = false;
     let controller: AbortController | null = null;
 
@@ -64,19 +63,12 @@
             isComponentMounted = true;
             // Fetch initial data
             fetchSwapData();
-            
-            // Set up polling every 10 seconds
-            interval = setInterval(fetchSwapData, 10000);
         }
     });
 
     onDestroy(() => {
         isComponentMounted = false;
         unsubscribe();
-        if (interval) {
-            clearInterval(interval);
-            interval = null;
-        }
         if (controller) {
             controller.abort();
             controller = null;

@@ -5,6 +5,7 @@ import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
+import viteCompression from 'vite-plugin-compression';
 
 dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
@@ -22,7 +23,21 @@ export default defineConfig(({ mode }) => {
   return {
     build: {
       emptyOutDir: true,
-      sourcemap: true
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor': ['svelte'],
+          },
+        },
+      },
+      // Optimize build for production
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+        },
+      },
     },
     optimizeDeps: {
       esbuildOptions: {
@@ -67,6 +82,32 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff,woff2,ttf,json}'],
         },
       }),
+      // Add compression plugin for production only
+      {
+        name: 'vite-compression',
+        apply: 'build',
+        enforce: 'post',
+        ...viteCompression({
+          algorithm: 'gzip',
+          ext: '.gz',
+          threshold: 7760,
+          deleteOriginFile: true,
+          compressionOptions: { level: 9 },
+        }),
+      },
+      // Brotli compression for production only
+      {
+        name: 'vite-compression-br',
+        apply: 'build',
+        enforce: 'post',
+        ...viteCompression({
+          algorithm: 'brotliCompress',
+          ext: '.br',
+          threshold: 7760,
+          deleteOriginFile: true,
+          compressionOptions: { level: 11 },
+        }),
+      },
     ],
     resolve: {
       alias: [

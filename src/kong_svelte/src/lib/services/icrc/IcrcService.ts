@@ -191,7 +191,7 @@ export class IcrcService {
     try {
       const actor = await auth.getActor(
         token.canister_id,
-        canisterIDLs["icrc2"],
+        canisterIDLs.icrc2,
         { anon: true },
       );
       const result = await actor.icrc2_allowance({

@@ -5,17 +5,15 @@
     import TokenSelectorButton from "$lib/components/swap/swap_ui/TokenSelectorButton.svelte";
     import Button from "$lib/components/common/Button.svelte";
     import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
-    import { tweened } from "svelte/motion";
-    import { cubicOut } from "svelte/easing";
+    import { get } from "svelte/store";
     import { tokenPrices } from "$lib/services/tokens/tokenStore";
     import Panel from "$lib/components/common/Panel.svelte";
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
-    export let amount0: string = "";
-    export let amount1: string = "";
+    export let amount0: string = "0";
+    export let amount1: string = "0";
     export let loading: boolean = false;
-    export let previewMode: boolean = false;
     export let error: string | null = null;
     export let token0Balance: string = "0";
     export let token1Balance: string = "0";
@@ -27,9 +25,9 @@
     let showToken1Selector = false;
     let liquidityMode: 'full' | 'custom' = 'full';
 
-    function handleTokenSelect(index: 0 | 1, token: string) {
-      if ((index === 0 && token === token1?.canister_id) || 
-          (index === 1 && token === token0?.canister_id)) {
+    function handleTokenSelect(index: 0 | 1, canister_id: string) {
+      if ((index === 0 && canister_id === token1?.canister_id) || 
+          (index === 1 && canister_id === token0?.canister_id)) {
         return;
       }
       onTokenSelect(index);
@@ -49,7 +47,7 @@
 
     function getUsdValue(amount: string, token: FE.Token | null): string {
       if (!amount || !token) return "0.00";
-      const price = tokenPrices.get(token.canister_id);
+      const price = get(tokenPrices)[token.canister_id];
       return (price * Number(amount)).toFixed(2);
     }
 
@@ -205,18 +203,18 @@
   {#if showToken0Selector}
     <TokenSelector
       show={true}
-      onSelect={(token) => handleTokenSelect(0, token)}
+      onSelect={(token) => handleTokenSelect(0, token.canister_id)}
       onClose={() => (showToken0Selector = false)}
-      currentToken={token1?.canister_id}
+      currentToken={token1}
     />
   {/if}
 
   {#if showToken1Selector}
     <TokenSelector
       show={true}
-      onSelect={(token) => handleTokenSelect(1, token)}
+      onSelect={(token) => handleTokenSelect(1, token.canister_id)}
       onClose={() => (showToken1Selector = false)}
-      currentToken={token0?.canister_id}
+      currentToken={token0}
     />
   {/if}
 

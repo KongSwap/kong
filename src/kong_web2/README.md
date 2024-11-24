@@ -6,7 +6,7 @@ A Fastify API with Prisma and PostgreSQL.
 
 1. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 2. Set up your PostgreSQL database and update the DATABASE_URL in `.env` if needed.
@@ -25,19 +25,19 @@ npx prisma migrate dev
 
 Run the development server:
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Build
 
 Build for production:
 ```bash
-npm run build
+pnpm run build
 ```
 
 Run in production:
 ```bash
-npm start
+pnpm start
 ```
 
 ## API Endpoints

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getTokenLogo } from '$lib/services/tokens/tokenLogos';
   import Button from '$lib/components/common/Button.svelte';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { derived } from 'svelte/store';
@@ -33,7 +34,7 @@
     <div class="token-logo-wrapper">
       {#if $token}
         <img 
-          src={$token.logo} 
+          src={await getTokenLogo($token.canister_id)} 
           alt={$token.symbol} 
           class="token-logo"
           loading="lazy"

@@ -134,10 +134,15 @@ class AssetCacheService {
           const age = Date.now() - cached.timestamp;
           
           if (age < this.CACHE_DURATION) {
-            if (!cached.objectUrl) {
-              cached.objectUrl = URL.createObjectURL(cached.blob);
-              await this.db.assets.put(cached);
+            // If there's an existing objectUrl, revoke it to prevent memory leaks
+            if (cached.objectUrl) {
+              URL.revokeObjectURL(cached.objectUrl);
             }
+            
+            // Always create a fresh blob URL
+            cached.objectUrl = URL.createObjectURL(cached.blob);
+            cached.timestamp = Date.now(); // Update timestamp
+            await this.db.assets.put(cached);
             return cached.objectUrl;
           } else {
             if (cached.objectUrl) {
@@ -151,7 +156,7 @@ class AssetCacheService {
       return await this.fetchAndCache(url);
     } catch (error) {
       console.debug('Error getting asset:', error);
-      return '';
+      return url; // Return original URL as fallback instead of empty string
     }
   }
 

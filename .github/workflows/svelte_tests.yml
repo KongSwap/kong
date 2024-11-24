@@ -25,13 +25,13 @@ jobs:
         with:
           path: |
             kong_svelte/node_modules
-            kong_svelte/.npm
+            kong_svelte/.pnpm
           key: ${{ runner.os }}-node-${{ hashFiles('kong_svelte/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
       - name: Install kong_svelte dependencies
-        run: npm -w kong_svelte install
+        run: pnpm -w kong_svelte install
 
       - name: Run kong_svelte tests
-        run: npm -w kong_svelte run test
+        run: pnpm -w kong_svelte run test
