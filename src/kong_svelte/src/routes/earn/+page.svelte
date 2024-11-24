@@ -72,7 +72,7 @@
       </div>
 
       {#if $activeSection === "pools"}
-        <Panel variant="green" type="main" className="glass-panel">
+        <Panel variant="green" type="main">
           <PoolsTable
             pools={$poolsList}
             loading={$poolsLoading}
@@ -83,7 +83,7 @@
           />
         </Panel>
       {:else if $activeSection === "staking"}
-        <Panel variant="green" type="main" className="glass-panel">
+        <Panel variant="green">
           <div class="coming-soon-container">
             <h2 class="coming-soon-title">Stake & Earn</h2>
             <div class="coming-soon-badge">Coming Soon</div>
@@ -96,7 +96,7 @@
           </div>
         </Panel>
       {:else if $activeSection === "lending"}
-        <Panel variant="green" type="main" className="glass-panel">
+        <Panel variant="green" className="glass-panel">
           <div class="coming-soon-container">
             <h2 class="coming-soon-title">Borrow & Lend</h2>
             <div class="coming-soon-badge">Coming Soon</div>
