@@ -58,7 +58,6 @@ type AddPoolReply = record {
     symbol : text;
     request_id : nat64;
     status : text;
-    balance : nat;
     chain_0 : text;
     symbol_0 : text;
     amount_0 : nat;

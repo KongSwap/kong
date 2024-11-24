@@ -1,6 +1,6 @@
-use kong_lib::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
-use kong_lib::stable_user::stable_user::{StableUser, StableUserId};
+use super::stable_user::{StableUser, StableUserId};
 
+use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
 use crate::stable_memory::USER_MAP;
 
 /// return StableUser by user_id

@@ -1,5 +1,5 @@
+use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use ic_cdk::{query, update};
-use kong_lib::stable_kong_settings::stable_kong_settings::StableKongSettings;
 
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::KONG_SETTINGS;

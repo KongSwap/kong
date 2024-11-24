@@ -1,5 +1,5 @@
+use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use ic_cdk::{query, update};
-use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;

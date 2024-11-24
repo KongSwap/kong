@@ -16,12 +16,11 @@ pub fn create_add_pool_reply(add_pool_tx: &AddPoolTx) -> AddPoolReply {
 }
 
 pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> AddPoolReply {
-    let (symbol, balance, chain_0, symbol_0, balance_0, chain_1, symbol_1, balance_1, lp_fee_bps, lp_token_symbol, lp_token_supply) =
+    let (symbol, chain_0, symbol_0, balance_0, chain_1, symbol_1, balance_1, lp_fee_bps, lp_token_symbol, lp_token_supply) =
         pool_map::get_by_pool_id(add_pool_tx.pool_id).map_or_else(
             || {
                 (
                     "Pool symbol not found".to_string(),
-                    nat_zero(),
                     "Pool chain_0 not found".to_string(),
                     "Pool symbol_0 not found".to_string(),
                     nat_zero(),
@@ -36,7 +35,6 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
             |pool| {
                 (
                     pool.symbol(),
-                    pool.get_balance(),
                     pool.chain_0(),
                     pool.symbol_0(),
                     pool.balance_0.clone(),
@@ -54,7 +52,6 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
         symbol,
         request_id: add_pool_tx.request_id,
         status: add_pool_tx.status.to_string(),
-        balance,
         chain_0,
         symbol_0,
         amount_0: add_pool_tx.amount_0.clone(),
@@ -91,7 +88,6 @@ pub fn create_add_pool_reply_failed(
         symbol: "Pool not added".to_string(),
         request_id,
         status: StatusTx::Failed.to_string(),
-        balance: nat_zero(),
         chain_0: chain_0.to_string(),
         symbol_0: symbol_0.to_string(),
         amount_0: nat_zero(),

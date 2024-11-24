@@ -1,6 +1,6 @@
+use crate::ic::logging::info_log;
+use crate::requests::request_reply::RequestReply;
 use ic_cdk::{init, post_upgrade, pre_upgrade, query};
-use kong_lib::ic::logging::info_log;
-use kong_lib::requests::request_reply::RequestReply;
 
 use super::{APP_NAME, APP_VERSION};
 

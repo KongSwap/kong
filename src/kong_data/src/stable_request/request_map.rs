@@ -1,4 +1,4 @@
-use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
+use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use std::cmp::min;
 use std::ops::Bound;
 

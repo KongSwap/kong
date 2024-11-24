@@ -1,5 +1,5 @@
+use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use ic_cdk::{query, update};
-use kong_lib::stable_message::stable_message::{StableMessage, StableMessageId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;

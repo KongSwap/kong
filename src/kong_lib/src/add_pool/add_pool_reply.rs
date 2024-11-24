@@ -11,7 +11,6 @@ pub struct AddPoolReply {
     pub symbol: String,
     pub request_id: u64,
     pub status: String,
-    pub balance: Nat,
     pub chain_0: String,
     pub symbol_0: String,
     pub amount_0: Nat,
