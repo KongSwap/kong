@@ -49,7 +49,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         "/api": {
-          target: "http://localhost:4943",
+          target: "http://127.0.0.1:4943",
           changeOrigin: true,
         },
       },
@@ -82,32 +82,24 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff,woff2,ttf,json}'],
         },
       }),
-      // Add compression plugin for production only
-      {
-        name: 'vite-compression',
-        apply: 'build',
-        enforce: 'post',
-        ...viteCompression({
-          algorithm: 'gzip',
-          ext: '.gz',
-          threshold: 7760,
-          deleteOriginFile: true,
-          compressionOptions: { level: 9 },
-        }),
-      },
-      // Brotli compression for production only
-      {
-        name: 'vite-compression-br',
-        apply: 'build',
-        enforce: 'post',
-        ...viteCompression({
-          algorithm: 'brotliCompress',
-          ext: '.br',
-          threshold: 7760,
-          deleteOriginFile: true,
-          compressionOptions: { level: 11 },
-        }),
-      },
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 6400,
+        algorithm: 'gzip',
+        ext: '.gz',
+        compressionOptions: { level: 8 },
+        deleteOriginFile: false
+      }),
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 6400,
+        algorithm: 'brotliCompress',
+        ext: '.br',
+        compressionOptions: { level: 11 },
+        deleteOriginFile: false
+      }),
     ],
     resolve: {
       alias: [
