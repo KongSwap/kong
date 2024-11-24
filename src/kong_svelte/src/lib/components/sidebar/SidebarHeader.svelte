@@ -72,7 +72,7 @@
 <svelte:window bind:innerWidth={windowWidth} />
 
 <header class="min-w-[250px] backdrop-blur-md">
-  <div class="flex flex-col gap-3 p-3">
+  <div class="flex flex-col gap-3 p-1">
     {#if $auth.isConnected}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
         <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-144px)]">
@@ -100,15 +100,10 @@
         </div>
         <div class="flex gap-2">
           <button
-            class="expand-btn border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
+            class="expand-btn border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={() => sidebarStore.toggleExpand()}
             aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
           >
-            <span
-              class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100"
-            >
-              {isExpanded ? "Collapse" : "Expand"}
-            </span>
             {#if isExpanded}
               <Minimize2 size={22} />
             {:else}
@@ -116,15 +111,10 @@
             {/if}
           </button>
           <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
+            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={handleDisconnect}
             aria-label="Disconnect wallet"
           >
-            <span
-              class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100"
-            >
-              Disconnect
-            </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="22"
@@ -142,15 +132,10 @@
             </svg>
           </button>
           <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700 group relative"
+            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={onClose}
             aria-label="Close sidebar"
           >
-            <span
-              class="pointer-events-none absolute -top-8 z-[1000] left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition before:absolute before:left-1/2 before:bottom-[-6px] before:-translate-x-1/2 before:border-4 before:border-transparent before:border-b-gray-900 before:rotate-180 before:content-[''] group-hover:opacity-100"
-            >
-              Close
-            </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="32"

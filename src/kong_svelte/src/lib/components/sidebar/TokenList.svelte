@@ -317,12 +317,14 @@
 
 <style lang="postcss">
   .token-list {
-    @apply w-full flex flex-col gap-2 px-3 py-4;
+    @apply w-full flex flex-col gap-2 px-3;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    margin-right: -3px; /* Compensate for scrollbar width */
+    padding-right: calc(3px + 12px); /* Add extra padding to account for scrollbar */
   }
 
   .token-list::-webkit-scrollbar {
