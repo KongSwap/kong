@@ -608,6 +608,15 @@
   }
 
   .swap-footer {
+    margin-top: var(--footer-margin, 0);
+  }
+
+  :global([data-theme="modern"]) .swap-footer {
+    --footer-margin: 0.05rem;
+  }
+
+  :global([data-theme="pixel"]) .swap-footer {
+    --footer-margin: 0;
     padding: 0px;
   }
 

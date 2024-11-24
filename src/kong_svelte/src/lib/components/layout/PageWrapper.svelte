@@ -289,23 +289,6 @@
     }
   }
 
-  .retro-mountains {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 25%;
-    background-image: 
-      linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%),
-      linear-gradient(-45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%),
-      linear-gradient(45deg, #4a90a8 50%, transparent 50%),
-      linear-gradient(-45deg, #4a90a8 50%, transparent 50%);
-    background-size: 32px 32px, 32px 32px, 16px 16px, 16px 16px;
-    background-position: 0 0, 0 0, 16px 0, -16px 0;
-    background-repeat: repeat-x;
-    image-rendering: pixelated;
-  }
-
   .background {
     position: fixed;
     top: 0;

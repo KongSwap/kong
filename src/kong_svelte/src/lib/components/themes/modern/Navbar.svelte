@@ -213,17 +213,33 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1rem;
+    padding: 0 0.5rem;
+    position: relative;
+  }
+
+  @media (min-width: 819px) {
+    .nav-container {
+      padding: 0 1rem;
+    }
   }
 
   /* Section Layout */
-  .left-section, .center-section, .right-section {
-    flex: 1;
+  .left-section, .right-section {
+    flex: 0 0 auto;
+    width: 80px;
     display: flex;
     align-items: center;
   }
   .left-section { justify-content: flex-start; }
-  .center-section { justify-content: center; }
+  .center-section { 
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 1rem;
+  }
   .right-section { justify-content: flex-end; gap: 0.75rem; }
 
   /* Navigation */
@@ -317,7 +333,7 @@
   }
 
   /* Mobile Adjustments */
-  @media (max-width: 768px) {
+  @media (max-width: 818px) {
     .nav-link {
       height: 36px;
       padding: 0.5rem 1rem;
@@ -332,22 +348,37 @@
     .wallet-btn {
       min-width: 100px;
     }
+
+    .left-section, .right-section {
+      width: 60px;
+    }
+
+    .center-section {
+      padding: 0 0.5rem;
+    }
+
+    .logo-link {
+      max-width: 280px;
+    }
+
+    .logo-wide {
+      height: 2.5rem;
+      object-fit: contain;
+    }
   }
 
   /* Logo */
   .logo-link {
     display: flex;
     align-items: center;
-    transition: transform 0.3s;
-  }
-  .logo-link:hover {
-    opacity: 0.95;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
   }
 
   .logo-wide {
-    height: 2.5rem;
-    width: auto;
-    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.25));
+    width: 100%;
+    height: 2rem;
   }
 
   /* Mobile Icons */
@@ -368,6 +399,17 @@
   }
 
   .mobile-icon-btn:active {
+  }
+
+  /* Mobile specific styles */
+  @media (max-width: 639px) {
+    .mobile-icon-btn {
+      padding: 0.5rem;
+    }
+    
+    .center-section {
+      padding: 0 0.5rem;
+    }
   }
 
   /* Mobile Menu */

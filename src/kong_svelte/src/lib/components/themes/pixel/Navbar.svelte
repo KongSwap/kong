@@ -335,6 +335,7 @@
     transition: all 0.2s ease-in-out;
     border-radius: 0.5rem;
     margin-top: 8px;
+    margin-right: 12px;
   }
 
   .settings-button:hover {

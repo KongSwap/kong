@@ -50,9 +50,12 @@
     <Toast />
   </PageWrapper>
 
-<style>
+<style lang="postcss">
   .nav-container {
     content: normal;
+  }
+
+  :global([data-theme="modern"]) .nav-container {
     margin-bottom: 1rem;
   }
 

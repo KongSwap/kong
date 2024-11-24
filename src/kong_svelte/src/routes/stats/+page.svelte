@@ -177,8 +177,8 @@
   });
 </script>
 
-<section class="flex justify-center w-full">
-  <div class="z-10 flex justify-center w-full max-w-[1400px] mx-auto">
+<section class="flex justify-center w-full px-4">
+  <div class="z-10 flex justify-center w-full max-w-[1300px] mx-auto">
     <div class="flex flex-col w-full gap-6">
       <!-- Market Overview Panel -->
       <Panel variant="green" type="main" className="market-stats-panel glass-panel">
