@@ -373,6 +373,7 @@
           disabled={isSwapButtonDisabled}
           onClick={handleSwapClick}
           width="100%"
+          size="big"
         >
           {buttonText}
         </Button>

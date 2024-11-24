@@ -214,7 +214,7 @@
       </Panel>
 
       <!-- Tokens Panel -->
-      <Panel variant="green" type="secondary  " className="content-panel glass-panel">
+      <Panel variant="green" type="main" className="content-panel glass-panel">
         <div class="flex justify-between items-center mb-4">
           <div class="flex items-center gap-4">
             <h3 class="text-white/80 font-medium">Tokens</h3>
