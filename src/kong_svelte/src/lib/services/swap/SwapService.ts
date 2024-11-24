@@ -194,8 +194,6 @@ export class SwapService {
     try {
       const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
       const result = await actor.requests(requestIds);
-      console.log("Request status result:", result);
-      console.log("Request status:", result);
       return result;
     } catch (error) {
       console.error("Error getting request status:", error);
@@ -485,7 +483,6 @@ export class SwapService {
 
         
         const store = get(tokenStore);
-        console.log("store.tokens:", store.tokens);
         const price = await tokenStore.refetchPrice(
           store.tokens.find((t) => t.canister_id === receiveToken.canister_id),
         );
