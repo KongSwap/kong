@@ -124,7 +124,7 @@
 
   const claimTokens = async () => {
     await tokenStore.claimFaucetTokens();
-    await tokenStore.loadBalances();
+    await tokenStore.loadBalances($auth.account?.owner);
     toastStore.success('Test tokens claimed successfully');
   };
 

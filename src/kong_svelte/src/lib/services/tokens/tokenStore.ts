@@ -48,6 +48,9 @@ const debounce = <T extends (...args: any[]) => any>(fn: T, ms = 300): T => {
 
 const DEBUG = true;
 
+// Module-level interval variable
+let balanceUpdateInterval: number | undefined;
+
 function createTokenStore() {
   const initialState: TokenState = {
     tokens: [],
@@ -65,8 +68,6 @@ function createTokenStore() {
   const store = writable<TokenState>(initialState);
   
   // Set up periodic balance updates
-  let balanceUpdateInterval: number;
-  
   if (typeof window !== 'undefined') {
     balanceUpdateInterval = window.setInterval(() => {
       const currentStore = get(store);
@@ -366,6 +367,12 @@ function createTokenStore() {
   };
 }
 
+export const cleanup = () => {
+  if (balanceUpdateInterval) {
+    clearInterval(balanceUpdateInterval);
+  }
+};
+
 export const tokenStore: {
   subscribe: (run: (value: TokenState) => void) => () => void;
   update: (updater: (state: TokenState) => TokenState) => void;
@@ -444,9 +451,9 @@ export const favoriteTokens = derived(
   tokenStore,
   ($store) => {
     const wallet = get(auth);
-    console.log("Derived favoriteTokens - tokenStore:", $store);
-    console.log("Derived favoriteTokens - auth:", wallet);
+
     if (!$store || !wallet) return [];
+
     const walletId = wallet.account?.owner?.toString() || "anonymous";
     return (
       $store?.tokens?.filter((token) =>
@@ -458,15 +465,18 @@ export const favoriteTokens = derived(
 
 export const portfolioValue = derived([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
   if (!$tokenStore?.tokens || !$poolStore?.pools) return "0.00";
-  let totalValue = 0;
+  let totalValue = 0.0;
 
   for (const token of $tokenStore.tokens) {
-    const usdValue = parseFloat(
-      $tokenStore.balances[token.canister_id]?.in_usd || "0",
+    const usdValue = Number(
+      $tokenStore?.balances[token.canister_id]?.in_usd?.replace(/,/g, '') || "0",
     );
     totalValue += usdValue;
   }
-  return formatToNonZeroDecimal(totalValue);
+  return totalValue.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
 });
 
 export const tokenPrices = derived(tokenStore, ($store) => $store?.prices ?? {});

@@ -7,6 +7,7 @@ import { settingsStore } from "$lib/services/settings/settingsStore";
 import { assetCache } from "$lib/services/assetCache";
 import { canisterId as kongBackendCanisterId } from '../../../../declarations/kong_backend';
 import { getPnpInstance } from "$lib/services/pnp/PnpInitializer";
+import { DEFAULT_LOGOS, IMAGE_CACHE_DURATION, fetchTokenLogo, getTokenLogo } from '$lib/services/tokens/tokenLogos';
 
 export class AppLoader {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -37,8 +38,14 @@ export class AppLoader {
   }
 
   // Asset preloading with priority, batching, and tracking
+  private shouldSkipPreload(url: string): boolean {
+    return url.startsWith('data:image/') || url.startsWith('blob:');
+  }
+
   private async preloadAsset(url: string, type: 'image' | 'svg' = 'image', priority: 'high' | 'low' = 'high'): Promise<void> {
-    if (!browser || this.preloadedAssets.has(url)) return;
+    if (!browser || this.preloadedAssets.has(url) || this.shouldSkipPreload(url)) {
+      return;
+    }
     
     this.pendingAssets.add(url);
     this.loadingState.update(state => ({
@@ -122,6 +129,71 @@ export class AppLoader {
     "/backgrounds/grass.webp"
   ];
 
+  private async preloadTokenImages(): Promise<void> {
+    try {
+      // Get all tokens first
+      const store = get(tokenStore);
+      const tokens = store.tokens;
+      
+      // Fetch and preload logos for each token
+      const logoPromises = tokens.map(async token => {
+        try {
+          // First try to get from cache using getTokenLogo
+          token.logo = await getTokenLogo(token.canister_id);
+          
+          // If not in cache, fetch from canister and save to cache
+          if (!token.logo) {
+            token.logo = await fetchTokenLogo(token);
+          }
+          
+          // Only preload if it's a URL and not a base64 string
+          if (token.logo && !token.logo.startsWith('data:')) {
+            await this.preloadAsset(token.logo, 'image', 'high');
+          }
+        } catch (error) {
+          console.error(`Failed to preload logo for token ${token.canister_id}:`, error);
+        }
+      });
+      
+      // Wait for all logos to be fetched and preloaded
+      await Promise.all(logoPromises);
+    } catch (error) {
+      console.error('Error preloading token images:', error);
+      this.loadingState.update(state => ({
+        ...state,
+        errors: [...state.errors, 'Failed to preload token images']
+      }));
+    }
+  }
+
+  private async preloadTokens(): Promise<void> {
+    try {
+      // Load all tokens first
+      const tokens = await tokenStore.loadTokens(true);
+      
+      // Extract and preload all token logos, filtering out base64 and blob URLs
+      const logoUrls = tokens
+        .map(token => token.logo)
+        .filter((logo): logo is string => 
+          typeof logo === 'string' && 
+          logo.length > 0 && 
+          !this.shouldSkipPreload(logo)
+        );
+      
+      // Add default logos
+      const allLogos = [...new Set([...Object.values(DEFAULT_LOGOS), ...logoUrls])];
+      
+      // Preload all logos in batches
+      await this.batchPreloadAssets(allLogos, 'image', 20);
+    } catch (error) {
+      console.error('Error preloading tokens:', error);
+      this.loadingState.update(state => ({
+        ...state,
+        errors: [...state.errors, 'Failed to preload tokens']
+      }));
+    }
+  }
+
   public async initialize(): Promise<void> {
     getPnpInstance();
     if (this.isInitialized) {
@@ -143,16 +215,17 @@ export class AppLoader {
         throw error;
       });
       
-      // Load and cache required assets
+      // Generate required component paths
       const svgComponents = this.generateRequiredComponents();
       const allAssets = [...this.backgrounds, ...svgComponents];
       const areCached = await assetCache.areAssetsCached(allAssets);
 
       if (!areCached) {
-        // Start parallel loading of assets
+        // Start parallel loading of assets and token images
         await Promise.all([
-          this.batchPreloadAssets(this.backgrounds, 'image', 5),
-          this.batchPreloadAssets(svgComponents, 'svg', 20)
+          this.preloadTokenImages(),
+          this.batchPreloadAssets(this.backgrounds, 'image', 10),
+          this.batchPreloadAssets(svgComponents, 'svg', 50),
         ]);
       }
 
@@ -164,6 +237,10 @@ export class AppLoader {
         this.initializeSettings().catch(error => {
           console.warn('Settings initialization failed:', error);
           settingsStore.initializeStore()
+        }),
+        this.preloadTokens().catch(error => {
+          console.error('Token initialization failed:', error);
+          throw error;
         }),
         this.initializeTokens().catch(error => {
           console.error('Token initialization failed:', error);
