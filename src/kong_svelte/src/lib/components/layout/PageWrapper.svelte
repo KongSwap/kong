@@ -14,13 +14,11 @@
     children?: Component | (() => Component);
   }>();
 
-  let poolsBgUrl = $state("");
-  let jungleBgUrl = $state("");
-  let skylineUrl = $state("");
   let isChanging = $state(false);
   let scrollY = $state(0);
   let mouseX = $state(0);
   let mouseY = $state(0);
+  let skylineUrl = $state("");
 
   let background = $derived.by(() => {
     if ($themeStore === 'modern') {
@@ -31,8 +29,9 @@
       };
     }
 
+    // Pixel theme always uses the gradient background
     if ($themeStore === 'pixel') {
-      const defaultBg = { 
+      return { 
         image: 'none', 
         color: '#5bb2cf',
         gradient: `linear-gradient(180deg, 
@@ -40,21 +39,6 @@
           #87CEEB 35%, 
           #5bb2cf 100%)`
       };
-      
-      if (!page) return defaultBg;
-      
-      if (page.includes("pools")) {
-        return poolsBgUrl 
-          ? { image: `url(${poolsBgUrl})`, color: '#5bb2cf', gradient: defaultBg.gradient }
-          : defaultBg;
-      }
-      if (page.includes("swap")) {
-        return jungleBgUrl
-          ? { image: `url(${jungleBgUrl})`, color: '#5bb2cf', gradient: defaultBg.gradient }
-          : defaultBg;
-      }
-      if (page.includes("stats")) return defaultBg;
-      return defaultBg;
     }
 
     return { image: 'none', color: '#030407', gradient: 'none' };
@@ -70,10 +54,6 @@
   });
 
   onMount(async () => {
-    if ($themeStore === 'pixel') {
-      poolsBgUrl = await assetCache.getAsset("/backgrounds/pools.webp");
-      jungleBgUrl = await assetCache.getAsset("/backgrounds/kong_jungle2.webp");
-    }
     skylineUrl = await assetCache.getAsset("/backgrounds/skyline.svg");
     if (browser) {
       window.addEventListener('scroll', () => {
@@ -135,9 +115,7 @@
   {:else}
     <div 
       class="pixel-background" 
-      style:background={background.image !== 'none' 
-        ? background.image 
-        : background.gradient}
+      style:background={background.gradient}
     >
       <div class="floating-pixels">
         {#each Array(15) as _, i}
@@ -153,9 +131,6 @@
           />
         {/each}
       </div>
-      {#if !background.image}
-        <div class="retro-mountains"></div>
-      {/if}
     </div>
     {#if $themeStore === 'pixel'}
       <Clouds/>
