@@ -1,5 +1,3 @@
-use candid::Nat;
-
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_tx::send_tx::SendTx;
@@ -27,18 +25,5 @@ pub fn create_send_reply_with_tx_id(tx_id: u64, send_tx: &SendTx) -> SendReply {
         amount: send_tx.amount.clone(),
         to_address,
         ts: send_tx.ts,
-    }
-}
-
-pub fn create_send_reply_failed(request_id: u64, chain: &str, symbol: &str, amount: &Nat, to_address: &str, ts: u64) -> SendReply {
-    SendReply {
-        tx_id: 0,
-        request_id,
-        status: "Failed".to_string(),
-        chain: chain.to_string(),
-        symbol: symbol.to_string(),
-        amount: amount.clone(),
-        to_address: to_address.to_string(),
-        ts,
     }
 }

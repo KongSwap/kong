@@ -46,21 +46,3 @@ pub fn get_by_principal_id(principal_id: &str) -> Result<Option<StableUser>, Str
 pub fn get_by_caller() -> Result<Option<StableUser>, String> {
     get_by_principal_id(&caller_principal_id())
 }
-
-/// return StableUser by referral code
-///
-/// # Arguments
-///
-/// * `referral_code` - referral code of the user
-///
-/// # Returns
-///
-/// * `Some(StableUser)` if user with referral code exists
-/// * `None` if user with referral code does not exist
-pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
-    USER_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .find_map(|(_, v)| if v.my_referral_code == referral_code { Some(v) } else { None })
-    })
-}

@@ -26,18 +26,6 @@ pub struct StableMessage {
     pub ts: u64,         // timestamp
 }
 
-impl StableMessage {
-    pub fn new(to_user_id: u32, title: &str, message: &str, ts: u64) -> Self {
-        Self {
-            message_id: 0,
-            to_user_id,
-            title: title.to_string(),
-            message: message.to_string(),
-            ts,
-        }
-    }
-}
-
 impl Storable for StableMessage {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()

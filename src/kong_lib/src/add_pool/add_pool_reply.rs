@@ -22,7 +22,6 @@ pub struct AddPoolReply {
     pub add_lp_token_amount: Nat,
     pub lp_fee_bps: u8,
     pub lp_token_symbol: String,
-    pub lp_token_supply: Nat,
     pub transfer_ids: Vec<TransferIdReply>,
     pub claim_ids: Vec<u64>,
     pub on_kong: bool,

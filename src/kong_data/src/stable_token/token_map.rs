@@ -1,7 +1,5 @@
 use wildmatch::WildMatch;
 
-use super::ic_token::ICToken;
-use super::lp_token::LPToken;
 use super::token::Token;
 use super::token_map;
 

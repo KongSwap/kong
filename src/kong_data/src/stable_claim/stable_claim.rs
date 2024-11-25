@@ -52,23 +52,6 @@ pub struct StableClaim {
     pub ts: u64,
 }
 
-impl StableClaim {
-    pub fn new(user_id: u32, token_id: u32, amount: &Nat, request_id: Option<u64>, to_address: Option<Address>, ts: u64) -> Self {
-        Self {
-            claim_id: 0, // will be set with insert_claim into CLAIM_MAP
-            user_id,
-            status: ClaimStatus::Unclaimed,
-            token_id,
-            amount: amount.clone(),
-            request_id,
-            to_address,
-            attempt_request_id: Vec::new(),
-            transfer_ids: Vec::new(),
-            ts,
-        }
-    }
-}
-
 impl Storable for StableClaim {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()

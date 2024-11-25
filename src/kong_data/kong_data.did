@@ -67,7 +67,6 @@ type AddPoolReply = record {
     add_lp_token_amount : nat;
     lp_fee_bps : nat8;
     lp_token_symbol : text;
-    lp_token_supply : nat;
     transfer_ids : vec TransferIdReply;
     claim_ids : vec nat64;
     on_kong : bool;

@@ -6,7 +6,7 @@ use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
-pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
+fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     let mut symbols = symbol.split('_');
     let symbol_0 = symbols.next().ok_or_else(|| format!("Invalid symbol {}", symbol))?;
     let symbol_1 = symbols.next().ok_or_else(|| format!("Invalid symbol {}", symbol))?;
@@ -21,7 +21,7 @@ pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     ))
 }
 
-pub fn address_with_chain(address: &str) -> Result<String, String> {
+fn address_with_chain(address: &str) -> Result<String, String> {
     let mut addresses = address.split('_');
     let address_0 = addresses.next().ok_or_else(|| format!("Invalid address {}", address))?;
     let address_1 = addresses.next().ok_or_else(|| format!("Invalid address {}", address))?;

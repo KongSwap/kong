@@ -1,6 +1,5 @@
 mod add_liquidity;
 mod add_pool;
-mod add_token;
 mod canister;
 mod chains;
 mod claims;
