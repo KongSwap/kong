@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => {
           name: 'KongSwap',
           short_name: 'KongSwap',
           description: 'KongSwap is a decentralized exchange for the Internet Computer',
-          theme_color: '#ffffff',
+          theme_color: '#0E111B',
           icons: [
             {
               src: '/icons/icon-192x192.png',
