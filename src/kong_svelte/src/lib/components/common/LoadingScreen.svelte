@@ -3,13 +3,13 @@
   import { cubicOut } from "svelte/easing";
   import { onMount } from "svelte";
   import kongLogo from "$lib/assets/kong_logo.png";
-  import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
   import { loadingState } from "$lib/services/loading/loadingStore";
   import { appLoader } from "$lib/services/appLoader";
   import { derived } from "svelte/store";
   import { kongDB } from "$lib/services/db";
   import { liveQuery } from "dexie";
   import icpLogo from "$lib/assets/tokens/icp.webp";
+  import gorillaRight from "$lib/assets/gorilla-facing-right.svg";
 
   let currentLogo = kongLogo;
   let currentMessage = "Loading...";
@@ -18,7 +18,7 @@
   let glitchActive = false;
   let glitchOutActive = false;
   let nextImageIndex = 0;
-  let progress = 0;
+  let frozenProgress = 0;
   let messages = [
     "Fetching tokens...",
     "Filling pools...",
@@ -166,17 +166,64 @@
 
   function handleOutro(node: HTMLElement) {
     isShuttingDown = true;
+    const progressFill = node.querySelector('.progress-fill') as HTMLElement;
+    if (progressFill) {
+      const currentWidth = progressFill.style.width;
+      progressFill.style.transition = 'none';
+      progressFill.style.width = currentWidth;
+    }
     return {
-      duration: 400,
-      css: () => ''
+      duration: 800,
+      css: (t: number, u: number) => {
+        const phase = u * 2;
+        let scaleX = 1;
+        let scaleY = 1;
+        
+        if (phase <= 1) {
+          const compress = 1 - (Math.pow(phase, 3) * 0.95);
+          scaleX = compress;
+          scaleY = compress;
+        } else {
+          const stretchPhase = phase - 1;
+          scaleX = 0.05 + (Math.pow(stretchPhase, 0.5) * 3);
+          scaleY = Math.max(0.05 - (stretchPhase * 0.05), 0.001);
+        }
+
+        // Calculate opacity with fade and final flash
+        let opacity;
+        if (phase <= 1) {
+          // Fade out during compression
+          opacity = 1 - (Math.pow(phase, 2) * 0.7);
+        } else {
+          // Regain some opacity for final flash
+          const endPhase = Math.max(0, (phase - 1.7) / 0.3);
+          opacity = 0.3 + (Math.sin(endPhase * Math.PI) * 0.7);
+        }
+
+        // Flash effect peaks at the end
+        const flashPoint = Math.max(0, (phase - 1.7) / 0.3);
+        const flash = Math.sin(flashPoint * Math.PI);
+        
+        return `
+          transform: scale(${scaleX}, ${scaleY});
+          opacity: ${opacity};
+          filter: brightness(${1 + flash * 5}) contrast(${1 + flash * 3});
+        `;
+      }
     };
   }
 
   $: showLoadingScreen = $loadingState.isLoading;
   $: containerStyle = `--glow-color: ${dominantColor};`;
 
+  // Freeze progress when shutting down
+  $: if (!isShuttingDown) {
+    frozenProgress = $loadingProgress;
+  }
+
   // Update loading state when assets are loaded
   $: if ($appLoadingState.assetsLoaded === $appLoadingState.totalAssets && $appLoadingState.totalAssets > 0) {
+    isShuttingDown = true;
     setTimeout(() => {
       loadingState.update(state => ({ ...state, isLoading: false }));
     }, 500);
@@ -186,10 +233,10 @@
 {#if showLoadingScreen}
   <div
     class="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
-    out:scale={{ duration: 250 }}
+    out:handleOutro
     on:outroend
   >
-    <div class="screen-curve"></div>
+    <div class="screen-curve animation"></div>
     <div class="crt-content">
       <div class="flex flex-col items-center">
         <div class="logo-wrapper mb-8">
@@ -233,10 +280,11 @@
             </div>
           {/key}
         </div>
-        <h2 class="!text-7xl font-bold mb-2 uppercase font-alumni neon-text mt-10">
-          KongSwap
+        <h2 class="relative !text-7xl font-bold mb-2 uppercase font-alumni neon-text mt-10 flex justify-center flex-col gap-x-2 items-center">
+          <img src={gorillaRight} alt="Kong Logo" class="absolute w-32 h-32 pb-1 filter brightness-0 invert" />
+          <span class="h-[10] text-outline-1">KongSwap</span>
         </h2>
-        <div class="message-container h-8 flex items-center justify-center mb-4 progress-text">
+        <div class="message-container h-8 flex items-center justify-center mb-4 progress-text mt-4">
           {#key currentMessage}
             <p
             in:fade|local={{ duration: 200 }}
@@ -250,19 +298,15 @@
           <div class="progress-bar">
             <div 
               class="progress-fill"
-              style:width={$loadingProgress + "%"}
+              style:width={(isShuttingDown ? frozenProgress : $loadingProgress) + "%"}
             ></div>
           </div>
-          <div class="progress-numbers">
-            <span class="start">0</span>
-            <span class="current">{$loadingProgress}%</span>
-            <span class="end">100</span>
-          </div>
+         
         </div>
 
-        <p class="progress-text text-sm mt-2">
-          {#if $appLoadingState.totalAssets}
-            <span class="blink">></span> LOADING ASSETS: {$loadingProgress}%
+        <p class="progress-text text-sm mt-4">
+          {#if $appLoadingState.totalAssets > 0}
+            <span class="blink">></span> LOADING ASSETS: {isShuttingDown ? frozenProgress : $loadingProgress}%
           {:else}
             <span class="blink">></span> LOADING...
           {/if}
@@ -280,7 +324,12 @@
   </div>
 {/if}
 
-<style scoped lang="postcss">
+<style lang="postcss">
+  :global(.loading-screen) {
+    transform-origin: center;
+    will-change: transform, opacity, filter;
+  }
+
   @keyframes neonFlicker {
     0%, 100% {
       text-shadow:
@@ -343,6 +392,10 @@
     @apply absolute top-0 left-0 h-full;
     background: #298000;
     transition: width 0.3s linear;
+    
+    &.shutting-down {
+      transition: none;
+    }
     
     &::after {
       content: '';
@@ -465,13 +518,13 @@
   }
 
   .screen-curve {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 2;
+    right: 0;
+    bottom: 0;
     pointer-events: none;
+    z-index: 1;
     
     &::after {
       content: "";
@@ -484,8 +537,8 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
+      right: 0;
+      bottom: 0;
       animation: flicker 0.15s infinite;
       mix-blend-mode: overlay;
     }
@@ -1089,8 +1142,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 2;
     pointer-events: none;
+    z-index: 1;
     
     &::after {
       content: "";
