@@ -1,50 +1,63 @@
 <script lang="ts">
+    import { fade, scale } from 'svelte/transition';
+    import { quintOut, cubicOut } from 'svelte/easing';
     import QRCode from 'qrcode';
     import { onMount } from 'svelte';
     import { auth } from "$lib/services/auth";
     import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
     import type { UserIdentity } from '$lib/types/identity';
+    import Modal from '$lib/components/common/Modal.svelte';
 
     export let token: FE.Token;
 
     let loading = true;
     let error: string | null = null;
     let activeId: 'principal' | 'account' = 'principal';
+    let copied = false;
+    let showQR = false;
 
     let identity: UserIdentity = {
         principalId: '',
-        accountId: '',
+        accountId: '', 
         principalQR: '',
         accountQR: ''
     };
 
-    let copied = false;
+    let copyLoading = false;
+    let qrLoading = false;
 
     async function generateQR(text: string): Promise<string> {
         try {
+            qrLoading = true;
             return await QRCode.toDataURL(text, {
-                width: 300,
-                margin: 1,
+                width: 400,
+                margin: 2,
                 color: {
                     dark: '#ffffff',
                     light: '#00000000'
-                }
+                },
+                errorCorrectionLevel: 'H',
+                scale: 10
             });
         } catch (err) {
             console.error('QR generation failed:', err);
             throw new Error('Failed to generate QR code');
+        } finally {
+            qrLoading = false;
         }
     }
 
     async function copyToClipboard(text: string) {
         try {
+            copyLoading = true;
             await navigator.clipboard.writeText(text);
             copied = true;
-            setTimeout(() => {
-                copied = false;
-            }, 1000);
+            setTimeout(() => copied = false, 2000);
         } catch (err) {
-            console.error('Failed to copy:', err);
+            error = 'Failed to copy to clipboard';
+            setTimeout(() => error = null, 3000);
+        } finally {
+            copyLoading = false;
         }
     }
 
@@ -80,220 +93,363 @@
     $: currentQR = activeId === 'principal' ? identity.principalQR : identity.accountQR;
 </script>
 
-<div class="receive-container">
+<div class="container">
     {#if loading}
-        <div class="loading-state">Loading identity data...</div>
+        <div class="status-message loading" transition:fade>
+            <div class="spinner"></div>
+            <span>Loading identity data...</span>
+        </div>
     {:else if error}
-        <div class="error-state">
-            {error}
-            <button 
-                class="clean-button"
-                on:click={loadIdentityData}
-            >
-                Retry
+        <div class="status-message error" transition:fade>
+            <span>❌ {error}</span>
+            <button class="retry-btn" on:click={loadIdentityData}>
+                Try Again
             </button>
         </div>
     {:else}
-        <div class="tabs">
+        <div class="id-selector" transition:scale={{duration: 300, easing: quintOut}}>
             <button 
-                class="tab-button"
+                class="selector-btn" 
                 class:active={activeId === 'principal'}
                 on:click={() => activeId = 'principal'}
             >
-                Principal ID
+                <span class="btn-icon">👤</span>
+                <div class="btn-text">
+                    <span class="btn-title">Principal ID</span>
+                    <span class="btn-desc">For most transfers</span>
+                </div>
             </button>
             <button 
-                class="tab-button"
+                class="selector-btn"
                 class:active={activeId === 'account'}
                 on:click={() => activeId = 'account'}
             >
-                Account ID
+                <span class="btn-icon">🏦</span>
+                <div class="btn-text">
+                    <span class="btn-title">Account ID</span>
+                    <span class="btn-desc">For special cases</span>
+                </div>
             </button>
         </div>
 
-        <div class="qr-section">
-            <div 
-                class="qr-container" 
-                on:click={() => {
-                    const win = window.open();
-                    if (win) {
-                        win.document.write(`
-                            <style>
-                                body { 
-                                    margin: 0; 
-                                    display: flex; 
-                                    justify-content: center; 
-                                    align-items: center; 
-                                    background: #000; 
-                                    min-height: 100vh; 
-                                }
-                                img { max-width: 100%; padding: 1rem; }
-                            </style>
-                            <img src="${currentQR}" alt="${activeId} QR Code">
-                        `);
-                    }
-                }}
-            >
-                <div class="qr-wrapper">
-                    <img src={currentQR} alt={`${activeId} QR Code`} class="qr-code" />
+        <div class="content" transition:fade={{delay: 150}}>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="id-card">
+                <div class="id-header">
+                    <span>{activeId === 'principal' ? 'Principal ID' : 'Account ID'}</span>
+                    <div class="id-actions">
+                        <button 
+                            class="action-btn"
+                            on:click={() => !copyLoading && copyToClipboard(currentId)}
+                            disabled={copyLoading}
+                        >
+                            {#if copyLoading}
+                                <div class="spinner small"></div>
+                            {:else if copied}
+                                <span>✓</span>
+                            {:else}
+                                <span>📋</span>
+                            {/if}
+                            <span class="action-text">Copy</span>
+                        </button>
+                        <button 
+                            class="action-btn" 
+                            on:click={() => showQR = true}
+                            disabled={qrLoading}
+                        >
+                            <span class="qr-icon">📱</span>
+                            <span class="action-text">{qrLoading ? 'Loading...' : 'Show QR'}</span>
+                            <span class="mobile-text">{qrLoading ? '...' : 'QR'}</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="overlay">
-                    <span>Click to enlarge</span>
-                </div>
-            </div>
-
-            <div 
-                class="id-container"
-                on:click={() => copyToClipboard(currentId)}
-            >
-                <span class="id-text">{currentId}</span>
-                <div class="overlay" class:visible={copied}>
-                    <span>{copied ? 'Copied!' : 'Click to copy'}</span>
+                
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <div class="id-display" 
+                     on:click={() => !copyLoading && copyToClipboard(currentId)}
+                     class:loading={copyLoading}>
+                    <code>{currentId}</code>
+                    <div class="hover-overlay" class:visible={copied || copyLoading}>
+                        {#if copyLoading}
+                            <div class="spinner small"></div>
+                        {:else if copied}
+                            <span class="copy-status">✓ Copied to clipboard!</span>
+                        {:else}
+                            <span class="copy-prompt">Click to copy address</span>
+                        {/if}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="instructions">
-            <h3>How to receive {token.symbol}</h3>
+        {#if showQR}
+            <Modal 
+                isOpen={showQR}
+                onClose={() => showQR = false}
+                title={`Scan to send ${token.symbol}`}
+                width="min(500px, 95vw)"
+                height="auto"
+            >
+                <div class="qr-content">
+                    {#if qrLoading}
+                        <div class="qr-loading">
+                            <div class="spinner"></div>
+                            <span>Generating QR Code...</span>
+                        </div>
+                    {:else}
+                        <div class="qr-wrapper">
+                            <img src={currentQR} 
+                                 alt={`${activeId} QR Code`}
+                                 class="qr-image" />
+                            <div class="qr-id">
+                                <div class="qr-id-header">
+                                    <span class="qr-label">{activeId === 'principal' ? 'Principal ID' : 'Account ID'}</span>
+                                    <button 
+                                        class="copy-btn"
+                                        on:click={() => copyToClipboard(currentId)}
+                                        disabled={copyLoading}
+                                    >
+                                        {#if copyLoading}
+                                            <div class="spinner small"></div>
+                                        {:else if copied}
+                                            <span>✓</span>
+                                        {:else}
+                                            <span>📋</span>
+                                        {/if}
+                                    </button>
+                                </div>
+                                <code>{currentId}</code>
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            </Modal>
+        {/if}
+
+        <div class="help-box" transition:fade={{delay: 300}}>
+            <div class="help-header">
+                <span class="help-icon">💡</span>
+                <h3>How to receive {token.symbol}</h3>
+            </div>
             <ol>
-                <li>Choose either Principal ID or Account ID</li>
-                <li>Share the QR code or copy the address</li>
-                <li>The sender can scan the QR code or paste your address</li>
-                <li>Tokens will appear in your wallet once sent</li>
+                <li>Choose your preferred ID type above</li>
+                <li>Share your QR code or copy the address</li>
+                <li>Have the sender scan or paste your address</li>
+                <li>Your tokens will appear automatically</li>
             </ol>
         </div>
     {/if}
 </div>
 
 <style lang="postcss">
-    .receive-container {
-        @apply flex flex-col gap-4;
+    .container {
+        @apply flex flex-col gap-2 py-6;
     }
 
-    .loading-state, .error-state {
-        @apply text-center p-4 text-white/70;
+    .status-message {
+        @apply flex flex-col items-center gap-4 py-12 text-white/70;
     }
 
-    .error-state {
-        @apply flex flex-col items-center gap-2;
+    .status-message.error {
+        @apply text-red-400;
     }
 
-    .clean-button {
-        @apply px-4 py-2 bg-black/20 text-white/90 rounded-lg
-               hover:bg-black/30 transition-colors text-sm font-medium
-               border border-white/10 hover:border-white/20;
+    .retry-btn {
+        @apply px-6 py-3 bg-white/10 hover:bg-white/20 
+               rounded-xl transition-all text-white
+               hover:transform hover:-translate-y-0.5;
     }
 
-    .tabs {
-        @apply flex gap-1 justify-center p-1 rounded-lg;
+    .id-selector {
+        @apply grid grid-cols-2 gap-3 p-1;
     }
 
-    .tab-button {
-        @apply px-4 py-2 text-sm text-white/50 rounded-md
-               transition-colors hover:text-white;
+    .selector-btn {
+        @apply flex items-center gap-3 py-4 px-5 rounded-xl
+               transition-all duration-200 bg-white/5
+               hover:bg-white/10 text-left;
     }
 
-    .tab-button.active {
-        @apply bg-black/20 text-white;
+    .selector-btn.active {
+        @apply bg-indigo-500/20 ring-2 ring-indigo-500/30;
     }
 
-    .qr-section {
-        @apply flex flex-col items-center gap-4 w-full;
+    .btn-icon {
+        @apply text-2xl;
     }
 
-    .qr-container {
-        @apply relative cursor-pointer w-full max-w-[300px]
-               transition-transform duration-200 hover:scale-[1.02]
-               flex justify-center items-center;
+    .btn-text {
+        @apply flex flex-col;
+    }
+
+    .btn-title {
+        @apply font-medium text-white;
+    }
+
+    .btn-desc {
+        @apply text-sm text-white/50;
+    }
+
+    .id-card {
+        @apply bg-white/5 rounded-2xl p-6;
+    }
+
+    .id-header {
+        @apply flex justify-between items-center mb-4
+               text-white/70 text-sm font-medium;
+    }
+
+    .id-display {
+        @apply relative bg-black/20 rounded-xl p-6
+               cursor-pointer transition-all duration-200
+               hover:bg-black/30;
+    }
+
+    .id-display code {
+        @apply block text-base text-white/90 break-all text-center font-mono;
+    }
+
+    .hover-overlay {
+        @apply absolute inset-0 grid place-items-center
+               bg-black/95 opacity-0 transition-opacity
+               text-white font-medium rounded-xl;
+    }
+
+    .hover-overlay.visible {
+        @apply opacity-100;
+    }
+
+    .id-display:hover .hover-overlay:not(.visible) {
+        @apply opacity-100;
+    }
+
+    .copy-status {
+        @apply text-green-400 flex items-center gap-2;
+    }
+
+    .copy-prompt {
+        @apply text-white/90;
+    }
+
+    .qr-content {
+        @apply p-8;
     }
 
     .qr-wrapper {
-        @apply flex justify-center items-center bg-black/20 rounded-lg p-2;
+        @apply flex flex-col items-center gap-6;
     }
 
-    .qr-code {
-        @apply w-48 h-48 md:w-64 md:h-64;
+    .qr-image {
+        @apply bg-white/5 p-6 rounded-2xl;
+        width: min(400px, 80vw);
+        height: auto;
+        aspect-ratio: 1;
     }
 
-    .id-container {
-        @apply relative cursor-pointer w-full max-w-md;
+    .qr-id {
+        @apply w-full bg-black/20 p-4 rounded-xl text-center;
     }
 
-    .id-text {
-        @apply block font-mono text-xs md:text-sm text-white/80 
-               bg-black/20 rounded-lg p-3 break-all;
+    .qr-label {
+        @apply block text-sm text-white/50 mb-2;
     }
 
-    .overlay {
-        @apply absolute inset-0 flex items-center justify-center
-               bg-black/85 opacity-0 transition-opacity duration-200
-               rounded-lg;
+    .qr-id code {
+        @apply text-sm text-white/90 break-all font-mono;
     }
 
-    .overlay.visible {
-        @apply opacity-100;
+    .help-box {
+        @apply bg-white/5 rounded-2xl p-6;
     }
 
-    .overlay span {
-        @apply text-white text-sm;
+    .help-header {
+        @apply flex items-center gap-3 mb-4;
     }
 
-    .qr-container:hover .overlay,
-    .id-container:hover .overlay:not(.visible) {
-        @apply opacity-100;
+    .help-icon {
+        @apply text-2xl;
     }
 
-    .instructions {
-        @apply mt-2 p-4 bg-black/20 rounded-lg;
+    .help-box h3 {
+        @apply text-lg font-medium text-white;
     }
 
-    .instructions h3 {
-        @apply text-sm font-semibold text-yellow-500 mb-2;
+    .help-box ol {
+        @apply space-y-3 list-decimal list-inside
+               text-white/70 ml-2;
     }
 
-    .instructions ol {
-        @apply list-decimal list-inside space-y-1;
+    .spinner {
+        @apply w-6 h-6 border-2 border-white/20 border-t-white
+               rounded-full animate-spin;
     }
 
-    .instructions li {
-        @apply text-sm text-white/60;
+    .spinner.small {
+        @apply w-4 h-4;
+    }
+
+    .loading {
+        @apply opacity-50 cursor-wait;
+    }
+
+    .qr-id-header {
+        @apply flex items-center justify-between mb-2;
+    }
+
+    .copy-btn {
+        @apply p-2 rounded-lg bg-white/10 hover:bg-white/20 
+               transition-all text-white disabled:opacity-50;
+    }
+
+    .id-actions {
+        @apply flex items-center gap-2;
+    }
+
+    .action-btn {
+        @apply flex items-center gap-2 px-4 py-2
+               bg-white/10 rounded-lg hover:bg-white/20
+               transition-all text-white disabled:opacity-50;
+    }
+
+    .mobile-text {
+        @apply hidden;
     }
 
     @media (max-width: 640px) {
-        .receive-container {
-            @apply gap-6 px-4;
+        .container {
+            @apply gap-6 py-4;
         }
 
-        .tab-button {
-            @apply px-6 py-3 text-base;
+        .id-selector {
+            @apply grid-cols-1;
         }
 
-        .qr-container {
-            @apply max-w-full;
+        .selector-btn {
+            @apply py-3;
         }
 
-        .qr-code {
-            @apply w-72 h-72;
+        .id-card {
+            @apply p-4;
         }
 
-        .id-text {
-            @apply text-base p-4;
+        .id-display {
+            @apply p-4;
         }
 
-        .overlay span {
-            @apply text-base;
+        .help-box {
+            @apply p-4;
         }
 
-        .instructions {
-            @apply p-5;
+        .action-text {
+            @apply hidden;
         }
 
-        .instructions h3 {
-            @apply text-base mb-3;
+        .mobile-text {
+            @apply block;
         }
 
-        .instructions li {
-            @apply text-base leading-relaxed;
+        .action-btn {
+            @apply px-3;
         }
     }
 </style>

@@ -121,13 +121,13 @@
   }
 
   .search-section {
-    @apply flex flex-col gap-2 p-3;
+    @apply flex flex-col gap-2 p-2 mb-2;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .search-input {
     @apply w-full text-sm bg-[#2a2d3d]/30 text-white
-           px-4 py-2.5 rounded-lg outline-none
+           px-4 py-4 rounded-lg outline-none
            transition-all duration-200;
   }
 
@@ -145,12 +145,12 @@
   }
 
   .controls {
-    @apply flex items-center gap-2;
+    @apply flex items-center gap-2 w-full;
   }
 
   .sort-button,
   .filter-button {
-    @apply px-3 py-2 text-sm font-medium
+    @apply flex-1 px-4 py-3 text-sm font-medium
            text-white/60 bg-[#2a2d3d]/30
            rounded-lg transition-all duration-200
            hover:text-white hover:bg-[#2a2d3d]/50;
@@ -163,7 +163,7 @@
   }
 
   .tokens-list {
-    @apply flex-1 overflow-y-auto px-3;
+    @apply flex-1 overflow-y-auto px-2;
   }
 
   .tokens-list > div {

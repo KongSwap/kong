@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
-  import { fade, scale } from "svelte/transition";
+  import { fade, scale, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
 
@@ -11,10 +11,12 @@
   export let width = "min(800px, 95vw)";
   export let height = "min(85vh, 95vh)";
   export let showCloseButton = true;
-  export let blurBackground = false; // Disabled blur by default
+  export let blurBackground = false;
   export let mobileFullscreen = true;
 
   let modalElement: HTMLElement;
+  let prevWidth = width;
+  let prevHeight = height;
   
   function handleEscape(event: KeyboardEvent) {
     if (event.key === "Escape") onClose();
@@ -24,6 +26,14 @@
     if (event.target === event.currentTarget) {
       event.stopPropagation();
       onClose();
+    }
+  }
+
+  $: if (modalElement) {
+    if (prevWidth !== width || prevHeight !== height) {
+      modalElement.style.transition = "width 0.3s ease, height 0.3s ease, max-height 0.3s ease";
+      prevWidth = width;
+      prevHeight = height;
     }
   }
 </script>
@@ -62,6 +72,12 @@
                 class="close-button"
                 on:click={onClose}
                 aria-label="Close modal"
+                transition:scale={{
+                  duration: 150,
+                  start: 0.8,
+                  opacity: 0,
+                  easing: cubicOut
+                }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -109,6 +125,7 @@
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .modal-content {
@@ -116,6 +133,7 @@
     display: flex;
     flex-direction: column;
     max-height: calc(85vh - 3rem);
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .modal-header {
@@ -125,6 +143,7 @@
     padding: 1.25rem;
     border-bottom: 1px solid #2a2d3d;
     background: #15161c;
+    transition: padding 0.3s ease;
   }
 
   .modal-title {
@@ -133,6 +152,7 @@
     color: #ffffff;
     margin: 0;
     line-height: 1.2;
+    transition: font-size 0.3s ease;
   }
 
   .close-button {
@@ -145,7 +165,7 @@
     border: none;
     border-radius: 6px;
     color: #ffffff;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .close-button:hover {
@@ -156,9 +176,10 @@
   .modal-body {
     flex: 1;
     overflow-y: auto;
-    padding: 1.25rem;
+    padding: 0 1.25rem;
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
+    transition: padding 0.3s ease;
   }
 
   .modal-body::-webkit-scrollbar {

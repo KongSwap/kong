@@ -59,7 +59,7 @@
 
 <style lang="postcss">
   .token-row {
-    @apply p-3 mb-1;
+    @apply p-2;
     @apply bg-[#2a2d3d]/50 hover:bg-[#2a2d3d];
     @apply rounded-lg cursor-pointer;
     @apply transition-all duration-200;

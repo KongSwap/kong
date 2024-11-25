@@ -161,7 +161,7 @@
   .modal-body {
     flex: 1;
     overflow-y: auto;
-    padding: 1.25rem;
+    padding: 0 0.69rem;
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
   }

@@ -32,6 +32,7 @@
   let rotationCount = 0;
   let isRotating = false;
   let currentSwapId: string | null = null;
+  let payPanelRef: HTMLElement;
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 
@@ -336,7 +337,21 @@
       return;
     }
 
-    if (!$swapState.payToken || !$swapState.receiveToken || !$swapState.payAmount) {
+    if (!$swapState.payToken || !$swapState.receiveToken) {
+      // Focus the pay panel to select tokens
+      const payPanel = document.querySelector('.panel:first-child input');
+      if (payPanel) {
+        (payPanel as HTMLElement).focus();
+      }
+      return;
+    }
+
+    if (!$swapState.payAmount) {
+      // Focus the pay amount input
+      const payAmountInput = document.querySelector('.panel:first-child input');
+      if (payAmountInput) {
+        (payAmountInput as HTMLElement).focus();
+      }
       return;
     }
 
@@ -509,32 +524,6 @@
   </div>
 </div>
 
-{#if $swapState.showPayTokenSelector}
-  <Portal target="body">
-    <TokenSelector
-      show={true}
-      onSelect={(token) => handleTokenSelected(token, "pay")}
-      onClose={() => swapState.closeTokenSelector()}
-      currentToken={$swapState.payToken}
-      otherPanelToken={$swapState.receiveToken}
-      expandDirection="down"
-    />
-  </Portal>
-{/if}
-
-{#if $swapState.showReceiveTokenSelector}
-  <Portal target="body">
-    <TokenSelector
-      show={true}
-      onSelect={(token) => handleTokenSelected(token, "receive")}
-      onClose={() => swapState.closeTokenSelector()}
-      currentToken={$swapState.receiveToken}
-      otherPanelToken={$swapState.payToken}
-      expandDirection="down"
-    />
-  </Portal>
-{/if}
-
 {#if $swapState.tokenSelectorOpen}
   <Portal target="body">
     {#if $swapState.tokenSelectorPosition}
@@ -693,7 +682,7 @@
 
   .swap-button {
     @apply relative overflow-hidden;
-    @apply w-full py-3 px-4 rounded-xl;
+    @apply w-full py-5 px-4 rounded-xl;
     @apply bg-gradient-to-r from-[#3772ff] to-[#3772ff];
     @apply hover:from-[#3772ff] hover:to-[#4580ff];
     @apply transition-all duration-200;
@@ -702,10 +691,6 @@
 
   .button-content {
     @apply relative z-10 flex items-center justify-center gap-2;
-  }
-
-  .swap-button:not(.disabled):hover {
-    background: rgba(255, 255, 255, 0.15);
   }
 
   .swap-button.error {
