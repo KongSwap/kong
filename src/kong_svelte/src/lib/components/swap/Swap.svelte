@@ -459,40 +459,28 @@
 
         <button
           class="switch-button"
-          class:rotating={isRotating}
+          class:disabled={isProcessing}
           on:click={handleReverseTokens}
           disabled={isProcessing}
-          aria-label="Switch tokens"
         >
-          {#if $themeStore === 'pixel'}
+          <div class="switch-button-inner">
             <svg
-              width="64"
-              height="72"
-              viewBox={PixelArrow.viewBox}
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
-              class="swap-arrow pixel"
-              style="image-rendering: pixelated;"
+              class="swap-arrow"
             >
               <path
-                d={PixelArrow.path}
-                fill="#ffd700"
-                class="arrow-path"
+                d="M7 10l5 5 5-5M7 14l5 5 5-5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                fill="none"
               />
             </svg>
-          {:else}
-            <svg
-              width="42"
-              height="42"
-              viewBox={ModernArrow.viewBox}
-              xmlns="http://www.w3.org/2000/svg"
-              class="swap-arrow modern"
-            >
-              <g class="arrow-group">
-                <circle class="arrow-circle" cx="24" cy="24" r="20" />
-                <path class="arrow-path" d={ModernArrow.paths[1]} />
-              </g>
-            </svg>
-          {/if}
+          </div>
         </button>
       </div>
 
@@ -606,34 +594,36 @@
   .mode-selector {
     position: relative;
     display: flex;
-    gap: 4px;
-    margin-bottom: 16px;
-    padding: 4px;
+    gap: 2px;
+    margin-bottom: 12px;
+    padding: 2px;
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .mode-selector-background {
     position: absolute;
-    top: 4px;
-    left: 4px;
-    width: calc(50% - 2px);
-    height: calc(100% - 8px);
-    background: rgba(0, 122, 255, 0.15);
-    border-radius: 10px;
+    top: 2px;
+    left: 2px;
+    width: calc(50% - 1px);
+    height: calc(100% - 4px);
+    background: linear-gradient(135deg, rgba(55, 114, 255, 0.15), rgba(55, 114, 255, 0.25));
+    border-radius: 6px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   .mode-button {
     position: relative;
     z-index: 1;
     flex: 1;
-    padding: 10px 16px;
+    padding: 8px 16px;
     border: none;
-    border-radius: 10px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.7);
     background: transparent;
@@ -644,7 +634,7 @@
   .mode-text {
     position: relative;
     z-index: 2;
-    transition: transform 0.3s ease, color 0.2s ease;
+    transition: transform 0.2s ease, color 0.2s ease;
   }
 
   .mode-button:hover:not(.selected) .mode-text {
@@ -652,12 +642,12 @@
   }
 
   .mode-button.selected .mode-text {
-    color: rgb(0, 122, 255);
+    color: rgba(255, 255, 255, 1);
     font-weight: 600;
   }
 
   .mode-button.transitioning .mode-text {
-    transform: scale(0.9);
+    transform: scale(0.95);
   }
 
   .button-content {
@@ -682,36 +672,75 @@
 
   .swap-button {
     @apply relative overflow-hidden;
-    @apply w-full py-5 px-4 rounded-xl;
-    @apply bg-gradient-to-r from-[#3772ff] to-[#3772ff];
-    @apply hover:from-[#3772ff] hover:to-[#4580ff];
-    @apply transition-all duration-200;
+    @apply w-full py-3.5 px-4 rounded-xl;
+    @apply transition-all duration-300 ease-out;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    margin-top: 2px;
+    background: linear-gradient(135deg, #3772ff 0%, #4580ff 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 12px rgba(55, 114, 255, 0.25);
   }
 
-  .button-content {
-    @apply relative z-10 flex items-center justify-center gap-2;
+  .swap-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4580ff 0%, #5590ff 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 18px rgba(55, 114, 255, 0.35);
+  }
+
+  .swap-button:active:not(:disabled) {
+    transform: translateY(0px);
+    box-shadow: 0 2px 8px rgba(55, 114, 255, 0.2);
   }
 
   .swap-button.error {
-    @apply bg-red-500/20 text-white hover:bg-red-500/30;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.25);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .swap-button.error:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 1) 0%, rgba(239, 68, 68, 0.9) 100%);
+    box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
+  }
+
+  .swap-button.processing {
+    background: linear-gradient(135deg, #3772ff 0%, #4580ff 100%);
+    cursor: wait;
+    opacity: 0.8;
   }
 
   .button-content {
     @apply relative z-10 flex items-center justify-center gap-2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   .button-text {
-    @apply text-white;
+    @apply text-white font-semibold text-base;
+    letter-spacing: 0.01em;
   }
 
   .loading-spinner {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: white;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+  }
+
+  .button-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .swap-button:hover .button-glow {
+    opacity: 1;
   }
 
   @keyframes spin {
@@ -720,7 +749,18 @@
     }
   }
 
-  :global(:not([data-theme="pixel"])) .switch-button {
+  /* Add a subtle pulse animation for processing state */
+  @keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.8; }
+  }
+
+  .swap-button.processing {
+    animation: pulse 2s infinite ease-in-out;
+  }
+
+  .switch-button {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -729,63 +769,53 @@
     cursor: pointer;
     padding: 0;
     margin: 0;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+  }
+
+  .switch-button-inner {
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
-    background: #2a2a2a;
-    border: 1px solid #3a3a3a;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .switch-button:hover:not(:disabled) {
-    transform: translate(-50%, -50%) scale(1.1);
+  .switch-button:hover:not(.disabled) .switch-button-inner {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 122, 255, 0.15);
   }
 
-  .switch-button:active:not(:disabled) {
-    transform: translate(-50%, -50%) scale(0.95);
+  .switch-button:active:not(.disabled) .switch-button-inner {
+    transform: scale(0.95);
   }
 
-  .switch-button:disabled {
-    opacity: 0.5;
+  .switch-button.disabled {
     cursor: not-allowed;
   }
 
+  .switch-button.disabled .switch-button-inner {
+    opacity: 0.5;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
   .swap-arrow {
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
+    color: rgba(255, 255, 255, 0.9);
+    transition: color 0.2s ease;
   }
 
-  .rotating .swap-arrow {
-    animation: rotateArrow 0.3s ease-in-out;
-  }
-
-  @keyframes rotateArrow {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(180deg);
-    }
-  }
-
-  .arrow-circle {
-    fill: #2a2a2a;
-    stroke: #3a3a3a;
-    stroke-width: 1;
-    transition: all 0.3s ease;
-  }
-
-  .arrow-path {
-    fill: #ffffff;
-    transition: all 0.3s ease;
-  }
-
-  .switch-button:hover:not(:disabled) .arrow-circle {
-    fill: #3a3a3a;
-    stroke: #4a4a4a;
+  .switch-button:hover:not(.disabled) .swap-arrow {
+    color: white;
   }
 
   .panels-container {

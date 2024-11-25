@@ -133,7 +133,6 @@
         </div>
 
         <div class="content" transition:fade={{delay: 150}}>
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="id-card">
                 <div class="id-header">
                     <span>{activeId === 'principal' ? 'Principal ID' : 'Account ID'}</span>
@@ -164,20 +163,8 @@
                     </div>
                 </div>
                 
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <div class="id-display" 
-                     on:click={() => !copyLoading && copyToClipboard(currentId)}
-                     class:loading={copyLoading}>
-                    <code>{currentId}</code>
-                    <div class="hover-overlay" class:visible={copied || copyLoading}>
-                        {#if copyLoading}
-                            <div class="spinner small"></div>
-                        {:else if copied}
-                            <span class="copy-status">✓ Copied to clipboard!</span>
-                        {:else}
-                            <span class="copy-prompt">Click to copy address</span>
-                        {/if}
-                    </div>
+                <div class="id-display">
+                    <code class="selectable">{currentId}</code>
                 </div>
             </div>
         </div>
@@ -190,36 +177,38 @@
                 width="min(500px, 95vw)"
                 height="auto"
             >
-                <div class="qr-content">
+                <div class="qr-modal">
                     {#if qrLoading}
                         <div class="qr-loading">
                             <div class="spinner"></div>
                             <span>Generating QR Code...</span>
                         </div>
                     {:else}
-                        <div class="qr-wrapper">
+                        <div class="qr-container">
                             <img src={currentQR} 
                                  alt={`${activeId} QR Code`}
                                  class="qr-image" />
-                            <div class="qr-id">
-                                <div class="qr-id-header">
-                                    <span class="qr-label">{activeId === 'principal' ? 'Principal ID' : 'Account ID'}</span>
-                                    <button 
-                                        class="copy-btn"
-                                        on:click={() => copyToClipboard(currentId)}
-                                        disabled={copyLoading}
-                                    >
-                                        {#if copyLoading}
-                                            <div class="spinner small"></div>
-                                        {:else if copied}
-                                            <span>✓</span>
-                                        {:else}
-                                            <span>📋</span>
-                                        {/if}
-                                    </button>
+                            
+                            <div class="qr-details">
+                                <div class="qr-type">
+                                    {activeId === 'principal' ? 'Principal ID' : 'Account ID'}
                                 </div>
-                                <code>{currentId}</code>
+                                <code class="selectable">{currentId}</code>
                             </div>
+
+                            <button 
+                                class="qr-copy-btn"
+                                on:click={() => copyToClipboard(currentId)}
+                                disabled={copyLoading}
+                            >
+                                {#if copyLoading}
+                                    <div class="spinner small"></div>
+                                {:else if copied}
+                                    <span>✓ Copied</span>
+                                {:else}
+                                    <span>Copy Address</span>
+                                {/if}
+                            </button>
                         </div>
                     {/if}
                 </div>
@@ -300,42 +289,19 @@
     }
 
     .id-display {
-        @apply relative bg-black/20 rounded-xl p-6
-               cursor-pointer transition-all duration-200
-               hover:bg-black/30;
+        @apply bg-black/20 rounded-xl p-6;
     }
 
-    .id-display code {
+    .selectable {
         @apply block text-base text-white/90 break-all text-center font-mono;
+        user-select: text;
     }
 
-    .hover-overlay {
-        @apply absolute inset-0 grid place-items-center
-               bg-black/95 opacity-0 transition-opacity
-               text-white font-medium rounded-xl;
+    .qr-modal {
+        @apply p-6;
     }
 
-    .hover-overlay.visible {
-        @apply opacity-100;
-    }
-
-    .id-display:hover .hover-overlay:not(.visible) {
-        @apply opacity-100;
-    }
-
-    .copy-status {
-        @apply text-green-400 flex items-center gap-2;
-    }
-
-    .copy-prompt {
-        @apply text-white/90;
-    }
-
-    .qr-content {
-        @apply p-8;
-    }
-
-    .qr-wrapper {
+    .qr-container {
         @apply flex flex-col items-center gap-6;
     }
 
@@ -346,16 +312,18 @@
         aspect-ratio: 1;
     }
 
-    .qr-id {
-        @apply w-full bg-black/20 p-4 rounded-xl text-center;
+    .qr-details {
+        @apply w-full bg-black/20 p-4 rounded-xl;
     }
 
-    .qr-label {
-        @apply block text-sm text-white/50 mb-2;
+    .qr-type {
+        @apply text-sm text-white/50 mb-2;
     }
 
-    .qr-id code {
-        @apply text-sm text-white/90 break-all font-mono;
+    .qr-copy-btn {
+        @apply w-full px-4 py-3 bg-white/10 hover:bg-white/20 
+               rounded-lg transition-all text-white 
+               disabled:opacity-50 text-base font-medium;
     }
 
     .help-box {
@@ -390,15 +358,6 @@
 
     .loading {
         @apply opacity-50 cursor-wait;
-    }
-
-    .qr-id-header {
-        @apply flex items-center justify-between mb-2;
-    }
-
-    .copy-btn {
-        @apply p-2 rounded-lg bg-white/10 hover:bg-white/20 
-               transition-all text-white disabled:opacity-50;
     }
 
     .id-actions {

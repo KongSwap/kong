@@ -151,16 +151,21 @@
                   class="search-input"
                   on:click|stopPropagation
                 />
-                {#if searchQuery}
-                  <button class="action-button clear-button" on:click={clearSearch}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button 
+                  class="action-button"
+                  on:click|stopPropagation={searchQuery ? clearSearch : handlePaste}
+                >
+                  {#if searchQuery}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="18" y1="6" x2="6" y2="18"></line>
                       <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
-                  </button>
-                {/if}
-                <button class="action-button paste-button" on:click|stopPropagation={handlePaste}>
-                  Paste
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                    </svg>
+                  {/if}
                 </button>
               </div>
             </div>
@@ -293,33 +298,29 @@
 
   .search-section {
     @apply sticky top-0 z-10;
-    @apply p-4 border-b border-[#2a2d3d];
+    @apply border-b border-[#2a2d3d];
     @apply bg-[#15161c];
   }
 
   .search-input-wrapper {
-    @apply flex items-center gap-2;
-    @apply bg-[#2a2d3d] rounded-xl p-3;
+    @apply relative flex items-center;
+    @apply bg-[#2a2d3d] p-3;
   }
 
   .search-input {
     @apply flex-1 bg-transparent border-none;
     @apply text-white placeholder-white/50;
     @apply focus:outline-none;
-    @apply text-base;
+    @apply text-base pr-12;
   }
 
   .action-button {
+    @apply absolute right-3 top-1/2 -translate-y-1/2;
     @apply flex items-center justify-center;
-    @apply px-3 py-1.5 rounded-lg;
-    @apply text-sm font-medium;
+    @apply w-8 h-8 rounded-lg;
     @apply bg-white/10 text-white/70;
     @apply hover:bg-white/15 hover:text-white;
     @apply transition-colors;
-  }
-
-  .clear-button {
-    @apply p-1.5;
   }
 
   .filter-bar {
@@ -349,7 +350,6 @@
   .token-item {
     @apply flex items-center justify-between;
     @apply px-4 py-3;
-    @apply rounded-xl;
     @apply cursor-pointer;
     @apply transition-all duration-200;
     @apply hover:bg-white/5;

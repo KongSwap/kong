@@ -128,15 +128,11 @@
     })();
 
     async function handlePaste() {
-        if (recipientAddress) {
-            recipientAddress = '';
-        } else {
-            try {
-                const text = await navigator.clipboard.readText();
-                recipientAddress = text;
-            } catch (err) {
-                toastStore.error('Failed to paste from clipboard');
-            }
+        try {
+            const text = await navigator.clipboard.readText();
+            recipientAddress = text;
+        } catch (err) {
+            toastStore.error('Failed to paste from clipboard');
         }
     }
 </script>
@@ -157,15 +153,25 @@
                         type="text"
                         bind:value={recipientAddress}
                         placeholder="Paste address or enter manually"
-                        class:error={errorMessage.includes('address')}
+                        class:error={addressType === null && recipientAddress}
                         class:valid={addressType !== null}
                     />
                     <button 
                         type="button"
-                        class="paste-btn"
-                        on:click={handlePaste}
+                        class="action-button"
+                        on:click={recipientAddress ? () => recipientAddress = '' : handlePaste}
                     >
-                        <span>{recipientAddress ? "Clear" : "Paste"}</span>
+                        {#if recipientAddress}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        {:else}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            </svg>
+                        {/if}
                     </button>
                 </div>
                 
@@ -173,11 +179,11 @@
                     <div class="validation-status" class:success={addressType !== null} class:error={addressType === null}>
                         <div class="status-icon">
                             {#if addressType !== null}
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                 </svg>
                             {:else}
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                                 </svg>
                             {/if}
@@ -393,20 +399,22 @@
         @apply relative flex items-center;
     }
 
-    .paste-btn {
-        @apply absolute right-4 top-1/2 -translate-y-1/2
-               bg-white/10 hover:bg-white/20 
-               rounded-lg transition-all
-               px-3 h-8 flex items-center justify-center
-               text-white/80 hover:text-white text-sm;
+    .action-button {
+        @apply absolute right-2 top-1/2 -translate-y-1/2;
+        @apply flex items-center justify-center;
+        @apply w-8 h-8 rounded-lg;
+        @apply text-sm font-medium;
+        @apply bg-white/10 text-white/70;
+        @apply hover:bg-white/15 hover:text-white;
+        @apply transition-colors;
     }
 
     input {
-        @apply w-full px-4 py-4 bg-black/20 
+        @apply w-full px-4 py-3 bg-black/20 
                rounded-xl text-white transition-all
                border border-white/10 hover:border-white/20
                focus:border-indigo-500 focus:outline-none
-               pr-20;
+               pr-12;
         
         &.error {
             @apply border-red-500/50 bg-red-500/10;
@@ -600,4 +608,26 @@
             @apply p-4;
         }
     }
+
+    .validation-status {
+        @apply flex items-center gap-2 mt-2 px-2;
+        @apply text-sm;
+
+        &.success {
+            @apply text-green-400;
+        }
+
+        &.error {
+            @apply text-red-400;
+        }
+    }
+
+    .status-icon {
+        @apply flex items-center justify-center;
+    }
+
+    .status-text {
+        @apply font-medium;
+    }
 </style>
+// End of Selection

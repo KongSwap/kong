@@ -184,7 +184,7 @@
 
   .empty-state {
     @apply flex flex-col items-center justify-center
-           min-h-[200px] mt-4 text-white/40 text-sm
+           min-h-[200px] text-white/40 text-sm
            bg-[#2a2d3d]/20 rounded-lg
            border border-white/5;
   }
