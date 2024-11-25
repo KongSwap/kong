@@ -116,7 +116,7 @@
                 <span class="btn-icon">👤</span>
                 <div class="btn-text">
                     <span class="btn-title">Principal ID</span>
-                    <span class="btn-desc">For most transfers</span>
+                    <span class="btn-desc">For dApp-to-dApp transfers</span>
                 </div>
             </button>
             <button 
@@ -127,7 +127,7 @@
                 <span class="btn-icon">🏦</span>
                 <div class="btn-text">
                     <span class="btn-title">Account ID</span>
-                    <span class="btn-desc">For special cases</span>
+                    <span class="btn-desc">For CEX/DEX transfers</span>
                 </div>
             </button>
         </div>
@@ -221,11 +221,12 @@
                 <h3>How to receive {token.symbol}</h3>
             </div>
             <ol>
-                <li>Choose your preferred ID type above</li>
+                <li>Choose your ID type (Principal ID for dApps, Account ID for exchanges)</li>
                 <li>Share your QR code or copy the address</li>
                 <li>Have the sender scan or paste your address</li>
                 <li>Your tokens will appear automatically</li>
             </ol>
+            <p class="help-note">Note: Both IDs can be used interchangeably, but some services may require a specific type.</p>
         </div>
     {/if}
 </div>
@@ -345,6 +346,10 @@
     .help-box ol {
         @apply space-y-3 list-decimal list-inside
                text-white/70 ml-2;
+    }
+
+    .help-note {
+        @apply mt-4 text-sm text-white/50 italic;
     }
 
     .spinner {

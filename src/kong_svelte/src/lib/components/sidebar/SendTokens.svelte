@@ -1,6 +1,5 @@
 <script lang="ts">
-    import { fade, scale } from 'svelte/transition';
-    import { quintOut } from 'svelte/easing';
+    import { fade } from 'svelte/transition';
     import { IcrcService } from "$lib/services/icrc/IcrcService";
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
@@ -143,7 +142,7 @@
             <div class="id-header">
                 <span>Recipient Address</span>
                 <button type="button" class="help-btn" on:click={() => showHelp = true}>
-                    <span>💡 Help</span>
+                    <span>💡</span>
                 </button>
             </div>
 
@@ -161,33 +160,12 @@
                         class="action-button"
                         on:click={recipientAddress ? () => recipientAddress = '' : handlePaste}
                     >
-                        {#if recipientAddress}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        {:else}
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                            </svg>
-                        {/if}
+                        {#if recipientAddress}✕{:else}📋{/if}
                     </button>
                 </div>
                 
                 {#if recipientAddress}
                     <div class="validation-status" class:success={addressType !== null} class:error={addressType === null}>
-                        <div class="status-icon">
-                            {#if addressType !== null}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                </svg>
-                            {:else}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
-                            {/if}
-                        </div>
                         <span class="status-text">{validationMessage.text}</span>
                     </div>
                 {/if}
@@ -197,9 +175,7 @@
         <div class="id-card">
             <div class="id-header">
                 <span>Amount</span>
-                <button type="button" class="max-btn" on:click={setMaxAmount}>
-                    <span>💰 MAX</span>
-                </button>
+                <button type="button" class="max-btn" on:click={setMaxAmount}>MAX</button>
             </div>
 
             <div class="input-group">
@@ -228,7 +204,7 @@
             class="send-btn"
             disabled={isValidating || !amount || !recipientAddress}
         >
-            Review Transfer
+            Send Tokens
         </button>
     </form>
 
@@ -237,35 +213,95 @@
             isOpen={showHelp}
             onClose={() => showHelp = false}
             title="How to Send Tokens"
-            width="min(500px, 95vw)"
+            width="min(600px, 95vw)"
             height="auto"
         >
-            <div class="help-box">
-                <div class="help-header">
-                    <span class="help-icon">💡</span>
-                    <h3>Sending {token.symbol}</h3>
-                </div>
-                <div class="help-content">
-                    <div class="id-types-info">
-                        <h4>Understanding Address Types:</h4>
-                        <ul>
-                            <li>
-                                <strong>Principal ID:</strong> The primary identifier for Internet Computer users. Most dapps and wallets use this format.
-                            </li>
-                            <li>
-                                <strong>Account ID:</strong> A 64-character hex string derived from Principal ID. Some exchanges and services require this format.
-                            </li>
-                        </ul>
-                        <p class="note">Both address types work for sending tokens - use whichever the recipient prefers.</p>
+            <div class="help-content">
+                <div class="help-section">
+                    <h3>Supported Address Types</h3>
+                    <div class="address-types">
+                        <div class="address-type">
+                            <span class="icon">🔑</span>
+                            <div>
+                                <h4>Principal ID</h4>
+                                <p>The native identifier for Internet Computer users and canisters.</p>
+                                <code class="example">
+                                    2vxsx-fae3i-kkp2w-yxca6-g44zk-<wbr>
+                                    o3br2-xjqyl-cmxgg-4kew2-2y7mh-pae
+                                </code>
+                                <ul class="features">
+                                    <li>Length: 27-29 characters with dashes</li>
+                                    <li>Used for direct canister interactions</li>
+                                    <li>Common within ecosystem</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="divider"></div>
+                        
+                        <div class="address-type">
+                            <span class="icon">📝</span>
+                            <div>
+                                <h4>Account ID</h4>
+                                <p>A derived address used specifically for token transactions.</p>
+                                <code class="example">
+                                    03e3d86f29a069c6f2c5c48e01bc084e<wbr>
+                                    4ea18ad02b0eec8fccadf4487183c223
+                                </code>
+                                <ul class="features">
+                                    <li>Always 64 characters (hexadecimal)</li>
+                                    <li>Derived from Principal ID</li>
+                                    <li>Used by most wallet apps (Plug, Stoic, AstroX)</li>
+                                    <li>More secure for token operations</li>
+                                    <li>Common for CEXs</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
-                    <div class="steps-info">
-                        <h4>Steps to Send:</h4>
-                        <ol>
-                            <li>Enter the recipient's Principal ID or Account ID</li>
-                            <li>Enter the amount you want to send</li>
-                            <li>Double-check the address and amount</li>
-                            <li>Click Send to complete the transfer</li>
-                        </ol>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="help-section">
+                    <h3>Which One Should I Use?</h3>
+                    <div class="guidance">
+                        <div class="choice-section">
+                            <h4>Use Account ID for:</h4>
+                            <ul>
+                                <li>Sending to wallet apps (NFID, NNS, Oisy)</li>
+                                <li>When you see a 64-character hex address</li>
+                                <li>Most token transfers (safer option)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="choice-divider"></div>
+                        
+                        <div class="choice-section">
+                            <h4>Use Principal ID for:</h4>
+                            <ul>
+                                <li>Sending to canisters directly</li>
+                                <li>When you see a dashed format address</li>
+                                <li>Developer interactions</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="warning-box">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-content">
+                        <h4>Important Safety Tips</h4>
+                        <ul>
+                            <li>Always double-check addresses before sending</li>
+                            <li>Start with small test amounts for new recipients</li>
+                            <li>Transfers cannot be reversed once confirmed</li>
+                            <li>Keep your Principal ID private if using it for authentication</li>
+                        </ul>
+                        <a href="https://internetcomputer.org/docs/current/developer-docs/defi/wallets/overview" target="_blank" rel="noopener" class="learn-more">
+                            Learn more about IC wallets →
+                        </a>
                     </div>
                 </div>
             </div>
@@ -276,82 +312,41 @@
         <Modal
             isOpen={showConfirmation}
             onClose={() => showConfirmation = false}
-            title="Review Your Transfer"
-            width="min(560px, 95vw)"
+            title="Confirm Your Transfer"
+            width="min(450px, 95vw)"
             height="auto"
         >
             <div class="confirm-box">
                 <div class="confirm-details">
-                    <div class="network-info">
-                        <div class="network-badge">
-                            <img src="/icp-logo.svg" alt="ICP" class="network-icon" />
-                            <span>Internet Computer Network</span>
-                        </div>
-                    </div>
-
                     <div class="transfer-summary">
-                        <div class="summary-label">Transfer Amount</div>
                         <div class="amount-display">
-                            <span class="amount-value">{amount}</span>
-                            <span class="token-symbol">{token.symbol}</span>
-                        </div>
-                        <div class="usd-value">≈ $XX.XX USD</div>
-                    </div>
-
-                    <div class="transfer-details">
-                        <div class="detail-section">
-                            <div class="detail-label">From</div>
-                            <div class="detail-value">Your Wallet</div>
-                        </div>
-                        
-                        <div class="flow-arrow">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"/>
-                            </svg>
-                        </div>
-
-                        <div class="detail-section">
-                            <div class="detail-label">To</div>
-                            <div class="detail-value recipient">
-                                <div class="address-info">
-                                    <span class="address">{recipientAddress}</span>
-                                    <span class="address-badge">{addressType} ID</span>
-                                </div>
-                            </div>
+                            <span class="amount">{amount}</span>
+                            <span class="symbol">{token.symbol}</span>
                         </div>
                     </div>
-
-                    <div class="fee-section">
-                        <div class="fee-row">
-                            <span>Network Fee</span>
-                            <span>0.0001 {token.symbol}</span>
+                    
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="label">To Address</span>
+                            <span class="value address">{recipientAddress}</span>
                         </div>
-                        <div class="fee-row total">
-                            <span>Total Amount</span>
-                            <span>{(parseFloat(amount) + 0.0001).toFixed(4)} {token.symbol}</span>
+                        <div class="detail-item">
+                            <span class="label">Address Type</span>
+                            <span class="value type">{addressType}</span>
                         </div>
-                    </div>
-
-                    <div class="warning-box">
-                        <div class="warning-icon">⚠️</div>
-                        <div class="warning-content">
-                            <h4>Important</h4>
-                            <ul>
-                                <li>Transfers cannot be reversed once confirmed</li>
-                                <li>Double-check the recipient address</li>
-                                <li>Ensure sufficient balance for transfer + fees</li>
-                            </ul>
+                        <div class="detail-item">
+                            <span class="label">Network Fee</span>
+                            <span class="value">0.0001 {token.symbol}</span>
+                        </div>
+                        <div class="detail-item total">
+                            <span class="label">Total Amount</span>
+                            <span class="value">{(parseFloat(amount) + 0.0001).toFixed(4)} {token.symbol}</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="confirm-actions">
-                    <button 
-                        class="cancel-btn" 
-                        on:click={() => showConfirmation = false}
-                    >
-                        Cancel
-                    </button>
+                    <button class="cancel-btn" on:click={() => showConfirmation = false}>Cancel</button>
                     <button 
                         class="confirm-btn" 
                         class:loading={isValidating}
@@ -359,7 +354,7 @@
                         disabled={isValidating}
                     >
                         {#if isValidating}
-                            <div class="spinner"></div>
+                            <span class="loading-spinner"></span>
                             Processing...
                         {:else}
                             Confirm Transfer
@@ -373,26 +368,19 @@
 
 <style lang="postcss">
     .container {
-        @apply flex flex-col gap-8 py-6;
+        @apply flex flex-col gap-4 py-4;
     }
 
     .id-card {
-        @apply bg-white/5 rounded-2xl p-6 mb-4;
+        @apply bg-white/5 rounded-xl p-4 mb-2;
     }
 
     .id-header {
-        @apply flex justify-between items-center mb-4
-               text-white/70 text-sm font-medium;
+        @apply flex justify-between items-center mb-2 text-white/70 text-sm;
     }
 
     .help-btn, .max-btn {
-        @apply flex items-center gap-2 px-4 py-2
-               bg-white/10 rounded-lg hover:bg-white/20
-               transition-all text-white;
-    }
-
-    .input-group {
-        @apply relative;
+        @apply px-3 py-1 bg-white/10 rounded-lg hover:bg-white/20 text-white;
     }
 
     .input-wrapper {
@@ -400,234 +388,221 @@
     }
 
     .action-button {
-        @apply absolute right-2 top-1/2 -translate-y-1/2;
-        @apply flex items-center justify-center;
-        @apply w-8 h-8 rounded-lg;
-        @apply text-sm font-medium;
-        @apply bg-white/10 text-white/70;
-        @apply hover:bg-white/15 hover:text-white;
-        @apply transition-colors;
+        @apply absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 
+               flex items-center justify-center rounded-lg
+               bg-white/10 text-white/70 hover:bg-white/15;
     }
 
     input {
-        @apply w-full px-4 py-3 bg-black/20 
-               rounded-xl text-white transition-all
+        @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white
                border border-white/10 hover:border-white/20
-               focus:border-indigo-500 focus:outline-none
-               pr-12;
+               focus:border-indigo-500 focus:outline-none pr-10;
         
-        &.error {
-            @apply border-red-500/50 bg-red-500/10;
-        }
-        
-        &.valid {
-            @apply border-green-500/50;
-        }
+        &.error { @apply border-red-500/50 bg-red-500/10; }
+        &.valid { @apply border-green-500/50; }
     }
 
     .error-message {
-        @apply text-red-400 text-sm px-2 mb-4;
+        @apply text-red-400 text-sm px-2 mb-2;
     }
 
     .send-btn {
-        @apply w-full py-4 bg-indigo-500 text-white
-               rounded-xl font-medium transition-all
-               hover:bg-indigo-600 disabled:opacity-50
-               disabled:cursor-not-allowed relative
-               flex items-center justify-center;
-    }
-
-    /* Confirmation Modal Styles */
-    .confirm-box {
-        @apply p-8 flex flex-col gap-8;
-    }
-
-    .confirm-details {
-        @apply space-y-8;
-    }
-
-    .network-info {
-        @apply flex justify-center;
-    }
-
-    .network-badge {
-        @apply flex items-center gap-2 px-4 py-2 
-               bg-purple-500/10 rounded-full border border-purple-500/20;
-    }
-
-    .network-icon {
-        @apply w-5 h-5;
-    }
-
-    .transfer-summary {
-        @apply flex flex-col items-center gap-2 py-4;
-    }
-
-    .summary-label {
-        @apply text-white/60 text-sm;
-    }
-
-    .amount-display {
-        @apply flex items-baseline gap-2;
-    }
-
-    .amount-value {
-        @apply text-3xl font-bold text-white;
-    }
-
-    .token-symbol {
-        @apply text-xl text-white/70;
-    }
-
-    .usd-value {
-        @apply text-white/50 text-sm;
-    }
-
-    .transfer-details {
-        @apply space-y-4 bg-black/20 rounded-2xl p-6;
-    }
-
-    .detail-section {
-        @apply space-y-2;
-    }
-
-    .detail-label {
-        @apply text-sm text-white/60;
-    }
-
-    .detail-value {
-        @apply text-white font-medium;
-        
-        &.recipient {
-            @apply space-y-1;
-        }
-    }
-
-    .address-info {
-        @apply flex flex-col gap-1;
-    }
-
-    .address {
-        @apply font-mono text-sm break-all bg-black/20 
-               p-3 rounded-lg border border-white/5;
-    }
-
-    .address-badge {
-        @apply inline-flex items-center px-2 py-1
-               rounded-md bg-white/10 text-white/70 
-               text-xs w-fit;
-    }
-
-    .flow-arrow {
-        @apply flex justify-center py-4 text-white/40;
-        
-        svg {
-            @apply w-6 h-6;
-        }
-    }
-
-    .fee-section {
-        @apply space-y-2 bg-black/20 rounded-xl p-4;
-    }
-
-    .fee-row {
-        @apply flex justify-between text-sm text-white/70;
-        
-        &.total {
-            @apply pt-2 border-t border-white/10 
-                   text-white font-medium;
-        }
-    }
-
-    .warning-box {
-        @apply flex gap-4 p-6 bg-yellow-500/10 
-               rounded-xl border border-yellow-500/20;
-    }
-
-    .warning-content {
-        @apply space-y-2;
-        
-        h4 {
-            @apply text-yellow-500 font-medium;
-        }
-        
-        ul {
-            @apply text-sm text-yellow-500/90 space-y-1 list-disc pl-4;
-        }
-    }
-
-    .warning-icon {
-        @apply text-xl;
-    }
-
-    .confirm-actions {
-        @apply flex gap-4 pt-4 border-t border-white/10;
-    }
-
-    .cancel-btn {
-        @apply flex-1 py-3 bg-white/10 text-white/90
-               rounded-xl font-medium transition-all
-               hover:bg-white/20;
-    }
-
-    .confirm-btn {
-        @apply flex-[2] py-3 bg-indigo-500 text-white
-               rounded-xl font-medium transition-all
-               hover:bg-indigo-600 disabled:opacity-50
-               disabled:cursor-not-allowed
-               flex items-center justify-center gap-2;
-
-        &.loading {
-            @apply bg-indigo-500/50;
-        }
-    }
-
-    .spinner {
-        @apply w-5 h-5 border-2 border-white/20 
-               border-t-white rounded-full animate-spin;
-    }
-
-    @media (max-width: 640px) {
-        .container {
-            @apply gap-6 py-4;
-        }
-
-        .id-card {
-            @apply p-4;
-        }
-        
-        .confirm-box {
-            @apply p-4;
-        }
-        
-        .transfer-details {
-            @apply p-4;
-        }
-        
-        .warning-box {
-            @apply p-4;
-        }
+        @apply w-full py-3 bg-indigo-500 text-white rounded-lg
+               font-medium hover:bg-indigo-600 disabled:opacity-50;
     }
 
     .validation-status {
-        @apply flex items-center gap-2 mt-2 px-2;
-        @apply text-sm;
+        @apply text-sm mt-1 px-1;
+        &.success { @apply text-green-400; }
+        &.error { @apply text-red-400; }
+    }
 
-        &.success {
-            @apply text-green-400;
+    .balance-info {
+        @apply text-right mt-1 text-sm text-white/60;
+    }
+
+    .help-content {
+        @apply p-6 space-y-6;
+        
+        a {
+            @apply text-indigo-400 hover:text-indigo-300 hover:underline;
         }
 
-        &.error {
-            @apply text-red-400;
+        .example {
+            @apply block p-2 my-2 bg-black/20 rounded font-mono text-xs md:text-sm 
+                   text-indigo-300 break-all leading-relaxed;
+            
+            wbr {
+                @apply select-none;
+            }
+        }
+
+        .guidance {
+            @apply space-y-6;
+
+            .choice-section {
+                @apply bg-white/5 rounded-lg p-4;
+
+                h4 {
+                    @apply text-sm font-medium text-indigo-300 mb-3;
+                }
+
+                ul {
+                    @apply space-y-2;
+                    li {
+                        @apply flex items-center gap-2 text-sm text-white/70
+                               before:content-['•'] before:text-indigo-400;
+                    }
+                }
+            }
+
+            .choice-divider {
+                @apply border-t border-white/10 my-2;
+            }
+        }
+
+        .learn-more {
+            @apply block mt-4 text-sm font-medium;
+        }
+
+        .help-section {
+            @apply space-y-4;
+            
+            h3 {
+                @apply text-xl font-medium text-white/90 mb-4;
+            }
+        }
+
+        .divider {
+            @apply my-6 border-t border-white/10;
+        }
+
+        .address-types {
+            @apply space-y-6;
+        }
+
+        .address-type {
+            @apply flex items-start gap-4 p-5 rounded-lg bg-white/5;
+
+            .icon {
+                @apply text-2xl;
+            }
+
+            h4 {
+                @apply font-medium text-lg text-white/90 mb-2;
+            }
+
+            p {
+                @apply text-sm text-white/70 mb-2;
+            }
+
+            .example {
+                @apply block p-2 my-2 bg-black/20 rounded font-mono text-sm text-indigo-300;
+            }
+
+            .features {
+                @apply mt-3 space-y-1 text-sm text-white/70;
+                li {
+                    @apply flex items-center gap-2 before:content-['•'] before:text-indigo-400;
+                }
+            }
+        }
+
+        .warning-box {
+            @apply flex items-start gap-4 p-5 rounded-lg bg-yellow-500/10 border border-yellow-500/20;
+            
+            .warning-icon {
+                @apply text-xl;
+            }
+
+            .warning-content {
+                @apply flex-1;
+                
+                h4 {
+                    @apply font-medium text-yellow-200/90 mb-2;
+                }
+
+                ul {
+                    @apply space-y-1 text-sm text-yellow-100/80;
+                    li {
+                        @apply flex items-center gap-2 before:content-['•'] before:text-yellow-500;
+                    }
+                }
+            }
         }
     }
 
-    .status-icon {
-        @apply flex items-center justify-center;
+    .confirm-box {
+        @apply p-6;
+        
+        .transfer-summary {
+            @apply mb-6 text-center;
+            
+            .amount-display {
+                @apply flex items-baseline justify-center gap-2;
+                
+                .amount {
+                    @apply text-3xl font-bold text-white;
+                }
+                
+                .symbol {
+                    @apply text-lg text-white/70;
+                }
+            }
+        }
+        
+        .details-grid {
+            @apply space-y-3 mb-6;
+            
+            .detail-item {
+                @apply flex justify-between items-center p-3 rounded-lg bg-white/5;
+                
+                .label {
+                    @apply text-sm text-white/60;
+                }
+                
+                .value {
+                    @apply text-sm text-white/90;
+                    
+                    &.address {
+                        @apply max-w-[200px] truncate;
+                    }
+                    
+                    &.type {
+                        @apply capitalize;
+                    }
+                }
+                
+                &.total {
+                    @apply mt-4 bg-white/10;
+                    .label, .value {
+                        @apply font-medium text-white;
+                    }
+                }
+            }
+        }
+        
+        .confirm-actions {
+            @apply flex gap-3 pt-4 border-t border-white/10;
+            
+            button {
+                @apply flex-1 py-3 rounded-lg font-medium text-center justify-center items-center gap-2;
+            }
+            
+            .cancel-btn {
+                @apply bg-white/10 hover:bg-white/15 text-white/90;
+            }
+            
+            .confirm-btn {
+                @apply bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed;
+                &.loading {
+                    @apply bg-indigo-500/50;
+                }
+            }
+        }
     }
 
-    .status-text {
-        @apply font-medium;
+    .loading-spinner {
+        @apply inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
     }
 </style>
-// End of Selection
