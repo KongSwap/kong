@@ -1,29 +1,29 @@
 use super::stable_tx::{StableTx, StableTxId};
 use super::tx::Tx;
+use std::cmp::min;
+use std::ops::Bound;
 
 use crate::stable_memory::TX_MAP;
 use crate::stable_pool::pool_map;
 
-/// get a tx by tx_id of the caller
-pub fn get_by_tx_and_user_id(tx_id: u64, user_id: Option<u32>) -> Option<StableTx> {
-    TX_MAP.with(|m| {
-        m.borrow().get(&StableTxId(tx_id)).and_then(|v| {
-            if let Some(user_id) = user_id {
-                if v.user_id() != user_id {
-                    return None;
-                }
-            }
-            Some(v)
-        })
-    })
-}
+const MAX_TXS: usize = 20;
 
 /// get txs filtered by user_id and token_id
 /// if you call get_by_user_and_token_id(None, None, None) it will return all txs
-pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max_txs: usize) -> Vec<StableTx> {
+pub fn get_by_user_and_token_id(
+    start_tx_id: Option<u64>,
+    user_id: Option<u32>,
+    token_id: Option<u32>,
+    num_txs: Option<usize>,
+) -> Vec<StableTx> {
     TX_MAP.with(|m| {
-        m.borrow()
-            .iter()
+        let map = m.borrow();
+        let start_tx_id = start_tx_id.unwrap_or(map.last_key_value().map_or(0, |(k, _)| k.0));
+        let num_txs = match num_txs {
+            Some(num_txs) => min(num_txs, MAX_TXS),
+            None => 1,
+        };
+        map.range((Bound::Unbounded, Bound::Included(&StableTxId(start_tx_id))))
             .rev()
             .filter_map(|(_, v)| {
                 if let Some(user_id) = user_id {
@@ -74,7 +74,7 @@ pub fn get_by_user_and_token_id(user_id: Option<u32>, token_id: Option<u32>, max
                 }
                 Some(v.clone())
             })
-            .take(max_txs)
-            .collect::<Vec<StableTx>>()
+            .take(num_txs)
+            .collect()
     })
 }

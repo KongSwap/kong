@@ -2,7 +2,6 @@ use candid::{CandidType, Nat, Principal};
 use serde::{Deserialize, Serialize};
 
 use crate::chains::chains::IC_CHAIN;
-use crate::ic::ledger::{get_decimals, get_fee, get_name, get_supported_standards, get_symbol};
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct ICToken {

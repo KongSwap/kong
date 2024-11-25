@@ -2,7 +2,6 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
-use crate::helpers::nat_helpers::nat_zero;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -48,22 +47,6 @@ pub struct StablePool {
 impl StablePool {
     pub fn symbol(&self) -> String {
         format!("{}_{}", self.symbol_0(), self.symbol_1())
-    }
-
-    pub fn symbol_with_chain(&self) -> String {
-        format!("{}_{}", self.token_0().symbol_with_chain(), self.token_1().symbol_with_chain())
-    }
-
-    pub fn address(&self) -> String {
-        format!("{}_{}", self.token_0().address(), self.token_1().address())
-    }
-
-    pub fn address_with_chain(&self) -> String {
-        format!("{}_{}", self.token_0().address_with_chain(), self.token_1().address_with_chain())
-    }
-
-    pub fn name(&self) -> String {
-        format!("{}_{} Liquidity Pool", self.symbol_0(), self.symbol_1())
     }
 
     pub fn token_0(&self) -> StableToken {

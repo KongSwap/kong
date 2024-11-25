@@ -1,12 +1,7 @@
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
-use super::stable_token::StableToken;
-use super::token;
-
 use crate::chains::chains::LP_CHAIN;
-use crate::stable_pool::pool_map;
-use crate::stable_pool::stable_pool::StablePool;
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct LPToken {
@@ -18,10 +13,6 @@ pub struct LPToken {
 }
 
 impl LPToken {
-    pub fn name(&self) -> String {
-        format!("{} LP Token", self.symbol)
-    }
-
     pub fn chain(&self) -> String {
         LP_CHAIN.to_string()
     }
