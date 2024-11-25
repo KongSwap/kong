@@ -38,7 +38,7 @@
   {#if $tokenStore.tokens}
     <div class="swap-wrapper">
       {#if currentMode === 'normal'}
-      <div class="pt-16">
+      <div class="swap-normal">
         <Swap 
           initialFromToken={fromToken} 
           initialToToken={toToken} 
@@ -72,5 +72,15 @@
     width: 100%;
     display: flex;
     justify-content: center;
+  }
+
+  .swap-normal {
+    padding: 2rem 1rem 0;
+  }
+
+  @media (max-width: 640px) {
+    .swap-normal {
+      padding-top: 0.5rem;
+    }
   }
 </style>

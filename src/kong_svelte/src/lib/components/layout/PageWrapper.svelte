@@ -14,13 +14,11 @@
     children?: Component | (() => Component);
   }>();
 
-  let poolsBgUrl = $state("");
-  let jungleBgUrl = $state("");
-  let skylineUrl = $state("");
   let isChanging = $state(false);
   let scrollY = $state(0);
   let mouseX = $state(0);
   let mouseY = $state(0);
+  let skylineUrl = $state("");
 
   let background = $derived.by(() => {
     if ($themeStore === 'modern') {
@@ -31,8 +29,9 @@
       };
     }
 
+    // Pixel theme always uses the gradient background
     if ($themeStore === 'pixel') {
-      const defaultBg = { 
+      return { 
         image: 'none', 
         color: '#5bb2cf',
         gradient: `linear-gradient(180deg, 
@@ -40,21 +39,6 @@
           #87CEEB 35%, 
           #5bb2cf 100%)`
       };
-      
-      if (!page) return defaultBg;
-      
-      if (page.includes("pools")) {
-        return poolsBgUrl 
-          ? { image: `url(${poolsBgUrl})`, color: '#5bb2cf', gradient: defaultBg.gradient }
-          : defaultBg;
-      }
-      if (page.includes("swap")) {
-        return jungleBgUrl
-          ? { image: `url(${jungleBgUrl})`, color: '#5bb2cf', gradient: defaultBg.gradient }
-          : defaultBg;
-      }
-      if (page.includes("stats")) return defaultBg;
-      return defaultBg;
     }
 
     return { image: 'none', color: '#030407', gradient: 'none' };
@@ -70,10 +54,6 @@
   });
 
   onMount(async () => {
-    if ($themeStore === 'pixel') {
-      poolsBgUrl = await assetCache.getAsset("/backgrounds/pools.webp");
-      jungleBgUrl = await assetCache.getAsset("/backgrounds/kong_jungle2.webp");
-    }
     skylineUrl = await assetCache.getAsset("/backgrounds/skyline.svg");
     if (browser) {
       window.addEventListener('scroll', () => {
@@ -135,9 +115,7 @@
   {:else}
     <div 
       class="pixel-background" 
-      style:background={background.image !== 'none' 
-        ? background.image 
-        : background.gradient}
+      style:background={background.gradient}
     >
       <div class="floating-pixels">
         {#each Array(15) as _, i}
@@ -153,9 +131,6 @@
           />
         {/each}
       </div>
-      {#if !background.image}
-        <div class="retro-mountains"></div>
-      {/if}
     </div>
     {#if $themeStore === 'pixel'}
       <Clouds/>
@@ -189,14 +164,15 @@
 <style lang="postcss">
   .page-wrapper {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     background: #070a10;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 0;
     -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
   }
 
   .pixel-background {
@@ -205,7 +181,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 1;
+    z-index: 0;
     overflow: hidden;
     image-rendering: pixelated;
     background-color: #5bb2cf;
@@ -311,23 +287,6 @@
     50% {
       transform: translate(20px, -20px) rotate(90deg);
     }
-  }
-
-  .retro-mountains {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 25%;
-    background-image: 
-      linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%),
-      linear-gradient(-45deg, transparent 50%, rgba(255, 255, 255, 0.1) 50%),
-      linear-gradient(45deg, #4a90a8 50%, transparent 50%),
-      linear-gradient(-45deg, #4a90a8 50%, transparent 50%);
-    background-size: 32px 32px, 32px 32px, 16px 16px, 16px 16px;
-    background-position: 0 0, 0 0, 16px 0, -16px 0;
-    background-repeat: repeat-x;
-    image-rendering: pixelated;
   }
 
   .background {
@@ -583,11 +542,16 @@
 
   .content {
     position: relative;
-    z-index: 10;
-    min-height: 100%;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    will-change: transform;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 2;
+  }
+
+  :global(.clouds-container) {
+    z-index: 1;
   }
 
   /* Add touch-action for better mobile handling */

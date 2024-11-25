@@ -4,7 +4,7 @@
   import { tooltip } from '$lib/actions/tooltip';
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
-  export let size: 'small' | 'medium' | 'big' = 'big';
+  export let size: 'small' | 'medium' | 'big' | 'bigger' = 'big';
   export let state: 'default' | 'disabled' | 'pressed' | 'selected' = 'default';
   export let text: string = '';
   export let onClick: () => void = () => {};
@@ -76,11 +76,11 @@
 <style lang="postcss">
   .glass-button {
     @apply relative rounded-lg transition-all duration-200 overflow-hidden;
-    background: rgba(17, 24, 39, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(17, 24, 39, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     height: 48px;
     min-width: 160px;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   /* Force white text for all child elements */
@@ -99,7 +99,13 @@
 
   .glass-button.medium {
     height: 40px;
-    min-width: 140px;
+    min-width: 100px;
+  }
+
+  .glass-button.bigger {
+    height: 56px;
+    min-width: 180px;
+    font-size: 1.125rem;
   }
 
   .button-content {
@@ -128,30 +134,30 @@
 
   /* Variant styles */
   .glass-button.blue {
-    background: rgba(59, 130, 246, 0.08);
-    border-color: rgba(59, 130, 246, 0.2);
-    color: rgba(255, 255, 255, 0.8);
+    background: rgba(56, 89, 147, 0.12);  /* Softer night sky blue */
+    border-color: rgba(78, 114, 178, 0.25);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .glass-button.green {
     background: rgba(74, 222, 128, 0.08);
     border-color: rgba(74, 222, 128, 0.2);
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .glass-button.yellow {
-    background: rgba(245, 158, 11, 0.08);
-    border-color: rgba(245, 158, 11, 0.2);
-    color: rgba(255, 255, 255, 0.8);
+    background: rgba(88, 101, 242, 0.1);  /* Discord-like blurple */
+    border-color: rgba(88, 101, 242, 0.2);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   /* State styles */
   .glass-button.disabled {
     @apply cursor-not-allowed;
-    opacity: 0.4;
-    background: rgba(17, 24, 39, 0.05);
-    border-color: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.4);
+    opacity: 0.85;
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .glass-button.pressed:not(.disabled) {
@@ -165,34 +171,34 @@
   }
 
   .glass-button.blue.selected:not(.disabled) {
-    background: rgba(59, 130, 246, 0.25);
-    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(56, 89, 147, 0.25);
+    border-color: rgba(78, 114, 178, 0.5);
     color: white;
   }
 
   .glass-button.yellow.selected:not(.disabled) {
-    background: rgba(245, 158, 11, 0.25);
-    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(88, 101, 242, 0.25);
+    border-color: rgba(88, 101, 242, 0.4);
     color: white;
   }
 
   /* Hover effects */
   @media (hover: hover) {
     .glass-button:not(.disabled):hover {
-      background: rgba(31, 41, 55, 0.2);
-      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(31, 41, 55, 0.25);
+      border-color: rgba(255, 255, 255, 0.15);
       color: white;
     }
 
     .glass-button.blue:not(.disabled):hover {
-      background: rgba(59, 130, 246, 0.15);
-      border-color: rgba(59, 130, 246, 0.3);
+      background: rgba(56, 89, 147, 0.2);
+      border-color: rgba(78, 114, 178, 0.35);
       color: white;
     }
 
     .glass-button.yellow:not(.disabled):hover {
-      background: rgba(245, 158, 11, 0.15);
-      border-color: rgba(245, 158, 11, 0.3);
+      background: rgba(88, 101, 242, 0.2);
+      border-color: rgba(88, 101, 242, 0.35);
       color: white;
     }
 
@@ -217,5 +223,34 @@
       height: 36px;
       min-width: 120px;
     }
+
+    .glass-button.bigger {
+      height: 48px;
+      min-width: 160px;
+    }
+  }
+
+  /* Update the disabled state styles */
+  .glass-button.disabled {
+    @apply cursor-not-allowed;
+    opacity: 0.85;
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Add specific styles for error states in different variants */
+  .glass-button.blue.disabled {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+  }
+
+  .glass-button.yellow.disabled {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+  }
+
+  .glass-button.disabled .button-text {
+    @apply font-medium;
   }
 </style>

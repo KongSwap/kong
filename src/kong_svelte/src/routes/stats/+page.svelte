@@ -177,11 +177,11 @@
   });
 </script>
 
-<section class="flex justify-center w-full">
-  <div class="z-10 flex justify-center w-full max-w-[1400px] mx-auto">
+<section class="flex justify-center w-full px-4">
+  <div class="z-10 flex justify-center w-full max-w-[1300px] mx-auto">
     <div class="flex flex-col w-full gap-6">
       <!-- Market Overview Panel -->
-      <Panel variant="green" type="main" className="market-stats-panel glass-panel">
+      <Panel variant="green" type="main" className="market-stats-panel">
         <div class="market-stats-grid">
           <div class="stat-card">
             <div class="stat-icon-wrapper">
@@ -214,7 +214,7 @@
       </Panel>
 
       <!-- Tokens Panel -->
-      <Panel variant="green" type="secondary  " className="content-panel glass-panel">
+      <Panel variant="green" type="main" className="content-panel">
         <div class="flex justify-between items-center mb-4">
           <div class="flex items-center gap-4">
             <h3 class="text-white/80 font-medium">Tokens</h3>

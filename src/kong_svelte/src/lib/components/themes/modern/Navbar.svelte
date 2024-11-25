@@ -93,24 +93,36 @@
       {:else}
         <div class="right-section">
           <button
-            class="settings-btn"
+            class="nav-link settings-btn"
             class:spinning={isSpinning}
             on:click={onOpenSettings}
             aria-label="Settings"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
-            </svg>
+            <div class="btn-content">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
+              </svg>
+            </div>
           </button>
 
-          <Button
-            text={$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
-            variant="yellow"
-            size="medium"
-            state={sidebarOpen ? "selected" : "default"}
-            onClick={onConnect}
-          />
+          <a
+            href="#"
+            class="nav-link wallet-btn"
+            class:selected={sidebarOpen}
+            on:click|preventDefault={onConnect}
+          >
+            <div class="btn-content">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+                <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
+                <path d="M20 8v8" />
+              </svg>
+              <span class="wallet-text">
+                {$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
+              </span>
+            </div>
+          </a>
         </div>
       {/if}
     </div>
@@ -150,6 +162,19 @@
             </svg>
           </button>
         {/each}
+
+        <button
+          class="mobile-nav-btn"
+          on:click={() => {
+            onOpenSettings();
+            handleNavClose();
+          }}
+        >
+          SETTINGS
+          <svg class="mobile-nav-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
       </nav>
 
       <div class="mobile-menu-footer">
@@ -188,107 +213,203 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1rem;
+    padding: 0 0.5rem;
+    position: relative;
+  }
+
+  @media (min-width: 819px) {
+    .nav-container {
+      padding: 0 1rem;
+    }
   }
 
   /* Section Layout */
-  .left-section, .center-section, .right-section {
-    flex: 1;
+  .left-section, .right-section {
+    flex: 0 0 auto;
+    width: 80px;
     display: flex;
     align-items: center;
   }
   .left-section { justify-content: flex-start; }
-  .center-section { justify-content: center; }
+  .center-section { 
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 1rem;
+  }
   .right-section { justify-content: flex-end; gap: 0.75rem; }
 
   /* Navigation */
-  .nav-tabs { display: flex; align-items: center; gap: 0.5rem; }
+  .nav-tabs { display: flex; align-items: center; gap: 0.75rem; }
 
   .nav-link {
     padding: 0.75rem 1.25rem;
     font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    color: white;
     border-radius: 0.75rem;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    width: 0;
-    height: 2px;
-    background: linear-gradient(to right, #ffd700, #ffed4a);
-    transform: translateX(-50%);
-    transition: width 0.3s;
-  }
-
-  .nav-link:hover { color: white; }
-  .nav-link:hover::after, .nav-link.active::after { width: 66%; }
-  .nav-link.active {
+  .nav-link:hover { 
     color: white;
     background: rgba(255, 255, 255, 0.1);
-    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+  }
+  
+  .nav-link.active, .nav-link.selected {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.15);
+  }
+
+  /* Button Content Layout */
+  .btn-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  /* Settings Button */
+  .settings-btn {
+    padding: 0.75rem;
+    min-width: 40px;
+    width: 40px;
+  }
+
+  .settings-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  /* Wallet Button */
+  .wallet-btn {
+    min-width: 120px;
+    background: rgba(88, 101, 242, 0.2);
+    border-color: rgba(88, 101, 242, 0.3);
+  }
+
+  .wallet-btn:hover {
+    background: rgba(88, 101, 242, 0.3);
+    border-color: rgba(88, 101, 242, 0.4);
+    box-shadow: 0 0 12px rgba(88, 101, 242, 0.2);
+  }
+
+  .wallet-btn.selected {
+    background: rgba(88, 101, 242, 0.4);
+    border-color: rgba(88, 101, 242, 0.5);
+    box-shadow: 0 0 16px rgba(88, 101, 242, 0.25);
+  }
+
+  .wallet-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* Right Section Layout */
+  .right-section {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Mobile Adjustments */
+  @media (max-width: 818px) {
+    .nav-link {
+      height: 36px;
+      padding: 0.5rem 1rem;
+    }
+
+    .settings-btn {
+      padding: 0.5rem;
+      min-width: 36px;
+      width: 36px;
+    }
+
+    .wallet-btn {
+      min-width: 100px;
+    }
+
+    .left-section, .right-section {
+      width: 60px;
+    }
+
+    .center-section {
+      padding: 0 0.5rem;
+    }
+
+    .logo-link {
+      max-width: 280px;
+    }
+
+    .logo-wide {
+      height: 2.5rem;
+      object-fit: contain;
+    }
   }
 
   /* Logo */
   .logo-link {
     display: flex;
     align-items: center;
-    transition: transform 0.3s;
-  }
-  .logo-link:hover {
-    opacity: 0.95;
-    transform: scale(1.02);
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
   }
 
   .logo-wide {
-    height: 2.5rem;
-    width: auto;
-    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.25));
-  }
-
-  /* Buttons */
-  .settings-btn {
-    padding: 0.75rem;
-    color: rgba(255, 255, 255, 0.8);
-    border-radius: 0.75rem;
-    transition: all 0.2s;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .settings-btn:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.05);
-  }
-  .settings-btn:active {
-    transform: scale(0.95);
+    width: 100%;
+    height: 2rem;
   }
 
   /* Mobile Icons */
   .mobile-icon-btn {
     padding: 0.75rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: white;
     border-radius: 0.75rem;
     transition: all 0.2s;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .mobile-icon-btn:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
   }
 
   .mobile-icon-btn:active {
-    transform: scale(0.95);
+  }
+
+  /* Mobile specific styles */
+  @media (max-width: 639px) {
+    .mobile-icon-btn {
+      padding: 0.5rem;
+    }
+    
+    .center-section {
+      padding: 0 0.5rem;
+    }
   }
 
   /* Mobile Menu */
@@ -301,8 +422,8 @@
   .mobile-menu-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
   }
 
   .mobile-menu-content {
@@ -314,44 +435,10 @@
     height: 100%;
     background: rgba(13, 19, 31, 0.98);
     backdrop-filter: blur(24px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(78, 114, 178, 0.25);
     display: flex;
     flex-direction: column;
-  }
-
-  /* Animations */
-  .spinning { animation: spin 1s linear infinite; }
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  /* Media Queries */
-  @media (max-width: 768px) {
-    .nav-container { 
-      padding: 0 1rem;
-      justify-content: space-between;
-      max-width: 100%;
-    }
-    
-    .left-section,
-    .right-section {
-      flex: 0 0 auto;
-      width: auto;
-    }
-    
-    .center-section {
-      flex: 1;
-      justify-content: center;
-    }
-    
-    .logo { 
-      height: 4rem;
-    }
-    
-    .hide-on-small { 
-      display: none;
-    }
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
   }
 
   /* Mobile Menu Styles */
@@ -386,6 +473,7 @@
   .mobile-close-btn:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
   }
 
   .mobile-nav {
@@ -415,24 +503,23 @@
   .mobile-nav-btn:hover {
     color: white;
     background: rgba(255, 255, 255, 0.08);
-    transform: translateX(4px);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
   }
 
   .mobile-nav-btn.active {
     color: white;
     background: rgba(255, 215, 0, 0.15);
     border-color: rgba(255, 215, 0, 0.3);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.1);
   }
 
   .mobile-nav-arrow {
     opacity: 0.5;
-    transition: transform 0.2s;
+    transition: opacity 0.2s;
   }
 
   .mobile-nav-btn:hover .mobile-nav-arrow {
     opacity: 1;
-    transform: translateX(4px);
   }
 
   .mobile-menu-footer {
@@ -440,21 +527,4 @@
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(0, 0, 0, 0.2);
   }
-
-  .mobile-menu-content {
-    /* Update existing mobile-menu-content styles */
-    background: rgba(13, 19, 31, 0.98);
-    backdrop-filter: blur(24px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .mobile-menu-overlay {
-    /* Update existing mobile-menu-overlay styles */
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-  }
-
 </style>

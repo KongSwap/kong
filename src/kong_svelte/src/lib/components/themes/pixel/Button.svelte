@@ -222,7 +222,7 @@
 
   .big {
     @apply h-12;
-    font-size: 0.9rem;
+    font-size: 2rem;
   }
 
   .blue {

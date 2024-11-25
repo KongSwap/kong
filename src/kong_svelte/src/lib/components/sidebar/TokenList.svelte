@@ -17,6 +17,9 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { ArrowUpDown, Search } from 'lucide-svelte';
   import { Principal } from "@dfinity/principal";
+  import { auth } from "$lib/services/auth";
+  import SendTokens from "$lib/components/sidebar/SendTokens.svelte";
+  import ReceiveTokens from "$lib/components/sidebar/ReceiveTokens.svelte";
   import { onMount, onDestroy } from "svelte";
   import { auth } from "$lib/services/auth";
 
@@ -24,7 +27,8 @@
   export let tokens: any[] = [];
 
   let selectedToken: any = null;
-  let isModalOpen = false;
+  let showSendModal = false;
+  let showReceiveModal = false;
   let amount: string | number = "";
   let error = "";
   let balance = "0";
@@ -110,21 +114,30 @@
   }
 
   function handleTokenClick(token: any) {
-    if (isModalOpen) {
+    if (showSendModal || showReceiveModal) {
       handleCloseModal();
       // Wait for modal to close before opening new one
       setTimeout(() => {
         selectedToken = token;
-        isModalOpen = true;
       }, 300);
     } else {
       selectedToken = token;
-      isModalOpen = true;
     }
   }
 
+  function handleSendClick(token: any) {
+    handleTokenClick(token);
+    showSendModal = true;
+  }
+
+  function handleReceiveClick(token: any) {
+    handleTokenClick(token);
+    showReceiveModal = true;
+  }
+
   function handleCloseModal() {
-    isModalOpen = false;
+    showSendModal = false;
+    showReceiveModal = false;
     // Reset form state after transition
     setTimeout(() => {
       selectedToken = null;
@@ -261,77 +274,48 @@
         <TokenRow
           {token}
           onClick={() => handleTokenClick(token)}
+          onSendClick={() => handleSendClick(token)}
+          onReceiveClick={() => handleReceiveClick(token)}
         />
       {/each}
     </div>
   {/if}
 </div>
 
-{#if isModalOpen && selectedToken}
+{#if showSendModal && selectedToken}
   <Modal
-    isOpen={isModalOpen}
+    isOpen={showSendModal}
     onClose={handleCloseModal}
-    title={"Send " + (selectedToken?.symbol || "Token Details")}
+    title={"Send " + selectedToken.symbol}
     width="480px"
     height="auto"
   >
-    <div class="token-details w-[380px]" class:hidden={!isModalOpen}>
-      <img
-        src={$tokenLogoStore[selectedToken.canister_id] ??
-          "/tokens/not_verified.webp"}
-        alt={selectedToken.name}
-        class="token-logo"
-      />
-      <div class="token-info w-full">
-        <h3 class="text-lg font-semibold text-yellow-500">
-          {selectedToken.symbol}
-        </h3>
-        <p class="text-base">
-          {selectedToken.formattedBalance}
-          {selectedToken.symbol}
-        </p>
-        <p class="text-base">${selectedToken.formattedUsdValue}</p>
-      </div>
-    </div>
+    <SendTokens token={selectedToken} />
+  </Modal>
+{/if}
 
-    {#key isModalOpen}
-      <div class="transfer-section">
-        <TokenQtyInput
-          bind:value={amount}
-          token={selectedToken}
-          {error}
-          onInput={handleInput}
-        />
-        <TextInput
-          id="principal"
-          placeholder="Destination pid"
-          bind:value={destinationPid}
-          required
-          size="lg"
-        />
-      </div>
-    {/key}
-
-    <div class="modal-buttons">
-      <Button text="Close" onClick={handleCloseModal} />
-      <Button
-        text={isSending ? "Sending..." : "Send"}
-        variant="green"
-        onClick={() => handleSend()}
-        disabled={isSending || !amount || !destinationPid}
-      />
-    </div>
+{#if showReceiveModal && selectedToken}
+  <Modal
+    isOpen={showReceiveModal}
+    onClose={handleCloseModal}
+    title={"Receive " + selectedToken.symbol}
+    width="600px"
+    height="auto"
+  >
+    <ReceiveTokens token={selectedToken} />
   </Modal>
 {/if}
 
 <style lang="postcss">
   .token-list {
-    @apply w-full flex flex-col gap-2 px-3 py-4;
+    @apply w-full flex flex-col gap-2 px-3;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    margin-right: -3px; /* Compensate for scrollbar width */
+    padding-right: calc(3px + 12px); /* Add extra padding to account for scrollbar */
   }
 
   .token-list::-webkit-scrollbar {

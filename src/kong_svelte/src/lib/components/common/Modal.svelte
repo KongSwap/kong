@@ -22,7 +22,7 @@
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
         modalWidth = isMobile ? "100%" : width;
-        modalHeight = isMobile ? "100%" : height;
+        modalHeight = isMobile ? "90vh" : height;
       };
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
@@ -119,17 +119,21 @@
     z-index: 9999;
     display: grid;
     place-items: center;
-    overflow: hidden;
+    overflow: auto;
     will-change: opacity;
+    padding: 1rem;
   }
 
   .modal-container {
     position: relative;
     will-change: transform;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .modal-content {
     height: 100%;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
   }
@@ -138,7 +142,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
   }
 
   .modal-title {
@@ -153,8 +159,11 @@
   .modal-body {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    margin: 0 -1.5rem;
+    padding: 0 1.5rem;
   }
 
   .action-button {
@@ -184,12 +193,25 @@
   }
 
   @media (max-width: 768px) {
-    .modal-content {
+    .modal-overlay {
       padding: 0.5rem;
+    }
+
+    .modal-content {
+      padding: 1rem;
+    }
+
+    .modal-header {
+      padding-bottom: 1rem;
     }
 
     .modal-title {
       font-size: 1.75rem;
+    }
+
+    .modal-body {
+      margin: 0 -1rem;
+      padding: 0 1rem;
     }
   }
 </style>

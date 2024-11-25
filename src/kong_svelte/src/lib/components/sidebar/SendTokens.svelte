@@ -1,59 +1,83 @@
 <script lang="ts">
-    import { fade, fly } from 'svelte/transition';
+    import { fade } from 'svelte/transition';
     import { backOut } from 'svelte/easing';
     import { tweened } from 'svelte/motion';
+    import { IcrcService } from "$lib/services/icrc/IcrcService";
+    import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
+    import { toastStore } from "$lib/stores/toastStore";
+    import { Principal } from "@dfinity/principal";
+    import Button from '$lib/components/common/Button.svelte';
 
     export let token: {
         symbol: string;
         amount: string;
-        icon: string;
-    };
-
-    type TokenTransaction = {
-        type: 'send' | 'receive';
-        amount: string;
-        to?: string;
-        from?: string;
-        timestamp: number;
-        status: 'pending' | 'completed' | 'failed';
+        canister_id: string;
+        decimals: number;
     };
 
     let recipientAddress = '';
-    let amount;
-    let maxAmount = parseFloat(token.amount);
+    let amount = '';
     let isValidating = false;
     let errorMessage = '';
-
-    let tokenTransactions: TokenTransaction[] = [
-        {
-            type: 'send',
-            amount: '0.5',
-            to: '0x1234...5678',
-            timestamp: Date.now() - 3600000,
-            status: 'completed'
-        },
-        {
-            type: 'receive',
-            amount: '1.0',
-            from: '0x8765...4321',
-            timestamp: Date.now() - 86400000,
-            status: 'completed'
-        }
-    ];
+    let maxAmount = parseFloat(token.amount);
+    let addressType: 'principal' | 'account' | null = null;
 
     const progress = tweened(0, {
         duration: 1000,
         easing: backOut
     });
 
+    function detectAddressType(address: string): 'principal' | 'account' | null {
+        try {
+            Principal.fromText(address);
+            return 'principal';
+        } catch {
+            if (address.length === 64) {
+                return 'account';
+            }
+            return null;
+        }
+    }
+
     function validateAddress(address: string): boolean {
-        // Add your address validation logic here
-        return address.startsWith('0x') && address.length === 42;
+        const type = detectAddressType(address);
+        addressType = type;
+        return type !== null;
     }
 
     function validateAmount(value: string): boolean {
+        if (!value) return false;
         const numValue = parseFloat(value);
-        return !isNaN(numValue) && numValue > 0 && numValue <= maxAmount;
+        if (isNaN(numValue) || numValue <= 0) {
+            errorMessage = 'Amount must be greater than 0';
+            return false;
+        }
+        if (numValue > maxAmount) {
+            errorMessage = 'Insufficient balance';
+            return false;
+        }
+        return true;
+    }
+
+    function handleAmountInput(event: Event) {
+        const input = event.target as HTMLInputElement;
+        let value = input.value.replace(/[^0-9.]/g, '');
+        
+        // Only allow one decimal point
+        const decimalPoints = value.match(/\./g)?.length || 0;
+        if (decimalPoints > 1) {
+            value = value.slice(0, value.lastIndexOf('.'));
+        }
+
+        // Limit decimal places to token decimals
+        const parts = value.split('.');
+        if (parts[1] && parts[1].length > token.decimals) {
+            value = `${parts[0]}.${parts[1].slice(0, token.decimals)}`;
+        }
+
+        amount = value;
+        errorMessage = '';
+        validateAmount(value);
     }
 
     async function handleSubmit() {
@@ -67,362 +91,271 @@
         }
 
         if (!validateAmount(amount)) {
-            errorMessage = 'Invalid amount';
             isValidating = false;
             return;
         }
 
-        // Simulate transaction progress
-        progress.set(0);
-        await progress.set(1);
+        try {
+            progress.set(0);
+            const decimals = token.decimals || 8;
+            const amountBigInt = BigInt(
+                Math.floor(parseFloat(amount) * Math.pow(10, decimals))
+            );
 
-        // Add to transaction history
-        tokenTransactions = [{
-            type: 'send',
-            amount,
-            to: recipientAddress,
-            timestamp: Date.now(),
-            status: 'pending'
-        }, ...tokenTransactions];
+            const result = await IcrcService.icrc1Transfer(
+                token,
+                recipientAddress,
+                amountBigInt
+            );
 
-        // Reset form
-        recipientAddress = '';
-        amount = '';
-        isValidating = false;
-    }
-
-    function formatTime(timestamp: number): string {
-        const now = Date.now();
-        const diff = now - timestamp;
-        const seconds = Math.floor(diff / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-
-        if (days > 0) {
-            return `${days} day${days === 1 ? '' : 's'} ago`;
-        } else if (hours > 0) {
-            return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-        } else if (minutes > 0) {
-            return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-        } else {
-            return 'just now';
+            if (result?.Ok) {
+                toastStore.success("Token sent successfully");
+                recipientAddress = '';
+                amount = '';
+            } else if (result?.Err) {
+                const errMsg = typeof result.Err === "object"
+                    ? Object.entries(result.Err)[0][0]
+                    : JSON.stringify(result.Err);
+                errorMessage = `Failed to send token: ${errMsg}`;
+                toastStore.error(errorMessage);
+            }
+        } catch (err) {
+            errorMessage = err.message || "Failed to send token";
+            toastStore.error(errorMessage);
+        } finally {
+            isValidating = false;
+            await progress.set(1);
         }
     }
 
     function setMaxAmount() {
         amount = maxAmount.toString();
+        errorMessage = '';
     }
+
+    function formatBalance(amount: string, decimals: number = 8): string {
+        const num = parseFloat(amount);
+        if (isNaN(num)) return '0';
+        return num.toLocaleString(undefined, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: decimals
+        });
+    }
+
+    $: addressTypeText = addressType 
+        ? `Detected ${addressType.charAt(0).toUpperCase() + addressType.slice(1)} ID format`
+        : 'Enter Principal ID or Account ID';
 </script>
 
-<div class="send-token-container" in:fly={{ y: 20, duration: 300 }}>
-    <div class="token-info">
-        <div class="token-icon">{token.icon}</div>
-        <div class="token-details">
-            <span class="token-symbol">{token.symbol}</span>
-            <span class="token-balance">Balance: {token.amount}</span>
+<div class="send-container">
+    <div class="header">
+        <div class="token-info">
+            <img
+                src={$tokenLogoStore[token.canister_id] ?? "/tokens/not_verified.webp"}
+                alt={token.symbol}
+                class="token-logo"
+            />
+            <div class="token-details">
+                <span class="token-name">{token.symbol}</span>
+                <div class="balance-display">
+                    <span class="balance-label">Available:</span>
+                    <span class="balance-amount">{formatBalance(token.amount, token.decimals)} {token.symbol}</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <form class="send-form" on:submit|preventDefault={handleSubmit}>
         <div class="input-group">
-            <label for="recipient">Recipient Address</label>
-            <input
-                type="text"
-                id="recipient"
-                bind:value={recipientAddress}
-                placeholder="0x..."
-                class:error={errorMessage.includes('address')}
-            />
+            <label for="recipient" class="input-label">Recipient</label>
+            <div class="input-wrapper">
+                <input
+                    type="text"
+                    id="recipient"
+                    bind:value={recipientAddress}
+                    placeholder="Enter Principal ID or Account ID"
+                    class:error={errorMessage.includes('address')}
+                    class:valid={addressType !== null}
+                />
+                {#if addressType}
+                    <div class="validation-badge">
+                        <span class="validation-icon">✓</span>
+                        <span>{addressType}</span>
+                    </div>
+                {/if}
+            </div>
         </div>
 
         <div class="input-group">
-            <label for="amount">Amount</label>
-            <div class="amount-input">
+            <label class="input-label">Amount</label>
+            <div class="amount-input-wrapper">
                 <input
-                    type="number"
-                    id="amount"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="0.00"
                     bind:value={amount}
-                    placeholder="0.0"
-                    step="0.000001"
-                    min="0"
-                    max={maxAmount}
-                    class:error={errorMessage.includes('amount')}
+                    on:input={handleAmountInput}
+                    class:error={errorMessage.includes('balance') || errorMessage.includes('Amount')}
                 />
-                <button type="button" class="max-button" on:click={setMaxAmount}>MAX</button>
+                <button type="button" class="max-button" on:click={setMaxAmount}>
+                    <span class="max-text">MAX</span>
+                </button>
             </div>
         </div>
 
         {#if errorMessage}
             <div class="error-message" in:fade>
+                <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12" y2="16" />
+                </svg>
                 {errorMessage}
             </div>
         {/if}
 
-        <button type="submit" class="send-button" disabled={isValidating}>
-            {#if isValidating}
-                <div class="progress-bar" style="width: {$progress * 100}%"></div>
-                <span>Processing...</span>
-            {:else}
-                <span>Send {token.symbol}</span>
-            {/if}
-        </button>
+        <Button
+            type="submit"
+            variant="yellow"
+            text={isValidating ? "Sending..." : `Send ${token.symbol}`}
+            disabled={isValidating || !amount || !recipientAddress}
+            loading={isValidating}
+            size="lg"
+            class="send-button"
+        />
     </form>
-
-    <div class="transaction-history">
-        <h3>Recent Transactions</h3>
-        {#if tokenTransactions.length === 0}
-            <div class="empty-state">No transactions yet</div>
-        {:else}
-            {#each tokenTransactions as tx}
-                <div class="transaction-item" class:pending={tx.status === 'pending'}>
-                    <div class="tx-icon">
-                        {tx.type === 'send' ? '↗' : '↙'}
-                    </div>
-                    <div class="tx-details">
-                        <span class="tx-amount">{tx.amount} {token.symbol}</span>
-                        <span class="tx-address">
-                            {tx.type === 'send' ? `To: ${tx.to}` : `From: ${tx.from}`}
-                        </span>
-                    </div>
-                    <div class="tx-time">
-                        {formatTime(tx.timestamp)}
-                    </div>
-                </div>
-            {/each}
-        {/if}
-    </div>
 </div>
 
-<style lang="scss">
-    .send-token-container {
-        padding: 1rem;
+<style lang="postcss">
+    .send-container {
+        @apply flex flex-col;
+    }
+
+    .header {
+        @apply flex items-center px-6 py-4 border-b border-white/10;
     }
 
     .token-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        background: rgba(255, 204, 0, 0.1);
-        border: 2px solid #ffcc00;
+        @apply flex items-center gap-3 flex-1;
     }
 
-    .token-icon {
-        font-size: 2rem;
-        width: 3rem;
-        height: 3rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 8px;
-        border: 1px solid rgba(255, 204, 0, 0.3);
+    .token-logo {
+        @apply w-10 h-10 rounded-full ring-2 ring-white/10;
     }
 
     .token-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+        @apply flex flex-col;
     }
 
-    .token-symbol {
-        font-family: 'Press Start 2P', monospace;
-        font-size: 1rem;
-        color: #ffcc00;
+    .token-name {
+        @apply text-xl font-bold text-white;
     }
 
-    .token-balance {
-        font-family: monospace;
-        color: #aaa;
+    .balance-display {
+        @apply flex items-center gap-1.5 mt-0.5;
+    }
+
+    .balance-label {
+        @apply text-sm text-white/50;
+    }
+
+    .balance-amount {
+        @apply text-sm font-medium text-white/90;
     }
 
     .send-form {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+        @apply flex flex-col gap-6 p-6;
     }
 
     .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-
-        label {
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.75rem;
-            color: #ffcc00;
-        }
-
-        input {
-            padding: 0.75rem;
-            background: #000;
-            border: 2px solid rgba(255, 204, 0, 0.3);
-            color: #fff;
-            font-family: monospace;
-            transition: all 0.3s ease;
-
-            &:focus {
-                border-color: #ffcc00;
-                outline: none;
-            }
-
-            &.error {
-                border-color: #ff4444;
-            }
-        }
+        @apply flex flex-col gap-2;
     }
 
-    .amount-input {
-        display: flex;
-        gap: 0.5rem;
+    .input-label {
+        @apply text-sm font-medium text-white/80;
+    }
 
-        input {
-            flex: 1;
-        }
+    .input-wrapper {
+        @apply relative;
+    }
+
+    input {
+        @apply w-full px-4 py-3.5 bg-white/5 rounded-xl
+               border-2 border-white/10
+               text-white placeholder-white/30
+               focus:outline-none focus:border-yellow-500/50 focus:bg-white/[0.07]
+               transition-all duration-200;
+    }
+
+    input.error {
+        @apply border-red-500/50 bg-red-500/5;
+    }
+
+    input.valid {
+        @apply border-green-500/50 bg-green-500/5;
+    }
+
+    .validation-badge {
+        @apply absolute right-3 top-1/2 -translate-y-1/2
+               flex items-center gap-1.5 px-2.5 py-1
+               bg-green-500/10 text-green-400
+               rounded-full text-xs font-medium;
+    }
+
+    .validation-icon {
+        @apply text-green-400;
+    }
+
+    .amount-input-wrapper {
+        @apply relative flex gap-2;
     }
 
     .max-button {
-        padding: 0 1rem;
-        background: rgba(255, 204, 0, 0.1);
-        border: 2px solid #ffcc00;
-        color: #ffcc00;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.75rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        @apply px-4 bg-yellow-500/10 text-yellow-500 rounded-xl
+               border-2 border-yellow-500/20
+               hover:bg-yellow-500/20 hover:border-yellow-500/30
+               active:bg-yellow-500/30
+               transition-all duration-200
+               text-sm font-semibold whitespace-nowrap;
+    }
 
-        &:hover {
-            background: #ffcc00;
-            color: #000;
-        }
+    .max-text {
+        @apply tracking-wide;
     }
 
     .error-message {
-        color: #ff4444;
-        font-size: 0.875rem;
-        padding: 0.5rem;
-        background: rgba(255, 68, 68, 0.1);
-        border: 1px solid rgba(255, 68, 68, 0.3);
+        @apply flex items-center gap-2 p-4 
+               bg-red-500/10 border border-red-500/20
+               text-red-400 rounded-xl text-sm;
     }
 
-    .send-button {
-        position: relative;
-        padding: 1rem;
-        background: #000;
-        border: 2px solid #ffcc00;
-        color: #ffcc00;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.875rem;
-        cursor: pointer;
-        overflow: hidden;
-        transition: all 0.3s ease;
+    .error-icon {
+        @apply w-5 h-5 stroke-2;
+    }
 
-        &:hover:not(:disabled) {
-            background: #ffcc00;
-            color: #000;
+    :global(.send-button) {
+        @apply w-full mt-2 !rounded-xl !py-3.5 !text-base !font-semibold;
+    }
+
+    @media (max-width: 640px) {
+        .header {
+            @apply px-4 py-4;
         }
 
-        &:disabled {
-            opacity: 0.7;
-            cursor: wait;
-        }
-    }
-
-    .progress-bar {
-        position: absolute;
-        left: 0;
-        top: 0;
-        height: 100%;
-        background: rgba(255, 204, 0, 0.2);
-        transition: width 0.3s ease;
-    }
-
-    .transaction-history {
-        h3 {
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.875rem;
-            color: #ffcc00;
-            margin-bottom: 1rem;
-        }
-    }
-
-    .transaction-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: rgba(26, 71, 49, 0.1);
-        border: 1px solid rgba(255, 204, 0, 0.3);
-        margin-bottom: 0.5rem;
-        transition: all 0.3s ease;
-
-        &:hover {
-            transform: translateX(5px);
-            border-color: #ffcc00;
+        .send-form {
+            @apply p-4 gap-4;
         }
 
-        &.pending {
-            border-style: dashed;
-            animation: pulse 2s infinite;
-        }
-    }
-
-    .tx-icon {
-        font-size: 1.25rem;
-        color: #ffcc00;
-    }
-
-    .tx-details {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .tx-amount {
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.75rem;
-        color: #ffcc00;
-    }
-
-    .tx-address {
-        font-family: monospace;
-        font-size: 0.75rem;
-        color: #aaa;
-    }
-
-    .tx-time {
-        font-size: 0.75rem;
-        color: #666;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.7; }
-        100% { opacity: 1; }
-    }
-
-    @media (max-width: 768px) {
-        .token-info {
-            padding: 0.75rem;
+        input {
+            @apply text-base;
         }
 
-        .token-icon {
-            font-size: 1.5rem;
-            width: 2.5rem;
-            height: 2.5rem;
+        .max-button {
+            @apply px-4 py-3.5;
         }
 
-        .token-symbol {
-            font-size: 0.875rem;
-        }
-
-        .send-button {
-            padding: 0.75rem;
-            font-size: 0.75rem;
+        :global(.send-button) {
+            @apply !py-4;
         }
     }
 </style>

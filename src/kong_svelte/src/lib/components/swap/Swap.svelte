@@ -8,7 +8,6 @@
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import { getButtonText } from "./utils";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
-  import Button from "$lib/components/common/Button.svelte";
   import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
@@ -20,10 +19,11 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash-es/debounce";
-    import { replaceState } from "$app/navigation";
+  import { replaceState } from "$app/navigation";
   import { writable } from "svelte/store";
   import { createEventDispatcher } from 'svelte';
   import Portal from 'svelte-portal';
+  import Button from "$lib/components/common/Button.svelte";
 
   let isProcessing = false;
   let rotationCount = 0;
@@ -370,12 +370,14 @@
       <div class="swap-footer">
         <Button
           variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
-          disabled={isSwapButtonDisabled}
+          size="big"
+          state={isSwapButtonDisabled ? "disabled" : "default"}
           onClick={handleSwapClick}
+          text={buttonText}
+          disabled={isSwapButtonDisabled}
           width="100%"
-        >
-          {buttonText}
-        </Button>
+          className="swap-button"
+        />
       </div>
     </div>
   </div>
@@ -457,7 +459,7 @@
   .panels-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 
   .panels-wrapper {
@@ -494,6 +496,14 @@
     border: none !important;
     backdrop-filter: none !important;
     transform: translate(-50%, -50%) !important;
+  }
+
+  :global([data-theme="pixel"]) .swap-footer {
+    padding: 0px;
+  }
+
+  :global([data-theme="pixel"]) .panels-container {
+    gap: 4px;
   }
 
   :global([data-theme="pixel"]) .switch-button:hover:not(:disabled) {
@@ -595,5 +605,27 @@
 
   :global([data-theme="pixel"]) .arrow-path {
     stroke-width: 1;
+  }
+
+  .swap-footer {
+    margin-top: var(--footer-margin, 0);
+  }
+
+  :global([data-theme="modern"]) .swap-footer {
+    --footer-margin: 0.05rem;
+  }
+
+  :global([data-theme="pixel"]) .swap-footer {
+    --footer-margin: 0;
+    padding: 0px;
+  }
+
+  .swap-footer :global(.swap-button) {
+    font-size: 1.4rem !important;
+  }
+
+  :global([data-theme="pixel"]) .swap-footer :global(.swap-button) {
+    font-size: 1.4rem !important;
+    min-height: 4rem;
   }
 </style>

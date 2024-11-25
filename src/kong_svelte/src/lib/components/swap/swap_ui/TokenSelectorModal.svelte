@@ -1,6 +1,6 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
-  import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
+  import TokenRowCompact from "$lib/components/sidebar/TokenRowCompact.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { auth } from '$lib/services/auth';
   import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
@@ -79,8 +79,8 @@
 </script>
 
 <Modal isOpen={show} title="Select Token" {onClose} variant="green">
-  <div class="space-y-4">
-    <div class="w-full">
+  <div class="modal-content">
+    <div class="search-section">
       <label for="token-search" class="sr-only">Search tokens</label>
       <div class="flex gap-2">
         <input
@@ -88,42 +88,32 @@
           type="text"
           bind:value={searchQuery}
           placeholder="Search tokens..."
-          class="flex-1 bg-black/30 border-2 border-white/10 rounded-xl px-4 py-2 text-white text-lg font-medium 
-                 placeholder-white/60 transition-all duration-100 
-                 hover:border-white/20 focus:border-yellow-300/50 focus:outline-none"
+          class="search-input"
           aria-label="Search tokens"
         />
         <button
           on:click={handlePaste}
-          class="px-4 py-2 bg-black/30 border-2 border-white/10 rounded-xl text-white/80 font-medium
-                 transition-all duration-100 hover:border-white/20 hover:text-white
-                 focus:border-yellow-300/50 focus:outline-none"
+          class="paste-btn"
           aria-label="Paste from clipboard"
         >
           Paste
         </button>
       </div>
-      <div class="flex flex-wrap gap-1 mt-2">
+      <div class="filter-buttons">
         <button
-          class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
-                 transition-all duration-100 hover:border-white/20 hover:text-white
-                 {standardFilter === 'all' ? 'border-yellow-300/50 text-yellow-300 bg-black/50' : ''}"
+          class="filter-btn {standardFilter === 'all' ? 'active' : ''}"
           on:click={() => (standardFilter = "all")}
         >
           All
         </button>
         <button
-          class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
-                 transition-all duration-100 hover:border-white/20 hover:text-white
-                 {standardFilter === 'favorites' ? 'border-yellow-300/50 text-yellow-300 bg-black/50' : ''}"
+          class="filter-btn {standardFilter === 'favorites' ? 'active' : ''}"
           on:click={() => (standardFilter = "favorites")}
         >
           Favorites {favoriteCount > 0 ? `(${favoriteCount})` : ''}
         </button>
         <button
-          class="px-3 py-1.5 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
-                 transition-all duration-100 hover:border-white/20 hover:text-white
-                 {standardFilter === 'ck' ? 'border-yellow-300/50 text-yellow-300 bg-black/50' : ''}"
+          class="filter-btn {standardFilter === 'ck' ? 'active' : ''}"
           on:click={() => (standardFilter = "ck")}
         >
           ckTokens
@@ -131,30 +121,25 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-2 token-list" role="listbox" aria-label="Token list">
+    <div class="token-list" role="listbox" aria-label="Token list">
       {#each filteredTokens as token}
-        <div class="flex items-center px-4 rounded-lg transition-all duration-100 hover:bg-white/5">
+        <div class="token-row">
           <button
-            class="flex-1 py-2 bg-transparent border-none cursor-pointer transition-all duration-100 text-left
-                   hover:translate-x-1 min-w-0"
+            class="token-btn"
             on:click={() => handleSelect(token)}
             role="option"
             aria-selected={token.canister_id === currentToken?.canister_id}
           >
-            <TokenRow {token} />
+            <TokenRowCompact {token} />
           </button>
           <button
-            class="p-2 bg-transparent border-none cursor-pointer text-white/50 transition-all duration-100
-                   hover:text-yellow-300 hover:scale-110 flex items-center justify-center"
+            class="fav-btn"
             on:click={(e) => handleFavoriteClick(e, token.canister_id)}
             aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
               ? "Remove from favorites" 
               : "Add to favorites"}
           >
-            <span class="text-xl leading-none outline-none
-                       {$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
-                         ? 'text-yellow-300' 
-                         : 'opacity-70'}">
+            <span class:active={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id)}>
               {$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) ? '★' : '☆'}
             </span>
           </button>
@@ -165,8 +150,41 @@
 </Modal>
 
 <style lang="postcss">
-  /* Custom scrollbar styles - can't be done with Tailwind */
+  .modal-content {
+    @apply space-y-6 min-h-[60vh];
+  }
+
+  .search-section {
+    @apply space-y-4;
+  }
+
+  .search-input {
+    @apply flex-1 bg-black/30 border-2 border-white/10 rounded-xl px-4 py-3 text-white text-lg font-medium 
+           placeholder-white/60 transition-all duration-100 
+           hover:border-white/20 focus:border-yellow-300/50 focus:outline-none;
+  }
+
+  .paste-btn {
+    @apply px-4 py-2 bg-black/30 border-2 border-white/10 rounded-xl text-white/80 font-medium
+           transition-all duration-100 hover:border-white/20 hover:text-white
+           focus:border-yellow-300/50 focus:outline-none;
+  }
+
+  .filter-buttons {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .filter-btn {
+    @apply px-4 py-2 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
+           transition-all duration-100 hover:border-white/20 hover:text-white;
+  }
+
+  .filter-btn.active {
+    @apply border-yellow-300/50 text-yellow-300 bg-black/50;
+  }
+
   .token-list {
+    @apply flex-1 overflow-y-auto overflow-x-hidden py-2 space-y-2 max-h-[50vh];
     scrollbar-width: thin;
     
     &::-webkit-scrollbar {
@@ -178,12 +196,29 @@
     }
     
     &::-webkit-scrollbar-thumb {
-      @apply bg-white/20 rounded-full;
-      
-      &:hover {
-        @apply bg-white/30;
-      }
+      @apply bg-white/20 rounded-full hover:bg-white/30;
     }
+  }
+
+  .token-row {
+    @apply flex items-center px-2;
+  }
+
+  .token-btn {
+    @apply flex-1 bg-transparent border-none cursor-pointer text-left min-w-0;
+  }
+
+  .fav-btn {
+    @apply p-2 bg-transparent border-none cursor-pointer text-white/50
+           flex items-center justify-center;
+  }
+
+  .fav-btn span {
+    @apply text-xl leading-none outline-none opacity-70;
+  }
+
+  .fav-btn span.active {
+    @apply text-yellow-300 opacity-100;
   }
 
   /* Screen reader only utility */

@@ -419,10 +419,33 @@
     }
 
     /* Mobile styles */
+    .chart-area {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 500px;
+    }
+
     .main-content.mobile {
         flex-direction: column;
         height: auto;
-        max-height: calc(100% - 0.5rem);
+        max-height: none;
+        gap: 1rem;
+    }
+
+    .main-content.mobile :global(.chart-area) {
+        height: 60vh !important;
+        min-height: 300px;
+        max-height: 500px;
+    }
+
+    .main-content.mobile .chart-wrapper {
+        height: 100%;
+        width: 100%;
+    }
+
+    .main-content.mobile .chart-placeholder {
+        height: 100%;
     }
 
     .right-panels.mobile {
