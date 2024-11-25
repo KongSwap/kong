@@ -164,12 +164,23 @@ type SwapReply = record {
     ts : nat64;
 };
 
+type TxsReply = variant {
+    AddPool : AddPoolReply;
+    AddLiquidity : AddLiquidityReply;
+    RemoveLiquidity : RemoveLiquidityReply;
+    Swap : SwapReply;
+};
+type TxsResult = variant { Ok : vec TxsReply; Err : text };
+
 service : {
     // icrc1 standards
     icrc1_name : () -> (text) query;
 
     // requests(request_id, num_requests) - returns specific request or all requests of the user
     requests : (opt nat64, opt nat16) -> (RequestsResult) query;
+    // txs(my_txs, tx_id, token_id, num_txs) - returns transactions of the user or all transactions
+    txs : (opt bool, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 
     get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
+    get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 }
