@@ -71,154 +71,88 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<header class="min-w-[250px] backdrop-blur-md">
-  <div class="flex flex-col gap-3 p-1">
+<header class="sidebar-header-root">
+  <div class="header-container">
     {#if $auth.isConnected}
-      <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
-        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-144px)]">
-          <button
-            class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-white font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
-            on:click={() => accountStore.showAccountDetails()}
-            aria-label="View account details"
+      <div class="header-content" role="group" aria-label="Wallet information">
+        <button
+          class="account-button"
+          on:click={() => accountStore.showAccountDetails()}
+          aria-label="View account details"
+        >
+          <div class="status-indicator" />
+          <span class="account-text">Account Details</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="chevron-icon"
           >
-            <span class="flex items-center justify-between w-full">
-              Account Details
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="ml-2"
-              >
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </span>
-          </button>
-        </div>
-        <div class="flex gap-2">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+
+        <div class="action-buttons">
           <button
-            class="expand-btn border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
-            on:click={() => sidebarStore.toggleExpand()}
-            aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+            class="icon-button"
+            on:click={handleReload}
+            disabled={isRefreshing}
+            aria-label="Refresh balances"
+          >
+            <RefreshCw
+              size={18}
+              class={isRefreshing ? 'animate-spin' : ''}
+            />
+          </button>
+          
+          <button
+            class="icon-button"
+            on:click={() => sidebarStore.toggle()}
+            aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {#if isExpanded}
-              <Minimize2 size={22} />
+              <Minimize2 size={18} />
             {:else}
-              <Maximize2 size={22} />
+              <Maximize2 size={18} />
             {/if}
-          </button>
-          <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
-            on:click={handleDisconnect}
-            aria-label="Disconnect wallet"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-              <line x1="12" y1="2" x2="12" y2="12"></line>
-            </svg>
-          </button>
-          <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
-            on:click={onClose}
-            aria-label="Close sidebar"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="#b53f3f"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
           </button>
         </div>
       </div>
-      <div class="portfolio-value mt-4">
-        <button
-          class="portfolio-refresh-button"
-          on:click={handleReload}
-          aria-label="Refresh Portfolio Value"
-        >
-          <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-          <p class="text-3xl font-bold font-mono">
-            {#if isRefreshing}
-              <LoadingIndicator />
-            {:else}
-              {$portfolioValue}
-            {/if}
-          </p>
-          <div class="refresh-overlay glow-box">
-            <RefreshCw size={24} class="text-lime-400 glow" />
-          </div>
-        </button>
-      </div>
-      <nav class="grid grid-cols-3 gap-2 p-1">
-        {#each tabs as tab (tab)}
+
+      <nav class="tab-navigation" role="tablist">
+        {#each tabs as tab}
           <button
-            class="self-center text-center justify-center bg-transparent w-full flex items-center border-none p-2 text-gray-100 font-alumni text-xl font-semibold cursor-pointer transition-all duration-200 ease-in-out relative"
-            class:bg-black={activeTab === tab}
-            class:text-lime-300={activeTab === tab}
-            on:click={() => setActiveTab(tab)}
             role="tab"
+            class="tab-button"
+            class:active={activeTab === tab}
+            on:click={() => setActiveTab(tab)}
             aria-selected={activeTab === tab}
             aria-controls={`${tab}-panel`}
-            id={`${tab}-tab`}
           >
-            {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 mr-1.5 object-contain" />
-            {/if}
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 ml-1.5 object-contain" />
-            {/if}
+            {tab}
           </button>
         {/each}
       </nav>
     {:else}
-      <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet selection">
-        <h1 id="wallet-select-title" class="font-mono text-lg text-gray-500 m-0 font-semibold py-1.5">Select Wallet</h1>
-        <div class="flex gap-2">
+      <div class="header-content" role="group" aria-label="Wallet selection">
+        <h1 class="wallet-title">Select Wallet</h1>
+        <div class="action-buttons">
           <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
-            on:click={onClose}
-            aria-label="Close sidebar"
+            class="icon-button"
+            on:click={() => sidebarStore.toggle()}
+            aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="#ff4444"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            {#if isExpanded}
+              <Minimize2 size={18} />
+            {:else}
+              <Maximize2 size={18} />
+            {/if}
           </button>
         </div>
       </div>
@@ -230,111 +164,64 @@
   onClose={() => showAccountDetails = false}
 />
 
-<style scoped>
-    .portfolio-value {
-    position: relative;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    transition: transform 0.2s ease;
-    :hover {
-      backdrop-filter: blur(10px);
-    }
+<style lang="postcss">
+  .sidebar-header-root {
+    @apply min-w-[250px] backdrop-blur-md border-b border-white/5;
   }
 
-  .portfolio-value:hover {
-    transform: scale(1.02);
+  .header-container {
+    @apply flex flex-col gap-4 p-4;
   }
 
-  .portfolio-refresh-button {
-    width: 100%;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    padding: 12px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-    z-index: 0;
+  .header-content {
+    @apply flex items-center justify-between gap-3 flex-nowrap;
   }
 
-  .portfolio-refresh-button:active {
-    transform: scale(0.98);
+  .account-button {
+    @apply flex items-center flex-1 max-w-[calc(100%-88px)]
+           bg-black/20 hover:bg-black/30 px-4 py-2.5 rounded-xl
+           border border-white/5 text-white font-mono text-sm
+           transition-all duration-200;
   }
 
-  .refresh-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(7px);
-    opacity: 0;
-    transition: all 0.3s ease;
-    color: white;
-    gap: 8px;
-    z-index: 1;
+  .status-indicator {
+    @apply w-2 h-2 rounded-full bg-green-400 
+           shadow-lg shadow-green-400/20 mr-3;
   }
 
-  .refresh-overlay :global(svg) {
-    transition: transform 0.3s ease;
+  .account-text {
+    @apply flex-1 text-left font-medium text-white/90;
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
-    transform: rotate(180deg);
+  .chevron-icon {
+    @apply opacity-50;
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay,
-  .portfolio-refresh-button:focus-visible .refresh-overlay {
-    opacity: 0.85;
-    backdrop-filter: blur(7px);
+  .action-buttons {
+    @apply flex items-center gap-2;
   }
 
-
-  @keyframes glow {
-    0% {
-      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
-                  0 0 20px rgba(163, 230, 53, 0.2);
-    }
-    50% {
-      box-shadow: 0 0 20px rgba(163, 230, 53, 0.6),
-                  0 0 40px rgba(163, 230, 53, 0.4);
-    }
-    100% {
-      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
-                  0 0 20px rgba(163, 230, 53, 0.2);
-    }
+  .icon-button {
+    @apply p-2.5 rounded-xl bg-black/20 hover:bg-black/30
+           border border-white/5 text-white/70 hover:text-white
+           transition-all duration-200 disabled:opacity-50;
   }
 
-  .glow-box {
-    animation: glow 2s ease-in-out infinite;
-    border-radius: 6px;
-    z-index: 2;
+  .tab-navigation {
+    @apply flex gap-2 px-1;
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay {
-    opacity: 0.85;
+  .tab-button {
+    @apply flex-1 px-4 py-2 rounded-lg text-sm font-medium
+           text-white/50 hover:text-white/70 transition-all
+           capitalize;
   }
 
-  .glow {
-    animation: glow-animation 2s infinite alternate;
+  .tab-button.active {
+    @apply bg-white/5 text-white;
   }
 
-  @keyframes glow-animation {
-    from {
-      filter: drop-shadow(0 0 5px #a3e635) drop-shadow(0 0 10px #a3e635);
-    }
-    to {
-      filter: drop-shadow(0 0 15px #a3e635) drop-shadow(0 0 20px #a3e635);
-    }
-  }
-
-  @media (max-width: 768px) {
-    .expand-btn {
-      display: none;
-    }
+  .wallet-title {
+    @apply font-mono text-lg text-white/50 m-0 font-semibold py-1.5;
   }
 </style>

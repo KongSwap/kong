@@ -21,6 +21,7 @@
     let dropdownElement: HTMLDivElement;
     let hideZeroBalances = false;
     let isMobile = false;
+    let sortDirection = 'desc';
 
     // Check if we're on mobile
     $: if (browser) {
@@ -36,23 +37,29 @@
     }
 
     // Filter tokens based on search and balance
-    $: filteredTokens = $formattedTokens.filter((token) => {
-      if (!token?.symbol || !token?.name) return false;
-      
-      // Filter by search
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = token.symbol.toLowerCase().includes(searchLower) ||
-             token.name.toLowerCase().includes(searchLower) ||
-             token.canister_id.toLowerCase() === searchLower;
+    $: filteredTokens = $formattedTokens
+      .filter((token) => {
+        if (!token?.symbol || !token?.name) return false;
+        
+        // Filter by search
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = token.symbol.toLowerCase().includes(searchLower) ||
+               token.name.toLowerCase().includes(searchLower) ||
+               token.canister_id.toLowerCase() === searchLower;
 
-      // Filter by balance if enabled
-      if (hideZeroBalances) {
-        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-        return matchesSearch && balance > 0;
-      }
+        // Filter by balance if enabled
+        if (hideZeroBalances) {
+          const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+          return matchesSearch && balance > 0;
+        }
 
-      return matchesSearch;
-    });
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        const balanceA = Number($tokenStore.balances[a.canister_id]?.in_tokens || 0);
+        const balanceB = Number($tokenStore.balances[b.canister_id]?.in_tokens || 0);
+        return sortDirection === 'desc' ? balanceB - balanceA : balanceA - balanceB;
+      });
 
     function getStaggerDelay(index: number) {
       return index * 30; // 30ms delay between each item
@@ -171,13 +178,34 @@
             </div>
 
             <div class="filter-bar">
-              <label class="filter-toggle">
-                <input
-                  type="checkbox"
-                  bind:checked={hideZeroBalances}
-                />
-                <span class="toggle-label">Hide zero balances</span>
-              </label>
+              <div class="filter-options">
+                <label class="filter-toggle">
+                  <input
+                    type="checkbox"
+                    bind:checked={hideZeroBalances}
+                  />
+                  <span class="toggle-label">Hide zero balances</span>
+                </label>
+
+                <div class="sort-toggle" on:click={() => {
+                  sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+                }}>
+                  <span class="toggle-label">Sort by value</span>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="2"
+                    class="sort-arrow"
+                    class:ascending={sortDirection === 'asc'}
+                  >
+                    <path d="M12 20V4M5 13l7 7 7-7"/>
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <div class="tokens-container">
@@ -315,7 +343,7 @@
   }
 
   .action-button {
-    @apply absolute right-3 top-1/2 -translate-y-1/2;
+    @apply absolute right-5 top-1/2 -translate-y-1/2;
     @apply flex items-center justify-center;
     @apply w-8 h-8 rounded-lg;
     @apply bg-white/10 text-white/70;
@@ -326,6 +354,25 @@
   .filter-bar {
     @apply px-4 py-3 border-b border-[#2a2d3d];
     @apply bg-[#15161c];
+  }
+
+  .filter-options {
+    @apply flex items-center justify-between;
+  }
+
+  .sort-toggle {
+    @apply flex items-center gap-2;
+    @apply text-sm text-white/70;
+    @apply cursor-pointer hover:text-white;
+    @apply select-none;
+  }
+
+  .sort-arrow {
+    @apply transition-transform duration-200;
+  }
+
+  .sort-arrow.ascending {
+    @apply rotate-180;
   }
 
   .filter-toggle {

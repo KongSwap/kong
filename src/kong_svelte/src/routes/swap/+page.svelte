@@ -76,7 +76,7 @@
 
   .swap-normal {
     background-color: transparent;
-    padding: 2rem 1rem 0;
+    padding: 1rem 1rem 0;
   }
 
   @media (max-width: 640px) {

@@ -25,8 +25,9 @@
 <Modal 
   isOpen={show} 
   title="Account Details" 
-  onClose={() => accountStore.hideAccountDetails()} 
-  variant="green"
+  onClose={() => accountStore.hideAccountDetails()}
+  height="min(700px, 90vh)"
+  width="min(600px, 95vw)"
 >
   <div class="account-details">
     <div class="tabs">
@@ -62,6 +63,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-height: 500px;
+    height: 100%;
   }
 
   .content-wrapper {
@@ -69,6 +72,7 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    min-height: 400px;
   }
 
   .content-wrapper::-webkit-scrollbar {

@@ -1,4 +1,3 @@
-<!-- src/kong_svelte/src/lib/components/nav/Sidebar.svelte -->
 <script lang="ts">
   import { fly, fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
@@ -10,12 +9,14 @@
   import { liveQuery } from "dexie";
   import { auth } from "$lib/services/auth";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+  import IdentityPanel from "$lib/components/sidebar/account/IdentityPanel.svelte";
 
   export let sidebarOpen: boolean;
   export let onClose: () => void;
 
   let isExpanded = false;
   let isMobile = false;
+  let activeTab = 'tokens';
 
   // Subscribe to sidebar store
   sidebarStore.subscribe(state => {
@@ -44,6 +45,10 @@
   function toggleSidebar() {
     sidebarStore.toggle();
   }
+
+  function setActiveTab(tab: string) {
+    activeTab = tab;
+  }
 </script>
 
 {#if sidebarOpen}
@@ -62,34 +67,63 @@
     >
       <div class="modal-content">
         <header class="modal-header">
-          <h2 id="modal-title" class="modal-title">Wallet</h2>
-          <button
-            class="close-button"
-            on:click={handleClose}
-            aria-label="Close modal"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          <nav class="nav-tabs">
+            <button 
+              class="nav-tab {activeTab === 'tokens' ? 'active' : ''}" 
+              on:click={() => setActiveTab('tokens')}
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+              </svg>
+              Tokens
+            </button>
+            <button 
+              class="nav-tab {activeTab === 'history' ? 'active' : ''}" 
+              on:click={() => setActiveTab('history')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              History
+            </button>
+            <button 
+              class="nav-tab {activeTab === 'details' ? 'active' : ''}" 
+              on:click={() => setActiveTab('details')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Account
+            </button>
+            <button
+              class="nav-tab close-tab"
+              on:click={handleClose}
+              aria-label="Close modal"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </nav>
         </header>
 
         <div class="modal-body">
           {#if !$auth.isConnected}
             <WalletProvider />
           {:else}
-            <TokenList tokens={$tokens || []} />
+            {#if activeTab === 'tokens'}
+              <TokenList tokens={$tokens || []} />
+            {:else if activeTab === 'history'}
+              <div class="coming-soon">History feature coming soon</div>
+            {:else if activeTab === 'details'}
+              <div class="account-wrapper">
+                <IdentityPanel />
+              </div>
+            {/if}
           {/if}
         </div>
       </div>
@@ -124,44 +158,54 @@
   }
 
   .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem;
     border-bottom: 1px solid #2a2d3d;
     background: #15161c;
   }
 
-  .modal-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #ffffff;
-    margin: 0;
-    line-height: 1.2;
+  .nav-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.55rem;
+    padding: 1rem 0.75rem;
   }
 
-  .close-button {
+  .nav-tab {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: #2a2d3d;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: transparent;
     border: none;
-    border-radius: 6px;
-    color: #ffffff;
+    color: #8890a4;
+    font-size: 0.875rem;
+    font-weight: 500;
     transition: all 0.2s ease;
+    border-radius: 0.5rem;
   }
 
-  .close-button:hover {
-    background: #3a3e52;
-    transform: translateY(-1px);
+  .nav-tab:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .nav-tab.active {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .close-tab {
+    color: #8890a4;
+  }
+
+  .close-tab:hover {
+    color: #ffffff;
+    background: rgba(255, 0, 0, 0.1);
   }
 
   .modal-body {
     flex: 1;
     overflow-y: auto;
-    padding: 0 0.69rem;
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
   }
@@ -185,5 +229,14 @@
       width: 100% !important;
       border-left: none;
     }
+  }
+
+  .coming-soon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #8890a4;
+    font-size: 1.1rem;
   }
 </style>

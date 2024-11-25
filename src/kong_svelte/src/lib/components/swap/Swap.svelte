@@ -672,7 +672,7 @@
 
   .swap-button {
     @apply relative overflow-hidden;
-    @apply w-full py-3.5 px-4 rounded-xl;
+    @apply w-full py-3.5 px-4 rounded-lg;
     @apply transition-all duration-300 ease-out;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
     margin-top: 2px;
