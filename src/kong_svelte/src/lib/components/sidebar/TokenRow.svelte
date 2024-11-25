@@ -8,6 +8,7 @@
   import { auth } from '$lib/services/auth';
   import { derived } from 'svelte/store';
   import { formatBalance, formatUsdValue, formatTokenValue, formatPercentage } from '$lib/utils/tokenFormatters';
+  import { getFavoritesForWallet } from '$lib/services/tokens/tokenStore';
 
   interface TokenRowProps {
     token: FE.Token;
@@ -37,7 +38,9 @@
     onReceiveClick?.();
   }
 
-  const isFavorite = $derived($tokenStore.favoriteTokens[$auth.account?.owner?.toString()]?.includes(token.canister_id) ?? false);
+  const isFavorite = derived(getFavoritesForWallet, ($favorites) => {
+    return $favorites.includes(token.canister_id);
+  });
   const priceChange24h = Math.random() * 20 - 10;
   const volume24h = Math.random() * 1000000;
 </script>
@@ -46,7 +49,7 @@
 <div class="token-row" class:expanded={$sidebarStore.isExpanded} transition:fade>
   <div class="token-content">
     <div class="token-header">
-      <button class="token-info" on:click={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
+      <button class="token-info" onclick={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
         <div class="token-image">
           <TokenImages tokens={[token]} size={32} containerClass="!w-8" />
         </div>
@@ -56,13 +59,13 @@
         </div>
       </button>
       <div class="token-actions">
-        <button class="icon-btn h-full w-10" on:click={handleReceive} title="Receive {token.symbol}">
+        <button class="icon-btn h-full w-10" onclick={handleReceive} title="Receive {token.symbol}">
           <ArrowDownLeft size={14} />
         </button>
-        <button class="icon-btn h-full w-10" on:click={handleSend} title="Send {token.symbol}">
+        <button class="icon-btn h-full w-10" onclick={handleSend} title="Send {token.symbol}">
           <ArrowUpRight size={14} />
         </button>
-        <button class="icon-btn h-full w-10" class:active={isFavorite} on:click={handleFavoriteClick} title={isFavorite ? "Remove from favorites" : "Add to favorites"}>
+        <button class="icon-btn h-full w-10" class:active={isFavorite} onclick={handleFavoriteClick} title={isFavorite ? "Remove from favorites" : "Add to favorites"}>
           <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
         </button>
       </div>
@@ -73,13 +76,13 @@
         <div class="metric-row">
           <div class="metric-group">
             <span class="label">Balance</span>
-            <span class="value mono" title={formatBalance(token.balance, token.decimals)}>
-              {formatBalance(token.balance, token.decimals)} {token.symbol}
+            <span class="value mono" title={formatBalance(token.balance?.toString(), token.decimals)}>
+              {formatBalance(token.balance?.toString(), token.decimals)} {token.symbol}
             </span>
           </div>
           <div class="metric-group">
             <span class="label">Value</span>
-            <span class="value mono">{formatTokenValue(token.balance, token.price, token.decimals)}</span>
+            <span class="value mono">{formatTokenValue(token.balance?.toString() || "0", token.price, token.decimals)}</span>
           </div>
         </div>
       </div>
@@ -88,12 +91,12 @@
         <div class="market-section">
           <div class="metric">
             <span class="label">Price</span>
-            <span class="value mono">{token.price ? formatUsdValue(token.price) : "N/A"}</span>
+            <span class="value mono">{token.price ? formatUsdValue(Number(token.price)) || "N/A" : "N/A"}</span>
           </div>
           <div class="metric">
             <span class="label">24h</span>
             <span class="value mono" class:positive={priceChange24h > 0} class:negative={priceChange24h < 0}>
-              <TrendingUp size={12} />{formatPercentage(priceChange24h)}
+              <TrendingUp size={12} />{formatPercentage(Number(priceChange24h))}
             </span>
           </div>
         </div>

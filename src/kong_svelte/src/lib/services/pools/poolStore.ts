@@ -148,22 +148,6 @@ function createPoolStore() {
           throw new Error('Token prices are not available');
         }
 
-        // Process balances
-        const processedBalances: FE.UserPoolBalance[] = balances.map(item => {
-          const key = Object.keys(item)[0];
-          const token = item[key];
-
-          return {
-            name: `${token.symbol_0}/${token.symbol_1}`,
-            balance: new BigNumber(token.balance).toFormat(8),
-            amount_0: token.amount_0,
-            amount_1: token.amount_1,
-            symbol_0: token.symbol_0,
-            symbol_1: token.symbol_1,
-            ...item
-          };
-        });
-
         // Update the store with processed balances
         update(state => ({
           ...state,

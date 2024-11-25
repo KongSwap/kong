@@ -21,7 +21,6 @@
   import SendTokens from "$lib/components/sidebar/SendTokens.svelte";
   import ReceiveTokens from "$lib/components/sidebar/ReceiveTokens.svelte";
   import { onMount, onDestroy } from "svelte";
-  import { auth } from "$lib/services/auth";
 
   // Accept tokens prop for live data
   export let tokens: any[] = [];

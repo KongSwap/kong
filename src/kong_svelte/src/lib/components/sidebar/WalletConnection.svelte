@@ -63,10 +63,10 @@
   {#if $auth.isConnected}
     <div class="my-4">
       <h2 class="text-lg font-black uppercase">From Wallet Library</h2>
-      {$t("common.connectedTo")}: {$auth.account.owner.toString()}
+      {$t("common.connectedTo")}: {$auth?.account?.owner?.toString()}
       <br />
       {$t("common.subaccount")}: {uint8ArrayToHexString(
-        $auth.account.subaccount,
+        $auth?.account?.subaccount,
       )}
     </div>
     <div class="mb-4">

@@ -11,7 +11,7 @@
 
 {#if token}
 <div class="base">
-  <button class="content" on:click={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
+  <button class="content" onclick={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
     <div class="left">
       <div class="img-container">
         <TokenImages tokens={[token]} size={24} />
@@ -22,7 +22,7 @@
       </div>
     </div>
     <div class="right">
-      <span class="balance">{formatBalance(token.balance, token.decimals)}</span>
+      <span class="balance">{formatBalance(token.balance?.toString() ?? "0", token.decimals)}</span>
       {#if token.price}
         <span class="price">{formatUsdValue(token.price)}</span>
       {/if}

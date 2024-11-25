@@ -44,15 +44,19 @@ const config = {
       }
     },
   },
-  preprocess: vitePreprocess({
-    typescript: true,
-    postcss: {
-      plugins: [
-        tailwindcss(),
-        autoprefixer(),
-      ],
-    },
-  }),
+  preprocess: [
+    vitePreprocess({
+      typescript: {
+        tsconfigFile: './tsconfig.json'
+      },
+      postcss: {
+        plugins: [
+          tailwindcss(),
+          autoprefixer(),
+        ],
+      },
+    })
+  ],
   onwarn: (warning, handler) => {    
     if (warning.code.startsWith('a11y_')) {
       return;

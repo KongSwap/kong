@@ -14,6 +14,42 @@
     children?: Component | (() => Component);
   }>();
 
+  function tvIn(node: HTMLElement, { 
+    duration = 250,
+    delay = 0
+  }) {
+    return {
+      delay,
+      duration,
+      css: (t: number, u: number) => {
+        // Start from a line and expand
+        const scaleY = Math.min(1, Math.pow(t * 1.2, 2));
+        const brightness = 0.7 + (t * 0.3);
+        // Increased static during transition
+        const staticAmount = t < 0.9 ? Math.min(1, (1 - t) * 3) : 0;
+        const blur = t < 0.9 ? (1 - t) * 2 : 0;
+        
+        // Add stronger jitter during the transition
+        const jitterX = t < 0.9 ? (Math.random() - 0.5) * 20 * (1 - t) : 0;
+        const jitterY = t < 0.9 ? (Math.random() - 0.5) * 20 * (1 - t) : 0;
+        const rotation = t < 0.9 ? (Math.random() - 0.5) * 4 * (1 - t) : 0;
+        
+        node.style.setProperty('--static-amount', String(staticAmount));
+        node.style.setProperty('--blur-amount', `${blur}px`);
+        
+        return `
+          transform: 
+            scale(1, ${scaleY})
+            translate(${jitterX}px, ${jitterY}px)
+            rotate(${rotation}deg);
+          transform-origin: center;
+          opacity: ${t};
+          filter: blur(var(--blur-amount));
+        `;
+      }
+    };
+  }
+
   let isChanging = $state(false);
   let scrollY = $state(0);
   let mouseX = $state(0);
@@ -67,7 +103,7 @@
   });
 </script>
 
-<div class="page-wrapper">
+<div class="page-wrapper" in:tvIn={{ duration: 300 }}>
   {#if $themeStore === 'modern'}
     <div class="background"></div>
     <div class="night-sky">
@@ -154,7 +190,7 @@
         {/each}
       </div>
     {/if}
-    <slot />
+    {@render children()}
   </div>
 </div>
 
@@ -166,13 +202,66 @@
     position: fixed;
     inset: 0;
     width: 100%;
-    height: 100%;
-    background: #070a10;
     overflow: hidden;
     z-index: 0;
-    -webkit-overflow-scrolling: touch;
-    display: flex;
-    flex-direction: column;
+    background: #070a10;
+  }
+
+  .page-wrapper::before {
+    content: "";
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200vw;
+    height: 200vh;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.8' numOctaves='5' stitchTiles='stitch' result='noise'/%3E%3CfeColorMatrix type='saturate' values='0' in='noise' result='noiseGray'/%3E%3CfeBlend mode='overlay' in='noiseGray' in2='noiseGray' result='noiseFinal'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.6'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch' result='grain'/%3E%3CfeColorMatrix type='saturate' values='0' in='grain' result='grainGray'/%3E%3CfeBlend mode='multiply' in='grainGray' in2='grainGray' result='grainFinal'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 100px 100px, 150px 150px;
+    animation: staticNoise 0.016s steps(1) infinite;
+    opacity: var(--static-amount, 0);
+    pointer-events: none;
+    mix-blend-mode: screen;
+    z-index: 9998;
+  }
+
+  @keyframes staticNoise {
+    0% { transform: translate(0, 0) scale(1); }
+    10% { transform: translate(-12px, 8px) scale(1.03); }
+    20% { transform: translate(8px, -15px) scale(0.97); }
+    30% { transform: translate(-15px, 10px) scale(1.02); }
+    40% { transform: translate(10px, -8px) scale(0.98); }
+    50% { transform: translate(-12px, 15px) scale(1.03); }
+    60% { transform: translate(15px, -12px) scale(0.97); }
+    70% { transform: translate(-8px, 12px) scale(1.02); }
+    80% { transform: translate(12px, -15px) scale(0.98); }
+    90% { transform: translate(-15px, 8px) scale(1.03); }
+    100% { transform: translate(0, 0) scale(1); }
+  }
+
+  .page-wrapper::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 51%
+    );
+    background-size: 100% 8px;
+    animation: scanlines 0.05s linear infinite;
+    pointer-events: none;
+    opacity: var(--static-amount, 0);
+    mix-blend-mode: overlay;
+    z-index: 9997;
+  }
+
+  @keyframes scanlines {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(8px); }
   }
 
   .pixel-background {

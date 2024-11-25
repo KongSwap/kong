@@ -70,13 +70,13 @@
   $: formattedBalance = calculateFormattedBalance();
 
   function calculateFormattedBalance() {
-    if (!$auth?.account) return "0";
+    if (!tokenInfo) return "0";
 
     const balance =
       $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens ||
       tokenStore.loadBalance(
         tokenInfo,
-        $auth.account.owner.toString(),
+        "",
         false,
       );
 
@@ -98,9 +98,9 @@
   // Animation and value updates
   $: {
     const balance =
-      $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens || 0n;
+      $tokenStore.balances[tokenInfo?.canister_id || ""]?.in_tokens || 0n;
     formattedUsdValue =
-      $tokenStore.balances[tokenInfo?.canister_id]?.in_usd || "0";
+      $tokenStore.balances[tokenInfo?.canister_id || ""]?.in_usd || "0";
     calculatedUsdValue = parseFloat(formattedUsdValue);
 
     if (pendingAnimation && amount === "0") {
@@ -197,7 +197,10 @@
         : amount || "0";
 
   $: parsedAmount = parseFloat(displayAmount || "0");
-  $: tradeUsdValue = $tokenStore?.prices[tokenInfo?.canister_id] * parsedAmount;
+  $: tokenPrice = tokenInfo ? ($tokenStore?.prices[tokenInfo.canister_id] || 0) : 0;
+  $: tradeUsdValue = tokenPrice * parsedAmount;
+
+  // Rest of the code remains the same
 </script>
 
 <Panel
@@ -283,7 +286,7 @@
             class:clickable={title === "You Pay" && !disabled}
             on:click={handleMaxClick}
           >
-            {formatTokenAmount(
+            {tokenInfo && formatTokenAmount(
               $tokenStore.balances[
                 tokenInfo?.canister_id
               ]?.in_tokens?.toString() || "0",

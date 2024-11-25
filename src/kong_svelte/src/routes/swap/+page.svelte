@@ -14,8 +14,8 @@
 
   onMount(() => {
     const unsubscribe = page.subscribe(($page) => {
-      fromToken = tokenStore.getToken($page.url.searchParams.get('from'));
-      toToken = tokenStore.getToken($page.url.searchParams.get('to'));
+      fromToken = tokenStore.getToken($page.url.searchParams.get('from') || '');
+      toToken = tokenStore.getToken($page.url.searchParams.get('to') || '');
     });
     return () => unsubscribe();
   });
@@ -60,7 +60,7 @@
   {/if}
 </section>
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .swap-container {
     width: 100%;
     overflow-x: hidden;
@@ -75,6 +75,7 @@
   }
 
   .swap-normal {
+    background-color: transparent;
     padding: 2rem 1rem 0;
   }
 

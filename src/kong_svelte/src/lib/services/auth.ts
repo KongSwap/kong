@@ -1,4 +1,4 @@
-import { writable, type Writable, get, derived } from "svelte/store";
+import { writable, get } from "svelte/store";
 import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import {
   canisterId as kongBackendCanisterId,
@@ -6,11 +6,9 @@ import {
 } from "../../../../declarations/kong_backend";
 import {
   idlFactory as kongFaucetIDL,
-  canisterId as kongFaucetCanisterId,
 } from "../../../../declarations/kong_faucet";
 import { idlFactory as icrc1idl } from "../../../../declarations/ckbtc_ledger";
 import { idlFactory as icrc2idl } from "../../../../declarations/ckusdt_ledger";
-import { Actor, HttpAgent, AnonymousIdentity } from "@dfinity/agent";
 import { getPnpInstance } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";

@@ -61,7 +61,23 @@ class UpdateWorkerService {
       },
       onSwapActivityUpdate: async () => {
         try {
-          const response = await fetch('http://18.170.224.113:8080/api/dexscreener_swap');
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+          const response = await fetch('http://18.170.224.113:8080/api/dexscreener_swap', {
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
           const data = await response.json();
           
           // Add each new swap to the store
@@ -79,9 +95,10 @@ class UpdateWorkerService {
           }
         } catch (error) {
           if (error.name === 'AbortError') {
-            // Ignore abort errors
+            console.warn('Swap activity update request timed out');
             return;
           }
+          // Log error but don't throw to prevent breaking the update loop
           console.error('Error fetching swap data:', error);
         }
       },
