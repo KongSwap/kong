@@ -4,23 +4,16 @@
   import { cubicOut } from "svelte/easing";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
-  import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
-  import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
   import TokenList from "./TokenList.svelte";
-  import SocialSection from "./SocialSection.svelte";
-  import TransactionHistory from "./TransactionHistory.svelte";
-  import PoolList from "./PoolList.svelte";
   import { kongDB } from "$lib/services/db";
   import { liveQuery } from "dexie";
   import { auth } from "$lib/services/auth";
-  import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
 
   export let sidebarOpen: boolean;
   export let onClose: () => void;
 
-  let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
   let isMobile = false;
 
@@ -31,184 +24,166 @@
 
   onMount(() => {
     if (browser) {
-      activeTab = (localStorage.getItem("sidebarActiveTab") as "tokens" | "pools" | "history") || "tokens";
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
       };
-
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
       return () => window.removeEventListener("resize", updateDimensions);
     }
   });
 
-  // Live database subscriptions
+  // Live database subscription for tokens
   const tokens = liveQuery(() => kongDB.tokens.toArray());
-  const pools = liveQuery(() => kongDB.pools.toArray());
-  const transactions = liveQuery(() => kongDB.transactions.toArray());
 
   function handleClose() {
     sidebarStore.collapse();
     onClose();
   }
 
-  function setActiveTab(tab: "tokens" | "pools" | "history") {
-    activeTab = tab;
-    if (browser) {
-      localStorage.setItem("sidebarActiveTab", tab);
-    }
+  function toggleSidebar() {
+    sidebarStore.toggle();
   }
 </script>
 
 {#if sidebarOpen}
-  <div class="sidebar-root">
-    <div 
-      class="backdrop"
-      in:fade|local={{ duration: 150 }}
-      out:fade|local={{ duration: 150 }}
-      on:click={handleClose}
-      role="button"
-      tabindex="-1"
-      aria-label="Close sidebar"
-    />
-    <div class="sidebar-container" role="dialog" aria-modal="true">
-      <div
-        class={`sidebar-wrapper ${isExpanded ? 'expanded' : ''}`}
-        in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
-        out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
-      >
-        <Panel
-          width="100%"
-          height="100%"
-          className="sidebar-panel"
-        >
-          <div class="sidebar-layout">
-            <header class="sidebar-header">
-              <SidebarHeader {onClose} {activeTab} {setActiveTab} />
-            </header>
+  <div
+    class="modal-backdrop"
+    on:click={handleClose}
+    transition:fade={{ duration: 200 }}
+    role="dialog"
+    aria-modal="true"
+  >
+    <div
+      class="modal-container"
+      on:click|stopPropagation
+      in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
+      out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
+    >
+      <div class="modal-content">
+        <header class="modal-header">
+          <h2 id="modal-title" class="modal-title">Wallet</h2>
+          <button
+            class="close-button"
+            on:click={handleClose}
+            aria-label="Close modal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </header>
 
-            <div class="sidebar-content">
-              {#if !$auth.isConnected}
-                <WalletProvider
-                  on:login={async () => {
-                    await tick();
-                    setActiveTab("tokens");
-                  }}
-                />
-              {:else if activeTab === "tokens"}
-                <TokenList tokens={$tokens || []} />
-              {:else if activeTab === "pools"}
-                <PoolList pools={$pools || []} />
-              {:else if activeTab === "history"}
-                <TransactionHistory transactions={$transactions || []} />
-              {/if}
-            </div>
-
-            <footer class="sidebar-footer">
-              <SocialSection />
-            </footer>
-          </div>
-        </Panel>
+        <div class="modal-body">
+          {#if !$auth.isConnected}
+            <WalletProvider />
+          {:else}
+            <TokenList tokens={$tokens || []} />
+          {/if}
+        </div>
       </div>
     </div>
   </div>
 {/if}
 
-<style>
-  .sidebar-root {
+<style lang="postcss">
+  .modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
-    isolation: isolate;
-    pointer-events: none;
-  }
-
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    pointer-events: auto;
-    cursor: pointer;
-  }
-
-  .sidebar-container {
-    position: fixed;
-    inset: 0;
-    z-index: 2;
-    display: grid;
-    padding: 1rem;
-    pointer-events: none;
-  }
-
-  .sidebar-wrapper {
-    position: fixed;
-    inset: 1rem 1rem 1rem auto;
-    width: 527px;
-    height: calc(100vh - 2rem);
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    display: grid;
-    z-index: 2;
-    pointer-events: auto;
-  }
-
-  .sidebar-wrapper.expanded {
-    inset: 1rem;
-    width: auto;
-  }
-
-  .sidebar-wrapper :global(.panel) {
-    backdrop-filter: blur(20px);
-    height: 100%;
-    display: grid;
-  }
-
-  .sidebar-layout {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .sidebar-header {
-    min-height: 0;
-  }
-
-  .sidebar-content {
-    min-height: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9999;
+    display: flex;
+    justify-content: flex-end;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    display: grid;
   }
 
-  .sidebar-footer {
-    min-height: 0;
-    padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  .modal-container {
+    position: relative;
+    background: #1a1b23;
+    border-left: 1px solid #2a2d3d;
+    width: min(500px, 95vw);
+    height: 100vh;
   }
 
-  .overlay-close {
-    position: absolute;
-    inset: 0;
-    background: transparent;
+  .modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    border-bottom: 1px solid #2a2d3d;
+    background: #15161c;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .close-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #2a2d3d;
     border: none;
-    cursor: pointer;
+    border-radius: 6px;
+    color: #ffffff;
+    transition: all 0.2s ease;
+  }
+
+  .close-button:hover {
+    background: #3a3e52;
+    transform: translateY(-1px);
+  }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2d3d transparent;
+  }
+
+  .modal-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modal-body::-webkit-scrollbar-track {
+    background: #15161c;
+    border-radius: 3px;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background-color: #2a2d3d;
+    border-radius: 3px;
   }
 
   @media (max-width: 768px) {
-    .sidebar-wrapper {
-      inset: 0;
-      width: 100%;
-      height: 100vh;
-    }
-
-    .sidebar-wrapper.expanded {
-      inset: 0;
+    .modal-container {
+      width: 100% !important;
+      border-left: none;
     }
   }
 </style>

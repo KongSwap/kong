@@ -11,13 +11,13 @@
     formatToNonZeroDecimal,
   } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
-  import TokenSelectorButton from "./TokenSelectorButton.svelte";
-  import TokenSelectorModal from "./TokenSelectorModal.svelte";
   import BigNumber from "bignumber.js";
   import { auth } from "$lib/services/auth";
   import { swapState } from "$lib/services/swap/SwapStateService";
+  import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
+  import { fade } from 'svelte/transition';
 
-  // Props with proper TypeScript types
+// Props wcith proper TypeScript types
   export let title: string;
   export let token: FE.Token;
   export let amount: string;
@@ -188,6 +188,44 @@
     }
   }
 
+  // Token selector functionality
+  function handleTokenSelect() {
+    if (disabled) return;
+    
+    if (panelType === "pay") {
+      const currentState = $swapState.showPayTokenSelector;
+      swapState.update(s => ({
+        ...s,
+        showPayTokenSelector: !currentState,
+        showReceiveTokenSelector: false
+      }));
+    } else {
+      const currentState = $swapState.showReceiveTokenSelector;
+      swapState.update(s => ({
+        ...s,
+        showReceiveTokenSelector: !currentState,
+        showPayTokenSelector: false
+      }));
+    }
+  }
+
+  function handleClose() {
+    swapState.update(s => ({
+      ...s,
+      showPayTokenSelector: false,
+      showReceiveTokenSelector: false
+    }));
+  }
+
+  $: isOpen = panelType === "pay" ? $swapState.showPayTokenSelector : $swapState.showReceiveTokenSelector;
+
+  // Load token logo
+  $: {
+    if (token?.canister_id && !$tokenLogoStore[token.canister_id]) {
+      getTokenLogo(token.canister_id);
+    }
+  }
+
   // Display calculations
   $: displayAmount =
     title === "You Receive"
@@ -199,8 +237,6 @@
   $: parsedAmount = parseFloat(displayAmount || "0");
   $: tokenPrice = tokenInfo ? ($tokenStore?.prices[tokenInfo.canister_id] || 0) : 0;
   $: tradeUsdValue = tokenPrice * parsedAmount;
-
-  // Rest of the code remains the same
 </script>
 
 <Panel
@@ -259,18 +295,44 @@
             readonly={panelType === "receive"}
           />
         </div>
-        <div class="flex gap-2 items-center">
-          <TokenSelectorButton 
-            {token} 
-            onClick={() => {
-              if (panelType === "pay") {
-                swapState.update(s => ({ ...s, showPayTokenSelector: true }));
-              } else {
-                swapState.update(s => ({ ...s, showReceiveTokenSelector: true }));
-              }
-            }} 
-            {disabled} 
-          />
+        <div class="token-selector-wrapper relative">
+          <button
+            class="token-selector-button"
+            on:click|stopPropagation={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const position = {
+                x: rect.right + 8, // Position from the right edge of button
+                y: rect.top,      // Align with top of button
+                height: rect.height,
+                windowHeight: window.innerHeight,
+                windowWidth: window.innerWidth
+              };
+              swapState.update(s => ({
+                ...s,
+                tokenSelectorPosition: position,
+                tokenSelectorOpen: panelType
+              }));
+            }}
+          >
+            {#if token}
+              <div class="token-info">
+                <img
+                  src={$tokenLogoStore[token.canister_id] || '/default-token.png'}
+                  alt={token.symbol}
+                  class="token-logo"
+                />
+                <span class="token-symbol">{token.symbol}</span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              </svg>
+            {:else}
+              <span class="select-token-text">Select Token</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              </svg>
+            {/if}
+          </button>
         </div>
       </div>
     </div>
@@ -306,28 +368,7 @@
   </div>
 </Panel>
 
-<TokenSelectorModal
-  show={panelType === "pay" ? $swapState.showPayTokenSelector : $swapState.showReceiveTokenSelector}
-  onSelect={(selectedToken) => {
-    if (panelType === "pay") {
-      swapState.setPayToken(selectedToken);
-      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
-    } else {
-      swapState.setReceiveToken(selectedToken);
-      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
-    }
-  }}
-  onClose={() => {
-    if (panelType === "pay") {
-      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
-    } else {
-      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
-    }
-  }}
-  currentToken={token}
-/>
-
-<style scoped lang="postcss">
+<style lang="postcss">
   .clickable:hover {
     @apply text-yellow-500;
   }
@@ -354,5 +395,48 @@
     :global(.token-panel:first-of-type::after) {
       @apply w-9 h-9 bottom-[-18px];
     }
+  }
+
+  .token-selector-wrapper {
+    @apply min-w-[180px];
+  }
+
+  .token-selector-button {
+    @apply w-full flex items-center justify-between;
+    @apply bg-white/5 hover:bg-white/10;
+    @apply rounded-xl px-4 py-3;
+    @apply border border-white/10;
+    @apply transition-colors duration-150;
+  }
+
+  .token-info {
+    @apply flex items-center gap-2 min-w-[140px];
+  }
+
+  .token-logo {
+    @apply w-8 h-8 rounded-full bg-white/5;
+    @apply object-contain;
+  }
+
+  .token-symbol {
+    @apply text-[15px] text-white font-medium min-w-[80px];
+  }
+
+  .select-token-text {
+    @apply text-[15px] text-white/70 min-w-[120px] text-left;
+  }
+
+  .chevron {
+    @apply w-5 h-5 text-white/50;
+  }
+
+  /* Ensure the dropdown appears above other elements */
+  :global(.dropdown-overlay) {
+    @apply z-[100];
+  }
+
+  :global(.dropdown-content) {
+    @apply z-[101] rounded-xl border border-white/10;
+    @apply bg-gray-900/95 backdrop-blur-md;
   }
 </style>

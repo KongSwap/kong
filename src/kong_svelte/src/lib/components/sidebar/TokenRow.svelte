@@ -1,230 +1,122 @@
-<script lang="ts">  
-  import TokenImages from '$lib/components/common/TokenImages.svelte';
+<script lang="ts">
   import { fade } from 'svelte/transition';
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
-  import { sidebarStore } from '$lib/stores/sidebarStore';
-  import { Star, TrendingUp, ArrowUpRight, ArrowDownLeft } from 'lucide-svelte';
-  import { auth } from '$lib/services/auth';
-  import { derived } from 'svelte/store';
-  import { formatBalance, formatUsdValue, formatTokenValue, formatPercentage } from '$lib/utils/tokenFormatters';
-  import { getFavoritesForWallet } from '$lib/services/tokens/tokenStore';
+  import { Star } from 'lucide-svelte';
+  import TokenImages from '$lib/components/common/TokenImages.svelte';
+  import { formatBalance } from '$lib/utils/tokenFormatters';
+  import { createEventDispatcher } from 'svelte';
+  import TokenDetails from '$lib/components/common/TokenDetails.svelte';
 
-  interface TokenRowProps {
-    token: FE.Token;
-    onClick?: () => void;
-    onSendClick?: () => void;
-    onReceiveClick?: () => void;
-  }
-  let { token, onClick, onSendClick, onReceiveClick }: TokenRowProps = $props();
-  let logoUrl = '/tokens/not_verified.webp';  
-
-  $effect(() => {
-    logoUrl = $tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp';
-  });
+  export let token: any;
+  const dispatch = createEventDispatcher();
+  let showDetails = false;
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
-    tokenStore.toggleFavorite(token.canister_id);
+    dispatch('toggleFavorite');
   }
 
-  function handleSend(e: MouseEvent) {
-    e.stopPropagation();
-    onSendClick?.();
+  function handleRowClick() {
+    showDetails = true;
   }
-
-  function handleReceive(e: MouseEvent) {
-    e.stopPropagation();
-    onReceiveClick?.();
-  }
-
-  const isFavorite = derived(getFavoritesForWallet, ($favorites) => {
-    return $favorites.includes(token.canister_id);
-  });
-  const priceChange24h = Math.random() * 20 - 10;
-  const volume24h = Math.random() * 1000000;
 </script>
 
-{#if token}
-<div class="token-row" class:expanded={$sidebarStore.isExpanded} transition:fade>
+<div 
+  class="token-row"
+  transition:fade={{ duration: 150 }}
+  on:click={handleRowClick}
+>
   <div class="token-content">
-    <div class="token-header">
-      <button class="token-info" onclick={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
-        <div class="token-image">
-          <TokenImages tokens={[token]} size={32} containerClass="!w-8" />
+    <div class="token-info">
+      <div class="token-image">
+        <TokenImages tokens={[token]} size={32} />
+      </div>
+      <div class="token-details">
+        <div class="token-name-row">
+          <span class="token-symbol">{token.symbol}</span>
+          <button 
+            class="favorite-button"
+            class:active={token.isFavorite}
+            on:click={handleFavoriteClick}
+            title={token.isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Star size={16} />
+          </button>
         </div>
-        <div class="flex flex-col text-left overflow-hidden">
-          <span class="symbol">{token.symbol}</span>
-          <span class="name" title={token.name}>{token.name}</span>
-        </div>
-      </button>
-      <div class="token-actions">
-        <button class="icon-btn h-full w-10" onclick={handleReceive} title="Receive {token.symbol}">
-          <ArrowDownLeft size={14} />
-        </button>
-        <button class="icon-btn h-full w-10" onclick={handleSend} title="Send {token.symbol}">
-          <ArrowUpRight size={14} />
-        </button>
-        <button class="icon-btn h-full w-10" class:active={isFavorite} onclick={handleFavoriteClick} title={isFavorite ? "Remove from favorites" : "Add to favorites"}>
-          <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
-        </button>
+        <span class="token-name">{token.name}</span>
       </div>
     </div>
 
-    <div class="token-footer" class:expanded={$sidebarStore.isExpanded}>
-      <div class="footer-section">
-        <div class="metric-row">
-          <div class="metric-group">
-            <span class="label">Balance</span>
-            <span class="value mono" title={formatBalance(token.balance?.toString(), token.decimals)}>
-              {formatBalance(token.balance?.toString(), token.decimals)} {token.symbol}
-            </span>
-          </div>
-          <div class="metric-group">
-            <span class="label">Value</span>
-            <span class="value mono">{formatTokenValue(token.balance?.toString() || "0", token.price, token.decimals)}</span>
-          </div>
-        </div>
-      </div>
-
-      {#if $sidebarStore.isExpanded}
-        <div class="market-section">
-          <div class="metric">
-            <span class="label">Price</span>
-            <span class="value mono">{token.price ? formatUsdValue(Number(token.price)) || "N/A" : "N/A"}</span>
-          </div>
-          <div class="metric">
-            <span class="label">24h</span>
-            <span class="value mono" class:positive={priceChange24h > 0} class:negative={priceChange24h < 0}>
-              <TrendingUp size={12} />{formatPercentage(Number(priceChange24h))}
-            </span>
-          </div>
-        </div>
-      {/if}
+    <div class="token-balance">
+      <span class="balance-amount">{formatBalance(token.balance, token.decimals)}</span>
+      <span class="token-symbol-small">{token.symbol}</span>
     </div>
   </div>
 </div>
+
+{#if showDetails}
+  <TokenDetails {token} on:close={() => showDetails = false} />
 {/if}
 
 <style lang="postcss">
   .token-row {
-    @apply w-full p-2 rounded-lg bg-black/20 border border-white/5 
-           transition-all duration-200 hover:bg-black/30;
-  }
-
-  .token-row.expanded {
-    @apply hover:scale-[1.01];
+    @apply p-3 mb-1;
+    @apply bg-[#2a2d3d]/50 hover:bg-[#2a2d3d];
+    @apply rounded-lg cursor-pointer;
+    @apply transition-all duration-200;
+    @apply border border-transparent hover:border-[#3a3e52];
   }
 
   .token-content {
-    @apply flex flex-col gap-2;
-  }
-
-  .token-header {
-    @apply flex items-stretch justify-between gap-2;
+    @apply flex items-center justify-between gap-3;
   }
 
   .token-info {
-    @apply flex items-center gap-2 flex-1 min-w-0 rounded-lg p-1
-           transition-colors duration-200 hover:bg-white/5;
+    @apply flex items-center gap-3 flex-1 min-w-0;
   }
 
   .token-image {
-    @apply flex-shrink-0 w-8 h-8 rounded-full overflow-hidden;
+    @apply flex-shrink-0;
+    @apply bg-[#1a1b23] rounded-full p-0.5;
   }
 
-  .token-image :global(img) {
-    @apply w-auto h-auto;
+  .token-details {
+    @apply flex flex-col gap-0.5 min-w-0;
   }
 
-  .symbol {
-    @apply text-sm font-bold text-white truncate;
+  .token-name-row {
+    @apply flex items-center gap-2;
   }
 
-  .name {
-    @apply text-xs text-white/60 truncate;
+  .token-symbol {
+    @apply text-base font-semibold text-white;
   }
 
-  .token-actions {
-    @apply flex items-stretch gap-1;
+  .token-name {
+    @apply text-xs text-white/60;
+    @apply truncate;
   }
 
-  .icon-btn {
-    @apply p-1.5 rounded-lg text-xs
-           bg-white/5 text-white/80
-           transition-all duration-200
-           hover:bg-white/10 hover:text-white
-           flex items-center justify-center;
+  .favorite-button {
+    @apply p-1 rounded-lg;
+    @apply text-white/40 hover:text-white/90;
+    @apply bg-white/5 hover:bg-white/10;
+    @apply transition-all duration-200;
   }
 
-  .icon-btn.active {
-    @apply text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20;
+  .favorite-button.active {
+    @apply text-yellow-400 hover:text-yellow-300;
+    @apply bg-yellow-400/10 hover:bg-yellow-400/20;
   }
 
-  .token-footer {
-    @apply flex flex-col gap-2 mt-2 pt-2 border-t border-white/10;
+  .token-balance {
+    @apply flex flex-col items-end gap-0.5;
   }
 
-  .token-footer.expanded {
-    @apply grid grid-cols-2 gap-2;
+  .balance-amount {
+    @apply text-sm font-medium text-white;
   }
 
-  .metric-row {
-    @apply flex items-center justify-between w-full gap-4
-           p-1.5 rounded-lg bg-white/5;
-  }
-
-  .metric-group {
-    @apply flex flex-col items-start min-w-0;
-  }
-
-  .market-section {
-    @apply grid grid-cols-2 gap-2;
-  }
-
-  .market-section .metric {
-    @apply p-1.5 rounded-lg bg-white/5 flex flex-col items-start;
-  }
-
-  .metric {
-    @apply flex flex-col items-start gap-0.5 min-w-0;
-  }
-
-  .label {
-    @apply text-[10px] uppercase tracking-wider text-white/40 font-medium;
-  }
-
-  .value {
-    @apply text-sm text-white/90 flex items-center gap-1 font-medium truncate max-w-full;
-  }
-
-  .value.mono {
-    @apply font-mono;
-  }
-
-  .value.positive {
-    @apply text-green-400;
-  }
-
-  .value.negative {
-    @apply text-red-400;
-  }
-
-  :global(svg) {
-    @apply text-current stroke-current;
-  }
-
-  @media (max-width: 768px) {
-    .token-footer.expanded {
-      @apply grid-cols-1 gap-2;
-    }
-
-    .market-section {
-      @apply grid-cols-2;
-    }
-
-    .market-section .metric {
-      @apply flex-row justify-between items-center;
-    }
+  .token-symbol-small {
+    @apply text-xs text-white/60;
   }
 </style>

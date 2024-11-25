@@ -40,6 +40,3 @@
         <slot>{content}</slot>
     </ModernPanel>
 {/if}
-
-<style lang="postcss">
-</style>

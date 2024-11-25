@@ -128,11 +128,6 @@
     toastStore.success('Test tokens claimed successfully');
   };
 
-  function toggleTheme() {
-    $themeStore = $themeStore === 'pixel' ? 'modern' : 'pixel';
-    toastStore.success(`Theme switched to ${$themeStore} mode`);
-  }
-
   async function resetDatabase() {
     if (confirm('Are you sure you want to reset the database? This will clear all cached data.')) {
       try {
@@ -300,34 +295,6 @@
   {:else}
     <!-- App Settings -->
     <div class="setting-sections">
-      <!-- Theme Section -->
-      <div class="setting-section">
-        <div class="setting-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-          </svg>
-          <h3>Theme</h3>
-        </div>
-        <div class="setting-content">
-          <div class="grid grid-flow-col auto-cols-max gap-2">
-            <button
-              class="theme-button"
-              class:active={$themeStore === 'pixel'}
-              on:click={() => themeStore.set('pixel')}
-            >
-              Pixel
-            </button>
-            <button
-              class="theme-button"
-              class:active={$themeStore === 'modern'}
-              on:click={() => themeStore.set('modern')}
-            >
-              Modern
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Sound Section -->
       <div class="setting-section">
         <div class="setting-header">

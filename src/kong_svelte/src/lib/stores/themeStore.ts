@@ -1,18 +1,18 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-// Get theme and mode from localStorage or default values
-const storedTheme = browser ? localStorage.getItem('theme') : 'modern';
+// Always use modern theme, ignoring stored value
 const storedMode = browser ? localStorage.getItem('themeMode') : 'dark';
 
-export const themeStore = writable(storedTheme || 'modern');
+// Create a readonly store that always returns 'modern'
+export const themeStore = writable('modern');
 export const themeModeStore = writable(storedMode || 'dark');
 
 // Subscribe to changes and update localStorage
 if (browser) {
-  themeStore.subscribe((value) => {
-    localStorage.setItem('theme', value);
-    document.documentElement.setAttribute('data-theme', value);
+  themeStore.subscribe(() => {
+    localStorage.setItem('theme', 'modern');
+    document.documentElement.setAttribute('data-theme', 'modern');
   });
 
   themeModeStore.subscribe((value) => {

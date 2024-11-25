@@ -1,50 +1,13 @@
 <script lang="ts">
-    import { themeStore } from '$lib/stores/themeStore';
     import { colorThemeStore } from '$lib/stores/colorThemeStore';
     import Button from '../common/Button.svelte';
 
     function toggleColorTheme() {
         colorThemeStore.update(theme => theme === 'dark' ? 'light' : 'dark');
     }
-
-    function toggleUITheme() {
-        themeStore.update(theme => theme === 'pixel' ? 'modern' : 'pixel');
-    }
 </script>
 
 <div class="theme-settings">
-    <div class="setting-group">
-        <h3>UI Theme</h3>
-        <div class="button-group">
-            <Button
-                variant="blue"
-                size="medium"
-                state={$themeStore === 'pixel' ? 'selected' : 'default'}
-                onClick={() => {
-                    themeStore.set('pixel');
-                    if ($themeStore !== 'pixel') {
-                        window.location.reload();
-                    }
-                }}
-            >
-                Pixel
-            </Button>
-            <Button
-                variant="blue"
-                size="medium"
-                state={$themeStore === 'modern' ? 'selected' : 'default'}
-                onClick={() => {
-                    themeStore.set('modern');
-                    if ($themeStore !== 'modern') {
-                        window.location.reload();
-                    }
-                }}
-            >
-                Modern
-            </Button>
-        </div>
-    </div>
-
     <div class="setting-group">
         <h3>Color Theme</h3>
         <div class="button-group">

@@ -3,12 +3,12 @@
   import { onMount } from "svelte";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import { auth } from "$lib/services/auth";
+  import { auth, selectedWalletId } from "$lib/services/auth";
   import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
   import { getButtonText } from "./utils";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
-  import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
+  import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
@@ -23,7 +23,10 @@
   import { writable } from "svelte/store";
   import { createEventDispatcher } from 'svelte';
   import Portal from 'svelte-portal';
-  import Button from "$lib/components/common/Button.svelte";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { walletsList } from "@windoge98/plug-n-play";
+  import Modal from "$lib/components/common/Modal.svelte";
+  import Settings from "$lib/components/settings/Settings.svelte";
 
   let isProcessing = false;
   let rotationCount = 0;
@@ -52,6 +55,21 @@
     modeChange: { mode: 'normal' | 'pro' };
   }>();
 
+  let previousMode = currentMode;
+  let isTransitioning = false;
+
+  const handleModeChange = (mode) => {
+    if (mode === currentMode || isTransitioning) return;
+    isTransitioning = true;
+    previousMode = currentMode;
+    setTimeout(() => {
+      dispatch('modeChange', { mode });
+      setTimeout(() => {
+        isTransitioning = false;
+      }, 300);
+    }, 150);
+  };
+
   $: userMaxSlippage = $settingsStore.max_slippage;
 
   onMount(() => {
@@ -69,30 +87,58 @@
     return () => window.removeEventListener("swapSuccess", swapSuccessHandler);
   });
 
-  $: isSwapButtonDisabled =
-    !$auth?.account?.owner ||
-    !$swapState.payToken ||
-    !$swapState.receiveToken ||
-    !$swapState.payAmount ||
-    $swapState.isProcessing ||
-    get(swapState.isInputExceedingBalance) ||
-    $swapState.swapSlippage > userMaxSlippage;
+  let buttonText = '';
 
-  $: buttonText = $swapState.swapSlippage > userMaxSlippage
-      ? `Slippage (${$swapState.swapSlippage.toFixed(2)}%) Exceeds Limit (${userMaxSlippage}%)`
-      : getButtonText({
-          isCalculating: $swapState.isCalculating,
-          isValidInput: Boolean($swapState.payAmount),
-          isProcessing: $swapState.isProcessing,
-          error: $swapState.error,
-          swapSlippage: $swapState.swapSlippage,
-          userMaxSlippage,
-          isConnected: $auth.isConnected,
-          payTokenSymbol: $swapState.payToken?.symbol || "",
-          receiveTokenSymbol: $swapState.receiveToken?.symbol || "",
-        });
+  $: {
+    if ($swapState.isProcessing) {
+      buttonText = 'Swapping...';
+    } else if ($swapState.error) {
+      buttonText = $swapState.error;
+    } else if ($swapState.swapSlippage > userMaxSlippage) {
+      buttonText = 'Slippage Too High';
+    } else if (!$auth?.account?.owner) {
+      buttonText = 'Connect Now';
+    } else if (!$swapState.payToken || !$swapState.receiveToken) {
+      buttonText = 'Select Tokens';
+    } else if (!$swapState.payAmount) {
+      buttonText = 'Enter Amount';
+    } else {
+      buttonText = 'Swap';
+    }
+  }
+
+  function getButtonTooltip(owner: boolean | undefined, slippageTooHigh: boolean, error: string | null): string {
+    if (!owner) {
+      return 'Connect your wallet to start swapping';
+    } else if (slippageTooHigh) {
+      return 'Click to adjust slippage settings';
+    } else if (error) {
+      return error;
+    } else {
+      return 'Swap your tokens';
+    }
+  }
+
+  const textAnimation = (node, { duration = 2000 }) => {
+    return {
+      duration,
+      css: (t) => {
+        const eased = Math.pow(t, 2);
+        return `
+          transform: scale(${eased});
+          opacity: ${t};
+        `;
+      }
+    };
+  };
 
   async function handleSwapClick() {
+    if (!$auth.isConnected) {
+      // Open sidebar if wallet is not connected
+      sidebarStore.toggleExpand();
+      return;
+    }
+
     if (!$swapState.payToken || !$swapState.receiveToken) return;
 
     // Reset all relevant state
@@ -259,6 +305,75 @@
     },
   );
 
+  let isModalOpen = false;
+  let isSettingsModalOpen = false;
+
+  async function handleButtonAction() {
+    if (!$auth.isConnected) {
+      // If no wallet is selected, select the first available one
+      if (!$selectedWalletId) {
+        const firstWallet = walletsList[0];
+        if (firstWallet) {
+          selectedWalletId.set(firstWallet.id);
+          localStorage.setItem("kongSelectedWallet", firstWallet.id);
+        }
+      }
+      
+      // Open sidebar and attempt connection
+      sidebarStore.toggleExpand();
+      if ($selectedWalletId) {
+        try {
+          await auth.connect($selectedWalletId);
+        } catch (error) {
+          console.error("Failed to connect wallet:", error);
+        }
+      }
+      return;
+    }
+
+    if ($swapState.swapSlippage > userMaxSlippage) {
+      isSettingsModalOpen = true;
+      return;
+    }
+
+    if (!$swapState.payToken || !$swapState.receiveToken || !$swapState.payAmount) {
+      return;
+    }
+
+    swapState.update((state) => ({
+      ...state,
+      showConfirmation: true,
+      isProcessing: false,
+      error: null,
+      showSuccessModal: false,
+    }));
+  }
+
+  // Constants for dropdown positioning
+  const DROPDOWN_HEIGHT = 400; // Approximate max height of dropdown
+  const DROPDOWN_WIDTH = 360;  // Width of dropdown
+  const MARGIN = 16;          // Margin from edges
+
+  // Function to calculate optimal dropdown position
+  function getDropdownPosition(pos: any) {
+    if (!pos) return { top: 0, left: 0 };
+
+    const SEARCH_HEADER_HEIGHT = 56; // Height of search header
+    
+    // Position dropdown to the right of the button
+    let left = pos.x;
+    
+    // If it would overflow right edge, position to the left of the button instead
+    if (left + DROPDOWN_WIDTH > pos.windowWidth - MARGIN) {
+      left = Math.max(MARGIN, pos.x - DROPDOWN_WIDTH - 8);
+    }
+
+    // Align the first token item with the button by offsetting the search header height
+    const top = pos.y - SEARCH_HEADER_HEIGHT - 8; // 8px for the padding of first token
+
+    return { top, left };
+  }
+
   // Update arrow configurations
   const ModernArrow = {
     viewBox: "0 0 48 48",
@@ -277,25 +392,24 @@
 
 <div class="swap-wrapper">
   <div class="swap-container" in:fade={{ duration: 420 }}>
-    <div class="mode-selector" class:mode-selector-pixel={$themeStore === 'pixel'}>
-      <Button
-        variant="yellow"
-        size="medium"
-        state={currentMode === "normal" ? "selected" : "default"}
-        onClick={() => dispatch('modeChange', { mode: 'normal' })}
-        width="50%"
+    <div class="mode-selector">
+      <div class="mode-selector-background" style="transform: translateX({currentMode === 'pro' ? '100%' : '0'})"></div>
+      <button
+        class="mode-button"
+        class:selected={currentMode === "normal"}
+        class:transitioning={isTransitioning && previousMode === "pro"}
+        on:click={() => handleModeChange('normal')}
       >
-        Normal
-      </Button>
-      <Button
-        variant="yellow"
-        size="medium"
-        state={currentMode === "pro" ? "selected" : "default"}
-        onClick={() => dispatch('modeChange', { mode: 'pro' })}
-        width="50%"
+        <span class="mode-text">Normal</span>
+      </button>
+      <button
+        class="mode-button"
+        class:selected={currentMode === "pro"}
+        class:transitioning={isTransitioning && previousMode === "normal"}
+        on:click={() => handleModeChange('pro')}
       >
-        Pro
-      </Button>
+        <span class="mode-text">Pro</span>
+      </button>
     </div>
 
     <div class="panels-container">
@@ -368,39 +482,82 @@
       </div>
 
       <div class="swap-footer">
-        <Button
-          variant={$swapState.swapSlippage > userMaxSlippage ? "blue" : "yellow"}
-          size="big"
-          state={isSwapButtonDisabled ? "disabled" : "default"}
-          onClick={handleSwapClick}
-          text={buttonText}
-          disabled={isSwapButtonDisabled}
-          width="100%"
-          className="swap-button"
-        />
+        <button
+          class="swap-button"
+          class:error={$swapState.error || $swapState.swapSlippage > userMaxSlippage}
+          class:processing={$swapState.isProcessing}
+          class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage}
+          on:click={handleButtonAction}
+          title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
+        >
+          <div class="button-content">
+            {#key buttonText}
+              <span class="button-text" in:fade={{ duration: 200 }}>
+                {buttonText}
+              </span>
+            {/key}
+            {#if $swapState.isProcessing}
+              <div class="loading-spinner"></div>
+            {/if}
+          </div>
+          {#if !$swapState.error && $swapState.swapSlippage <= userMaxSlippage}
+            <div class="button-glow"></div>
+          {/if}
+        </button>
       </div>
     </div>
   </div>
 </div>
 
 {#if $swapState.showPayTokenSelector}
-  <TokenSelector
-    show={true}
-    onSelect={(token) => handleTokenSelected(token, "pay")}
-    onClose={() =>
-      swapState.update((s) => ({ ...s, showPayTokenSelector: false }))}
-    currentToken={$swapState.receiveToken}
-  />
+  <Portal target="body">
+    <TokenSelector
+      show={true}
+      onSelect={(token) => handleTokenSelected(token, "pay")}
+      onClose={() => swapState.closeTokenSelector()}
+      currentToken={$swapState.payToken}
+      otherPanelToken={$swapState.receiveToken}
+      expandDirection="down"
+    />
+  </Portal>
 {/if}
 
 {#if $swapState.showReceiveTokenSelector}
-  <TokenSelector
-    show={true}
-    onSelect={(token) => handleTokenSelected(token, "receive")}
-    onClose={() =>
-      swapState.update((s) => ({ ...s, showReceiveTokenSelector: false }))}
-    currentToken={$swapState.payToken}
-  />
+  <Portal target="body">
+    <TokenSelector
+      show={true}
+      onSelect={(token) => handleTokenSelected(token, "receive")}
+      onClose={() => swapState.closeTokenSelector()}
+      currentToken={$swapState.receiveToken}
+      otherPanelToken={$swapState.payToken}
+      expandDirection="down"
+    />
+  </Portal>
+{/if}
+
+{#if $swapState.tokenSelectorOpen}
+  <Portal target="body">
+    {#if $swapState.tokenSelectorPosition}
+      {@const position = getDropdownPosition($swapState.tokenSelectorPosition)}
+      <div 
+        class="fixed z-50 origin-left"
+        style="
+          left: {position.left}px; 
+          top: {position.top}px;
+        "
+      >
+        <TokenSelectorDropdown
+          show={true}
+          onSelect={(selectedToken) => {
+            SwapLogicService.handleSelectToken($swapState.tokenSelectorOpen, selectedToken);
+            swapState.closeTokenSelector();
+          }}
+          onClose={() => swapState.closeTokenSelector()}
+          currentToken={$swapState.tokenSelectorOpen === 'pay' ? $swapState.payToken : $swapState.receiveToken}
+        />
+      </div>
+    {/if}
+  </Portal>
 {/if}
 
 {#if $swapState.showConfirmation}
@@ -438,6 +595,18 @@
   onClose={() => swapState.setShowSuccessModal(false)}
 />
 
+{#if isSettingsModalOpen}
+  <Portal target="body">
+    <Modal
+      isOpen={isSettingsModalOpen}
+      onClose={() => (isSettingsModalOpen = false)}
+      title="Slippage Settings"
+    >
+      <Settings />
+    </Modal>
+  </Portal>
+{/if}
+
 <style lang="postcss">
   .swap-container {
     position: relative;
@@ -446,35 +615,127 @@
   }
 
   .mode-selector {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    font-size: clamp(0.875rem, 1.5vw, 1rem);
-  }
-
-  .mode-selector-pixel {
-    margin-bottom: 1.25rem;
-  }
-
-  .panels-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .panels-wrapper {
     position: relative;
     display: flex;
-    flex-direction: column;
     gap: 4px;
+    margin-bottom: 16px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .panel {
+  .mode-selector-background {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(50% - 2px);
+    height: calc(100% - 8px);
+    background: rgba(0, 122, 255, 0.15);
+    border-radius: 10px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 0;
+  }
+
+  .mode-button {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mode-text {
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease, color 0.2s ease;
+  }
+
+  .mode-button:hover:not(.selected) .mode-text {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .mode-button.selected .mode-text {
+    color: rgb(0, 122, 255);
+    font-weight: 600;
+  }
+
+  .mode-button.transitioning .mode-text {
+    transform: scale(0.9);
+  }
+
+  .button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     position: relative;
     z-index: 1;
   }
 
-  .switch-button {
+  .button-text {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  .swap-button {
+    @apply relative overflow-hidden;
+    @apply w-full py-3 px-4 rounded-xl;
+    @apply bg-gradient-to-r from-[#3772ff] to-[#3772ff];
+    @apply hover:from-[#3772ff] hover:to-[#4580ff];
+    @apply transition-all duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .button-content {
+    @apply relative z-10 flex items-center justify-center gap-2;
+  }
+
+  .swap-button:not(.disabled):hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .swap-button.error {
+    @apply bg-red-500/20 text-white hover:bg-red-500/30;
+  }
+
+  .button-content {
+    @apply relative z-10 flex items-center justify-center gap-2;
+  }
+
+  .button-text {
+    @apply text-white;
+  }
+
+  .loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  :global(:not([data-theme="pixel"])) .switch-button {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -486,60 +747,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  /* Pixel Theme Styles */
-  :global([data-theme="pixel"]) .switch-button {
-    width: 64px !important;
-    height: 72px !important;
-    background: transparent !important;
-    border: none !important;
-    backdrop-filter: none !important;
-    transform: translate(-50%, -50%) !important;
-  }
-
-  :global([data-theme="pixel"]) .swap-footer {
-    padding: 0px;
-  }
-
-  :global([data-theme="pixel"]) .panels-container {
-    gap: 4px;
-  }
-
-  :global([data-theme="pixel"]) .switch-button:hover:not(:disabled) {
-    transform: translate(-50%, -50%) scale(1.1) !important;
-  }
-
-  :global([data-theme="pixel"]) .switch-button:active:not(:disabled) {
-    transform: translate(-50%, -50%) !important;
-  }
-
-  :global([data-theme="pixel"]) .swap-arrow.pixel {
-    width: 64px !important;
-    height: 72px !important;
-  }
-
-  :global([data-theme="pixel"]) .arrow-path {
-    fill: #ffd700 !important;
-    transition: fill 0.2s ease;
-  }
-
-  :global([data-theme="pixel"]) .switch-button:hover:not(:disabled) .arrow-path {
-    fill: #ffe44d !important;
-  }
-
-  :global([data-theme="pixel"]) .switch-button:active:not(:disabled) .arrow-path {
-    fill: #ffd700 !important;
-  }
-
-  /* Modern Theme Styles */
-  :global(:not([data-theme="pixel"])) .switch-button {
     width: 42px;
     height: 42px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
     border-radius: 50%;
-    backdrop-filter: blur(4px);
   }
 
   .switch-button:hover:not(:disabled) {
@@ -565,67 +777,50 @@
     animation: rotateArrow 0.3s ease-in-out;
   }
 
-  :global([data-theme="pixel"]) .rotating .swap-arrow {
-    animation: none !important;
-  }
-
-  .arrow-group {
-    transform-origin: center;
-    transition: transform 0.3s ease;
+  @keyframes rotateArrow {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(180deg);
+    }
   }
 
   .arrow-circle {
-    fill: rgba(255, 255, 255, 0.05);
-    stroke: rgba(255, 255, 255, 0.2);
+    fill: #2a2a2a;
+    stroke: #3a3a3a;
     stroke-width: 1;
     transition: all 0.3s ease;
   }
 
   .arrow-path {
-    fill: rgba(255, 255, 255, 0.9);
+    fill: #ffffff;
     transition: all 0.3s ease;
   }
 
   .switch-button:hover:not(:disabled) .arrow-circle {
-    fill: rgba(255, 255, 255, 0.1);
-    stroke: rgba(255, 255, 255, 0.3);
+    fill: #3a3a3a;
+    stroke: #4a4a4a;
   }
 
-  .switch-button:hover:not(:disabled) .arrow-path {
-    fill: #ffffff;
+  .panels-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
-  .rotating .arrow-group {
-    animation: rotateArrow 0.3s ease-in-out;
+  .panels-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 240px;
   }
 
-  :global([data-theme="minimal"]) .arrow-path {
-    stroke-width: 2;
-  }
-
-  :global([data-theme="pixel"]) .arrow-path {
-    stroke-width: 1;
-  }
-
-  .swap-footer {
-    margin-top: var(--footer-margin, 0);
-  }
-
-  :global([data-theme="modern"]) .swap-footer {
-    --footer-margin: 0.05rem;
-  }
-
-  :global([data-theme="pixel"]) .swap-footer {
-    --footer-margin: 0;
-    padding: 0px;
-  }
-
-  .swap-footer :global(.swap-button) {
-    font-size: 1.4rem !important;
-  }
-
-  :global([data-theme="pixel"]) .swap-footer :global(.swap-button) {
-    font-size: 1.4rem !important;
-    min-height: 4rem;
+  .panel {
+    position: relative;
+    z-index: 1;
   }
 </style>

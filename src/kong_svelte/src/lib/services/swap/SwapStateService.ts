@@ -14,6 +14,7 @@ export interface SwapState {
   isCalculating: boolean;
   isProcessing: boolean;
   error: string | null;
+  tokenSelectorOpen: 'pay' | 'receive' | null;
   showPayTokenSelector: boolean;
   showReceiveTokenSelector: boolean;
   showConfirmation: boolean;
@@ -48,6 +49,9 @@ export interface SwapStore extends Writable<SwapState> {
   setError(error: string | null): void;
   updateSuccessDetails(details: SwapState['successDetails']): void;
   reset(): void;
+  toggleTokenSelector(type: 'pay' | 'receive'): void;
+  closeTokenSelector(): void;
+  setToken(type: 'pay' | 'receive', token: FE.Token | null): void;
 }
 
 function createSwapStore(): SwapStore {
@@ -59,6 +63,7 @@ function createSwapStore(): SwapStore {
     isCalculating: false,
     isProcessing: false,
     error: null,
+    tokenSelectorOpen: null,
     showPayTokenSelector: false,
     showReceiveTokenSelector: false,
     showConfirmation: false,
@@ -188,7 +193,29 @@ function createSwapStore(): SwapStore {
 
     reset() {
       set(initialState);
-    }
+    },
+
+    toggleTokenSelector(type: 'pay' | 'receive') {
+      update(state => ({
+        ...state,
+        tokenSelectorOpen: state.tokenSelectorOpen === type ? null : type
+      }));
+    },
+
+    closeTokenSelector() {
+      update(state => ({
+        ...state,
+        tokenSelectorOpen: null
+      }));
+    },
+
+    setToken(type: 'pay' | 'receive', token: FE.Token | null) {
+      if (type === 'pay') {
+        update(state => ({ ...state, payToken: token }));
+      } else {
+        update(state => ({ ...state, receiveToken: token }));
+      }
+    },
   };
 
   return store;
