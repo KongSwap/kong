@@ -7,7 +7,6 @@
   import { RefreshCw, Maximize2, Minimize2 } from "lucide-svelte";
   import { tokenStore, portfolioValue } from "$lib/services/tokens/tokenStore";
   import { auth } from "$lib/services/auth";
-  import { onMount } from "svelte";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -15,35 +14,12 @@
 
   let windowWidth: number;
   let isRefreshing = false;
-  let loadingInitialBalances = true;
-  let isLoggedIn = false;
   let isExpanded = false;
   let showAccountDetails = false;
 
   sidebarStore.subscribe(state => {
     isExpanded = state.isExpanded;
   });
-
-  // Subscribe to auth changes to reload balances when needed
-  $: if ($auth.isConnected) {
-    loadInitialBalances();
-  }
-
-  onMount(() => {
-    if ($auth.isConnected) {
-      loadInitialBalances();
-    }
-  });
-
-  async function loadInitialBalances() {
-    if (loadingInitialBalances) {
-      try {
-        await tokenStore.loadBalances($auth?.account?.owner);
-      } finally {
-        loadingInitialBalances = false;
-      }
-    }
-  }
 
   const tabs: ("tokens" | "pools" | "history")[] = [
     "tokens",

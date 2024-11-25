@@ -72,7 +72,7 @@
 
   onMount(async () => {
     try {
-      await Promise.all([initializeFromParams(), tokenStore.loadBalances($auth?.account?.owner)]);
+      await Promise.all([initializeFromParams()]);
       tokens = get(formattedTokens);
     } catch (err) {
       console.error("Error initializing:", err);

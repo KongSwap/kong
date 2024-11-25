@@ -56,7 +56,6 @@
 
   onMount(() => {
     const init = async () => {
-      await tokenStore.loadTokens();
       swapState.initializeTokens(initialFromToken, initialToToken);
     };
     init();

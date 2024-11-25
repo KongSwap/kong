@@ -4,20 +4,25 @@
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { auth } from '$lib/services/auth';
   import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
-    import { AnonymousIdentity } from "@dfinity/agent";
+  import { AnonymousIdentity } from "@dfinity/agent";
 
-  export let show = false;
-  export let onSelect: (token: FE.Token) => void;
-  export let onClose: () => void;
-  export let currentToken: FE.Token;
+  interface Props {
+    show: boolean;
+    onSelect: (token: FE.Token) => void;
+    onClose: () => void;
+    currentToken: FE.Token;
+  }
 
-  let searchQuery = "";
-  let standardFilter = "all";
+  const props = $props();
+  const { show, onSelect, onClose, currentToken } = props;
+
+  let searchQuery = $state("");
+  let standardFilter = $state("all");
 
   // Get current wallet ID for favorites
-  $: walletId = $auth?.account?.owner?.toString() || null;
+  let walletId = $derived($auth?.account?.owner?.toString() || null);
 
-  $: filteredTokens = $formattedTokens
+  let filteredTokens = $derived($formattedTokens
     .filter((token) => {
       if (!token) return false;
       if(!token?.symbol || !token?.name) return false;
@@ -42,10 +47,14 @@
         default:
           return true;
       }
-    });
+    })
+    .map(token => ({
+      ...token,
+      balance: BigInt(token.balance || '0')
+    })) as FE.Token[]);
 
   // Load logos when filtered tokens change
-  $: {
+  $effect(() => {
     if (filteredTokens) {
       filteredTokens.forEach(async (token) => {
         if (!$tokenLogoStore[token.canister_id]) {
@@ -53,10 +62,14 @@
         }
       });
     }
-  }
+  });
 
   function handleSelect(token: FE.Token) {
-    onSelect(token);
+    const convertedToken: FE.Token = {
+      ...token,
+      balance: BigInt(token.balance || '0')
+    };
+    onSelect(convertedToken);
     onClose();
   }
 
@@ -75,7 +88,7 @@
   }
 
   // Get favorite count for the button label
-  $: favoriteCount = $tokenStore.favoriteTokens[walletId]?.length || 0;
+  let favoriteCount = $derived($tokenStore.favoriteTokens[walletId]?.length || 0);
 </script>
 
 <Modal isOpen={show} title="Select Token" {onClose} variant="green">
@@ -92,57 +105,49 @@
           aria-label="Search tokens"
         />
         <button
-          on:click={handlePaste}
+          onclick={handlePaste}
           class="paste-btn"
           aria-label="Paste from clipboard"
         >
           Paste
         </button>
       </div>
+
       <div class="filter-buttons">
         <button
-          class="filter-btn {standardFilter === 'all' ? 'active' : ''}"
-          on:click={() => (standardFilter = "all")}
+          onclick={() => standardFilter = "all"}
+          class="filter-btn"
+          class:active={standardFilter === "all"}
+          aria-label="Show all tokens"
         >
           All
         </button>
         <button
-          class="filter-btn {standardFilter === 'favorites' ? 'active' : ''}"
-          on:click={() => (standardFilter = "favorites")}
+          onclick={() => standardFilter = "ck"}
+          class="filter-btn"
+          class:active={standardFilter === "ck"}
+          aria-label="Show CK tokens"
         >
-          Favorites {favoriteCount > 0 ? `(${favoriteCount})` : ''}
+          CK
         </button>
         <button
-          class="filter-btn {standardFilter === 'ck' ? 'active' : ''}"
-          on:click={() => (standardFilter = "ck")}
+          onclick={() => standardFilter = "favorites"}
+          class="filter-btn"
+          class:active={standardFilter === "favorites"}
+          aria-label="Show favorite tokens"
         >
-          ckTokens
+          Favorites ({favoriteCount})
         </button>
       </div>
     </div>
 
-    <div class="token-list" role="listbox" aria-label="Token list">
-      {#each filteredTokens as token}
-        <div class="token-row">
-          <button
-            class="token-btn"
-            on:click={() => handleSelect(token)}
-            role="option"
-            aria-selected={token.canister_id === currentToken?.canister_id}
-          >
-            <TokenRowCompact {token} />
-          </button>
-          <button
-            class="fav-btn"
-            on:click={(e) => handleFavoriteClick(e, token.canister_id)}
-            aria-label={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) 
-              ? "Remove from favorites" 
-              : "Add to favorites"}
-          >
-            <span class:active={$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id)}>
-              {$tokenStore.favoriteTokens[walletId]?.includes(token.canister_id) ? '★' : '☆'}
-            </span>
-          </button>
+    <div class="token-list">
+      {#each filteredTokens as token (token.canister_id)}
+        <div class="token-row" onclick={() => handleSelect(token)}>
+          <TokenRowCompact
+            token={token}
+            onClick={() => handleSelect(token)}
+          />
         </div>
       {/each}
     </div>

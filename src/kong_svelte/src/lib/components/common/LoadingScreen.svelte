@@ -3,11 +3,13 @@
   import { cubicOut } from "svelte/easing";
   import { onMount } from "svelte";
   import kongLogo from "$lib/assets/kong_logo.png";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
-  import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
+  import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
   import { loadingState } from "$lib/services/loading/loadingStore";
   import { appLoader } from "$lib/services/appLoader";
   import { derived } from "svelte/store";
+  import { kongDB } from "$lib/services/db";
+  import { liveQuery } from "dexie";
+  import icpLogo from "$lib/assets/tokens/icp.webp";
 
   let currentLogo = kongLogo;
   let currentMessage = "Loading...";
@@ -15,20 +17,107 @@
   let isShuttingDown = false;
   let glitchActive = false;
   let glitchOutActive = false;
+  let nextImageIndex = 0;
   let progress = 0;
   let messages = [
-    "Loading...",
+    "Fetching tokens...",
+    "Filling pools...",
+    "Loading wallet...",
     "Fetching data...",
+    "Connecting to network...",
     "Almost there...",
     "Just a moment...",
   ];
+  let availableLogos: string[] = [];
 
   const appLoadingState = appLoader.loadingState;
 
-  // Create a derived store for the loading progress
-  const loadingProgress = derived(appLoadingState, $state => {
+    // Create a derived store for the loading progress
+    const loadingProgress = derived(appLoadingState, $state => {
     const progress = $state.assetsLoaded / ($state.totalAssets || 1) * 100;
     return Math.min(Math.round(progress), 100);
+  });
+
+
+  // Use liveQuery to get logos in real-time
+  const logoQuery = liveQuery(async () => {
+    const tokenLogos = await kongDB.images.toArray();
+    const logos = tokenLogos
+      .filter(logo => logo.image_url) // Filter out entries without logos
+      .map(logo => logo.image_url as string);
+    
+    // Combine with default logos
+    return [...new Set([...logos, kongLogo, icpLogo])];
+  });
+
+  $: availableLogos = $logoQuery || [kongLogo, icpLogo];
+
+  function getNextLogo(): string {
+    if (!availableLogos || availableLogos.length === 0) return kongLogo;
+    nextImageIndex = (nextImageIndex + 1) % availableLogos.length;
+    return availableLogos[nextImageIndex];
+  }
+
+  let messageIndex = 0;
+  async function cycleContent() {
+    const CYCLE_INTERVAL = 800; // Reduced from 1000ms to 800ms
+    const TRANSITION_TIME = 200; // Reduced from 300ms to 200ms
+    
+    const updateContent = async () => {
+      // Calculate timings as percentages of transition time
+      const glitchOutTime = TRANSITION_TIME * 0.4; // 80ms
+      const colorCalcTime = TRANSITION_TIME * 0.2; // 40ms
+      const glitchInTime = TRANSITION_TIME * 0.4; // 80ms
+      
+      try {
+        // Prepare next logo before starting animation
+        const nextLogo = getNextLogo();
+        const nextColor = await getAverageColor(nextLogo);
+        
+        // Start transition sequence
+        glitchOutActive = true;
+        await new Promise(resolve => setTimeout(resolve, glitchOutTime));
+        
+        // Update content mid-transition
+        glitchOutActive = false;
+        currentLogo = nextLogo;
+        dominantColor = nextColor;
+        currentMessage = messages[messageIndex % messages.length];
+        messageIndex++;
+        
+        await new Promise(resolve => setTimeout(resolve, colorCalcTime));
+        
+        // Final glitch effect
+        glitchActive = true;
+        await new Promise(resolve => setTimeout(resolve, glitchInTime));
+        glitchActive = false;
+      } catch (error) {
+        console.error('Error during logo transition:', error);
+        // Reset states in case of error
+        glitchOutActive = false;
+        glitchActive = false;
+      }
+    };
+
+    // Initial update
+    await updateContent();
+
+    // Set up interval for content cycling
+    const interval = setInterval(async () => {
+      if (isShuttingDown) {
+        clearInterval(interval);
+        return;
+      }
+      await updateContent();
+    }, CYCLE_INTERVAL);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }
+
+  onMount(async () => {
+    cycleContent();
   });
 
   async function getAverageColor(imgSrc: string): Promise<string> {
@@ -74,47 +163,6 @@
       img.src = imgSrc;
     });
   }
-
-  let messageIndex = 0;
-  async function cycleContent() {
-    const tokens = Object.values($tokenStore);
-    const logos = Object.values($tokenLogoStore);
-    let index = 0;
-
-    const updateContent = async () => {
-      if (tokens.length > 0 && logos.length > 0) {
-        // Start glitch out
-        glitchOutActive = true;
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Prepare next content
-        const nextLogo = logos[index % logos.length];
-        dominantColor = await getAverageColor(nextLogo);
-        
-        // Reset glitch states
-        glitchOutActive = false;
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Update content
-        currentLogo = nextLogo;
-        currentMessage = messages[messageIndex % messages.length];
-        messageIndex++;
-        index++;
-        
-        // Start glitch in
-        glitchActive = true;
-        await new Promise(resolve => setTimeout(resolve, 200));
-        glitchActive = false;
-      }
-    };
-
-    await updateContent();
-    setInterval(updateContent, 1000);
-  }
-
-  onMount(() => {
-    cycleContent();
-  });
 
   function handleOutro(node: HTMLElement) {
     isShuttingDown = true;
@@ -191,8 +239,7 @@
         <div class="message-container h-8 flex items-center justify-center mb-4 progress-text">
           {#key currentMessage}
             <p
-              in:scale|local={{ duration: 400, delay: 200, easing: cubicOut }}
-              out:fade|local={{ duration: 200 }}
+            in:fade|local={{ duration: 200 }}
               class="text-gray-400 text-lg"
             >
               {currentMessage}
@@ -370,8 +417,8 @@
       position: fixed;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
+      right: 0;
+      bottom: 0;
       background: radial-gradient(
         circle at center,
         transparent 0%,

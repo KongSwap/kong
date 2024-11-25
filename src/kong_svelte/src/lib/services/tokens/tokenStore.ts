@@ -77,7 +77,7 @@ function createTokenStore() {
     return walletId;
   };
 
-  const  loadBalances = async (principal: Principal) => {
+  const loadBalances = async (principal: Principal) => {
     const currentStore = get(store);
     if (!principal) {
       console.warn("No principal provided to loadBalances");
@@ -90,12 +90,9 @@ function createTokenStore() {
         currentStore.tokens,
         walletId,
       );
-      const prices = await TokenService.fetchPrices(currentStore.tokens);
-
       store.update((s) => ({
         ...s,
         balances,
-        prices,
       }));
       return balances;
     } catch (error) {

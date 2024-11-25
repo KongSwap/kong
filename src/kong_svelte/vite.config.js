@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          drop_console: true,
+          drop_console: false,
         },
       },
     },
@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => {
       viteCompression({
         verbose: true,
         disable: false,
-        threshold: 6400,
+        threshold: 5200,
         algorithm: 'gzip',
         ext: '.gz',
         compressionOptions: { level: 8 },
@@ -94,7 +94,7 @@ export default defineConfig(({ mode }) => {
       viteCompression({
         verbose: true,
         disable: false,
-        threshold: 6400,
+        threshold: 5200,
         algorithm: 'brotliCompress',
         ext: '.br',
         compressionOptions: { level: 11 },

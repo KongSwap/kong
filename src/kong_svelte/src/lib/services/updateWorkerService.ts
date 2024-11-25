@@ -6,147 +6,442 @@ import { auth } from "./auth";
 import * as Comlink from "comlink";
 import { swapActivityStore } from "$lib/stores/swapActivityStore";
 import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+import type { WorkerApi, BatchPreloadResult, UpdateType } from "$lib/workers/updateWorker";
+import { tokenLogoStore, getAllTokenLogos } from "$lib/services/tokens/tokenLogos";
+import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+import { appLoader } from "$lib/services/appLoader"; // Import appLoader
+import { writable } from "svelte/store";
 
 class UpdateWorkerService {
   private worker: Worker | null = null;
-  private workerApi: any = null;
+  private workerApi: WorkerApi | null = null;
   private isInitialized = false;
+  private isInBackground = false;
+  private updateInterval: number | null = null;
+  private _loadingState = writable({ loaded: 0, total: 0, errors: [] });
 
-  initialize() {
+  // Public getter for initialization status
+  public getIsInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  async initialize() {
     if (!browser || this.isInitialized) return;
 
     try {
+      console.log('Initializing update worker service...');
+      
+      // Add visibility change listener
+      document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+      
       this.worker = new Worker(
         new URL("../workers/updateWorker.ts", import.meta.url),
         { type: "module" },
       );
 
-      // Create proxy to worker
-      this.workerApi = Comlink.wrap(this.worker);
-      this.isInitialized = true;
+      // Set up message handler
+      this.worker.addEventListener('message', this.handleWorkerMessage.bind(this));
 
-      // Create instance of worker class
-      this.startUpdates();
+      // Create proxy to worker with proper typing
+      this.workerApi = Comlink.wrap<WorkerApi>(this.worker);
+      
+      // First load tokens if they haven't been loaded yet
+      const tokens = get(tokenStore);
+      if (!tokens?.tokens?.length) {
+        await tokenStore.loadTokens();
+      }
+      
+      // Send tokens to the worker
+      await this.workerApi.setTokens(tokens.tokens);
+
+      // Optionally, trigger token logo loading
+      console.log('UpdateWorkerService: Instructing worker to load token logos...');
+      await this.loadTokenLogos();
+
+      // Start updates and wait for initial data
+      const updateStarted = await this.startUpdates();
+      if (!updateStarted) {
+        console.warn('Failed to start worker updates, falling back to direct updates');
+        this.startFallbackUpdates();
+        return false;
+      }
+      
+      // Wait for initial token logos to be loaded
+      await this.loadTokenLogos();
+      
+      this.isInitialized = true;
+      console.log('Update worker service initialized successfully');
+      
+      return true;
     } catch (error) {
       console.error("Failed to initialize update worker:", error);
+      // Fallback to non-worker updates if worker fails
+      this.startFallbackUpdates();
+      return false;
     }
+  }
+
+  private handleVisibilityChange() {
+    this.isInBackground = document.hidden;
+    if (document.hidden) {
+      // Pause updates when in background
+      if (this.worker) {
+        this.worker.postMessage({ type: 'pause' });
+      }
+    } else {
+      // Resume updates when back in foreground
+      if (this.worker) {
+        this.worker.postMessage({ type: 'resume' });
+        // Force an immediate update when coming back
+        this.forceUpdate();
+      }
+    }
+  }
+
+  private handleWorkerMessage(event: MessageEvent) {
+    if (event.data.type === 'TOKEN_LOGOS_LOADED') {
+      // Merge with existing logos
+      tokenLogoStore.update(logos => ({
+        ...logos,
+        ...event.data.logos
+      }));
+      return;
+    }
+
+    if (event.data.type === 'LOADING_PROGRESS' && event.data.context === 'token_logos') {
+      appLoader.updateLoadingState({
+        isLoading: event.data.loaded < event.data.total,
+        assetsLoaded: event.data.loaded,
+        totalAssets: event.data.total,
+      });
+      return;
+    }
+
+    if (event.data.type === 'update') {
+      const updateType = event.data.updateType as UpdateType;
+      console.log('Received update message:', updateType);
+      
+      switch (updateType) {
+        case 'token':
+          this.updateTokens();
+          break;
+        case 'pool':
+          this.updatePools();
+          break;
+        case 'swapActivity':
+          this.updateSwapActivity();
+          break;
+        case 'price':
+          if (!this.isInBackground) {
+            this.updatePrices();
+          }
+          break;
+      }
+    }
+  }
+
+  private async forceUpdate() {
+    const wallet = get(auth);
+    const walletId = wallet?.account?.owner?.toString();
+    if (walletId) {
+      try {
+        await Promise.all([
+          tokenStore.loadBalances(walletId),
+          poolStore.loadPools(true),
+          this.updatePrices()
+        ]);
+      } catch (error) {
+        console.error('Error during force update:', error);
+      }
+    }
+  }
+
+  private async updateTokens() {
+    const wallet = get(auth);
+    const walletId = wallet?.account?.owner?.toString();
+    if (walletId) {
+      await Promise.all([
+        tokenStore.loadBalances(walletId),
+      ]);
+    }
+  }
+
+  private async updatePools() {
+    const wallet = get(auth);
+    const walletId = wallet?.account?.owner?.toString();
+    if (walletId) {
+      await Promise.all([
+        poolStore.loadPools(),
+        poolStore.loadUserPoolBalances(),
+      ]);
+    } else {
+      await Promise.all([
+        poolStore.loadPools(),
+      ]);
+    }
+  }
+
+  private async updateSwapActivity() {
+    // Swap activity update logic here
+  }
+
+  private async updatePrices() {    
+    try {
+      const currentStore = get(tokenStore);
+      if (!currentStore.tokens) return;
+
+      const prices = await Promise.race([
+        tokenStore.loadPrices(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Price update timeout')), 5000)
+        )
+      ]) as Record<string, number>;
+
+      if (prices && typeof prices === 'object') {
+        // After prices are loaded, update USD values in balances
+        const balances = { ...currentStore.balances };
+        for (const token of currentStore.tokens) {
+          if (balances[token.canister_id]) {
+            const price = prices[token.canister_id] || 0;
+            const balance = balances[token.canister_id].in_tokens;
+            const amount = Number(formatTokenAmount(balance.toString(), token.decimals));
+            balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error during price update:', error);
+    }
+  }
+
+  private isCanisterUrl(url: string): boolean {
+    return url.includes('.raw.icp0.io/d3?file_id=');
+  }
+
+  private async waitForTokens(): Promise<void> {
+    const tokens = get(tokenStore);
+    if (tokens?.tokens?.length) {
+      console.log('Tokens already loaded:', tokens.tokens.length);
+      return;
+    }
+
+    console.log('Waiting for tokens to load...');
+    return new Promise<void>((resolve) => {
+      const unsubscribe = tokenStore.subscribe(value => {
+        if (value?.tokens?.length) {
+          console.log('Tokens loaded:', value.tokens.length);
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
   }
 
   private async startUpdates() {
-    if (!this.workerApi) return;
+    if (!this.workerApi) {
+      console.error('Worker API not available');
+      return false;
+    }
 
-    const instance = await new this.workerApi();
+    try {
+      console.log('Starting worker updates...');
+      
+      // Wait for initial token data
+      await this.waitForTokens();
 
-    // Create callback proxies
-    const callbacks = Comlink.proxy({
-      onTokenUpdate: async () => {
-        const wallet = get(auth);
-        const walletId = wallet?.account?.owner?.toString();
-        if (walletId) {
-          Promise.all([
-            tokenStore.loadBalances(walletId),
-          ]);
-        }
-      },
-      onPoolUpdate: async () => {
-        await poolStore.loadPools(true);
-        const wallet = get(auth);
-        const walletId = wallet?.account?.owner?.toString();
-        if (walletId) {
-          Promise.all([
-            poolStore.loadPools(),
-            poolStore.loadUserPoolBalances(),
-          ]);
-        }
-      },
-      onSwapActivityUpdate: async () => {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      // Start the worker's update intervals
+      await this.workerApi.startUpdates();
+      
+      console.log('Worker updates started, triggering immediate updates...');
+      
+      // Update loading state for token logos
+      appLoader.updateLoadingState({
+        isLoading: true,
+        assetsLoaded: 0,
+        totalAssets: get(tokenStore).tokens?.length || 0,
+      });
 
-          const response = await fetch('http://18.170.224.113:8080/api/dexscreener_swap', {
-            signal: controller.signal,
-            headers: {
-              'Accept': 'application/json',
-              'Cache-Control': 'no-cache'
-            }
-          });
+      // Trigger immediate updates and wait for them to complete
+      await Promise.all([
+        this.updateTokens(),
+        this.updatePools(),
+        this.updateSwapActivity(),
+        !this.isInBackground && this.updatePrices(),
+      ].filter(Boolean));
 
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
-          const data = await response.json();
-          
-          // Add each new swap to the store
-          if (Array.isArray(data)) {
-            const swaps = get(swapActivityStore);
-            const uniqueSwaps = data.filter(swap => 
-              !swaps.some(existingSwap => existingSwap.txnId === swap.txnId)
-            );
-            
-            if (uniqueSwaps.length > 0) {
-              uniqueSwaps.forEach(swap => {
-                swapActivityStore.addSwap(swap);
-              });
-            }
-          }
-        } catch (error) {
-          if (error.name === 'AbortError') {
-            console.warn('Swap activity update request timed out');
-            return;
-          }
-          // Log error but don't throw to prevent breaking the update loop
-          console.error('Error fetching swap data:', error);
-        }
-      },
-      onPriceUpdate: async () => {
-        try {
-          const currentStore = get(tokenStore);
-          if (!currentStore.tokens) return;
-
-          const prices = await tokenStore.loadPrices();
-          if (prices) {
-            // After prices are loaded, update USD values in balances
-            const balances = { ...currentStore.balances };
-            for (const token of currentStore.tokens) {
-              if (balances[token.canister_id]) {
-                const price = prices[token.canister_id] || 0;
-                const balance = balances[token.canister_id].in_tokens;
-                const amount = parseFloat(formatTokenAmount(balance.toString(), token.decimals));
-                balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
-              }
-            }
-
-            // Update the store with new balances that include updated USD values
-            tokenStore.update(s => ({
-              ...s,
-              balances,
-              prices
-            }));
-          }
-        } catch (error) {
-          console.error('Error updating prices:', error);
-        }
-      }
-    });
-
-    // Start updates with callbacks
-    await instance.startUpdates(callbacks);
+      console.log('Initial updates completed successfully');
+      return true;
+    } catch (error) {
+      console.error("Failed to start worker updates:", error);
+      this.startFallbackUpdates();
+      return false;
+    }
   }
 
-  async destroy() {
-    if (this.workerApi) {
-      const instance = await new this.workerApi();
-      await instance.stopUpdates();
+  private async startFallbackUpdates() {
+    // Set up intervals for fallback updates
+    this.updateInterval = window.setInterval(() => {
+      Promise.all([
+        this.updateTokens(),
+        this.updatePools(),
+        this.updateSwapActivity(),
+        !this.isInBackground && this.updatePrices(),
+      ].filter(Boolean));
+    }, 10000); // Update every 10 seconds
+
+    // Trigger immediate updates
+    await Promise.all([
+      this.updateTokens(),
+      this.updatePools(),
+      this.updateSwapActivity(),
+      !this.isInBackground && this.updatePrices(),
+    ].filter(Boolean));
+  }
+
+  public async preloadAssets(assets: string[]): Promise<{
+    loaded: number;
+    total: number;
+    errors: string[];
+  }> {
+    if (!this.workerApi) {
+      console.warn('Worker not initialized, falling back to main thread asset loading');
+      return this.fallbackPreloadAssets(assets);
     }
+
+    try {
+      return await this.workerApi.preloadAssets(assets);
+    } catch (error) {
+      console.error('Worker failed to preload assets:', error);
+      return this.fallbackPreloadAssets(assets);
+    }
+  }
+
+  private async fallbackPreloadAssets(assets: string[]): Promise<{
+    loaded: number;
+    total: number;
+    errors: string[];
+  }> {
+    let loaded = 0;
+    const errors: string[] = [];
+    const total = assets.length;
+
+    for (const asset of assets) {
+      try {
+        await fetch(asset);
+        loaded++;
+      } catch (error) {
+        errors.push(`Failed to load ${asset}: ${error}`);
+        loaded++; // Still increment to show progress
+      }
+    }
+
+    return { loaded, total, errors };
+  }
+
+  async preloadAsset(url: string): Promise<string> {
+    // If worker is not initialized, use direct asset loading
+    if (!this.workerApi) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to load asset: ${response.statusText}`);
+        }
+        
+        // Handle ICP canister URLs as images
+        if (this.isCanisterUrl(url)) {
+          const blob = await response.blob();
+          if (!blob.type.startsWith('image/')) {
+            console.warn(`Unexpected content type for canister asset: ${blob.type}`);
+          }
+          return URL.createObjectURL(blob);
+        }
+        
+        // Handle other asset types
+        if (url.endsWith('.svg')) {
+          const text = await response.text();
+          if (!text.includes('<svg')) {
+            throw new Error('Invalid SVG content');
+          }
+          return url;
+        } else if (url.match(/\.(png|jpe?g|gif|webp|bmp|ico)$/i)) {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        } else {
+          console.warn(`Using original URL for unsupported asset type: ${url}`);
+          return url;
+        }
+      } catch (error) {
+        console.error(`Failed to preload asset ${url}:`, error);
+        return url;
+      }
+    }
+    
+    return this.workerApi.preloadAsset(url);
+  }
+
+  async batchPreloadAssets(assets: string[], batchSize: number = 5): Promise<BatchPreloadResult> {
+    // If worker is not initialized, use direct asset loading
+    if (!this.workerApi) {
+      try {
+        const results = await Promise.all(
+          assets.map(async (url) => {
+            try {
+              await this.preloadAsset(url);
+              return { success: true };
+            } catch {
+              return { success: false };
+            }
+          })
+        );
+        
+        return {
+          success: true,
+          loadingState: {
+            assetsLoaded: results.filter(r => r.success).length,
+            totalAssets: assets.length,
+            errors: []
+          }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          loadingState: {
+            assetsLoaded: 0,
+            totalAssets: assets.length,
+            errors: []
+          }
+        };
+      }
+    }
+    
+    return this.workerApi.batchPreloadAssets(assets, batchSize);
+  }
+
+  async loadTokenLogos(): Promise<boolean> {
+    if (!this.workerApi) {
+      console.error('Worker API not available for loading token logos');
+      return false;
+    }
+
+    try {
+      const logos = await this.workerApi.loadTokenLogos();
+
+      // Update the token logo store
+      tokenLogoStore.set(logos);
+      
+      return true;
+    } catch (error) {
+      console.warn('UpdateWorkerService: Failed to load token logos:', error);
+      return false;
+    }
+  }
+
+  destroy() {
     if (this.worker) {
       this.worker.terminate();
       this.worker = null;
       this.workerApi = null;
-      this.isInitialized = false;
     }
   }
 }

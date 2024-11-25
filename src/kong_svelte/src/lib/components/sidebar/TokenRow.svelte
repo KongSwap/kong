@@ -6,7 +6,6 @@
   import { sidebarStore } from '$lib/stores/sidebarStore';
   import { Star, TrendingUp, ArrowUpRight, ArrowDownLeft } from 'lucide-svelte';
   import { auth } from '$lib/services/auth';
-  import { derived } from 'svelte/store';
   import { formatBalance, formatUsdValue, formatTokenValue, formatPercentage } from '$lib/utils/tokenFormatters';
   import { getFavoritesForWallet } from '$lib/services/tokens/tokenStore';
 
@@ -17,10 +16,9 @@
     onReceiveClick?: () => void;
   }
   let { token, onClick, onSendClick, onReceiveClick }: TokenRowProps = $props();
-  let logoUrl = '/tokens/not_verified.webp';  
 
-  $effect(() => {
-    logoUrl = $tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp';
+  let logoUrl = $derived(() => {
+    $tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp';
   });
 
   function handleFavoriteClick(e: MouseEvent) {
@@ -38,9 +36,11 @@
     onReceiveClick?.();
   }
 
-  const isFavorite = derived(getFavoritesForWallet, ($favorites) => {
-    return $favorites.includes(token.canister_id);
+  
+  const isFavorite = $derived(() =>{
+   return $getFavoritesForWallet.includes(token.canister_id)
   });
+
   const priceChange24h = Math.random() * 20 - 10;
   const volume24h = Math.random() * 1000000;
 </script>

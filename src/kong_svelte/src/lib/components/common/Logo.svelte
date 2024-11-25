@@ -1,10 +1,10 @@
 <script lang="ts">
-    import { t } from '$lib/translations';
+    import { t } from '$lib/services/translations';
     import { fade } from 'svelte/transition';
 
     function handleImageError(event: Event) {
         const img = event.target as HTMLImageElement;
-        img.src = '/tokens/KONG.svg';
+        img.src = '/titles/kong_logo.png';
     }
 </script>
   
@@ -15,7 +15,7 @@
   >
     <div class="logo-image-container">
       <img 
-        src="/tokens/KONG.svg"
+        src="/titles/kong_logo.png"
         alt={$t('nav.logoAlt')}
         class="w-10 h-10 object-contain transform group-hover:scale-110 transition-transform duration-300"
         on:error={handleImageError}

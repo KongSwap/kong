@@ -3,7 +3,13 @@
     import { onMount } from 'svelte';
     import { auth } from "$lib/services/auth";
     import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
-    import type { UserIdentity } from '$lib/types/identity';
+
+    interface UserIdentity {
+        principalId: string;
+        accountId: string;
+        principalQR: string;
+        accountQR: string;
+    }
 
     export let token: FE.Token;
 

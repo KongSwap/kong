@@ -343,45 +343,66 @@ export class TokenService {
     principalId?: string,
     forceRefresh = false,
   ): Promise<FE.TokenBalance> {
-    // Add cache check with a 10 second TTL
-    if (!forceRefresh) {
-      const cachedBalance = get(tokenStore).balances[token.canister_id];
-      const lastUpdate = get(tokenStore).lastBalanceUpdate?.[token.canister_id] || 0;
-      const now = Date.now();
-      if (cachedBalance && (now - lastUpdate) < 10000) { // 10 second cache
-        return cachedBalance;
+    try {
+      // Return zero balance if no token or principal
+      if (!token?.canister_id || !principalId) {
+        return {
+          in_tokens: BigInt(0),
+          in_usd: formatToNonZeroDecimal(0),
+        };
       }
-    }
 
-    if (!token?.canister_id) {
+      // Check if principal is valid
+      try {
+        Principal.fromText(principalId);
+      } catch (e) {
+        console.warn(`Invalid principal ID: ${principalId}`);
+        return {
+          in_tokens: BigInt(0),
+          in_usd: formatToNonZeroDecimal(0),
+        };
+      }
+
+      // Check cache unless force refresh is requested
+      if (!forceRefresh) {
+        const now = Date.now();
+        const lastUpdate = get(tokenStore).lastBalanceUpdate?.[token.canister_id] || 0;
+        const cachedBalance = get(tokenStore).balances?.[token.canister_id];
+
+        if (cachedBalance && (now - lastUpdate) < 12000) { // 12 second cache
+          return cachedBalance;
+        }
+      }
+
+      const balance = await IcrcService.getIcrc1Balance(
+        token,
+        Principal.fromText(principalId),
+      );
+
+      const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
+      const price = await this.fetchPrice(token);
+      const usdValue = parseFloat(actualBalance) * price;
+
+      // Update last balance update time
+      tokenStore.update(s => ({
+        ...s,
+        lastBalanceUpdate: {
+          ...s.lastBalanceUpdate,
+          [token.canister_id]: Date.now()
+        }
+      }));
+
+      return {
+        in_tokens: balance,
+        in_usd: formatToNonZeroDecimal(usdValue),
+      };
+    } catch (error) {
+      console.error(`Error fetching balance for token ${token.canister_id}:`, error);
       return {
         in_tokens: BigInt(0),
         in_usd: formatToNonZeroDecimal(0),
       };
     }
-
-    const balance = await IcrcService.getIcrc1Balance(
-      token,
-      Principal.fromText(principalId),
-    );
-
-    const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
-    const price = await this.fetchPrice(token);
-    const usdValue = parseFloat(actualBalance) * price;
-
-    // Update last balance update time
-    tokenStore.update(s => ({
-      ...s,
-      lastBalanceUpdate: {
-        ...s.lastBalanceUpdate,
-        [token.canister_id]: Date.now()
-      }
-    }));
-
-    return {
-      in_tokens: balance || BigInt(0),
-      in_usd: formatToNonZeroDecimal(usdValue),
-    };
   }
 
   public static async fetchPrices(

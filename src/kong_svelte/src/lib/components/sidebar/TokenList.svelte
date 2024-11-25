@@ -39,6 +39,8 @@
     error = ""; // Clear error when user types
   }
 
+  $: $auth.isConnected ? tokenStore.loadBalances($auth?.account?.owner) : null;
+
   function validatePrincipal(pid: string): boolean {
     try {
       Principal.fromText(pid);

@@ -25,6 +25,7 @@ class AssetCacheService {
   private db: AssetCacheDatabase | null = null;
   private CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
   private dbInitPromise: Promise<void> | null = null;
+  private cache: Map<string, string> = new Map();
 
   private constructor() {
     if (browser) {
@@ -117,6 +118,11 @@ class AssetCacheService {
       console.error('Error fetching and caching asset:', error);
       return url;
     }
+  }
+
+  public setAsset(url: string, content: string, type: string): void {
+    this.cache.set(url, content);
+    // Optionally handle type if needed
   }
 
   async getAsset(url: string): Promise<string> {

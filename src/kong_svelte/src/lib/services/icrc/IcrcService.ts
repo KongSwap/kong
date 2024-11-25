@@ -27,7 +27,7 @@ export class IcrcService {
       const actor = await auth.getActor(
         token.canister_id,
         canisterIDLs["icrc2"],
-        { anon: true },
+        { anon: true, requiresSigning: false },
       );
       return await actor.icrc1_balance_of({
         owner: principal,
@@ -41,7 +41,10 @@ export class IcrcService {
 
   public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
     try {
-      const actor = await auth.getActor(canister_id, canisterIDLs["icrc1"]);
+      const actor = await auth.getActor(canister_id, canisterIDLs.icrc1, {
+        anon: true,
+        requiresSigning: false,
+      });
       return await actor.icrc1_metadata();
     } catch (error) {
       this.handleError("getIcrc1TokenMetadata", error);
@@ -57,37 +60,16 @@ export class IcrcService {
     }
 
     try {
-      const wallet = get(auth);
-      const principal = await wallet.account.owner;
-
       // Create actor with retries
-      let actor;
       let retries = 3;
-      while (retries > 0) {
-        try {
-          actor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
-            anon: false,
-          });
-          break;
-        } catch (error) {
-          console.warn(
-            `Actor creation attempt failed, ${retries - 1} retries left:`,
-            error,
-          );
-          retries--;
-          if (retries === 0) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1s between retries
-        }
-      }
-
       const expiresAt =
-        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 10) * BigInt(1000000);
+        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
       const totalAmount = payAmount + token.fee;
 
       // First check if we already have sufficient allowance
       const currentAllowance = await this.checkIcrc2Allowance(
         token,
-        wallet.account.owner,
+        auth.pnp.account.owner,
         Principal.fromText(kongBackendCanisterId),
       );
 
@@ -100,7 +82,7 @@ export class IcrcService {
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: BigInt(totalAmount * 100n),
+        amount: BigInt(totalAmount * 10n),
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: {
@@ -110,7 +92,6 @@ export class IcrcService {
       };
 
       // Fetch balance with retries
-      let balance;
       retries = 3;
       while (retries > 0) {
         try {
@@ -119,10 +100,11 @@ export class IcrcService {
             canisterIDLs.icrc2,
             {
               anon: true,
+              requiresSigning: false
             },
           );
-          balance = await balanceActor.icrc1_balance_of({
-            owner: wallet.account.owner,
+          await balanceActor.icrc1_balance_of({
+            owner: auth.pnp.account.owner,
             subaccount: [],
           });
           break;
@@ -142,11 +124,11 @@ export class IcrcService {
       retries = 3;
       while (retries > 0) {
         try {
-          actor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
+          let approveActor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
             anon: false,
             requiresSigning: true,
           });
-          result = await actor.icrc2_approve(approveArgs);
+          result = await approveActor.icrc2_approve(approveArgs);
           break;
         } catch (error) {
           console.warn(
@@ -192,7 +174,7 @@ export class IcrcService {
       const actor = await auth.getActor(
         token.canister_id,
         canisterIDLs.icrc2,
-        { anon: true },
+        { anon: true, requiresSigning: false },
       );
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
@@ -219,7 +201,10 @@ export class IcrcService {
     } = {},
   ): Promise<Result<bigint>> {
     try {
-      const actor = await auth.getActor(token.canister_id, "icrc1");
+      const actor = await auth.getActor(token.canister_id, "icrc1", {
+        anon: false,
+        requiresSigning: true,
+      });
       const toPrincipal = typeof to === "string" ? Principal.fromText(to) : to;
 
       const transferArgs = {
