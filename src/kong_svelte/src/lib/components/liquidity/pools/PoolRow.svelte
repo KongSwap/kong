@@ -9,7 +9,6 @@
     import Modal from "$lib/components/common/Modal.svelte";
     import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
     import { Flame, MoreVertical } from "lucide-svelte";
-    import AddLiquidityModal from "$lib/components/liquidity/add_liquidity/AddLiquidityModal.svelte";
     import { onMount } from 'svelte';
   
     export let pool: BE.Pool & { tvl?: number };
@@ -41,7 +40,7 @@
     });
   
     function handleAddLiquidity() {
-      onAddLiquidity(pool.address_0, pool.address_1);
+      goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
     }
   
     function handleAddLiquidityClose() {
@@ -89,10 +88,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          {formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}
-        </div>
-        <div class="price-label">
-          {pool.symbol_1} per {pool.symbol_0}
+          ${formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}
         </div>
       </div>
     </td>
@@ -172,120 +168,196 @@
   />
 {/if}
 
-<style lang="postcss">
+<style>
   tr {
-    @apply transition-colors duration-150;
+    transition: colors 150ms;
   }
 
   tr:hover {
-    @apply bg-[#1a1b23];
+    background-color: #1a1b23;
   }
 
   td {
-    @apply p-2 text-sm text-[#8890a4] border-b border-[#2a2d3d];
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    color: #8890a4;
+    border-bottom: 1px solid #2a2d3d;
+    height: 64px;
   }
 
-  .pool-cell {
-    @apply min-w-[200px];
+  .price-cell,
+  .tvl-cell,
+  .volume-cell,
+  .apy-cell {
+    text-align: right;
+  }
+
+  .actions-cell {
+    text-align: right;
   }
 
   .pool-info {
-    @apply flex items-center gap-3;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .pool-cell {
+    width: 30%;
+  }
+
+  .price-cell,
+  .tvl-cell,
+  .volume-cell,
+  .apy-cell {
+    width: 15%;
+    text-align: right;
+  }
+
+  .actions-cell {
+    width: 10%;
   }
 
   .pool-details {
-    @apply flex flex-col;
+    display: flex;
+    flex-direction: column;
   }
 
   .pool-name {
-    @apply text-white font-medium;
-  }
-
-  .pool-fee {
-    @apply text-xs text-[#8890a4];
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
   }
 
   .price-info,
   .tvl-info,
   .volume-info,
   .apy-info {
-    @apply flex flex-col;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
   }
 
   .price-value,
   .tvl-value,
   .volume-value,
   .apy-value {
-    @apply text-white font-medium;
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
   }
 
   .price-label {
-    @apply text-xs text-[#8890a4];
+    font-size: 0.75rem;
+    color: #8890a4;
   }
 
   .actions {
-    @apply flex items-center gap-2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 
   .action-btn {
-    @apply px-3 py-1.5 text-sm font-medium rounded-lg
-           transition-all duration-150;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    transition: all 150ms;
+    white-space: nowrap;
   }
 
   .add-lp {
-    @apply bg-[#2a2d3d] text-white hover:bg-[#3d4154];
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .add-lp:hover {
+    background-color: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
   }
 
   .swap {
-    @apply bg-[#1a1b23] border border-[#2a2d3d] text-[#8890a4]
-           hover:bg-[#2a2d3d] hover:text-white hover:border-[#3d4154];
+    background-color: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+  }
+
+  .swap:hover {
+    background-color: rgba(107, 114, 128, 0.3);
+    border-color: rgba(107, 114, 128, 0.5);
+    color: #d1d5db;
   }
 
   /* Mobile Card Styles */
   .mobile-pool-card {
-    @apply bg-[#1a1b23] rounded-lg p-3 mb-3 border border-[#2a2d3d];
+    background-color: #1a1b23;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #2a2d3d;
   }
 
   .card-header {
-    @apply flex items-center justify-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .token-info {
-    @apply flex items-center gap-3;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .token-details {
-    @apply flex flex-col gap-0.5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
   }
 
   .token-pair {
-    @apply text-white font-medium;
+    color: white;
+    font-weight: 500;
   }
 
   .tvl-badge {
-    @apply text-xs text-[#8890a4];
+    font-size: 0.75rem;
+    color: #8890a4;
   }
 
   .card-actions {
-    @apply flex items-center h-full;
+    display: flex;
+    align-items: center;
+    height: 100%;
   }
 
   .details-btn {
-    @apply h-full px-3 text-[#8890a4] hover:text-white
-           hover:bg-[#2a2d3d] transition-colors;
+    height: 100%;
+    padding: 0 0.75rem;
+    color: #8890a4;
+    transition: colors 150ms;
+  }
+
+  .details-btn:hover {
+    color: white;
+    background-color: #2a2d3d;
   }
 
   @media (max-width: 640px) {
     .mobile-pool-card {
-      @apply p-2.5;
+      padding: 0.625rem;
     }
     
     .token-info {
-      @apply gap-2;
+      gap: 0.5rem;
     }
 
     .tvl-badge {
-      @apply text-[11px];
+      font-size: 0.6875rem;
     }
   }
 </style>

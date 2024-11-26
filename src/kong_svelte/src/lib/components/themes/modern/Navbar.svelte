@@ -218,10 +218,8 @@
     position: relative;
   }
 
-  @media (min-width: 819px) {
-    .nav-container {
-      padding: 0 1rem;
-    }
+  .nav-container {
+    padding: 0 1rem;
   }
 
   /* Section Layout */
@@ -337,7 +335,6 @@
   @media (max-width: 818px) {
     .nav-link {
       height: 36px;
-      padding: 0.5rem 1rem;
     }
 
     .settings-btn {
@@ -426,20 +423,6 @@
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
-  }
-
-  .mobile-icon-btn:active {
-  }
-
-  /* Mobile specific styles */
-  @media (max-width: 639px) {
-    .mobile-icon-btn {
-      padding: 0.5rem;
-    }
-    
-    .center-section {
-      padding: 0 0.5rem;
-    }
   }
 
   /* Mobile Menu */

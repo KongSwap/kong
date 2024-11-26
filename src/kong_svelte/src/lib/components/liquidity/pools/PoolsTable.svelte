@@ -3,11 +3,10 @@
   import PoolRow from "./PoolRow.svelte";
   import { writable } from "svelte/store";
   import TextInput from "$lib/components/common/TextInput.svelte";
-  import { ArrowUp, ArrowDown, ArrowUpDown, Filter, LayoutList, LayoutGrid } from 'lucide-svelte';
+  import { ArrowUp, ArrowDown, ArrowUpDown, Search, Filter, LayoutList, LayoutGrid } from 'lucide-svelte';
   import AddLiquidityModal from "$lib/components/liquidity/add_liquidity/AddLiquidityModal.svelte";
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import Button from "$lib/components/common/Button.svelte";
-  import { debounce } from 'lodash';
 
   export let pools: BE.Pool[] = [];
   export let loading = false;
@@ -17,7 +16,8 @@
   export let tokenMap: Map<string, any>;
 
   let searchTerm = "";
-  let searchInput: HTMLInputElement;
+  let searchDebounceTimer: NodeJS.Timeout;
+  let debouncedSearchTerm = "";
   let showAddLiquidityModal = false;
   let selectedTokens = { token0: '', token1: '' };
   let forceCardView = false;
@@ -25,45 +25,33 @@
 
   const activeTab = writable("all_pools");
 
-  let debouncedSearchTerm = "";
-
-  const updateDebouncedSearch = debounce((value: string) => {
-    debouncedSearchTerm = value;
-  }, 300);
+  function handleAddLiquidity(token0: string, token1: string) {
+    selectedTokens = { token0, token1 };
+    showAddLiquidityModal = true;
+  }
 
   $: {
-    updateDebouncedSearch(searchTerm);
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+    }, 300);
   }
 
   $: filteredPools = pools.filter(pool => {
     if (!debouncedSearchTerm) return true;
     
-    const searchTerms = debouncedSearchTerm.toLowerCase().split(/[\s,]+/).filter(Boolean);
-    
-    return searchTerms.every(term => {
-      const symbolMatch = 
-        pool.symbol_0.toLowerCase().includes(term) ||
-        pool.symbol_1.toLowerCase().includes(term) ||
-        `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(term);
+    const searchMatches = [
+      pool.symbol_0.toLowerCase(),                    // Token 0 symbol
+      pool.symbol_1.toLowerCase(),                    // Token 1 symbol
+      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(), // Full pair name
+      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(), // Reverse pair name
+      pool.address?.toLowerCase() || '',              // Pool address
+      pool.token_0_address?.toLowerCase() || '',      // Token 0 address
+      pool.token_1_address?.toLowerCase() || ''       // Token 1 address
+    ];
 
-      const addressMatch =
-        pool.token_0.toLowerCase().includes(term) ||
-        pool.token_1.toLowerCase().includes(term);
-
-      const token0Data = tokenMap.get(pool.token_0);
-      const token1Data = tokenMap.get(pool.token_1);
-      const nameMatch =
-        token0Data?.name?.toLowerCase().includes(term) ||
-        token1Data?.name?.toLowerCase().includes(term);
-
-      return symbolMatch || addressMatch || nameMatch;
-    });
+    return searchMatches.some(match => match.includes(debouncedSearchTerm));
   });
-
-  function handleAddLiquidity(token0: string, token1: string) {
-    selectedTokens = { token0, token1 };
-    showAddLiquidityModal = true;
-  }
 
   function toggleSort(column: string) {
     if (sortColumn === column) {
@@ -75,10 +63,8 @@
   }
 
   function getSortIcon(column: string) {
-    if (sortColumn === column) {
-      return sortDirection === "asc" ? ArrowUp : ArrowDown;
-    }
-    return ArrowUpDown;
+    if (sortColumn !== column) return ArrowUpDown;
+    return sortDirection === "asc" ? ArrowUp : ArrowDown;
   }
 
   $: sortedAndFilteredPools = filteredPools.sort((a, b) => {
@@ -130,93 +116,48 @@
     }
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    // Clear search on Escape
-    if (event.key === 'Escape' && searchTerm) {
-      event.preventDefault();
-      searchTerm = '';
-      searchInput.focus();
+  onDestroy(() => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
     }
-    // Focus search on forward slash
-    else if (event.key === '/' && document.activeElement !== searchInput) {
-      event.preventDefault();
-      searchInput.focus();
-    }
-  }
+  });
 </script>
 
 <div class="table-container">
-  <div class="controls">
+  <div class="controls-wrapper" style="position: relative; z-index: 1;">
     <div class="controls-top">
-      <div class="tab-group">
-        <button
-          class="tab-btn {$activeTab === 'all_pools' ? 'active' : ''}"
-          on:click={() => activeTab.set('all_pools')}
+      <div class="mode-selector" style="position: relative; z-index: 1;">
+        <Button
+          variant="blue"
+          size="medium"
+          state={$activeTab === "all_pools" ? "selected" : "default"}
+          onClick={() => activeTab.set("all_pools")}
         >
           All Pools
-        </button>
-        <button
-          class="tab-btn {$activeTab === 'your_pools' ? 'active' : ''}"
-          on:click={() => activeTab.set('your_pools')}
+        </Button>
+        <Button
+          variant="yellow"
+          size="medium"
+          state={$activeTab === "your_pools" ? "selected" : "default"}
+          onClick={() => activeTab.set("your_pools")}
         >
           Your Pools
-        </button>
-        <div class="search-container">
-          <input
-            bind:this={searchInput}
+        </Button>
+      </div>
+      <div class="flex-spacer"></div>
+      <div class="search-wrapper">
+        <div class="search-input-container">
+          <TextInput
+            id="pool-search"
+            placeholder="Search by token symbol, pair, or address..."
             bind:value={searchTerm}
-            type="text"
-            placeholder="Search pools..."
-            class="search-input"
-            on:keydown={handleKeydown}
+            size="sm"
+            variant="success"
           />
+          <Search size={16} class="search-icon" color="white" />
         </div>
       </div>
     </div>
-
-    {#if isCardView}
-      <div class="sort-controls">
-        <div class="sort-row">
-          <button 
-            class="sort-btn {sortColumn === 'pool' ? 'active' : ''}"
-            on:click={() => toggleSort('pool')}
-          >
-            Pool
-            <svelte:component this={getSortIcon('pool')} size={16} />
-          </button>
-          <button 
-            class="sort-btn {sortColumn === 'price' ? 'active' : ''}"
-            on:click={() => toggleSort('price')}
-          >
-            Price
-            <svelte:component this={getSortIcon('price')} size={16} />
-          </button>
-          <button 
-            class="sort-btn {sortColumn === 'tvl' ? 'active' : ''}"
-            on:click={() => toggleSort('tvl')}
-          >
-            TVL
-            <svelte:component this={getSortIcon('tvl')} size={16} />
-          </button>
-        </div>
-        <div class="sort-row">
-          <button 
-            class="sort-btn {sortColumn === 'volume' ? 'active' : ''}"
-            on:click={() => toggleSort('volume')}
-          >
-            Volume (24h)
-            <svelte:component this={getSortIcon('volume')} size={16} />
-          </button>
-          <button 
-            class="sort-btn {sortColumn === 'apy' ? 'active' : ''}"
-            on:click={() => toggleSort('apy')}
-          >
-            APY
-            <svelte:component this={getSortIcon('apy')} size={16} />
-          </button>
-        </div>
-      </div>
-    {/if}
   </div>
 
   {#if loading}
@@ -231,49 +172,50 @@
     </div>
   {:else}
     {#if !isCardView}
+      <!-- Desktop Table View -->
       <div class="table-wrapper">
-        <table>
-          <thead>
+        <table class="w-full">
+          <thead class="table-header" style="position: sticky; top: 0; z-index: 1;">
             <tr>
-              <th>
-                <button class="th-btn" on:click={() => toggleSort('pool')}>
-                  Pool
-                  <svelte:component this={getSortIcon('pool')} size={16} class="sort-icon" />
+              <th class="text-left p-2 w-[25%]">
+                <button class="header-button" on:click={() => toggleSort("pool")}>
+                  <span>Pool</span>
+                  <svelte:component this={getSortIcon("pool")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th>
-                <button class="th-btn" on:click={() => toggleSort('price')}>
-                  Price
-                  <svelte:component this={getSortIcon('price')} size={16} class="sort-icon" />
+              <th class="text-right p-2 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("price")}>
+                  <span>Price</span>
+                  <svelte:component this={getSortIcon("price")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th>
-                <button class="th-btn" on:click={() => toggleSort('tvl')}>
-                  TVL
-                  <svelte:component this={getSortIcon('tvl')} size={16} class="sort-icon" />
+              <th class="text-right p-2 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("tvl")}>
+                  <span>TVL</span>
+                  <svelte:component this={getSortIcon("tvl")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th>
-                <button class="th-btn" on:click={() => toggleSort('volume')}>
-                  Volume (24h)
-                  <svelte:component this={getSortIcon('volume')} size={16} class="sort-icon" />
+              <th class="text-right p-2 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("volume")}>
+                  <span>Volume (24h)</span>
+                  <svelte:component this={getSortIcon("volume")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th>
-                <button class="th-btn" on:click={() => toggleSort('apy')}>
-                  APY
-                  <svelte:component this={getSortIcon('apy')} size={16} class="sort-icon" />
+              <th class="text-right p-2 w-[15%]">
+                <button class="header-button" on:click={() => toggleSort("apy")}>
+                  <span>APY</span>
+                  <svelte:component this={getSortIcon("apy")} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th>Actions</th>
+              <th class="text-right p-2 w-[15%]">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="table-body">
             {#each sortedAndFilteredPools as pool, i}
-              <PoolRow
-                {pool}
-                {tokenMap}
-                isEven={i % 2 === 0}
+              <PoolRow 
+                {pool} 
+                {tokenMap} 
+                isEven={i % 2 === 0} 
                 onAddLiquidity={handleAddLiquidity}
               />
             {/each}
@@ -281,15 +223,17 @@
         </table>
       </div>
     {:else}
-      <div class="cards-grid">
-        {#each sortedAndFilteredPools as pool, i}
-          <PoolRow
-            {pool}
-            {tokenMap}
-            isEven={i % 2 === 0}
-            onAddLiquidity={handleAddLiquidity}
-          />
-        {/each}
+      <div class="card-body-wrapper">
+        <div class="card-container">
+          {#each sortedAndFilteredPools as pool, i}
+            <PoolRow 
+              {pool} 
+              {tokenMap} 
+              isEven={i % 2 === 0} 
+              onAddLiquidity={handleAddLiquidity}
+            />
+          {/each}
+        </div>
       </div>
     {/if}
   {/if}
@@ -306,172 +250,335 @@
   />
 {/if}
 
-<style lang="postcss">
+<style>
   .table-container {
-    @apply w-full max-w-[1400px] mx-auto flex flex-col h-full;
-  }
-
-  .controls {
-    @apply mb-2 space-y-2 flex-shrink-0;
-  }
-
-  .controls-top {
-    @apply flex flex-col sm:flex-row gap-2 mr-2;
-  }
-
-  .tab-group {
-    @apply flex items-center justify-between bg-[#1a1b23] rounded-lg p-1 w-full;
-  }
-
-  .tab-btn {
-    @apply px-4 py-2.5 text-sm font-medium rounded-md
-           transition-all duration-150 text-[#8890a4];
-  }
-
-  .tab-btn.active {
-    @apply bg-[#2a2d3d] text-white;
-  }
-
-  .tab-btn:not(.active) {
-    @apply hover:bg-[#2a2d3d]/50 hover:text-white;
-  }
-
-  .search-container {
-    @apply relative ml-auto;
-  }
-
-  .search-input {
-    @apply w-64 px-4 py-2 rounded-lg bg-white/5 text-white 
-           placeholder-white/40 border border-white/10 
-           focus:border-white/20 focus:outline-none
-           transition-all duration-200;
-  }
-
-  .sort-controls {
-    @apply space-y-2 bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-3;
-  }
-
-  .sort-row {
-    @apply flex gap-2;
-  }
-
-  .sort-btn {
-    @apply flex-1 flex items-center justify-between px-3 py-2
-           bg-[#1a1b23] border border-[#2a2d3d] rounded text-sm 
-           text-[#8890a4] transition-all duration-150;
-  }
-
-  .sort-btn:hover {
-    @apply bg-[#2a2d3d]/50 text-white border-[#3d4154];
-  }
-
-  .sort-btn.active {
-    @apply bg-[#2a2d3d] text-white border-[#3d4154];
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.69rem;
+    padding: 0 0.69rem;
+    position: relative;
+    z-index: 1;
   }
 
   .table-wrapper {
-    @apply w-full overflow-x-auto rounded-lg min-w-[1000px]
-           flex-grow relative bg-[#1a1b23]/80;
-    height: calc(100% - 2rem); /* Account for controls margin */
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
   }
 
-  table {
-    @apply w-full relative;
+  .table-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--background-color-darker, #111111);
+    backdrop-filter: blur(8px);
   }
 
-  thead {
-    @apply bg-[#1a1b23] sticky top-0 z-10
-           backdrop-blur-md shadow-lg;
+  .table-header::after {
+    display: none;
   }
 
-  th {
-    @apply p-4 text-left text-sm font-medium text-[#8890a4] 
-           border-b border-[#2a2d3d];
+  .card-body-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 6px;
   }
 
-  tbody tr {
-    @apply transition-colors duration-200 border-b border-[#2a2d3d]/50;
+  .card-container {
+    display: flex;
+    flex-direction: column;
   }
 
-  tbody tr:nth-child(even) {
-    @apply bg-[#1e1f2a]/40;
+  .search-wrapper {
+    position: relative;
+    width: 28rem;
+    transition: all 0.2s ease;
   }
 
-  tbody tr:hover {
-    @apply bg-[#2a2d3d]/60;
+  .search-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    padding-right: 1rem;
   }
 
-  .th-btn {
-    @apply flex items-center gap-2 text-sm font-medium text-[#8890a4]
-           hover:text-white transition-colors duration-150 w-full;
+  .search-input-container:hover,
+  .search-input-container:focus-within {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
 
-  .cards-grid {
-    @apply space-y-2 overflow-y-auto pr-2;
-    height: calc(100% - 2rem); /* Account for controls margin */
+  .search-input-container :global(input) {
+    width: 100%;
+    padding: 0.75rem 4rem 0.75rem 1rem !important;
+    background: transparent;
+    border: none !important;
+    font-size: 0.925rem;
+    color: rgb(209, 213, 219);
   }
 
-  .loading, .error {
-    @apply flex items-center justify-center h-64 text-[#8890a4];
+  .search-input-container :global(input::placeholder) {
+    color: rgba(209, 213, 219, 0.5);
+  }
+
+  .search-input-container :global(.input-wrapper) {
+    width: 100%;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .search-input-container :global(input:focus) {
+    outline: none;
+    box-shadow: none !important;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .search-wrapper {
+      max-width: 100%;
+    }
+
+    .search-input-container {
+      border-radius: 0.5rem;
+    }
+
+    .search-input-container :global(input) {
+      padding: 0.625rem 4rem 0.625rem 1rem !important;
+      font-size: 0.875rem;
+    }
+  }
+
+  .loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
   }
 
   .spinner {
-    @apply w-8 h-8 border-4 border-[#2a2d3d] border-t-white
-           rounded-full animate-spin;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #000;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
   }
 
-  /* Scrollbar styling */
-  .table-wrapper, .cards-grid {
-    scrollbar-width: thin;
-    scrollbar-color: #2a2d3d #1a1b23;
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
-  .table-wrapper::-webkit-scrollbar,
-  .cards-grid::-webkit-scrollbar {
-    @apply w-2;
+  .error {
+    color: red;
+    text-align: center;
   }
 
-  .table-wrapper::-webkit-scrollbar-track,
-  .cards-grid::-webkit-scrollbar-track {
-    @apply bg-[#1a1b23];
+  .controls-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    position: relative;
+    margin-bottom: 0.5rem;
   }
 
-  .table-wrapper::-webkit-scrollbar-thumb,
-  .cards-grid::-webkit-scrollbar-thumb {
-    @apply bg-[#2a2d3d] rounded-full hover:bg-[#3d4154];
+  .controls-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .flex-spacer {
+    flex: 1;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    min-width: auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  th {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: rgb(209, 213, 219);
+    padding: 0.5rem;
+  }
+
+  .header-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+    width: 100%;
+  }
+
+  .header-button:hover {
+    background-color: rgba(16, 185, 129, 0.3);
+    color: rgb(52, 211, 153);
+  }
+
+  th button {
+    transition: color 0.2s;
+  }
+
+  th button:hover {
+    color: rgb(52, 211, 153);
+  }
+
+  tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  th:not(:first-child) .header-button {
+    justify-content: flex-end;
+  }
+
+  .table-header {
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .table-wrapper table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    min-width: auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .controls-top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 1250px) {
+    .controls-top {
+      flex-direction: row;
+      align-items: center;
+    }
+    
+    .mode-selector {
+      flex: none;
+    }
+
+    .search-wrapper {
+      flex: 1;
+    }
   }
 
   @media (max-width: 640px) {
     .controls-top {
-      @apply gap-3;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
     }
 
-    .sort-controls {
-      @apply p-2;
+    .mode-selector {
+      width: 100%;
+      margin: 0;
     }
 
-    .sort-row {
-      @apply gap-1;
+    .mode-selector :global(button) {
+      flex: 1;
+      padding: 0.625rem 0.5rem;
     }
 
-    .sort-btn {
-      @apply px-2 py-1.5 text-xs;
+    .controls-wrapper {
+      gap: 0.375rem;
+      margin-bottom: 0.375rem;
     }
 
-    .tab-group {
-      @apply flex-col;
+    .search-wrapper {
+      width: 100%;
+      max-width: 100%;
     }
 
-    .tab-btn {
-      @apply w-full;
+    .card-body-wrapper {
+      scrollbar-width: none;
     }
 
-    .search-container {
-      @apply w-full;
+    .card-body-wrapper::-webkit-scrollbar {
+      display: none;
     }
+  }
 
-    .search-input {
-      @apply w-full max-w-full;
+  .table-body-wrapper,
+  .card-body-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .card-body-wrapper::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .card-body-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .card-body-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .table-container {
+    height: calc(100vh - 120px);
+    max-height: 70vh;
+  }
+
+  @media (max-width: 640px) {
+    .search-input-container :global(input) {
+      padding: 0.625rem 4rem 0.625rem 1rem !important;
+    }
+  }
+
+  .mode-selector :global(.tab-button) {
+    padding: 0.75rem 1.25rem;  /* Match search input height */
+    height: 100%;
+    min-height: 2.75rem;  /* Ensure minimum height */
+    display: flex;
+    align-items: center;
+  }
+
+  @media (max-width: 640px) {
+    .mode-selector :global(.tab-button) {
+      padding: 0.625rem 1rem;  /* Slightly smaller for mobile */
+      min-height: 2.5rem;
     }
   }
 </style>

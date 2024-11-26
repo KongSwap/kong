@@ -6,6 +6,9 @@
     import { get } from "svelte/store";
     import { tokenPrices } from "$lib/services/tokens/tokenStore";
     import Panel from "$lib/components/common/Panel.svelte";
+    import Portal from 'svelte-portal';
+    import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
+    import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -61,172 +64,207 @@
     $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance();
   </script>
 
-  <div class="add-liquidity-form">
-    <div class="flex flex-col gap-4">
-      <div class="mode-tabs">
-        <button 
-          class="mode-tab {liquidityMode === 'full' ? 'active' : ''}"
+  <div class="swap-wrapper">
+    <div class="swap-container" in:fade={{ duration: 420 }}>
+      <div class="mode-selector">
+        <div class="mode-selector-background" style="transform: translateX({liquidityMode === 'custom' ? '100%' : '0'})"></div>
+        <button
+          class="mode-button"
+          class:selected={liquidityMode === "full"}
           on:click={() => liquidityMode = 'full'}
         >
-          Full Range
+          <span class="mode-text">Full Range</span>
         </button>
-        <button 
-          class="mode-tab disabled"
+        <button
+          class="mode-button"
+          class:selected={liquidityMode === "custom"}
           disabled
         >
-          Custom Range
+          <span class="mode-text">Custom Range</span>
         </button>
       </div>
 
-      <!-- Token 0 Input -->
-      <div class="token-input-container">
-        <div class="relative flex-grow mb-[-1px] h-[68px]">
-          <div class="flex items-center gap-1 h-[69%] box-border rounded-md">
-            <div class="relative flex-1">
-              <input
-                type="text"
-                inputmode="decimal"
-                pattern="[0-9]*"
-                class="flex-1 min-w-0 bg-transparent border-none text-white text-[2.5rem] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
-                bind:value={amount0}
-                on:input={(e) => handleInput(0, e)}
-                placeholder="0.00"
-                disabled={loading}
-              />
-            </div>
-            <div class="flex gap-2 items-center">
-              <TokenSelectorButton
-                token={token0}
-                onClick={() => showToken0Selector = true}
-                disabled={loading}
-              />
+      <div class="panels-container">
+        <div class="panels-wrapper">
+          <!-- Token 0 Panel -->
+          <SwapPanel
+            title="Token 1 Amount"
+            token={token0}
+            amount={amount0}
+            onAmountChange={(e) => handleInput(0, e)}
+            onTokenSelect={() => showToken0Selector = true}
+            showPrice={true}
+            disabled={loading}
+            panelType="pay"
+            balance={token0Balance}
+          />
+
+          <div class="flex justify-center">
+            <div class="p-2 bg-white/10 rounded-full">
+              <Plus class="text-white/70" />
             </div>
           </div>
+
+          <!-- Token 1 Panel -->
+          <SwapPanel
+            title="Token 2 Amount"
+            token={token1}
+            amount={amount1}
+            onAmountChange={(e) => handleInput(1, e)}
+            onTokenSelect={() => showToken1Selector = true}
+            showPrice={true}
+            disabled={loading}
+            panelType="pay"
+            balance={token1Balance}
+          />
         </div>
-        <footer class="text-white text-[clamp(0.75rem,2vw,0.875rem)]">
-          <div class="flex justify-between items-center leading-6">
-            <div class="flex items-center gap-2">
-              <span class="text-white/50 font-normal tracking-wide">Available:</span>
-              <button class="pl-1 text-white/70 font-semibold tracking-tight clickable">
-                {token0Balance} {token0?.symbol || ''}
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-white/50 font-normal tracking-wide">Est Value</span>
-              <span class="pl-1 text-white/50 font-medium tracking-wide">
-                ${getUsdValue(amount0, token0)}
-              </span>
-            </div>
-          </div>
-        </footer>
-      </div>
 
-      <div class="flex justify-center">
-        <div class="p-2 bg-white/10 rounded-full">
-          <Plus class="text-white/70" />
-        </div>
-      </div>
-
-      <!-- Token 1 Input -->
-      <div class="token-input-container">
-        <div class="relative flex-grow mb-[-1px] h-[68px]">
-          <div class="flex items-center gap-1 h-[69%] box-border rounded-md">
-            <div class="relative flex-1">
-              <input
-                type="text"
-                inputmode="decimal"
-                pattern="[0-9]*"
-                class="flex-1 min-w-0 bg-transparent border-none text-white text-[2.5rem] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
-                bind:value={amount1}
-                on:input={(e) => handleInput(1, e)}
-                placeholder="0.00"
-                disabled={loading}
-              />
-            </div>
-            <div class="flex gap-2 items-center">
-            </div>
-          </div>
-        </div>
-        <footer class="text-white text-[clamp(0.75rem,2vw,0.875rem)]">
-          <div class="flex justify-between items-center leading-6">
-            <div class="flex items-center gap-2">
-              <span class="text-white/50 font-normal tracking-wide">Available:</span>
-              <button class="pl-1 text-white/70 font-semibold tracking-tight clickable">
-                {token1Balance} {token1?.symbol || ''}
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-white/50 font-normal tracking-wide">Est Value</span>
-              <span class="pl-1 text-white/50 font-medium tracking-wide">
-                ${getUsdValue(amount1, token1)}
-              </span>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </div>
-
-    {#if error}
-      <div class="error-message mt-4 text-red-500 text-sm">{error}</div>
-    {/if}
-
-    <div class="mt-4">
-      <Button
-        variant="yellow"
-        size="medium"
-        disabled={!isValid || loading}
-        onClick={onSubmit}
-        width="100%"
-      >
-        {#if hasInsufficientBalance()}
-          Insufficient Balance
-        {:else if !token0 || !token1}
-          Select Tokens
-        {:else if !amount0 || !amount1}
-          Enter Amounts
-        {:else if loading}
-          Loading...
-        {:else}
-          Review Transaction
+        {#if error}
+          <div class="error-message mt-4 text-red-500 text-sm">{error}</div>
         {/if}
-      </Button>
+
+        <div class="swap-footer">
+          <button
+            class="swap-button"
+            class:error={error || hasInsufficientBalance()}
+            class:processing={loading}
+            class:ready={isValid}
+            on:click={onSubmit}
+            disabled={!isValid || loading}
+          >
+            <div class="button-content">
+              {#key buttonText}
+                <span class="button-text">
+                  {#if hasInsufficientBalance()}
+                    Insufficient Balance
+                  {:else if !token0 || !token1}
+                    Select Tokens
+                  {:else if !amount0 || !amount1}
+                    Enter Amounts
+                  {:else if loading}
+                    Loading...
+                  {:else}
+                    Review Transaction
+                  {/if}
+                </span>
+              {/key}
+              {#if loading}
+                <div class="loading-spinner"></div>
+              {/if}
+            </div>
+            {#if isValid}
+              <div class="button-glow"></div>
+            {/if}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
+  <!-- Token Selectors -->
   {#if showToken0Selector}
+    <Portal target="body">
+      <TokenSelectorDropdown
+        show={true}
+        onSelect={(selectedToken) => handleTokenSelect(0, selectedToken.canister_id)}
+        onClose={() => showToken0Selector = false}
+        currentToken={token0}
+        otherPanelToken={token1}
+      />
+    </Portal>
   {/if}
 
   {#if showToken1Selector}
+    <Portal target="body">
+      <TokenSelectorDropdown
+        show={true}
+        onSelect={(selectedToken) => handleTokenSelect(1, selectedToken.canister_id)}
+        onClose={() => showToken1Selector = false}
+        currentToken={token1}
+        otherPanelToken={token0}
+      />
+    </Portal>
   {/if}
 
   <style lang="postcss">
-    .add-liquidity-form {
-      @apply flex flex-col gap-6 w-full h-full overflow-y-auto px-2;
+    .swap-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
-    .mode-tabs {
-      @apply flex gap-1 items-center justify-center;
+    .mode-selector {
+      position: relative;
+      display: flex;
+      gap: 1px;
+      margin-bottom: 12px;
+      padding: 2px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
-    .mode-tab {
+    .mode-button {
       @apply px-3 py-1.5 text-sm font-medium text-white/70 rounded-lg transition-colors duration-200;
       @apply hover:bg-white/10;
     }
 
-    .mode-tab.active {
+    .mode-button.selected {
       @apply bg-white/10 text-white;
     }
 
-    .mode-tab.disabled {
+    .mode-button.disabled {
       @apply opacity-50 cursor-not-allowed hover:bg-transparent;
     }
 
-    .token-input-container {
-      @apply bg-white/5 rounded-lg p-4;
+    .panels-container {
+      @apply flex flex-col gap-6 w-full h-full overflow-y-auto px-2;
     }
 
-    .clickable:hover {
-      @apply text-yellow-500 cursor-pointer;
+    .panels-wrapper {
+      @apply flex flex-col gap-6 w-full h-full overflow-y-auto px-2;
+    }
+
+    .error-message {
+      @apply text-red-500 text-sm;
+    }
+
+    .swap-footer {
+      @apply flex justify-center mt-4;
+    }
+
+    .swap-button {
+      @apply px-3 py-1.5 text-sm font-medium text-white/70 rounded-lg transition-colors duration-200;
+      @apply hover:bg-white/10;
+    }
+
+    .swap-button.error {
+      @apply bg-red-500 text-white;
+    }
+
+    .swap-button.processing {
+      @apply bg-yellow-500 text-white;
+    }
+
+    .swap-button.ready {
+      @apply bg-green-500 text-white;
+    }
+
+    .button-content {
+      @apply flex items-center gap-2;
+    }
+
+    .button-text {
+      @apply text-white/70 font-semibold tracking-tight;
+    }
+
+    .loading-spinner {
+      @apply w-4 h-4 border-2 border-white border-transparent rounded-full animate-spin;
+    }
+
+    .button-glow {
+      @apply w-4 h-4 bg-yellow-500 rounded-full absolute top-0 left-0;
     }
 
     @media (max-width: 420px) {
