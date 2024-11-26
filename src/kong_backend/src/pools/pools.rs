@@ -15,10 +15,13 @@ use crate::stable_pool::pool_map;
 #[query(guard = "not_in_maintenance_mode")]
 fn pools(symbol: Option<String>) -> Result<PoolsReply, String> {
     let pools = match symbol.as_deref() {
-        Some("all") => pool_map::get().iter().map(to_pool_reply).collect(),
-        Some(symbol) => pool_map::get_by_token_wildcard(symbol).iter().map(to_pool_reply).collect(),
-        None => pool_map::get_on_kong().iter().map(to_pool_reply).collect(),
-    };
+        Some("all") => pool_map::get(),
+        Some(symbol) => pool_map::get_by_token_wildcard(symbol),
+        None => pool_map::get_on_kong(),
+    }
+    .iter()
+    .map(to_pool_reply)
+    .collect();
     let reply = to_pools_reply(pools);
     Ok(reply)
 }

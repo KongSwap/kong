@@ -18,10 +18,7 @@ fn txs(my_txs: Option<bool>, tx_id: Option<u64>, token_id: Option<u32>, num_txs:
             };
             tx_map::get_by_user_and_token_id(tx_id, Some(user_id), token_id, num_txs)
         }
-        Some(false) | None => {
-            // return all txs
-            tx_map::get_by_user_and_token_id(tx_id, None, token_id, num_txs)
-        }
+        Some(false) | None => tx_map::get_by_user_and_token_id(tx_id, None, token_id, num_txs),
     }
     .iter()
     .map(to_txs_reply)

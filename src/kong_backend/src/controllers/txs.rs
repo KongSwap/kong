@@ -49,13 +49,13 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
 }
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
-pub fn get_txs(tx_id: Option<u64>, user_id: Option<u32>, token_id: Option<u32>) -> Result<Vec<TxsReply>, String> {
-    let txs = match tx_id {
-        Some(tx_id) => tx_map::get_by_tx_and_user_id(tx_id, user_id).into_iter().collect(),
-        None => tx_map::get_by_user_and_token_id(user_id, token_id, MAX_TXS),
-    };
-
-    Ok(txs.iter().map(to_txs_reply).collect())
+pub fn get_txs(tx_id: Option<u64>, user_id: Option<u32>, token_id: Option<u32>, num_txs: Option<u16>) -> Result<Vec<TxsReply>, String> {
+    let num_txs = num_txs.map(|n| n as usize);
+    let txs = tx_map::get_by_user_and_token_id(tx_id, user_id, token_id, num_txs)
+        .iter()
+        .map(to_txs_reply)
+        .collect();
+    Ok(txs)
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
