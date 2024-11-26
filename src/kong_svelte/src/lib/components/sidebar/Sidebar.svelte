@@ -3,27 +3,25 @@
   import { cubicOut } from "svelte/easing";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
+  import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import TokenList from "./TokenList.svelte";
   import { kongDB } from "$lib/services/db";
   import { liveQuery } from "dexie";
   import { auth } from "$lib/services/auth";
+  import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import IdentityPanel from "$lib/components/sidebar/account/IdentityPanel.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
+  import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
+  import SocialSection from "./SocialSection.svelte";
+  import TransactionHistory from "./TransactionHistory.svelte";
+  import PoolList from "./PoolList.svelte";
 
   export let isOpen: boolean;
   export let onClose: () => void;
 
+  let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
   let isMobile = false;
-  let activeTab = 'tokens';
-  let showAccountModal = false;
-  let identityPanelRef: any;
-  let sidebarElement: HTMLElement;
-  let startX: number;
-  let currentX: number;
-  let isDragging = false;
 
   // Subscribe to sidebar store
   sidebarStore.subscribe(state => {
@@ -32,6 +30,7 @@
 
   onMount(() => {
     if (browser) {
+      activeTab = (localStorage.getItem("sidebarActiveTab") as "tokens" | "pools" | "history") || "tokens";
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
       };
@@ -41,317 +40,165 @@
     }
   });
 
-  function handleShowAccountDetails() {
-    showAccountModal = true;
-    setTimeout(() => {
-      if (identityPanelRef) {
-        identityPanelRef.loadIdentityData();
-      }
-    }, 100);
-  }
-
-  function handleCloseAccountModal() {
-    showAccountModal = false;
-  }
-
   function handleClose() {
     sidebarStore.collapse();
     onClose();
   }
 
-  function setActiveTab(tab: string) {
+  function setActiveTab(tab: "tokens" | "pools" | "history") {
     activeTab = tab;
-  }
-
-  async function handleLogout() {
-    try {
-      await auth.disconnect();
-      window.location.reload();
-    } catch (err) {
-      console.error('Logout failed:', err);
+    if (browser) {
+      localStorage.setItem("sidebarActiveTab", tab);
     }
   }
 
-  function handleTouchStart(e: TouchEvent) {
-    startX = e.touches[0].clientX;
-    currentX = startX;
-    isDragging = true;
-  }
-
-  function handleTouchMove(e: TouchEvent) {
-    if (!isDragging) return;
-    
-    currentX = e.touches[0].clientX;
-    const deltaX = currentX - startX;
-    
-    if (deltaX > 0) {
-      requestAnimationFrame(() => {
-        if (sidebarElement) {
-          sidebarElement.style.transform = `translateX(${deltaX}px)`;
-        }
-      });
-    }
-  }
-
-  function handleTouchEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    
-    const deltaX = currentX - startX;
-    const threshold = window.innerWidth * 0.3;
-    
-    if (deltaX >= threshold) {
-      onClose();
-    } else {
-      if (sidebarElement) {
-        sidebarElement.style.transform = 'translateX(0)';
-      }
-    }
-  }
-
-  // Live database subscription for tokens
+  // Live database subscriptions
   const tokens = liveQuery(() => kongDB.tokens.toArray());
+  const pools = liveQuery(() => kongDB.pools.toArray());
+  const transactions = liveQuery(() => kongDB.transactions.toArray());
 </script>
 
 {#if isOpen}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div
-    bind:this={sidebarElement}
-    class="modal-backdrop"
-    on:touchstart|passive={handleTouchStart}
-    on:touchmove|passive={handleTouchMove}
-    on:touchend={handleTouchEnd}
-    on:touchcancel={handleTouchEnd}
-    on:click={handleClose}
-    transition:fade={{ duration: 200 }}
-    role="dialog"
-    aria-modal="true"
-  >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="modal-container"
-      on:click|stopPropagation
-      in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
-    >
-      <div class="modal-content">
-        <header class="modal-header">
-          {#if $auth.isConnected}
-            <div class="header-actions">
-              <button 
-                class="show-details-btn"
-                on:click={handleShowAccountDetails}
-              >
-                Show Account Details
-              </button>
-              <div class="divider"></div>
-              <button 
-                class="logout-btn"
-                on:click={handleLogout}
-              >
-                Log Out
-              </button>
-              <div class="divider"></div>
-              <button
-                class="close-btn"
-                on:click={handleClose}
-                title="Close sidebar"
-              >
-                ✕
-              </button>
-            </div>
-          {/if}
-          <nav class="nav-tabs">
-            <button 
-              class="nav-tab {activeTab === 'tokens' ? 'active' : ''}" 
-              on:click={() => setActiveTab('tokens')}
-            >
-              Tokens
-            </button>
-            <button 
-              class="nav-tab {activeTab === 'liquidity' ? 'active' : ''}" 
-              on:click={() => setActiveTab('liquidity')}
-            >
-              Liquidity
-            </button>
-            <button 
-              class="nav-tab {activeTab === 'history' ? 'active' : ''}" 
-              on:click={() => setActiveTab('history')}
-            >
-              History
-            </button>
-          </nav>
-        </header>
+  <div class="sidebar-root">
+    <div 
+      class="backdrop"
+      in:fade|local={{ duration: 150 }}
+      out:fade|local={{ duration: 150 }}
+      on:click={handleClose}
+      role="button"
+      tabindex="-1"
+      aria-label="Close sidebar"
+    />
+    <div class="sidebar-container" role="dialog" aria-modal="true">
+      <div
+        class={`sidebar-wrapper ${isExpanded ? 'expanded' : ''}`}
+        in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
+        out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
+      >
+        <Panel
+          width="100%"
+          height="100%"
+          className="sidebar-panel"
+        >
+          <div class="sidebar-layout">
+            <header class="sidebar-header">
+              <SidebarHeader {onClose} {activeTab} {setActiveTab} />
+            </header>
 
-        <div class="modal-body">
-          {#if !$auth.isConnected}
-            <WalletProvider />
-          {:else}
-            {#if activeTab === 'tokens'}
-              <TokenList tokens={$tokens || []} />
-            {:else if activeTab === 'liquidity'}
-              <div class="coming-soon">Liquidity feature coming soon</div>
-            {:else if activeTab === 'history'}
-              <div class="coming-soon">Transaction history coming soon</div>
-            {/if}
-          {/if}
-        </div>
+            <div class="sidebar-content">
+              {#if !$auth.isConnected}
+                <WalletProvider
+                  on:login={async () => {
+                    await tick();
+                    setActiveTab("tokens");
+                  }}
+                />
+              {:else if activeTab === "tokens"}
+                <TokenList tokens={$tokens || []} />
+              {:else if activeTab === "pools"}
+                <PoolList pools={$pools || []} />
+              {:else if activeTab === "history"}
+                <TransactionHistory transactions={$transactions || []} />
+              {/if}
+            </div>
+
+            <footer class="sidebar-footer">
+              <SocialSection />
+            </footer>
+          </div>
+        </Panel>
       </div>
     </div>
   </div>
 {/if}
 
-{#if showAccountModal}
-  <Modal 
-    isOpen={showAccountModal} 
-    onClose={handleCloseAccountModal}
-    title="Account Details"
-    width="min(600px, 95vw)"
-  >
-    <div class="account-details-container">
-      <IdentityPanel bind:this={identityPanelRef} />
-    </div>
-  </Modal>
-{/if}
-
 <style lang="postcss">
-  .modal-backdrop {
+  .sidebar-root {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    z-index: 9999;
-    display: flex;
-    justify-content: flex-end;
-    overflow-y: auto;
+    z-index: 100;
+    isolation: isolate;
+    pointer-events: none;
   }
 
-  .modal-container {
-    position: relative;
-    background: #1a1b23;
-    border-left: 1px solid #2a2d3d;
-    width: min(500px, 95vw);
-    height: 100vh;
-    transform: translateX(0);
-    transition: transform 0.2s ease-out;
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    pointer-events: auto;
+    cursor: pointer;
   }
 
-  .modal-content {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .modal-header {
-    border-bottom: 2px solid #2a2d3d;
-    background: #15161c;
-  }
-
-  .nav-tabs {
+  .sidebar-container {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    padding: 1rem;
+    pointer-events: none;
   }
 
-  .nav-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem;
-    background: transparent;
-    border: none;
-    color: #8890a4;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    width: 100%;
+  .sidebar-wrapper {
+    position: fixed;
+    inset: 1rem 1rem 1rem auto;
+    width: 527px;
+    height: calc(100vh - 2rem);
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    display: grid;
+    z-index: 2;
+    pointer-events: auto;
   }
 
-  .nav-tab:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.05);
+  .sidebar-wrapper.expanded {
+    inset: 1rem;
+    width: auto;
   }
 
-  .nav-tab.active {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.1);
+  .sidebar-wrapper :global(.panel) {
+    backdrop-filter: blur(20px);
+    height: 100%;
+    display: grid;
   }
 
-  .modal-body {
-    flex: 1;
+  .sidebar-layout {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    min-height: 0;
+  }
+
+  .sidebar-content {
+    min-height: 0;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #2a2d3d transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    display: grid;
   }
 
-  .modal-body::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .modal-body::-webkit-scrollbar-track {
-    background: #15161c;
-    border-radius: 3px;
-  }
-
-  .modal-body::-webkit-scrollbar-thumb {
-    background-color: #2a2d3d;
-    border-radius: 3px;
+  .sidebar-footer {
+    min-height: 0;
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   @media (max-width: 768px) {
-    .modal-container {
-      width: 100% !important;
-      border-left: none;
+    .sidebar-wrapper {
+      inset: 0;
+      width: 100%;
+      height: 100vh;
     }
-  }
 
-  .coming-soon {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-    color: #8890a4;
-    font-size: 1.1rem;
-  }
-
-  .header-actions {
-    @apply flex items-center gap-px bg-white/5 ;
-  }
-
-  .divider {
-    @apply w-px h-7 bg-white/10;
-  }
-
-  .show-details-btn {
-    @apply flex-1 px-4 py-2
-           bg-transparent hover:bg-white/10
-           text-white/90 hover:text-white
-           transition-all
-           text-sm font-medium
-           ;
-  }
-
-  .logout-btn {
-    @apply px-4 py-2
-           bg-transparent hover:bg-red-500/10
-           text-red-400 hover:text-red-300
-           text-sm font-medium
-           transition-all
-           whitespace-nowrap
-           ;
-  }
-
-  .close-btn {
-    @apply px-4 py-2
-           bg-transparent hover:bg-white/10
-           text-white/70 hover:text-white
-           text-sm font-medium
-           transition-all
-           ;
-  }
-
-  .account-details-container {
-    padding: 1rem;
-    background: #1a1b23;
-    border-radius: 0.5rem;
+    .sidebar-wrapper.expanded {
+      inset: 0;
+    }
   }
 </style>

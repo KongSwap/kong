@@ -180,12 +180,6 @@
 
 <div class="token-list" on:keydown={handleKeydown}>
   <div class="tokens-header">
-    <div class="portfolio-value">
-      <div class="value-row">
-        <span class="value-label">Portfolio Value</span>
-        <span class="value-amount">{formatUSD(totalPortfolioValue)}</span>
-      </div>
-    </div>
     
     <div class="controls-wrapper">
       <div class="search-section">

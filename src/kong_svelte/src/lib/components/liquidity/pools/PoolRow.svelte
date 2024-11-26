@@ -8,7 +8,7 @@
     import Button from "$lib/components/common/Button.svelte";
     import Modal from "$lib/components/common/Modal.svelte";
     import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
-    import { Flame } from "lucide-svelte";
+    import { Flame, MoreVertical } from "lucide-svelte";
     import AddLiquidityModal from "$lib/components/liquidity/add_liquidity/AddLiquidityModal.svelte";
     import { onMount } from 'svelte';
   
@@ -28,6 +28,7 @@
     onMount(() => {
       const checkMobile = () => {
         isMobile = window.innerWidth < 900;
+        isSmallMobile = window.innerWidth < 640;
         showSwapButton = window.innerWidth >= 1150;
       };
       
@@ -71,102 +72,92 @@
 
 {#if !isMobile}
   <!-- Desktop view (table row) -->
-  <tr class="pool-row {isEven ? 'even' : ''}">
-    <td class="w-[44px] pl-2 sm:pl-3.5">
-      <div class="token-info">
+  <tr class={isEven ? 'even' : ''}>
+    <td class="pool-cell">
+      <div class="pool-info">
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={isTableCompact ? 28 : 32}
-          overlap={isTableCompact ? 10 : 12}
+          size={24}
         />
-        <div class="flex flex-col">
-          <span class="token-pair text-xs sm:text-sm font-bold">{pool.symbol_0}/{pool.symbol_1}</span>
+        <div class="pool-details">
+          <div class="pool-name">
+            {pool.symbol_0}/{pool.symbol_1}
+          </div>
         </div>
       </div>
     </td>
-    <td class="value-cell">
-      ${formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}
-    </td>
-    <td class="value-cell">
-      ${formatToNonZeroDecimal(pool.tvl)}
-    </td>
-    <td class="value-cell">
-      ${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}
-    </td>
-    <td class="value-cell">
-      <div style="display: flex; justify-content: flex-end;">
-        <span class="apy-badge" style="background-color: {apyColor}">
-          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
-        </span>
+    <td class="price-cell">
+      <div class="price-info">
+        <div class="price-value">
+          {formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}
+        </div>
+        <div class="price-label">
+          {pool.symbol_1} per {pool.symbol_0}
+        </div>
       </div>
     </td>
-    <td>
+    <td class="tvl-cell">
+      <div class="tvl-info">
+        <div class="tvl-value">
+          ${formatToNonZeroDecimal(pool.tvl)}
+        </div>
+      </div>
+    </td>
+    <td class="volume-cell">
+      <div class="volume-info">
+        <div class="volume-value">
+          ${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}
+        </div>
+      </div>
+    </td>
+    <td class="apy-cell">
+      <div class="apy-info">
+        <div class="apy-value">
+          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
+        </div>
+      </div>
+    </td>
+    <td class="actions-cell">
       <div class="actions">
-        <Button
-          variant="green"
-          size="small"
-          text="Add LP"
-          onClick={handleAddLiquidity}
-          className="action-button mr-1"
-        />
+        <button
+          class="action-btn add-lp"
+          on:click={handleAddLiquidity}
+        >
+          Add LP
+        </button>
         {#if showSwapButton}
-          <Button 
-            variant="green" 
-            size="small" 
-            text="Swap" 
-            onClick={handleSwap}
-            className="action-button mr-2"
-          />
+          <button 
+            class="action-btn swap"
+            on:click={handleSwap}
+          >
+            Swap
+          </button>
         {/if}
       </div>
     </td>
   </tr>
 {:else}
-  <!-- Mobile view (card) -->
+  <!-- Mobile view (simplified card) -->
   <div class="mobile-pool-card">
     <div class="card-header">
       <div class="token-info">
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={isSmallMobile ? 32 : 40}
-          overlap={isSmallMobile ? 12 : 16}
+          size={32}
+          overlap={12}
         />
-        <div class="token-info-text">
+        <div class="token-details">
           <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-        </div>
-        <Button 
-          variant="green"
-          size="small"
-          text="Add LP"
-          onClick={handleAddLiquidity}
-          className="header-details-button ml-auto"
-        />
-      </div>
-    </div>
-
-    <div class="card-stats">
-      <div class="stat-row">
-        <div class="stat-item">
-          <span class="stat-label">Price</span>
-          <span class="stat-value">${formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">TVL</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.tvl)}</span>
+          <span class="tvl-badge">TVL: ${formatToNonZeroDecimal(pool.tvl)}</span>
         </div>
       </div>
-      
-      <div class="stat-row">
-        <div class="stat-item">
-          <span class="stat-label">Volume (24h)</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">APY</span>
-          <span class="apy-badge" style="background-color: {apyColor}">
-            {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
-          </span>
-        </div>
+      <div class="card-actions">
+        <button 
+          class="action-btn add-lp"
+          on:click={handleAddLiquidity}
+        >
+          Actions
+        </button>
       </div>
     </div>
   </div>
@@ -182,106 +173,119 @@
 {/if}
 
 <style lang="postcss">
-  .pool-row {
-    @apply border-b border-emerald-900/30 transition-colors duration-150;
+  tr {
+    @apply transition-colors duration-150;
   }
 
-  .pool-row:hover {
-    @apply bg-emerald-800/10;
+  tr:hover {
+    @apply bg-[#1a1b23];
   }
 
-  .pool-row.even {
-    @apply bg-emerald-900/30;
+  td {
+    @apply p-2 text-sm text-[#8890a4] border-b border-[#2a2d3d];
   }
 
-  .mobile-pool-card {
-    @apply bg-emerald-900/20 rounded-lg sm:rounded-xl flex flex-col border border-emerald-900/30 
-           shadow-lg mb-3 sm:mb-4 overflow-hidden;
-    width: 100%;
+  .pool-cell {
+    @apply min-w-[200px];
   }
 
-  .card-header {
-    @apply p-2 sm:p-3 md:p-4 border-b border-emerald-900/30 bg-emerald-900/10;
+  .pool-info {
+    @apply flex items-center gap-3;
   }
 
-  .token-info {
-    @apply flex items-center gap-1.5 sm:gap-3 w-full;
+  .pool-details {
+    @apply flex flex-col;
   }
 
-  .token-info-text {
-    @apply flex flex-col items-start gap-0.5 min-w-0 flex-1;
+  .pool-name {
+    @apply text-white font-medium;
   }
 
-  .token-pair {
-    @apply text-xs sm:text-sm font-bold text-white leading-tight truncate max-w-[120px] sm:max-w-[160px];
+  .pool-fee {
+    @apply text-xs text-[#8890a4];
   }
 
-  .card-stats {
-    @apply flex flex-col gap-1.5 sm:gap-2 p-2 sm:p-3 md:p-4 border-b border-emerald-900/30;
-    min-width: 0;
+  .price-info,
+  .tvl-info,
+  .volume-info,
+  .apy-info {
+    @apply flex flex-col;
   }
 
-  .stat-row {
-    @apply grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-4;
-    min-width: 0;
+  .price-value,
+  .tvl-value,
+  .volume-value,
+  .apy-value {
+    @apply text-white font-medium;
   }
 
-  .stat-item {
-    @apply flex flex-col items-start text-left p-1.5 sm:p-2 rounded-lg bg-emerald-900/20;
-    min-width: 0;
-  }
-
-  .stat-label {
-    @apply text-xs text-emerald-300/70 font-medium;
-  }
-
-  .stat-value {
-    @apply text-white font-bold font-mono text-xs sm:text-sm md:text-base truncate w-full;
-    word-break: break-word;
-  }
-
-  .apy-badge {
-    @apply px-2 py-0.5 sm:px-2 sm:py-0.5 md:px-3 md:py-1 rounded-lg font-bold font-mono 
-           text-black text-xs shadow-sm;
-  }
-
-  .value-cell {
-    @apply px-2 sm:px-3 md:px-4 py-2 sm:py-2 md:py-3 text-right font-mono text-white font-medium text-xs sm:text-sm;
+  .price-label {
+    @apply text-xs text-[#8890a4];
   }
 
   .actions {
-    @apply flex justify-end gap-2 sm:gap-3 px-2 sm:px-3;
+    @apply flex items-center gap-2;
   }
 
-  @media (max-width: 374px) {
-    .token-pair {
-      @apply text-xs sm:text-sm;
-    }
-
-    .stat-value {
-      @apply text-xs;
-    }
-
-    .stat-label {
-      @apply text-[10px];
-    }
-
-    .stat-item {
-      @apply p-1;
-    }
+  .action-btn {
+    @apply px-3 py-1.5 text-sm font-medium rounded-lg
+           transition-all duration-150;
   }
 
-  @media (max-width: 480px) {
-    .card-stats {
-      @apply p-2;
+  .add-lp {
+    @apply bg-[#2a2d3d] text-white hover:bg-[#3d4154];
+  }
+
+  .swap {
+    @apply bg-[#1a1b23] border border-[#2a2d3d] text-[#8890a4]
+           hover:bg-[#2a2d3d] hover:text-white hover:border-[#3d4154];
+  }
+
+  /* Mobile Card Styles */
+  .mobile-pool-card {
+    @apply bg-[#1a1b23] rounded-lg p-3 mb-3 border border-[#2a2d3d];
+  }
+
+  .card-header {
+    @apply flex items-center justify-between;
+  }
+
+  .token-info {
+    @apply flex items-center gap-3;
+  }
+
+  .token-details {
+    @apply flex flex-col gap-0.5;
+  }
+
+  .token-pair {
+    @apply text-white font-medium;
+  }
+
+  .tvl-badge {
+    @apply text-xs text-[#8890a4];
+  }
+
+  .card-actions {
+    @apply flex items-center h-full;
+  }
+
+  .details-btn {
+    @apply h-full px-3 text-[#8890a4] hover:text-white
+           hover:bg-[#2a2d3d] transition-colors;
+  }
+
+  @media (max-width: 640px) {
+    .mobile-pool-card {
+      @apply p-2.5;
+    }
+    
+    .token-info {
+      @apply gap-2;
     }
 
-    .stat-row {
-      @apply gap-1;
-    }
-
-    .stat-item {
-      @apply p-1;
+    .tvl-badge {
+      @apply text-[11px];
     }
   }
 </style>

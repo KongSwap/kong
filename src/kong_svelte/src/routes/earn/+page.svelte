@@ -3,9 +3,9 @@
   import { writable, derived } from "svelte/store";
   import { poolsList, poolsLoading, poolsError } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
-  import Button from "$lib/components/common/Button.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolsTable from "$lib/components/liquidity/pools/PoolsTable.svelte";
+  import { onMount } from 'svelte';
 
   // Navigation state
   const activeSection = writable("pools");
@@ -14,6 +14,21 @@
   // Sort state (required by PoolsTable)
   const sortColumn = writable("rolling_24h_volume");
   const sortDirection = writable<"asc" | "desc">("desc");
+
+  let isMobile = false;
+
+  onMount(() => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 768;
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  });
 
   // Instead of creating our own derived store, use the existing formattedTokens
   const tokenMap = derived(formattedTokens, ($tokens) => {
@@ -25,173 +40,160 @@
     }
     return map;
   });
+
+  // Get highest APR from pools
+  const highestApr = derived(poolsList, ($pools) => {
+    if (!$pools || $pools.length === 0) return 0;
+    return Math.max(...$pools.map(pool => Number(pool.rolling_24h_apy)));
+  });
 </script>
 
 <section class="flex justify-center w-full px-4">
   <div class="z-10 flex justify-center w-full max-w-[1300px] mx-auto">
     <div class="flex flex-col w-full">
-      <!-- Section Navigation -->
-      <div class="section-selector">
-        <div class="button-container">
-          <Button
-            variant="green"
-            size="medium"
-            state={$activeSection === "pools" ? "selected" : "default"}
-            onClick={() => activeSection.set("pools")}
-            width="100%"
+      <!-- Earn Hub Navigation -->
+      <div class="earn-hub">
+        <div class="earn-cards">
+          <button 
+            class="earn-card {$activeSection === 'pools' ? 'active' : ''}"
+            on:click={() => activeSection.set('pools')}
           >
-            Pools
-          </Button>
-        </div>
-        <div class="button-container relative">
-          <Button
-            variant="green"
-            size="medium"
-            state={$activeSection === "staking" ? "selected" : "default"}
-            onClick={() => activeSection.set("staking")}
-            width="100%"
-            disabled={true}
-          >
-            Staking
-          </Button>
-          <div class="soon-badge">Soon</div>
-        </div>
-        <div class="button-container relative">
-          <Button
-            variant="green"
-            size="medium"
-            state={$activeSection === "lending" ? "selected" : "default"}
-            onClick={() => activeSection.set("lending")}
-            width="100%"
-            disabled={true}
-          >
-            Lending
-          </Button>
-          <div class="soon-badge">Soon</div>
-        </div>
-      </div>
+            <div class="card-content">
+              <h3>Liquidity Pools</h3>
+              <p>Provide liquidity and earn trading fees</p>
+              <div class="apy">Up to {$highestApr.toFixed(2)}% APR</div>
+            </div>
+          </button>
 
-      {#if $activeSection === "pools"}
-        <Panel variant="green" type="main">
-          <PoolsTable
-            pools={$poolsList}
-            loading={$poolsLoading}
-            error={$poolsError}
-            tokenMap={$tokenMap}
-            sortColumn={$sortColumn}
-            sortDirection={$sortDirection}
-          />
-        </Panel>
-      {:else if $activeSection === "staking"}
-        <Panel variant="green">
-          <div class="coming-soon-container">
-            <h2 class="coming-soon-title">Stake & Earn</h2>
-            <div class="coming-soon-badge">Coming Soon</div>
-            <div class="feature-list">
-              <div class="feature-item">
-                <p>Lock your tokens, earn rewards. Simple as that.</p>
-                <p class="highlight">Up to 25% APY</p>
+          {#if !isMobile}
+            <button 
+              class="earn-card coming-soon"
+              disabled
+            >
+              <div class="card-content">
+                <h3>Staking</h3>
+                <p>Lock tokens to earn staking rewards</p>
+                <div class="apy">Up to 25% APY</div>
+                <div class="soon-tag">Coming Soon</div>
               </div>
-            </div>
-          </div>
-        </Panel>
-      {:else if $activeSection === "lending"}
-        <Panel variant="green" className="glass-panel">
-          <div class="coming-soon-container">
-            <h2 class="coming-soon-title">Borrow & Lend</h2>
-            <div class="coming-soon-badge">Coming Soon</div>
-            <div class="feature-list">
-              <div class="feature-item">
-                <p>Lend your crypto, earn interest. Borrow against your assets.</p>
-                <p class="highlight">Low fees. No BS.</p>
+            </button>
+
+            <button
+              class="earn-card coming-soon"
+              disabled
+            >
+              <div class="card-content">
+                <h3>Lending</h3>
+                <p>Lend assets and earn interest</p>
+                <div class="apy">Up to 12% APY</div>
+                <div class="soon-tag">Coming Soon</div>
               </div>
-            </div>
-          </div>
-        </Panel>
-      {/if}
+            </button>
+          {:else}
+            <button 
+              class="earn-card coming-soon mobile"
+              disabled
+            >
+              <div class="card-content">
+                <h3>Staking <span class="soon-tag-inline">Coming Soon</span></h3>
+              </div>
+            </button>
+
+            <button 
+              class="earn-card coming-soon mobile"
+              disabled
+            >
+              <div class="card-content">
+                <h3>Lending <span class="soon-tag-inline">Coming Soon</span></h3>
+              </div>
+            </button>
+          {/if}
+        </div>
+
+        {#if $activeSection === "pools"}
+          <Panel variant="green" type="main">
+            <PoolsTable
+              pools={$poolsList}
+              loading={$poolsLoading}
+              error={$poolsError}
+              tokenMap={$tokenMap}
+              sortColumn={$sortColumn}
+              sortDirection={$sortDirection}
+            />
+          </Panel>
+        {/if}
+      </div>
     </div>
   </div>
 </section>
 
 <style lang="postcss">
-  .section-selector {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 24px;
-    position: relative;
-    z-index: 10;
-    width: 100%;
+  .earn-hub {
+    @apply w-full;
   }
 
-  .button-container {
-    flex: 1;
-    min-width: 0;
+  .earn-cards {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-4;
   }
 
-  .soon-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: #ffd700;
-    color: black;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 2px solid black;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 20;
+  .earn-card {
+    @apply relative flex items-start p-4 rounded-lg transition-all duration-200
+           bg-[#1a1b23]/60 border border-[#2a2d3d] text-left
+           hover:shadow-sm hover:shadow-[#60A5FA]/5 backdrop-blur-sm;
   }
 
-  .relative {
-    position: relative;
+  .earn-card:not(.coming-soon):hover {
+    @apply bg-[#1e1f2a]/80 border-[#60A5FA]/30
+           shadow-[0_0_10px_rgba(96,165,250,0.1)]
+           transform scale-[1.01];
   }
 
-  .coming-soon-container {
-    padding: 48px 24px;
-    text-align: center;
-    color: white;
+  .earn-card.active {
+    @apply bg-gradient-to-b from-[#1e1f2a] to-[#1a1b23]
+           border-[#60A5FA]/20
+           shadow-[0_0_15px_rgba(96,165,250,0.1)];
   }
 
-  .coming-soon-title {
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin-bottom: 16px;
-    color: white;
+  .earn-card.coming-soon {
+    @apply cursor-not-allowed opacity-60;
   }
 
-  .coming-soon-badge {
-    display: inline-block;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-weight: 600;
-    margin-bottom: 24px;
+  .card-content {
+    @apply flex flex-col gap-1.5;
   }
 
-  .feature-list {
-    margin-top: 24px;
+  .card-content h3 {
+    @apply text-lg text-white;
   }
 
-  .feature-item {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 24px;
-    border-radius: 12px;
-    font-size: 1.2rem;
+  .card-content p {
+    @apply text-[#8890a4] text-sm;
   }
 
-  .highlight {
-    color: #ffd700;
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-top: 16px;
+  .apy {
+    @apply text-[#60A5FA] font-medium mt-2 text-sm;
+  }
+
+  .soon-tag {
+    @apply absolute top-3 right-3 bg-[#60A5FA] text-white px-2 py-0.5
+           rounded-md text-xs font-medium;
+  }
+
+  .earn-card.coming-soon.mobile {
+    @apply py-3 px-4;
+  }
+
+  .earn-card.coming-soon.mobile .card-content {
+    @apply gap-0;
+  }
+
+  .soon-tag-inline {
+    @apply text-xs text-[#60A5FA] font-medium ml-2;
   }
 
   @media (max-width: 640px) {
     section {
-      padding: 0.25rem 0.5rem;
+      @apply px-2 py-1;
     }
   }
 </style>

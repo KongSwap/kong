@@ -3,10 +3,11 @@
   import PoolRow from "./PoolRow.svelte";
   import { writable } from "svelte/store";
   import TextInput from "$lib/components/common/TextInput.svelte";
-  import { ArrowUp, ArrowDown, ArrowUpDown, Search, Filter, LayoutList, LayoutGrid } from 'lucide-svelte';
+  import { ArrowUp, ArrowDown, ArrowUpDown, Filter, LayoutList, LayoutGrid } from 'lucide-svelte';
   import AddLiquidityModal from "$lib/components/liquidity/add_liquidity/AddLiquidityModal.svelte";
   import { onMount } from 'svelte';
   import Button from "$lib/components/common/Button.svelte";
+  import { debounce } from 'lodash';
 
   export let pools: BE.Pool[] = [];
   export let loading = false;
@@ -16,6 +17,7 @@
   export let tokenMap: Map<string, any>;
 
   let searchTerm = "";
+  let searchInput: HTMLInputElement;
   let showAddLiquidityModal = false;
   let selectedTokens = { token0: '', token1: '' };
   let forceCardView = false;
@@ -23,18 +25,45 @@
 
   const activeTab = writable("all_pools");
 
+  let debouncedSearchTerm = "";
+
+  const updateDebouncedSearch = debounce((value: string) => {
+    debouncedSearchTerm = value;
+  }, 300);
+
+  $: {
+    updateDebouncedSearch(searchTerm);
+  }
+
+  $: filteredPools = pools.filter(pool => {
+    if (!debouncedSearchTerm) return true;
+    
+    const searchTerms = debouncedSearchTerm.toLowerCase().split(/[\s,]+/).filter(Boolean);
+    
+    return searchTerms.every(term => {
+      const symbolMatch = 
+        pool.symbol_0.toLowerCase().includes(term) ||
+        pool.symbol_1.toLowerCase().includes(term) ||
+        `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(term);
+
+      const addressMatch =
+        pool.token_0.toLowerCase().includes(term) ||
+        pool.token_1.toLowerCase().includes(term);
+
+      const token0Data = tokenMap.get(pool.token_0);
+      const token1Data = tokenMap.get(pool.token_1);
+      const nameMatch =
+        token0Data?.name?.toLowerCase().includes(term) ||
+        token1Data?.name?.toLowerCase().includes(term);
+
+      return symbolMatch || addressMatch || nameMatch;
+    });
+  });
+
   function handleAddLiquidity(token0: string, token1: string) {
     selectedTokens = { token0, token1 };
     showAddLiquidityModal = true;
   }
-
-  $: filteredPools = pools.filter(pool => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return pool.symbol_0.toLowerCase().includes(searchLower) || 
-           pool.symbol_1.toLowerCase().includes(searchLower) ||
-           (pool.symbol_0 + '/' + pool.symbol_1).toLowerCase().includes(searchLower);
-  });
 
   function toggleSort(column: string) {
     if (sortColumn === column) {
@@ -46,8 +75,10 @@
   }
 
   function getSortIcon(column: string) {
-    if (sortColumn !== column) return ArrowUpDown;
-    return sortDirection === "asc" ? ArrowUp : ArrowDown;
+    if (sortColumn === column) {
+      return sortDirection === "asc" ? ArrowUp : ArrowDown;
+    }
+    return ArrowUpDown;
   }
 
   $: sortedAndFilteredPools = filteredPools.sort((a, b) => {
@@ -98,85 +129,89 @@
       isCardView = window.innerWidth < 1250 || forceCardView;
     }
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    // Clear search on Escape
+    if (event.key === 'Escape' && searchTerm) {
+      event.preventDefault();
+      searchTerm = '';
+      searchInput.focus();
+    }
+    // Focus search on forward slash
+    else if (event.key === '/' && document.activeElement !== searchInput) {
+      event.preventDefault();
+      searchInput.focus();
+    }
+  }
 </script>
 
 <div class="table-container">
-  <div class="controls-wrapper" style="position: relative; z-index: 1;">
+  <div class="controls">
     <div class="controls-top">
-      <div class="mode-selector" style="position: relative; z-index: 1;">
-        <Button
-          variant="yellow"
-          size="medium"
-          state={$activeTab === "all_pools" ? "selected" : "default"}
-          onClick={() => activeTab.set("all_pools")}
-          width="50%"
+      <div class="tab-group">
+        <button
+          class="tab-btn {$activeTab === 'all_pools' ? 'active' : ''}"
+          on:click={() => activeTab.set('all_pools')}
         >
           All Pools
-        </Button>
-        <Button
-          variant="yellow"
-          size="medium"
-          state={$activeTab === "your_pools" ? "selected" : "default"}
-          onClick={() => activeTab.set("your_pools")}
-          width="50%"
+        </button>
+        <button
+          class="tab-btn {$activeTab === 'your_pools' ? 'active' : ''}"
+          on:click={() => activeTab.set('your_pools')}
         >
           Your Pools
-        </Button>
-      </div>
-      <div class="search-wrapper" class:full-width={isCardView}>
-        <div class="search-input-container">
-          <button class="search-button">
-            <Search size={18} />
-          </button>
-          <TextInput
-            id="pool-search"
-            placeholder="Search by token symbol or pair..."
+        </button>
+        <div class="search-container">
+          <input
+            bind:this={searchInput}
             bind:value={searchTerm}
-            size="sm"
-            variant="success"
+            type="text"
+            placeholder="Search pools..."
+            class="search-input"
+            on:keydown={handleKeydown}
           />
         </div>
       </div>
     </div>
 
     {#if isCardView}
-      <div class="mobile-sort-controls">
-        <div class="top-row">
+      <div class="sort-controls">
+        <div class="sort-row">
           <button 
-            class="sort-button {sortColumn === 'pool' ? 'active' : ''}"
+            class="sort-btn {sortColumn === 'pool' ? 'active' : ''}"
             on:click={() => toggleSort('pool')}
           >
-            <span>Pool</span>
+            Pool
             <svelte:component this={getSortIcon('pool')} size={16} />
           </button>
           <button 
-            class="sort-button {sortColumn === 'price' ? 'active' : ''}"
+            class="sort-btn {sortColumn === 'price' ? 'active' : ''}"
             on:click={() => toggleSort('price')}
           >
-            <span>Price</span>
+            Price
             <svelte:component this={getSortIcon('price')} size={16} />
           </button>
           <button 
-            class="sort-button {sortColumn === 'tvl' ? 'active' : ''}"
+            class="sort-btn {sortColumn === 'tvl' ? 'active' : ''}"
             on:click={() => toggleSort('tvl')}
           >
-            <span>TVL</span>
+            TVL
             <svelte:component this={getSortIcon('tvl')} size={16} />
           </button>
         </div>
-        <div class="bottom-row">
+        <div class="sort-row">
           <button 
-            class="sort-button {sortColumn === 'volume' ? 'active' : ''}"
+            class="sort-btn {sortColumn === 'volume' ? 'active' : ''}"
             on:click={() => toggleSort('volume')}
           >
-            <span>Volume (24h)</span>
+            Volume (24h)
             <svelte:component this={getSortIcon('volume')} size={16} />
           </button>
           <button 
-            class="sort-button {sortColumn === 'apy' ? 'active' : ''}"
+            class="sort-btn {sortColumn === 'apy' ? 'active' : ''}"
             on:click={() => toggleSort('apy')}
           >
-            <span>APY</span>
+            APY
             <svelte:component this={getSortIcon('apy')} size={16} />
           </button>
         </div>
@@ -196,50 +231,49 @@
     </div>
   {:else}
     {#if !isCardView}
-      <!-- Desktop Table View -->
       <div class="table-wrapper">
-        <table class="w-full">
-          <thead class="table-header" style="position: sticky; top: 0; z-index: 1;">
+        <table>
+          <thead>
             <tr>
-              <th class="text-left p-4 w-[22%]">
-                <button class="header-button" on:click={() => toggleSort("pool")}>
-                  <span>Pool</span>
-                  <svelte:component this={getSortIcon("pool")} size={16} class="sort-icon" />
+              <th>
+                <button class="th-btn" on:click={() => toggleSort('pool')}>
+                  Pool
+                  <svelte:component this={getSortIcon('pool')} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4 w-[15%]">
-                <button class="header-button" on:click={() => toggleSort("price")}>
-                  <span>Price</span>
-                  <svelte:component this={getSortIcon("price")} size={16} class="sort-icon" />
+              <th>
+                <button class="th-btn" on:click={() => toggleSort('price')}>
+                  Price
+                  <svelte:component this={getSortIcon('price')} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4 w-[15%]">
-                <button class="header-button" on:click={() => toggleSort("tvl")}>
-                  <span>TVL</span>
-                  <svelte:component this={getSortIcon("tvl")} size={16} class="sort-icon" />
+              <th>
+                <button class="th-btn" on:click={() => toggleSort('tvl')}>
+                  TVL
+                  <svelte:component this={getSortIcon('tvl')} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4 w-[15%]">
-                <button class="header-button" on:click={() => toggleSort("volume")}>
-                  <span>Volume (24h)</span>
-                  <svelte:component this={getSortIcon("volume")} size={16} class="sort-icon" />
+              <th>
+                <button class="th-btn" on:click={() => toggleSort('volume')}>
+                  Volume (24h)
+                  <svelte:component this={getSortIcon('volume')} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-right p-4 w-[15%]">
-                <button class="header-button" on:click={() => toggleSort("apy")}>
-                  <span>APY</span>
-                  <svelte:component this={getSortIcon("apy")} size={16} class="sort-icon" />
+              <th>
+                <button class="th-btn" on:click={() => toggleSort('apy')}>
+                  APY
+                  <svelte:component this={getSortIcon('apy')} size={16} class="sort-icon" />
                 </button>
               </th>
-              <th class="text-center p-4">Actions</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody class="table-body">
+          <tbody>
             {#each sortedAndFilteredPools as pool, i}
-              <PoolRow 
-                {pool} 
-                {tokenMap} 
-                isEven={i % 2 === 0} 
+              <PoolRow
+                {pool}
+                {tokenMap}
+                isEven={i % 2 === 0}
                 onAddLiquidity={handleAddLiquidity}
               />
             {/each}
@@ -247,17 +281,15 @@
         </table>
       </div>
     {:else}
-      <div class="card-body-wrapper">
-        <div class="card-container">
-          {#each sortedAndFilteredPools as pool, i}
-            <PoolRow 
-              {pool} 
-              {tokenMap} 
-              isEven={i % 2 === 0} 
-              onAddLiquidity={handleAddLiquidity}
-            />
-          {/each}
-        </div>
+      <div class="cards-grid">
+        {#each sortedAndFilteredPools as pool}
+          <PoolRow
+            {pool}
+            {tokenMap}
+            isEven={false}
+            onAddLiquidity={handleAddLiquidity}
+          />
+        {/each}
       </div>
     {/if}
   {/if}
@@ -274,313 +306,134 @@
   />
 {/if}
 
-<style>
+<style lang="postcss">
   .table-container {
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.69rem;
-    padding: 0 0.69rem;
-    position: relative;
-    z-index: 1;
+    @apply w-full max-w-[1400px] mx-auto;
+  }
+
+  .controls {
+    @apply mb-2 space-y-2;
+  }
+
+  .controls-top {
+    @apply flex flex-col sm:flex-row gap-2 mr-2;
+  }
+
+  .tab-group {
+    @apply flex items-center justify-between bg-[#1a1b23] rounded-lg p-1 w-full;
+  }
+
+  .tab-btn {
+    @apply px-4 py-2.5 text-sm font-medium rounded-md
+           transition-all duration-150 text-[#8890a4];
+  }
+
+  .tab-btn.active {
+    @apply bg-[#2a2d3d] text-white;
+  }
+
+  .tab-btn:not(.active) {
+    @apply hover:bg-[#2a2d3d]/50 hover:text-white;
+  }
+
+  .search-container {
+    @apply relative ml-auto;
+  }
+
+  .search-input {
+    @apply w-64 px-4 py-2 rounded-lg bg-white/5 text-white 
+           placeholder-white/40 border border-white/10 
+           focus:border-white/20 focus:outline-none
+           transition-all duration-200;
+  }
+
+  .sort-controls {
+    @apply space-y-2 bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-3;
+  }
+
+  .sort-row {
+    @apply flex gap-2;
+  }
+
+  .sort-btn {
+    @apply flex-1 flex items-center justify-between px-3 py-2
+           bg-[#1a1b23] border border-[#2a2d3d] rounded text-sm 
+           text-[#8890a4] transition-all duration-150;
+  }
+
+  .sort-btn:hover {
+    @apply bg-[#2a2d3d]/50 text-white border-[#3d4154];
+  }
+
+  .sort-btn.active {
+    @apply bg-[#2a2d3d] text-white border-[#3d4154];
   }
 
   .table-wrapper {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    border-radius: 0.5rem;
-    overflow: hidden;
+    @apply w-full overflow-x-auto rounded-lg min-w-[1000px];
   }
 
-  .table-header {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--background-color-darker, #111111);
-    backdrop-filter: blur(8px);
+  table {
+    @apply w-full;
   }
 
-  .table-header::after {
-    display: none;
-  }
-
-  .card-body-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    padding-right: 6px;
-  }
-
-  .card-container {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .search-wrapper {
-    position: relative;
-    width: 100%;
-    max-width: 400px;
-  }
-
-  .search-wrapper.full-width {
-    max-width: 100%;
-  }
-
-  .search-input-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .search-input-container :global(input) {
-    width: 100%;
-    height: 40px;
-    padding: 0.5rem 1rem 0.5rem 3rem;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.5rem;
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 500;
-  }
-
-  .search-button {
-    position: absolute;
-    left: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.5);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s ease;
-  }
-
-  .search-button:hover {
-    color: rgba(255, 255, 255, 0.8);
-  }
-
-  .search-input-container :global(input::placeholder) {
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-  }
-
-  .spinner {
-    border: 4px solid rgba(0, 0, 0, 0.1);
-    border-left-color: #000;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  .error {
-    color: red;
-    text-align: center;
-  }
-
-  .controls-wrapper {
-    @apply flex flex-col gap-3 w-full relative;
-    z-index: 1;
-  }
-
-  .mobile-sort-controls {
-    @apply flex flex-col gap-2 w-full;
-  }
-
-  .mobile-sort-controls .top-row {
-    @apply grid grid-cols-3 gap-2 w-full;
-  }
-
-  .mobile-sort-controls .bottom-row {
-    @apply grid grid-cols-2 gap-2 w-full;
-  }
-
-  .sort-button {
-    @apply flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg 
-           bg-emerald-900/30 border border-emerald-900/50 text-sm font-medium 
-           transition-colors hover:bg-emerald-900/40 w-full;
-  }
-
-  .sort-button.active {
-    @apply bg-emerald-600/30 border-emerald-600;
-  }
-
-  @media (max-width: 640px) {
-    .table-container {
-      margin-top: 0.69rem;
-    }
-
-    .controls-wrapper {
-      @apply gap-2;
-    }
-
-    .mobile-sort-controls {
-      @apply gap-1.5;
-    }
-
-    .sort-button {
-      @apply px-2 py-1 text-xs;
-    }
-
-    .card-body-wrapper {
-      padding-right: 0;
-    }
-  }
-
-  @media (max-width: 1250px) {
-    .controls-top {
-      @apply flex-col items-stretch;
-    }
-    
-    .mode-selector {
-      width: 100%;
-      min-width: unset;
-    }
-
-    .mode-selector :global(button) {
-      flex: 1;
-      width: 100% !important;
-    }
-
-    .search-wrapper {
-      width: 100%;
-      max-width: 100%;
-    }
-  }
-
-  .table-body-wrapper,
-  .card-body-wrapper {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
-
-  .table-body-wrapper::-webkit-scrollbar,
-  .card-body-wrapper::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .table-body-wrapper::-webkit-scrollbar-track,
-  .card-body-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .table-body-wrapper::-webkit-scrollbar-thumb,
-  .card-body-wrapper::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-
-  .table-container {
-    height: calc(100vh - 120px);
-    max-height: 70vh;
-  }
-
-  @media (max-width: 640px) {
-    .table-body-wrapper,
-    .card-body-wrapper {
-      scrollbar-width: none;
-    }
-
-    .table-body-wrapper::-webkit-scrollbar,
-    .card-body-wrapper::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  :global(.pool-row-card) {
-    width: 100%;
-  }
-
-  .controls-top {
-    @apply flex items-center justify-between gap-4 w-full;
-  }
-
-  .view-toggle {
-    @apply flex gap-1 bg-emerald-900/30 p-1 rounded-lg border border-emerald-900/50;
-  }
-
-  .toggle-button {
-    @apply p-1.5 rounded-md transition-colors hover:bg-emerald-900/40;
-  }
-
-  .toggle-button.active {
-    @apply bg-emerald-600/30;
-  }
-
-  th button {
-    @apply hover:text-emerald-400 transition-colors;
-  }
-
-  tr:nth-child(even) {
-    background: rgba(0, 0, 0, 0.2);
-  }
-
-  .header-button {
-    @apply flex items-center gap-2 px-2 py-1 rounded-md transition-all duration-200
-           hover:bg-emerald-900/30 hover:text-emerald-400 w-full;
-  }
-
-  th:not(:first-child) .header-button {
-    @apply justify-end;
-  }
-
-  .sort-icon {
-    @apply opacity-50 transition-opacity;
-  }
-
-  .header-button:hover .sort-icon {
-    @apply opacity-100;
+  thead {
+    @apply bg-[#1a1b23] sticky top-0 z-10;
   }
 
   th {
-    @apply font-medium text-sm text-gray-300;
+    @apply p-2 text-left text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d];
   }
 
-  .table-header {
-    @apply bg-black/40 backdrop-blur-sm;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  .th-btn {
+    @apply flex items-center gap-2 text-sm font-medium text-[#8890a4]
+           hover:text-white transition-colors duration-150;
   }
 
-  /* Add table layout styles */
-  .table-wrapper table {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: separate;
-    border-spacing: 0;
+  .cards-grid {
+    @apply space-y-4;
   }
 
-  .mode-selector {
-    display: flex;
-    gap: 8px;
-    min-width: 300px;
-    position: relative;
-    z-index: 1;
+  .loading, .error {
+    @apply flex items-center justify-center h-64 text-[#8890a4];
   }
 
-  .controls-top {
-    @apply flex items-center gap-4 w-full flex-wrap;
+  .spinner {
+    @apply w-8 h-8 border-4 border-[#2a2d3d] border-t-white
+           rounded-full animate-spin;
+  }
+
+  @media (max-width: 640px) {
+    .controls-top {
+      @apply gap-3;
+    }
+
+    .sort-controls {
+      @apply p-2;
+    }
+
+    .sort-row {
+      @apply gap-1;
+    }
+
+    .sort-btn {
+      @apply px-2 py-1.5 text-xs;
+    }
+
+    .tab-group {
+      @apply flex-col;
+    }
+
+    .tab-btn {
+      @apply w-full;
+    }
+
+    .search-container {
+      @apply w-full;
+    }
+
+    .search-input {
+      @apply w-full max-w-full;
+    }
   }
 </style>

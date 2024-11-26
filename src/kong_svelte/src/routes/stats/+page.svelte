@@ -21,7 +21,7 @@
   import Toast from "$lib/components/common/Toast.svelte";
   import { modalStore } from "$lib/stores/modalStore";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import TokenSelectorModal from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
+  import { goto } from "$app/navigation";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -126,11 +126,34 @@
   async function copyToClipboard(tokenId: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(tokenId);
-      toastStore.success("Token ID copied to clipboard!", 2000);
+      copyStates.update(states => ({ ...states, [tokenId]: "Copied!" }));
+      setTimeout(() => {
+        copyStates.update(states => ({ ...states, [tokenId]: "" }));
+      }, 2000);
     } catch (error) {
       console.error("Copy failed:", error);
       toastStore.error("Failed to copy token ID", 2000);
     }
+  }
+
+  // Handle swap button click
+  async function handleSwap(token: FE.Token, event: MouseEvent) {
+    event.stopPropagation(); // Prevent row click
+    swapState.setPayToken(token);
+    swapState.update(s => ({ 
+      ...s, 
+      showPayTokenSelector: false // Don't show selector since we already picked a token
+    }));
+    await goto('/swap');
+  }
+
+  // Handle row click for token selection
+  function handleTokenSelect(token: FE.Token) {
+    swapState.setPayToken(token);
+    swapState.update(s => ({ 
+      ...s, 
+      showPayTokenSelector: true 
+    }));
   }
 
   // Debounced search with proper typing
@@ -163,11 +186,6 @@
   // Replace the existing volumeData with mock data
   const volumeData = mockVolumeData;
 
-  function handleTokenSelect(token: FE.Token) {
-    swapState.setPayToken(token);
-    swapState.update(s => ({ ...s, showPayTokenSelector: true }));
-  }
-
   function handleTokenSelectClose() {
     swapState.update(s => ({ ...s, showPayTokenSelector: false }));
   }
@@ -179,39 +197,42 @@
 
 <section class="flex justify-center w-full px-4">
   <div class="z-10 flex justify-center w-full max-w-[1300px] mx-auto">
-    <div class="flex flex-col w-full gap-6">
+    <div class="flex flex-col w-full">
       <!-- Market Overview Panel -->
-      <Panel variant="green" type="main" className="market-stats-panel">
-        <div class="market-stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon-wrapper">
-              <BarChart class="stat-icon" />
-            </div>
-            <div class="stat-content">
-              <h3>Total Volume (24h)</h3>
-              <p>${formatToNonZeroDecimal($marketStats.totalVolume)}</p>
-            </div>
+      <div class="earn-cards">
+        <div class="earn-card">
+          <div class="card-content">
+            <h3>Total Volume (24h)</h3>
+            <p>Trading activity in the last 24 hours</p>
+            <div class="apy">${formatToNonZeroDecimal($marketStats.totalVolume)}</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon-wrapper">
-              <Droplets class="stat-icon" />
-            </div>
-            <div class="stat-content">
-              <h3>Total Liquidity</h3>
-              <p>${formatToNonZeroDecimal($marketStats.totalLiquidity)}</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon-wrapper">
-              <DollarSign class="stat-icon" />
-            </div>
-            <div class="stat-content">
-              <h3>Total Fees (24h)</h3>
-              <p>${formatToNonZeroDecimal($marketStats.totalFees)}</p>
-            </div>
+          <div class="stat-icon-wrapper">
+            <BarChart class="stat-icon" />
           </div>
         </div>
-      </Panel>
+
+        <div class="earn-card">
+          <div class="card-content">
+            <h3>Total Liquidity</h3>
+            <p>Total value locked in pools</p>
+            <div class="apy">${formatToNonZeroDecimal($marketStats.totalLiquidity)}</div>
+          </div>
+          <div class="stat-icon-wrapper">
+            <Droplets class="stat-icon" />
+          </div>
+        </div>
+
+        <div class="earn-card">
+          <div class="card-content">
+            <h3>Total Fees (24h)</h3>
+            <p>Fees earned by liquidity providers</p>
+            <div class="apy">${formatToNonZeroDecimal($marketStats.totalFees)}</div>
+          </div>
+          <div class="stat-icon-wrapper">
+            <DollarSign class="stat-icon" />
+          </div>
+        </div>
+      </div>
 
       <!-- Tokens Panel -->
       <Panel variant="green" type="main" className="content-panel">
@@ -262,7 +283,7 @@
                 {#each $filteredSortedTokens as token (token.canister_id)}
                   <tr 
                     animate:flip={{ duration: ANIMATION_DURATION }}
-                    class="token-row cursor-pointer"
+                    class="token-row"
                     on:click={() => handleTokenSelect(token)}
                   >
                     <td class="token-cell">
@@ -283,13 +304,22 @@
                       {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
                     </td>
                     <td class="actions-cell">
-                      <button 
-                        class="copy-button" 
-                        on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
-                        title="Copy token ID"
-                      >
-                        {$copyStates[token.canister_id] || "Copy ID"}
-                      </button>
+                      <div class="flex items-center justify-end gap-2">
+                        <button 
+                          class="action-button" 
+                          on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
+                          title="Copy token ID"
+                        >
+                          {$copyStates[token.canister_id] || "Copy ID"}
+                        </button>
+                        <button 
+                          class="action-button swap-button" 
+                          on:click|stopPropagation={(e) => handleSwap(token, e)}
+                          title="Swap this token"
+                        >
+                          Swap
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 {/each}
@@ -303,43 +333,42 @@
   </div>
 </section>
 
-{#if $swapState.showPayTokenSelector}
-  <TokenSelectorModal
-    show={$swapState.showPayTokenSelector}
-    onClose={handleTokenSelectClose}
-    onSelect={(token) => {
-      swapState.setPayToken(token);
-      handleTokenSelectClose();
-    }}
-  />
-{/if}
-
 <style lang="postcss">
-  /* Market Stats Section */
-  .market-stats-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3;
+  /* Replace the existing market-stats styles with these */
+  .earn-cards {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-4;
   }
 
-  .stat-card {
-    @apply flex items-center gap-4 p-4 rounded-lg bg-black/20 
-           backdrop-blur-sm hover:bg-black/30 transition-all duration-200
-           border border-white/10;
+  .earn-card {
+    @apply relative flex items-start justify-between p-4 rounded-lg transition-all duration-200
+           bg-[#1a1b23]/60 border border-[#2a2d3d] text-left
+           hover:shadow-sm hover:shadow-[#60A5FA]/5 backdrop-blur-sm;
+  }
+
+  .earn-card:hover {
+    @apply bg-[#1e1f2a]/80 border-[#60A5FA]/30
+           shadow-[0_0_10px_rgba(96,165,250,0.1)]
+           transform scale-[1.01];
+  }
+
+  .card-content {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .card-content h3 {
+    @apply text-lg text-white;
+  }
+
+  .card-content p {
+    @apply text-[#8890a4] text-sm;
+  }
+
+  .apy {
+    @apply text-[#60A5FA] font-medium mt-2 text-lg;
   }
 
   .stat-icon-wrapper {
     @apply p-3 rounded-lg bg-white/10 text-white/80;
-  }
-
-  .stat-content {
-    @apply flex flex-col;
-  }
-
-  .stat-content h3 {
-    @apply text-sm text-white/60 font-medium;
-  }
-
-  .stat-content p {
-    @apply text-xl font-medium text-white;
   }
 
   /* Search Input */
@@ -429,32 +458,44 @@
   }
 
   .actions-cell {
-    @apply text-right;
+    @apply text-right min-w-[180px];
   }
 
-  .copy-button {
-    @apply px-3 py-1.5 text-xs rounded bg-white/5 text-white/60
-           hover:bg-white/10 hover:text-white transition-all duration-200
+  .action-button {
+    @apply px-3 py-1.5 text-xs rounded 
+           transition-all duration-200
            focus:outline-none focus:ring-2 focus:ring-white/20;
   }
 
+  .action-button:not(.swap-button) {
+    @apply bg-white/5 text-white/60
+           hover:bg-white/10 hover:text-white;
+  }
+
+  .action-button.swap-button {
+    @apply bg-[#60A5FA]/20 text-[#60A5FA]
+           hover:bg-[#60A5FA]/30 hover:text-[#60A5FA]/90;
+  }
+
+  /* Mobile responsiveness */
   @media (max-width: 768px) {
+    .actions-header {
+      @apply !table-cell;
+    }
+    
+    .actions-cell {
+      @apply !table-cell min-w-[140px];
+    }
+
+    .action-button {
+      @apply px-2 py-1 text-xs;
+    }
+  }
+
+  @media (max-width: 640px) {
     .actions-header,
     .actions-cell {
-      @apply hidden;
-    }
-
-    .token-name {
-      @apply text-sm;
-    }
-
-    .token-symbol {
-      @apply text-xs;
-    }
-
-    .price-cell,
-    .price-change-cell {
-      @apply text-sm;
+      @apply !hidden;
     }
   }
 
