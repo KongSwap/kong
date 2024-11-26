@@ -48,7 +48,7 @@
 <svelte:window bind:innerWidth={windowWidth} />
 
 <header class="min-w-[250px] backdrop-blur-md">
-  <div class="flex flex-col gap-3 p-1">
+  <div class="flex flex-col gap-2 py-2">
     {#if $auth.isConnected}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
         <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-144px)]">
@@ -130,14 +130,14 @@
           </button>
         </div>
       </div>
-      <div class="portfolio-value mt-4">
+      <div class="portfolio-value mt-2">
         <button
           class="portfolio-refresh-button"
           on:click={handleReload}
           aria-label="Refresh Portfolio Value"
         >
-          <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-          <p class="text-3xl font-bold font-mono">
+          <h3 class="text-xs uppercase font-semibold">Total Value</h3>
+          <p class="text-2xl font-bold font-mono">
             {#if isRefreshing}
               <LoadingIndicator />
             {:else}
@@ -149,25 +149,26 @@
           </div>
         </button>
       </div>
-      <nav class="grid grid-cols-3 gap-2 p-1">
+      <nav class="grid grid-cols-3 gap-3 bg-black/20 rounded-lg">
         {#each tabs as tab (tab)}
           <button
-            class="self-center text-center justify-center bg-transparent w-full flex items-center border-none p-2 text-gray-100 font-alumni text-xl font-semibold cursor-pointer transition-all duration-200 ease-in-out relative"
-            class:bg-black={activeTab === tab}
-            class:text-lime-300={activeTab === tab}
+            class="tab-button relative py-2.5 px-4 rounded-md text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-white"
+            class:active-tab={activeTab === tab}
             on:click={() => setActiveTab(tab)}
             role="tab"
             aria-selected={activeTab === tab}
             aria-controls={`${tab}-panel`}
             id={`${tab}-tab`}
           >
-            {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 mr-1.5 object-contain" />
-            {/if}
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            <div class="flex items-center justify-center gap-2">
               {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 ml-1.5 object-contain" />
-            {/if}
+                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain" alt="" />
+              {/if}
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {#if activeTab === tab}
+                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain" alt="" />
+              {/if}
+            </div>
           </button>
         {/each}
       </nav>
@@ -229,7 +230,7 @@
     cursor: pointer;
     position: relative;
     overflow: hidden;
-    padding: 12px;
+    padding: 8px;
     border-radius: 6px;
     transition: all 0.2s ease;
     z-index: 0;
@@ -269,19 +270,35 @@
     backdrop-filter: blur(7px);
   }
 
+  .tab-button {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid transparent;
+  }
+
+  .tab-button:hover {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .active-tab {
+    background: rgba(59, 130, 246, 0.2) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    color: #3b82f6 !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  }
 
   @keyframes glow {
     0% {
-      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
-                  0 0 20px rgba(163, 230, 53, 0.2);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3),
+                  0 0 20px rgba(59, 130, 246, 0.2);
     }
     50% {
-      box-shadow: 0 0 20px rgba(163, 230, 53, 0.6),
-                  0 0 40px rgba(163, 230, 53, 0.4);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.6),
+                  0 0 40px rgba(59, 130, 246, 0.4);
     }
     100% {
-      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
-                  0 0 20px rgba(163, 230, 53, 0.2);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3),
+                  0 0 20px rgba(59, 130, 246, 0.2);
     }
   }
 

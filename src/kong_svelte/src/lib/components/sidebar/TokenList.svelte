@@ -290,11 +290,11 @@
 
 <style>
   .token-list {
-    @apply flex flex-col h-full;
+    @apply flex flex-col h-full overflow-hidden;
   }
 
   .tokens-content {
-    @apply flex-1 min-h-0;
+    @apply flex-1 min-h-0 overflow-hidden;
   }
 
   .controls-wrapper {
@@ -306,11 +306,13 @@
     @apply sticky top-0 z-10;
     @apply border-b border-[#2a2d3d];
     @apply bg-[#15161c];
+    @apply rounded-t-[6px];
   }
 
   .search-input-wrapper {
     @apply relative flex items-center;
     @apply bg-[#2a2d3d] p-3;
+    @apply rounded-t-[6px];
   }
 
   .search-input {

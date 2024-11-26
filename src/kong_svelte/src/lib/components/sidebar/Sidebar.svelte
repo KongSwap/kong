@@ -136,7 +136,6 @@
     inset: 0;
     z-index: 2;
     display: grid;
-    padding: 1rem;
     pointer-events: none;
   }
 
@@ -186,7 +185,7 @@
 
   .sidebar-footer {
     min-height: 0;
-    padding: 1rem;
+    padding-top: 1rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 

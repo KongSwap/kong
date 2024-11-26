@@ -31,94 +31,117 @@
   <div class="wallet-list">
     {#each availableWallets as wallet}
       <button
-        class="wallet-option"
+        class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
         on:click={() => handleConnect(wallet.id)}
         disabled={connecting}
       >
-        <div class="wallet-icon">
-          <img src={wallet.icon} alt={wallet.name} />
+        <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
+        <div class="wallet-info">
+          <span class="wallet-name">{wallet.name}</span>
+          {#if wallet.id === 'nfid'}
+            <span class="wallet-description">Sign in with Google</span>
+          {/if}
         </div>
-        <span>{wallet.name}</span>
       </button>
     {/each}
   </div>
 </div>
 
-<style lang="postcss">
+<style>
   .wallet-provider {
-    @apply flex flex-col h-full p-2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-top: 1.25rem;
   }
 
   .wallet-list {
-    @apply flex flex-col gap-3 overflow-y-auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
   }
 
   .wallet-option {
-    @apply flex items-center gap-4 w-full px-4 py-3
-           bg-slate-800/40 
-           rounded-xl transition-all duration-300
-           border border-slate-700/20 
-           backdrop-blur-md
-           relative;
-    
-    &:hover:not(:disabled) {
-      @apply bg-slate-700/50
-             border-indigo-500/40
-             shadow-[0_0_25px_rgba(99,102,241,0.15)]
-             ring-2 ring-indigo-500/20;
-    }
-    
-    &:disabled {
-      @apply opacity-50 cursor-not-allowed shadow-none;
-    }
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    padding: 16px 20px;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 12px;
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    backdrop-filter: blur(8px);
+    text-align: left;
+    position: relative;
+    transition: all 0.2s;
+  }
 
-    &:not(:disabled):active {
-      @apply scale-[0.98];
-    }
+  .wallet-option:hover:not(:disabled) {
+    background: rgba(51, 65, 85, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .wallet-option:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .wallet-option.recommended {
+    background: rgba(79, 70, 229, 0.4);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+
+  .wallet-option.recommended:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.5);
+    border-color: rgba(129, 140, 248, 0.6);
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
   }
 
   .wallet-icon {
-    @apply relative flex items-center justify-center
-           w-10 h-10 rounded-xl
-           bg-gradient-to-br from-slate-700/50 to-slate-800/50
-           border border-slate-600/20
-           transition-all duration-300;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    transition: transform 0.2s;
   }
 
-  .wallet-option:hover .wallet-icon {
-    @apply bg-gradient-to-br from-indigo-600/20 to-indigo-800/20
-           border-indigo-500/30;
+  .wallet-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
-  .wallet-option img {
-    @apply w-7 h-7 rounded-lg
-           transition-all duration-300;
+  .wallet-name {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    font-size: 18px;
+    letter-spacing: 0.05em;
   }
 
-  .wallet-option:hover img {
-    @apply scale-110 brightness-110;
+  .wallet-description {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.2s;
   }
 
-  .wallet-option span {
-    @apply text-white/90 font-medium
-           tracking-wide transition-colors duration-300;
-  }
-
-  .wallet-option:hover span {
-    @apply text-white;
+  .wallet-option.recommended:hover .wallet-description {
+    color: rgba(255, 255, 255, 0.9);
   }
 
   .wallet-list::-webkit-scrollbar {
-    @apply w-1.5;
+    width: 6px;
   }
 
   .wallet-list::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
 
   .wallet-list::-webkit-scrollbar-thumb {
-    @apply bg-white/5 rounded-full 
-           hover:bg-white/15
-           transition-colors duration-200;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 9999px;
+  }
+
+  .wallet-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
   }
 </style>
