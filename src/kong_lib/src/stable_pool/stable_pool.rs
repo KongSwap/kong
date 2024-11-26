@@ -2,6 +2,8 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
+use crate::helpers::nat_helpers::nat_zero;
+
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StablePoolId(pub u32);
 
@@ -38,6 +40,32 @@ pub struct StablePool {
     pub rolling_24h_apy: f64,
     pub total_volume: Nat, // lifetime volume of the pool in token_1
     pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
+}
+
+impl StablePool {
+    pub fn new(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32, on_kong: bool) -> Self {
+        Self {
+            pool_id: 0,
+            token_id_0,
+            balance_0: nat_zero(),
+            lp_fee_0: nat_zero(),
+            kong_fee_0: nat_zero(),
+            token_id_1,
+            balance_1: nat_zero(),
+            lp_fee_1: nat_zero(),
+            kong_fee_1: nat_zero(),
+            lp_fee_bps,
+            kong_fee_bps,
+            lp_token_id,
+            on_kong,
+            rolling_24h_volume: nat_zero(),
+            rolling_24h_lp_fee: nat_zero(),
+            rolling_24h_num_swaps: nat_zero(),
+            rolling_24h_apy: 0_f64,
+            total_volume: nat_zero(),
+            total_lp_fee: nat_zero(),
+        }
+    }
 }
 
 impl Storable for StablePool {

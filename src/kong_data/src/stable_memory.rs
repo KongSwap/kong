@@ -1,15 +1,15 @@
+use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
+use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
+use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
+use crate::stable_message::stable_message::{StableMessage, StableMessageId};
+use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
+use crate::stable_request::stable_request::{StableRequest, StableRequestId};
+use crate::stable_token::stable_token::{StableToken, StableTokenId};
+use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
+use crate::stable_tx::stable_tx::{StableTx, StableTxId};
+use crate::stable_user::stable_user::{StableUser, StableUserId};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
-use kong_lib::stable_claim::stable_claim::{StableClaim, StableClaimId};
-use kong_lib::stable_kong_settings::stable_kong_settings::StableKongSettings;
-use kong_lib::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
-use kong_lib::stable_message::stable_message::{StableMessage, StableMessageId};
-use kong_lib::stable_pool::stable_pool::{StablePool, StablePoolId};
-use kong_lib::stable_request::stable_request::{StableRequest, StableRequestId};
-use kong_lib::stable_token::stable_token::{StableToken, StableTokenId};
-use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-use kong_lib::stable_tx::stable_tx::{StableTx, StableTxId};
-use kong_lib::stable_user::stable_user::{StableUser, StableUserId};
 use std::cell::RefCell;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;

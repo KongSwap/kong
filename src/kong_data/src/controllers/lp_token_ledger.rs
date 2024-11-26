@@ -1,5 +1,5 @@
+use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
 use ic_cdk::{query, update};
-use kong_lib::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;

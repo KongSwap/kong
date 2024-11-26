@@ -86,7 +86,6 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
         Reply::AddPool(reply) => json!({
             "tx_id": reply.tx_id,
             "symbol": reply.symbol,
-            "balance": reply.balance.to_string(),
             "chain_0": reply.chain_0,
             "symbol_0": reply.symbol_0,
             "amount_0": reply.amount_0.to_string(),
@@ -98,7 +97,6 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
             "add_lp_token_amount": reply.add_lp_token_amount.to_string(),
             "lp_fee_bps": reply.lp_fee_bps,
             "lp_token_symbol": reply.lp_token_symbol,
-            "lp_token_supply": reply.lp_token_supply.to_string(),
             "transfer_ids": reply.transfer_ids.iter().map(|id| json!({
                 "transfer_id": id.transfer_id,
                 "transfer": match &id.transfer {
@@ -126,7 +124,19 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
             "symbol_1": reply.symbol_1,
             "amount_1": reply.amount_1.to_string(),
             "add_lp_token_amount": reply.add_lp_token_amount.to_string(),
-            "transfer_ids": reply.transfer_ids,
+            "transfer_ids": reply.transfer_ids.iter().map(|id| json!({
+                "transfer_id": id.transfer_id,
+                "transfer": match &id.transfer {
+                    TransferReply::IC(transfer_reply) => json!({
+                        "chain": transfer_reply.chain,
+                        "symbol": transfer_reply.symbol,
+                        "is_send": transfer_reply.is_send,
+                        "amount": transfer_reply.amount.to_string(),
+                        "canister_id": transfer_reply.canister_id,
+                        "block_index": transfer_reply.block_index.to_string(),
+                    }),
+                },
+            })).collect::<Vec<_>>(),
             "claim_ids": reply.claim_ids,
             "ts": reply.ts,
         }),

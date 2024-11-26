@@ -1,5 +1,5 @@
+use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use ic_cdk::{query, update};
-use kong_lib::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;

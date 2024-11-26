@@ -1,5 +1,5 @@
+use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use ic_cdk::{query, update};
-use kong_lib::stable_pool::stable_pool::{StablePool, StablePoolId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;

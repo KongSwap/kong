@@ -1,5 +1,5 @@
+use crate::stable_user::stable_user::{StableUser, StableUserId};
 use ic_cdk::{query, update};
-use kong_lib::stable_user::stable_user::{StableUser, StableUserId};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
