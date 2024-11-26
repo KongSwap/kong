@@ -149,7 +149,7 @@
           </div>
         </button>
       </div>
-      <nav class="grid grid-cols-3 gap-3 bg-black/20 rounded-lg">
+      <nav class="grid grid-cols-3 gap-3 rounded-lg">
         {#each tabs as tab (tab)}
           <button
             class="tab-button relative py-2.5 px-4 rounded-md text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-white"
@@ -271,12 +271,12 @@
   }
 
   .tab-button {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.1);
     border: 1px solid transparent;
   }
 
   .tab-button:hover {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.2);
     border-color: rgba(255, 255, 255, 0.1);
   }
 
@@ -310,10 +310,6 @@
 
   .portfolio-refresh-button:hover .refresh-overlay {
     opacity: 0.85;
-  }
-
-  .glow {
-    animation: glow-animation 2s infinite alternate;
   }
 
   @keyframes glow-animation {
