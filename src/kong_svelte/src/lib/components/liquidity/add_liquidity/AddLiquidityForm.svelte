@@ -1,11 +1,9 @@
 <script lang="ts">
     import { Plus } from "lucide-svelte";
     import { fade } from "svelte/transition";
-    import Button from "$lib/components/common/Button.svelte";
     import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
     import { get } from "svelte/store";
     import { tokenPrices } from "$lib/services/tokens/tokenStore";
-    import Panel from "$lib/components/common/Panel.svelte";
     import Portal from 'svelte-portal';
     import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
     import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
@@ -25,6 +23,28 @@
     let showToken0Selector = false;
     let showToken1Selector = false;
     let liquidityMode: 'full' | 'custom' = 'full';
+    let isTransitioning = false;
+    let previousMode: 'full' | 'custom' = 'full';
+
+    $: buttonText = hasInsufficientBalance()
+      ? "Insufficient Balance"
+      : !token0 || !token1
+      ? "Select Tokens"
+      : !amount0 || !amount1
+      ? "Enter Amounts"
+      : loading
+      ? "Loading..."
+      : "Review Transaction";
+
+    function handleModeChange(mode: 'full' | 'custom') {
+      if (mode === liquidityMode) return;
+      previousMode = liquidityMode;
+      isTransitioning = true;
+      liquidityMode = mode;
+      setTimeout(() => {
+        isTransitioning = false;
+      }, 300);
+    }
 
     function handleTokenSelect(index: 0 | 1, canister_id: string) {
       if ((index === 0 && canister_id === token1?.canister_id) || 
@@ -64,63 +84,64 @@
     $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance();
   </script>
 
-  <div class="swap-wrapper">
-    <div class="swap-container" in:fade={{ duration: 420 }}>
       <div class="mode-selector">
-        <div class="mode-selector-background" style="transform: translateX({liquidityMode === 'custom' ? '100%' : '0'})"></div>
-        <button
-          class="mode-button"
-          class:selected={liquidityMode === "full"}
-          on:click={() => liquidityMode = 'full'}
-        >
-          <span class="mode-text">Full Range</span>
-        </button>
-        <button
-          class="mode-button"
-          class:selected={liquidityMode === "custom"}
-          disabled
-        >
-          <span class="mode-text">Custom Range</span>
-        </button>
+        <div class="mode-selector-content">
+          <div class="mode-selector-background" style="transform: translateX({liquidityMode === 'custom' ? '100%' : '0'})"></div>
+          <button
+            class="mode-button"
+            class:selected={liquidityMode === "full"}
+            class:transitioning={isTransitioning && previousMode === "custom"}
+            on:click={() => handleModeChange('full')}
+          >
+            Full Range
+          </button>
+          <button
+            class="mode-button"
+            class:selected={liquidityMode === "custom"}
+            class:transitioning={isTransitioning && previousMode === "full"}
+            on:click={() => handleModeChange('custom')}
+            disabled
+          >
+            Custom Range
+          </button>
+        </div>
       </div>
 
       <div class="panels-container">
         <div class="panels-wrapper">
-          <!-- Token 0 Panel -->
-          <SwapPanel
-            title="Token 1 Amount"
-            token={token0}
-            amount={amount0}
-            onAmountChange={(e) => handleInput(0, e)}
-            onTokenSelect={() => showToken0Selector = true}
-            showPrice={true}
-            disabled={loading}
-            panelType="pay"
-            balance={token0Balance}
-          />
-
-          <div class="flex justify-center">
-            <div class="p-2 bg-white/10 rounded-full">
-              <Plus class="text-white/70" />
-            </div>
+          <div class="panel-item">
+            <SwapPanel
+              title="First Token Amount"
+              token={token0}
+              amount={amount0}
+              onAmountChange={(e) => handleInput(0, e)}
+              onTokenSelect={() => showToken0Selector = true}
+              showPrice={true}
+              disabled={loading}
+              panelType="pay"
+              balance={token0Balance}
+              slippage={0}
+            />
           </div>
 
-          <!-- Token 1 Panel -->
-          <SwapPanel
-            title="Token 2 Amount"
-            token={token1}
-            amount={amount1}
-            onAmountChange={(e) => handleInput(1, e)}
-            onTokenSelect={() => showToken1Selector = true}
-            showPrice={true}
-            disabled={loading}
-            panelType="pay"
-            balance={token1Balance}
-          />
+          <div class="panel-item">
+            <SwapPanel
+              title="Second Token Amount"
+              token={token1}
+              amount={amount1}
+              onAmountChange={(e) => handleInput(1, e)}
+              onTokenSelect={() => showToken1Selector = true}
+              showPrice={true}
+              disabled={loading}
+              panelType="pay"
+              balance={token1Balance}
+              slippage={0}
+            />
+          </div>
         </div>
 
         {#if error}
-          <div class="error-message mt-4 text-red-500 text-sm">{error}</div>
+          <div class="error-message">{error}</div>
         {/if}
 
         <div class="swap-footer">
@@ -133,33 +154,16 @@
             disabled={!isValid || loading}
           >
             <div class="button-content">
-              {#key buttonText}
-                <span class="button-text">
-                  {#if hasInsufficientBalance()}
-                    Insufficient Balance
-                  {:else if !token0 || !token1}
-                    Select Tokens
-                  {:else if !amount0 || !amount1}
-                    Enter Amounts
-                  {:else if loading}
-                    Loading...
-                  {:else}
-                    Review Transaction
-                  {/if}
-                </span>
-              {/key}
+              <span class="button-text">
+                {buttonText}
+              </span>
               {#if loading}
                 <div class="loading-spinner"></div>
               {/if}
             </div>
-            {#if isValid}
-              <div class="button-glow"></div>
-            {/if}
           </button>
         </div>
       </div>
-    </div>
-  </div>
 
   <!-- Token Selectors -->
   {#if showToken0Selector}
@@ -187,89 +191,99 @@
   {/if}
 
   <style lang="postcss">
-    .swap-container {
-      position: relative;
-      display: flex;
-      flex-direction: column;
+    .mode-selector {
+      @apply flex flex-col gap-2 mb-4;
     }
 
-    .mode-selector {
-      position: relative;
-      display: flex;
-      gap: 1px;
-      margin-bottom: 12px;
-      padding: 2px;
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    .mode-selector-content {
+      @apply relative flex gap-1 p-0.5 bg-white/[0.06] rounded-lg border border-white/10;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
+    .mode-selector-background {
+      @apply absolute top-0.5 left-0.5;
+      width: calc(50% - 1px);
+      height: calc(100% - 4px);
+      background: linear-gradient(135deg, 
+        rgba(55, 114, 255, 0.15), 
+        rgba(55, 114, 255, 0.2)
+      );
+      border-radius: 6px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 0;
+    }
+
     .mode-button {
-      @apply px-3 py-1.5 text-sm font-medium text-white/70 rounded-lg transition-colors duration-200;
-      @apply hover:bg-white/10;
+      @apply relative z-[1] flex-1 px-3 py-1.5 border-none rounded-md text-sm font-medium text-white/70;
+      @apply bg-transparent cursor-pointer transition-all duration-200;
     }
 
     .mode-button.selected {
-      @apply bg-white/10 text-white;
+      @apply text-white font-semibold;
     }
 
-    .mode-button.disabled {
-      @apply opacity-50 cursor-not-allowed hover:bg-transparent;
+    .mode-button:hover:not(.selected) {
+      @apply text-white/90;
+    }
+
+    .mode-button:disabled {
+      @apply opacity-50 cursor-not-allowed hover:text-white/70;
     }
 
     .panels-container {
-      @apply flex flex-col gap-6 w-full h-full overflow-y-auto px-2;
+      @apply flex flex-col;
     }
 
-    .panels-wrapper {
-      @apply flex flex-col gap-6 w-full h-full overflow-y-auto px-2;
+    .panel-item {
+      @apply bg-white/5 rounded-xl overflow-hidden;
     }
 
     .error-message {
-      @apply text-red-500 text-sm;
+      @apply text-red-500 text-sm text-center mt-4;
     }
 
     .swap-footer {
-      @apply flex justify-center mt-4;
+      @apply mt-4;
     }
 
     .swap-button {
-      @apply px-3 py-1.5 text-sm font-medium text-white/70 rounded-lg transition-colors duration-200;
-      @apply hover:bg-white/10;
+      @apply w-full px-6 py-3 text-base font-semibold rounded-lg transition-all duration-200;
+      @apply bg-white/5 text-white/70 hover:bg-white/10;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .swap-button:disabled {
+      @apply opacity-50 cursor-not-allowed;
     }
 
     .swap-button.error {
-      @apply bg-red-500 text-white;
+      @apply bg-red-500/20 text-red-500 hover:bg-red-500/30;
+      box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2);
     }
 
     .swap-button.processing {
-      @apply bg-yellow-500 text-white;
+      @apply bg-yellow-500 text-white hover:bg-yellow-600;
     }
 
     .swap-button.ready {
-      @apply bg-green-500 text-white;
+      @apply bg-green-500 text-white hover:bg-green-600;
     }
 
     .button-content {
-      @apply flex items-center gap-2;
+      @apply flex items-center justify-center gap-2;
     }
 
     .button-text {
-      @apply text-white/70 font-semibold tracking-tight;
+      @apply font-semibold;
     }
 
     .loading-spinner {
-      @apply w-4 h-4 border-2 border-white border-transparent rounded-full animate-spin;
-    }
-
-    .button-glow {
-      @apply w-4 h-4 bg-yellow-500 rounded-full absolute top-0 left-0;
+      @apply w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin;
     }
 
     @media (max-width: 420px) {
-      input {
-        @apply text-2xl mt-[-0.15rem];
+      .panel-item {
+        @apply p-0;
       }
     }
   </style>
