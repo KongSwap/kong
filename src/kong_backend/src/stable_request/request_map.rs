@@ -1,3 +1,6 @@
+use std::cmp::min;
+use std::ops::Bound;
+
 use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
@@ -7,26 +10,16 @@ use crate::stable_memory::REQUEST_MAP;
 
 const MAX_REQUESTS: usize = 20;
 
-/// get a request by request_id of the caller
-pub fn get_by_request_and_user_id(request_id: u64, user_id: Option<u32>) -> Option<StableRequest> {
-    REQUEST_MAP.with(|m| {
-        m.borrow().get(&StableRequestId(request_id)).and_then(|v| {
-            if let Some(user_id) = user_id {
-                if v.user_id != user_id {
-                    return None;
-                }
-            }
-            Some(v)
-        })
-    })
-}
-
 /// get requests filtered by user_id
-pub fn get_by_user_id(user_id: Option<u32>, num_requests: Option<usize>) -> Vec<StableRequest> {
-    let num_requests = num_requests.unwrap_or(MAX_REQUESTS);
+pub fn get_by_request_and_user_id(start_request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<usize>) -> Vec<StableRequest> {
     REQUEST_MAP.with(|m| {
-        m.borrow()
-            .iter()
+        let map = m.borrow();
+        let start_request_id = start_request_id.unwrap_or(map.last_key_value().map_or(0, |(k, _)| k.0));
+        let num_requests = match num_requests {
+            Some(num_requests) => min(num_requests, MAX_REQUESTS),
+            None => 1,
+        };
+        map.range((Bound::Unbounded, Bound::Included(&StableRequestId(start_request_id))))
             .rev()
             .filter_map(|(_, v)| {
                 if let Some(user_id) = user_id {
@@ -34,7 +27,7 @@ pub fn get_by_user_id(user_id: Option<u32>, num_requests: Option<usize>) -> Vec<
                         return None;
                     }
                 }
-                Some(v.clone())
+                Some(v)
             })
             .take(num_requests)
             .collect()

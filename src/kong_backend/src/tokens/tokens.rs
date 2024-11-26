@@ -15,9 +15,12 @@ use crate::stable_token::token_map;
 #[query(guard = "not_in_maintenance_mode")]
 fn tokens(symbol: Option<String>) -> Result<Vec<TokensReply>, String> {
     let tokens = match symbol.as_deref() {
-        Some("all") => token_map::get().iter().map(to_token_reply).collect(),
-        Some(symbol) => token_map::get_by_token_wildcard(symbol).iter().map(to_token_reply).collect(),
-        None => token_map::get_on_kong().iter().map(to_token_reply).collect(),
-    };
+        Some("all") => token_map::get(),
+        Some(symbol) => token_map::get_by_token_wildcard(symbol),
+        None => token_map::get_on_kong(),
+    }
+    .iter()
+    .map(to_token_reply)
+    .collect();
     Ok(tokens)
 }

@@ -13,15 +13,9 @@ async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> 
         Ok(Some(caller)) => caller.user_id,
         Ok(None) | Err(_) => return Ok(Vec::new()),
     };
-    // will only return requests of the caller
-    Ok(match request_id {
-        Some(request_id) => request_map::get_by_request_and_user_id(request_id, Some(user_id))
-            .iter()
-            .map(to_request_reply)
-            .collect(),
-        None => request_map::get_by_user_id(Some(user_id), None)
-            .iter()
-            .map(to_request_reply)
-            .collect(),
-    })
+    let requests = request_map::get_by_request_and_user_id(request_id, Some(user_id), None)
+        .iter()
+        .map(to_request_reply)
+        .collect();
+    Ok(requests)
 }
