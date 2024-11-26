@@ -6,7 +6,7 @@ use super::token::Token;
 use super::token_map;
 
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
-use crate::ic::address_impl::is_principal_id;
+use crate::ic::address_helpers::is_principal_id;
 use crate::stable_kong_settings::kong_settings;
 use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::stable_token::{StableToken, StableTokenId};

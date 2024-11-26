@@ -3,6 +3,7 @@ use ic_cdk::update;
 
 use super::remove_liquidity_args::RemoveLiquidityArgs;
 use super::remove_liquidity_reply::RemoveLiquidityReply;
+use super::remove_liquidity_reply_helpers::{create_remove_liquidity_reply_failed, create_remove_liquidity_reply_with_tx_id};
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
 use crate::ic::{
@@ -463,7 +464,7 @@ async fn send_payout_tokens_and_check_balances(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::RemoveLiquidity(remove_liquidity_tx.clone()));
-    let reply = RemoveLiquidityReply::new_with_tx_id(tx_id, &remove_liquidity_tx);
+    let reply = create_remove_liquidity_reply_with_tx_id(tx_id, &remove_liquidity_tx);
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
     reply
 }
@@ -504,7 +505,7 @@ async fn return_tokens(
 
     request_map::update_status(request_id, StatusCode::Failed, None);
 
-    let reply = RemoveLiquidityReply::new_failed(pool.pool_id, request_id, transfer_ids, ts);
+    let reply = create_remove_liquidity_reply_failed(pool.pool_id, request_id, transfer_ids, ts);
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
     reply
 }

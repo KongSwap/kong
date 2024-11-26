@@ -2,6 +2,7 @@ use candid::Nat;
 
 use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
+use super::swap_reply_helpers::create_swap_reply_with_tx_id;
 
 use crate::ic::{
     address::Address,
@@ -92,7 +93,7 @@ pub async fn send_receive_token(
     );
     // insert tx
     let tx_id = tx_map::insert(&StableTx::Swap(swap_tx.clone()));
-    let reply = SwapReply::new_with_tx_id(tx_id, &swap_tx);
+    let reply = create_swap_reply_with_tx_id(tx_id, &swap_tx);
     request_map::update_reply(request_id, Reply::Swap(reply.clone()));
     reply
 }

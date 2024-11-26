@@ -1,0 +1,46 @@
+.bubble {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: pxrm(24) pxrm(6) pxrm(54) pxrm(15);
+    width: pxrm(283);
+    font-family: "lores-12",sans-serif;
+    font-weight: 700;
+    &__top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: pxrm(24);
+        background-image: url('../../assets/pxcomponents/bubble-top.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__mid {
+        position: absolute;
+        left: 0;
+        top: pxrm(23);
+        width: 100%;
+        height: calc(100% - pxrm(23) - pxrm(53));
+        background-image: url('../../assets/pxcomponents/bubble-mid.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__bottom {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: pxrm(54);
+        background-image: url('../../assets/pxcomponents/bubble-bottom.svg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+    }
+    &__content {
+        text-align: center;
+        padding: pxrm(5) pxrm(10) pxrm(10);
+        line-height: pxrm(20);
+        color: var(--c-black);
+        position: relative;
+    }
+}

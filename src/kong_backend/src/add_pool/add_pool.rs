@@ -3,6 +3,7 @@ use ic_cdk::update;
 
 use super::add_pool_args::AddPoolArgs;
 use super::add_pool_reply::AddPoolReply;
+use super::add_pool_reply_helpers::{create_add_pool_reply_failed, create_add_pool_reply_with_tx_id};
 
 use crate::add_token::add_token::add_ic_token;
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
@@ -565,7 +566,7 @@ async fn check_balances(
     // insert tx
     let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
     // need to pass in the tx_id to the reply
-    let reply = AddPoolReply::new_with_tx_id(tx_id, &add_pool_tx);
+    let reply = create_add_pool_reply_with_tx_id(tx_id, &add_pool_tx);
     request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
     reply
 }
@@ -684,7 +685,7 @@ async fn return_tokens(
 
     request_map::update_status(request_id, StatusCode::Failed, None);
 
-    let reply = AddPoolReply::new_failed(
+    let reply = create_add_pool_reply_failed(
         &chain_0,
         &symbol_0,
         &chain_1,

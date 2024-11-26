@@ -3,7 +3,7 @@ use ic_cdk::update;
 
 use super::add_token_args::AddTokenArgs;
 use super::add_token_reply::AddTokenReply;
-use super::add_token_reply_impl::to_add_token_reply;
+use super::add_token_reply_helpers::to_add_token_reply;
 
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
 use crate::ic::guards::caller_is_kingkong;

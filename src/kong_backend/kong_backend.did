@@ -120,7 +120,6 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
-    lp_token_supply : nat;
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;
@@ -209,7 +208,6 @@ type AddPoolReply = record {
     symbol : text;
     request_id : nat64;
     status : text;
-    balance : nat;
     chain_0 : text;
     symbol_0 : text;
     amount_0 : nat;
@@ -219,7 +217,6 @@ type AddPoolReply = record {
     add_lp_token_amount : nat;
     lp_fee_bps : nat8;
     lp_token_symbol : text;
-    lp_token_supply : nat;
     transfer_ids : vec TransferIdReply;
     claim_ids : vec nat64;
     on_kong : bool;
@@ -479,9 +476,8 @@ service : {
     // send LP tokens to another user
     send : (SendArgs) -> (SendResult);
 
-    add_token : (AddTokenArgs) -> (AddTokenResult);
+    // admin functions
     check_pools : () -> (CheckPoolsResult);
-    get_requests : (opt nat64, opt nat32) -> (RequestsResult) query;
-    get_txs : (opt nat64, opt nat32) -> (TxsResult) query;
-    get_transfers : (opt nat64) -> (TransfersResult) query;
+    get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
+    get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 }

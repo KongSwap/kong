@@ -73,6 +73,7 @@ pub fn update(lp_token: &StableLPTokenLedger) -> Option<StableLPTokenLedger> {
     LP_TOKEN_LEDGER.with(|m| m.borrow_mut().insert(StableLPTokenLedgerId(lp_token.lp_token_id), lp_token.clone()))
 }
 
+// remove all user entries of LP token
 pub fn remove(lp_token_id: u32) -> Result<(), String> {
     LP_TOKEN_LEDGER.with(|m| {
         let mut lp_token_ledger = m.borrow_mut();
@@ -84,7 +85,6 @@ pub fn remove(lp_token_id: u32) -> Result<(), String> {
             lp_token_ledger.remove(&key);
         }
     });
-
     Ok(())
 }
 
