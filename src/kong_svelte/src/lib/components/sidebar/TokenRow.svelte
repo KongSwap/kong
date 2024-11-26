@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { fade, scale } from 'svelte/transition';
-  import { Star, Send, ArrowUpRight, ArrowDown, ArrowUp } from 'lucide-svelte';
+  import { fade, scale, fly } from 'svelte/transition';
+  import { spring } from 'svelte/motion';
+  import { Star, MoreVertical, ArrowDown, ArrowUp } from 'lucide-svelte';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { formatBalance } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
@@ -9,6 +10,8 @@
   const dispatch = createEventDispatcher();
   let showDetails = false;
   let isHovered = false;
+  let isPressed = false;
+  let showMenu = false;
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
@@ -21,22 +24,42 @@
 
   function handleSendClick(e: MouseEvent) {
     e.stopPropagation();
+    showMenu = false;
     dispatch('send', { token });
   }
 
   function handleReceiveClick(e: MouseEvent) {
     e.stopPropagation();
+    showMenu = false;
     dispatch('receive', { token });
   }
+
+  function toggleMenu(e: MouseEvent) {
+    e.stopPropagation();
+    showDetails = true;
+  }
+
+  // Close menu when clicking outside
+  function handleClickOutside(e: MouseEvent) {
+    if (showMenu) {
+      showMenu = false;
+    }
+  }
 </script>
+
+<svelte:window on:click={handleClickOutside} />
 
 <div class="token-wrapper">
   <div 
     class="token-row"
-    transition:fade={{ duration: 200 }}
+    class:pressed={isPressed}
+    in:fly={{ y: 20, duration: 400, delay: 200 }}
+    out:fade={{ duration: 200 }}
     on:click={handleRowClick}
     on:mouseenter={() => isHovered = true}
     on:mouseleave={() => isHovered = false}
+    on:mousedown={() => isPressed = true}
+    on:mouseup={() => isPressed = false}
     role="button"
     tabindex="0"
     on:keydown={e => e.key === 'Enter' && handleRowClick()}
@@ -72,108 +95,168 @@
             ${token.usdValue}
           </div>
         </div>
+
+        <div class="menu-container">
+          <button 
+            class="menu-button"
+            on:click={toggleMenu}
+            title="Token details"
+          >
+            <MoreVertical size={24} />
+          </button>
+        </div>
       </div>
     </div>
   </div>
-
-  <!-- <button 
-    class="action-button receive"
-    on:click={handleReceiveClick}
-    title="Receive {token.symbol} to your wallet"
-  >
-    <ArrowDown size={16} />
-  </button>
-  <button 
-    class="action-button send"
-    on:click={handleSendClick}
-    title="Send {token.symbol} to another wallet"
-  >
-    <ArrowUp size={16} />
-  </button> -->
 </div>
 
 {#if showDetails}
-  <div transition:scale={{duration: 200, start: 0.95}}>
+  <div>
     <TokenDetails {token} on:close={() => showDetails = false} />
   </div>
 {/if}
 
-<style lang="postcss">
-  .token-wrapper {
-    @apply flex gap-2;
+<style>
+  .token-row {
+    flex: 1;
+    background: rgba(42, 45, 61, 0.3);
+    cursor: pointer;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(58, 62, 82, 0.3);
+    outline: none;
+    transform-origin: center;
+    will-change: transform, box-shadow, background-color, border-color;
   }
 
-  .token-row {
-    @apply flex-1;
-    @apply bg-[#2a2d3d]/50 hover:bg-[#2a2d3d];
-    @apply rounded-xl cursor-pointer;
-    @apply transition-all duration-300 ease-out;
-    @apply border border-transparent hover:border-[#3a3e52];
-    @apply hover:shadow-lg hover:shadow-black/20;
-    @apply outline-none focus:ring-2 focus:ring-[#3772ff]/50;
+  .token-row:hover {
+    background: rgba(42, 45, 61, 0.8);
+    border-color: rgba(58, 62, 82, 0.8);
+    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .token-row.pressed {
+    transform: scale(0.98);
+    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.2);
+    background: rgba(42, 45, 61, 1);
+  }
+
+  .token-row:focus {
+    box-shadow: 0 0 0 2px rgba(78, 132, 255, 0.5);
+    border-color: rgba(78, 132, 255, 0.5);
   }
 
   .token-content {
-    @apply flex items-center justify-between;
-    @apply h-[72px] px-4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
   }
 
   .token-left {
-    @apply flex items-center gap-4;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-left: 16px;
+  }
+
+  .token-image {
+    transition: transform 200ms ease;
+  }
+
+  .token-image.hovered {
+    transform: scale(1.05);
   }
 
   .token-info {
-    @apply flex flex-col;
+    display: flex;
+    flex-direction: column;
   }
 
   .token-name-row {
-    @apply flex items-center gap-2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .favorite-button {
-    @apply p-1 rounded-lg;
-    @apply text-white/40 hover:text-white/90;
-    @apply bg-white/5 hover:bg-white/10;
-    @apply transition-all duration-200;
+    padding: 4px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.5); /* Slightly brighter */
+    background: rgba(255, 255, 255, 0.08); /* Slightly brighter */
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .favorite-button:hover {
+    color: rgba(255, 255, 255, 1);
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+  }
+
+  .favorite-button.active {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.15); /* Slightly brighter */
   }
 
   .token-symbol {
-    @apply text-lg font-bold text-white;
+    font-size: 18px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.95); /* Brighter */
   }
 
   .token-name {
-    @apply text-sm text-white/70;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.75); /* Brighter */
   }
 
   .token-right {
-    @apply flex items-center gap-4;
+    display: flex;
+    align-items: center;
+    height: 100%;
   }
 
   .value-info {
-    @apply flex flex-col items-end;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-right: 16px;
   }
 
   .balance {
-    @apply text-base font-medium text-white;
+    font-size: 16px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95); /* Brighter */
   }
 
   .usd-value {
-    @apply text-sm text-white/70;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.75); /* Brighter */
   }
 
-  .action-button {
-    @apply h-[72px] w-[72px];
-    @apply flex items-center justify-center;
-    @apply text-white/90 hover:text-white;
-    @apply transition-colors duration-200;
-    @apply rounded-xl;
+  .menu-container {
+    height: 100%;
   }
 
-  .action-button.receive {
-    @apply bg-[#2a2d3d] hover:bg-[#3772ff]/30;
+  .menu-button {
+    color: rgba(255, 255, 255, 0.7); /* Brighter */
+    background: rgba(32, 35, 48, 0.6); /* More transparent */
+    border: none;
+    border-radius: 0 12px 12px 0; /* Rounded right corners */
+    cursor: pointer;
+    transition: all 200ms ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 100%;
   }
 
-  .action-button.send {
-    @apply bg-[#3772ff]/20 hover:bg-[#3772ff]/30;
+  .menu-button:hover {
+    color: white;
+    background: rgba(42, 45, 61, 0.9); /* Darker on hover */
+  }
+
+  .menu-button:active {
+    background: rgba(42, 45, 61, 1); /* Darkest when active */
   }
 </style>

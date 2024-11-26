@@ -228,6 +228,7 @@
               {/each}
             </div>
             <div class="custom-row">
+              <label class="custom-label">Enter custom slippage:</label>
               <div class="custom-input-wrapper">
                 <input
                   type="text"
@@ -447,10 +448,14 @@
   }
 
   .custom-row {
-    @apply flex items-center justify-center gap-4 
+    @apply flex items-center justify-between gap-4 
            px-3 py-2 rounded-lg bg-black/20 
            border border-white/10 hover:border-white/20
            transition-colors duration-200;
+  }
+
+  .custom-label {
+    @apply text-white/90 font-medium;
   }
 
   .custom-input-wrapper {
@@ -492,6 +497,10 @@
 
     .slippage-input {
       @apply w-20 text-sm;
+    }
+
+    .custom-label {
+      @apply text-sm;
     }
   }
 

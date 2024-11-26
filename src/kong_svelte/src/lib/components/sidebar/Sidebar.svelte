@@ -10,6 +10,7 @@
   import { auth } from "$lib/services/auth";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import IdentityPanel from "$lib/components/sidebar/account/IdentityPanel.svelte";
+  import Modal from "$lib/components/common/Modal.svelte";
 
   export let sidebarOpen: boolean;
   export let onClose: () => void;
@@ -17,6 +18,8 @@
   let isExpanded = false;
   let isMobile = false;
   let activeTab = 'tokens';
+  let showAccountModal = false;
+  let identityPanelRef: any;
 
   // Subscribe to sidebar store
   sidebarStore.subscribe(state => {
@@ -34,24 +37,44 @@
     }
   });
 
-  // Live database subscription for tokens
-  const tokens = liveQuery(() => kongDB.tokens.toArray());
+  function handleShowAccountDetails() {
+    showAccountModal = true;
+    setTimeout(() => {
+      if (identityPanelRef) {
+        identityPanelRef.loadIdentityData();
+      }
+    }, 100);
+  }
+
+  function handleCloseAccountModal() {
+    showAccountModal = false;
+  }
 
   function handleClose() {
     sidebarStore.collapse();
     onClose();
   }
 
-  function toggleSidebar() {
-    sidebarStore.toggle();
-  }
-
   function setActiveTab(tab: string) {
     activeTab = tab;
   }
+
+  async function handleLogout() {
+    try {
+      await auth.disconnect();
+      window.location.reload();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  }
+
+  // Live database subscription for tokens
+  const tokens = liveQuery(() => kongDB.tokens.toArray());
 </script>
 
 {#if sidebarOpen}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="modal-backdrop"
     on:click={handleClose}
@@ -59,54 +82,57 @@
     role="dialog"
     aria-modal="true"
   >
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="modal-container"
       on:click|stopPropagation
       in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
-      out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
     >
       <div class="modal-content">
         <header class="modal-header">
+          {#if $auth.isConnected}
+            <div class="header-actions">
+              <button 
+                class="show-details-btn"
+                on:click={handleShowAccountDetails}
+              >
+                Show Account Details
+              </button>
+              <div class="divider"></div>
+              <button 
+                class="logout-btn"
+                on:click={handleLogout}
+              >
+                Log Out
+              </button>
+              <div class="divider"></div>
+              <button
+                class="close-btn"
+                on:click={handleClose}
+                title="Close sidebar"
+              >
+                ✕
+              </button>
+            </div>
+          {/if}
           <nav class="nav-tabs">
             <button 
               class="nav-tab {activeTab === 'tokens' ? 'active' : ''}" 
               on:click={() => setActiveTab('tokens')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
-              </svg>
               Tokens
+            </button>
+            <button 
+              class="nav-tab {activeTab === 'liquidity' ? 'active' : ''}" 
+              on:click={() => setActiveTab('liquidity')}
+            >
+              Liquidity
             </button>
             <button 
               class="nav-tab {activeTab === 'history' ? 'active' : ''}" 
               on:click={() => setActiveTab('history')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
               History
-            </button>
-            <button 
-              class="nav-tab {activeTab === 'details' ? 'active' : ''}" 
-              on:click={() => setActiveTab('details')}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              Account
-            </button>
-            <button
-              class="nav-tab close-tab"
-              on:click={handleClose}
-              aria-label="Close modal"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
             </button>
           </nav>
         </header>
@@ -117,18 +143,29 @@
           {:else}
             {#if activeTab === 'tokens'}
               <TokenList tokens={$tokens || []} />
+            {:else if activeTab === 'liquidity'}
+              <div class="coming-soon">Liquidity feature coming soon</div>
             {:else if activeTab === 'history'}
-              <div class="coming-soon">History feature coming soon</div>
-            {:else if activeTab === 'details'}
-              <div class="account-wrapper">
-                <IdentityPanel />
-              </div>
+              <div class="coming-soon">Transaction history coming soon</div>
             {/if}
           {/if}
         </div>
       </div>
     </div>
   </div>
+{/if}
+
+{#if showAccountModal}
+  <Modal 
+    isOpen={showAccountModal} 
+    onClose={handleCloseAccountModal}
+    title="Account Details"
+    width="min(600px, 95vw)"
+  >
+    <div class="account-details-container">
+      <IdentityPanel bind:this={identityPanelRef} />
+    </div>
+  </Modal>
 {/if}
 
 <style lang="postcss">
@@ -158,22 +195,19 @@
   }
 
   .modal-header {
-    border-bottom: 1px solid #2a2d3d;
+    border-bottom: 2px solid #2a2d3d;
     background: #15161c;
   }
 
   .nav-tabs {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.55rem;
-    padding: 1rem 0.75rem;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .nav-tab {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
     padding: 0.75rem;
     background: transparent;
     border: none;
@@ -181,7 +215,7 @@
     font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    border-radius: 0.5rem;
+    width: 100%;
   }
 
   .nav-tab:hover {
@@ -192,15 +226,6 @@
   .nav-tab.active {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
-  }
-
-  .close-tab {
-    color: #8890a4;
-  }
-
-  .close-tab:hover {
-    color: #ffffff;
-    background: rgba(255, 0, 0, 0.1);
   }
 
   .modal-body {
@@ -238,5 +263,47 @@
     height: 200px;
     color: #8890a4;
     font-size: 1.1rem;
+  }
+
+  .header-actions {
+    @apply flex items-center gap-px bg-white/5 ;
+  }
+
+  .divider {
+    @apply w-px h-7 bg-white/10;
+  }
+
+  .show-details-btn {
+    @apply flex-1 px-4 py-2
+           bg-transparent hover:bg-white/10
+           text-white/90 hover:text-white
+           transition-all
+           text-sm font-medium
+           ;
+  }
+
+  .logout-btn {
+    @apply px-4 py-2
+           bg-transparent hover:bg-red-500/10
+           text-red-400 hover:text-red-300
+           text-sm font-medium
+           transition-all
+           whitespace-nowrap
+           ;
+  }
+
+  .close-btn {
+    @apply px-4 py-2
+           bg-transparent hover:bg-white/10
+           text-white/70 hover:text-white
+           text-sm font-medium
+           transition-all
+           ;
+  }
+
+  .account-details-container {
+    padding: 1rem;
+    background: #1a1b23;
+    border-radius: 0.5rem;
   }
 </style>

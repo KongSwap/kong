@@ -5,7 +5,6 @@
     import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
     import { get } from "svelte/store";
     import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
-    import TokenSelectionModal from "$lib/components/liquidity/add_liquidity/TokenSelectionModal.svelte";
     import { debounce } from "lodash-es";
     import { parseTokenAmount, formatTokenAmount } from "$lib/utils/numberFormatUtils";
     import { goto, replaceState } from '$app/navigation';
@@ -402,15 +401,6 @@
       previewMode={previewMode}
     />
   </Modal>
-
-  {#if showTokenModal}
-    <TokenSelectionModal
-      show={showTokenModal}
-      onSelect={selectToken}
-      onClose={closeModal}
-      currentToken={activeTokenIndex === 0 ? token1?.canister_id : token0?.canister_id}
-    />
-  {/if}
 
   <style lang="postcss">
     :global(.modal-body) {

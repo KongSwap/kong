@@ -1,23 +1,17 @@
 <script lang="ts">
-  import QRCode from 'qrcode';
   import { auth } from "$lib/services/auth";
-  import { toastStore } from "$lib/stores/toastStore";
   import { onMount } from "svelte";
   import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../../declarations/kong_backend";
-  import { fade, scale } from 'svelte/transition';
-  import { quintOut } from 'svelte/easing';
-  import Modal from '$lib/components/common/Modal.svelte';
+  import QRCode from 'qrcode';
+  import { fade } from 'svelte/transition';
 
-  let loading = true;
+  let loading = false;
   let error: string | null = null;
-  let showPrincipalCopied = false;
-  let showAccountCopied = false;
-  let activeId: 'principal' | 'account' = 'principal';
-  let showQR = false;
   let copied = false;
   let copyLoading = false;
   let qrLoading = false;
-  
+  let activeTab: 'principal' | 'account' = 'principal';
+
   interface UserIdentity {
     principalId: string;
     accountId: string;
@@ -53,7 +47,7 @@
     }
   }
 
-  const handleCopy = async (text: string, type: 'principal' | 'account') => {
+  const handleCopy = async (text: string) => {
     try {
       copyLoading = true;
       await navigator.clipboard.writeText(text);
@@ -66,8 +60,10 @@
     }
   };
 
-  async function loadIdentityData() {
+  export async function loadIdentityData() {
     try {
+      loading = true;
+      error = null;
       const actor = await auth.getActor(kongBackendId, kongBackendIDL, { anon: false });
       const res = await actor.get_user();
       
@@ -92,284 +88,164 @@
     }
   }
 
-  onMount(loadIdentityData);
-
-  $: currentId = activeId === 'principal' ? identity.principalId : identity.accountId;
-  $: currentQR = activeId === 'principal' ? identity.principalQR : identity.accountQR;
+  onMount(() => {
+    loadIdentityData();
+  });
 </script>
 
-<div class="container">
+<div class="identity-panel" in:fade={{ duration: 200 }}>
   {#if loading}
-    <div class="status-message loading" transition:fade>
-      <div class="spinner"></div>
-      <span>Loading identity data...</span>
+    <div class="loading-container" in:fade>
+      <div class="loading-spinner"></div>
+      <p>Loading identity data...</p>
     </div>
   {:else if error}
-    <div class="status-message error" transition:fade>
-      <span>❌ {error}</span>
-      <button class="retry-btn" on:click={loadIdentityData}>Try Again</button>
+    <div class="error-container" in:fade>
+      <p class="error-message">{error}</p>
+      <button class="retry-button" on:click={loadIdentityData}>Retry</button>
     </div>
   {:else}
-    <div class="id-selector" transition:scale={{duration: 300, easing: quintOut}}>
-      <button 
-        class="selector-btn" 
-        class:active={activeId === 'principal'}
-        on:click={() => activeId = 'principal'}
-      >
-        <span class="btn-icon">👤</span>
-        <div class="btn-text">
-          <span class="btn-title">Principal ID</span>
-          <span class="btn-desc">For most transfers</span>
-        </div>
-      </button>
-      <button 
-        class="selector-btn"
-        class:active={activeId === 'account'}
-        on:click={() => activeId = 'account'}
-      >
-        <span class="btn-icon">🏦</span>
-        <div class="btn-text">
-          <span class="btn-title">Account ID</span>
-          <span class="btn-desc">For special cases</span>
-        </div>
-      </button>
-    </div>
-
-    <div class="content" transition:fade={{delay: 150}}>
-      <div class="id-card">
-        <div class="id-header">
-          <span>{activeId === 'principal' ? 'Principal ID' : 'Account ID'}</span>
-          <div class="id-actions">
-            <button 
-              class="action-btn"
-              on:click={() => !copyLoading && handleCopy(currentId, activeId)}
-              disabled={copyLoading}
-            >
-              {#if copyLoading}
-                <div class="spinner small"></div>
-              {:else if copied}
-                <span>✓</span>
-              {:else}
-                <span>📋</span>
-              {/if}
-              <span class="action-text">Copy</span>
-            </button>
-            <button 
-              class="action-btn"
-              on:click={() => showQR = true}
-              disabled={qrLoading}
-            >
-              <span class="qr-icon">📱</span>
-              <span class="action-text">{qrLoading ? 'Loading...' : 'Show QR'}</span>
-              <span class="mobile-text">{qrLoading ? '...' : 'QR'}</span>
-            </button>
-          </div>
-        </div>
-        
-        <div class="id-display">
-          <code class="selectable">{currentId}</code>
-        </div>
+    <div class="identity-container" in:fade={{ duration: 300 }}>
+      <div class="tabs">
+        <button
+          class="tab-button {activeTab === 'principal' ? 'active' : ''}"
+          on:click={() => activeTab = 'principal'}
+        >
+          Principal ID
+        </button>
+        <button
+          class="tab-button {activeTab === 'account' ? 'active' : ''}"
+          on:click={() => activeTab = 'account'}
+        >
+          Account ID
+        </button>
       </div>
-    </div>
 
-    {#if showQR}
-      <Modal 
-        isOpen={showQR}
-        onClose={() => showQR = false}
-        title={`Scan ${activeId === 'principal' ? 'Principal' : 'Account'} ID`}
-        width="min(500px, 95vw)"
-        height="auto"
-      >
-        <div class="qr-modal">
-          {#if qrLoading}
-            <div class="qr-loading">
-              <div class="spinner"></div>
-              <span>Generating QR Code...</span>
-            </div>
-          {:else}
+      <div class="tab-content" in:fade={{ duration: 200 }}>
+        {#if activeTab === 'principal'}
+          <div class="id-section">
             <div class="qr-container">
-              <img src={currentQR} alt={`${activeId} QR Code`} class="qr-image" />
-              <div class="qr-details">
-                <div class="qr-type">
-                  {activeId === 'principal' ? 'Principal ID' : 'Account ID'}
-                </div>
-                <code class="selectable">{currentId}</code>
-              </div>
+              {#if qrLoading}
+                <div class="loading-spinner"></div>
+              {:else}
+                <img src={identity.principalQR} alt="Principal ID QR Code" class="qr-image" />
+              {/if}
+            </div>
+            <div class="id-text">
+              <p class="id-label">Principal ID:</p>
+              <p class="id-value">{identity.principalId}</p>
               <button 
-                class="qr-copy-btn"
-                on:click={() => handleCopy(currentId, activeId)}
+                class="copy-button" 
+                on:click={() => handleCopy(identity.principalId)}
                 disabled={copyLoading}
               >
-                {#if copyLoading}
-                  <div class="spinner small"></div>
-                {:else if copied}
-                  <span>✓ Copied</span>
-                {:else}
-                  <span>Copy Address</span>
-                {/if}
+                {copied ? '✓ Copied' : 'Copy'}
               </button>
             </div>
-          {/if}
-        </div>
-      </Modal>
-    {/if}
+          </div>
+        {:else}
+          <div class="id-section">
+            <div class="qr-container">
+              {#if qrLoading}
+                <div class="loading-spinner"></div>
+              {:else}
+                <img src={identity.accountQR} alt="Account ID QR Code" class="qr-image" />
+              {/if}
+            </div>
+            <div class="id-text">
+              <p class="id-label">Account ID:</p>
+              <p class="id-value">{identity.accountId}</p>
+              <button 
+                class="copy-button" 
+                on:click={() => handleCopy(identity.accountId)}
+                disabled={copyLoading}
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        {/if}
+      </div>
+    </div>
   {/if}
 </div>
 
 <style lang="postcss">
-  .container {
-    @apply flex flex-col gap-2 py-2 px-2;
+  .identity-panel {
+    @apply p-4;
   }
 
-  .status-message {
-    @apply flex flex-col items-center gap-4 py-12 text-white/70;
+  .tabs {
+    @apply flex gap-2 mb-6 p-1 
+           bg-black/20 rounded-lg;
   }
 
-  .status-message.error {
-    @apply text-red-400;
+  .tab-button {
+    @apply flex-1 px-4 py-2 
+           text-white/70 text-sm font-medium
+           rounded-md transition-all;
   }
 
-  .retry-btn {
-    @apply px-6 py-3 bg-white/10 hover:bg-white/20 
-           rounded-xl transition-all text-white
-           hover:transform hover:-translate-y-0.5;
+  .tab-button.active {
+    @apply bg-white/10 text-white;
   }
 
-  .id-selector {
-    @apply grid grid-cols-2 gap-3 p-1;
+  .id-section {
+    @apply grid grid-cols-1 gap-6;
   }
 
-  .selector-btn {
-    @apply flex items-center gap-3 py-4 px-5 rounded-xl
-           transition-all duration-200 bg-white/5
-           hover:bg-white/10 text-left;
+  .id-text {
+    @apply flex flex-col gap-4 p-4 
+           bg-black/20 rounded-xl;
   }
 
-  .selector-btn.active {
-    @apply bg-indigo-500/20 ring-2 ring-indigo-500/30;
+  .id-label {
+    @apply text-white/90 font-medium;
   }
 
-  .btn-icon {
-    @apply text-2xl;
-  }
-
-  .btn-text {
-    @apply flex flex-col;
-  }
-
-  .btn-title {
-    @apply font-medium text-white;
-  }
-
-  .btn-desc {
-    @apply text-sm text-white/50;
-  }
-
-  .id-card {
-    @apply bg-white/5 rounded-2xl p-6;
-  }
-
-  .id-header {
-    @apply flex justify-between items-center mb-4
-           text-white/70 text-sm font-medium;
-  }
-
-  .id-display {
-    @apply bg-black/20 rounded-xl p-6;
-  }
-
-  .selectable {
-    @apply block text-base text-white/90 break-all text-center font-mono;
+  .id-value {
+    @apply block w-full bg-black/20 p-3 rounded-lg
+           font-mono text-sm text-white/90 break-all;
     user-select: text;
   }
 
-  .qr-modal {
-    @apply p-6;
+  .copy-button {
+    @apply w-full px-3 py-2 bg-white/10 rounded-lg 
+           hover:bg-white/20 transition-all 
+           disabled:opacity-50 text-sm text-white;
   }
 
-  .qr-container {
-    @apply flex flex-col items-center gap-6;
+  .loading-container {
+    @apply flex flex-col items-center gap-4 text-white/70;
   }
 
-  .qr-image {
-    @apply bg-white/5 p-6 rounded-2xl;
-    width: min(400px, 80vw);
-    height: auto;
-    aspect-ratio: 1;
+  .error-container {
+    @apply flex flex-col items-center gap-4 text-red-400;
   }
 
-  .qr-details {
-    @apply w-full bg-black/20 p-4 rounded-xl;
+  .retry-button {
+    @apply px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg;
   }
 
-  .qr-type {
-    @apply text-sm text-white/50 mb-2;
-  }
-
-  .qr-copy-btn {
-    @apply w-full px-4 py-3 bg-white/10 hover:bg-white/20 
-           rounded-lg transition-all text-white 
-           disabled:opacity-50 text-base font-medium;
-  }
-
-  .spinner {
+  .loading-spinner {
     @apply w-6 h-6 border-2 border-white/20 border-t-white
            rounded-full animate-spin;
   }
 
-  .spinner.small {
-    @apply w-4 h-4;
+  .qr-container {
+    @apply flex items-center justify-center p-4
+           bg-black/20 rounded-xl;
   }
 
-  .loading {
-    @apply opacity-50 cursor-wait;
+  .qr-image {
+    @apply bg-white/5 p-4 rounded-xl;
+    width: 100%;
+    max-width: 240px;
+    height: auto;
+    aspect-ratio: 1;
   }
 
-  .id-actions {
-    @apply flex items-center gap-2;
-  }
-
-  .action-btn {
-    @apply flex items-center gap-2 px-4 py-2
-           bg-white/10 rounded-lg hover:bg-white/20
-           transition-all text-white disabled:opacity-50;
-  }
-
-  .mobile-text {
-    @apply hidden;
-  }
-
-  @media (max-width: 640px) {
-    .container {
-      @apply gap-6 py-4;
-    }
-
-    .id-selector {
-      @apply grid-cols-1;
-    }
-
-    .selector-btn {
-      @apply py-3;
-    }
-
-    .id-card {
-      @apply p-4;
-    }
-
-    .id-display {
-      @apply p-4;
-    }
-
-    .action-text {
-      @apply hidden;
-    }
-
-    .mobile-text {
-      @apply block;
-    }
-
-    .action-btn {
-      @apply px-3;
-    }
+  .tab-content {
+    @apply mt-4;
   }
 </style>

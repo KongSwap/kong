@@ -1,4 +1,3 @@
-<!-- src/kong_svelte/src/lib/components/nav/sidebar/TokenList.svelte -->
 <script lang="ts">
   import { fade, slide } from 'svelte/transition';
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
@@ -7,7 +6,7 @@
   import { toggleFavoriteToken } from "$lib/services/tokens/favorites";
   import { onMount } from 'svelte';
 
-  export let tokens: any[] = [];
+  export let tokens: FE.Token[] = [];
   let searchQuery = '';
   let searchInput: HTMLInputElement;
   let hideZeroBalances = false;
@@ -18,11 +17,9 @@
   let debouncedSearchQuery = '';
 
   onMount(() => {
-    // Focus search input on mount
     searchInput?.focus();
   });
 
-  // Process and sort tokens data when it changes
   $: processedTokens = tokens
     .map((token) => {
       const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id) || {};
@@ -31,7 +28,9 @@
         ...formattedToken,
         logo: $tokenLogoStore[token.canister_id],
         value: Number(token.balance || 0),
-        searchableText: `${token.name} ${token.symbol} ${token.canister_id}`.toLowerCase()
+        usdValue: Number(token.balance || 0) * Number(token.formattedUsdValue || 0),
+        searchableText: `${token.name || ''} ${token.symbol || ''} ${token.canister_id || ''}`.toLowerCase(),
+        canister_id: token.canister_id?.toLowerCase() || ''
       };
     })
     .sort((a, b) => {
@@ -50,14 +49,62 @@
     }, 150);
   }
 
-  // Filter tokens based on search query and zero balance setting
+  // Add new type for search matches
+  type SearchMatch = {
+    type: 'name' | 'symbol' | 'canister' | null;
+    query: string;
+    matchedText?: string;
+  };
+
+  // Add to script section
+  let searchMatches: Record<string, SearchMatch> = {};
+
+  // Update the filter tokens logic
   $: filteredTokens = processedTokens.filter(token => {
-    const matchesSearch = !debouncedSearchQuery || token.searchableText.includes(debouncedSearchQuery);
-    
-    if (hideZeroBalances) {
-      return matchesSearch && token.value > 0;
+    // First check zero balances if enabled
+    if (hideZeroBalances && token.value <= 0) {
+      return false;
     }
-    return matchesSearch;
+    
+    if (!debouncedSearchQuery) {
+      searchMatches[token.canister_id] = { type: null, query: '' };
+      return true;
+    }
+    
+    const query = debouncedSearchQuery.trim().toLowerCase();
+    
+    // Check canister ID first
+    const canisterId = token.canister_id;
+    if (canisterId.toLowerCase().includes(query)) {
+      searchMatches[token.canister_id] = {
+        type: 'canister',
+        query,
+        matchedText: canisterId
+      };
+      return true;
+    }
+    
+    // Check name
+    if (token.name?.toLowerCase().includes(query)) {
+      searchMatches[token.canister_id] = {
+        type: 'name',
+        query,
+        matchedText: token.name
+      };
+      return true;
+    }
+    
+    // Check symbol
+    if (token.symbol?.toLowerCase().includes(query)) {
+      searchMatches[token.canister_id] = {
+        type: 'symbol',
+        query,
+        matchedText: token.symbol
+      };
+      return true;
+    }
+    
+    return false;
   });
 
   // Fetch logos for tokens that don't have them
@@ -82,29 +129,10 @@
     console.log('Add liquidity clicked');
   }
 
-  async function handlePaste() {
-    try {
-      isPasting = true;
-      const text = await navigator.clipboard.readText();
-      // Clean the pasted text - remove whitespace and common separators
-      const cleanedText = text.trim().replace(/[,\s\n\t]/g, '');
-      searchQuery = cleanedText;
-      searchInput.focus();
-    } catch (err) {
-      console.error('Failed to read clipboard:', err);
-    } finally {
-      isPasting = false;
-    }
-  }
-
   // Handle keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
-    // Paste shortcut
-    if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
-      handlePaste();
-    }
     // Clear search on Escape
-    else if (event.key === 'Escape' && searchQuery) {
+    if (event.key === 'Escape' && searchQuery) {
       event.preventDefault();
       searchQuery = '';
       searchInput.focus();
@@ -115,10 +143,50 @@
       searchInput.focus();
     }
   }
+
+  // Calculate total portfolio value using token balances and USD values
+  $: totalPortfolioValue = processedTokens.reduce((total, token) => {
+    const tokenValue = (token.value || 0) * (token.price || 0);
+    return total + tokenValue;
+  }, 0);
+
+  // Format USD value
+  function formatUSD(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value || 0);
+  }
+
+  // Update the helper function for match display
+  function getMatchDisplay(match: SearchMatch): string {
+    if (!match.matchedText) return '';
+    
+    const query = match.query.toLowerCase();
+    const text = match.matchedText;
+    const index = text.toLowerCase().indexOf(query);
+    
+    if (index === -1) return text;
+    
+    const before = text.slice(0, index);
+    const highlighted = text.slice(index, index + query.length);
+    const after = text.slice(index + query.length);
+    
+    return `${before}<span class="match-highlight">${highlighted}</span>${after}`;
+  }
 </script>
 
 <div class="token-list" on:keydown={handleKeydown}>
   <div class="tokens-header">
+    <div class="portfolio-value">
+      <div class="value-row">
+        <span class="value-label">Portfolio Value</span>
+        <span class="value-amount">{formatUSD(totalPortfolioValue)}</span>
+      </div>
+    </div>
+    
     <div class="controls-wrapper">
       <div class="search-section">
         <div class="search-input-wrapper">
@@ -126,29 +194,24 @@
             bind:this={searchInput}
             bind:value={searchQuery}
             type="text"
-            placeholder="Search tokens"
+            placeholder="Search by name, symbol, or canister ID"
             class="search-input"
             on:keydown={handleKeydown}
           />
-          <button 
-            class="action-button"
-            on:click|stopPropagation={searchQuery ? () => {
-              searchQuery = '';
-              searchInput.focus();
-            } : handlePaste}
-          >
-            {#if searchQuery}
+          {#if searchQuery}
+            <button 
+              class="action-button"
+              on:click|stopPropagation={() => {
+                searchQuery = '';
+                searchInput.focus();
+              }}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
-            {:else}
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-              </svg>
-            {/if}
-          </button>
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -193,6 +256,19 @@
             {token}
             on:toggleFavorite={() => toggleFavoriteToken(token.canister_id)}
           />
+          {#if searchQuery && searchMatches[token.canister_id]?.type === 'canister'}
+            <div class="match-indicator" transition:fade>
+              <span class="match-type">canister:</span>
+              <code class="match-label">{token.canister_id}</code>
+            </div>
+          {:else if searchQuery && searchMatches[token.canister_id]?.type}
+            <div class="match-indicator" transition:fade>
+              <span class="match-type">{searchMatches[token.canister_id].type}:</span>
+              <span class="match-label">
+                {@html getMatchDisplay(searchMatches[token.canister_id])}
+              </span>
+            </div>
+          {/if}
         </div>
       {/each}
       
@@ -223,23 +299,8 @@
     @apply flex flex-col h-full;
   }
 
-  .tokens-header {
-    @apply flex-none bg-gradient-to-b from-[#1a1b23]/30 to-transparent;
-  }
-
   .tokens-content {
     @apply flex-1 min-h-0;
-  }
-
-  .primary-button {
-    @apply flex items-center justify-between
-           mx-2 mt-3 mb-2 px-4 py-2.5
-           text-base font-medium
-           bg-[#2a2d3d]/40 text-white/90
-           rounded-lg transition-all duration-200
-           hover:bg-[#2a2d3d]/60 hover:text-white
-           border border-white/5
-           shadow-sm;
   }
 
   .controls-wrapper {
@@ -318,18 +379,12 @@
   }
 
   .tokens-container {
-    @apply h-full overflow-y-auto px-2 py-3;
-  }
-
-  .token-row-wrapper {
-    @apply mb-1;
+    @apply h-full overflow-y-auto;
   }
 
   .empty-state {
     @apply flex flex-col items-center justify-center gap-3
-           min-h-[160px] text-white/40 text-sm
-           bg-[#2a2d3d]/20 rounded-lg
-           border border-white/5;
+           min-h-[160px] text-white/40 text-sm;
   }
 
   .clear-search-button {
@@ -340,60 +395,34 @@
            border border-white/10;
   }
 
-  .icon-container {
-    @apply w-20 h-20 flex items-center justify-center
-           bg-gradient-to-b from-blue-500/20 to-purple-500/20
-           rounded-2xl backdrop-blur-sm
-           border border-white/10;
+  .portfolio-value {
+    @apply px-4 py-3 border-b border-[#2a2d3d];
   }
 
-  .icon-container svg {
-    @apply w-10 h-10 text-blue-400;
+  .value-row {
+    @apply flex items-center justify-between;
   }
 
-  .empty-liquidity-state h3 {
-    @apply text-2xl font-semibold text-white/90;
+  .value-label {
+    @apply text-sm text-white/70;
   }
 
-  .empty-liquidity-state p {
-    @apply text-base text-white/60;
+  .value-amount {
+    @apply text-base font-medium text-white;
   }
 
-  .action-buttons {
-    @apply flex flex-col gap-3 w-full max-w-sm mt-2;
+  .match-indicator {
+    @apply px-4 py-1 text-xs flex items-center gap-2;
   }
 
-  .primary-action {
-    @apply w-full py-3 px-4
-           bg-gradient-to-r from-blue-500 to-blue-600
-           text-white font-medium
-           rounded-xl transition-all duration-200
-           hover:from-blue-600 hover:to-blue-700
-           shadow-lg shadow-blue-500/20;
+  .match-type {
+    @apply text-white/50 capitalize;
   }
 
-  .secondary-action {
-    @apply w-full py-3 px-4
-           bg-[#2a2d3d]/40 text-white/90 font-medium
-           rounded-xl transition-all duration-200
-           hover:bg-[#2a2d3d]/60 hover:text-white
-           border border-white/10;
-  }
-
-  .help-text {
-    @apply flex items-start gap-3 mt-4
-           px-4 py-3 max-w-sm
-           bg-[#2a2d3d]/30 rounded-xl
-           border border-white/5;
-  }
-
-  .info-icon {
-    @apply flex items-center justify-center
-           w-6 h-6 mt-0.5
-           text-white/60;
-  }
-
-  .help-text p {
-    @apply text-sm leading-relaxed text-white/70;
+  .match-label {
+    @apply inline-block px-2 py-0.5 
+           bg-white/5 text-white/60
+           rounded-full text-xs
+           font-mono;
   }
 </style>

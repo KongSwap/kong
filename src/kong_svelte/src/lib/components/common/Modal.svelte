@@ -1,8 +1,6 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
-  import { fade, scale, fly } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
 
   export let isOpen = false;
@@ -31,7 +29,8 @@
 
   $: if (modalElement) {
     if (prevWidth !== width || prevHeight !== height) {
-      modalElement.style.transition = "width 0.3s ease, height 0.3s ease, max-height 0.3s ease";
+      modalElement.style.width = width;
+      modalElement.style.maxHeight = height;
       prevWidth = width;
       prevHeight = height;
     }
@@ -45,24 +44,16 @@
     <div
       class="modal-backdrop"
       on:click={handleBackdropClick}
-      transition:fade={{ duration: 200 }}
       class:blur={blurBackground}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
     >
       <div
         bind:this={modalElement}
         class="modal-container"
         class:mobile-fullscreen={mobileFullscreen}
         on:click|stopPropagation
-        transition:scale={{
-          duration: 250,
-          start: 0.95,
-          opacity: 0,
-          easing: cubicOut,
-        }}
-        style="width: {width}; max-height: {height};"
+        style={`width: ${width}; max-height: ${height};`}
       >
         <div class="modal-content">
           <header class="modal-header">
@@ -72,12 +63,6 @@
                 class="close-button"
                 on:click={onClose}
                 aria-label="Close modal"
-                transition:scale={{
-                  duration: 150,
-                  start: 0.8,
-                  opacity: 0,
-                  easing: cubicOut
-                }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -125,7 +110,6 @@
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     overflow: hidden;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .modal-content {
@@ -133,7 +117,6 @@
     display: flex;
     flex-direction: column;
     max-height: calc(85vh - 3rem);
-    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .modal-header {
@@ -143,7 +126,6 @@
     padding: 1.25rem;
     border-bottom: 1px solid #2a2d3d;
     background: #15161c;
-    transition: padding 0.3s ease;
   }
 
   .modal-title {
@@ -152,7 +134,6 @@
     color: #ffffff;
     margin: 0;
     line-height: 1.2;
-    transition: font-size 0.3s ease;
   }
 
   .close-button {
@@ -165,12 +146,10 @@
     border: none;
     border-radius: 6px;
     color: #ffffff;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .close-button:hover {
     background: #3a3e52;
-    transform: translateY(-1px);
   }
 
   .modal-body {
@@ -179,7 +158,6 @@
     padding: 0 1.25rem;
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
-    transition: padding 0.3s ease;
   }
 
   .modal-body::-webkit-scrollbar {
@@ -202,7 +180,6 @@
     }
 
     .modal-container {
-      border-radius: 0;
       width: 100% !important;
       height: 100vh !important;
       max-height: 100vh !important;
@@ -211,10 +188,8 @@
 
     .mobile-fullscreen {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
+      border-radius: 0;
     }
 
     .modal-content {
@@ -245,19 +220,6 @@
     .close-button {
       width: 28px;
       height: 28px;
-    }
-
-    .modal-container {
-      animation: slideUp 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
     }
   }
 

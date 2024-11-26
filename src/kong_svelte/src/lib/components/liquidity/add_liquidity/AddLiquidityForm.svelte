@@ -1,8 +1,6 @@
 <script lang="ts">
     import { Plus } from "lucide-svelte";
     import { fade } from "svelte/transition";
-    import TokenSelector from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
-    import TokenSelectorButton from "$lib/components/swap/swap_ui/TokenSelectorButton.svelte";
     import Button from "$lib/components/common/Button.svelte";
     import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
     import { get } from "svelte/store";
@@ -146,11 +144,6 @@
               />
             </div>
             <div class="flex gap-2 items-center">
-              <TokenSelectorButton
-                token={token1}
-                onClick={() => showToken1Selector = true}
-                disabled={loading}
-              />
             </div>
           </div>
         </div>
@@ -201,21 +194,9 @@
   </div>
 
   {#if showToken0Selector}
-    <TokenSelector
-      show={true}
-      onSelect={(token) => handleTokenSelect(0, token.canister_id)}
-      onClose={() => (showToken0Selector = false)}
-      currentToken={token1}
-    />
   {/if}
 
   {#if showToken1Selector}
-    <TokenSelector
-      show={true}
-      onSelect={(token) => handleTokenSelect(1, token.canister_id)}
-      onClose={() => (showToken1Selector = false)}
-      currentToken={token0}
-    />
   {/if}
 
   <style lang="postcss">

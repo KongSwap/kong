@@ -92,15 +92,13 @@
 
   $: {
     if ($swapState.isProcessing) {
-      buttonText = 'Swapping...';
+      buttonText = 'Processing...';
     } else if ($swapState.error) {
-      buttonText = $swapState.error;
+      buttonText = `${$swapState.error}`;
     } else if ($swapState.swapSlippage > userMaxSlippage) {
-      buttonText = 'Slippage Too High';
+      buttonText = 'Click to Adjust Slippage';
     } else if (!$auth?.account?.owner) {
-      buttonText = 'Connect Now';
-    } else if (!$swapState.payToken || !$swapState.receiveToken) {
-      buttonText = 'Select Tokens';
+      buttonText = 'Click to Connect Wallet';
     } else if (!$swapState.payAmount) {
       buttonText = 'Enter Amount';
     } else {
@@ -110,13 +108,13 @@
 
   function getButtonTooltip(owner: boolean | undefined, slippageTooHigh: boolean, error: string | null): string {
     if (!owner) {
-      return 'Connect your wallet to start swapping';
+      return 'Connect to trade';
     } else if (slippageTooHigh) {
-      return 'Click to adjust slippage settings';
+      return `Slippage: ${$swapState.swapSlippage}% > ${userMaxSlippage}%`;
     } else if (error) {
       return error;
     } else {
-      return 'Swap your tokens';
+      return 'Execute swap';
     }
   }
 
@@ -837,5 +835,27 @@
   .panel {
     position: relative;
     z-index: 1;
+  }
+
+  /* Add these new styles for enhanced button text */
+  .button-text {
+    @apply text-white font-semibold text-base;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    
+    /* Add subtle text shadow for better contrast */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Add subtle bounce animation for the emoji */
+  @keyframes subtle-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+
+  .button-text :first-child {
+    animation: subtle-bounce 2s infinite ease-in-out;
   }
 </style>

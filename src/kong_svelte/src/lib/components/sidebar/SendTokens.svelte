@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { fade } from 'svelte/transition';
+    import { fade, fly } from 'svelte/transition';
     import { IcrcService } from "$lib/services/icrc/IcrcService";
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
@@ -21,20 +21,70 @@
     let showHelp = false;
     let showConfirmation = false;
 
+    function isValidHex(str: string): boolean {
+        const hexRegex = /^[0-9a-fA-F]+$/;
+        return hexRegex.test(str);
+    }
+
     function detectAddressType(address: string): 'principal' | 'account' | null {
         if (!address) return null;
+
+        // Principal validation
         try {
             Principal.fromText(address);
             return 'principal';
         } catch {
-            return address.length === 64 ? 'account' : null;
+            // Account validation
+            // Remove any whitespace and check if it's exactly 64 characters
+            const cleanAddress = address.replace(/\s/g, '');
+            if (cleanAddress.length === 64 && isValidHex(cleanAddress)) {
+                return 'account';
+            }
+            return null;
         }
     }
 
     function validateAddress(address: string): boolean {
         if (!address) return false;
-        addressType = detectAddressType(address);
-        return addressType !== null;
+
+        // Remove any whitespace for validation
+        const cleanAddress = address.trim();
+        
+        // Basic format checks
+        if (cleanAddress.length === 0) {
+            errorMessage = 'Address cannot be empty';
+            return false;
+        }
+
+        addressType = detectAddressType(cleanAddress);
+
+        if (addressType === null) {
+            if (cleanAddress.length === 64 && !isValidHex(cleanAddress)) {
+                errorMessage = 'Account ID must be a valid hexadecimal string';
+            } else if (cleanAddress.length === 64) {
+                errorMessage = 'Invalid Account ID format';
+            } else {
+                errorMessage = 'Invalid address format - must be a Principal ID or Account ID';
+            }
+            return false;
+        }
+
+        // Additional Principal-specific validation
+        if (addressType === 'principal') {
+            try {
+                const principal = Principal.fromText(cleanAddress);
+                if (principal.isAnonymous()) {
+                    errorMessage = 'Cannot send to anonymous principal';
+                    return false;
+                }
+            } catch (err) {
+                errorMessage = 'Invalid Principal ID format';
+                return false;
+            }
+        }
+
+        errorMessage = '';
+        return true;
     }
 
     function validateAmount(value: string): boolean {
@@ -116,11 +166,13 @@
             validateAddress(recipientAddress);
         } else {
             addressType = null;
+            errorMessage = '';
         }
     }
 
     $: validationMessage = (() => {
         if (!recipientAddress) return { type: 'info', text: 'Enter a Principal ID or Account ID' };
+        if (errorMessage) return { type: 'error', text: errorMessage };
         if (addressType === 'principal') return { type: 'success', text: 'Valid Principal ID' };
         if (addressType === 'account') return { type: 'success', text: 'Valid Account ID' };
         return { type: 'error', text: 'Invalid address format' };
@@ -129,7 +181,7 @@
     async function handlePaste() {
         try {
             const text = await navigator.clipboard.readText();
-            recipientAddress = text;
+            recipientAddress = text.trim();
         } catch (err) {
             toastStore.error('Failed to paste from clipboard');
         }
