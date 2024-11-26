@@ -1,16 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { fade, fly } from "svelte/transition";
   import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
 
-  // Accept pools prop for live data
   export let pools: any[] = [];
-
   let loading = true;
   let error: string | null = null;
   let poolBalances: FE.UserPoolBalance[] = [];
 
-  // Process pools data when it changes
   let processedPools = pools.map(pool => ({
     ...pool,
     balance: $poolStore.userPoolBalances.find(b => b.name === pool.name)?.balance || "0"
@@ -31,7 +30,7 @@
   }
 
   function handleAddLiquidity() {
-    // TODO: Implement add liquidity flow
+    window.location.href = '/earn';
   }
 
   onMount(() => {
@@ -45,151 +44,187 @@
   }
 </script>
 
-<div class="liquidity-view">
-  <div class="liquidity-header">
-    <h3>Your Liquidity</h3>
-    <button class="add-liquidity-button" on:click={handleAddLiquidity}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
+<div class="pool-list">
+  <div class="header-section">
+    <h3>Liquidity Positions</h3>
+    <button class="add-button" on:click={handleAddLiquidity}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       Add Position
     </button>
   </div>
 
-  {#if loading && processedPools.length === 0}
-    <div class="loading">Loading pools...</div>
-  {:else if error}
-    <div class="error">{error}</div>
-  {:else if processedPools.length === 0}
-    <div class="empty-liquidity-state">
-      <div class="icon-container">
-        <svg class="icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5">
-          <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5l6.74-6.76z"></path>
-          <line x1="16" y1="8" x2="2" y2="22"></line>
-          <line x1="17.5" y1="15" x2="9" y2="15"></line>
-        </svg>
-      </div>
-      <h3>No Active Positions</h3>
-      <p>Add liquidity to start earning trading fees</p>
-      <div class="action-buttons">
-        <button class="primary-action" on:click={handleAddLiquidity}>
-          Add Your First Position
-        </button>
-        <a href="/pools" class="secondary-action">
-          Learn About Providing Liquidity
-        </a>
-      </div>
-      <div class="help-text">
-        <span class="info-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+  <div class="pools-content">
+    {#if loading && processedPools.length === 0}
+      <div class="empty-state">Loading positions...</div>
+    {:else if error}
+      <div class="empty-state error">{error}</div>
+    {:else if processedPools.length === 0}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-        </span>
-        <p>When you add liquidity, you'll receive pool tokens representing your position</p>
-      </div>
-    </div>
-  {:else}
-    {#each processedPools as pool (pool.id)}
-      <div class="pool-item">
-        <div class="flex justify-between items-center">
-          <span class="text-white font-medium">{pool.name}</span>
-          <span class="text-white/80">{pool.balance} LP</span>
         </div>
+        <p>No active positions</p>
+        <button class="primary-button" on:click={handleAddLiquidity}>
+          Add Position
+        </button>
       </div>
-    {/each}
-  {/if}
+    {:else}
+      <div class="pools-container">
+        {#each processedPools as pool (pool.id)}
+          <div class="pool-row" 
+               in:fly={{ y: 20, duration: 400, delay: 200 }}
+               out:fade={{ duration: 200 }}>
+            <div class="pool-content">
+              <div class="pool-left">
+                <TokenImages 
+                  tokens={[
+                    { symbol: pool.symbol_0 },
+                    { symbol: pool.symbol_1 }
+                  ]} 
+                  size={36}
+                />
+                <div class="pool-info">
+                  <span class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</span>
+                  <span class="pool-balance">{pool.balance} LP</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
 </div>
 
-<style lang="postcss">
-  .liquidity-header {
-    @apply flex items-center justify-between
-           px-4 py-3 border-b border-white/5
-           bg-[#1a1b23]/40;
+<style>
+  .pool-list {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #15161c;
+    border-radius: 12px;
+    overflow: hidden;
   }
 
-  .liquidity-header h3 {
-    @apply text-lg font-semibold text-white/90;
+  .header-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: #15161c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .add-liquidity-button {
-    @apply flex items-center gap-2 px-3 py-1.5
-           bg-blue-500 text-white text-sm font-medium
-           rounded-lg transition-all duration-200
-           hover:bg-blue-600;
+  .header-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
   }
 
-  .empty-liquidity-state {
-    @apply flex flex-col items-center justify-center gap-4
-           min-h-[400px] m-4 p-8 text-center
-           bg-[#2a2d3d]/20 rounded-2xl
-           border border-white/5;
+  .add-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    color: rgb(59, 130, 246);
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 200ms;
   }
 
-  .icon-container {
-    @apply w-20 h-20 flex items-center justify-center
-           bg-gradient-to-b from-blue-500/20 to-purple-500/20
-           rounded-2xl backdrop-blur-sm
-           border border-white/10;
+  .add-button:hover {
+    background: rgba(59, 130, 246, 0.15);
   }
 
-  .icon-container svg {
-    @apply w-10 h-10 text-blue-400;
+  .pools-content {
+    flex: 1;
+    overflow-y: auto;
   }
 
-  .empty-liquidity-state h3 {
-    @apply text-2xl font-semibold text-white/90;
+  .pool-row {
+    background: rgba(42, 45, 61, 0.3);
+    border: 1px solid rgba(58, 62, 82, 0.3);
+    transition: all 200ms;
+    margin: 8px;
+    border-radius: 12px;
   }
 
-  .empty-liquidity-state p {
-    @apply text-base text-white/60;
+  .pool-row:hover {
+    background: rgba(42, 45, 61, 0.8);
+    border-color: rgba(58, 62, 82, 0.8);
+    transform: translateY(-1px);
   }
 
-  .action-buttons {
-    @apply flex flex-col gap-3 w-full max-w-sm mt-2;
+  .pool-content {
+    padding: 16px;
   }
 
-  .primary-action {
-    @apply w-full py-3 px-4
-           bg-gradient-to-r from-blue-500 to-blue-600
-           text-white font-medium
-           rounded-xl transition-all duration-200
-           hover:from-blue-600 hover:to-blue-700
-           shadow-lg shadow-blue-500/20;
+  .pool-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
-  .secondary-action {
-    @apply w-full py-3 px-4
-           bg-[#2a2d3d]/40 text-white/90 font-medium
-           rounded-xl transition-all duration-200
-           hover:bg-[#2a2d3d]/60 hover:text-white
-           border border-white/10;
+  .pool-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
-  .help-text {
-    @apply flex items-start gap-3 mt-4
-           px-4 py-3 max-w-sm
-           bg-[#2a2d3d]/30 rounded-xl
-           border border-white/5;
+  .pool-pair {
+    font-size: 16px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
   }
 
-  .info-icon {
-    @apply flex items-center justify-center
-           w-6 h-6 mt-0.5
-           text-white/60;
+  .pool-balance {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
   }
 
-  .help-text p {
-    @apply text-sm leading-relaxed text-white/70;
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 48px 24px;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
   }
 
-  .loading, .error {
-    @apply text-center p-4 text-gray-200;
+  .empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 12px;
+    color: rgb(59, 130, 246);
   }
 
-  .pool-item {
-    @apply flex justify-between items-center p-2 bg-gray-800 rounded;
+  .primary-button {
+    padding: 8px 16px;
+    background: rgb(59, 130, 246);
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 200ms;
+  }
+
+  .primary-button:hover {
+    background: rgb(37, 99, 235);
+  }
+
+  .error {
+    color: rgb(239, 68, 68);
   }
 </style>
