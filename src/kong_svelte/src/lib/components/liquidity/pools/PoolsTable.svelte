@@ -282,11 +282,11 @@
       </div>
     {:else}
       <div class="cards-grid">
-        {#each sortedAndFilteredPools as pool}
+        {#each sortedAndFilteredPools as pool, i}
           <PoolRow
             {pool}
             {tokenMap}
-            isEven={false}
+            isEven={i % 2 === 0}
             onAddLiquidity={handleAddLiquidity}
           />
         {/each}
@@ -308,11 +308,11 @@
 
 <style lang="postcss">
   .table-container {
-    @apply w-full max-w-[1400px] mx-auto;
+    @apply w-full max-w-[1400px] mx-auto flex flex-col h-full;
   }
 
   .controls {
-    @apply mb-2 space-y-2;
+    @apply mb-2 space-y-2 flex-shrink-0;
   }
 
   .controls-top {
@@ -370,28 +370,45 @@
   }
 
   .table-wrapper {
-    @apply w-full overflow-x-auto rounded-lg min-w-[1000px];
+    @apply w-full overflow-x-auto rounded-lg min-w-[1000px]
+           flex-grow relative bg-[#1a1b23]/80;
+    height: calc(100% - 2rem); /* Account for controls margin */
   }
 
   table {
-    @apply w-full;
+    @apply w-full relative;
   }
 
   thead {
-    @apply bg-[#1a1b23] sticky top-0 z-10;
+    @apply bg-[#1a1b23] sticky top-0 z-10
+           backdrop-blur-md shadow-lg;
   }
 
   th {
-    @apply p-2 text-left text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d];
+    @apply p-4 text-left text-sm font-medium text-[#8890a4] 
+           border-b border-[#2a2d3d];
+  }
+
+  tbody tr {
+    @apply transition-colors duration-200 border-b border-[#2a2d3d]/50;
+  }
+
+  tbody tr:nth-child(even) {
+    @apply bg-[#1e1f2a]/40;
+  }
+
+  tbody tr:hover {
+    @apply bg-[#2a2d3d]/60;
   }
 
   .th-btn {
     @apply flex items-center gap-2 text-sm font-medium text-[#8890a4]
-           hover:text-white transition-colors duration-150;
+           hover:text-white transition-colors duration-150 w-full;
   }
 
   .cards-grid {
-    @apply space-y-4;
+    @apply space-y-2 overflow-y-auto pr-2;
+    height: calc(100% - 2rem); /* Account for controls margin */
   }
 
   .loading, .error {
@@ -401,6 +418,27 @@
   .spinner {
     @apply w-8 h-8 border-4 border-[#2a2d3d] border-t-white
            rounded-full animate-spin;
+  }
+
+  /* Scrollbar styling */
+  .table-wrapper, .cards-grid {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2d3d #1a1b23;
+  }
+
+  .table-wrapper::-webkit-scrollbar,
+  .cards-grid::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  .table-wrapper::-webkit-scrollbar-track,
+  .cards-grid::-webkit-scrollbar-track {
+    @apply bg-[#1a1b23];
+  }
+
+  .table-wrapper::-webkit-scrollbar-thumb,
+  .cards-grid::-webkit-scrollbar-thumb {
+    @apply bg-[#2a2d3d] rounded-full hover:bg-[#3d4154];
   }
 
   @media (max-width: 640px) {

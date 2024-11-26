@@ -592,13 +592,13 @@
   .mode-selector {
     position: relative;
     display: flex;
-    gap: 2px;
+    gap: 1px;
     margin-bottom: 12px;
     padding: 2px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
   .mode-selector-background {
@@ -607,18 +607,20 @@
     left: 2px;
     width: calc(50% - 1px);
     height: calc(100% - 4px);
-    background: linear-gradient(135deg, rgba(55, 114, 255, 0.15), rgba(55, 114, 255, 0.25));
+    background: linear-gradient(135deg, 
+      rgba(55, 114, 255, 0.15), 
+      rgba(55, 114, 255, 0.2)
+    );
     border-radius: 6px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   .mode-button {
     position: relative;
     z-index: 1;
     flex: 1;
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: none;
     border-radius: 6px;
     font-size: 0.875rem;
@@ -670,35 +672,69 @@
 
   .swap-button {
     @apply relative overflow-hidden;
-    @apply w-full py-3.5 px-4 rounded-lg;
-    @apply transition-all duration-300 ease-out;
+    @apply w-full py-3 px-4 rounded-lg;
+    @apply transition-all duration-200 ease-out;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
-    margin-top: 2px;
-    background: linear-gradient(135deg, #3772ff 0%, #4580ff 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 12px rgba(55, 114, 255, 0.25);
+    margin-top: 4px;
+    background: linear-gradient(135deg, 
+      rgba(55, 114, 255, 0.95) 0%, 
+      rgba(69, 128, 255, 0.95) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
+    transform: translateY(0);
   }
 
   .swap-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4580ff 0%, #5590ff 100%);
+    background: linear-gradient(135deg, 
+      rgba(85, 134, 255, 1) 0%, 
+      rgba(99, 148, 255, 1) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
-    box-shadow: 0 4px 18px rgba(55, 114, 255, 0.35);
+    box-shadow: 
+      0 4px 12px rgba(55, 114, 255, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .swap-button:active:not(:disabled) {
-    transform: translateY(0px);
-    box-shadow: 0 2px 8px rgba(55, 114, 255, 0.2);
+    transform: translateY(0);
+    background: linear-gradient(135deg, 
+      rgba(45, 104, 255, 1) 0%, 
+      rgba(59, 118, 255, 1) 100%
+    );
+    box-shadow: 0 2px 4px rgba(55, 114, 255, 0.2);
+    transition-duration: 0.1s;
+  }
+
+  .button-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0) 70%
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .swap-button:hover .button-glow {
+    opacity: 1;
   }
 
   .swap-button.error {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
-    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.25);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: none;
+    border: none;
   }
 
   .swap-button.error:hover:not(:disabled) {
     background: linear-gradient(135deg, rgba(239, 68, 68, 1) 0%, rgba(239, 68, 68, 0.9) 100%);
-    box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
+    box-shadow: none;
   }
 
   .swap-button.processing {
@@ -713,8 +749,15 @@
   }
 
   .button-text {
-    @apply text-white font-semibold text-base;
+    @apply text-white font-semibold;
+    font-size: 0.9375rem;
     letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+    text-align: center;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   }
 
   .loading-spinner {

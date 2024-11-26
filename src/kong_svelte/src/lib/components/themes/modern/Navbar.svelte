@@ -1,6 +1,6 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
-  import Panel from "../../common/Panel.svelte";
+  import Panel from "$lib/components/common/Panel.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { browser } from "$app/environment";
@@ -28,7 +28,7 @@
 <Panel 
   variant="blue" 
   type="main" 
-  className="modern-nav-mobile" 
+  className="modern-nav-mobile nav-panel"
   roundedBorders={false}
 >
   <div class="nav-container-wrapper">
@@ -72,7 +72,7 @@
 
       <div class="center-section">
         <a href="/" class="logo-link">
-          <img src="/titles/logo-white-wide.png" alt="Kong Logo" class="logo-wide" />
+          <img src="/titles/logo-white-wide.png" alt="Kong Logo" class="logo-wide shiny-logo" />
         </a>
       </div>
 
@@ -205,6 +205,7 @@
     width: 100%;
     display: flex;
     justify-content: center;
+    padding: 20px 0;
   }
 
   .nav-container {
@@ -373,12 +374,41 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    max-width: 400px;
+    max-width: 320px;
+    position: relative;
+    z-index: 2;
+    margin: 0 auto;
   }
 
   .logo-wide {
     width: 100%;
     height: 2rem;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .logo-wide:hover {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4)) 
+           drop-shadow(0 0 12px rgba(88, 101, 242, 0.3));
+    transform: scale(1.01);
+  }
+
+  @keyframes shine {
+    0% {
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+    }
+    50% {
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4))
+             drop-shadow(0 0 12px rgba(88, 101, 242, 0.3));
+    }
+    100% {
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+    }
+  }
+
+  .shiny-logo {
+    animation: shine 4s infinite;
   }
 
   /* Mobile Icons */
@@ -526,5 +556,9 @@
     padding: 1.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(0, 0, 0, 0.2);
+  }
+
+  :global(.nav-panel) {
+    padding: 0 !important;
   }
 </style>
