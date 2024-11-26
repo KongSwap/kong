@@ -8,7 +8,7 @@ use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
-pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
+fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     let mut symbols = symbol.split('_');
     let symbol_0 = symbols.next().ok_or_else(|| format!("Invalid symbol {}", symbol))?;
     let symbol_1 = symbols.next().ok_or_else(|| format!("Invalid symbol {}", symbol))?;
@@ -23,7 +23,7 @@ pub fn symbol_with_chain(symbol: &str) -> Result<String, String> {
     ))
 }
 
-pub fn address_with_chain(address: &str) -> Result<String, String> {
+fn address_with_chain(address: &str) -> Result<String, String> {
     let mut addresses = address.split('_');
     let address_0 = addresses.next().ok_or_else(|| format!("Invalid address {}", address))?;
     let address_1 = addresses.next().ok_or_else(|| format!("Invalid address {}", address))?;
@@ -176,10 +176,10 @@ pub fn update(pool: &StablePool) -> Option<StablePool> {
     POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()))
 }
 
-pub fn remove(pool: &StablePool) -> Result<String, String> {
+pub fn remove(pool_id: u32) -> Result<String, String> {
     // remove pool
-    POOL_MAP
-        .with(|m| m.borrow_mut().remove(&StablePoolId(pool.pool_id)))
+    let pool = POOL_MAP
+        .with(|m| m.borrow_mut().remove(&StablePoolId(pool_id)))
         .ok_or("Unable to remove pool".to_string())?;
 
     // remove LP token

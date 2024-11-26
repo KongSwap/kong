@@ -1,0 +1,36 @@
+@import './utils/vars.scss';
+
+@import './utils/generic.scss';
+
+
+
+@import './components/banana';
+@import './components/bubble';
+@import './components/button';
+@import './components/buttonbig';
+@import './components/buttonmed';
+@import './components/buttonsmall';
+@import './components/modal';
+@import './components/panel';
+@import './components/panel-s';
+
+
+@import './modules/header';
+@import './modules/pool-interface';
+@import './modules/poolremove-interface';
+@import './modules/receive';
+@import './modules/swap-interface';
+@import './modules/send-interface';
+@import './modules/side-drawer';
+@import './modules/socials';
+@import './modules/slippage';
+@import './modules/wallet';
+@import './modules/wallet-tokens';
+
+
+@import './pages/stats-page';
+@import './pages/swap-page';
+
+
+@import './components/comingsoon';
+@import './pages/404-page';

@@ -26,6 +26,18 @@ pub struct StableLPTokenLedger {
     pub ts: u64,          // timestamp of the last token update
 }
 
+impl StableLPTokenLedger {
+    pub fn new(user_id: u32, token_id: u32, amount: Nat, ts: u64) -> Self {
+        Self {
+            lp_token_id: 0,
+            user_id,
+            token_id,
+            amount,
+            ts,
+        }
+    }
+}
+
 impl Storable for StableLPTokenLedger {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()

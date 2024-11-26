@@ -1,4 +1,3 @@
-use candid::Nat;
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
@@ -48,19 +47,9 @@ fn update_pools(tokens: String) -> Result<String, String> {
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
-fn update_pool(symbol: String, balance_0: Nat, balance_1: Nat) -> Result<String, String> {
-    let mut pool = pool_map::get_by_token(&symbol)?;
-    pool.balance_0 = balance_0;
-    pool.balance_1 = balance_1;
-    _ = pool_map::update(&pool);
-
-    Ok(format!("Pool {} updated", symbol))
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_pool(symbol: String) -> Result<String, String> {
     let pool = pool_map::get_by_token(&symbol)?;
-    pool_map::remove(&pool)?;
+    pool_map::remove(pool.pool_id)?;
 
     Ok(format!("Pool {} removed", symbol))
 }

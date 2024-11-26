@@ -2,6 +2,7 @@ use ic_cdk::update;
 
 use super::send_args::SendArgs;
 use super::send_reply::SendReply;
+use super::send_reply_helpers::{create_send_reply_failed, create_send_reply_with_tx_id};
 
 use crate::chains::chains::LP_CHAIN;
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
@@ -56,7 +57,7 @@ fn send(args: SendArgs) -> Result<SendReply, String> {
             let send_tx = SendTx::new_success(user_id, request_id, to_user_id, lp_token_id, amount, ts);
             let tx_id = tx_map::insert(&StableTx::Send(send_tx.clone()));
             // update request with successful reply
-            SendReply::new_with_tx_id(tx_id, &send_tx)
+            create_send_reply_with_tx_id(tx_id, &send_tx)
         }
         Err(e) => {
             request_map::update_status(request_id, StatusCode::SendLPTokenToUserFailed, Some(&e));
@@ -64,7 +65,7 @@ fn send(args: SendArgs) -> Result<SendReply, String> {
             request_map::update_status(request_id, StatusCode::Failed, None);
 
             // update request with failed reply
-            SendReply::new_failed(request_id, lp_token_chain, &lp_token_symbol, amount, to_address, ts)
+            create_send_reply_failed(request_id, lp_token_chain, &lp_token_symbol, amount, to_address, ts)
         }
     };
 
