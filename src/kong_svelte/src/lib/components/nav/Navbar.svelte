@@ -83,7 +83,10 @@
     {/if}
   </div>
 
-  <Sidebar {sidebarOpen} onClose={() => (sidebarOpen = false)} />
+  <Sidebar
+    isOpen={sidebarOpen}
+    onClose={() => (sidebarOpen = false)}
+  />
 
   <Modal
     bind:isOpen={isModalOpen}

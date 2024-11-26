@@ -15,7 +15,12 @@
   let modalElement: HTMLElement;
   let prevWidth = width;
   let prevHeight = height;
-  
+  let touchStart = 0;
+  let touchStartX = 0;
+  let initialTranslate = 0;
+  let currentTranslate = 0;
+  let isDragging = false;
+
   function handleEscape(event: KeyboardEvent) {
     if (event.key === "Escape") onClose();
   }
@@ -24,6 +29,48 @@
     if (event.target === event.currentTarget) {
       event.stopPropagation();
       onClose();
+    }
+  }
+
+  function handleTouchStart(e: TouchEvent) {
+    touchStart = e.touches[0].clientX;
+    touchStartX = e.touches[0].clientX;
+    isDragging = true;
+    initialTranslate = currentTranslate;
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!isDragging) return;
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - touchStart;
+    
+    // Only allow right swipe
+    if (diff < 0) return;
+    
+    currentTranslate = initialTranslate + diff;
+    
+    // Apply the transform
+    if (modalElement) {
+      modalElement.style.transform = `translateX(${currentTranslate}px)`;
+      modalElement.style.opacity = `${1 - (currentTranslate / window.innerWidth)}`;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    const swipeThreshold = window.innerWidth * 0.3; // 30% of screen width
+    
+    if (currentTranslate >= swipeThreshold) {
+      onClose();
+    } else {
+      // Reset position
+      currentTranslate = 0;
+      if (modalElement) {
+        modalElement.style.transform = '';
+        modalElement.style.opacity = '1';
+      }
     }
   }
 
@@ -53,6 +100,10 @@
         class="modal-container"
         class:mobile-fullscreen={mobileFullscreen}
         on:click|stopPropagation
+        on:touchstart|passive={handleTouchStart}
+        on:touchmove|passive={handleTouchMove}
+        on:touchend={handleTouchEnd}
+        on:touchcancel={handleTouchEnd}
         style={`width: ${width}; max-height: ${height};`}
       >
         <div class="modal-content">
@@ -110,6 +161,9 @@
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     overflow: hidden;
+    touch-action: pan-x;
+    will-change: transform;
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
   }
 
   .modal-content {

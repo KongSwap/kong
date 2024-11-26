@@ -3,14 +3,14 @@
   import { onMount } from "svelte";
   import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../../declarations/kong_backend";
   import QRCode from 'qrcode';
-  import { fade } from 'svelte/transition';
 
-  let loading = false;
+  let loading = true;
   let error: string | null = null;
   let copied = false;
   let copyLoading = false;
   let qrLoading = false;
   let activeTab: 'principal' | 'account' = 'principal';
+  let mounted = false;
 
   interface UserIdentity {
     principalId: string;
@@ -27,6 +27,7 @@
   };
 
   async function generateQR(text: string): Promise<string> {
+    if (!text) return '';
     try {
       qrLoading = true;
       return await QRCode.toDataURL(text, {
@@ -41,7 +42,7 @@
       });
     } catch (err) {
       console.error('QR generation failed:', err);
-      throw new Error('Failed to generate QR code');
+      return '';
     } finally {
       qrLoading = false;
     }
@@ -61,6 +62,7 @@
   };
 
   export async function loadIdentityData() {
+    if (!mounted) return;
     try {
       loading = true;
       error = null;
@@ -69,14 +71,21 @@
       
       if (!res.Ok) throw new Error('Failed to fetch user data');
 
+      // First update the IDs immediately to prevent empty state
+      identity = {
+        ...identity,
+        principalId: res.Ok.principal_id,
+        accountId: res.Ok.account_id
+      };
+
+      // Then generate QR codes asynchronously
       const [principalQR, accountQR] = await Promise.all([
         generateQR(res.Ok.principal_id),
         generateQR(res.Ok.account_id)
       ]);
 
       identity = {
-        principalId: res.Ok.principal_id,
-        accountId: res.Ok.account_id,
+        ...identity,
         principalQR,
         accountQR
       };
@@ -89,23 +98,24 @@
   }
 
   onMount(() => {
+    mounted = true;
     loadIdentityData();
   });
 </script>
 
-<div class="identity-panel" in:fade={{ duration: 200 }}>
-  {#if loading}
-    <div class="loading-container" in:fade>
+<div class="identity-panel min-h-[400px]">
+  {#if loading && !identity.principalId}
+    <div class="loading-state">
       <div class="loading-spinner"></div>
       <p>Loading identity data...</p>
     </div>
   {:else if error}
-    <div class="error-container" in:fade>
+    <div class="error-state">
       <p class="error-message">{error}</p>
       <button class="retry-button" on:click={loadIdentityData}>Retry</button>
     </div>
   {:else}
-    <div class="identity-container" in:fade={{ duration: 300 }}>
+    <div class="identity-container">
       <div class="tabs">
         <button
           class="tab-button {activeTab === 'principal' ? 'active' : ''}"
@@ -121,23 +131,25 @@
         </button>
       </div>
 
-      <div class="tab-content" in:fade={{ duration: 200 }}>
+      <div class="tab-content">
         {#if activeTab === 'principal'}
           <div class="id-section">
             <div class="qr-container">
-              {#if qrLoading}
-                <div class="loading-spinner"></div>
+              {#if qrLoading || !identity.principalQR}
+                <div class="qr-placeholder">
+                  <div class="loading-spinner"></div>
+                </div>
               {:else}
                 <img src={identity.principalQR} alt="Principal ID QR Code" class="qr-image" />
               {/if}
             </div>
             <div class="id-text">
               <p class="id-label">Principal ID:</p>
-              <p class="id-value">{identity.principalId}</p>
+              <p class="id-value">{identity.principalId || '...'}</p>
               <button 
                 class="copy-button" 
                 on:click={() => handleCopy(identity.principalId)}
-                disabled={copyLoading}
+                disabled={copyLoading || !identity.principalId}
               >
                 {copied ? '✓ Copied' : 'Copy'}
               </button>
@@ -146,19 +158,21 @@
         {:else}
           <div class="id-section">
             <div class="qr-container">
-              {#if qrLoading}
-                <div class="loading-spinner"></div>
+              {#if qrLoading || !identity.accountQR}
+                <div class="qr-placeholder">
+                  <div class="loading-spinner"></div>
+                </div>
               {:else}
                 <img src={identity.accountQR} alt="Account ID QR Code" class="qr-image" />
               {/if}
             </div>
             <div class="id-text">
               <p class="id-label">Account ID:</p>
-              <p class="id-value">{identity.accountId}</p>
+              <p class="id-value">{identity.accountId || '...'}</p>
               <button 
                 class="copy-button" 
                 on:click={() => handleCopy(identity.accountId)}
-                disabled={copyLoading}
+                disabled={copyLoading || !identity.accountId}
               >
                 {copied ? '✓ Copied' : 'Copy'}
               </button>
@@ -172,7 +186,16 @@
 
 <style lang="postcss">
   .identity-panel {
-    @apply p-4;
+    @apply p-4 flex flex-col;
+  }
+
+  .loading-state,
+  .error-state {
+    @apply flex-1 flex flex-col items-center justify-center gap-4 text-white/70;
+  }
+
+  .error-state {
+    @apply text-red-400;
   }
 
   .tabs {
@@ -215,26 +238,15 @@
            disabled:opacity-50 text-sm text-white;
   }
 
-  .loading-container {
-    @apply flex flex-col items-center gap-4 text-white/70;
-  }
-
-  .error-container {
-    @apply flex flex-col items-center gap-4 text-red-400;
-  }
-
-  .retry-button {
-    @apply px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg;
-  }
-
-  .loading-spinner {
-    @apply w-6 h-6 border-2 border-white/20 border-t-white
-           rounded-full animate-spin;
-  }
-
   .qr-container {
     @apply flex items-center justify-center p-4
            bg-black/20 rounded-xl;
+  }
+
+  .qr-placeholder {
+    @apply w-full aspect-square max-w-[240px]
+           flex items-center justify-center
+           bg-white/5 rounded-xl;
   }
 
   .qr-image {
@@ -243,6 +255,11 @@
     max-width: 240px;
     height: auto;
     aspect-ratio: 1;
+  }
+
+  .loading-spinner {
+    @apply w-6 h-6 border-2 border-white/20 border-t-white
+           rounded-full animate-spin;
   }
 
   .tab-content {

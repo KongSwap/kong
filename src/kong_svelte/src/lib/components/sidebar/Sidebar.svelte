@@ -12,7 +12,7 @@
   import IdentityPanel from "$lib/components/sidebar/account/IdentityPanel.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
 
-  export let sidebarOpen: boolean;
+  export let isOpen: boolean;
   export let onClose: () => void;
 
   let isExpanded = false;
@@ -20,6 +20,10 @@
   let activeTab = 'tokens';
   let showAccountModal = false;
   let identityPanelRef: any;
+  let sidebarElement: HTMLElement;
+  let startX: number;
+  let currentX: number;
+  let isDragging = false;
 
   // Subscribe to sidebar store
   sidebarStore.subscribe(state => {
@@ -68,15 +72,57 @@
     }
   }
 
+  function handleTouchStart(e: TouchEvent) {
+    startX = e.touches[0].clientX;
+    currentX = startX;
+    isDragging = true;
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (!isDragging) return;
+    
+    currentX = e.touches[0].clientX;
+    const deltaX = currentX - startX;
+    
+    if (deltaX > 0) {
+      requestAnimationFrame(() => {
+        if (sidebarElement) {
+          sidebarElement.style.transform = `translateX(${deltaX}px)`;
+        }
+      });
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    const deltaX = currentX - startX;
+    const threshold = window.innerWidth * 0.3;
+    
+    if (deltaX >= threshold) {
+      onClose();
+    } else {
+      if (sidebarElement) {
+        sidebarElement.style.transform = 'translateX(0)';
+      }
+    }
+  }
+
   // Live database subscription for tokens
   const tokens = liveQuery(() => kongDB.tokens.toArray());
 </script>
 
-{#if sidebarOpen}
+{#if isOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
+    bind:this={sidebarElement}
     class="modal-backdrop"
+    on:touchstart|passive={handleTouchStart}
+    on:touchmove|passive={handleTouchMove}
+    on:touchend={handleTouchEnd}
+    on:touchcancel={handleTouchEnd}
     on:click={handleClose}
     transition:fade={{ duration: 200 }}
     role="dialog"
@@ -185,6 +231,8 @@
     border-left: 1px solid #2a2d3d;
     width: min(500px, 95vw);
     height: 100vh;
+    transform: translateX(0);
+    transition: transform 0.2s ease-out;
   }
 
   .modal-content {
