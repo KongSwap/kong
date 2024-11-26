@@ -1,292 +1,217 @@
 <script lang="ts">
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
+  import Panel from "./Panel.svelte";
+  import { fade, scale } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
 
   export let isOpen = false;
   export let title: string;
   export let onClose: () => void;
-  export let width = "min(800px, 95vw)";
-  export let height = "min(85vh, 95vh)";
-  export let showCloseButton = true;
-  export let blurBackground = false;
-  export let mobileFullscreen = true;
+  export let variant: "green" | "yellow" = "green";
+  export let width = "600px";
+  export let height = "80vh";
 
-  let modalElement: HTMLElement;
-  let prevWidth = width;
-  let prevHeight = height;
-  let touchStart = 0;
-  let touchStartX = 0;
-  let initialTranslate = 0;
-  let currentTranslate = 0;
-  let isDragging = false;
+  let isMobile = false;
+  let modalWidth = width;
+  let modalHeight = height;
 
-  function handleEscape(event: KeyboardEvent) {
-    if (event.key === "Escape") onClose();
-  }
+  onMount(() => {
+    if (browser) {
+      const updateDimensions = () => {
+        isMobile = window.innerWidth <= 768;
+        modalWidth = isMobile ? "100%" : width;
+        modalHeight = isMobile ? "90vh" : height;
+      };
+      updateDimensions();
+      window.addEventListener("resize", updateDimensions);
+      return () => window.removeEventListener("resize", updateDimensions);
+    }
+  });
 
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
-      event.stopPropagation();
       onClose();
     }
   }
 
-  function handleTouchStart(e: TouchEvent) {
-    touchStart = e.touches[0].clientX;
-    touchStartX = e.touches[0].clientX;
-    isDragging = true;
-    initialTranslate = currentTranslate;
-  }
-
-  function handleTouchMove(e: TouchEvent) {
-    if (!isDragging) return;
-    const currentX = e.touches[0].clientX;
-    const diff = currentX - touchStart;
-    
-    // Only allow right swipe
-    if (diff < 0) return;
-    
-    currentTranslate = initialTranslate + diff;
-    
-    // Apply the transform
-    if (modalElement) {
-      modalElement.style.transform = `translateX(${currentTranslate}px)`;
-      modalElement.style.opacity = `${1 - (currentTranslate / window.innerWidth)}`;
-    }
-  }
-
-  function handleTouchEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    
-    const swipeThreshold = window.innerWidth * 0.3; // 30% of screen width
-    
-    if (currentTranslate >= swipeThreshold) {
+  function handleEscape(event: KeyboardEvent) {
+    if (event.key === "Escape") {
       onClose();
-    } else {
-      // Reset position
-      currentTranslate = 0;
-      if (modalElement) {
-        modalElement.style.transform = '';
-        modalElement.style.opacity = '1';
-      }
-    }
-  }
-
-  $: if (modalElement) {
-    if (prevWidth !== width || prevHeight !== height) {
-      modalElement.style.width = width;
-      modalElement.style.maxHeight = height;
-      prevWidth = width;
-      prevHeight = height;
     }
   }
 </script>
 
 <svelte:window on:keydown={handleEscape} />
-
 <Portal target="#portal-target">
   {#if isOpen}
     <div
-      class="modal-backdrop"
+      class="modal-overlay"
       on:click={handleBackdropClick}
-      class:blur={blurBackground}
+      transition:fade={{ duration: 200 }}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="modal-title"
     >
       <div
-        bind:this={modalElement}
         class="modal-container"
-        class:mobile-fullscreen={mobileFullscreen}
         on:click|stopPropagation
-        on:touchstart|passive={handleTouchStart}
-        on:touchmove|passive={handleTouchMove}
-        on:touchend={handleTouchEnd}
-        on:touchcancel={handleTouchEnd}
-        style={`width: ${width}; max-height: ${height};`}
+        transition:scale={{
+          duration: 200,
+          start: 0.95,
+          opacity: 0,
+          easing: cubicOut,
+        }}
+        style="width: {modalWidth}; height: {modalHeight};"
       >
-        <div class="modal-content">
-          <header class="modal-header">
-            <h2 id="modal-title" class="modal-title">{title}</h2>
-            {#if showCloseButton}
+        <Panel
+          {variant}
+          width={modalWidth}
+          height={modalHeight}
+          className="modal-panel"
+        >
+          <div class="modal-content">
+            <header class="modal-header">
+              <h2 id="modal-title" class="modal-title">{title}</h2>
               <button
-                class="close-button"
+                class="action-button close-button !border-0 !shadow-none group relative"
                 on:click={onClose}
                 aria-label="Close modal"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
+                  width="14"
+                  height="14"
                   viewBox="0 0 24 24"
-                  fill="none"
+                  fill="#ff4444"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
+                  aria-hidden="true"
                 >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
-            {/if}
-          </header>
+            </header>
 
-          <div class="modal-body">
-            <slot />
+            <div class="modal-body">
+              <slot />
+            </div>
           </div>
-        </div>
+        </Panel>
       </div>
     </div>
   {/if}
 </Portal>
 
-<style lang="postcss">
-  .modal-backdrop {
+<style>
+  .modal-overlay {
     position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
     z-index: 9999;
     display: grid;
     place-items: center;
-    padding: 1.5rem;
-    overflow-y: auto;
+    overflow: auto;
+    will-change: opacity;
+    padding: 1rem;
   }
 
   .modal-container {
     position: relative;
-    background: #1a1b23;
-    border: 1px solid #2a2d3d;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-    touch-action: pan-x;
     will-change: transform;
-    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .modal-content {
-    position: relative;
+    height: 100%;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    max-height: calc(85vh - 3rem);
   }
 
   .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem;
-    border-bottom: 1px solid #2a2d3d;
-    background: #15161c;
+    padding-bottom: 1.5rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
   }
 
   .modal-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #ffffff;
+    font-family: "Alumni Sans", sans-serif;
+    font-size: 2rem;
+    font-weight: 500;
+    color: white;
     margin: 0;
-    line-height: 1.2;
-  }
-
-  .close-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: #2a2d3d;
-    border: none;
-    border-radius: 6px;
-    color: #ffffff;
-  }
-
-  .close-button:hover {
-    background: #3a3e52;
+    letter-spacing: 0.02em;
   }
 
   .modal-body {
     flex: 1;
     overflow-y: auto;
-    padding: 0 1.25rem;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: #2a2d3d transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    margin: 0 -1.5rem;
+    padding: 0 1.5rem;
   }
 
-  .modal-body::-webkit-scrollbar {
-    width: 6px;
+  .action-button {
+    border: 1px solid var(--sidebar-border);
+    padding: 6px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 
-  .modal-body::-webkit-scrollbar-track {
-    background: #15161c;
-    border-radius: 3px;
+  .close-button {
+    background: rgba(186, 49, 49, 0.4);
+    color: #ffffff;
   }
 
-  .modal-body::-webkit-scrollbar-thumb {
-    background-color: #2a2d3d;
-    border-radius: 3px;
+  .close-button:hover {
+    background: rgba(255, 68, 68, 0.5);
+    transform: translateY(-1px);
   }
 
   @media (max-width: 768px) {
-    .modal-backdrop {
-      padding: 0;
-    }
-
-    .modal-container {
-      width: 100% !important;
-      height: 100vh !important;
-      max-height: 100vh !important;
-      border: none;
-    }
-
-    .mobile-fullscreen {
-      position: fixed;
-      inset: 0;
-      border-radius: 0;
+    .modal-overlay {
+      padding: 0.5rem;
     }
 
     .modal-content {
-      height: 100vh;
-      max-height: 100vh;
+      padding: 1rem;
     }
 
     .modal-header {
-      padding: 1rem;
-      padding-top: max(1rem, env(safe-area-inset-top));
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .modal-body {
-      padding: 1rem;
-      padding-bottom: max(1rem, env(safe-area-inset-bottom));
-      height: calc(100vh - var(--header-height, 60px));
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      padding-bottom: 1rem;
     }
 
     .modal-title {
-      font-size: 1.1rem;
+      font-size: 1.75rem;
     }
 
-    .close-button {
-      width: 28px;
-      height: 28px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .modal-backdrop {
-      padding: 0;
-    }
-  }
-
-  @supports (padding-top: env(safe-area-inset-top)) {
-    .modal-container {
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
+    .modal-body {
+      margin: 0 -1rem;
+      padding: 0 1rem;
     }
   }
 </style>
