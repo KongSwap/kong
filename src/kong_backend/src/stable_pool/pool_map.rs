@@ -176,10 +176,10 @@ pub fn update(pool: &StablePool) -> Option<StablePool> {
     POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()))
 }
 
-pub fn remove(pool: &StablePool) -> Result<String, String> {
+pub fn remove(pool_id: u32) -> Result<String, String> {
     // remove pool
-    POOL_MAP
-        .with(|m| m.borrow_mut().remove(&StablePoolId(pool.pool_id)))
+    let pool = POOL_MAP
+        .with(|m| m.borrow_mut().remove(&StablePoolId(pool_id)))
         .ok_or("Unable to remove pool".to_string())?;
 
     // remove LP token
