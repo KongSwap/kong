@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { t } from "$lib/services/translations";
   import { writable, derived } from "svelte/store";
   import { poolsList, poolsLoading, poolsError } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
@@ -7,13 +6,10 @@
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount } from 'svelte';
   import { goto } from "$app/navigation";
-  import TableHeader from "$lib/components/common/TableHeader.svelte";
-  import TextInput from "$lib/components/common/TextInput.svelte";
   import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-svelte';
 
   // Navigation state
   const activeSection = writable("pools");
-  const activeTab = writable("all_pools");
   
   // Sort state
   const sortColumn = writable("rolling_24h_volume");
@@ -108,6 +104,9 @@
     if (column === "rolling_24h_apy") {
       return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
     }
+    if (column === "price") {
+      return direction * (Number(a.price) - Number(b.price));
+    }
     return 0;
   });
 </script>
@@ -161,37 +160,38 @@
     {#if $activeSection === "pools"}
       <Panel className="flex-1 mb-4">
         <div class="h-full overflow-hidden flex flex-col">
-          <div class="flex items-center justify-between mb-4 px-4 sticky top-0 bg-[#1a1b23] z-10">
+          <div class="flex items-center justify-between mb-4 sticky top-0 bg-[#1a1b23] z-10">
             <input
               type="text"
               placeholder="Search by token name or address..."
               bind:value={searchTerm}
-              class="w-full px-4 py-2 bg-[#2a2d3d] rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]/50"
+              class="w-full px-4 py-2 bg-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]/50"
             />
           </div>
 
           <div class="overflow-auto flex-1">
-            <table class="w-full">
+            <!-- Desktop Table View -->
+            <table class="w-full hidden lg:table">
               <thead>
                 <tr>
-                  <th>Pool</th>
-                  <th class="text-right cursor-pointer" on:click={() => toggleSort("price")}>
+                  <th class="w-1/4">Pool</th>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("price")}>
                     Price
                     <svelte:component this={getSortIcon("price")} class="inline w-4 h-4 ml-1" />
                   </th>
-                  <th class="text-right cursor-pointer" on:click={() => toggleSort("tvl")}>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("tvl")}>
                     TVL
                     <svelte:component this={getSortIcon("tvl")} class="inline w-4 h-4 ml-1" />
                   </th>
-                  <th class="text-right cursor-pointer" on:click={() => toggleSort("rolling_24h_volume")}>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("rolling_24h_volume")}>
                     Volume 24H
                     <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-4 h-4 ml-1" />
                   </th>
-                  <th class="text-right cursor-pointer" on:click={() => toggleSort("rolling_24h_apy")}>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("rolling_24h_apy")}>
                     APY
                     <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-4 h-4 ml-1" />
                   </th>
-                  <th class="text-right">Actions</th>
+                  <th class="text-right w-1/12">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,6 +205,91 @@
                 {/each}
               </tbody>
             </table>
+
+            <!-- Mobile/Tablet Card View -->
+            <div class="lg:hidden space-y-4">
+              <!-- Sort Controls for Mobile -->
+              <div class="flex flex-col gap-3 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-[#8890a4]">Sort by</span>
+                  <button 
+                    on:click={() => sortDirection.update(d => d === "asc" ? "desc" : "asc")}
+                    class="flex items-center gap-2 text-[#60A5FA] text-sm font-medium"
+                  >
+                    <span>{$sortDirection === "asc" ? "Ascending" : "Descending"}</span>
+                    <svelte:component this={$sortDirection === "asc" ? ArrowUp : ArrowDown} class="w-4 h-4" />
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {#each [
+                    { value: "rolling_24h_volume", label: "Volume 24H" },
+                    { value: "tvl", label: "TVL" },
+                    { value: "rolling_24h_apy", label: "APY" },
+                    { value: "price", label: "Price" }
+                  ] as option}
+                    <button
+                      class="px-3 py-2 rounded-lg text-sm text-center transition-all duration-200
+                             {$sortColumn === option.value 
+                               ? 'bg-[#60A5FA] text-white font-medium' 
+                               : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
+                      on:click={() => sortColumn.set(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+
+              {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                <div class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                      <div class="relative flex items-center">
+                        <img 
+                          src={$tokenMap.get(pool.address_0)?.logo || ''} 
+                          alt={pool.symbol_0}
+                          class="w-8 h-8 rounded-full ring-2 ring-[#1a1b23]"
+                        />
+                        <img 
+                          src={$tokenMap.get(pool.address_1)?.logo || ''} 
+                          alt={pool.symbol_1}
+                          class="w-8 h-8 rounded-full -ml-3 ring-2 ring-[#1a1b23]"
+                        />
+                      </div>
+                      <div>
+                        <div class="font-medium text-white">{pool.symbol_0}/{pool.symbol_1}</div>
+                        <div class="text-xs text-[#8890a4]">Pool Tokens</div>
+                      </div>
+                    </div>
+                    <button
+                      on:click={() => handleAddLiquidity(pool.address_0, pool.address_1)}
+                      class="px-4 py-2 text-sm bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    >
+                      Add Liquidity
+                    </button>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">Price</div>
+                      <div class="font-medium text-white">${Number(pool.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</div>
+                    </div>
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">TVL</div>
+                      <div class="font-medium text-white">${Number(pool.tvl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">Volume 24H</div>
+                      <div class="font-medium text-white">${Number(pool.rolling_24h_volume).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">APY</div>
+                      <div class="font-medium text-[#60A5FA]">{Number(pool.rolling_24h_apy).toFixed(2)}%</div>
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
           </div>
         </div>
       </Panel>
@@ -260,14 +345,6 @@
            rounded-md text-xs font-medium;
   }
 
-  .earn-card.coming-soon.mobile {
-    @apply py-3 px-4;
-  }
-
-  .earn-card.coming-soon.mobile .card-content {
-    @apply gap-0;
-  }
-
   .soon-tag-inline {
     @apply text-xs text-[#60A5FA] font-medium ml-2;
   }
@@ -277,23 +354,35 @@
   }
 
   th {
-    @apply px-4 py-2 text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d];
+    @apply sticky top-0 px-4 py-3 text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d] bg-[#1a1b23] z-10;
   }
 
-  @media (max-width: 640px) {
-    section {
-      @apply px-2 pb-2;
-    }
+  /* Scrollbar Styling */
+  .overflow-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2d3d transparent;
+  }
+
+  .overflow-auto::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  .overflow-auto::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .overflow-auto::-webkit-scrollbar-thumb {
+    @apply bg-[#2a2d3d] rounded-full hover:bg-[#3a3d4d] transition-colors duration-200;
   }
 
   /* For mobile, use flex instead of grid */
   @media (max-width: 768px) {
     .earn-cards {
-      @apply flex flex-row gap-2 overflow-x-auto;
+      @apply flex flex-row gap-2 overflow-x-auto pb-2;
     }
 
     .earn-card {
-      @apply flex-1 min-w-0 py-2 px-3;
+      @apply flex-1 min-w-[140px] py-2 px-3;
     }
 
     .earn-card .card-content h3 {
