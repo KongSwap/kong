@@ -437,8 +437,8 @@
   }
 
   .header-button:hover {
-    background-color: rgba(16, 185, 129, 0.3);
-    color: rgb(52, 211, 153);
+    background-color: rgba(59, 130, 246, 0.15);
+    color: rgb(96, 165, 250);
   }
 
   th button {
@@ -446,7 +446,7 @@
   }
 
   th button:hover {
-    color: rgb(52, 211, 153);
+    color: rgb(96, 165, 250);
   }
 
   tr:nth-child(even) {
