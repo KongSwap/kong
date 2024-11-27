@@ -476,9 +476,8 @@ service : {
     // send LP tokens to another user
     send : (SendArgs) -> (SendResult);
 
-    add_token : (AddTokenArgs) -> (AddTokenResult);
+    // admin functions
     check_pools : () -> (CheckPoolsResult);
-    get_requests : (opt nat64, opt nat32) -> (RequestsResult) query;
-    get_txs : (opt nat64, opt nat32) -> (TxsResult) query;
-    get_transfers : (opt nat64) -> (TransfersResult) query;
+    get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
+    get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 }

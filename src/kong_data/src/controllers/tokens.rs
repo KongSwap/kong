@@ -1,9 +1,10 @@
-use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TOKEN_MAP;
+use crate::stable_token::stable_token::{StableToken, StableTokenId};
+use crate::stable_token::token::Token;
 
 const MAX_TOKENS: usize = 1_000;
 
@@ -42,4 +43,19 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
     });
 
     Ok("Tokens updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kong_backend")]
+fn update_token(stable_token_json: String) -> Result<String, String> {
+    let token: StableToken = match serde_json::from_str(&stable_token_json) {
+        Ok(token) => token,
+        Err(e) => return Err(format!("Invalid token: {}", e)),
+    };
+
+    TOKEN_MAP.with(|token_map| {
+        let mut map = token_map.borrow_mut();
+        map.insert(StableTokenId(token.token_id()), token);
+    });
+
+    Ok("Token updated".to_string())
 }

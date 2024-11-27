@@ -79,10 +79,10 @@ impl KongUpdate for KongData {
     }
 
     #[allow(dead_code)]
-    async fn update_lp_token_ledger(&self, lp_token_ledgers: &str) -> Result<String> {
+    async fn update_lp_tokens(&self, lp_token_ledgers: &str) -> Result<String> {
         let result = self
             .agent
-            .update(&self.canister_id, "update_lp_token_ledger")
+            .update(&self.canister_id, "update_lp_tokens")
             .with_arg(Encode!(&lp_token_ledgers)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;

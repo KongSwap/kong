@@ -13,7 +13,7 @@ use crate::ic::{
     address::Address, get_time::get_time, id::caller_id, logging::error_log, transfer::icrc1_transfer, verify::verify_transfer,
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_lp_token_ledger::{lp_token_ledger, stable_lp_token_ledger::StableLPTokenLedger};
+use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::token_map;
@@ -25,7 +25,7 @@ use crate::stable_user::user_map;
 pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     // user has transferred one of the tokens, we need to log the request immediately and verify the transfer
     // make sure user is registered, if not create a new user with referred_by if specified
-    let user_id = user_map::insert(None)?;
+    let user_id = user_map::insert(None).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
@@ -63,7 +63,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
 }
 
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {
-    let user_id = user_map::insert(None)?;
+    let user_id = user_map::insert(None).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
@@ -207,7 +207,7 @@ pub fn calculate_amounts(token_0: &str, amount_0: &Nat, token_1: &str, amount_1:
     // LP token
     let lp_token = pool.lp_token();
     let lp_token_id = lp_token.token_id();
-    let lp_total_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
 
     if nat_is_zero(&reserve_0) && nat_is_zero(&reserve_1) {
         // new pool as there are no balances - take user amounts as initial ratio
@@ -539,20 +539,20 @@ fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token
     request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmount, None);
 
     // refresh with the latest state if the entry exists
-    match lp_token_ledger::get_by_token_id(lp_token_id) {
+    match lp_token_map::get_by_token_id(lp_token_id) {
         Some(lp_token) => {
             // update adding the new deposit amount
-            let new_user_lp_token = StableLPTokenLedger {
+            let new_user_lp_token = StableLPToken {
                 amount: nat_add(&lp_token.amount, add_lp_token_amount),
                 ts,
                 ..lp_token.clone()
             };
-            lp_token_ledger::update(&new_user_lp_token);
+            lp_token_map::update(&new_user_lp_token);
         }
         None => {
             // new entry
-            let new_user_lp_token = StableLPTokenLedger::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
-            lp_token_ledger::insert(&new_user_lp_token);
+            let new_user_lp_token = StableLPToken::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
+            lp_token_map::insert(&new_user_lp_token);
         }
     }
 

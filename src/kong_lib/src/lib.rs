@@ -12,7 +12,7 @@ pub mod requests;
 pub mod send;
 pub mod stable_claim;
 pub mod stable_kong_settings;
-pub mod stable_lp_token_ledger;
+pub mod stable_lp_token;
 pub mod stable_message;
 pub mod stable_pool;
 pub mod stable_request;

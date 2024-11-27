@@ -21,7 +21,7 @@ use crate::stable_user::user_map;
 pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     // as user has transferred the pay token, we need to log the request immediately and verify the transfer
     // make sure user is registered, if not create a new user with referred_by if specified
-    let user_id = user_map::insert(args.referred_by.as_deref())?;
+    let user_id = user_map::insert(args.referred_by.as_deref()).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
@@ -46,7 +46,7 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
 }
 
 pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
-    let user_id = user_map::insert(args.referred_by.as_deref())?;
+    let user_id = user_map::insert(args.referred_by.as_deref()).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 

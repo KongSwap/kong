@@ -96,30 +96,6 @@ export const idlFactory = ({ IDL }) => {
     'on_kong' : IDL.Bool,
   });
   const AddPoolResult = IDL.Variant({ 'Ok' : AddPoolReply, 'Err' : IDL.Text });
-  const AddTokenArgs = IDL.Record({
-    'token' : IDL.Text,
-    'on_kong' : IDL.Opt(IDL.Bool),
-  });
-  const ICTokenReply = IDL.Record({
-    'fee' : IDL.Nat,
-    'decimals' : IDL.Nat8,
-    'token' : IDL.Text,
-    'token_id' : IDL.Nat32,
-    'chain' : IDL.Text,
-    'name' : IDL.Text,
-    'canister_id' : IDL.Text,
-    'icrc1' : IDL.Bool,
-    'icrc2' : IDL.Bool,
-    'icrc3' : IDL.Bool,
-    'pool_symbol' : IDL.Text,
-    'symbol' : IDL.Text,
-    'on_kong' : IDL.Bool,
-  });
-  const AddTokenReply = IDL.Variant({ 'IC' : ICTokenReply });
-  const AddTokenResult = IDL.Variant({
-    'Ok' : AddTokenReply,
-    'Err' : IDL.Text,
-  });
   const PoolExpectedBalance = IDL.Record({
     'balance' : IDL.Nat,
     'kong_fee' : IDL.Nat,
@@ -227,10 +203,6 @@ export const idlFactory = ({ IDL }) => {
   });
   const RequestsResult = IDL.Variant({
     'Ok' : IDL.Vec(RequestsReply),
-    'Err' : IDL.Text,
-  });
-  const TransfersResult = IDL.Variant({
-    'Ok' : IDL.Vec(TransferIdReply),
     'Err' : IDL.Text,
   });
   const TxsReply = IDL.Variant({
@@ -376,6 +348,21 @@ export const idlFactory = ({ IDL }) => {
     'Err' : IDL.Text,
   });
   const SwapAsyncResult = IDL.Variant({ 'Ok' : IDL.Nat64, 'Err' : IDL.Text });
+  const ICTokenReply = IDL.Record({
+    'fee' : IDL.Nat,
+    'decimals' : IDL.Nat8,
+    'token' : IDL.Text,
+    'token_id' : IDL.Nat32,
+    'chain' : IDL.Text,
+    'name' : IDL.Text,
+    'canister_id' : IDL.Text,
+    'icrc1' : IDL.Bool,
+    'icrc2' : IDL.Bool,
+    'icrc3' : IDL.Bool,
+    'pool_symbol' : IDL.Text,
+    'symbol' : IDL.Text,
+    'on_kong' : IDL.Bool,
+  });
   const LPTokenReply = IDL.Record({
     'fee' : IDL.Nat,
     'decimals' : IDL.Nat8,
@@ -434,20 +421,19 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'add_pool' : IDL.Func([AddPoolArgs], [AddPoolResult], []),
-    'add_token' : IDL.Func([AddTokenArgs], [AddTokenResult], []),
     'check_pools' : IDL.Func([], [CheckPoolsResult], []),
     'get_requests' : IDL.Func(
-        [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat32)],
+        [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat32), IDL.Opt(IDL.Nat16)],
         [RequestsResult],
         ['query'],
       ),
-    'get_transfers' : IDL.Func(
-        [IDL.Opt(IDL.Nat64)],
-        [TransfersResult],
-        ['query'],
-      ),
     'get_txs' : IDL.Func(
-        [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat32)],
+        [
+          IDL.Opt(IDL.Nat64),
+          IDL.Opt(IDL.Nat64),
+          IDL.Opt(IDL.Nat32),
+          IDL.Opt(IDL.Nat16),
+        ],
         [TxsResult],
         ['query'],
       ),

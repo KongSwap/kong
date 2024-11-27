@@ -157,9 +157,9 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
         #[cfg(not(feature = "prod"))]
         format!("http://localhost:5173"),
         #[cfg(feature = "prod")]
-        String::from("https://www.kongswap.io"),
-        #[cfg(feature = "prod")]
         String::from("https://kongswap.io"),
+        #[cfg(feature = "prod")]
+        String::from("https://www.kongswap.io"),
         #[cfg(feature = "prod")]
         String::from("https://edoy4-liaaa-aaaar-qakha-cai.icp0.io"),
         #[cfg(feature = "prod")]

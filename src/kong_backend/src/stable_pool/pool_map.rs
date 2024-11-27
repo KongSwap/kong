@@ -1,7 +1,7 @@
 use wildmatch::WildMatch;
 
 use crate::stable_kong_settings::kong_settings;
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_token::stable_token::StableToken;
@@ -186,7 +186,7 @@ pub fn remove(pool_id: u32) -> Result<String, String> {
     token_map::remove(pool.lp_token_id).ok_or("Unable to remove LP token")?;
 
     // remove LP token ledger
-    lp_token_ledger::remove(pool.lp_token_id)?;
+    lp_token_map::remove(pool.lp_token_id)?;
 
     Ok(format!("Pool {} removed", pool.symbol()))
 }

@@ -10,7 +10,7 @@ use crate::ic::{
     address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, logging::error_log, transfer::icrc1_transfer,
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_lp_token_ledger::{lp_token_ledger, stable_lp_token_ledger::StableLPTokenLedger};
+use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token};
@@ -36,7 +36,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     // check arguments
     // can use the calculated payout amounts here as no inter-canister calls are made until send_payout_tokens()
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
-        check_arguments(&args)?;
+        check_arguments(&args).await?;
 
     // initialize a new remove liquidity request with request_id
     let ts = get_time();
@@ -69,7 +69,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
 #[update]
 pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
-        check_arguments(&args)?;
+        check_arguments(&args).await?;
 
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
@@ -103,7 +103,7 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
 
 /// returns (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1)
 #[allow(clippy::type_complexity)]
-fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, Nat, Nat, Nat, Nat), String> {
+async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, Nat, Nat, Nat, Nat), String> {
     // Pool
     let pool = pool_map::get_by_tokens(&args.token_0, &args.token_1)?;
     // Token0
@@ -119,7 +119,7 @@ fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, 
     }
 
     // Check the user has enough LP tokens.
-    let user_lp_token_amount = lp_token_ledger::get_by_token_id(lp_token_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
+    let user_lp_token_amount = lp_token_map::get_by_token_id(lp_token_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
     let remove_lp_token_amount = if args.remove_lp_token_amount > user_lp_token_amount {
         return Err("Insufficient LP tokens".to_string());
     } else {
@@ -130,7 +130,7 @@ fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, 
     let (payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) = calculate_amounts(&pool, &args.remove_lp_token_amount)?;
 
     // make sure user is registered, if not create a new user
-    let user_id = user_map::insert(None)?;
+    let user_id = user_map::insert(None).await?;
 
     Ok((
         user_id,
@@ -153,7 +153,7 @@ pub fn calculate_amounts(pool: &StablePool, remove_lp_token_amount: &Nat) -> Res
     // LP token
     let lp_token = pool.lp_token();
     let lp_token_id = lp_token.token_id();
-    let lp_total_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
 
     // calculate user's payout in token_0
     // we split the calculations for balance and fees
@@ -250,7 +250,7 @@ fn remove_lp_token(request_id: u64, lp_token: &StableToken, remove_lp_token_amou
     request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmount, None);
 
     // make sure user has LP token in ledger and that has enough to remove
-    match lp_token_ledger::get_by_token_id(lp_token_id) {
+    match lp_token_map::get_by_token_id(lp_token_id) {
         Some(lp_token) => {
             let amount = match nat_subtract(&lp_token.amount, remove_lp_token_amount) {
                 Some(amount) => amount,
@@ -263,12 +263,12 @@ fn remove_lp_token(request_id: u64, lp_token: &StableToken, remove_lp_token_amou
                     Err(message)?
                 }
             };
-            let new_user_lp_token = StableLPTokenLedger {
+            let new_user_lp_token = StableLPToken {
                 amount,
                 ts,
                 ..lp_token.clone()
             };
-            lp_token_ledger::update(&new_user_lp_token);
+            lp_token_map::update(&new_user_lp_token);
             request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None);
             Ok(())
         }
@@ -284,14 +284,14 @@ fn return_lp_token(lp_token: &StableToken, remove_lp_token_amount: &Nat, ts: u64
     // LP token
     let lp_token_id = lp_token.token_id();
 
-    match lp_token_ledger::get_by_token_id(lp_token_id) {
+    match lp_token_map::get_by_token_id(lp_token_id) {
         Some(lp_token) => {
-            let new_user_lp_token = StableLPTokenLedger {
+            let new_user_lp_token = StableLPToken {
                 amount: nat_add(&lp_token.amount, remove_lp_token_amount),
                 ts,
                 ..lp_token.clone()
             };
-            lp_token_ledger::update(&new_user_lp_token);
+            lp_token_map::update(&new_user_lp_token);
             Ok(())
         }
         None => Err("Unable to find user's LP tokens amount".to_string())?,

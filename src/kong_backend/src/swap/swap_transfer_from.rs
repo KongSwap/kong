@@ -20,7 +20,7 @@ use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_i
 use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
-    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args)?;
+    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
 
     let receive_amount = args.receive_amount.clone();
     let ts = get_time();
@@ -51,7 +51,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
-    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args)?;
+    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
 
     let receive_amount = args.receive_amount.clone();
     let ts = get_time();
@@ -80,7 +80,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
 }
 
 #[allow(clippy::type_complexity)]
-fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
+async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
     let pay_token = token_map::get_by_token(&args.pay_token)?;
     let pay_amount = args.pay_amount.clone();
     let receive_token = token_map::get_by_token(&args.receive_token)?;
@@ -101,7 +101,7 @@ fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToke
     }
 
     // make sure user is registered, if not create a new user with referred_by if specified
-    let user_id = user_map::insert(args.referred_by.as_deref())?;
+    let user_id = user_map::insert(args.referred_by.as_deref()).await?;
 
     // calculate receive_amount and swaps
     // no needs to store the return values as it'll be called again in process_swap

@@ -70,7 +70,7 @@ pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
     })
 }
 
-pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
+pub async fn insert(referred_by: Option<&str>) -> Result<u32, String> {
     let user = match get_by_caller() {
         // if user already exists, return user profile without updating referrer code
         // once a user is created, the referrer code cannot be updated
@@ -104,41 +104,46 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
                 },
                 None => (None, None),
             };
-            StableUser {
+            let user = StableUser {
                 user_id: kong_settings::inc_user_map_idx(),
                 user_name: generate_user_name(&mut rng),
                 my_referral_code: generate_referral_code(&mut rng),
                 referred_by,
                 referred_by_expires_at,
                 ..Default::default()
-            }
+            };
+            // archive new user
+            archive_user(user.clone()).await;
+            user
         }
         Err(e) => Err(e)?, // do not allow anonymous user
     };
 
     let user_id = user.user_id;
-    //let user_json = serde_json::to_string(&user);
-
     // update user data
     USER_MAP.with(|m| {
         m.borrow_mut().insert(StableUserId(user_id), user);
     });
 
-    /*
-    if let Ok(user_json) = user_json {
-        ic_cdk::spawn(async move {
-            let block_id = match ic_cdk::call::<(String,), (Result<String, String>,)>("kong_data", "update_user", (user_json,))
-                .await
-                .map_err(|e| e.1)
-                .unwrap_or_else(|e| (Err(e),))
-                .0
-            {
-                Ok(_) => (),
-                Err(e) => Err(e)?,
-            };
-        });
-    }
-    */
-
     Ok(user_id)
+}
+
+async fn archive_user(user: StableUser) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&user) {
+            Ok(user_json) => {
+                let kong_data = kong_settings::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to update user_id #{} - {}", user.user_id, e)),
+                };
+            }
+            Err(e) => error_log(&format!("Failed to serialize user_id #{} - {}", user.user_id, e)),
+        }
+    });
 }

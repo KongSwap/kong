@@ -3,7 +3,7 @@ use super::tokens_reply::TokensReply;
 use super::ic_reply::ICReply;
 use super::lp_reply::LPReply;
 
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_pool::pool_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
@@ -31,7 +31,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             },
             decimals: token.decimals(),
             fee: token.fee(),
-            total_supply: lp_token_ledger::get_total_supply(token_id),
+            total_supply: lp_token_map::get_total_supply(token_id),
             on_kong: token.on_kong(),
         }),
         IC(ic_token) => TokensReply::IC(ICReply {
