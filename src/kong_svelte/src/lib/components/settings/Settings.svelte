@@ -52,6 +52,10 @@
   }
 
   function handleQuickSlippageSelect(value: number) {
+    if (!$auth.isConnected) {
+      toastStore.error('Please connect your wallet to save settings');
+      return;
+    }
     settingsStore.updateSetting('max_slippage', value);
     slippageValue = value;
     slippageInputValue = value.toString();
@@ -69,6 +73,10 @@
   }
 
   function handleSlippageInput(e: Event) {
+    if (!$auth.isConnected) {
+      toastStore.error('Please connect your wallet to save settings');
+      return;
+    }
     const input = (e.target as HTMLInputElement).value;
     // Allow empty input or decimal point for better UX
     if (input === '' || input === '.') {
@@ -88,6 +96,14 @@
   }
 
   function handleSlippageBlur() {
+    if (!$auth.isConnected) {
+      // Reset to default value
+      slippageInputValue = '2.0';
+      slippageValue = 2.0;
+      toastStore.error('Please connect your wallet to save settings');
+      return;
+    }
+    
     const value = parseFloat(slippageInputValue);
     if (isNaN(value) || value < 0 || value > 99) {
       // Reset to last valid value from settings
@@ -439,23 +455,6 @@
     @apply grid gap-4 w-full max-w-full;
   }
 
-  .theme-buttons {
-    @apply grid grid-flow-col auto-cols-max gap-2;
-  }
-
-  .theme-button {
-    @apply px-4 py-2 rounded-lg bg-black/20 hover:bg-black/30 
-           transition-colors duration-200 text-white/90
-           border border-white/10 hover:border-white/20;
-  }
-
-  .theme-button.active {
-    @apply bg-white/15 text-white border-white/20;
-  }
-
-  .setting-item {
-    @apply grid grid-flow-col justify-between items-center;
-  }
 
   .slippage-container {
     @apply grid gap-4;
@@ -550,10 +549,6 @@
 
   .slippage-description {
     @apply text-sm text-white/70 mb-4;
-  }
-
-  .slippage-controls {
-    @apply w-full;
   }
 
   .quick-select-row {
