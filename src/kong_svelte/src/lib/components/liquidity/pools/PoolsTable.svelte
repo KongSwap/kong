@@ -45,9 +45,8 @@
       pool.symbol_1.toLowerCase(),                    // Token 1 symbol
       `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(), // Full pair name
       `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(), // Reverse pair name
-      pool.address?.toLowerCase() || '',              // Pool address
-      pool.token_0_address?.toLowerCase() || '',      // Token 0 address
-      pool.token_1_address?.toLowerCase() || ''       // Token 1 address
+      pool.address_0?.toLowerCase() || '',              // Pool address
+      pool.address_1?.toLowerCase() || ''       // Token 1 address
     ];
 
     return searchMatches.some(match => match.includes(debouncedSearchTerm));
