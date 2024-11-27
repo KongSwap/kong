@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          drop_console: true,
+          drop_console: false,
         },
       },
     },
@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => {
           name: 'KongSwap',
           short_name: 'KongSwap',
           description: 'KongSwap is a decentralized exchange for the Internet Computer',
-          theme_color: '#ffffff',
+          theme_color: '#0E111B',
           icons: [
             {
               src: '/icons/icon-192x192.png',
@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => {
       viteCompression({
         verbose: true,
         disable: false,
-        threshold: 6400,
+        threshold: 5200,
         algorithm: 'gzip',
         ext: '.gz',
         compressionOptions: { level: 8 },
@@ -94,7 +94,7 @@ export default defineConfig(({ mode }) => {
       viteCompression({
         verbose: true,
         disable: false,
-        threshold: 6400,
+        threshold: 5200,
         algorithm: 'brotliCompress',
         ext: '.br',
         compressionOptions: { level: 11 },

@@ -8,6 +8,7 @@
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import { browser } from "$app/environment";
   import Clouds from "../stats/Clouds.svelte";
+  import { updateWorkerService } from "$lib/services/updateWorkerService";
 
   let { page, children } = $props<{
     page?: string;
@@ -55,6 +56,7 @@
   let mouseX = $state(0);
   let mouseY = $state(0);
   let skylineUrl = $state("");
+  let skylineError = $state(false);
 
   let background = $derived.by(() => {
     if ($themeStore === 'modern') {
@@ -90,7 +92,16 @@
   });
 
   onMount(async () => {
-    skylineUrl = await assetCache.getAsset("/backgrounds/skyline.svg");
+    try {
+      // Try to preload the skyline asset
+      skylineUrl = await updateWorkerService.preloadAsset("/backgrounds/skyline.svg");
+      console.log("PageWrapper: skyline.svg preloaded successfully:", skylineUrl);
+    } catch (error) {
+      console.error("Failed to preload skyline.svg in PageWrapper:", error);
+      skylineError = true;
+      skylineUrl = "/backgrounds/fallback-skyline.svg";
+    }
+
     if (browser) {
       window.addEventListener('scroll', () => {
         scrollY = window.scrollY;
@@ -125,12 +136,16 @@
     <div class="skyline-container">
       <div class="city-lights"></div>
       <div class="glow-effect" style="transform: translate({mouseX * 0.05}px, {mouseY * 0.05}px)"></div>
-      <img 
-        src={skylineUrl} 
-        alt="" 
-        class="skyline" 
-        style="transform: translate3d({mouseX * 0.1}px, calc({Math.sin(scrollY * 0.002) * 5}px + {mouseY * 0.1}px), 0)"
-      />
+      {#if !skylineError}
+        <img 
+          src={skylineUrl} 
+          alt="Skyline" 
+          class="skyline" 
+          style="transform: translate3d({mouseX * 0.1}px, calc({Math.sin(scrollY * 0.002) * 5}px + {mouseY * 0.1}px), 0)"
+        />
+      {:else}
+        <div class="skyline-placeholder"></div>
+      {/if}
     </div>
     <div class="falling-stars">
       {#each Array(6) as _, i}
@@ -197,7 +212,7 @@
 <ModalContainer />
 <AccountDetails />
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .page-wrapper {
     position: fixed;
     inset: 0;
@@ -655,5 +670,11 @@
     .premium-overlay {
       background: rgba(255, 255, 255, 0.02);
     }
+  }
+
+  .skyline-placeholder {
+    width: 100%;
+    height: 200px;
+    background-color: #ccc;
   }
 </style>

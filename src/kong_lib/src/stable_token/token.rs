@@ -1,0 +1,102 @@
+use candid::{Nat, Principal};
+
+use super::stable_token::StableToken;
+use super::stable_token::StableToken::{IC, LP};
+
+use crate::helpers::nat_helpers::nat_zero;
+
+pub trait Token {
+    fn token_id(&self) -> u32;
+    fn name(&self) -> String;
+    fn chain(&self) -> String;
+    fn symbol(&self) -> String;
+    fn symbol_with_chain(&self) -> String;
+    fn address(&self) -> String;
+    fn address_with_chain(&self) -> String;
+    fn canister_id(&self) -> Option<&Principal>;
+    fn decimals(&self) -> u8;
+    fn fee(&self) -> Nat;
+    fn on_kong(&self) -> bool;
+}
+
+impl Token for StableToken {
+    fn token_id(&self) -> u32 {
+        match self {
+            LP(token) => token.token_id,
+            IC(token) => token.token_id,
+        }
+    }
+
+    fn name(&self) -> String {
+        match self {
+            LP(token) => token.name().to_string(),
+            IC(token) => token.name.to_string(),
+        }
+    }
+
+    fn chain(&self) -> String {
+        match self {
+            LP(token) => token.chain(),
+            IC(token) => token.chain(),
+        }
+    }
+
+    fn symbol(&self) -> String {
+        match self {
+            LP(token) => token.symbol.to_string(),
+            IC(token) => token.symbol.to_string(),
+        }
+    }
+
+    fn symbol_with_chain(&self) -> String {
+        format!("{}.{}", self.chain(), self.symbol())
+    }
+
+    fn address(&self) -> String {
+        match self {
+            // for LP tokens, use address as it's used as the unique identifier
+            LP(token) => token.address.to_string(),
+            IC(token) => token.canister_id.to_string(),
+        }
+    }
+
+    fn address_with_chain(&self) -> String {
+        format!("{}.{}", self.chain(), self.address())
+    }
+
+    fn canister_id(&self) -> Option<&Principal> {
+        match self {
+            LP(_) => None,
+            IC(token) => Some(&token.canister_id),
+        }
+    }
+
+    fn decimals(&self) -> u8 {
+        match self {
+            LP(token) => token.decimals,
+            IC(token) => token.decimals,
+        }
+    }
+
+    fn fee(&self) -> Nat {
+        match self {
+            LP(_) => nat_zero(),
+            IC(token) => token.fee.clone(),
+        }
+    }
+
+    fn on_kong(&self) -> bool {
+        match self {
+            LP(token) => token.on_kong,
+            IC(token) => token.on_kong,
+        }
+    }
+}
+
+pub fn symbol(token_0: &StableToken, token_1: &StableToken) -> String {
+    format!("{}_{}", token_0.symbol(), token_1.symbol())
+}
+
+pub fn address(token_0: &StableToken, token_1: &StableToken) -> String {
+    format!("{}_{}", token_0.token_id(), token_1.token_id())
+}

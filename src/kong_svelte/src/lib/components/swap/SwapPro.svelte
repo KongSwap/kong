@@ -22,13 +22,29 @@
     let isMobile: boolean;
     let containerHeight: number;
     let chartContainer: HTMLElement;
+    let tvScriptLoaded = false;
 
     const dispatch = createEventDispatcher<{
         modeChange: { mode: 'normal' | 'pro' };
     }>();
 
+    function loadTradingViewScript() {
+        if (tvScriptLoaded) return;
+        
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = () => {
+            tvScriptLoaded = true;
+            initChart();
+        };
+        document.head.appendChild(script);
+    }
+
     function initChart() {
-        if (window.TradingView) {
+        if (!tvScriptLoaded || !window.TradingView) return;
+
+        try {
             chart = new window.TradingView.widget({
                 "autosize": true,
                 "symbol": "BINANCE:BTCUSDT",
@@ -45,6 +61,8 @@
                 "height": "100%",
                 "width": "100%"
             });
+        } catch (error) {
+            console.error('Failed to initialize TradingView chart:', error);
         }
     }
 
@@ -60,14 +78,8 @@
         };
         
         mediaQuery.addEventListener('change', handleResize);
-        
-        const script = document.createElement('script');
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = () => {
-            initChart();
-        };
-        document.head.appendChild(script);
+
+        loadTradingViewScript();
 
         return () => {
             mediaQuery.removeEventListener('change', handleResize);
@@ -98,7 +110,7 @@
             <Panel 
                 variant="green" 
                 type="main" 
-                className={`chart-area ${isChartMinimized ? 'minimized' : ''} ${isFullscreen ? 'fullscreen' : ''}`}
+                className={`chart-area !p-0 ${isChartMinimized ? 'minimized' : ''} ${isFullscreen ? 'fullscreen' : ''}`}
                 width="100%"
                 height="100%"
             >

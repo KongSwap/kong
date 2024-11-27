@@ -194,7 +194,11 @@
             show={true}
             currentToken={token0}
             otherPanelToken={token1}
-            onSelect={(token) => handleTokenSelect(0, token.canister_id)}
+            onSelect={(token) => {
+                token0 = token;
+                showToken0Selector = false;
+                onTokenSelect(0);
+            }}
             onClose={() => showToken0Selector = false}
         />
     </Portal>
@@ -206,7 +210,11 @@
             show={true}
             currentToken={token1}
             otherPanelToken={token0}
-            onSelect={(token) => handleTokenSelect(1, token.canister_id)}
+            onSelect={(token) => {
+                token1 = token;
+                showToken1Selector = false;
+                onTokenSelect(1);
+            }}
             onClose={() => showToken1Selector = false}
         />
     </Portal>

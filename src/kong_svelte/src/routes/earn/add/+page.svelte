@@ -4,7 +4,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import { swapState } from "$lib/services/swap/SwapStateService";
+  import { get } from "svelte/store";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -25,9 +25,7 @@
     }
   }
 
-  // Initialize swapState
-  onMount(() => {
-    // Check URL parameters for initial tokens
+  async function initializeFromParams() {
     const searchParams = $page.url.searchParams;
     const token0Address = searchParams.get("token0");
     const token1Address = searchParams.get("token1");
@@ -38,30 +36,16 @@
     if (token1Address && $formattedTokens) {
       token1 = $formattedTokens.find((t) => t.canister_id === token1Address) || null;
     }
-
-    // Initialize swapState with current tokens
-    swapState.update(s => ({
-      ...s,
-      payToken: token0,
-      receiveToken: token1,
-      showPayTokenSelector: false,
-      showReceiveTokenSelector: false
-    }));
-  });
-
-  // Subscribe to swapState changes
-  $: {
-    if ($swapState.payToken && $swapState.payToken !== token0) {
-      token0 = $swapState.payToken;
-      amount0 = "";
-      updateURL();
-    }
-    if ($swapState.receiveToken && $swapState.receiveToken !== token1) {
-      token1 = $swapState.receiveToken;
-      amount1 = "";
-      updateURL();
-    }
   }
+
+  onMount(async () => {
+    try {
+      await initializeFromParams();
+    } catch (err) {
+      console.error("Error initializing:", err);
+      error = "Failed to initialize tokens";
+    }
+  });
 
   function updateURL() {
     const searchParams = new URLSearchParams($page.url.searchParams);
@@ -71,12 +55,7 @@
   }
 
   function handleTokenSelect(index: 0 | 1) {
-    // Show the appropriate token selector
-    swapState.update(s => ({
-      ...s,
-      showPayTokenSelector: index === 0,
-      showReceiveTokenSelector: index === 1
-    }));
+    // Token selection is now handled in AddLiquidityForm
   }
 
   function handleInput(index: 0 | 1, value: string) {

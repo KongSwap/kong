@@ -1,8 +1,5 @@
 // src/lib/services/swap/SwapService.ts
-import {
-  tokenStore,
-  getTokenDecimals,
-} from "$lib/services/tokens/tokenStore";
+import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
 import { toastStore } from "$lib/stores/toastStore";
 import { get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
@@ -87,9 +84,13 @@ export class SwapService {
   ): Promise<BE.SwapQuoteResponse> {
     try {
       if (!payToken?.symbol || !receiveToken?.symbol) {
-        throw new Error('Invalid tokens provided for swap quote');
+        throw new Error("Invalid tokens provided for swap quote");
       }
-      const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      const actor = await auth.getActor(
+        kongBackendCanisterId,
+        canisterIDLs.kong_backend,
+        { anon: true },
+      );
       return await actor.swap_amounts(
         payToken.symbol,
         payAmount,
@@ -177,7 +178,11 @@ export class SwapService {
     pay_tx_id?: { BlockIndex: number }[];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
+      const actor = await auth.pnp.getActor(
+        kongBackendCanisterId,
+        canisterIDLs.kong_backend,
+        { anon: false, requiresSigning: false },
+      );
       return await actor.swap_async(params);
     } catch (error) {
       console.error("Error in swap_async:", error);
@@ -188,11 +193,13 @@ export class SwapService {
   /**
    * Gets request status
    */
-  public static async requests(
-    requestIds: bigint[],
-  ): Promise<RequestResponse> {
+  public static async requests(requestIds: bigint[]): Promise<RequestResponse> {
     try {
-      const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
+      const actor = await auth.pnp.getActor(
+        kongBackendCanisterId,
+        canisterIDLs.kong_backend,
+        { anon: false, requiresSigning: false },
+      );
       const result = await actor.requests(requestIds);
       return result;
     } catch (error) {
@@ -209,10 +216,9 @@ export class SwapService {
   ): Promise<bigint | false> {
     const swapId = params.swapId;
     try {
-      const wallet = get(auth);
-      await Promise.allSettled([
+      await Promise.all([
         requireWalletConnection(),
-        tokenStore.loadBalances(wallet?.account?.owner),
+        tokenStore.loadBalances(auth?.pnp?.account?.owner),
       ]);
       const tokens = get(tokenStore).tokens;
       const payToken = tokens.find(
@@ -294,21 +300,27 @@ export class SwapService {
       };
       const result = await SwapService.swap_async(swapParams);
 
-      console.log("Swap result:", result);
-      this.monitorTransaction(result?.Ok, swapId);
-      toastStore.dismiss(toastId);
-      await Promise.allSettled([
+      if (result.Ok) {
+        this.monitorTransaction(result?.Ok, swapId);
+        toastStore.dismiss(toastId);
+      } else {
+        console.error("Swap error:", result.Err);
+        return false;
+      }
+
+      await Promise.all([
         tokenStore.loadBalance(
           tokens.find((t) => t.canister_id === params.receiveToken.canister_id),
-          wallet.account.owner.toString(),
+          auth?.pnp?.account?.owner?.toString(),
           true,
         ),
         tokenStore.loadBalance(
           tokens.find((t) => t.canister_id === params.payToken.canister_id),
-          wallet.account.owner.toString(),
+          auth?.pnp?.account?.owner?.toString(),
           true,
         ),
       ]);
+
       return result.Ok;
     } catch (error) {
       swapStatusStore.updateSwap(swapId, {
@@ -347,7 +359,10 @@ export class SwapService {
               isProcessing: false,
               error: res.statuses.find((s) => s.includes("Failed")),
             });
-            toastStore.error(res.statuses.find((s) => s.includes("Failed")), 8000); // 8 seconds for error messages
+            toastStore.error(
+              res.statuses.find((s) => s.includes("Failed")),
+              8000,
+            ); // 8 seconds for error messages
             toastStore.dismiss(toastId);
           }
 
@@ -376,8 +391,12 @@ export class SwapService {
                 swapStatus.receive_amount,
                 getTokenDecimals(swapStatus.receive_symbol),
               );
-              const token0 = get(tokenStore).tokens.find((t) => t.symbol === swapStatus.pay_symbol);
-              const token1 = get(tokenStore).tokens.find((t) => t.symbol === swapStatus.receive_symbol);
+              const token0 = get(tokenStore).tokens.find(
+                (t) => t.symbol === swapStatus.pay_symbol,
+              );
+              const token1 = get(tokenStore).tokens.find(
+                (t) => t.symbol === swapStatus.receive_symbol,
+              );
               toastStore.success(
                 `Successfully swapped ${formatTokenAmount(formattedPayAmount, token0?.decimals)} ${token0?.symbol} to ${formatTokenAmount(formattedReceiveAmount, token1?.decimals)} ${token1?.symbol}!`,
               );
@@ -481,7 +500,6 @@ export class SwapService {
           receiveDecimals,
         );
 
-        
         const store = get(tokenStore);
         const price = await tokenStore.refetchPrice(
           store.tokens.find((t) => t.canister_id === receiveToken.canister_id),

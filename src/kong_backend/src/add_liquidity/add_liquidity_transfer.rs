@@ -3,6 +3,7 @@ use candid::Nat;
 use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
+use super::add_liquidity_reply_helpers::{create_add_liquidity_reply_failed, create_add_liquidity_reply_with_tx_id};
 use super::add_liquidity_transfer_from::transfer_from_token;
 
 use crate::helpers::nat_helpers::{
@@ -590,7 +591,7 @@ async fn check_balances(
     // insert tx
     let tx_id = tx_map::insert(&StableTx::AddLiquidity(add_liquidity_tx.clone()));
     // need to pass in the tx_id to the reply
-    let reply = AddLiquidityReply::new_with_tx_id(tx_id, &add_liquidity_tx);
+    let reply = create_add_liquidity_reply_with_tx_id(tx_id, &add_liquidity_tx);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
     reply
 }
@@ -708,6 +709,6 @@ async fn return_tokens(
     }
 
     let pool_id = pool_id.unwrap_or(0);
-    let reply = AddLiquidityReply::new_failed(pool_id, request_id, transfer_ids, &claim_ids, ts);
+    let reply = create_add_liquidity_reply_failed(pool_id, request_id, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply));
 }

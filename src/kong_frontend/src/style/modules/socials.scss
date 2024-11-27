@@ -1,0 +1,69 @@
+
+.panel-s-green-main--socials {
+
+}
+
+.Socials {
+    position: fixed;
+    bottom: pxrm(20);
+    right: pxrm(20);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: auto;
+    transition: width 0.3s ease-in-out;
+    z-index: 1000;
+    color: var(--c-white);
+    &__Heading {
+        display: flex;
+        align-items: center;
+        gap: pxrm(10);
+    }
+    &__HeadingText {
+        position: relative;
+        font-weight: 700;
+        cursor: pointer;
+        &:hover {
+            color: var(--c-yellow-3);
+        }
+    }
+    &__FakeButton {
+        position: absolute;
+        top: pxrm(-14);
+        left: pxrm(-14);
+        width: calc(100% + pxrm(14) + pxrm(14));
+        height: calc(100% + pxrm(14) + pxrm(14));
+    }
+    &__Close {
+        display: flex;
+        cursor: pointer;
+    }
+    &__List {
+        display: flex;
+        flex-direction: column;
+    }
+    &__Anchor {
+        display: flex;
+        align-items: center;
+        gap: pxrm(4);
+        padding: pxrm(8) 0;
+        font-size: pxrm(20);
+        color: var(--c-white);
+        text-decoration: none;
+        &:visited{
+            color: var(--c-white);
+        }
+        &:hover {
+            color: var(--c-yellow-3);
+            text-decoration: underline;
+        }
+        svg {
+            fill: currentColor;
+            width: pxrm(16);
+            height: auto;
+        }
+    }
+}
+
+
+

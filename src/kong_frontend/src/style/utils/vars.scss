@@ -1,0 +1,86 @@
+:root {
+    --c-white: #fff;
+    --c-black: #000;
+
+    --c-base-1: #135E46;
+    --c-base-2: #478966;
+    --c-base-3: #73A788;
+
+    --c-primary-1: #B67B65;
+    --c-primary-2: #D09D7B;
+    --c-primary-3: #E3C6AD;
+
+    --c-second-1: #368D00;
+    --c-second-2: #64AD3B;
+    --c-second-3: #95C87D;
+
+    --c-yellow-1: #FFA400;
+    --c-yellow-2: #FFCD1F;
+    --c-yellow-3: #FFE077;
+
+    --c-blue-1: #00A1FA;
+    --c-blue-2: #61C9FF;
+    --c-blue-3: #AAE7FF;
+
+
+}
+
+
+
+// @media (max-aspect-ratio: ~'3/4') {
+//     [CSS here...]
+//   }
+//   @media (min-aspect-ratio: ~'3/4') and (max-aspect-ratio: ~'1/1') {
+//     [CSS here, too...]
+//   }
+//   @media (min-aspect-ratio: ~'1/1') and (max-aspect-ratio: ~'4/3') {
+//     [CSS here, also...]
+//   }
+//   @media (min-aspect-ratio: ~'4/3') {
+//     [CSS here, as well...]
+//   }
+
+
+
+// rules of using:
+//  under 8/7 => use defaul rem
+//  over 8/7 => use pxrm(1) = pxvh(10)
+//  over 8/7 => use pxvh units for vertical size/space when you want to keep asptect ratio
+//  over 8/7 => use pxvw units for horizontal size/space when space depends on view-width
+
+
+@function pxrm($value) {
+    @return #{$value / 16}rem;
+}
+@function pxvh800($value) {
+    @return #{$value * 100 / 800}dvh;
+}
+@function pxvh($value) {
+    @return #{$value * 100 / 1080}dvh;
+}
+@function pxvw($value) {
+    @return #{$value * 100 / 1920}dvw;
+}
+
+
+// @include bp(horizontal) {
+//     background-color: red;
+// }
+// @include bp(square) {
+//     background-color: green;
+// }
+// @include bp(vertical) {
+//     background-color: blue;
+// }
+
+//   @mixin bp($point) {
+//     @if $point == horizontal {
+//         @media (max-aspect-ratio: 7/8) { @content; }
+//     }
+//     @else if $point == square {
+//         @media (min-aspect-ratio: 7/8) and (max-aspect-ratio: 8/7) { @content; }
+//     }
+//     @else if $point == vertical {
+//         @media (min-aspect-ratio: 1/1) and (min-width: 1000px) { @content; }
+//     }
+//   }

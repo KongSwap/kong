@@ -59,27 +59,20 @@ function createAuthStore(pnp: PNP) {
     pnp,
     async connect(walletId: string) {
       try {
-        console.log("Connecting with PNP, initial state:", pnp.isWalletConnected());
         const result = await pnp.connect(walletId);
-        console.log("PNP connect result:", result);
         
         // Check if we have a valid connection result with owner property
         if (result && 'owner' in result) {
-          console.log("Setting connected state with account:", result);
           // Update the store state
           const newState = { 
             isConnected: true,
             account: result 
           };
           set(newState);
-          console.log("Updated auth state:", newState);
-          
+
           // Force a refresh of the userStore by getting the user data
           const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false });
           const userData = await actor.get_user();
-          console.log("User data after connect:", userData);
-          // Load tokens after successful connection
-          await tokenStore.loadTokens(true);
         } else {
           console.log("Invalid connection result:", result);
           set({ isConnected: false, account: null });

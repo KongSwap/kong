@@ -1,0 +1,1405 @@
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+* {
+    box-sizing: border-box;
+}
+
+@font-face {
+    font-family: "astounder-squared-bb", sans-serif;;
+    src: url("../../assets/fonts/ast.woff2")format("woff2");
+}
+@font-face {
+    font-family: "Monster";
+    src: url("../../assets/fonts/monster.woff2")format("woff2");
+}
+
+/* Your existing styles */
+
+input {
+    font-family: "astounder-squared-bb", sans-serif;
+}
+
+html {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: "astounder-squared-bb", sans-serif;
+}
+.SecondBody {
+    height: 100%;
+    overflow: auto;
+    // background: url(../../assets/king-kong-background.png);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: top center;
+    @media screen and (min-width:1200px) {
+        height: 100%;
+    }
+}
+
+#root {
+    height: 100%;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 88px;
+    padding: 0 57px;
+    position: relative;
+    z-index: 1;
+}
+
+@media screen and (min-width:700px) {
+    .header {
+        margin-bottom: 40px;
+    }
+    
+}
+@media screen and (min-width:1200px) {
+    .header {
+        margin-bottom: 0;
+    }
+}
+.connect-button {
+    padding: 8px 16px;
+    border-radius: 100px;
+    background: #B67B65;
+    color: var(--Foundation-Blue-B0, #FFF);
+    text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 120%; /* 28.8px */
+    cursor: pointer;
+}
+.connect-button:hover {
+    background: #D09D7B;
+}
+.main {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    padding: 0 12px;
+    @media screen and (min-width:1200px) {
+        height: calc(100% - 88px);
+    }
+}
+
+.kong-image-container {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: auto;
+    bottom: 0;
+    right: 0; /* Adjust as needed */
+    z-index: 0; /* Ensures it's behind other content */
+}
+
+@media screen and (min-width:700px) {
+    .kong-image-container {
+        display: block;
+        width: auto;
+        height: 45vh;
+    }
+    
+}
+@media screen and (min-width:1200px) {
+    .kong-image-container {
+        display: block;
+        width: auto;
+        height: 63vh;
+    }
+}
+
+.title {
+    color: #E3C6AD;
+    text-shadow: 4px 4px 4px rgba(0, 0, 0, 0.25);
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: #B67B65;
+    font-family: 'Monster', Arial, sans-serif;
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%;
+    text-align: center;
+}
+
+.subtitle {
+    color: #E3C6AD;
+    text-shadow: 4px 4px 4px rgba(0, 0, 0, 0.25);
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: #B67B65;
+    font-family: 'Monster', Arial, sans-serif;
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%;
+    text-align: center;
+    margin-top: 40px;;
+}
+
+@media screen and (min-width:700px) {
+    .title {
+        font-size: 78px;
+        -webkit-text-stroke-width: 2px;
+    }
+    .subtitle {
+        font-size: 78px;
+        -webkit-text-stroke-width: 2px;
+        margin-top: 0;
+    }
+}
+@media screen and (min-width:1200px) {
+    .title {
+        font-size: 128px;
+        -webkit-text-stroke-width: 4px;
+    }
+    .subtitle {
+        font-size: 128px;
+        -webkit-text-stroke-width: 4px;
+        margin-top: 0;
+    }
+}
+.section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 16px;
+    position: relative;
+    flex-grow: 1;
+}
+
+
+@media screen and (min-width:700px) {
+    .section {
+        flex-direction: row;
+        margin-top: 42px;
+        justify-content: space-around;
+    }
+}
+@media screen and (min-width:1200px) {
+    .section {
+        flex-direction: column;
+    }
+}
+
+.center-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Align items to the top */
+    align-items: center; /* Keep horizontal centering */
+    width: 418px;
+    max-width: 100%;
+}
+
+@media screen and (min-width:700px) {
+    .center-container {
+    }
+}
+
+.tabs {
+    display: flex;
+    gap: 30px;
+    padding: 0 10px;
+    color: var(--TEXT-COLOR, #fff);
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%; /* 36px */
+}
+.tab {
+    cursor: pointer;
+}
+.tab-icon {
+    fill: currentColor;
+}
+.tab-settings {
+    margin-left: auto;
+}
+
+.SwapInterface {
+    width: 100%;
+    position: relative;
+}
+
+.swap-container {
+    width: 100%;
+    height: 130px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 27px 25px; /* Add padding on the sides */
+    position: relative;
+    z-index: 1;
+}
+
+.swap-container--you-receive {
+    margin-top: 3px;
+}
+
+.swap-container--address {
+    margin-top: 3px;
+}
+
+.swap-container-label {
+    color: #E3C6AD;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+    pointer-events: none;
+}
+.swap-container-items {
+    display: flex;
+    pointer-events: none;
+}
+.swap-container-left {
+    width: 63%;
+    display: flex;
+    flex-direction: column;
+}
+.swap-container-inputholder {
+    display: block;
+    width: 100%;
+    height: 36px;
+}
+.swap-container-inputholder-value {
+    color: #E3C6AD;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+}
+.swap-container-right {
+    width: 37%;
+    display: flex;
+    flex-direction: column;
+}
+
+.currency-select {
+    display: block;
+    width: 100%;
+    pointer-events: auto;
+    height: 32px;
+    margin: 2px 0;
+    flex-shrink: 0;
+    border-radius: 20px;
+    border: 0.722px solid #B67B65;
+    background: #D09D7B;
+    color: #FFF; /* Text color, assuming you want white text */
+    font-family: "astounder-squared-bb", sans-serif;
+    padding: 5px; /* Adjust as needed for padding within the select box */
+    -webkit-appearance: none; /* Remove default styling for Webkit browsers */
+    -moz-appearance: none; /* Remove default styling for Mozilla browsers */
+    appearance: none; /* Remove default styling */
+    background-image: url('path/to/your/dropdown-icon.svg'); /* Add your custom dropdown icon */
+    background-repeat: no-repeat;
+    background-position: right 10px center; /* Adjust as needed for icon positioning */
+    background-size: 16px; /* Adjust as needed for icon size */
+    flex: none;
+}
+
+
+.custom-select {
+}
+.custom-select:hover {
+}
+.custom-select-logo {
+    margin-right: 8px;
+    width: 20px;
+    height: auto;
+}
+
+/* You might want to add focus and hover styles for better user experience */
+.currency-select:focus {
+    outline: none; /* Customize focus outline or border as needed */
+}
+
+.currency-select:hover {
+    /* Optional hover styles */
+}
+.swap-under-select {
+    display: flex;
+}
+.swap-container-selectedtoken-value {
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+}
+.swap-container-selectedtoken-max {
+    color: #2BC20E;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+    margin-left: auto;
+    margin-right: 6px;
+    cursor: pointer;
+}
+.swap-container-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: #FFF;
+    background-color: transparent; /* Makes the input background transparent */
+    border: none; /* Removes the default border */
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 48px; /* Adjusted for visual consistency */
+    outline: none; /* Removes the highlight border on focus */
+    z-index: -1;
+    padding-top: 41px;
+    padding-bottom: 41px;
+    padding-right: calc(30% + 25px);
+    padding-left: 25px;
+    border-radius: 8px;
+    background: #135E46;
+}
+
+.swap-container-input:focus {
+    border: 1px solid #43BB8E;
+    box-shadow: 2px 4px 4px 0px rgba(0, 0, 0, 0.75);
+}
+
+
+
+.swap-container-input--address {
+    padding-right: 25px;
+}
+
+
+.icon-container {
+    width: 100%;
+    margin-top: -18px;
+    margin-bottom: -18px;
+    z-index: 2;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+.icon-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--spacing-sm, 8px);
+    border: 2px solid #43BB8E;
+    background: #135E46;
+    width: 41px;
+    height: 36px;
+}
+
+/* For Webkit-based browsers */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* For Firefox */
+input[type='number'] {
+    -moz-appearance: textfield;
+}
+
+/* For all browsers (future-proofing) */
+input[type='number'] {
+    appearance: textfield;
+}
+
+.swap-button-container {
+    margin-top: 4px;
+    width: 100%; /* Full width as per your layout */
+    height: 50px; /* Height of the button */
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center; /* Center button text horizontally */
+    align-items: center; /* Center button text vertically */
+}
+
+.swap-button {
+    width: 418px;
+    height: 50px;
+    background: #B67B65; /* Assuming you want the same background color as the input fields */
+    border-radius: 8px;
+    color: #FFF;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 36px; /* Adjusted to fit the button height, original 48px seems too large */
+    font-style: normal;
+    font-weight: 400;
+    line-height: 50px; /* Match the button height for vertical centering */
+    border: none; /* Remove button border */
+    cursor: pointer; /* Change cursor to pointer on hover */
+    outline: none; /* Remove outline to keep the design clean */
+    text-align: center; /* Ensure text is centered */
+    -webkit-appearance: none; /* Remove default styles in Webkit browsers */
+    appearance: none; /* Remove default styles */
+    text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Optional: Style for hover state */
+.swap-button:hover {
+    background-color: #d09d7b; /* Darker shade for hover, adjust as needed */
+}
+
+/* Optional: Style for focus state */
+.swap-button:focus {
+    border: 2px solid #FFF; /* Add focus border, adjust as needed */
+}
+
+
+.new-action-container {
+    margin-top: 5px;
+    padding-left: 10px;
+}
+.new-action-button {
+    cursor: pointer;
+    color: #E3C6AD;
+    text-shadow: -1px -1px 0 #135E46,1px -1px 0 #135E46,-1px 1px 0 #135E46,1px 1px 0 #135E46;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+}
+
+.ss-address-container {
+    margin-top: 5px;
+    padding: 8px 26px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 7px;
+    background: #73A788;
+}
+.ss-label {
+    width: 60px;
+    color: #E3C6AD;
+    text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 18px; /* 112.5% */
+}
+.ss-address {
+    color: #FFF;
+    text-align: center;
+    text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+
+
+
+
+
+
+
+/* -------SENDING------ */
+
+
+.sending-container {
+    width: 100%;
+    height: 196px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 7px 10px; /* Add padding on the sides */
+    position: relative;
+    z-index: 1;
+}
+.sending-container-label {
+    color: #E3C6AD;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+    pointer-events: none;
+    margin-left: 15px;
+}
+
+.sending-container-items {
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    // font-family: "lores-12-narrow", sans-serif;
+}
+.sending-container-top {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-left: 100px;
+}
+.sending-container-inputholder {
+    display: block;
+    width: 100%;
+    height: 84px;
+}
+.sending-container-inputholder-value {
+    color: #E3C6AD;
+    // font-family: "astounder-squared-bb", sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+    margin-top: 8px;
+}
+.sending-container-bottom {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 16px;
+}
+.sending-container-bottom .custom-select {
+    width: auto;
+}
+
+.sending-currency-select {
+    display: block;
+    width: 100%;
+    pointer-events: auto;
+    height: 32px;
+    margin: 2px 0;
+    flex-shrink: 0;
+    border-radius: 20px;
+    border: 0.722px solid #B67B65;
+    background: #D09D7B;
+    color: #FFF; /* Text color, assuming you want white text */
+    font-family: "astounder-squared-bb", sans-serif;
+    padding: 5px; /* Adjust as needed for padding within the select box */
+    -webkit-appearance: none; /* Remove default styling for Webkit browsers */
+    -moz-appearance: none; /* Remove default styling for Mozilla browsers */
+    appearance: none; /* Remove default styling */
+    background-image: url('path/to/your/dropdown-icon.svg'); /* Add your custom dropdown icon */
+    background-repeat: no-repeat;
+    background-position: right 10px center; /* Adjust as needed for icon positioning */
+    background-size: 16px; /* Adjust as needed for icon size */
+    flex: none;
+}
+
+
+
+.sending-container-selectedtoken-value {
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+    flex: none;
+}
+.sending-container-selectedtoken-value-currency {
+    opacity: .6;
+    font-size: 10px;
+
+}
+.sending-container-selectedtoken-max {
+    color: #2BC20E;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+    flex: none;
+    margin-left: auto;
+    margin-right: 6px;
+    cursor: pointer;
+}
+.sending-container-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: #FFF;
+    background-color: transparent; /* Makes the input background transparent */
+    border: none; /* Removes the default border */
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 48px; /* Adjusted for visual consistency */
+    outline: none; /* Removes the highlight border on focus */
+    z-index: -1;
+    padding-top: 41px;
+    padding-bottom: 41px;
+    padding-right: calc(30% + 25px);
+    padding-left: 110px;
+    border-radius: 8px;
+    background: #135E46;
+}
+
+.sending-container-input:focus {
+    border: 1px solid #43BB8E;
+    box-shadow: 2px 4px 4px 0px rgba(0, 0, 0, 0.75);
+}
+
+
+
+.sending-address-container {
+    margin-top: 5px;
+    padding: 8px 26px;
+    display: flex;
+    align-items: center;
+    border-radius: 7px;
+    background: #135E46;
+}
+.sending-label {
+    color: #E3C6AD;
+    text-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 18px;
+    margin-right: 10px;
+}
+.sending-address {
+    color: #FFF;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+
+.sending-button-container {
+    margin-top: 4px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center; /* Center button text horizontally */
+    align-items: center; /* Center button text vertically */
+}
+
+.sending-button {
+    width: 418px;
+    height: 50px;
+    background: #B67B65; /* Assuming you want the same background color as the input fields */
+    border-radius: 8px;
+    color: #FFF;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 36px; /* Adjusted to fit the button height, original 48px seems too large */
+    font-style: normal;
+    font-weight: 400;
+    line-height: 50px; /* Match the button height for vertical centering */
+    border: none; /* Remove button border */
+    cursor: pointer; /* Change cursor to pointer on hover */
+    outline: none; /* Remove outline to keep the design clean */
+    text-align: center; /* Ensure text is centered */
+    -webkit-appearance: none; /* Remove default styles in Webkit browsers */
+    appearance: none; /* Remove default styles */
+}
+
+/* Optional: Style for hover state */
+.swap-button:hover {
+    background-color: #d09d7b; /* Darker shade for hover, adjust as needed */
+}
+
+/* Optional: Style for focus state */
+.swap-button:focus {
+    border: 2px solid #FFF; /* Add focus border, adjust as needed */
+}
+
+/* ------------- */
+
+
+
+@media screen and (min-width:1200px) {
+    .left-container {
+        position: absolute;
+        /* 100% - 356px - 418px */
+        left: calc((100% - 418px)/4);
+        top: 50%;
+        transform: translate(-50%, -50%);
+        max-height: 100%;
+        overflow: auto;
+    }
+}
+.banana-button {
+    cursor: pointer;
+    padding: 36px 17px 12px 56px;
+    color: #E1D55C;
+    text-align: center;
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: #B67B65;
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 22px; /* 100% */
+    background-image: url(../../assets/bananas.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    @media screen and (min-width: 700px) {
+        position: absolute;
+        left: calc((100% - 500px)/4);
+        bottom: 0;
+        transform: translate(-50%, 140px);
+    }
+    &:hover {
+        color: #fff;
+    }
+}
+.banana-text {
+    width: 90px;
+    display: block;
+    padding: 0 10px;
+}
+.wallet {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-radius: 8px;
+    background: #73A788;
+    padding: 16px;
+}
+.wallet-head {
+    display: flex;
+    align-items: center;
+
+}
+.wallet-headlabel {
+    margin-right: 8px;
+    color: #E3C6AD;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 83.333% */
+}
+.wallet-address-wrapper {
+    position: relative;
+    min-width: 0;
+}
+.copy-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 32px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.address-input {
+    border-radius: var(--spacing-sm, 8px);
+    background: #72A788;
+    line-height: 36px;
+    color: #FFF;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    border: none;
+    outline: none;
+    padding: 0 32px 0 8px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #E3C6AD;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 83.333% */
+    border-bottom: 1px solid #73A788;
+    height: 60px;
+    margin-top: 26px;
+}
+.table-container {
+    color: #FFF;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 30px;
+}
+.table-list {
+    display: flex;
+    flex-direction: column;
+}
+.table-item {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    height: 60px;
+    border-bottom: 1px solid #73A788;
+}
+.token-logo {
+    width: 24px;
+    height: auto;
+}
+.token-name {
+    margin-left: 24px;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 83.333% */
+}
+
+.token-amount {
+    margin-left: auto;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 83.333% */
+}
+.token-value {
+    margin-left: 8px;
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 125% */
+}
+
+
+
+/* May 2024 - old classes with updated css*/
+
+.left-container {
+    max-width: 100%;
+    width: 400px;
+}
+
+
+.tabs {
+    display: flex;
+    gap: 30px;
+    padding-left: 10px;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 150%; /* 36px */
+}
+.tab {
+    cursor: pointer;
+    color: #BDBDBD;
+    // -webkit-text-stroke: 1px #135E46;
+    text-shadow: -1px -1px 0 #135E46, 1px -1px 0 #135E46, -1px 1px 0 #135E46, 1px 1px 0 #135E46;
+}
+.tab:hover {
+    color: #fff;
+    // -webkit-text-stroke: 1px #135E46;
+    text-shadow: -1px -1px 0 #135E46, 1px -1px 0 #135E46, -1px 1px 0 #135E46, 1px 1px 0 #135E46;
+    opacity: 1;
+}
+.tab-active {
+    color: #fff;
+    // -webkit-text-stroke: 1px #135E46;
+    text-shadow: -1px -1px 0 #135E46, 1px -1px 0 #135E46, -1px 1px 0 #135E46, 1px 1px 0 #135E46;
+    opacity: 1;
+}
+
+
+/* May 2024 - new classes */
+
+
+.token-logos-2 {
+    display: flex;
+    align-items: center;
+}
+.token-logo-secondary {
+    margin-left: -12px;
+}
+
+.token-name-for-pools {
+    margin-left: 12px;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 83.333% */
+}
+.token-controls-for-pools {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    margin-left: 12px;
+}
+.token-control {
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; 
+    cursor: pointer;
+}
+.token-control:hover {
+    color: white;
+}
+
+
+.pool-container {
+    width: 100%;
+    color: #FFF;
+    padding: 20px 40px 40px;
+    border-radius: 8px;
+    background: #135E46;
+}
+.pool-container-title {
+    display: block;color: #E3C6AD;
+    text-align: center;
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.pool-container-label {
+    display: block;
+    margin-top: 6px;
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+}
+.pool-container-label-2 {
+    display: block;
+    margin-top: 16px;
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+}
+.pool-selectors {
+    display: flex;
+    gap: 22px;
+}
+
+
+.custom-select-2 {
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid #B67B65;
+    background: #D09D7B;
+    color: #FFF; /* Text color, assuming you want white text */
+    padding: 5px; /* Adjust as needed for padding within the select box */
+    flex: 1;
+    cursor: pointer;
+}
+.custom-select-2:hover {
+    background: #B67B65;
+}
+.custom-select-2-logo {
+    margin-right: 8px;
+    width: 20px;
+    height: auto;
+}
+.custom-select-2-arrow {
+    margin-left: auto;
+}
+
+.pool-add-button-container {
+    margin-top: 4px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center; /* Center button text horizontally */
+    align-items: center; /* Center button text vertically */
+}
+
+.pool-add-button {
+    width: 418px;
+    height: 50px;
+    background: #B67B65; /* Assuming you want the same background color as the input fields */
+    border-radius: 8px;
+    color: #FFF;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 36px; /* Adjusted to fit the button height, original 48px seems too large */
+    font-style: normal;
+    font-weight: 400;
+    line-height: 50px; /* Match the button height for vertical centering */
+    border: none; /* Remove button border */
+    cursor: pointer; /* Change cursor to pointer on hover */
+    outline: none; /* Remove outline to keep the design clean */
+    text-align: center; /* Ensure text is centered */
+    -webkit-appearance: none; /* Remove default styles in Webkit browsers */
+    appearance: none; /* Remove default styles */
+}
+
+
+.pool-fieldset {
+    width: 100%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 11px 13px 6px 21px; 
+    position: relative;
+    z-index: 1;
+}
+.pool-fieldset-first {
+    margin-top: 12px;
+}
+.pool-fieldset-second {
+    margin-top: 8px;
+}
+
+.pool-fieldset-items {
+    display: flex;
+    pointer-events: none;
+}
+.pool-fieldset-left {
+    width: 63%;
+    display: flex;
+    flex-direction: column;
+}
+.pool-fieldset-inputholder {
+    display: block;
+    width: 100%;
+    height: 36px;
+}
+.pool-fieldset-inputholder-value {
+    color: #E3C6AD;
+    font-family: "astounder-squared-bb", sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+}
+.pool-fieldset-right {
+    width: 37%;
+    display: flex;
+    flex-direction: column;
+}
+
+
+.custom-select-data {
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+    height: 32px;
+    border-radius: 20px;
+    border: 1px solid #B67B65;
+    background: #D09D7B;
+    color: #FFF; /* Text color, assuming you want white text */
+    padding: 5px; /* Adjust as needed for padding within the select box */
+    flex: 1;
+}
+.custom-select-data-logo {
+    margin-right: 8px;
+    width: 20px;
+    height: auto;
+}
+
+
+.pool-under-select {
+    display: flex;
+}
+.pool-container-selectedtoken-value {
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+}
+.pool-container-selectedtoken-max {
+    color: #2BC20E;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px; /* 166.667% */
+    flex: none; /* Prevents label from growing */
+    margin-left: auto;
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+.pool-container-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: #FFF;
+    border: none; /* Removes the default border */
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 48px; /* Adjusted for visual consistency */
+    outline: none; /* Removes the highlight border on focus */
+    z-index: -1;
+    padding-top: 11px;
+    padding-bottom: 21px;
+    padding-right: calc(30% + 21px);
+    padding-left: 21px;
+    border-radius: 8px;
+    background: #73A788;
+}
+
+.pool-container-input:focus {
+    border: 1px solid #43BB8E;
+    box-shadow: 2px 4px 4px 0px rgba(0, 0, 0, 0.75);
+}
+
+
+.pool-remliq-tokens {
+    display: flex;
+    align-items: center;
+    color: white;
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+    margin-top: 16px;
+}
+.pool-remliq-tokens-logos {
+    display: flex;
+    align-items: center;
+    margin-right: 12px;
+    z-index: 1;
+    position: relative;
+}
+.pool-remliq-tokens-logo {
+    width: 24px;
+    height: auto;
+}
+.pool-remliq-tokens-logo-first {
+    margin-right: -12px;
+    z-index: 1;
+    position: relative;
+}
+.pool-remliq-tokens-logo-second {
+    z-index: 0;
+    position: relative;
+
+}
+
+.pool-remliq-selectamount {
+    border-radius: 8px;
+    background: #73A788;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 30px 16px;
+    margin-top: 22px;
+}
+
+.pool-remliq-selectamount-label {
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+.percentages {
+    display: flex;
+    margin-top: 13px;
+}
+.percentages-value {
+    color: #FFF;
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 22.635px;
+    margin-right: auto;
+}
+.percentages-button {
+    border-radius: 7px;
+    background: rgba(208, 157, 123, 0.90);
+    padding: 5px 10px 3px;
+    color: #B67B65;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 150%;
+    margin-left: 4px;
+    cursor: pointer;
+}
+
+.percentages-button:hover {
+    color: white;
+}
+
+.custom-range {
+    display: flex;
+    margin-top: 24px;
+}
+.custom-range-input {
+    width: 100%;
+}
+
+
+
+.custom-range-input {
+    display: block;
+    -webkit-appearance: none;
+    background-color: #D09D7B;
+    width: 100%;
+    height: 3px;
+    border-radius: 5px;
+    margin: 0 auto;
+    outline: 0;
+}
+.custom-range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    background-color: #D09D7B;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: .3s ease-in-out;
+}​
+.custom-range-input::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+}
+
+
+
+.pool-remliq-summary {
+    border-radius: 8px;
+    background: #73A788;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 30px 16px;
+    margin-top: 22px;
+}
+.pool-remliq-summary-itemgroup {
+    border-bottom: solid 1px #72A788;
+    padding-bottom: 13px;
+    padding-top: 11px;
+}
+.pool-remliq-summary-itemgroup:first-of-type {
+    padding-top: 0;
+}
+.pool-remliq-summary-itemgroup:last-of-type {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.pool-remliq-summary-item {
+    display: flex;
+    margin-top: 5px;
+}
+.pool-remliq-summary-item:first-of-type {
+    margin-top: 0;
+}
+.pool-remliq-summary-label {
+    color: #E3C6AD;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 20px;
+    margin-right: auto;
+}
+.pool-remliq-summary-value {
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 22.635px;
+}
+.pool-remliq-tokens-logo {
+    margin-left: 10px;
+    width: 16px;
+    height: auto;
+}
+
+
+
+.main-nav {
+    display: flex;
+    gap: 42px;
+    padding-left: 10px;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 150%; /* 36px */
+}
+.nav-logo {
+    cursor: pointer;
+    width: 1em;
+    height: 1em;
+    font-size: 48px;
+}
+.nav-link {
+    cursor: pointer;
+    color: #BDBDBD;
+    // -webkit-text-stroke: 1px #B67B65;
+    text-shadow: -1px -1px 0 #B67B65, 1px -1px 0 #B67B65, -1px 1px 0 #B67B65, 1px 1px 0 #B67B65;
+}
+.nav-link:hover {
+    color: #E3C6AD;
+    // -webkit-text-stroke: 1px #B67B65;
+    text-shadow: -1px -1px 0 #B67B65, 1px -1px 0 #B67B65, -1px 1px 0 #B67B65, 1px 1px 0 #B67B65;
+    opacity: 1;
+}
+.nav-link-active {
+    color: #E3C6AD;
+    // -webkit-text-stroke: 1px #B67B65;
+    text-shadow: -1px -1px 0 #B67B65, 1px -1px 0 #B67B65, -1px 1px 0 #B67B65, 1px 1px 0 #B67B65;
+    opacity: 1;
+}
+
+
+@import 'style-components/index.scss';

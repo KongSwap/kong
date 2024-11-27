@@ -28,7 +28,7 @@ export const parseTokens = (
         on_kong: icToken.on_kong,
         pool_symbol: icToken.pool_symbol ?? "Pool not found",
         pools: [],
-        // Optional fields
+        // Set default logo, will be updated by fetchTokenLogos
         logo: "/tokens/not_verified.webp",
         total_24h_volume: 0n,
         price: 0,
@@ -37,6 +37,7 @@ export const parseTokens = (
       } as FE.Token;
       return result;
     });
+
     return { Ok: icTokens };
   } catch (error) {
     console.error('Error parsing tokens:', error);

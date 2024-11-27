@@ -4,7 +4,7 @@ use ic_agent::Agent;
 
 use super::kong_update::KongUpdate;
 
-const KONG_BACKEND_STAGING: &str = "l4lgk-raaaa-aaaar-qahpq-cai";
+const KONG_BACKEND_LOCAL: &str = "l4lgk-raaaa-aaaar-qahpq-cai";
 // don't use prod canister unless you know what you're doing
 //const KONG_BACKEND_PROD: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
@@ -16,7 +16,7 @@ pub struct KongBackend {
 
 impl KongBackend {
     pub async fn new(agent: &Agent) -> Self {
-        let canister_id = Principal::from_text(KONG_BACKEND_STAGING).unwrap();
+        let canister_id = Principal::from_text(KONG_BACKEND_LOCAL).unwrap();
         KongBackend {
             agent: agent.clone(),
             canister_id,
