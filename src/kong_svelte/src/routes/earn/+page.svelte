@@ -1,21 +1,24 @@
 <script lang="ts">
-  import { t } from "$lib/services/translations";
   import { writable, derived } from "svelte/store";
   import { poolsList, poolsLoading, poolsError } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
-  import PoolsTable from "$lib/components/liquidity/pools/PoolsTable.svelte";
+  import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount } from 'svelte';
+  import { goto } from "$app/navigation";
+  import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-svelte';
 
   // Navigation state
   const activeSection = writable("pools");
-  const activeTab = writable("all_pools");
   
-  // Sort state (required by PoolsTable)
+  // Sort state
   const sortColumn = writable("rolling_24h_volume");
   const sortDirection = writable<"asc" | "desc">("desc");
 
   let isMobile = false;
+  let searchTerm = "";
+  let searchDebounceTimer: NodeJS.Timeout;
+  let debouncedSearchTerm = "";
 
   onMount(() => {
     const checkMobile = () => {
@@ -45,6 +48,66 @@
   const highestApr = derived(poolsList, ($pools) => {
     if (!$pools || $pools.length === 0) return 0;
     return Math.max(...$pools.map(pool => Number(pool.rolling_24h_apy)));
+  });
+
+  function handleAddLiquidity(token0: string, token1: string) {
+    goto(`/earn/add?token0=${token0}&token1=${token1}`);
+  }
+
+  // Search and filter functionality
+  $: {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+    }, 300);
+  }
+
+  $: filteredPools = $poolsList.filter(pool => {
+    if (!debouncedSearchTerm) return true;
+    
+    const searchMatches = [
+      pool.symbol_0.toLowerCase(),
+      pool.symbol_1.toLowerCase(), 
+      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
+      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
+      pool.address_0?.toLowerCase() || '',
+      pool.address_1?.toLowerCase() || ''
+    ];
+
+    return searchMatches.some(match => match.includes(debouncedSearchTerm));
+  });
+
+  function toggleSort(column: string) {
+    if ($sortColumn === column) {
+      sortDirection.update(d => d === "asc" ? "desc" : "asc");
+    } else {
+      sortColumn.set(column);
+      sortDirection.set("asc");
+    }
+  }
+
+  function getSortIcon(column: string) {
+    if ($sortColumn !== column) return ArrowUpDown;
+    return $sortDirection === "asc" ? ArrowUp : ArrowDown;
+  }
+
+  $: sortedPools = [...filteredPools].sort((a, b) => {
+    const direction = $sortDirection === "asc" ? 1 : -1;
+    const column = $sortColumn;
+    
+    if (column === "rolling_24h_volume") {
+      return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
+    }
+    if (column === "tvl") {
+      return direction * ((a.tvl || 0) - (b.tvl || 0));
+    }
+    if (column === "rolling_24h_apy") {
+      return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
+    }
+    if (column === "price") {
+      return direction * (Number(a.price) - Number(b.price));
+    }
+    return 0;
   });
 </script>
 
@@ -95,18 +158,141 @@
     </div>
 
     {#if $activeSection === "pools"}
-      <div class="pools-container">
-        <div class="pools-inner">
-          <PoolsTable
-            pools={$poolsList}
-            loading={$poolsLoading}
-            error={$poolsError}
-            tokenMap={$tokenMap}
-            sortColumn={$sortColumn}
-            sortDirection={$sortDirection}
-          />
+      <Panel className="flex-1 mb-4">
+        <div class="h-full overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between mb-4 sticky top-0 bg-[#1a1b23] z-10">
+            <input
+              type="text"
+              placeholder="Search by token name or address..."
+              bind:value={searchTerm}
+              class="w-full px-4 py-2 bg-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]/50"
+            />
+          </div>
+
+          <div class="overflow-auto flex-1">
+            <!-- Desktop Table View -->
+            <table class="w-full hidden lg:table">
+              <thead>
+                <tr>
+                  <th class="w-1/4">Pool</th>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("price")}>
+                    Price
+                    <svelte:component this={getSortIcon("price")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("tvl")}>
+                    TVL
+                    <svelte:component this={getSortIcon("tvl")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("rolling_24h_volume")}>
+                    Volume 24H
+                    <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right cursor-pointer w-1/6" on:click={() => toggleSort("rolling_24h_apy")}>
+                    APY
+                    <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right w-1/12">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                  <PoolRow
+                    {pool}
+                    tokenMap={$tokenMap}
+                    isEven={i % 2 === 0}
+                    onAddLiquidity={handleAddLiquidity}
+                  />
+                {/each}
+              </tbody>
+            </table>
+
+            <!-- Mobile/Tablet Card View -->
+            <div class="lg:hidden space-y-4">
+              <!-- Sort Controls for Mobile -->
+              <div class="flex flex-col gap-3 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-[#8890a4]">Sort by</span>
+                  <button 
+                    on:click={() => sortDirection.update(d => d === "asc" ? "desc" : "asc")}
+                    class="flex items-center gap-2 text-[#60A5FA] text-sm font-medium"
+                  >
+                    <span>{$sortDirection === "asc" ? "Ascending" : "Descending"}</span>
+                    <svelte:component this={$sortDirection === "asc" ? ArrowUp : ArrowDown} class="w-4 h-4" />
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {#each [
+                    { value: "rolling_24h_volume", label: "Volume 24H" },
+                    { value: "tvl", label: "TVL" },
+                    { value: "rolling_24h_apy", label: "APY" },
+                    { value: "price", label: "Price" }
+                  ] as option}
+                    <button
+                      class="px-3 py-2 rounded-lg text-sm text-center transition-all duration-200
+                             {$sortColumn === option.value 
+                               ? 'bg-[#60A5FA] text-white font-medium' 
+                               : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
+                      on:click={() => sortColumn.set(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+
+              {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                <div class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                      <div class="relative flex items-center">
+                        <img 
+                          src={$tokenMap.get(pool.address_0)?.logo || ''} 
+                          alt={pool.symbol_0}
+                          class="w-8 h-8 rounded-full ring-2 ring-[#1a1b23]"
+                        />
+                        <img 
+                          src={$tokenMap.get(pool.address_1)?.logo || ''} 
+                          alt={pool.symbol_1}
+                          class="w-8 h-8 rounded-full -ml-3 ring-2 ring-[#1a1b23]"
+                        />
+                      </div>
+                      <div>
+                        <div class="font-medium text-white">{pool.symbol_0}/{pool.symbol_1}</div>
+                        <div class="text-xs text-[#8890a4]">Pool Tokens</div>
+                      </div>
+                    </div>
+                    <button
+                      on:click={() => handleAddLiquidity(pool.address_0, pool.address_1)}
+                      class="px-4 py-2 text-sm bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    >
+                      Add Liquidity
+                    </button>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">Price</div>
+                      <div class="font-medium text-white">${Number(pool.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</div>
+                    </div>
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">TVL</div>
+                      <div class="font-medium text-white">${Number(pool.tvl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">Volume 24H</div>
+                      <div class="font-medium text-white">${Number(pool.rolling_24h_volume).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                    <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
+                      <div class="text-sm text-[#8890a4] mb-1">APY</div>
+                      <div class="font-medium text-[#60A5FA]">{Number(pool.rolling_24h_apy).toFixed(2)}%</div>
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
         </div>
-      </div>
+      </Panel>
     {/if}
   </div>
 </section>
@@ -159,86 +345,44 @@
            rounded-md text-xs font-medium;
   }
 
-  .earn-card.coming-soon.mobile {
-    @apply py-3 px-4;
-  }
-
-  .earn-card.coming-soon.mobile .card-content {
-    @apply gap-0;
-  }
-
   .soon-tag-inline {
     @apply text-xs text-[#60A5FA] font-medium ml-2;
   }
 
-  @media (max-width: 640px) {
-    section {
-      @apply px-2 pb-2;
-    }
-    
-    .pools-container {
-      height: calc(100vh - 16rem - 64px - 0.5rem); /* Adjusted for mobile + header + padding */
-    }
+  table {
+    @apply border-collapse;
   }
 
-  .pools-container {
-    @apply flex-grow rounded-xl overflow-hidden relative;
-    background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
-    border: 1px solid rgba(96, 165, 250, 0.12);
-    box-shadow: 
-      0 32px 64px -16px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(96, 165, 250, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(32px);
-    height: calc(100vh - 64px - 11.5rem - 1rem);
-
-    /* Premium edge highlight */
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      padding: 1px;
-      border-radius: inherit;
-      background: linear-gradient(
-        135deg,
-        rgba(96, 165, 250, 0.08) 0%,
-        rgba(96, 165, 250, 0.03) 50%,
-        rgba(96, 165, 250, 0.01) 100%
-      );
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      pointer-events: none;
-    }
-
-    /* Inner glow effect */
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: radial-gradient(
-        circle at 50% 0%,
-        rgba(96, 165, 250, 0.02) 0%,
-        transparent 70%
-      );
-      pointer-events: none;
-    }
+  th {
+    @apply sticky top-0 px-4 py-3 text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d] bg-[#1a1b23] z-10;
   }
 
-  .pools-inner {
-    @apply relative h-full p-4 z-[1];
+  /* Scrollbar Styling */
+  .overflow-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2d3d transparent;
+  }
+
+  .overflow-auto::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  .overflow-auto::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .overflow-auto::-webkit-scrollbar-thumb {
+    @apply bg-[#2a2d3d] rounded-full hover:bg-[#3a3d4d] transition-colors duration-200;
   }
 
   /* For mobile, use flex instead of grid */
   @media (max-width: 768px) {
     .earn-cards {
-      @apply flex flex-row gap-2 overflow-x-auto;
+      @apply flex flex-row gap-2 overflow-x-auto pb-2;
     }
 
     .earn-card {
-      @apply flex-1 min-w-0 py-2 px-3;
+      @apply flex-1 min-w-[140px] py-2 px-3;
     }
 
     .earn-card .card-content h3 {
