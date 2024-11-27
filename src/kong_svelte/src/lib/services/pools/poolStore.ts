@@ -144,8 +144,6 @@ function createPoolStore() {
           tokens.prices
         ]);
 
-        console.log("POOOL BAABNCE", balances);
-
         if (!tokenPrices) {
           throw new Error('Token prices are not available');
         }

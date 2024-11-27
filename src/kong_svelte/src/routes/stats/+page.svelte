@@ -49,6 +49,12 @@
   const copyStates = writable<CopyStates>({});
   const selectedTokenId = writable<string | null>(null);
 
+  // Function to handle sorting
+  function handleSort({ column, direction }: { column: string; direction: "asc" | "desc" }) {
+    sortColumnStore.set(column);
+    sortDirectionStore.set(direction);
+  }
+
   // Enhanced loading state with type safety
   const tokensLoading = derived(
     [tokenStore, poolStore, formattedTokens],
@@ -273,17 +279,47 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th class="text-left">Token</th>
-                  <th class="text-right">Price</th>
-                  <th class="text-right">24h Change</th>
-                  <th class="text-right actions-header">Actions</th>
+                  <TableHeader
+                    column="name"
+                    label="Token"
+                    textClass="text-left"
+                    sortColumn={$sortColumnStore}
+                    sortDirection={$sortDirectionStore}
+                    onsort={handleSort}
+                  />
+                  <TableHeader
+                    column="price"
+                    label="Price"
+                    textClass="text-right"
+                    sortColumn={$sortColumnStore}
+                    sortDirection={$sortDirectionStore}
+                    onsort={handleSort}
+                  />
+                  <TableHeader
+                    column="price_change_24h"
+                    label="24h Change"
+                    textClass="text-right"
+                    sortColumn={$sortColumnStore}
+                    sortDirection={$sortDirectionStore}
+                    onsort={handleSort}
+                  />
+                  <TableHeader
+                    column="actions"
+                    label="Actions"
+                    textClass="text-right"
+                    sortColumn={$sortColumnStore}
+                    sortDirection={$sortDirectionStore}
+                    onsort={handleSort}
+                  />
                 </tr>
               </thead>
+              {#key $searchQuery + $sortColumnStore + $sortDirectionStore}
               <tbody>
                 {#each $filteredSortedTokens as token (token.canister_id)}
+                  {@const priceChangeClass = token.price_change_24h > 0 ? 'positive' : token.price_change_24h < 0 ? 'negative' : ''}
                   <tr 
-                    animate:flip={{ duration: ANIMATION_DURATION }}
                     class="token-row"
+                    animate:flip={{ duration: ANIMATION_DURATION }}
                     on:click={() => handleTokenSelect(token)}
                   >
                     <td class="token-cell">
@@ -298,32 +334,24 @@
                       </div>
                     </td>
                     <td class="price-cell" title={formatToNonZeroDecimal(token.price)}>
-                      ${formatToNonZeroDecimal(token.price)}
+                      <span transition:slide|local>
+                        ${formatToNonZeroDecimal(token.price)}
+                      </span>
                     </td>
-                    <td class="price-change-cell" class:positive={token.price_change_24h > 0} class:negative={token.price_change_24h < 0}>
-                      {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
+                    <td class="change-cell {priceChangeClass}" title={`${token.price_change_24h}%`}>
+                      <span transition:slide|local>
+                        {token.price_change_24h}%
+                      </span>
                     </td>
                     <td class="actions-cell">
-                      <div class="flex items-center justify-end gap-2">
-                        <button 
-                          class="action-button" 
-                          on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
-                          title="Copy token ID"
-                        >
-                          {$copyStates[token.canister_id] || "Copy ID"}
-                        </button>
-                        <button 
-                          class="action-button swap-button" 
-                          on:click|stopPropagation={(e) => handleSwap(token, e)}
-                          title="Swap this token"
-                        >
-                          Swap
-                        </button>
-                      </div>
+                      <button class="action-button" on:click|stopPropagation={() => copyToClipboard(token.canister_id)}>
+                        {$copyStates[token.canister_id] || 'Copy ID'}
+                      </button>
                     </td>
                   </tr>
                 {/each}
               </tbody>
+              {/key}
             </table>
           </div>
         {/if}

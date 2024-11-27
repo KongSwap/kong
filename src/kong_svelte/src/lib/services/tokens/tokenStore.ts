@@ -84,7 +84,7 @@ function createTokenStore() {
       return {};
     }
     const walletId = principal.toString();
-    debugger;
+
     if (!walletId) return {};
     try {
       const balances = await TokenService.fetchBalances(

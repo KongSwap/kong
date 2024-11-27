@@ -2,7 +2,7 @@
   import { fade, slide } from 'svelte/transition';
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { tokenLogoStore, fetchTokenLogo } from "$lib/services/tokens/tokenLogos";
-  import { formattedTokens, type FormattedToken } from "$lib/stores/formattedTokens";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { toggleFavoriteToken } from "$lib/services/tokens/favorites";
   import { onMount } from 'svelte';
 
@@ -30,18 +30,28 @@
     searchInput?.focus();
   });
 
-  // Subscribe to the store
+  // Subscribe to the stores
   $: formattedTokensList = $formattedTokens;
+  $: tokenState = $tokenStore;
 
   $: processedTokens = tokens
     .map((token): ProcessedToken => {
-      const formattedToken = (formattedTokensList?.find((t) => t.canister_id === token.canister_id) || {}) as FormattedToken;
+      const formattedToken = formattedTokensList?.find((t) => t.canister_id === token.canister_id);
+      const balance = tokenState.balances[token.canister_id] || 0;
+      const price = tokenState.prices[token.canister_id] || 0;
+      const decimals = token.decimals || 0;
+      
+      // Convert balance from token decimals
+      const normalizedBalance = Number(balance) / (10 ** decimals);
+      const usdValue = normalizedBalance * price;
+      
       return {
         ...token,
-        ...formattedToken,
+        ...(formattedToken || {}),
         logo: $tokenLogoStore[token.canister_id],
-        value: Number(token.balance || 0),
-        usdValue: Number(token.balance || 0) * Number(token.formattedUsdValue || 0),
+        value: normalizedBalance,
+        usdValue,
+        balance: balance.toString(),
         searchableText: `${token.name || ''} ${token.symbol || ''} ${token.canister_id || ''}`.toLowerCase(),
         canister_id: token.canister_id?.toLowerCase() || '',
         isFavorite: Boolean(formattedToken?.isFavorite)

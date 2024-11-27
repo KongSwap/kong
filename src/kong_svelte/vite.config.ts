@@ -27,7 +27,12 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           manualChunks: {
             'vendor': ['svelte'],
           },
-        }
+        },
+        external: [
+          '@sveltejs/kit',
+          '@sveltejs/kit/vite',
+          'sveltekit/environment'
+        ]
       },
       minify: 'terser' as const,
       terserOptions: {
@@ -43,14 +48,6 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         },
       },
       exclude: ['@sveltejs/kit']
-    },
-    ssr: {
-      external: [
-        '@sveltejs/kit',
-        '@sveltejs/kit/vite',
-        '__sveltekit/environment'
-      ],
-      noExternal: []
     },
     server: {
       proxy: {

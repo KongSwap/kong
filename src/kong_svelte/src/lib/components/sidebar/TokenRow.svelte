@@ -5,7 +5,6 @@
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { formatBalance } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
-  import TokenDetails from '$lib/components/common/TokenDetails.svelte';
   export let token: any;
   const dispatch = createEventDispatcher();
   let showDetails = false;
@@ -13,8 +12,11 @@
   let isPressed = false;
   let showMenu = false;
 
-  $: formattedBalance = formatBalance(token.balance, token.decimals);
-  $: formattedUsdValue = token.usdValue?.toFixed(2) || '0.00';
+  $: balance = Number(token.balance || 0);
+  $: decimals = Number(token.decimals || 0);
+  $: usdValue = Number(token.usdValue || 0);
+  $: formattedBalance = formatBalance(balance, decimals);
+  $: formattedUsdValue = usdValue.toFixed(2);
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
