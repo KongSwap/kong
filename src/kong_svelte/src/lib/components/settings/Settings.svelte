@@ -22,7 +22,7 @@
   let showClaimButton = !isIcNetwork;
 
   // Predefined slippage values for quick selection
-  const quickSlippageValues = [0.1, 0.5, 1, 2, 3];
+  const quickSlippageValues = [0.5, 1, 2, 3, 5];
 
   // Subscribe to settings changes using liveQuery
   const settings = liveQuery(async () => {
@@ -212,10 +212,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <text x="4" y="19" font-size="18" font-weight="bold">%</text>
           </svg>
-          <h3>Slippage Settings</h3>
+          <h3>Slippage Tolerance</h3>
         </div>
         <div class="setting-content">
           <div class="slippage-container">
+            <p class="slippage-description">
+              Your transaction will revert if the price changes unfavorably by more than this percentage.
+            </p>
+            
+            <!-- Quick select buttons in their own row -->
             <div class="quick-select-row">
               {#each quickSlippageValues as value}
                 <button
@@ -227,9 +232,11 @@
                 </button>
               {/each}
             </div>
-            <div class="custom-row">
-              <label class="custom-label">Enter custom slippage:</label>
-              <div class="custom-input-wrapper">
+
+            <!-- Custom input in its own row -->
+            <div class="custom-input-row">
+              <span class="custom-label">Enter custom slippage:</span>
+              <div class="custom-input-container" class:active={!quickSlippageValues.includes(slippageValue)}>
                 <input
                   type="text"
                   inputmode="decimal"
@@ -239,12 +246,23 @@
                   on:input={handleSlippageInput}
                   on:blur={handleSlippageBlur}
                 />
-                <span class="text-white/90 font-medium">%</span>
+                <span class="percentage-symbol">%</span>
               </div>
             </div>
+
             {#if parseFloat(slippageInputValue) > 5}
               <div class="warning-message">
-                ⚠️ High slippage increases risk of price impact
+                <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 9v4M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>High slippage increases risk of price impact</span>
+              </div>
+            {:else if parseFloat(slippageInputValue) < 0.1}
+              <div class="warning-message">
+                <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 9v4M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Transaction may fail due to low slippage tolerance</span>
               </div>
             {/if}
           </div>
@@ -440,66 +458,86 @@
   }
 
   .slippage-container {
-    @apply grid gap-3;
+    @apply grid gap-4;
   }
 
   .quick-select-row {
     @apply grid grid-cols-5 gap-2;
   }
 
-  .custom-row {
-    @apply flex items-center justify-between gap-4 
-           px-3 py-2 rounded-lg bg-black/20 
-           border border-white/10 hover:border-white/20
-           transition-colors duration-200;
-  }
-
-  .custom-label {
-    @apply text-white/90 font-medium;
-  }
-
-  .custom-input-wrapper {
-    @apply flex items-center gap-2;
-  }
-
   .quick-select-btn {
-    @apply w-full px-3 py-2 rounded-lg 
+    @apply w-full px-3 py-2.5 rounded-lg 
            bg-black/20 text-white/90 text-base font-medium
-           border border-white/10 transition-colors duration-200
-           hover:border-white/20 hover:bg-black/30;
+           border border-white/10 transition-all duration-200
+           hover:border-white/20 hover:bg-black/30
+           focus:outline-none focus:ring-2 focus:ring-yellow-300/50;
   }
 
   .quick-select-btn.active {
-    @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50;
+    @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50
+           ring-2 ring-yellow-300/50;
+  }
+
+  .custom-input-row {
+    @apply flex items-center gap-4 
+           px-4 py-3 rounded-lg bg-black/20 
+           border border-white/10;
+  }
+
+  .custom-label {
+    @apply text-white/90 font-medium whitespace-nowrap;
+  }
+
+  .custom-input-container {
+    @apply flex items-center gap-2 flex-1
+           px-3 py-2 rounded-lg bg-black/30
+           border border-white/10 transition-all duration-200
+           hover:border-white/20 focus-within:border-yellow-300/50
+           focus-within:ring-2 focus-within:ring-yellow-300/50;
+  }
+
+  .custom-input-container.active {
+    @apply bg-yellow-300/20 border-yellow-300/50
+           ring-2 ring-yellow-300/50;
   }
 
   .slippage-input {
-    @apply bg-transparent w-24 text-center text-white/90 text-base font-medium
-           focus:text-white focus:outline-none;
+    @apply w-full bg-transparent text-white/90 text-base font-medium
+           focus:outline-none text-right pr-1;
+  }
+
+  .percentage-symbol {
+    @apply text-white/70 font-medium;
   }
 
   .warning-message {
-    @apply text-sm text-yellow-300/90 text-center;
+    @apply flex items-center gap-2 mt-3 px-3 py-2
+           bg-yellow-300/10 rounded-lg border border-yellow-300/20
+           text-sm text-yellow-300/90;
+  }
+
+  .warning-icon {
+    @apply w-4 h-4 stroke-yellow-300/90;
   }
 
   @media (max-width: 768px) {
     .quick-select-row {
-      @apply grid-cols-5;
+      @apply grid-cols-3 grid-rows-2;
+    }
+
+    .custom-input-row {
+      @apply flex-col items-start gap-2 px-3 py-2;
+    }
+
+    .custom-input-container {
+      @apply w-full;
     }
 
     .quick-select-btn {
       @apply px-2 py-2 text-sm;
     }
 
-    .custom-row {
-      @apply px-2 py-2;
-    }
-
     .slippage-input {
-      @apply w-20 text-sm;
-    }
-
-    .custom-label {
       @apply text-sm;
     }
   }
@@ -508,5 +546,76 @@
     @apply px-4 py-2 rounded-lg bg-black/20 hover:bg-black/30 
            transition-colors duration-200 text-white/90
            border border-white/10 hover:border-white/20;
+  }
+
+  .slippage-description {
+    @apply text-sm text-white/70 mb-4;
+  }
+
+  .slippage-controls {
+    @apply w-full;
+  }
+
+  .quick-select-row {
+    @apply grid grid-cols-5 gap-2;
+  }
+
+  .quick-select-btn {
+    @apply w-full px-3 py-2.5 rounded-lg 
+           bg-black/20 text-white/90 text-base font-medium
+           border border-white/10 transition-all duration-200
+           hover:border-white/20 hover:bg-black/30
+           focus:outline-none focus:ring-2 focus:ring-yellow-300/50;
+  }
+
+  .quick-select-btn.active {
+    @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50
+           ring-2 ring-yellow-300/50;
+  }
+
+  .custom-input-container {
+    @apply relative flex items-center w-full
+           px-3 py-2 rounded-lg bg-black/20 
+           border border-white/10 transition-all duration-200
+           hover:border-white/20 focus-within:border-yellow-300/50
+           focus-within:ring-2 focus-within:ring-yellow-300/50;
+  }
+
+  .custom-input-container.active {
+    @apply bg-yellow-300/20 border-yellow-300/50
+           ring-2 ring-yellow-300/50;
+  }
+
+  .slippage-input {
+    @apply w-full bg-transparent text-white/90 text-base font-medium
+           focus:outline-none text-right pr-1;
+  }
+
+  .percentage-symbol {
+    @apply text-white/70 font-medium;
+  }
+
+  .warning-message {
+    @apply flex items-center gap-2 mt-3 px-3 py-2
+           bg-yellow-300/10 rounded-lg border border-yellow-300/20
+           text-sm text-yellow-300/90;
+  }
+
+  .warning-icon {
+    @apply w-4 h-4 stroke-yellow-300/90;
+  }
+
+  @media (max-width: 768px) {
+    .quick-select-row {
+      @apply grid-cols-3;
+    }
+
+    .quick-select-btn, .custom-input-container {
+      @apply px-2 py-2 text-sm;
+    }
+
+    .slippage-input {
+      @apply text-sm;
+    }
   }
 </style>
