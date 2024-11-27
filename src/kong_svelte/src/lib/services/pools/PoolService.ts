@@ -5,6 +5,8 @@ import { PoolResponseSchema, UserPoolBalanceSchema } from './poolSchema';
 import { IcrcService } from '../icrc/IcrcService';
 import { canisterId as kongBackendCanisterId } from '../../../../../declarations/kong_backend';
 import { canisterIDLs } from '../pnp/PnpInitializer';
+import { PoolSerializer } from './PoolSerializer';
+import { createAnonymousActorHelper } from '$lib/utils/actorUtils';
 
 export class PoolService {
   protected static instance: PoolService;
@@ -19,36 +21,17 @@ export class PoolService {
   // Data Fetching
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
-      const pnp = get(auth);
-      const actor =  await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
-      if (!actor) {
-        return {
-          pools: [],
-          total_tvl: 0n,
-          total_24h_volume: 0n,
-          total_24h_lp_fee: 0n
-        };
-      }
+      const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
       const result = await actor.pools([]);
-
-      if (!result || !result.Ok) {
-        console.error('Unexpected response structure:', result);
-        throw new Error('Invalid response from actor');
+      
+      if (!result.Ok) {
+        throw new Error('Failed to fetch pools');
       }
 
-      // Ensure all required properties are present
-      const validatedData = PoolResponseSchema.parse(result.Ok);
-
-      // Provide default value for lp_token_symbol if missing
-      validatedData.pools = validatedData.pools.map(pool => ({
-        ...pool,
-        lp_token_symbol: pool.lp_token_symbol
-      }));
-
-      return validatedData as BE.PoolResponse;
+      return PoolSerializer.serializePoolsResponse(result.Ok);
     } catch (error) {
       console.error('Error fetching pools:', error);
-      throw new Error('Failed to fetch pools data');
+      throw error;
     }
   }
 
