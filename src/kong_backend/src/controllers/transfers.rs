@@ -8,7 +8,7 @@ use crate::stable_transfer::transfer_map;
 use crate::transfers::transfer_reply::TransferIdReply;
 use crate::transfers::transfer_reply_helpers::to_transfer_id;
 
-const MAX_TRANSFERS: usize = 1_000;
+const MAX_TRANSFERS: usize = 100;
 
 /// serialize TRANSFER_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
