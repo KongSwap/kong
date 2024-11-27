@@ -9,7 +9,7 @@ use crate::stable_tx::tx_map;
 use crate::txs::txs_reply::TxsReply;
 use crate::txs::txs_reply_helpers::to_txs_reply;
 
-const MAX_TXS: usize = 1_000;
+const MAX_TXS: usize = 100;
 
 /// serialize TX_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
