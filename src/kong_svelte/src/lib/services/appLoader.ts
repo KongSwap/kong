@@ -44,8 +44,7 @@ export class AppLoader {
 
   private async initializeWallet(): Promise<void> {
     try {
-      // Initialize wallet connection using auth service
-      // Add your wallet initialization logic here
+      await auth.initialize();
     } catch (error) {
       console.error("Failed to initialize wallet:", error);
       this.updateLoadingState({
@@ -226,10 +225,7 @@ export class AppLoader {
       });
 
       // Initialize core services first
-      await Promise.all([
-        this.initializeWallet(),
-        this.initializeTokens()
-      ]);
+      await this.initializeTokens()
 
       // Initialize worker and wait for initial data
       const workerInitialized = await updateWorkerService.initialize();
@@ -249,7 +245,7 @@ export class AppLoader {
         tokenStore.loadPrices(),
         this.initializeSettings()
       ]);
-
+ 
       // Set initialization flag
       this.isInitialized = true;
     } catch (error) {

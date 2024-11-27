@@ -30,20 +30,18 @@
     searchInput?.focus();
   });
 
-  // Subscribe to the stores
-  $: formattedTokensList = $formattedTokens;
-  $: tokenState = $tokenStore;
-
   $: processedTokens = tokens
     .map((token): ProcessedToken => {
-      const formattedToken = formattedTokensList?.find((t) => t.canister_id === token.canister_id);
-      const balance = tokenState.balances[token.canister_id] || 0;
-      const price = tokenState.prices[token.canister_id] || 0;
+      const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id);
+      // Get balance info from store
+      const balanceInfo = $tokenStore.balances[token.canister_id] || { in_tokens: 0n, in_usd: '0' };
+      const balance = balanceInfo.in_tokens;
       const decimals = token.decimals || 0;
       
-      // Convert balance from token decimals
-      const normalizedBalance = Number(balance) / (10 ** decimals);
-      const usdValue = normalizedBalance * price;
+      // Convert balance from token decimals while preserving precision
+      const divisor = BigInt(10) ** BigInt(decimals);
+      const normalizedBalance = Number(balance) / Number(divisor);
+      const usdValue = Number(balanceInfo.in_usd);
       
       return {
         ...token,

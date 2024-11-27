@@ -118,7 +118,10 @@ function createAuthStore(pnp: PNP) {
 
           // Force a refresh of the userStore
           const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false });
-          const userData = await actor.get_user();
+          await Promise.all([
+            actor.get_user(),
+            TokenService.fetchBalances()
+          ]);
           return result;
         } else {
           console.log("Invalid connection result:", result);
@@ -129,6 +132,7 @@ function createAuthStore(pnp: PNP) {
       } catch (error) {
         console.error('Connection error:', error);
         set({ isConnected: false, account: null, isInitialized: true });
+        localStorage.removeItem("kongSelectedWallet");
         throw error;
       }
     },
@@ -137,7 +141,14 @@ function createAuthStore(pnp: PNP) {
       try {
         const result = await pnp.disconnect();
         set({ isConnected: false, account: null, isInitialized: true });
-        
+        // zero out token balances
+        tokenStore.update(state => ({
+          ...state,
+          balances: Object.keys(state.balances).reduce((acc, key) => {
+            acc[key] = { in_tokens: 0n, in_usd: '0' };
+            return acc;
+          }, {} as Record<string, TokenBalance>),
+        }));
         // Clear saved wallet on disconnect
         if (browser) {
           localStorage.removeItem(LAST_WALLET_KEY);

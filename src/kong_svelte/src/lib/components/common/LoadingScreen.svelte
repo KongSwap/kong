@@ -213,7 +213,6 @@
     };
   }
 
-  $: showLoadingScreen = $loadingState.isLoading;
   $: containerStyle = `--glow-color: ${dominantColor};`;
 
   // Freeze progress when shutting down
@@ -230,14 +229,16 @@
   }
 </script>
 
-{#if showLoadingScreen}
+{#if $loadingState.isLoading}
   <div
-    class="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
+    class="h-screen top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
     out:handleOutro
     on:outroend
   >
-    <div class="screen-curve animation"></div>
-    <div class="crt-content">
+    <div class="screen-curve animation min-h-screen"></div>
+    <div class="crt-content min-h-screen">
+      <img src={gorillaRight} alt="Kong Logo" class="absolute bottom-0 opacity-[8%] w-[600px] filter brightness-0 invert" />
+
       <div class="flex flex-col items-center">
         <div class="logo-wrapper mb-8">
           {#key currentLogo}
@@ -281,7 +282,6 @@
           {/key}
         </div>
         <h2 class="relative !text-7xl font-bold mb-2 uppercase font-alumni neon-text mt-10 flex justify-center flex-col gap-x-2 items-center">
-          <img src={gorillaRight} alt="Kong Logo" class="absolute opacity-50 w-32 h-32 pb-1 filter brightness-0 invert" />
           <span class="h-[10] text-outline-1">KongSwap</span>
         </h2>
         <div class="message-container h-8 flex items-center justify-center mb-4 progress-text mt-4">

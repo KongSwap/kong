@@ -31,9 +31,8 @@
   // Initialize app
   onMount(() => {
     const init = async () => {
-      await auth.initialize();
       await appLoader.initialize();
-      updateWorkerService.initialize();
+      await auth.initialize();
       isInitialized = true;
       initialLoad = false;
     };
