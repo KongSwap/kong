@@ -198,16 +198,20 @@
   height="auto"
 >
   {#if isInitializing}
-    <div class="flex justify-center items-center max-h-[100px]">
-      <span class="text-white text-lg opacity-80">Getting latest price...</span>
+    <div class="loading-container">
+      <div class="loading-spinner">
+        <div class="spinner-ring"></div>
+        <span class="loading-text">Getting latest price...</span>
+      </div>
     </div>
   {:else if error}
-    <div class="flex justify-center items-center min-h-[200px] p-4">
-      <p class="text-red-500 text-base text-center">{error}</p>
+    <div class="error-container">
+      <div class="error-icon">!</div>
+      <p class="error-message">{error}</p>
     </div>
   {:else if payToken && receiveToken}
-    <div class="flex flex-col h-full">
-      <div class="flex flex-col gap-2 overflow-y-auto pr-1 mb-4">
+    <div class="confirmation-container">
+      <div class="sections-wrapper">
         <PayReceiveSection
           {payToken}
           {payAmount}
@@ -229,9 +233,9 @@
         />
       </div>
 
-      <div class="mt-auto">
+      <div class="button-container">
         <Button
-          text={isCountingDown ? `Processing ${countdown}...` : "CONFIRM SWAP"}
+          text={isCountingDown ? `Confirming ${countdown}...` : "Confirm Swap"}
           variant="yellow"
           size="big"
           onClick={handleConfirm}
@@ -242,3 +246,96 @@
     </div>
   {/if}
 </Modal>
+
+<style>
+  .confirmation-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    max-height: 80vh;
+  }
+
+  .sections-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin-bottom: 16px;
+  }
+
+  .sections-wrapper::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sections-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sections-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  .button-container {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+  }
+
+  .loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .spinner-ring {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #60A5FA;
+    border-radius: 50%;
+  }
+
+  .loading-text {
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 16px;
+  }
+
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 200px;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .error-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.2);
+    color: rgb(239, 68, 68);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .error-message {
+    color: rgb(239, 68, 68);
+    font-size: 16px;
+    max-width: 300px;
+  }
+</style>
