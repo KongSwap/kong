@@ -10,6 +10,7 @@
     import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
     import { Flame, MoreVertical } from "lucide-svelte";
     import { onMount } from 'svelte';
+    import { formatTokenValue, formatUsdValue, fromRawAmount, toRawAmount } from "$lib/utils/tokenFormatters";
   
     export let pool: BE.Pool & { tvl?: number };
     export let tokenMap: Map<string, any>;
@@ -102,7 +103,7 @@
     <td class="volume-cell">
       <div class="volume-info">
         <div class="volume-value">
-          ${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}
+          {formatUsdValue(fromRawAmount(pool.rolling_24h_volume.toString(), 6))}
         </div>
       </div>
     </td>

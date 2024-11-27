@@ -6,6 +6,7 @@
   import Button from "$lib/components/common/Button.svelte";
   import { goto } from "$app/navigation";
   import type { Position } from "$lib/types";
+    import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   export let pool: BE.Pool;
   export let tokenMap: Map<string, any>;
@@ -76,7 +77,7 @@
         </div>
         <div class="stat-item">
           <span class="stat-label">24h Volume</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}</span>
+          <span class="stat-value">${pool.rolling_24h_volume}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">APY</span>
