@@ -1,16 +1,17 @@
-import { browser } from "$app/environment";
+/// <reference types="@sveltejs/kit" />
+/// <reference no-default-lib="true"/>
+/// <reference lib="esnext" />
+/// <reference lib="webworker" />
+
 import { tokenStore } from "./tokens/tokenStore";
 import { poolStore } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
 import * as Comlink from "comlink";
-import { swapActivityStore } from "$lib/stores/swapActivityStore";
 import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 import type { WorkerApi, BatchPreloadResult, UpdateType } from "$lib/workers/updateWorker";
-import { tokenLogoStore, getAllTokenLogos } from "$lib/services/tokens/tokenLogos";
-import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
 import { appLoader } from "$lib/services/appLoader"; // Import appLoader
-import { writable } from "svelte/store";
 
 class UpdateWorkerService {
   private worker: Worker | null = null;
@@ -18,7 +19,6 @@ class UpdateWorkerService {
   private isInitialized = false;
   private isInBackground = false;
   private updateInterval: number | null = null;
-  private _loadingState = writable({ loaded: 0, total: 0, errors: [] });
 
   // Public getter for initialization status
   public getIsInitialized(): boolean {
@@ -26,8 +26,6 @@ class UpdateWorkerService {
   }
 
   async initialize() {
-    if (!browser || this.isInitialized) return;
-
     try {
       console.log('Initializing update worker service...');
       
@@ -297,7 +295,6 @@ class UpdateWorkerService {
       !this.isInBackground && this.updatePrices(),
     ].filter(Boolean));
   }
-
   public async preloadAssets(assets: string[]): Promise<{
     loaded: number;
     total: number;
@@ -447,3 +444,4 @@ class UpdateWorkerService {
 }
 
 export const updateWorkerService = new UpdateWorkerService();
+

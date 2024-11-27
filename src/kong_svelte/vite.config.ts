@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from 'url';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type ConfigEnv } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
 import path from "path";
@@ -12,13 +12,11 @@ dotenv.config({
   override: true 
 });
 
-const ENV = process.env.DFX_NETWORK || 'local';
+const ENV: string = process.env.DFX_NETWORK || 'local';
 
-export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+export default defineConfig(({ mode }: ConfigEnv) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const icHost = "https://icp-api.io";
+  const icHost: string = "https://icp-api.io";
 
   return {
     build: {
@@ -29,10 +27,9 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'vendor': ['svelte'],
           },
-        },
+        }
       },
-      // Optimize build for production
-      minify: 'terser',
+      minify: 'terser' as const,
       terserOptions: {
         compress: {
           drop_console: false,
@@ -45,6 +42,15 @@ export default defineConfig(({ mode }) => {
           global: "globalThis",
         },
       },
+      exclude: ['@sveltejs/kit']
+    },
+    ssr: {
+      external: [
+        '@sveltejs/kit',
+        '@sveltejs/kit/vite',
+        '__sveltekit/environment'
+      ],
+      noExternal: []
     },
     server: {
       proxy: {
@@ -78,9 +84,7 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff,woff2,ttf,json}'],
-        },
+
       }),
       viteCompression({
         verbose: true,
@@ -88,8 +92,6 @@ export default defineConfig(({ mode }) => {
         threshold: 5200,
         algorithm: 'gzip',
         ext: '.gz',
-        compressionOptions: { level: 8 },
-        deleteOriginFile: false
       }),
       viteCompression({
         verbose: true,
@@ -97,8 +99,6 @@ export default defineConfig(({ mode }) => {
         threshold: 5200,
         algorithm: 'brotliCompress',
         ext: '.br',
-        compressionOptions: { level: 11 },
-        deleteOriginFile: false
       }),
     ],
     resolve: {
@@ -112,20 +112,21 @@ export default defineConfig(({ mode }) => {
         {
           find: "$lib",
           replacement: fileURLToPath(
-            new URL("../src/lib", import.meta.url)
+            new URL("./src/lib", import.meta.url)
           ),
         },
       ],
     },
-    test: {
-      globals: true,
-      environment: 'jsdom',
+    worker: {
+      plugins: [sveltekit()],
+      format: 'es',
     },
     define: {
       'process.env.CANISTER_ID_KONG_BACKEND': JSON.stringify(env.CANISTER_ID_KONG_BACKEND),
       'process.env.CANISTER_ID_ICP_LEDGER': JSON.stringify(env.CANISTER_ID_ICP_LEDGER),
       'process.env.DFX_NETWORK': JSON.stringify(env.DFX_NETWORK),
       'process.env.IC_HOST': JSON.stringify(env.IC_HOST),
-    }
+      
+    },
   };
 });

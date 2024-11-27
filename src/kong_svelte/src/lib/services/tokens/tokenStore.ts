@@ -84,6 +84,7 @@ function createTokenStore() {
       return {};
     }
     const walletId = principal.toString();
+    debugger;
     if (!walletId) return {};
     try {
       const balances = await TokenService.fetchBalances(
@@ -520,8 +521,8 @@ export const getFavoritesForWallet = derived(tokenStore, ($store) => {
   const walletId = wallet?.account?.owner?.toString() || "anonymous";
   return $store?.favoriteTokens[walletId] || [];
 });
-
 export const getTokenDecimals = (canister_id: string): number => {
   const token = tokenStore.getToken(canister_id);
   return token?.decimals || 0;
 };
+

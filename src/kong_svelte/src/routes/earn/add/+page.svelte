@@ -5,6 +5,9 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { get } from "svelte/store";
+  import { PoolService } from "$lib/services/pools/PoolService";
+  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { poolStore } from "$lib/services/pools/poolStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -31,10 +34,55 @@
     const token1Address = searchParams.get("token1");
 
     if (token0Address && $formattedTokens) {
-      token0 = $formattedTokens.find((t) => t.canister_id === token0Address) || null;
+        const selectedToken = $formattedTokens.find((t) => t.canister_id === token0Address);
+        if (selectedToken) {
+            token0 = {
+                canister_id: selectedToken.canister_id,
+                name: selectedToken.name,
+                symbol: selectedToken.symbol,
+                decimals: selectedToken.decimals,
+                fee: selectedToken.fee,
+                balance: BigInt(selectedToken.balance || '0'),
+                total_24h_volume: selectedToken.total_24h_volume,
+                logo: selectedToken.logo,
+                price: selectedToken.price,
+                token: selectedToken.canister_id,
+                token_id: parseInt(selectedToken.canister_id) || 0,
+                chain: 'ICP',
+                icrc1: true,
+                icrc2: true,
+                icrc3: false,
+                on_kong: true,
+                pool_symbol: selectedToken.symbol,
+                pools: []
+            };
+        }
     }
+
     if (token1Address && $formattedTokens) {
-      token1 = $formattedTokens.find((t) => t.canister_id === token1Address) || null;
+        const selectedToken = $formattedTokens.find((t) => t.canister_id === token1Address);
+        if (selectedToken) {
+            token1 = {
+                canister_id: selectedToken.canister_id,
+                name: selectedToken.name,
+                symbol: selectedToken.symbol,
+                decimals: selectedToken.decimals,
+                fee: selectedToken.fee,
+                balance: BigInt(selectedToken.balance || '0'),
+                total_24h_volume: selectedToken.total_24h_volume,
+                logo: selectedToken.logo,
+                price: selectedToken.price,
+                token: selectedToken.canister_id,
+                token_id: parseInt(selectedToken.canister_id) || 0,
+                chain: 'ICP',
+                icrc1: true,
+                icrc2: true,
+                icrc3: false,
+                on_kong: true,
+                pool_symbol: selectedToken.symbol,
+                pools: []
+            };
+        }
     }
   }
 
@@ -69,19 +117,46 @@
 
   async function handleSubmit() {
     if (!token0 || !token1 || !amount0 || !amount1) {
-      error = "Please fill in all fields";
-      return;
+        error = "Please fill in all fields";
+        return;
     }
     
     try {
-      loading = true;
-      error = null;
-      // Add your submission logic here
+        loading = true;
+        error = null;
+
+        const parsedAmount0 = parseTokenAmount(amount0, token0.decimals);
+        const parsedAmount1 = parseTokenAmount(amount1, token1.decimals);
+
+        const addLiquidityArgs = {
+            token_0: token0,
+            amount_0: parsedAmount0,
+            tx_id_0: null as number[] | undefined,
+            token_1: token1,
+            amount_1: parsedAmount1,
+            tx_id_1: null as number[] | undefined
+        };
+
+        const result = await PoolService.addLiquidity(addLiquidityArgs);
+        
+        type AddLiquidityResult = { Ok?: any, Err?: string };
+        const typedResult = result as AddLiquidityResult;
+        
+        if (typedResult.Ok) {
+            await poolStore.loadUserPoolBalances();
+            
+            amount0 = "0";
+            amount1 = "0";
+            
+            goto("/earn");
+        } else if (typedResult.Err) {
+            error = typedResult.Err;
+        }
     } catch (err) {
-      console.error('Error submitting liquidity:', err);
-      error = err.message || 'Failed to add liquidity';
+        console.error('Error submitting liquidity:', err);
+        error = err instanceof Error ? err.message : 'Failed to add liquidity';
     } finally {
-      loading = false;
+        loading = false;
     }
   }
 

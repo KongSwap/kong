@@ -253,11 +253,15 @@ export class TokenService {
   }
 
   public static async fetchBalances(
-    tokens: FE.Token[],
+    tokens?: FE.Token[],
     principalId: string = null,
   ): Promise<Record<string, FE.TokenBalance>> {
     if (!principalId) {
       return {};
+    }
+
+    if(!tokens) {
+      tokens = get(tokenStore).tokens;
     }
 
     // Create an array of promises for all tokens
@@ -682,12 +686,11 @@ export class TokenService {
     }
   }
 
-  public static async fetchUserTransactions(
-    principalId: string,
-    tokenId = "",
-  ): Promise<any> {
-    const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
-    return await actor.txs([true]);
+  public static async fetchUserTransactions(): Promise<any> {
+    const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: false, requiresSigning: false }); 
+    const txs = await actor.txs([true]);
+    console.log("TXS", txs);
+    return txs;
   }
 
   public static async claimFaucetTokens(): Promise<any> {

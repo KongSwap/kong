@@ -4,23 +4,80 @@
   import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
 
   export let pools: any[] = [];
   let loading = true;
   let error: string | null = null;
-  let poolBalances: FE.UserPoolBalance[] = [];
+  let poolBalances: any[] = [];
 
-  let processedPools = pools.map(pool => ({
-    ...pool,
-    balance: $poolStore.userPoolBalances.find(b => b.name === pool.name)?.balance || "0"
-  }));
+  type UserBalanceLP = {
+    LP: {
+      name: string;
+      symbol: string;
+      symbol_0: string;
+      symbol_1: string;
+      balance: number;
+      amount_0: number;
+      amount_1: number;
+      usd_balance: number;
+    }
+  };
+
+  type UserBalancesResponse = {
+    Ok?: UserBalanceLP[];
+    Err?: string;
+  };
+
+  // Process pool balances when they update
+  $: {
+    const balances = $poolStore.userPoolBalances as UserBalancesResponse;
+    if (balances?.Ok) {
+      poolBalances = balances.Ok.map(balance => {
+        if ('LP' in balance) {
+          return {
+            name: balance.LP.name,
+            symbol: balance.LP.symbol,
+            symbol_0: balance.LP.symbol_0,
+            symbol_1: balance.LP.symbol_1,
+            balance: balance.LP.balance.toString(),
+            amount_0: balance.LP.amount_0,
+            amount_1: balance.LP.amount_1,
+            usd_balance: balance.LP.usd_balance
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      console.log("Processed pool balances:", poolBalances);
+    }
+  }
+
+  // Update processedPools to use the pool balances
+  $: processedPools = poolBalances.map(pool => {
+    // Find tokens by symbol to get their canister IDs
+    const token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
+    const token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
+
+    return {
+        id: pool.name,
+        name: pool.name,
+        symbol: pool.symbol,
+        symbol_0: pool.symbol_0,
+        symbol_1: pool.symbol_1,
+        balance: pool.balance,
+        amount_0: pool.amount_0,
+        amount_1: pool.amount_1,
+        usd_balance: pool.usd_balance,
+        address_0: token0?.canister_id || pool.symbol_0,
+        address_1: token1?.canister_id || pool.symbol_1
+    };
+  });
 
   async function loadPoolBalances() {
     try {
       loading = true;
       error = null;
       await poolStore.loadUserPoolBalances();
-      poolBalances = $poolStore.userPoolBalances;
     } catch (err) {
       error = err.message;
       poolBalances = [];
@@ -82,14 +139,15 @@
               <div class="pool-left">
                 <TokenImages 
                   tokens={[
-                    { symbol: pool.symbol_0 },
-                    { symbol: pool.symbol_1 }
-                  ]} 
+                    $tokenStore.tokens.find(token => token.canister_id === pool.address_0),
+                    $tokenStore.tokens.find(token => token.canister_id === pool.address_1)
+                    ]} 
                   size={36}
                 />
                 <div class="pool-info">
                   <span class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-                  <span class="pool-balance">{pool.balance} LP</span>
+                  <span class="pool-balance">{parseFloat(pool.balance).toFixed(8)} LP</span>
+                  <span class="pool-usd-value">${parseFloat(pool.usd_balance).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -226,5 +284,10 @@
 
   .error {
     color: rgb(239, 68, 68);
+  }
+
+  .pool-usd-value {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
   }
 </style>

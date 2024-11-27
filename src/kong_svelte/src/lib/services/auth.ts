@@ -12,6 +12,8 @@ import { idlFactory as icrc2idl } from "../../../../declarations/ckusdt_ledger";
 import { getPnpInstance } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import { browser } from '$app/environment';
+import { TokenService } from "./tokens";
 
 // Export the list of available wallets
 export const availableWallets = walletsList;
@@ -45,42 +47,88 @@ export const canisterIDLs = {
 //   });
 // };
 
+// Add a constant for the storage key
+const LAST_WALLET_KEY = 'kongSelectedWallet';
+
 function createAuthStore(pnp: PNP) {
-  // Create a single source of truth for the store
   const store = writable({
     isConnected: false,
-    account: null
+    account: null,
+    isInitialized: false  // Add this flag to track initialization state
   });
 
-  const { subscribe, set } = store;
+  const { subscribe, set, update } = store;
+
+  // Add function to get last used wallet
+  const getLastWallet = () => {
+    if (!browser) return null;
+    try {
+      return localStorage.getItem(LAST_WALLET_KEY);
+    } catch (e) {
+      console.warn('Failed to read from localStorage:', e);
+      return null;
+    }
+  };
+
+  // Add function to save last used wallet
+  const saveLastWallet = (walletId: string) => {
+    if (!browser) return;
+    try {
+      localStorage.setItem(LAST_WALLET_KEY, walletId);
+    } catch (e) {
+      console.warn('Failed to write to localStorage:', e);
+    }
+  };
 
   return {
     subscribe,
     pnp,
-    async connect(walletId: string) {
+    
+    // Add initialization function
+    async initialize() {
+      try {
+        const lastWallet = getLastWallet();
+        if (lastWallet) {
+          await this.connect(lastWallet, true);
+          await TokenService.fetchBalances()
+        }
+      } catch (error) {
+        console.warn('Auto-reconnect failed:', error);
+      } finally {
+        update(s => ({ ...s, isInitialized: true }));
+      }
+    },
+
+    async connect(walletId: string, isAutoConnect = false) {
       try {
         const result = await pnp.connect(walletId);
         
-        // Check if we have a valid connection result with owner property
         if (result && 'owner' in result) {
-          // Update the store state
           const newState = { 
             isConnected: true,
-            account: result 
+            account: result,
+            isInitialized: true
           };
           set(newState);
 
-          // Force a refresh of the userStore by getting the user data
+          // Only save wallet if it's not an auto-connect
+          if (!isAutoConnect) {
+            saveLastWallet(walletId);
+          }
+
+          // Force a refresh of the userStore
           const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false });
           const userData = await actor.get_user();
+          return result;
         } else {
           console.log("Invalid connection result:", result);
-          set({ isConnected: false, account: null });
+          set({ isConnected: false, account: null, isInitialized: true });
+          localStorage.removeItem("kongSelectedWallet");
+          return null;
         }
-        return result;
       } catch (error) {
         console.error('Connection error:', error);
-        set({ isConnected: false, account: null });
+        set({ isConnected: false, account: null, isInitialized: true });
         throw error;
       }
     },
@@ -88,7 +136,13 @@ function createAuthStore(pnp: PNP) {
     async disconnect() {
       try {
         const result = await pnp.disconnect();
-        set({ isConnected: false, account: null });
+        set({ isConnected: false, account: null, isInitialized: true });
+        
+        // Clear saved wallet on disconnect
+        if (browser) {
+          localStorage.removeItem(LAST_WALLET_KEY);
+        }
+        
         return result;
       } catch (error) {
         console.error('Disconnect error:', error);
@@ -131,6 +185,7 @@ function createAuthStore(pnp: PNP) {
 
 export type AuthStore = ReturnType<typeof createAuthStore>;
 export const auth = createAuthStore(getPnpInstance());
+
 
 // Create a writable store for user data
 const userDataStore = writable<any>(null);

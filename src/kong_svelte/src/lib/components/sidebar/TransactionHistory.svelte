@@ -5,7 +5,7 @@
     import { cubicOut } from 'svelte/easing';
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
     import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
-    import { tokenStore } from '$lib/services/tokens';
+    import { TokenService, tokenStore } from '$lib/services/tokens';
 
     // Accept transactions prop for live data
     export let transactions: any[] = [];
@@ -26,19 +26,41 @@
 
     let isLoading = false;
     let error: string | null = null;
+    let processedTransactions: any[] = [];
 
-    // Process transactions data when it changes
-    let processedTransactions = transactions
-        .sort((a, b) => Number(b.ts) - Number(a.ts))
-        .map(tx => ({
-            ...tx,
-            formattedDate: new Date(Number(tx.ts)).toLocaleString(),
-            payAmount: tx.pay_amount ? formatTokenAmount(tx.pay_amount, $tokenStore.tokens.find(t => t.symbol === tx.pay_symbol)?.decimals) : '',
-            receiveAmount: tx.receive_amount ? formatTokenAmount(tx.receive_amount, $tokenStore.tokens.find(t => t.symbol === tx.receive_symbol)?.decimals) : ''
-        }));
+    function processTransaction(tx: any) {
+        if ('AddLiquidity' in tx) {
+            return {
+                type: 'Add Liquidity',
+                status: tx.AddLiquidity.status,
+                formattedDate: new Date(Number(tx.AddLiquidity.ts) / 1000000).toLocaleString(),
+                symbol_0: tx.AddLiquidity.symbol_0,
+                symbol_1: tx.AddLiquidity.symbol_1,
+                amount_0: formatTokenAmount(tx.AddLiquidity.amount_0.toString(), 8),
+                amount_1: formatTokenAmount(tx.AddLiquidity.amount_1.toString(), 8),
+                lp_amount: formatTokenAmount(tx.AddLiquidity.add_lp_token_amount.toString(), 8)
+            };
+        }
+        // Add other transaction types here if needed
+        return null;
+    }
 
     onMount(() => {
         if ($auth.isConnected) {
+            TokenService.fetchUserTransactions().then(response => {
+                console.log("TXS", response);
+                
+                if (response.Ok) {
+                    processedTransactions = response.Ok
+                        .map(processTransaction)
+                        .filter(tx => tx !== null);
+                } else if (response.Err) {
+                    error = response.Err;
+                }
+            }).catch(err => {
+                console.error("Error fetching transactions:", err);
+                error = err.message || "Failed to load transactions";
+            });
             isLoading = false;
         }
     });
@@ -63,19 +85,21 @@
             <div class="transaction-item" in:fade>
                 <div class="transaction-header">
                     <span class="timestamp">{tx.formattedDate}</span>
-                    <span class="status {tx.status.toLowerCase()}">{tx.status}</span>
+                    <span class="status {tx.status?.toLowerCase() || 'pending'}">{tx.status || 'Pending'}</span>
                 </div>
                 <div class="transaction-details">
-                    {#if tx.pay_amount}
+                    <div class="transaction-type">{tx.type}</div>
+                    {#if tx.type === 'Add Liquidity'}
                         <div class="amount-row">
-                            <span>Paid:</span>
-                            <span>{tx.payAmount} {tx.pay_symbol}</span>
+                            <span>Added:</span>
+                            <span>
+                                {tx.amount_0} {tx.symbol_0} + 
+                                {tx.amount_1} {tx.symbol_1}
+                            </span>
                         </div>
-                    {/if}
-                    {#if tx.receive_amount}
                         <div class="amount-row">
                             <span>Received:</span>
-                            <span>{tx.receiveAmount} {tx.receive_symbol}</span>
+                            <span>{tx.lp_amount} LP</span>
                         </div>
                     {/if}
                 </div>
@@ -127,5 +151,21 @@
 
     .loading-state, .error-state, .empty-state {
         @apply text-center p-8 text-gray-400;
+    }
+
+    .transaction-type {
+        @apply text-sm font-medium text-white/80 mb-2;
+    }
+
+    .status.success {
+        @apply bg-green-500/20 text-green-400;
+    }
+
+    .status.pending {
+        @apply bg-yellow-500/20 text-yellow-400;
+    }
+
+    .status.failed {
+        @apply bg-red-500/20 text-red-400;
     }
 </style>

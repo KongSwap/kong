@@ -281,7 +281,7 @@
           {/key}
         </div>
         <h2 class="relative !text-7xl font-bold mb-2 uppercase font-alumni neon-text mt-10 flex justify-center flex-col gap-x-2 items-center">
-          <img src={gorillaRight} alt="Kong Logo" class="absolute w-32 h-32 pb-1 filter brightness-0 invert" />
+          <img src={gorillaRight} alt="Kong Logo" class="absolute opacity-50 w-32 h-32 pb-1 filter brightness-0 invert" />
           <span class="h-[10] text-outline-1">KongSwap</span>
         </h2>
         <div class="message-container h-8 flex items-center justify-center mb-4 progress-text mt-4">

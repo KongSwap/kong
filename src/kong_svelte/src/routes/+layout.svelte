@@ -12,6 +12,7 @@
   import LoadingScreen from "$lib/components/common/LoadingScreen.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
   import { cubicOut } from "svelte/easing";
+  import { auth } from "$lib/services/auth";
 
   const hasNavigated = writable(false);
   let showLoadingScreen = $state(true);
@@ -30,6 +31,7 @@
   // Initialize app
   onMount(() => {
     const init = async () => {
+      await auth.initialize();
       await appLoader.initialize();
       updateWorkerService.initialize();
       isInitialized = true;

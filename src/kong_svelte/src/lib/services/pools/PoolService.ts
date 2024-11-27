@@ -38,7 +38,7 @@ export class PoolService {
   // Pool Operations
   public static async getPoolDetails(poolId: string): Promise<BE.Pool> {
     try {
-      const actor =  await auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
       return await actor.get_by_pool_id(poolId);
     } catch (error) {
       console.error('Error fetching pool details:', error);
@@ -55,7 +55,7 @@ export class PoolService {
     token1Symbol: string
   ): Promise<any> {
     try {
-      const actor =  await auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true, requiresSigning: false});
       const result = await actor.add_liquidity_amounts(
         token0Symbol,
         amount0,
@@ -82,7 +82,7 @@ export class PoolService {
     lpTokenAmount: bigint
   ): Promise<any> {
     try {
-      const actor =  await auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
       const result = await actor.remove_liquidity_amounts(
         token0Symbol,
         token1Symbol,
@@ -136,7 +136,7 @@ export class PoolService {
           params.token_1,
           params.amount_1,
         ),
-        auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true})
+        auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true})
       ]);
 
       const result = await actor.add_liquidity_async({
@@ -164,7 +164,7 @@ export class PoolService {
    */
   public static async pollRequestStatus(requestId: bigint): Promise<any> {
     try {
-      const actor =  await auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
       const result = await actor.requests([requestId]);
       
       if (!result.Ok || result.Ok.length === 0) {
@@ -181,7 +181,7 @@ export class PoolService {
   public static async removeLiquidity(params: any): Promise<string> {
     await requireWalletConnection();
     try {
-      const actor =  await auth.getActor(kongBackendCanisterId, 'kong_backend', {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
       const result = await actor.remove_liquidity_async({
         token_0: params.token0,
         token_1: params.token1,
@@ -204,7 +204,7 @@ export class PoolService {
         return [];
       }
       
-      const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend);
+      const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false, requiresSigning: false});
       if (!actor) {
         throw new Error('Actor not available');
       }

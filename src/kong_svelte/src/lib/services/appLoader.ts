@@ -280,6 +280,7 @@ export class AppLoader {
       await Promise.all([tokenStore.loadTokens()]);
 
       // If wallet is connected, load balances
+      console.log(wallet);
       if (wallet?.isConnected && wallet?.account?.owner) {
         await tokenStore.loadBalances(wallet.account.owner);
       }

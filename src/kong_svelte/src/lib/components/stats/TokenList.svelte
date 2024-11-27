@@ -27,7 +27,7 @@
                         </div>
                     </div>
                     <div class="value-col">
-                        ${formatToNonZeroDecimal(token.formattedUsdValue)}
+                        ${formatToNonZeroDecimal(token.formattedUsdValue)} fds
                     </div>
                 </div>
             {/each}

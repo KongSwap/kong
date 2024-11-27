@@ -2,10 +2,10 @@
     import { Plus } from "lucide-svelte";
     import { fade } from "svelte/transition";
     import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
-    import { get } from "svelte/store";
-    import { tokenPrices, formattedTokens } from "$lib/services/tokens/tokenStore";
+    import { poolStore } from "$lib/services/pools/poolStore";
     import Portal from 'svelte-portal';
     import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
+    import { PoolService } from '$lib/services/pools/PoolService';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -26,37 +26,66 @@
     let showToken0Selector = false;
     let showToken1Selector = false;
 
-    function handleTokenSelect(index: 0 | 1, canister_id: string) {
-        const selectedToken = $formattedTokens.find(t => t.canister_id === canister_id);
-        if (!selectedToken) return;
-
-        // Prevent selecting the same token
-        if ((index === 0 && canister_id === token1?.canister_id) || 
-            (index === 1 && canister_id === token0?.canister_id)) {
-            return;
+    $: {
+        if ($poolStore.userPoolBalances) {
+            console.log('Pool balances updated:', $poolStore.userPoolBalances);
         }
-
-        if (index === 0) {
-            token0 = selectedToken;
-            showToken0Selector = false;
-        } else {
-            token1 = selectedToken;
-            showToken1Selector = false;
-        }
-        
-        onTokenSelect(index);
     }
 
-    function handleInput(index: 0 | 1, event: Event) {
+    async function handleInput(index: 0 | 1, event: Event) {
         const input = (event.target as HTMLInputElement).value;
-        if (/^\d*\.?\d*$/.test(input) || input === '') {
-            onInput(index, input);
+        if (!(/^\d*\.?\d*$/.test(input) || input === '')) return;
+        
+        // Update the input value immediately
+        if (index === 0) {
+            amount0 = input;
+        } else {
+            amount1 = input;
         }
+
+        if (token0 && token1) {
+            const inputValue = input === '' ? '0' : input;
+            
+            try {
+                console.log('Calculating liquidity amounts...');
+                if (index === 0) {
+                    const parsedAmount = parseTokenAmount(inputValue, token0.decimals);
+                    console.log('Token0 parsed amount:', parsedAmount);
+                    const result = await PoolService.addLiquidityAmounts(
+                        token0.token,
+                        parsedAmount,
+                        token1.token
+                    );
+                    
+                    if (result.Ok) {
+                        amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
+                        console.log('Set amount1 to:', amount1);
+                    }
+                } else {
+                    const parsedAmount = parseTokenAmount(inputValue, token1.decimals);
+                    const result = await PoolService.addLiquidityAmounts(
+                        token1.token,
+                        parsedAmount,
+                        token0.token
+                    );
+                    
+                    if (result.Ok) {
+                        amount0 = formatTokenAmount(result.Ok.amount_0, token0.decimals);
+                        console.log('Set amount0 to:', amount0);
+                    }
+                }
+            } catch (err) {
+                console.error("Error calculating liquidity amounts:", err);
+                error = err.message;
+            }
+        }
+        
+        onInput(index, input);
     }
 
     function getUsdValue(amount: string, token: FE.Token | null): string {
         if (!amount || !token) return "0.00";
-        const price = get(tokenPrices)[token.canister_id];
+        const price = token.price;
         return (price * Number(amount)).toFixed(2);
     }
 

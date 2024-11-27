@@ -2,9 +2,19 @@
   import { fade, slide } from 'svelte/transition';
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { tokenLogoStore, fetchTokenLogo } from "$lib/services/tokens/tokenLogos";
-  import { formattedTokens } from "$lib/stores/formattedTokens";
+  import { formattedTokens, type FormattedToken } from "$lib/stores/formattedTokens";
   import { toggleFavoriteToken } from "$lib/services/tokens/favorites";
   import { onMount } from 'svelte';
+
+  // Update the token type to include isFavorite
+  interface ProcessedToken extends FE.Token {
+    logo?: string;
+    value: number;
+    usdValue: number;
+    searchableText: string;
+    canister_id: string;
+    isFavorite?: boolean;
+  }
 
   export let tokens: FE.Token[] = [];
   let searchQuery = '';
@@ -20,9 +30,12 @@
     searchInput?.focus();
   });
 
+  // Subscribe to the store
+  $: formattedTokensList = $formattedTokens;
+
   $: processedTokens = tokens
-    .map((token) => {
-      const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id) || {};
+    .map((token): ProcessedToken => {
+      const formattedToken = (formattedTokensList?.find((t) => t.canister_id === token.canister_id) || {}) as FormattedToken;
       return {
         ...token,
         ...formattedToken,
@@ -30,7 +43,8 @@
         value: Number(token.balance || 0),
         usdValue: Number(token.balance || 0) * Number(token.formattedUsdValue || 0),
         searchableText: `${token.name || ''} ${token.symbol || ''} ${token.canister_id || ''}`.toLowerCase(),
-        canister_id: token.canister_id?.toLowerCase() || ''
+        canister_id: token.canister_id?.toLowerCase() || '',
+        isFavorite: Boolean(formattedToken?.isFavorite)
       };
     })
     .sort((a, b) => {

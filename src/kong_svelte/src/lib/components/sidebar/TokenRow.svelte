@@ -13,6 +13,9 @@
   let isPressed = false;
   let showMenu = false;
 
+  $: formattedBalance = formatBalance(token.balance, token.decimals);
+  $: formattedUsdValue = token.usdValue?.toFixed(2) || '0.00';
+
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
     dispatch('toggleFavorite');
@@ -45,6 +48,8 @@
       showMenu = false;
     }
   }
+
+  $: token
 </script>
 
 <svelte:window on:click={handleClickOutside} />
@@ -89,10 +94,10 @@
       <div class="token-right">
         <div class="value-info">
           <div class="balance">
-            {formatBalance(token.balance, token.decimals)} 
+            {formattedBalance}
           </div>
           <div class="usd-value">
-            ${token.usdValue}
+            ${formattedUsdValue}
           </div>
         </div>
 

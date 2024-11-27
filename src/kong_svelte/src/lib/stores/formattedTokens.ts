@@ -1,12 +1,13 @@
 import { writable } from 'svelte/store';
 
-interface FormattedToken {
+export interface FormattedToken {
   canister_id: string;
   name: string;
   symbol: string;
   decimals: number;
   formattedBalance: string;
   price?: number;
+  isFavorite?: boolean;
 }
 
 function createFormattedTokensStore() {
