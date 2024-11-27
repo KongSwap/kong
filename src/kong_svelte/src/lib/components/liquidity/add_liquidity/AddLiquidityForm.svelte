@@ -3,10 +3,9 @@
     import { fade } from "svelte/transition";
     import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
     import { get } from "svelte/store";
-    import { tokenPrices } from "$lib/services/tokens/tokenStore";
+    import { tokenPrices, formattedTokens } from "$lib/services/tokens/tokenStore";
     import Portal from 'svelte-portal';
     import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
-    import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -19,271 +18,263 @@
     export let onTokenSelect: (index: 0 | 1) => void;
     export let onInput: (index: 0 | 1, value: string) => void;
     export let onSubmit: () => void;
+    export let previewMode: boolean = false;
 
-    let showToken0Selector = false;
-    let showToken1Selector = false;
     let liquidityMode: 'full' | 'custom' = 'full';
     let isTransitioning = false;
     let previousMode: 'full' | 'custom' = 'full';
-
-    $: buttonText = hasInsufficientBalance()
-      ? "Insufficient Balance"
-      : !token0 || !token1
-      ? "Select Tokens"
-      : !amount0 || !amount1
-      ? "Enter Amounts"
-      : loading
-      ? "Loading..."
-      : "Review Transaction";
-
-    function handleModeChange(mode: 'full' | 'custom') {
-      if (mode === liquidityMode) return;
-      previousMode = liquidityMode;
-      isTransitioning = true;
-      liquidityMode = mode;
-      setTimeout(() => {
-        isTransitioning = false;
-      }, 300);
-    }
+    let showToken0Selector = false;
+    let showToken1Selector = false;
 
     function handleTokenSelect(index: 0 | 1, canister_id: string) {
-      if ((index === 0 && canister_id === token1?.canister_id) || 
-          (index === 1 && canister_id === token0?.canister_id)) {
-        return;
-      }
-      onTokenSelect(index);
-      if (index === 0) {
-        showToken0Selector = false;
-      } else {
-        showToken1Selector = false;
-      }
+        const selectedToken = $formattedTokens.find(t => t.canister_id === canister_id);
+        if (!selectedToken) return;
+
+        // Prevent selecting the same token
+        if ((index === 0 && canister_id === token1?.canister_id) || 
+            (index === 1 && canister_id === token0?.canister_id)) {
+            return;
+        }
+
+        if (index === 0) {
+            token0 = selectedToken;
+            showToken0Selector = false;
+        } else {
+            token1 = selectedToken;
+            showToken1Selector = false;
+        }
+        
+        onTokenSelect(index);
     }
 
     function handleInput(index: 0 | 1, event: Event) {
-      const input = (event.target as HTMLInputElement).value;
-      if (/^\d*\.?\d*$/.test(input) || input === '') {
-        onInput(index, input);
-      }
+        const input = (event.target as HTMLInputElement).value;
+        if (/^\d*\.?\d*$/.test(input) || input === '') {
+            onInput(index, input);
+        }
     }
 
     function getUsdValue(amount: string, token: FE.Token | null): string {
-      if (!amount || !token) return "0.00";
-      const price = get(tokenPrices)[token.canister_id];
-      return (price * Number(amount)).toFixed(2);
+        if (!amount || !token) return "0.00";
+        const price = get(tokenPrices)[token.canister_id];
+        return (price * Number(amount)).toFixed(2);
+    }
+
+    function openTokenSelector(index: 0 | 1) {
+        if (index === 0) {
+            showToken0Selector = true;
+            showToken1Selector = false;
+        } else {
+            showToken1Selector = true;
+            showToken0Selector = false;
+        }
     }
 
     $: hasInsufficientBalance = () => {
-      if (!token0 || !token1 || !amount0 || !amount1) return false;
-      const parsedAmount0 = parseTokenAmount(amount0, token0.decimals) - token0.fee;
-      const parsedAmount1 = parseTokenAmount(amount1, token1.decimals) - token1.fee;
-      const parsedBalance0 = BigInt(token0Balance);
-      const parsedBalance1 = BigInt(token1Balance);
-      return parsedAmount0 > parsedBalance0 || parsedAmount1 > parsedBalance1;
+        if (!token0 || !token1 || !amount0 || !amount1) return false;
+        const parsedAmount0 = parseTokenAmount(amount0, token0.decimals) - token0.fee;
+        const parsedAmount1 = parseTokenAmount(amount1, token1.decimals) - token1.fee;
+        const parsedBalance0 = BigInt(token0Balance);
+        const parsedBalance1 = BigInt(token1Balance);
+        return parsedAmount0 > parsedBalance0 || parsedAmount1 > parsedBalance1;
     };
 
+    $: buttonText = hasInsufficientBalance()
+        ? "Insufficient Balance"
+        : !token0 || !token1
+        ? "Select Tokens"
+        : !amount0 || !amount1
+        ? "Enter Amounts"
+        : loading
+        ? "Loading..."
+        : "Review Transaction";
+
     $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance();
-  </script>
 
-      <div class="mode-selector">
-        <div class="mode-selector-content">
-          <div class="mode-selector-background" style="transform: translateX({liquidityMode === 'custom' ? '100%' : '0'})"></div>
-          <button
-            class="mode-button"
-            class:selected={liquidityMode === "full"}
-            class:transitioning={isTransitioning && previousMode === "custom"}
+    function handleModeChange(mode: 'full' | 'custom') {
+        if (mode === liquidityMode) return;
+        previousMode = liquidityMode;
+        isTransitioning = true;
+        liquidityMode = mode;
+        setTimeout(() => {
+            isTransitioning = false;
+        }, 300);
+    }
+</script>
+
+<div class="mode-selector">
+    <div class="mode-buttons">
+        <button
+            class="mode-button {liquidityMode === 'full' ? 'active' : ''}"
             on:click={() => handleModeChange('full')}
-          >
+        >
             Full Range
-          </button>
-          <button
-            class="mode-button"
-            class:selected={liquidityMode === "custom"}
-            class:transitioning={isTransitioning && previousMode === "full"}
+        </button>
+        <button
+            class="mode-button {liquidityMode === 'custom' ? 'active' : ''}"
             on:click={() => handleModeChange('custom')}
-            disabled
-          >
+        >
             Custom Range
-          </button>
-        </div>
-      </div>
+        </button>
+    </div>
+</div>
 
-      <div class="panels-container">
-        <div class="panels-wrapper">
-          <div class="panel-item">
-            <SwapPanel
-              title="First Token Amount"
-              token={token0}
-              amount={amount0}
-              onAmountChange={(e) => handleInput(0, e)}
-              onTokenSelect={() => showToken0Selector = true}
-              showPrice={true}
-              disabled={loading}
-              panelType="pay"
-              balance={token0Balance}
-              slippage={0}
+<div class="form-container">
+    <div class="token-input-container">
+        <div class="token-input">
+            <button 
+                class="token-selector-button" 
+                on:click={() => openTokenSelector(0)}
+            >
+                {#if token0}
+                    <img src={token0.logo} alt={token0.symbol} class="token-logo" />
+                    <span>{token0.symbol}</span>
+                {:else}
+                    <span>Select Token</span>
+                {/if}
+            </button>
+            <input
+                type="text"
+                placeholder="0.0"
+                value={amount0}
+                on:input={(e) => handleInput(0, e)}
+                class="amount-input"
             />
-          </div>
+        </div>
+        <div class="balance-info">
+            <span>Balance: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'}</span>
+            <span>${getUsdValue(amount0, token0)}</span>
+        </div>
+    </div>
 
-          <div class="panel-item">
-            <SwapPanel
-              title="Second Token Amount"
-              token={token1}
-              amount={amount1}
-              onAmountChange={(e) => handleInput(1, e)}
-              onTokenSelect={() => showToken1Selector = true}
-              showPrice={true}
-              disabled={loading}
-              panelType="pay"
-              balance={token1Balance}
-              slippage={0}
+    <div class="plus-icon">
+        <Plus size={24} />
+    </div>
+
+    <div class="token-input-container">
+        <div class="token-input">
+            <button 
+                class="token-selector-button" 
+                on:click={() => openTokenSelector(1)}
+            >
+                {#if token1}
+                    <img src={token1.logo} alt={token1.symbol} class="token-logo" />
+                    <span>{token1.symbol}</span>
+                {:else}
+                    <span>Select Token</span>
+                {/if}
+            </button>
+            <input
+                type="text"
+                placeholder="0.0"
+                value={amount1}
+                on:input={(e) => handleInput(1, e)}
+                class="amount-input"
             />
-          </div>
         </div>
-
-        {#if error}
-          <div class="error-message">{error}</div>
-        {/if}
-
-        <div class="swap-footer">
-          <button
-            class="swap-button"
-            class:error={error || hasInsufficientBalance()}
-            class:processing={loading}
-            class:ready={isValid}
-            on:click={onSubmit}
-            disabled={!isValid || loading}
-          >
-            <div class="button-content">
-              <span class="button-text">
-                {buttonText}
-              </span>
-              {#if loading}
-                <div class="loading-spinner"></div>
-              {/if}
-            </div>
-          </button>
+        <div class="balance-info">
+            <span>Balance: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'}</span>
+            <span>${getUsdValue(amount1, token1)}</span>
         </div>
-      </div>
+    </div>
 
-  <!-- Token Selectors -->
-  {#if showToken0Selector}
+    <button
+        class="submit-button"
+        disabled={!isValid || loading}
+        on:click={onSubmit}
+    >
+        {buttonText}
+    </button>
+</div>
+
+<!-- Token Selectors -->
+{#if showToken0Selector}
     <Portal target="body">
-      <TokenSelectorDropdown
-        show={true}
-        onSelect={(selectedToken) => handleTokenSelect(0, selectedToken.canister_id)}
-        onClose={() => showToken0Selector = false}
-        currentToken={token0}
-        otherPanelToken={token1}
-      />
+        <TokenSelectorDropdown
+            show={true}
+            currentToken={token0}
+            otherPanelToken={token1}
+            onSelect={(token) => handleTokenSelect(0, token.canister_id)}
+            onClose={() => showToken0Selector = false}
+        />
     </Portal>
-  {/if}
+{/if}
 
-  {#if showToken1Selector}
+{#if showToken1Selector}
     <Portal target="body">
-      <TokenSelectorDropdown
-        show={true}
-        onSelect={(selectedToken) => handleTokenSelect(1, selectedToken.canister_id)}
-        onClose={() => showToken1Selector = false}
-        currentToken={token1}
-        otherPanelToken={token0}
-      />
+        <TokenSelectorDropdown
+            show={true}
+            currentToken={token1}
+            otherPanelToken={token0}
+            onSelect={(token) => handleTokenSelect(1, token.canister_id)}
+            onClose={() => showToken1Selector = false}
+        />
     </Portal>
-  {/if}
+{/if}
 
-  <style lang="postcss">
+<style lang="postcss">
     .mode-selector {
-      @apply flex flex-col gap-2 mb-4;
+        @apply flex flex-col gap-2 mb-4;
     }
 
-    .mode-selector-content {
-      @apply relative flex gap-1 p-0.5 bg-white/[0.06] rounded-lg border border-white/10;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .mode-selector-background {
-      @apply absolute top-0.5 left-0.5;
-      width: calc(50% - 1px);
-      height: calc(100% - 4px);
-      background: linear-gradient(135deg, 
-        rgba(55, 114, 255, 0.15), 
-        rgba(55, 114, 255, 0.2)
-      );
-      border-radius: 6px;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 0;
+    .mode-buttons {
+        @apply flex gap-2;
     }
 
     .mode-button {
-      @apply relative z-[1] flex-1 px-3 py-1.5 border-none rounded-md text-sm font-medium text-white/70;
-      @apply bg-transparent cursor-pointer transition-all duration-200;
+        @apply px-4 py-2 rounded-lg bg-gray-800 text-white/60 hover:text-white
+               transition-colors duration-200;
     }
 
-    .mode-button.selected {
-      @apply text-white font-semibold;
+    .mode-button.active {
+        @apply bg-blue-600 text-white;
     }
 
-    .mode-button:hover:not(.selected) {
-      @apply text-white/90;
+    .form-container {
+        @apply flex flex-col gap-4;
     }
 
-    .mode-button:disabled {
-      @apply opacity-50 cursor-not-allowed hover:text-white/70;
+    .token-input-container {
+        @apply bg-gray-800 rounded-lg p-4;
     }
 
-    .panels-container {
-      @apply flex flex-col;
+    .token-input {
+        @apply flex items-center gap-4;
     }
 
-    .panel-item {
-      @apply bg-white/5 rounded-xl overflow-hidden;
+    .token-selector-button {
+        @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700
+               hover:bg-gray-600 transition-colors duration-200;
     }
 
-    .error-message {
-      @apply text-red-500 text-sm text-center mt-4;
+    .token-logo {
+        @apply w-6 h-6 rounded-full;
     }
 
-    .swap-footer {
-      @apply mt-4;
+    .amount-input {
+        @apply flex-1 bg-transparent text-right text-xl font-medium
+               focus:outline-none;
     }
 
-    .swap-button {
-      @apply w-full px-6 py-3 text-base font-semibold rounded-lg transition-all duration-200;
-      @apply bg-white/5 text-white/70 hover:bg-white/10;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    .balance-info {
+        @apply flex justify-between mt-2 text-sm text-white/60;
     }
 
-    .swap-button:disabled {
-      @apply opacity-50 cursor-not-allowed;
+    .plus-icon {
+        @apply flex justify-center text-white/60;
     }
 
-    .swap-button.error {
-      @apply bg-red-500/20 text-red-500 hover:bg-red-500/30;
-      box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2);
+    .submit-button {
+        @apply w-full px-6 py-3 rounded-lg bg-blue-600 text-white font-medium
+               disabled:opacity-50 disabled:cursor-not-allowed
+               hover:bg-blue-700 transition-colors duration-200;
     }
 
-    .swap-button.processing {
-      @apply bg-yellow-500 text-white hover:bg-yellow-600;
+    .token-selector-overlay {
+        @apply fixed inset-0 flex items-center justify-center bg-black/50 z-50;
     }
 
-    .swap-button.ready {
-      @apply bg-green-500 text-white hover:bg-green-600;
+    :global(.token-selector-overlay .token-selector) {
+        @apply bg-gray-900 rounded-lg p-4 w-full max-w-md mx-4;
     }
-
-    .button-content {
-      @apply flex items-center justify-center gap-2;
-    }
-
-    .button-text {
-      @apply font-semibold;
-    }
-
-    .loading-spinner {
-      @apply w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin;
-    }
-
-    @media (max-width: 420px) {
-      .panel-item {
-        @apply p-0;
-      }
-    }
-  </style>
+</style>
