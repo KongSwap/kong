@@ -317,7 +317,7 @@
             {#if token}
               <div class="token-info">
                 <img
-                  src={$tokenLogoStore[token.canister_id] || '/default-token.png'}
+                  src={$tokenLogoStore[token.canister_id]}
                   alt={token.symbol}
                   class="token-logo"
                 />

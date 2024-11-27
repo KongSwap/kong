@@ -409,66 +409,155 @@ export class TokenService {
     tokens: FE.Token[],
   ): Promise<Record<string, number>> {
     const poolData = await PoolService.fetchPoolsData();
-
+    
     // Create an array of promises for all tokens
     const pricePromises = tokens.map(async (token) => {
-      const usdtPool = poolData.pools.find(
-        (pool) =>
-          (pool.address_0 === token.canister_id &&
-            pool.symbol_1 === "ckUSDT") ||
-          (pool.address_1 === token.canister_id && pool.symbol_0 === "ckUSDT"),
-      );
-
-      if (usdtPool) {
-        return { canister_id: token.canister_id, price: usdtPool.price };
-      } else {
-        const icpPool = poolData.pools.find(
-          (pool) =>
-            pool.address_0 === token.canister_id && pool.symbol_1 === "ICP",
-        );
-
-        if (icpPool) {
-          const icpUsdtPrice = await this.getUsdtPriceForToken(
-            "ICP",
-            poolData.pools,
-          );
-          return {
-            canister_id: token.canister_id,
-            price: icpUsdtPrice * icpPool.price,
-          };
-        } else {
-          return { canister_id: token.canister_id, price: 0 };
-        }
+      try {
+        const price = await this.calculateTokenPrice(token, poolData.pools);
+        return { 
+          canister_id: token.canister_id, 
+          price 
+        };
+      } catch (error) {
+        console.warn(`Failed to calculate price for token ${token.symbol}:`, error);
+        return { 
+          canister_id: token.canister_id, 
+          price: 0 
+        };
       }
     });
 
-    // Wait for all price promises to resolve
     const resolvedPrices = await Promise.allSettled(pricePromises);
-
-    // Convert the array of results into a record
     const prices: Record<string, number> = {};
-    resolvedPrices.forEach((result) => {
+
+    // Process results and update DB
+    await Promise.all(resolvedPrices.map(async (result) => {
       if (result.status === "fulfilled") {
         const { canister_id, price } = result.value;
         prices[canister_id] = price;
+        
+        try {
+          const token = tokens.find(t => t.canister_id === canister_id);
+          if (token) {
+            await kongDB.tokens.put({
+              ...token,
+              price,
+              timestamp: Date.now()
+            });
+          }
+        } catch (error) {
+          console.error(`Error updating token ${canister_id} in DB:`, error);
+        }
       }
-    });
-    prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
+    }));
 
-    // Update tokens in DB correctly
-    try {
-      // Update each token individually instead of using bulkPut
-      for (const token of tokens) {
-        await kongDB.tokens.put({
-          ...token,
-          timestamp: Date.now()
-        });
-      }
-    } catch (error) {
-      console.error('Error updating tokens in DB:', error);
+    // Set USDT price explicitly
+    prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
+    
+    return prices;
+  }
+
+  private static async calculateTokenPrice(
+    token: FE.Token, 
+    pools: BE.Pool[]
+  ): Promise<number> {
+    // Special case for USDT
+    if (token.canister_id === process.env.CANISTER_ID_CKUSDT_LEDGER) {
+      return 1;
     }
 
-    return prices;
+    // Find all pools containing the token
+    const relevantPools = pools.filter(pool => 
+      pool.address_0 === token.canister_id || 
+      pool.address_1 === token.canister_id
+    );
+
+    if (relevantPools.length === 0) {
+      return 0;
+    }
+
+    // Calculate prices through different paths
+    const pricePaths = await Promise.all([
+      // Direct USDT path
+      this.calculateDirectUsdtPrice(token, relevantPools),
+      // ICP intermediary path
+      this.calculateIcpPath(token, pools),
+      // Other stable coin paths (could add more stable coins here)
+      this.calculateStableCoinPath(token, pools)
+    ]);
+
+    // Filter out invalid prices and calculate weighted average
+    const validPrices = pricePaths.filter(p => p.price > 0);
+    
+    if (validPrices.length === 0) {
+      return 0;
+    }
+
+    // Calculate weighted average based on liquidity
+    const totalWeight = validPrices.reduce((sum, p) => sum + p.weight, 0);
+    const weightedPrice = validPrices.reduce((sum, p) => 
+      sum + (p.price * p.weight / totalWeight), 0
+    );
+
+    return weightedPrice;
+  }
+
+  private static async calculateDirectUsdtPrice(
+    token: FE.Token, 
+    pools: BE.Pool[]
+  ): Promise<{price: number, weight: number}> {
+    const usdtPool = pools.find(pool => 
+      (pool.address_0 === token.canister_id && pool.symbol_1 === "ckUSDT") ||
+      (pool.address_1 === token.canister_id && pool.symbol_0 === "ckUSDT")
+    );
+
+    if (!usdtPool) {
+      return { price: 0, weight: 0 };
+    }
+
+    const price = usdtPool.address_0 === token.canister_id ? 
+      usdtPool.price : 
+      1 / usdtPool.price;
+
+    // Calculate weight based on total liquidity
+    const weight = Number(usdtPool.balance_0) + Number(usdtPool.balance_1);
+
+    return { price, weight };
+  }
+
+  private static async calculateIcpPath(
+    token: FE.Token, 
+    pools: BE.Pool[]
+  ): Promise<{price: number, weight: number}> {
+    const icpPool = pools.find(pool =>
+      (pool.address_0 === token.canister_id && pool.symbol_1 === "ICP") ||
+      (pool.address_1 === token.canister_id && pool.symbol_0 === "ICP")
+    );
+
+    if (!icpPool) {
+      return { price: 0, weight: 0 };
+    }
+
+    const icpUsdtPrice = await this.getUsdtPriceForToken("ICP", pools);
+    const tokenIcpPrice = icpPool.address_0 === token.canister_id ? 
+      icpPool.price : 
+      1 / icpPool.price;
+
+    // Calculate weight based on total liquidity
+    const weight = Number(icpPool.balance_0) + Number(icpPool.balance_1);
+
+    return {
+      price: tokenIcpPrice * icpUsdtPrice,
+      weight
+    };
+  }
+
+  private static async calculateStableCoinPath(
+    token: FE.Token, 
+    pools: BE.Pool[]
+  ): Promise<{price: number, weight: number}> {
+    // Could implement additional stable coin paths here (USDC, DAI, etc.)
+    return { price: 0, weight: 0 };
   }
 
   public static async fetchPrice(token: FE.Token): Promise<number> {
