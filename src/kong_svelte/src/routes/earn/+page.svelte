@@ -4,18 +4,25 @@
   import { poolsList, poolsLoading, poolsError } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
-  import PoolsTable from "$lib/components/liquidity/pools/PoolsTable.svelte";
+  import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
   import { onMount } from 'svelte';
+  import { goto } from "$app/navigation";
+  import TableHeader from "$lib/components/common/TableHeader.svelte";
+  import TextInput from "$lib/components/common/TextInput.svelte";
+  import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-svelte';
 
   // Navigation state
   const activeSection = writable("pools");
   const activeTab = writable("all_pools");
   
-  // Sort state (required by PoolsTable)
+  // Sort state
   const sortColumn = writable("rolling_24h_volume");
   const sortDirection = writable<"asc" | "desc">("desc");
 
   let isMobile = false;
+  let searchTerm = "";
+  let searchDebounceTimer: NodeJS.Timeout;
+  let debouncedSearchTerm = "";
 
   onMount(() => {
     const checkMobile = () => {
@@ -45,6 +52,63 @@
   const highestApr = derived(poolsList, ($pools) => {
     if (!$pools || $pools.length === 0) return 0;
     return Math.max(...$pools.map(pool => Number(pool.rolling_24h_apy)));
+  });
+
+  function handleAddLiquidity(token0: string, token1: string) {
+    goto(`/earn/add?token0=${token0}&token1=${token1}`);
+  }
+
+  // Search and filter functionality
+  $: {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+    }, 300);
+  }
+
+  $: filteredPools = $poolsList.filter(pool => {
+    if (!debouncedSearchTerm) return true;
+    
+    const searchMatches = [
+      pool.symbol_0.toLowerCase(),
+      pool.symbol_1.toLowerCase(), 
+      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
+      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
+      pool.address_0?.toLowerCase() || '',
+      pool.address_1?.toLowerCase() || ''
+    ];
+
+    return searchMatches.some(match => match.includes(debouncedSearchTerm));
+  });
+
+  function toggleSort(column: string) {
+    if ($sortColumn === column) {
+      sortDirection.update(d => d === "asc" ? "desc" : "asc");
+    } else {
+      sortColumn.set(column);
+      sortDirection.set("asc");
+    }
+  }
+
+  function getSortIcon(column: string) {
+    if ($sortColumn !== column) return ArrowUpDown;
+    return $sortDirection === "asc" ? ArrowUp : ArrowDown;
+  }
+
+  $: sortedPools = [...filteredPools].sort((a, b) => {
+    const direction = $sortDirection === "asc" ? 1 : -1;
+    const column = $sortColumn;
+    
+    if (column === "rolling_24h_volume") {
+      return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
+    }
+    if (column === "tvl") {
+      return direction * ((a.tvl || 0) - (b.tvl || 0));
+    }
+    if (column === "rolling_24h_apy") {
+      return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
+    }
+    return 0;
   });
 </script>
 
@@ -95,18 +159,55 @@
     </div>
 
     {#if $activeSection === "pools"}
-      <div class="pools-container">
-        <div class="pools-inner">
-          <PoolsTable
-            pools={$poolsList}
-            loading={$poolsLoading}
-            error={$poolsError}
-            tokenMap={$tokenMap}
-            sortColumn={$sortColumn}
-            sortDirection={$sortDirection}
-          />
+      <Panel className="flex-1 mb-4">
+        <div class="h-full overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between mb-4 px-4 sticky top-0 bg-[#1a1b23] z-10">
+            <input
+              type="text"
+              placeholder="Search by token name or address..."
+              bind:value={searchTerm}
+              class="w-full px-4 py-2 bg-[#2a2d3d] rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]/50"
+            />
+          </div>
+
+          <div class="overflow-auto flex-1">
+            <table class="w-full">
+              <thead>
+                <tr>
+                  <th>Pool</th>
+                  <th class="text-right cursor-pointer" on:click={() => toggleSort("price")}>
+                    Price
+                    <svelte:component this={getSortIcon("price")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right cursor-pointer" on:click={() => toggleSort("tvl")}>
+                    TVL
+                    <svelte:component this={getSortIcon("tvl")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right cursor-pointer" on:click={() => toggleSort("rolling_24h_volume")}>
+                    Volume 24H
+                    <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right cursor-pointer" on:click={() => toggleSort("rolling_24h_apy")}>
+                    APY
+                    <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-4 h-4 ml-1" />
+                  </th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                  <PoolRow
+                    {pool}
+                    tokenMap={$tokenMap}
+                    isEven={i % 2 === 0}
+                    onAddLiquidity={handleAddLiquidity}
+                  />
+                {/each}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </Panel>
     {/if}
   </div>
 </section>
@@ -171,64 +272,18 @@
     @apply text-xs text-[#60A5FA] font-medium ml-2;
   }
 
+  table {
+    @apply border-collapse;
+  }
+
+  th {
+    @apply px-4 py-2 text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d];
+  }
+
   @media (max-width: 640px) {
     section {
       @apply px-2 pb-2;
     }
-    
-    .pools-container {
-      height: calc(100vh - 16rem - 64px - 0.5rem); /* Adjusted for mobile + header + padding */
-    }
-  }
-
-  .pools-container {
-    @apply flex-grow rounded-xl overflow-hidden relative;
-    background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
-    border: 1px solid rgba(96, 165, 250, 0.12);
-    box-shadow: 
-      0 32px 64px -16px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(96, 165, 250, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(32px);
-    height: calc(100vh - 64px - 11.5rem - 1rem);
-
-    /* Premium edge highlight */
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      padding: 1px;
-      border-radius: inherit;
-      background: linear-gradient(
-        135deg,
-        rgba(96, 165, 250, 0.08) 0%,
-        rgba(96, 165, 250, 0.03) 50%,
-        rgba(96, 165, 250, 0.01) 100%
-      );
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      pointer-events: none;
-    }
-
-    /* Inner glow effect */
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: radial-gradient(
-        circle at 50% 0%,
-        rgba(96, 165, 250, 0.02) 0%,
-        transparent 70%
-      );
-      pointer-events: none;
-    }
-  }
-
-  .pools-inner {
-    @apply relative h-full p-4 z-[1];
   }
 
   /* For mobile, use flex instead of grid */

@@ -133,7 +133,28 @@
 
   // Event handlers
   function handleInput(event: Event) {
-    const value = (event.target as HTMLInputElement).value;
+    const input = event.target as HTMLInputElement;
+    let value = input.value;
+
+    // Remove leading zeros unless it's "0." or just "0"
+    if (value.length > 1 && value.startsWith('0') && value[1] !== '.') {
+      value = value.replace(/^0+/, '');
+    }
+
+    // If empty after removing zeros, set to "0"
+    if (!value) {
+      value = "0";
+    }
+
+    // Only allow numbers and one decimal point
+    value = value.replace(/[^\d.]/g, '');
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // Update input value and trigger change event
+    input.value = value;
     onAmountChange(
       new CustomEvent("input", {
         detail: { value, panelType },
