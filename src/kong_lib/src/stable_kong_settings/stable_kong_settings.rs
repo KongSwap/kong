@@ -31,11 +31,12 @@ pub struct StableKongSettings {
     pub user_map_idx: u32,     // counter for USER_MAP
     pub token_map_idx: u32,    // counter for TOKEN_MAP
     pub pool_map_idx: u32,     // counter for POOL_MAP
-    pub claim_map_idx: u64,    // counter for CLAIM_MAP
-    pub message_map_idx: u64,  // counter for MESSAGE_MAP
+    pub tx_map_idx: u64,       // counter for TX_MAP
     pub request_map_idx: u64,  // counter for REQUEST_MAP
     pub transfer_map_idx: u64, // counter for TRANSFER_MAP
-    pub tx_map_idx: u64,       // counter for TX_MAP
+    pub claim_map_idx: u64,    // counter for CLAIM_MAP
+    pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
+    pub message_map_idx: u64,  // counter for MESSAGE_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
     pub stats_interval_secs: u64,
@@ -50,11 +51,12 @@ impl Default for StableKongSettings {
         let user_map_idx = 0;
         let token_map_idx = 0;
         let pool_map_idx = 0;
-        let claim_map_idx = 0;
-        let message_map_idx = 0;
+        let tx_map_idx = 0;
         let request_map_idx = 0;
         let transfer_map_idx = 0;
-        let tx_map_idx = 0;
+        let claim_map_idx = 0;
+        let lp_token_map_idx = 0;
+        let message_map_idx = 0;
         Self {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
@@ -76,11 +78,12 @@ impl Default for StableKongSettings {
             user_map_idx,
             token_map_idx,
             pool_map_idx,
-            claim_map_idx,
-            message_map_idx,
+            tx_map_idx,
             request_map_idx,
             transfer_map_idx,
-            tx_map_idx,
+            claim_map_idx,
+            lp_token_map_idx,
+            message_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
             transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
             stats_interval_secs: 3600,                   // stats every hour
