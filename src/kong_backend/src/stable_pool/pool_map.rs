@@ -181,19 +181,19 @@ pub fn update(pool: &StablePool) {
     archive_pool(pool.clone());
 }
 
-pub fn remove(pool_id: u32) -> Result<String, String> {
+pub fn remove(pool_id: u32) -> Result<(), String> {
     // remove pool
     let pool = POOL_MAP
         .with(|m| m.borrow_mut().remove(&StablePoolId(pool_id)))
         .ok_or("Unable to remove pool".to_string())?;
 
     // remove LP token
-    token_map::remove(pool.lp_token_id).ok_or("Unable to remove LP token")?;
+    token_map::remove(pool.lp_token_id)?;
 
     // remove LP token
     lp_token_map::remove(pool.lp_token_id)?;
 
-    Ok(format!("Pool {} removed", pool.symbol()))
+    Ok(())
 }
 
 fn archive_pool(pool: StablePool) {

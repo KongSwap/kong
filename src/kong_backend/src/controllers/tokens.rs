@@ -50,7 +50,7 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_token(symbol: String) -> Result<String, String> {
     let token = token_map::get_by_token(&symbol)?;
-    token_map::remove(token.token_id()).ok_or("Unable to remove token")?;
+    token_map::remove(token.token_id())?;
 
     Ok(format!("Token {} removed", symbol))
 }
