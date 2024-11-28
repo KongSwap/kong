@@ -52,31 +52,17 @@ pub fn inc_pool_map_idx() -> u32 {
     })
 }
 
-pub fn inc_claim_map_idx() -> u64 {
+pub fn inc_tx_map_idx() -> u64 {
     KONG_SETTINGS.with(|s| {
         let mut map = s.borrow_mut();
         let kong_settings = map.get();
-        let claim_map_idx = kong_settings.claim_map_idx + 1;
+        let tx_map_idx = kong_settings.tx_map_idx + 1;
         let new_kong_settings = StableKongSettings {
-            claim_map_idx,
+            tx_map_idx,
             ..kong_settings.clone()
         };
         _ = map.set(new_kong_settings);
-        claim_map_idx
-    })
-}
-
-pub fn inc_message_map_idx() -> u64 {
-    KONG_SETTINGS.with(|s| {
-        let mut map = s.borrow_mut();
-        let kong_settings = map.get();
-        let message_map_idx = kong_settings.message_map_idx + 1;
-        let new_kong_settings = StableKongSettings {
-            message_map_idx,
-            ..kong_settings.clone()
-        };
-        _ = map.set(new_kong_settings);
-        message_map_idx
+        tx_map_idx
     })
 }
 
@@ -108,16 +94,44 @@ pub fn inc_transfer_map_idx() -> u64 {
     })
 }
 
-pub fn inc_tx_map_idx() -> u64 {
+pub fn inc_claim_map_idx() -> u64 {
     KONG_SETTINGS.with(|s| {
         let mut map = s.borrow_mut();
         let kong_settings = map.get();
-        let tx_map_idx = kong_settings.tx_map_idx + 1;
+        let claim_map_idx = kong_settings.claim_map_idx + 1;
         let new_kong_settings = StableKongSettings {
-            tx_map_idx,
+            claim_map_idx,
             ..kong_settings.clone()
         };
         _ = map.set(new_kong_settings);
-        tx_map_idx
+        claim_map_idx
+    })
+}
+
+pub fn inc_lp_token_map_idx() -> u64 {
+    KONG_SETTINGS.with(|s| {
+        let mut map = s.borrow_mut();
+        let kong_settings = map.get();
+        let lp_token_map_idx = kong_settings.lp_token_map_idx + 1;
+        let new_kong_settings = StableKongSettings {
+            lp_token_map_idx,
+            ..kong_settings.clone()
+        };
+        _ = map.set(new_kong_settings);
+        lp_token_map_idx
+    })
+}
+
+pub fn inc_message_map_idx() -> u64 {
+    KONG_SETTINGS.with(|s| {
+        let mut map = s.borrow_mut();
+        let kong_settings = map.get();
+        let message_map_idx = kong_settings.message_map_idx + 1;
+        let new_kong_settings = StableKongSettings {
+            message_map_idx,
+            ..kong_settings.clone()
+        };
+        _ = map.set(new_kong_settings);
+        message_map_idx
     })
 }

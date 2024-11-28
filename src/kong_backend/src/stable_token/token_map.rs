@@ -211,8 +211,11 @@ pub fn update(token: &StableToken) {
     archive_token(token.clone());
 }
 
-pub fn remove(token_id: u32) -> Option<StableToken> {
-    TOKEN_MAP.with(|m| m.borrow_mut().remove(&StableTokenId(token_id)))
+pub fn remove(token_id: u32) -> Result<(), String> {
+    TOKEN_MAP
+        .with(|m| m.borrow_mut().remove(&StableTokenId(token_id)))
+        .ok_or(format!("Failed to remove token_id #{}", token_id))?;
+    Ok(())
 }
 
 fn archive_token(token: StableToken) {
@@ -227,10 +230,10 @@ fn archive_token(token: StableToken) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to update token_id #{} - {}", token.token_id(), e)),
+                    Err(e) => error_log(&format!("Failed to archive token_id #{}. {}", token.token_id(), e)),
                 };
             }
-            Err(e) => error_log(&format!("Failed to serialize token_id #{} - {}", token.token_id(), e)),
+            Err(e) => error_log(&format!("Failed to serialize token_id #{}. {}", token.token_id(), e)),
         }
     });
 }

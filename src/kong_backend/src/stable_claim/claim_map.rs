@@ -4,21 +4,6 @@ use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token_map;
-use crate::stable_user::user_map;
-
-#[allow(dead_code)]
-pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
-    let user_id = user_map::get_by_caller().ok().flatten()?.user_id;
-    CLAIM_MAP.with(|m| {
-        m.borrow().get(&StableClaimId(claim_id)).and_then(|v| {
-            // only unclaimed claims of caller
-            if user_id == v.user_id && (v.status == ClaimStatus::Unclaimed) {
-                return Some(v);
-            }
-            None
-        })
-    })
-}
 
 /// get the number of unclaimed claims
 pub fn get_num_unclaimed_claims() -> u64 {
@@ -39,7 +24,7 @@ pub fn insert(claim: &StableClaim) -> Result<u64, String> {
     })
 }
 
-pub fn insert_attempt_request_id(claim_id: u64, request_id: u64) -> Option<StableClaim> {
+pub fn add_attempt_request_id(claim_id: u64, request_id: u64) -> Option<StableClaim> {
     CLAIM_MAP.with(|m| {
         let mut map = m.borrow_mut();
         match map.get(&StableClaimId(claim_id)) {

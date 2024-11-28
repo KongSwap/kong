@@ -9,9 +9,7 @@ use super::add_liquidity_transfer_from::transfer_from_token;
 use crate::helpers::nat_helpers::{
     nat_add, nat_divide, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
 };
-use crate::ic::{
-    address::Address, get_time::get_time, id::caller_id, logging::error_log, transfer::icrc1_transfer, verify::verify_transfer,
-};
+use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify::verify_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};

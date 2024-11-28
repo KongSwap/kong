@@ -40,13 +40,7 @@ pub fn get_total_supply(token_id: u32) -> Nat {
 pub fn insert(lp_token: &StableLPToken) -> Result<u64, String> {
     LP_TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        // with lock, increase lp_token id key
-        let lp_token_id = map
-            .iter()
-            .map(|(k, _)| k.0)
-            .max()
-            .unwrap_or(0) // only if empty and first lp_token
-            + 1;
+        let lp_token_id = kong_settings_map::inc_lp_token_map_idx();
         let insert_lp_token = StableLPToken {
             lp_token_id,
             ..lp_token.clone()
@@ -135,10 +129,10 @@ fn archive_lp_token(lp_token: StableLPToken) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => ic_cdk::print(format!("Failed to archive LP token: {}", e)),
+                    Err(e) => ic_cdk::print(format!("Failed to archive lp_token #{}. {}", lp_token.lp_token_id, e)),
                 }
             }
-            Err(e) => ic_cdk::print(format!("Failed to serialize LP token: {}", e)),
+            Err(e) => ic_cdk::print(format!("Failed to serialize lp_token #{}. {}", lp_token.lp_token_id, e)),
         }
     });
 }

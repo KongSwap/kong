@@ -3,7 +3,7 @@ use candid::Nat;
 use super::swap_reply_helpers::create_swap_reply_failed;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{address::Address, id::caller_id, logging::error_log, transfer::icrc1_transfer};
+use crate::ic::{address::Address, id::caller_id, transfer::icrc1_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_request::reply::Reply;
 use crate::stable_request::request_map;
@@ -20,9 +20,6 @@ pub async fn return_pay_token(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) {
-    // Pay Token
-    let pay_symbol = pay_token.symbol();
-
     let caller_id = caller_id();
     let mut claim_ids = Vec::new();
 

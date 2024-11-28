@@ -12,7 +12,6 @@ use crate::ic::{
     address::Address,
     get_time::get_time,
     id::caller_id,
-    logging::error_log,
     transfer::{icrc1_transfer, icrc2_transfer_from},
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
@@ -427,10 +426,8 @@ async fn return_tokens(
     ts: u64,
 ) {
     // Token0
-    let symbol_0 = pool.symbol_0();
     let token_0 = pool.token_0();
     // Token1
-    let symbol_1 = pool.symbol_1();
     let token_1 = pool.token_1();
 
     let caller_id = caller_id();
