@@ -58,7 +58,6 @@
     return availableLogos[nextImageIndex];
   }
 
-  let messageIndex = 0;
   async function cycleContent() {
     const CYCLE_INTERVAL = 800; // Reduced from 1000ms to 800ms
     const TRANSITION_TIME = 200; // Reduced from 300ms to 200ms
@@ -82,8 +81,6 @@
         glitchOutActive = false;
         currentLogo = nextLogo;
         dominantColor = nextColor;
-        currentMessage = messages[messageIndex % messages.length];
-        messageIndex++;
         
         await new Promise(resolve => setTimeout(resolve, colorCalcTime));
         
@@ -164,25 +161,6 @@
     });
   }
 
-  function handleOutro(node: HTMLElement) {
-    isShuttingDown = true;
-    const progressFill = node.querySelector('.progress-fill') as HTMLElement;
-    if (progressFill) {
-      const currentWidth = progressFill.style.width;
-      progressFill.style.transition = 'none';
-      progressFill.style.width = currentWidth;
-    }
-    return {
-      duration: 400,
-      css: (t: number) => {
-        return `
-          opacity: ${t};
-          transform: scale(${t});
-        `;
-      }
-    };
-  }
-
   $: containerStyle = `--glow-color: ${dominantColor};`;
 
   // Freeze progress when shutting down
@@ -202,9 +180,7 @@
 {#if $loadingState.isLoading}
   <div
     class="h-screen top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
-    out:handleOutro
-    in:fade={{ duration: 400 }}
-    on:outroend
+    out:fade={{ duration: 400 }}
   >
     <div class="screen-curve animation min-h-screen"></div>
     <div class="crt-content min-h-screen">
@@ -216,8 +192,8 @@
             <div 
               class="logo-container chrome-frame absolute-center"
               style={containerStyle}
-              in:scale|local={{ duration: 400, delay: 200, easing: cubicOut, start: 0.3 }}
-              out:scale|local={{ duration: 200, start: 1 }}
+              in:scale|local={{ duration: 400, delay: 200, easing: cubicOut, start: 0.2 }}
+              out:scale|local={{ duration: 200, start: 0.8 }}
             >
               <div class="logo-inner !p-0 object-cover">
                 <img
@@ -232,18 +208,8 @@
         <h2 class="relative !text-7xl font-bold mb-2 uppercase font-alumni neon-text mt-10 flex justify-center flex-col gap-x-2 items-center">
           <span class="h-[10] text-outline-1">KongSwap</span>
         </h2>
-        <div class="message-container h-8 flex items-center justify-center mb-4 progress-text mt-4">
-          {#key currentMessage}
-            <p
-            in:fade|local={{ duration: 200 }}
-              class="text-gray-400 text-lg"
-            >
-              {currentMessage}
-            </p>
-          {/key}
-        </div>
         <div class="progress-container mt-4">
-          <div class="progress-bar">
+          <div class="progress-bar rounded-lg">
             <div 
               class="progress-fill"
               style:width={(isShuttingDown ? frozenProgress : $loadingProgress) + "%"}
@@ -297,8 +263,7 @@
 
   .neon-text {
     color: #fff;
-    animation: neonFlicker 1.5s ease-in;
-    animation-delay: 1s;
+    animation: neonFlicker 1.5s infinite;
     letter-spacing: 4px;
     text-shadow:
       0 0 7px #fff,
@@ -386,7 +351,6 @@
     height: 100vh;
     overflow: hidden;
     animation: flicker 0.15s infinite;
-    animation-delay: 1.5s;
     background: rgba(16, 16, 16, 0.94);
     display: flex;
     align-items: center;
@@ -452,9 +416,6 @@
       background-size: 100% 2px, 3px 100%;
       pointer-events: none;
       animation: scanlines 1s linear infinite;
-      opacity: 0;
-      animation: fadeInScanlines 2s forwards;
-      animation-delay: 1s;
     }
     
     &::after {
@@ -926,26 +887,26 @@
   }
 
   @keyframes flicker {
-    0%, 100% { opacity: 0.98; }
-    5% { opacity: 0.97; }
-    10% { opacity: 0.95; }
-    15% { opacity: 0.96; }
+    0% { opacity: 0.97; }
+    5% { opacity: 0.95; }
+    10% { opacity: 0.9; }
+    15% { opacity: 0.95; }
     20% { opacity: 0.98; }
-    25% { opacity: 0.96; }
-    30% { opacity: 0.95; }
-    35% { opacity: 0.96; }
+    25% { opacity: 0.95; }
+    30% { opacity: 0.9; }
+    35% { opacity: 0.95; }
     40% { opacity: 0.98; }
-    45% { opacity: 0.96; }
+    45% { opacity: 0.94; }
     50% { opacity: 0.98; }
-    55% { opacity: 0.96; }
+    55% { opacity: 0.95; }
     60% { opacity: 0.97; }
-    65% { opacity: 0.96; }
+    65% { opacity: 0.95; }
     70% { opacity: 0.98; }
-    75% { opacity: 0.96; }
+    75% { opacity: 0.94; }
     80% { opacity: 0.98; }
-    85% { opacity: 0.97; }
+    85% { opacity: 0.96; }
     90% { opacity: 0.98; }
-    95% { opacity: 0.96; }
+    95% { opacity: 0.95; }
     100% { opacity: 0.98; }
   }
 
@@ -971,7 +932,6 @@
     position: relative;
     overflow: hidden;
     animation: flicker 0.15s infinite;
-    animation-delay: 1.5s;
     background: rgba(16, 16, 16, 0.94);
 
     &::before {
@@ -1029,9 +989,6 @@
       background-size: 100% 2px, 3px 100%;
       pointer-events: none;
       animation: scanlines 1s linear infinite;
-      opacity: 0;
-      animation: fadeInScanlines 2s forwards;
-      animation-delay: 1s;
     }
     
     &::after {
@@ -1072,10 +1029,5 @@
       animation: flicker 0.15s infinite;
       mix-blend-mode: overlay;
     }
-  }
-
-  @keyframes fadeInScanlines {
-    from { opacity: 0; }
-    to { opacity: 1; }
   }
 </style>

@@ -113,7 +113,7 @@
   });
 </script>
 
-<div class="page-wrapper" in:tvIn={{ duration: 300 }}>
+<div class="page-wrapper" in:fade={{ duration: 300 }}>
   {#if $themeStore === 'modern'}
     <div class="background"></div>
     <div class="night-sky">
