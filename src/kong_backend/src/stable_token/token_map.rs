@@ -227,10 +227,10 @@ fn archive_token(token: StableToken) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to update token_id #{} - {}", token.token_id(), e)),
+                    Err(e) => error_log(&format!("Failed to archive token_id #{}. {}", token.token_id(), e)),
                 };
             }
-            Err(e) => error_log(&format!("Failed to serialize token_id #{} - {}", token.token_id(), e)),
+            Err(e) => error_log(&format!("Failed to serialize token_id #{}. {}", token.token_id(), e)),
         }
     });
 }

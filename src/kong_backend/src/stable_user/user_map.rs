@@ -139,10 +139,10 @@ fn archive_user(user: StableUser) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to update user_id #{} - {}", user.user_id, e)),
+                    Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user.user_id, e)),
                 };
             }
-            Err(e) => error_log(&format!("Failed to serialize user_id #{} - {}", user.user_id, e)),
+            Err(e) => error_log(&format!("Failed to serialize user_id #{}. {}", user.user_id, e)),
         }
     });
 }

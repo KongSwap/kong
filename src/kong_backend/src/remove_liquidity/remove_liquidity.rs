@@ -319,7 +319,7 @@ fn update_liquidity_pool(
                 lp_fee_1: nat_subtract(&pool.lp_fee_1, payout_lp_fee_1).unwrap_or(nat_zero()),
                 ..pool.clone()
             };
-            _ = pool_map::update(&update_pool); // can ignore the result as it returns the previous value
+            pool_map::update(&update_pool); // can ignore the result as it returns the previous value
             Ok(())
         }
         None => {
@@ -342,7 +342,6 @@ async fn transfer_token(
     user_id: u32,
     ts: u64,
 ) {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     let caller_id = caller_id();

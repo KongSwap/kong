@@ -634,9 +634,9 @@ async fn return_tokens(
                 )) {
                     Ok(claim_id) => {
                         claim_ids.push(claim_id);
-                        format!("Saved as claim #{}", claim_id)
+                        format!("Saved as claim #{}. {}", claim_id, e)
                     }
-                    Err(e) => format!("Failed to save claim: {}", e),
+                    Err(e) => format!("Failed to save claim. {}", e),
                 };
                 request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
             }

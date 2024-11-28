@@ -135,10 +135,10 @@ fn archive_lp_token(lp_token: StableLPToken) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => ic_cdk::print(format!("Failed to archive LP token: {}", e)),
+                    Err(e) => ic_cdk::print(format!("Failed to archive lp_token #{}. {}", lp_token.lp_token_id, e)),
                 }
             }
-            Err(e) => ic_cdk::print(format!("Failed to serialize LP token: {}", e)),
+            Err(e) => ic_cdk::print(format!("Failed to serialize lp_token #{}. {}", lp_token.lp_token_id, e)),
         }
     });
 }

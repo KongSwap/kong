@@ -208,10 +208,10 @@ fn archive_pool(pool: StablePool) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => ic_cdk::print(format!("Failed to archive pool: {}", e)),
+                    Err(e) => ic_cdk::print(format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
                 }
             }
-            Err(e) => ic_cdk::print(format!("Failed to serialize pool: {}", e)),
+            Err(e) => ic_cdk::print(format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
         }
     });
 }
