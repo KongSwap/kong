@@ -29,7 +29,7 @@ export const formatToNonZeroDecimal = (number: number | string): string => {
   const num = typeof number === 'string' ? parseFloat(number) : number;
 
   // If the number is less than 0.01, format with more decimal places
-  if (num < 0.01 && num > 0) {
+  if (num < 0.1 && num > 0) {
     const numberStr = num.toString();
     const decimalPart = numberStr.split('.')[1] || '';
     

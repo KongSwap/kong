@@ -4,6 +4,7 @@
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
     import Modal from '$lib/components/common/Modal.svelte';
+    import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
 
     export let token: {
         symbol: string;
@@ -16,7 +17,7 @@
     let amount = '';
     let isValidating = false;
     let errorMessage = '';
-    let maxAmount = parseFloat(token.amount);
+    $: maxAmount = parseFloat(formatTokenAmount(token.balance, token.decimals));
     let addressType: 'principal' | 'account' | null = null;
     let showHelp = false;
     let showConfirmation = false;
@@ -240,7 +241,7 @@
                     class:error={errorMessage.includes('balance') || errorMessage.includes('Amount')}
                 />
                 <div class="balance-info">
-                    <span>Balance: {token.amount} {token.symbol}</span>
+                    <span>Balance: {formatTokenAmount(token.balance, token.decimals)} {token.symbol}</span>
                 </div>
             </div>
         </div>

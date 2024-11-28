@@ -44,6 +44,7 @@
       localStorage.setItem("kongSelectedWallet", walletId);
       await auth.connect(walletId);
     } catch (error) {
+      localStorage.removeItem("kongSelectedWallet");
       console.error("Failed to connect wallet:", error);
     }
   }

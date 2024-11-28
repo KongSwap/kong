@@ -3,7 +3,7 @@
   import { spring } from 'svelte/motion';
   import { Star, MoreVertical, ArrowDown, ArrowUp } from 'lucide-svelte';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { formatBalance } from '$lib/utils/tokenFormatters';
+  import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
   import TokenDetails from '$lib/components/common/TokenDetails.svelte';
 
@@ -14,11 +14,8 @@
   let isPressed = false;
   let showMenu = false;
 
-  $: balance = Number(token.balance || 0);
-  $: decimals = Number(token.decimals || 0);
-  $: usdValue = Number(token.usdValue || 0);
-  $: formattedBalance = formatBalance(balance, decimals);
-  $: formattedUsdValue = usdValue.toFixed(2);
+  $: console.log("usdValue", token);
+
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
@@ -98,10 +95,10 @@
       <div class="token-right">
         <div class="value-info">
           <div class="balance">
-            {formattedBalance}
+            {token.formattedBalance}
           </div>
           <div class="usd-value">
-            ${formattedUsdValue}
+            {formatUsdValue(token.formattedUsdValue)}
           </div>
         </div>
 

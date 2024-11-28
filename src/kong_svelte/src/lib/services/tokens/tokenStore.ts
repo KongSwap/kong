@@ -60,7 +60,6 @@ function createTokenStore() {
     activeSwaps: {},
     favoriteTokens: {},
     lastBalanceUpdate: {},
-    favorites: [],
   };
 
   const store = writable<TokenState>(initialState);

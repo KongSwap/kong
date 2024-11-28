@@ -33,9 +33,9 @@
   onMount(() => {
     const init = async () => {
       await appLoader.initialize();
-      await auth.initialize();
       isInitialized = true;
       initialLoad = false;
+      await auth.initialize();
     };
 
     init().catch(console.error);

@@ -319,7 +319,7 @@
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   .token-list {
     @apply flex flex-col h-full overflow-hidden;
   }

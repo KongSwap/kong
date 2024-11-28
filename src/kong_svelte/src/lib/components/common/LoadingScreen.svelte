@@ -163,7 +163,7 @@
     isShuttingDown = true;
     setTimeout(() => {
       loadingState.update(state => ({ ...state, isLoading: false }));
-    }, 500);
+    }, 200);
   }
 </script>
 

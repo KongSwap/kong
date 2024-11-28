@@ -40,26 +40,27 @@ export function formatBalance(rawBalance: string | undefined, decimals: number =
  * @param value The USD value to format
  * @returns Formatted USD string
  */
-export function formatUsdValue(value: number): string {
+export function formatUsdValue(value: number | string): string {
     if (!value) return "$0.00";
-    
+    const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
+
     // For very small values, show up to 8 decimals
-    if (value < 0.00001) {
-        return `$${formatToNonZeroDecimal(value).replace(/\.?0+$/, '')}`;
+    if (valueNumber < 0.00001) {
+        return `$${formatToNonZeroDecimal(valueNumber).replace(/\.?0+$/, '')}`;
     }
     
     // For small values (under 1), show up to 6 decimals
-    if (value < 1) {
-        return `$${formatToNonZeroDecimal(value).replace(/\.?0+$/, '')}`;
+    if (valueNumber < 1) {
+        return `$${formatToNonZeroDecimal(valueNumber).replace(/\.?0+$/, '')}`;
     }
     
-    if (value >= 1000000) {
-        return `$${(value / 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}M`;
+    if (valueNumber >= 1000000) {
+        return `$${(valueNumber / 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}M`;
     }
-    if (value >= 1000) {
-        return `$${(value / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}K`;
+    if (valueNumber >= 1000) {
+        return `$${(valueNumber / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}K`;
     }
-    return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${valueNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
