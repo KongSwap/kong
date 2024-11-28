@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { fade, scale, fly } from 'svelte/transition';
-  import { spring } from 'svelte/motion';
+  import { fade, fly } from 'svelte/transition';
   import { Star, MoreVertical, ArrowDown, ArrowUp } from 'lucide-svelte';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
   import TokenDetails from '$lib/components/common/TokenDetails.svelte';
+  import { currentWalletFavorites } from '$lib/services/tokens/favoriteStore';
 
   export let token: any;
   const dispatch = createEventDispatcher();
@@ -13,13 +13,15 @@
   let isHovered = false;
   let isPressed = false;
   let showMenu = false;
+  
+  $: isFavorite = $currentWalletFavorites.includes(token.canister_id);
 
   $: console.log("usdValue", token);
 
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
-    dispatch('toggleFavorite', { token });
+    dispatch('toggleFavorite', { canisterId: token.canister_id });
   }
 
   function handleRowClick() {
@@ -80,11 +82,11 @@
           <div class="token-name-row">
             <button 
               class="favorite-button"
-              class:active={token.isFavorite}
+              class:active={isFavorite}
               on:click={handleFavoriteClick}
-              title={token.isFavorite ? "Remove from favorites" : "Add to favorites"}
+              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
-              <Star size={16} fill={token.isFavorite ? "#ffd700" : "none"} />
+              <Star size={16} fill={isFavorite ? "#ffd700" : "none"} />
             </button>
             <span class="token-symbol">{token.symbol}</span>
           </div>

@@ -1,31 +1,24 @@
 <script lang="ts">
   import { writable, derived } from "svelte/store";
-  import { t } from "$lib/services/translations";
   import Panel from "$lib/components/common/Panel.svelte";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { poolStore } from "$lib/services/pools/poolStore";
+  import { poolStore, poolsList } from "$lib/services/pools/poolStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
-  import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce";
   import {
-    ArrowUpDown,
-    TrendingUp,
     Droplets,
     DollarSign,
     LineChart,
     BarChart,
-    Coins,
     ArrowUp,
     ArrowDown,
     Star,
   } from "lucide-svelte";
   import { onMount } from "svelte";
   import { toastStore } from "$lib/stores/toastStore";
-  import Toast from "$lib/components/common/Toast.svelte";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { goto } from "$app/navigation";
   import { fade } from "svelte/transition";
@@ -34,6 +27,7 @@
     favoriteStore,
     currentWalletFavorites,
   } from "$lib/services/tokens/favoriteStore";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -55,9 +49,10 @@
 
   // Base stores
   const searchQuery = writable<string>("");
-  const sortColumnStore = writable<string>("formattedUsdValue");
+  const sortColumnStore = writable<string>("volume24h");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const copyStates = writable<CopyStates>({});
+  const previousPrices = writable<{ [key: string]: number }>({});
 
   // Function to handle sorting
   function handleSort({
@@ -204,7 +199,35 @@
     await tokenStore.loadFavorites();
   });
 
-  // Derived store for filtered and sorted tokens with improved performance
+  // Create a writable store for activeTab
+  const activeTabStore = writable<"all" | "favorites">("all");
+
+  // Create a reactive statement to watch for price changes
+  $: if ($formattedTokens) {
+    previousPrices.update((prev) => {
+      const next = { ...prev };
+      $formattedTokens.forEach((token) => {
+        const currentPrice = token.price;
+        if (prev[token.canister_id] === undefined) {
+          // Initialize price for first time
+          next[token.canister_id] = currentPrice;
+        } else if (currentPrice !== prev[token.canister_id]) {
+          // Price has changed, keep the old price for animation
+          next[token.canister_id] = prev[token.canister_id];
+          // Schedule an update to store the new price after animation
+          setTimeout(() => {
+            previousPrices.update((p) => ({
+              ...p,
+              [token.canister_id]: currentPrice,
+            }));
+          }, 1500); // Match animation duration
+        }
+      });
+      return next;
+    });
+  }
+
+  // Update the filteredSortedTokens derived store
   const filteredSortedTokens = derived(
     [
       formattedTokens,
@@ -212,6 +235,10 @@
       sortColumnStore,
       sortDirectionStore,
       currentWalletFavorites,
+      poolsList,
+      tokenStore,
+      activeTabStore,
+      previousPrices
     ],
     ([
       $formattedTokens,
@@ -219,14 +246,23 @@
       $sortColumn,
       $sortDirection,
       $currentWalletFavorites,
+      $poolsList,
+      $tokenStore,
+      $activeTab,
+      $previousPrices
     ]) => {
       if (!$formattedTokens) return [];
 
       // First filter tokens
-      const filtered = $formattedTokens
+      let filtered = $formattedTokens
         .filter((token) => {
-          if (!$searchQuery) return true;
+          // First check favorites tab - only filter if in favorites tab
+          if ($activeTab === "favorites" && !$currentWalletFavorites.includes(token.canister_id)) {
+            return false;
+          }
 
+          // Then check search query
+          if (!$searchQuery) return true;
           const searchLower = $searchQuery.toLowerCase();
           return (
             token.name?.toLowerCase().includes(searchLower) ||
@@ -234,14 +270,75 @@
             token.canister_id?.toLowerCase().includes(searchLower)
           );
         })
-        .map((token) => ({
-          ...token,
-          isFavorite: $currentWalletFavorites.includes(token.canister_id),
-        }));
+        .map((token) => {
+          // Get all pools for this token
+          const tokenPools = $poolsList.filter(pool => 
+            pool.address_0 === token.canister_id || 
+            pool.address_1 === token.canister_id
+          );
 
-      // Then sort the filtered results
-      return sortTableData(filtered, $sortColumn, $sortDirection);
-    },
+          // Calculate TVL for this token
+          const tvl = tokenPools.reduce((total, pool) => {
+            const tokenPrice = $tokenStore.prices[token.canister_id] || 0;
+            if (pool.address_0 === token.canister_id) {
+              return total + (Number(pool.balance_0) * tokenPrice) / Math.pow(10, token.decimals);
+            } else {
+              return total + (Number(pool.balance_1) * tokenPrice) / Math.pow(10, token.decimals);
+            }
+          }, 0);
+
+          // Calculate 24h volume
+          let volume24h = 0;
+          if (token.canister_id === process.env.CANISTER_ID_CKUSDT_LEDGER) {
+            // For ckUSDT, sum up volume from all pools that include ckUSDT
+            volume24h = $poolsList.reduce((total, pool) => {
+              if (pool.address_0 === token.canister_id || pool.address_1 === token.canister_id) {
+                return total + Number(pool.rolling_24h_volume || 0) / Math.pow(10, 6);
+              }
+              return total;
+            }, 0);
+          } else {
+            // For other tokens, use total_24h_volume which is already in USD
+            volume24h = Number(token.total_24h_volume) / Math.pow(10, 6);
+          }
+
+          // Calculate price change percentage
+          const prevPrice = $previousPrices[token.canister_id] || token.price;
+          const priceChange = ((token.price - prevPrice) / prevPrice) * 100;
+          const price_change_24h = isNaN(priceChange) ? 0 : Number(priceChange.toFixed(2));
+
+          return {
+            ...token,
+            tvl,
+            volume24h,
+            price_change_24h,
+            isFavorite: $currentWalletFavorites.includes(token.canister_id),
+            balance: BigInt(token.balance || "0") // Convert balance to BigInt to fix type error
+          };
+        });
+
+      // Sort by the selected column
+      return filtered.sort((a, b) => {
+        switch ($sortColumn) {
+          case 'tvl':
+            return $sortDirection === 'desc' ? b.tvl - a.tvl : a.tvl - b.tvl;
+          case 'volume24h':
+            return $sortDirection === 'desc' ? b.volume24h - a.volume24h : a.volume24h - b.volume24h;
+          case 'price':
+            return $sortDirection === 'desc' ? b.price - a.price : a.price - b.price;
+          case 'price_change_24h':
+            return $sortDirection === 'desc' ? b.price_change_24h - a.price_change_24h : a.price_change_24h - b.price_change_24h;
+          case 'name':
+            return $sortDirection === 'desc' 
+              ? b.name.localeCompare(a.name)
+              : a.name.localeCompare(b.name);
+          case 'favorite':
+            return $sortDirection === 'desc' ? b.isFavorite - a.isFavorite : a.isFavorite - b.isFavorite;
+          default:
+            return b.tvl - a.tvl; // Default sort by TVL
+        }
+      });
+    }
   );
 
   // Mock data for volume chart only
@@ -262,29 +359,6 @@
     swapState.update((s) => ({ ...s, showPayTokenSelector: false }));
   }
 
-  // Update the previousPrices store initialization
-  const previousPrices = writable<{ [key: string]: number }>({});
-
-  // Create a reactive statement to watch for price changes
-  $: if ($formattedTokens) {
-    previousPrices.update((prev) => {
-      const next = { ...prev };
-      $formattedTokens.forEach((token) => {
-        // Only update if we have a previous price and it's different
-        if (
-          prev[token.canister_id] !== undefined &&
-          token.price !== prev[token.canister_id]
-        ) {
-          next[token.canister_id] = prev[token.canister_id]; // Keep the old price
-        } else if (prev[token.canister_id] === undefined) {
-          // Initialize price for first time
-          next[token.canister_id] = token.price;
-        }
-      });
-      return next;
-    });
-  }
-
   // Update the getPriceChangeClass function to be more precise
   function getPriceChangeClass(
     token: any,
@@ -293,11 +367,10 @@
     const prevPrice = $previousPrices[token.canister_id];
     const currentPrice = token.price;
 
-    // Only return a class if we have both prices and they're different
-    if (prevPrice !== undefined && currentPrice !== prevPrice) {
-      return currentPrice > prevPrice ? "price-up" : "price-down";
+    if (prevPrice === undefined || currentPrice === prevPrice) {
+      return "";
     }
-    return "";
+    return currentPrice > prevPrice ? "price-up" : "price-down";
   }
 
   // Add this function near your other event handlers
@@ -306,10 +379,10 @@
     debouncedSearch(target.value);
   }
 
-  // Toggle favorite button
-  function toggleFavorite(token: FE.Token, event: MouseEvent) {
+  // Update the toggleFavorite function
+  async function toggleFavorite(token: FE.Token, event: MouseEvent) {
     event.stopPropagation(); // Prevent row click
-    tokenStore.toggleFavorite(token.canister_id);
+    await favoriteStore.toggleFavorite(token.canister_id);
   }
 
   // Subscribe to tokenStore
@@ -365,11 +438,22 @@
       <Panel variant="green" type="main" className="content-panel">
         <div class="flex justify-between items-center mb-4">
           <div class="flex items-center gap-4">
-            <h3 class="text-white/80 font-medium">Tokens</h3>
-            {#if $tokenStats.totalTokens}
-              <span class="text-sm text-white/50"
-                >({$tokenStats.totalTokens} total)</span
-              >
+           
+            {#if $auth.isConnected}
+              <div class="tab-group">
+                <button
+                  class="tab-button {$activeTabStore === 'all' ? 'active' : ''}"
+                  on:click={() => activeTabStore.set("all")}
+                >
+                  All Tokens
+                </button>
+                <button
+                  class="tab-button {$activeTabStore === 'favorites' ? 'active' : ''}"
+                  on:click={() => activeTabStore.set("favorites")}
+                >
+                  Favorites ({$currentWalletFavorites.length})
+                </button>
+              </div>
             {/if}
           </div>
           <div class="search-container">
@@ -406,7 +490,7 @@
                     <TableHeader
                       column="favorite"
                       label=""
-                      textClass="text-left"
+                      textClass="text-center w-12"
                       sortColumn={$sortColumnStore}
                       sortDirection={$sortDirectionStore}
                       onsort={handleSort}
@@ -415,7 +499,7 @@
                   <TableHeader
                     column="name"
                     label="Token"
-                    textClass="text-left"
+                    textClass="text-left min-w-[200px]"
                     sortColumn={$sortColumnStore}
                     sortDirection={$sortDirectionStore}
                     onsort={handleSort}
@@ -423,15 +507,31 @@
                   <TableHeader
                     column="price"
                     label="Price"
-                    textClass="text-right"
+                    textClass="text-right min-w-[120px]"
                     sortColumn={$sortColumnStore}
                     sortDirection={$sortDirectionStore}
                     onsort={handleSort}
                   />
                   <TableHeader
                     column="price_change_24h"
-                    label="24h Change"
-                    textClass="text-right"
+                    label="Change"
+                    textClass="text-right min-w-[100px]"
+                    sortColumn={$sortColumnStore}
+                    sortDirection={$sortDirectionStore}
+                    onsort={handleSort}
+                  />
+                  <TableHeader
+                    column="volume24h"
+                    label="Volume"
+                    textClass="text-right min-w-[120px]"
+                    sortColumn={$sortColumnStore}
+                    sortDirection={$sortDirectionStore}
+                    onsort={handleSort}
+                  />
+                  <TableHeader
+                    column="tvl"
+                    label="TVL"
+                    textClass="text-right min-w-[120px]"
                     sortColumn={$sortColumnStore}
                     sortDirection={$sortDirectionStore}
                     onsort={handleSort}
@@ -439,7 +539,7 @@
                   <TableHeader
                     column="actions"
                     label="Actions"
-                    textClass="text-right"
+                    textClass="text-right min-w-[120px]"
                     sortColumn={$sortColumnStore}
                     sortDirection={$sortDirectionStore}
                     onsort={handleSort}
@@ -447,7 +547,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each $filteredSortedTokens as token}
+                {#each $filteredSortedTokens as token (token.canister_id)}
                   {@const priceChangeClass =
                     token.price_change_24h > 0
                       ? "positive"
@@ -461,12 +561,14 @@
                     {#if $auth.isConnected}
                       <td class="favorite-cell">
                         <button
-                          class="favorite-button {token.isFavorite
+                          class="favorite-button {$currentWalletFavorites.includes(
+                            token.canister_id,
+                          )
                             ? 'active'
                             : ''}"
                           on:click={(e) => toggleFavorite(token, e)}
                         >
-                          {#if token.isFavorite}
+                          {#if $currentWalletFavorites.includes(token.canister_id)}
                             <Star
                               class="star-icon filled"
                               size={16}
@@ -494,9 +596,9 @@
                       class="price-cell"
                       title={formatToNonZeroDecimal(token.price)}
                     >
-                      <span class={getPriceChangeClass(token, $previousPrices)}>
-                        ${formatToNonZeroDecimal(token.price)}
-                        {#key token.price}
+                      {#key token.price}
+                        <span class={getPriceChangeClass(token, $previousPrices)}>
+                          ${formatToNonZeroDecimal(token.price)}
                           {#if getPriceChangeClass(token, $previousPrices) === "price-up"}
                             <div transition:fade={{ duration: 1500 }}>
                               <ArrowUp class="price-arrow up" size={14} />
@@ -506,16 +608,28 @@
                               <ArrowDown class="price-arrow down" size={14} />
                             </div>
                           {/if}
-                        {/key}
-                      </span>
+                        </span>
+                      {/key}
                     </td>
                     <td
                       class="change-cell text-right {priceChangeClass}"
                       title={`${token.price_change_24h}%`}
                     >
-                      <span>
-                        {token.price_change_24h}%
-                      </span>
+                      {#key token.price_change_24h}
+                        <span>
+                          {token.price_change_24h}%
+                        </span>
+                      {/key}
+                    </td>
+                    <td class="text-right">
+                      {#key token.volume24h}
+                        {formatUsdValue(token.volume24h)}
+                      {/key}
+                    </td>
+                    <td class="text-right">
+                      {#key token.tvl}
+                        {formatUsdValue(token.tvl.toString())}
+                      {/key}
                     </td>
                     <td class="actions-cell">
                       <button
@@ -597,8 +711,10 @@
   }
 
   .data-table thead th {
-    @apply px-4 py-3 text-left text-sm font-medium text-white/60
+    @apply px-4 py-3 text-sm font-medium text-white/60
            border-b border-white/10 whitespace-nowrap;
+    height: 48px;
+    vertical-align: bottom;
   }
 
   .data-table tbody tr {
@@ -776,19 +892,19 @@
 
   /* Update the price animation styles */
   .price-up {
-    animation: flash-green 1.5s ease-out;
+    animation: flash-green 1.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .price-down {
-    animation: flash-red 1.5s ease-out;
+    animation: flash-red 1.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @keyframes flash-green {
     0% {
-      background-color: rgba(34, 197, 94, 0.5);
+      background-color: rgba(34, 197, 94, 0.2);
     }
-    50% {
-      background-color: rgba(34, 197, 94, 0.35);
+    30% {
+      background-color: rgba(34, 197, 94, 0.15);
     }
     100% {
       background-color: transparent;
@@ -797,10 +913,10 @@
 
   @keyframes flash-red {
     0% {
-      background-color: rgba(239, 68, 68, 0.5);
+      background-color: rgba(239, 68, 68, 0.2);
     }
-    50% {
-      background-color: rgba(239, 68, 68, 0.35);
+    30% {
+      background-color: rgba(239, 68, 68, 0.15);
     }
     100% {
       background-color: transparent;
@@ -809,52 +925,63 @@
 
   /* Make sure the price cell spans have proper padding and transition */
   .price-cell span {
-    @apply inline-flex items-center gap-1 justify-end;
+    @apply inline-flex items-center gap-1 justify-end rounded px-2 py-1;
     position: relative;
+    transition: background-color 0.3s ease;
   }
 
   .price-arrow {
-    @apply ml-1;
+    @apply absolute right-0 transform translate-x-4;
+    opacity: 0;
+    animation: slide-fade 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   .price-arrow.up {
     @apply text-green-400;
-    animation: arrow-up 1.5s ease-out;
   }
 
   .price-arrow.down {
     @apply text-red-400;
-    animation: arrow-down 1.5s ease-out;
   }
 
-  @keyframes arrow-up {
+  @keyframes slide-fade {
     0% {
-      transform: translateY(0);
+      opacity: 0;
+      transform: translate-x-2;
     }
-    40% {
-      transform: translateY(-2px);
+    20% {
+      opacity: 1;
+      transform: translate-x-4;
     }
     80% {
-      transform: translateY(-1px);
+      opacity: 1;
+      transform: translate-x-4;
     }
     100% {
-      transform: translateY(0);
+      opacity: 0;
+      transform: translate-x-6;
     }
   }
 
-  @keyframes arrow-down {
-    0% {
-      transform: translateY(0);
-    }
-    40% {
-      transform: translateY(2px);
-    }
-    80% {
-      transform: translateY(1px);
-    }
-    100% {
-      transform: translateY(0);
-    }
+  /* Add smooth transitions for table rows */
+  .token-row {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .token-row td {
+    @apply transition-colors duration-300;
+  }
+
+  /* Optimize table updates */
+  tbody {
+    @apply relative;
+    contain: content;
+  }
+
+  /* Add will-change for better performance */
+  .price-cell span,
+  .change-cell span {
+    will-change: transform, opacity, background-color;
   }
 
   .favorite-button {
@@ -879,5 +1006,85 @@
 
   .favorite-cell {
     @apply w-12 px-2;
+  }
+
+  .tab-group {
+    @apply flex gap-2 ml-4 text-base;
+  }
+
+  .tab-button {
+    @apply px-3 py-1.5 rounded-lg text-sm font-medium
+           transition-all duration-200
+           hover:bg-white/10;
+  }
+
+  .tab-button.active {
+    @apply bg-white/10 text-white;
+  }
+
+  .tab-button:not(.active) {
+    @apply text-white/60;
+  }
+
+  /* Change Cell Specific Styling */
+  .change-cell {
+    @apply text-right whitespace-nowrap;
+  }
+
+  .change-cell.positive {
+    @apply text-green-400;
+  }
+
+  .change-cell.negative {
+    @apply text-red-400;
+  }
+
+  /* Ensure consistent header alignment */
+  thead tr {
+    @apply h-12 align-bottom;
+  }
+
+  th[data-column="price_change_24h"] {
+    @apply text-right align-bottom;
+  }
+
+  /* Table Header Styling */
+  .data-table thead th {
+    @apply px-4 py-3 text-sm font-medium text-white/60
+           border-b border-white/10 whitespace-nowrap;
+    height: 48px;
+    vertical-align: bottom;
+  }
+
+  /* Ensure all header cells have consistent height and alignment */
+  .data-table th {
+    @apply relative;
+  }
+
+  .data-table th :global(span) {
+    @apply absolute bottom-3;
+  }
+
+  /* Right-aligned headers */
+  .data-table th.text-right :global(span) {
+    @apply right-4;
+  }
+
+  /* Left-aligned headers */
+  .data-table th.text-left :global(span) {
+    @apply left-4;
+  }
+
+  /* Change Cell Specific Styling */
+  .change-cell {
+    @apply text-right whitespace-nowrap;
+  }
+
+  .change-cell.positive {
+    @apply text-green-400;
+  }
+
+  .change-cell.negative {
+    @apply text-red-400;
   }
 </style>

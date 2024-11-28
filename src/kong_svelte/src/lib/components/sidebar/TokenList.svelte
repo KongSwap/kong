@@ -3,9 +3,9 @@
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { toggleFavoriteToken } from "$lib/services/tokens/favorites";
   import { onMount } from 'svelte';
   import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+  import { favoriteStore, currentWalletFavorites } from "$lib/services/tokens/favoriteStore";
 
   // Update the token type to include isFavorite
   interface ProcessedToken extends FE.Token {
@@ -31,7 +31,7 @@
   $: storeBalances = $tokenStore.balances;
   
   onMount(async () => {
-    await tokenStore.loadFavorites();
+    await favoriteStore.loadFavorites();
   });
   
   // At the start of the component, add validation logging
@@ -46,7 +46,7 @@
 
   // Make sure processedTokens updates when either tokens or storeBalances change
   $: processedTokens = tokens
-    .filter(token => token) // Filter out any undefined tokens
+    .filter(token => token)
     .map((token): ProcessedToken => {
       const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id);
       const balanceInfo = storeBalances[token.canister_id] || { in_tokens: 0n, in_usd: '0' };
@@ -55,7 +55,6 @@
       const balance = balanceInfo.in_tokens;
       const decimals = token.decimals || 0;
       
-      // Convert balance from token decimals while preserving precision
       const divisor = BigInt(10) ** BigInt(decimals);
       const normalizedBalance = Number(balance) / Number(divisor);
       const usdValue = Number(balanceInfo.in_usd);
@@ -69,15 +68,16 @@
         balance: balance.toString(),
         searchableText: `${token.name || ''} ${token.symbol || ''} ${token.canister_id || ''}`.toLowerCase(),
         canister_id: token.canister_id?.toLowerCase() || '',
-        isFavorite: tokenStore.isFavorite(token.canister_id)
+        isFavorite: $currentWalletFavorites.includes(token.canister_id)
       };
     })
-    .filter(token => token && token.canister_id) // Filter out any malformed tokens
+    .filter(token => token && token.canister_id)
     .sort((a, b) => {
       // Sort by favorites first
-      if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1;
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
       
-      // Then sort by value
+      // Then sort by USD value
       return sortDirection === 'desc' ? b.usdValue - a.usdValue : a.usdValue - b.usdValue;
     });
 
@@ -279,7 +279,11 @@
         <div class="token-row-wrapper" transition:slide={{ duration: 200 }}>
           <TokenRow
             {token}
-            on:toggleFavorite={() => tokenStore.toggleFavorite(token.canister_id)}
+            on:toggleFavorite={async ({ detail }) => {
+              await favoriteStore.toggleFavorite(detail.canisterId);
+              // Force a recalculation of processedTokens
+              processedTokens = [...processedTokens];
+            }}
           />
           {#if searchQuery && searchMatches[token.canister_id]?.type === 'canister'}
             <div class="match-indicator" transition:fade>
