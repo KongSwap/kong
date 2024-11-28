@@ -100,7 +100,7 @@
       return {
         totalVolume: calculateVolume($poolStore.pools),
         totalLiquidity: calculateLiquidity($poolStore.pools),
-        totalFees: formatUsdValue(calculateFees($poolStore.pools))
+        totalFees: calculateFees($poolStore.pools)
       };
     }
   );
