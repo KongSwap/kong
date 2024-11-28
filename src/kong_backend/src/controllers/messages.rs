@@ -72,7 +72,7 @@ pub struct AddMessageArgs {
 async fn add_message(args: AddMessageArgs) -> Result<String, String> {
     let ts = get_time();
     let message = StableMessage::new(args.to_user_id, &args.title, &args.message, ts);
-    let message_id = message_map::insert(&message);
+    let message_id = message_map::insert(&message)?;
     let message = message_map::get_by_message_id(Some(message_id), None, None);
 
     serde_json::to_string(&message).map_err(|e| format!("Failed to serialize: {}", e))

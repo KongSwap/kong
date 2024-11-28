@@ -7,7 +7,8 @@ use super::token_map;
 
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
 use crate::ic::address_helpers::is_principal_id;
-use crate::stable_kong_settings::kong_settings;
+use crate::ic::logging::error_log;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 
@@ -157,12 +158,12 @@ pub fn get_by_address(address: &str) -> Result<StableToken, String> {
 
 /// return ckUSDT token
 pub fn get_ckusdt() -> Result<StableToken, String> {
-    token_map::get_by_token_id(kong_settings::get().ckusdt_token_id).ok_or("ckUSDT token not found".to_string())
+    token_map::get_by_token_id(kong_settings_map::get().ckusdt_token_id).ok_or("ckUSDT token not found".to_string())
 }
 
 /// return ICP token
 pub fn get_icp() -> Result<StableToken, String> {
-    token_map::get_by_token_id(kong_settings::get().icp_token_id).ok_or("ICP token not found".to_string())
+    token_map::get_by_token_id(kong_settings_map::get().icp_token_id).ok_or("ICP token not found".to_string())
 }
 
 /// return all tokens that are listed on Kong
@@ -189,22 +190,47 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
     if exists(token.address_with_chain().as_str()) {
         Err(format!("Token {} already exists", token.symbol_with_chain()))?
     }
+
     TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let token_id = kong_settings::inc_token_map_idx();
+        let token_id = kong_settings_map::inc_token_map_idx();
         let insert_token = match token {
             StableToken::LP(token) => StableToken::LP(LPToken { token_id, ..token.clone() }),
             StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
         };
-        map.insert(StableTokenId(token_id), insert_token);
+        map.insert(StableTokenId(token_id), insert_token.clone());
+        // archive new token
+        archive_token(insert_token);
         Ok(token_id)
     })
 }
 
-pub fn update(token: &StableToken) -> Option<StableToken> {
-    TOKEN_MAP.with(|m| m.borrow_mut().insert(StableTokenId(token.token_id()), token.clone()))
+pub fn update(token: &StableToken) {
+    TOKEN_MAP.with(|m| m.borrow_mut().insert(StableTokenId(token.token_id()), token.clone()));
+    // archive updated token
+    archive_token(token.clone());
 }
 
 pub fn remove(token_id: u32) -> Option<StableToken> {
     TOKEN_MAP.with(|m| m.borrow_mut().remove(&StableTokenId(token_id)))
+}
+
+fn archive_token(token: StableToken) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&token) {
+            Ok(token_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_token", (token_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to update token_id #{} - {}", token.token_id(), e)),
+                };
+            }
+            Err(e) => error_log(&format!("Failed to serialize token_id #{} - {}", token.token_id(), e)),
+        }
+    });
 }

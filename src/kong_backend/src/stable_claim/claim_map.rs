@@ -1,7 +1,9 @@
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
+use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
 #[allow(dead_code)]
@@ -23,35 +25,17 @@ pub fn get_num_unclaimed_claims() -> u64 {
     CLAIM_MAP.with(|m| m.borrow().iter().filter(|(_, v)| v.status == ClaimStatus::Unclaimed).count() as u64)
 }
 
-/// get all the unclaimed claims of the caller
-#[allow(dead_code)]
-pub fn get() -> Vec<StableClaim> {
-    let user_id = match user_map::get_by_caller() {
-        Ok(Some(caller)) => caller.user_id,
-        Ok(None) | Err(_) => return Vec::new(),
-    };
-    CLAIM_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .rev()
-            .filter_map(|(_, v)| {
-                // only unclaimed claims of caller
-                if user_id == v.user_id && (v.status == ClaimStatus::Unclaimed) {
-                    return Some(v.clone());
-                }
-                None
-            })
-            .collect()
-    })
+pub fn get_token(claim: &StableClaim) -> StableToken {
+    token_map::get_by_token_id(claim.token_id).unwrap()
 }
 
-pub fn insert(claim: &StableClaim) -> u64 {
+pub fn insert(claim: &StableClaim) -> Result<u64, String> {
     CLAIM_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let claim_id = kong_settings::inc_claim_map_idx();
+        let claim_id = kong_settings_map::inc_claim_map_idx();
         let insert_claim = StableClaim { claim_id, ..claim.clone() };
         map.insert(StableClaimId(claim_id), insert_claim);
-        claim_id
+        Ok(claim_id)
     })
 }
 

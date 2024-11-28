@@ -39,7 +39,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     let amount = &args.amount;
 
     // make sure user is registered, if not create a new user
-    let user_id = user_map::insert(None).await?;
+    let user_id = user_map::insert(None)?;
 
     let ts: u64 = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Send(args.clone()), ts));

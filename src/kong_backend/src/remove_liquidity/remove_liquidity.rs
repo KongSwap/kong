@@ -130,7 +130,7 @@ async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool,
     let (payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) = calculate_amounts(&pool, &args.remove_lp_token_amount)?;
 
     // make sure user is registered, if not create a new user
-    let user_id = user_map::insert(None).await?;
+    let user_id = user_map::insert(None)?;
 
     Ok((
         user_id,
@@ -374,22 +374,23 @@ async fn transfer_token(
             };
         }
         Err(e) => {
-            let claim_id = claim_map::insert(&StableClaim::new(
+            let message = match claim_map::insert(&StableClaim::new(
                 user_id,
                 token_id,
                 &amount,
                 Some(request_id),
                 Some(Address::PrincipalId(caller_id)),
                 ts,
-            ));
-            claim_ids.push(claim_id);
-            error_log(&format!(
-                "RemoveLiq Req #{}: Kong failed to send {} {}. Claim #{}: {}",
-                request_id, amount, symbol, claim_id, e
-            ));
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim. {}", e),
+            };
             match token_index {
-                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&e)),
-                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&e)),
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReceiveToken0Failed, Some(&message)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReceiveToken1Failed, Some(&message)),
             };
         }
     }

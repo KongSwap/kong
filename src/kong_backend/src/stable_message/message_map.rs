@@ -2,7 +2,7 @@ use std::ops::Bound;
 
 use super::stable_message::{StableMessage, StableMessageId};
 
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::MESSAGE_MAP;
 
 const MAX_MESSAGES: usize = 10;
@@ -30,15 +30,15 @@ pub fn get_by_message_id(start_message_id: Option<u64>, user_id: Option<u32>, nu
     })
 }
 
-pub fn insert(message: &StableMessage) -> u64 {
+pub fn insert(message: &StableMessage) -> Result<u64, String> {
     MESSAGE_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let message_id = kong_settings::inc_message_map_idx();
+        let message_id = kong_settings_map::inc_message_map_idx();
         let insert_message = StableMessage {
             message_id,
             ..message.clone()
         };
-        map.insert(StableMessageId(message_id), insert_message);
-        message_id
+        map.insert(StableMessageId(message_id), insert_message.clone());
+        Ok(message_id)
     })
 }

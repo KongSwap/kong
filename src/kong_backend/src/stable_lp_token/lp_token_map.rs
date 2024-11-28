@@ -4,6 +4,7 @@ use super::stable_lp_token::{StableLPToken, StableLPTokenId};
 
 use crate::helpers::nat_helpers::{nat_add, nat_subtract, nat_zero};
 use crate::ic::get_time::get_time;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::LP_TOKEN_MAP;
 use crate::stable_user::user_map;
 
@@ -27,20 +28,6 @@ pub fn get_by_token_id_by_user_id(token_id: u32, user_id: u32) -> Option<StableL
     })
 }
 
-#[allow(dead_code)]
-pub fn get() -> Vec<StableLPToken> {
-    let user_id = match user_map::get_by_caller() {
-        Ok(Some(caller)) => caller.user_id,
-        Ok(None) | Err(_) => return Vec::new(),
-    };
-    LP_TOKEN_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .filter_map(|(_, v)| if user_id == v.user_id { Some(v) } else { None })
-            .collect()
-    })
-}
-
 pub fn get_total_supply(token_id: u32) -> Nat {
     LP_TOKEN_MAP.with(|m| {
         m.borrow()
@@ -50,7 +37,7 @@ pub fn get_total_supply(token_id: u32) -> Nat {
     })
 }
 
-pub fn insert(lp_token: &StableLPToken) -> u64 {
+pub fn insert(lp_token: &StableLPToken) -> Result<u64, String> {
     LP_TOKEN_MAP.with(|m| {
         let mut map = m.borrow_mut();
         // with lock, increase lp_token id key
@@ -64,13 +51,17 @@ pub fn insert(lp_token: &StableLPToken) -> u64 {
             lp_token_id,
             ..lp_token.clone()
         };
-        map.insert(StableLPTokenId(lp_token_id), insert_lp_token);
-        lp_token_id
+        map.insert(StableLPTokenId(lp_token_id), insert_lp_token.clone());
+        // archive new lp_token
+        archive_lp_token(insert_lp_token);
+        Ok(lp_token_id)
     })
 }
 
-pub fn update(lp_token: &StableLPToken) -> Option<StableLPToken> {
-    LP_TOKEN_MAP.with(|m| m.borrow_mut().insert(StableLPTokenId(lp_token.lp_token_id), lp_token.clone()))
+pub fn update(lp_token: &StableLPToken) {
+    LP_TOKEN_MAP.with(|m| m.borrow_mut().insert(StableLPTokenId(lp_token.lp_token_id), lp_token.clone()));
+    // archive updated lp_token
+    archive_lp_token(lp_token.clone());
 }
 
 // remove all user entries of LP token
@@ -130,4 +121,24 @@ pub fn transfer(token_id: u32, to_user_id: u32, amount: &Nat) -> Result<StableLP
     }
 
     Ok(from_user)
+}
+
+fn archive_lp_token(lp_token: StableLPToken) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&lp_token) {
+            Ok(lp_token_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_lp_token", (lp_token_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => ic_cdk::print(format!("Failed to archive LP token: {}", e)),
+                }
+            }
+            Err(e) => ic_cdk::print(format!("Failed to serialize LP token: {}", e)),
+        }
+    });
 }

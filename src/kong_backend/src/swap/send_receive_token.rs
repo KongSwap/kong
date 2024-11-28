@@ -6,7 +6,6 @@ use super::swap_reply_helpers::create_swap_reply_with_tx_id;
 
 use crate::ic::{
     address::Address,
-    logging::error_log,
     transfer::{icp_transfer, icrc1_transfer},
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
@@ -55,23 +54,20 @@ pub async fn send_receive_token(
             request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
         }
         Err(e) => {
-            let claim_id = claim_map::insert(&StableClaim::new(
+            let message = match claim_map::insert(&StableClaim::new(
                 user_id,
                 receive_token.token_id(),
                 receive_amount,
                 Some(request_id),
                 Some(to_address.clone()),
                 ts,
-            ));
-            claim_ids.push(claim_id);
-            let message = format!("{} Saved as claim #{}", e, claim_id);
-            error_log(&format!(
-                "Swap Req #{} Kong failed to send {} {}: {}",
-                request_id,
-                receive_amount,
-                receive_token.symbol(),
-                message
-            ));
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim. {}", e),
+            };
             request_map::update_status(request_id, StatusCode::SendReceiveTokenFailed, Some(&message));
         }
     }

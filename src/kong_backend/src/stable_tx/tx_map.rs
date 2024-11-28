@@ -9,7 +9,7 @@ use super::tx::Tx;
 use std::cmp::min;
 use std::ops::Bound;
 
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TX_MAP;
 use crate::stable_pool::pool_map;
 
@@ -89,7 +89,7 @@ pub fn get_by_user_and_token_id(
 pub fn insert(tx: &StableTx) -> u64 {
     TX_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let tx_id = kong_settings::inc_tx_map_idx();
+        let tx_id = kong_settings_map::inc_tx_map_idx();
         let insert_tx = match tx {
             AddPool(tx) => AddPool(AddPoolTx { tx_id, ..tx.clone() }),
             AddLiquidity(tx) => AddLiquidity(AddLiquidityTx { tx_id, ..tx.clone() }),

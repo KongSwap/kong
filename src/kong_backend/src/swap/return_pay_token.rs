@@ -44,20 +44,20 @@ pub async fn return_pay_token(
             request_map::update_status(request_id, StatusCode::ReturnPayTokenSuccess, None);
         }
         Err(e) => {
-            let claim_id = claim_map::insert(&StableClaim::new(
+            let message = match claim_map::insert(&StableClaim::new(
                 user_id,
                 pay_token.token_id(),
                 pay_amount,
                 Some(request_id),
                 Some(Address::PrincipalId(caller_id)),
                 ts,
-            ));
-            claim_ids.push(claim_id);
-            let message = format!("{} Saved as claim #{}", e, claim_id);
-            error_log(&format!(
-                "Swap Req #{} Kong failed to return {} {}: {}",
-                request_id, pay_amount, pay_symbol, message
-            ));
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim. {}", e),
+            };
             request_map::update_status(request_id, StatusCode::ReturnPayTokenFailed, Some(&message));
         }
     };

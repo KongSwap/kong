@@ -4,7 +4,7 @@ use super::stable_user::{StableUser, StableUserId};
 use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
 use crate::ic::logging::error_log;
 use crate::ic::{get_time::get_time, management::get_pseudo_seed};
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::USER_MAP;
 use crate::user::user_name::generate_user_name;
 
@@ -70,7 +70,7 @@ pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
     })
 }
 
-pub async fn insert(referred_by: Option<&str>) -> Result<u32, String> {
+pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
     let user = match get_by_caller() {
         // if user already exists, return user profile without updating referrer code
         // once a user is created, the referrer code cannot be updated
@@ -105,7 +105,7 @@ pub async fn insert(referred_by: Option<&str>) -> Result<u32, String> {
                 None => (None, None),
             };
             let user = StableUser {
-                user_id: kong_settings::inc_user_map_idx(),
+                user_id: kong_settings_map::inc_user_map_idx(),
                 user_name: generate_user_name(&mut rng),
                 my_referral_code: generate_referral_code(&mut rng),
                 referred_by,
@@ -113,26 +113,25 @@ pub async fn insert(referred_by: Option<&str>) -> Result<u32, String> {
                 ..Default::default()
             };
             // archive new user
-            archive_user(user.clone()).await;
+            archive_user(user.clone());
             user
         }
         Err(e) => Err(e)?, // do not allow anonymous user
     };
 
-    let user_id = user.user_id;
     // update user data
     USER_MAP.with(|m| {
+        let user_id = user.user_id;
         m.borrow_mut().insert(StableUserId(user_id), user);
-    });
-
-    Ok(user_id)
+        Ok(user_id)
+    })
 }
 
-async fn archive_user(user: StableUser) {
+fn archive_user(user: StableUser) {
     ic_cdk::spawn(async move {
         match serde_json::to_string(&user) {
             Ok(user_json) => {
-                let kong_data = kong_settings::get().kong_data;
+                let kong_data = kong_settings_map::get().kong_data;
                 match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
                     .await
                     .map_err(|e| e.1)

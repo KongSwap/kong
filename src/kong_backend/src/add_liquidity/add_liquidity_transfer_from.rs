@@ -16,7 +16,7 @@ use crate::ic::{
     transfer::{icrc1_transfer, icrc2_transfer_from},
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
@@ -74,7 +74,7 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
     let (pool, add_amount_0, add_amount_1, _) = calculate_amounts(&args.token_0, &args.amount_0, &args.token_1, &args.amount_1)?;
 
     // make sure user is registered, if not create a new user
-    let user_id = user_map::insert(None).await?;
+    let user_id = user_map::insert(None)?;
 
     Ok((user_id, pool, add_amount_0, add_amount_1))
 }
@@ -265,7 +265,7 @@ pub async fn transfer_from_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1, None),
     };
 
-    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings::get().kong_backend_account).await {
+    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings_map::get().kong_backend_account).await {
         Ok(block_id) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after icrc2_transfer_from()
             // as icrc2_transfer_from() does a new transfer so block_id should be new
@@ -457,20 +457,20 @@ async fn return_tokens(
         }
         Err(e) => {
             // attempt to return token_0 failed, so save as a claim
-            let claim_id = claim_map::insert(&StableClaim::new(
+            let message = match claim_map::insert(&StableClaim::new(
                 user_id,
                 token_0.token_id(),
                 amount_0,
                 Some(request_id),
                 Some(Address::PrincipalId(caller_id)),
                 ts,
-            ));
-            claim_ids.push(claim_id);
-            let message = format!("{}. Saved as claim #{}", e, claim_id);
-            error_log(&format!(
-                "AddLiq #{} Kong failed to send {} {}: {}",
-                request_id, amount_0, symbol_0, message
-            ));
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim. {}", e),
+            };
             request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
         }
     }
@@ -496,20 +496,20 @@ async fn return_tokens(
                 request_map::update_status(request_id, StatusCode::ReturnToken1Success, None);
             }
             Err(e) => {
-                let claim_id = claim_map::insert(&StableClaim::new(
+                let message = match claim_map::insert(&StableClaim::new(
                     user_id,
                     token_1.token_id(),
                     amount_1,
                     Some(request_id),
                     Some(Address::PrincipalId(caller_id)),
                     ts,
-                ));
-                claim_ids.push(claim_id);
-                let message = format!("{}. Saved as claim #{}", e, claim_id);
-                error_log(&format!(
-                    "AddLiq #{} Kong failed to send {} {}: {}",
-                    request_id, amount_1, symbol_1, message
-                ));
+                )) {
+                    Ok(claim_id) => {
+                        claim_ids.push(claim_id);
+                        format!("Saved as claim #{}. {}", claim_id, e)
+                    }
+                    Err(e) => format!("Failed to save claim. {}", e),
+                };
                 request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
             }
         }

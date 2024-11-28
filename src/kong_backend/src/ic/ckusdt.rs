@@ -1,7 +1,7 @@
 use candid::Nat;
 
 use crate::helpers::nat_helpers::{nat_multiply_f64, nat_to_decimal_precision, nat_to_decimals_f64};
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -20,7 +20,7 @@ pub const CKUSDT_ADDRESS: &str = "cngnf-vqaaa-aaaar-qag4q-cai";
 pub const CKUSDT_ADDRESS_WITH_CHAIN: &str = "IC.cngnf-vqaaa-aaaar-qag4q-cai";
 
 pub fn is_ckusdt(token: &str) -> bool {
-    let kong_settings = kong_settings::get();
+    let kong_settings = kong_settings_map::get();
     if token == kong_settings.ckusdt_symbol
         || token == kong_settings.ckusdt_symbol_with_chain
         || token == kong_settings.ckusdt_address

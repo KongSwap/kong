@@ -2,7 +2,7 @@ use candid::{CandidType, Nat, Principal};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 
 use super::id::caller_id;
 
@@ -13,14 +13,10 @@ pub struct StandardRecord {
 }
 
 pub async fn get_backend_canister_balance(ledger: &Principal) -> Result<Nat, String> {
-    ic_cdk::call::<(Account,), (Nat,)>(
-        *ledger,
-        "icrc1_balance_of",
-        (kong_settings::get().kong_backend_account,),
-    )
-    .await
-    .map(|(balance,)| balance)
-    .map_err(|e| e.1)
+    ic_cdk::call::<(Account,), (Nat,)>(*ledger, "icrc1_balance_of", (kong_settings_map::get().kong_backend_account,))
+        .await
+        .map(|(balance,)| balance)
+        .map_err(|e| e.1)
 }
 
 #[allow(dead_code)]
