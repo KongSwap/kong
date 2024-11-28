@@ -1,8 +1,8 @@
-use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
+use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_memory::CLAIM_MAP;
 
 const MAX_CLAIMS: usize = 1_000;
@@ -43,4 +43,19 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
     });
 
     Ok("Claims updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kong_backend")]
+fn update_claim(stable_claim_json: String) -> Result<String, String> {
+    let claim: StableClaim = match serde_json::from_str(&stable_claim_json) {
+        Ok(claim) => claim,
+        Err(e) => return Err(format!("Invalid claim: {}", e)),
+    };
+
+    CLAIM_MAP.with(|claim_map| {
+        let mut map = claim_map.borrow_mut();
+        map.insert(StableClaimId(claim.claim_id), claim);
+    });
+
+    Ok("Claim updated".to_string())
 }

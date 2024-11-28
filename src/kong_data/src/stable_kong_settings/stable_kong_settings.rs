@@ -1,9 +1,10 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_stable_structures::{storable::Bound, Storable};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 
 use crate::ic::{
+    canister_address::KONG_DATA,
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
     id::{kong_account, kong_backend_id},
@@ -13,6 +14,7 @@ use crate::ic::{
 pub struct StableKongSettings {
     pub kong_backend_id: String,
     pub kong_backend_account: Account,
+    pub kong_data: Principal,
     pub maintenance_mode: bool,
     pub kingkong: Vec<u32>, // list of user_ids for maintainers
     pub ckusdt_token_id: u32,
@@ -58,6 +60,7 @@ impl Default for StableKongSettings {
         Self {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
+            kong_data: Principal::from_text(KONG_DATA).unwrap(),
             maintenance_mode: false,
             kingkong: vec![100, 101], // default kingkong users
             ckusdt_token_id: CKUSDT_TOKEN_ID,

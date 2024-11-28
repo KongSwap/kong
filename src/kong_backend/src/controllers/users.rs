@@ -65,6 +65,7 @@ fn edit_user(user_profile: String) -> Result<String, String> {
         Ok(user_profile) => user_profile,
         Err(e) => return Err(format!("Invalid user: {}", e)),
     };
+
     USER_MAP.with(|m| m.borrow_mut().insert(StableUserId(user.user_id), user));
 
     Ok("User updated".to_string())

@@ -13,14 +13,14 @@ use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::transfer::icrc2_transfer_from;
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
-    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args)?;
+    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
 
     let receive_amount = args.receive_amount.clone();
     let ts = get_time();
@@ -51,7 +51,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
-    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args)?;
+    let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
 
     let receive_amount = args.receive_amount.clone();
     let ts = get_time();
@@ -80,12 +80,12 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
 }
 
 #[allow(clippy::type_complexity)]
-fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
+async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
     let pay_token = token_map::get_by_token(&args.pay_token)?;
     let pay_amount = args.pay_amount.clone();
     let receive_token = token_map::get_by_token(&args.receive_token)?;
     // use specified max slippage or use default
-    let max_slippage = args.max_slippage.unwrap_or(kong_settings::get().default_max_slippage);
+    let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
         Some(ref address) => get_address(address).ok_or("Invalid receive address")?,
@@ -182,7 +182,7 @@ async fn transfer_from_token(request_id: u64, token: &StableToken, amount: &Nat,
 
     request_map::update_status(request_id, StatusCode::SendPayToken, None);
 
-    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings::get().kong_backend_account).await {
+    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings_map::get().kong_backend_account).await {
         Ok(tx_id) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after icrc2_transfer_from()
             // as icrc2_transfer_from() does a new transfer so tx_id will be new

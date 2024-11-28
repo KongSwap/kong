@@ -5,7 +5,7 @@ use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
 
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::REQUEST_MAP;
 
 const MAX_REQUESTS: usize = 20;
@@ -37,7 +37,7 @@ pub fn get_by_request_and_user_id(start_request_id: Option<u64>, user_id: Option
 pub fn insert(request: &StableRequest) -> u64 {
     REQUEST_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let request_id = kong_settings::inc_request_map_idx();
+        let request_id = kong_settings_map::inc_request_map_idx();
         let insert_request = StableRequest {
             request_id,
             ..request.clone()

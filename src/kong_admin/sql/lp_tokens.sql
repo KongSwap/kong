@@ -6,7 +6,7 @@ SELECT
         'FM990D00%'
     ) AS "pct_of_pool",
     u.principal_id
-FROM lp_token_ledger ltl
+FROM lp_tokens ltl
 JOIN tokens t ON ltl.token_id = t.token_id 
 JOIN users u ON ltl.user_id = u.user_id
 WHERE ltl.amount > 0

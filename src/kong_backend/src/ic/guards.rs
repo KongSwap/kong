@@ -49,11 +49,13 @@ pub fn caller_is_controller() -> Result<(), String> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn kong_backend() -> Principal {
     Principal::from_text(KONG_BACKEND).unwrap()
 }
 
 /// Guard to ensure caller is Kong backend
+#[allow(dead_code)]
 pub fn caller_is_kong_backend() -> Result<(), String> {
     if caller() != kong_backend() {
         return Err("Caller is not Kong backend".to_string());

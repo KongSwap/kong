@@ -402,11 +402,15 @@ export interface _SERVICE {
     AddLiquidityAsyncResult
   >,
   'add_pool' : ActorMethod<[AddPoolArgs], AddPoolResult>,
-  'add_token' : ActorMethod<[AddTokenArgs], AddTokenResult>,
   'check_pools' : ActorMethod<[], CheckPoolsResult>,
-  'get_requests' : ActorMethod<[[] | [bigint], [] | [number]], RequestsResult>,
-  'get_transfers' : ActorMethod<[[] | [bigint]], TransfersResult>,
-  'get_txs' : ActorMethod<[[] | [bigint], [] | [number]], TxsResult>,
+  'get_requests' : ActorMethod<
+    [[] | [bigint], [] | [number], [] | [number]],
+    RequestsResult
+  >,
+  'get_txs' : ActorMethod<
+    [[] | [bigint], [] | [bigint], [] | [number], [] | [number]],
+    TxsResult
+  >,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc1_name' : ActorMethod<[], string>,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,

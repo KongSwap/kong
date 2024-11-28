@@ -7,6 +7,7 @@ use crate::stable_memory::KONG_SETTINGS;
 use crate::stable_user::user_map;
 
 /// guard to make sure Kong Swap is not in maintenance mode
+#[allow(dead_code)]
 pub fn not_in_maintenance_mode() -> Result<(), String> {
     if KONG_SETTINGS.with(|s| s.borrow().get().maintenance_mode) {
         return Err("Kong Swap in maintenance mode".to_string());
@@ -15,6 +16,7 @@ pub fn not_in_maintenance_mode() -> Result<(), String> {
 }
 
 /// guard to make sure caller is not anonymous and Kong Swap is not in maintenance mode
+#[allow(dead_code)]
 pub fn not_in_maintenance_mode_and_caller_is_not_anonymous() -> Result<(), String> {
     not_in_maintenance_mode().and_then(|_| caller_is_not_anonymous())
 }
@@ -49,6 +51,7 @@ pub fn caller_is_controller() -> Result<(), String> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn kong_backend() -> Principal {
     Principal::from_text(KONG_BACKEND).unwrap()
 }

@@ -19,7 +19,7 @@ use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
 use crate::ic::canister_address::KONG_BACKEND;
 use crate::ic::logging::info_log;
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
@@ -30,7 +30,7 @@ async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
 
     // start the background timer to process claims
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().claims_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
         });
@@ -38,7 +38,7 @@ async fn init() {
     CLAIMS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to process stats
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().stats_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
             update_pool_stats();
         });
@@ -46,7 +46,7 @@ async fn init() {
     STATS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive tx map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().txs_archive_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_tx_map(); // archive transaction map
         });
@@ -54,7 +54,7 @@ async fn init() {
     TX_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive request map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().requests_archive_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_request_map();
         });
@@ -62,11 +62,14 @@ async fn init() {
     REQUEST_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive transfer map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().transfers_archive_interval_secs), || {
-        ic_cdk::spawn(async {
-            archive_transfer_map();
-        });
-    });
+    let timer_id = set_timer_interval(
+        Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
+        || {
+            ic_cdk::spawn(async {
+                archive_transfer_map();
+            });
+        },
+    );
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 }
 
@@ -93,7 +96,7 @@ fn pre_upgrade() {
 #[post_upgrade]
 async fn post_upgrade() {
     // start the background timer to process claims
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().claims_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
         });
@@ -101,7 +104,7 @@ async fn post_upgrade() {
     CLAIMS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to process stats
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().stats_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
             update_pool_stats();
         });
@@ -109,7 +112,7 @@ async fn post_upgrade() {
     STATS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive tx map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().txs_archive_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_tx_map();
         });
@@ -117,7 +120,7 @@ async fn post_upgrade() {
     TX_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive request map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().requests_archive_interval_secs), || {
+    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_request_map();
         });
@@ -125,11 +128,14 @@ async fn post_upgrade() {
     REQUEST_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive transfer map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings::get().transfers_archive_interval_secs), || {
-        ic_cdk::spawn(async {
-            archive_transfer_map();
-        });
-    });
+    let timer_id = set_timer_interval(
+        Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
+        || {
+            ic_cdk::spawn(async {
+                archive_transfer_map();
+            });
+        },
+    );
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
@@ -157,9 +163,9 @@ fn icrc28_trusted_origins() -> Icrc28TrustedOriginsResponse {
         #[cfg(not(feature = "prod"))]
         format!("http://localhost:5173"),
         #[cfg(feature = "prod")]
-        String::from("https://www.kongswap.io"),
-        #[cfg(feature = "prod")]
         String::from("https://kongswap.io"),
+        #[cfg(feature = "prod")]
+        String::from("https://www.kongswap.io"),
         #[cfg(feature = "prod")]
         String::from("https://edoy4-liaaa-aaaar-qakha-cai.icp0.io"),
         #[cfg(feature = "prod")]
