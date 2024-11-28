@@ -12,22 +12,12 @@
   import gorillaRight from "$lib/assets/gorilla-facing-right.svg";
 
   let currentLogo = kongLogo;
-  let currentMessage = "Loading...";
   let dominantColor = "#4F46E5";
   let isShuttingDown = false;
   let glitchActive = false;
   let glitchOutActive = false;
   let nextImageIndex = 0;
   let frozenProgress = 0;
-  let messages = [
-    "Fetching tokens...",
-    "Filling pools...",
-    "Loading wallet...",
-    "Fetching data...",
-    "Connecting to network...",
-    "Almost there...",
-    "Just a moment...",
-  ];
   let availableLogos: string[] = [];
 
   const appLoadingState = appLoader.loadingState;

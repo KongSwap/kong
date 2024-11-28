@@ -4,7 +4,6 @@ import * as Comlink from 'comlink';
 import { get } from 'svelte/store';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { DEFAULT_LOGOS, fetchTokenLogo, tokenLogoStore, IMAGE_CACHE_DURATION } from '$lib/services/tokens/tokenLogos';
-import { auth, canisterIDLs } from '$lib/services/auth';
 import { kongDB } from '$lib/services/db';
 import type { KongImage } from '$lib/services/tokens/types';
 
@@ -24,6 +23,7 @@ interface LoadingProgressMessage {
   loaded: number;
   total: number;
   context: string;
+  complete: boolean;
 }
 
 type WorkerMessage = TokenLogoLoadedMessage | LoadingProgressMessage;
@@ -37,7 +37,6 @@ export interface BatchPreloadResult {
 export type UpdateType = 'token' | 'pool' | 'swapActivity' | 'price';
 
 export interface WorkerApi {
-  batchPreloadAssets(assets: string[], batchSize?: number): Promise<BatchPreloadResult>;
   preloadAsset(url: string): Promise<string>;
   startUpdates(): Promise<void>;
   stopUpdates(): Promise<void>;
@@ -53,6 +52,7 @@ export interface WorkerApi {
 // Worker implementation class
 class WorkerImpl implements WorkerApi {
   private preloadedAssets = new Set<string>();
+  private objectUrls = new Set<string>(); // Track created object URLs
   private loadingState: AssetLoadingState = {
     assetsLoaded: 0,
     totalAssets: 0,
@@ -128,8 +128,6 @@ class WorkerImpl implements WorkerApi {
             
             if (logoUrl && logoUrl !== DEFAULT_LOGOS.DEFAULT) {
               return { canisterId: token.canister_id, logoUrl };
-            } else {
-              console.log(`Worker: No logo found for ${token.symbol} (${token.canister_id})`);
             }
           } catch (error) {
             console.warn(`Worker: Failed to load logo for ${token.symbol}:`, error);
@@ -221,83 +219,171 @@ class WorkerImpl implements WorkerApi {
     return tokens.tokens;
   }
 
-  async batchPreloadAssets(assets: string[], batchSize: number = 5): Promise<BatchPreloadResult> {
-    console.log(`Worker: Starting batch preload of ${assets.length} assets...`);
+  async preloadAssets(assets: string[]): Promise<{
+    loaded: number;
+    total: number;
+    errors: string[];
+  }> {
+    console.log(`Worker: Starting preload of ${assets.length} assets...`);
     
+    // Reset loading state
+    this.loadingState = {
+      assetsLoaded: 0,
+      totalAssets: assets.length,
+      errors: []
+    };
+
+    // Filter out already loaded assets and invalid URLs
+    const assetsToLoad = assets.filter(url => 
+      !this.preloadedAssets.has(url) && 
+      !url.startsWith("data:") && 
+      !url.startsWith("blob:")
+    );
+
+    if (assetsToLoad.length === 0) {
+      self.postMessage({
+        type: 'LOADING_PROGRESS',
+        loaded: assets.length,
+        total: assets.length,
+        context: 'assets',
+        complete: true
+      });
+      return {
+        loaded: assets.length,
+        total: assets.length,
+        errors: []
+      };
+    }
+
+    const BATCH_SIZE = 3; // Reduced batch size for better reliability
+    const TIMEOUT = 15000; // Increased timeout
+    let completedAssets = 0;
+
     try {
-      this.loadingState.totalAssets = assets.length;
-      this.loadingState.assetsLoaded = 0;
-      this.loadingState.errors = [];
-
-      // Filter out already loaded assets and data/blob URLs
-      const assetsToLoad = assets.filter(url => 
-        !this.preloadedAssets.has(url) && 
-        !url.startsWith("data:image/") && 
-        !url.startsWith("blob:")
-      );
-
-      // Process assets in batches
-      for (let i = 0; i < assetsToLoad.length; i += batchSize) {
-        const batch = assetsToLoad.slice(i, i + batchSize);
-        await Promise.all(batch.map(url => this.preloadAsset(url)));
+      for (let i = 0; i < assetsToLoad.length; i += BATCH_SIZE) {
+        const batch = assetsToLoad.slice(i, i + BATCH_SIZE);
+        
+        await Promise.all(
+          batch.map(async (url) => {
+            try {
+              await Promise.race([
+                this.preloadAsset(url),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Timeout')), TIMEOUT)
+                )
+              ]);
+              
+              completedAssets++;
+              this.loadingState.assetsLoaded++;
+              
+              // Report progress
+              self.postMessage({
+                type: 'LOADING_PROGRESS',
+                loaded: completedAssets,
+                total: assetsToLoad.length,
+                context: 'assets',
+                complete: false
+              });
+            } catch (error) {
+              const errorMessage = `Failed to load ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+              console.error(`Worker: ${errorMessage}`);
+              this.loadingState.errors.push(errorMessage);
+              completedAssets++;
+            }
+          })
+        );
       }
 
-      console.log('Worker: Batch preload completed');
+      // Final progress update
+      self.postMessage({
+        type: 'LOADING_PROGRESS',
+        loaded: this.loadingState.assetsLoaded,
+        total: assetsToLoad.length,
+        context: 'assets',
+        complete: true
+      });
+
       return {
-        success: true,
-        loadingState: { ...this.loadingState }
+        loaded: this.loadingState.assetsLoaded,
+        total: assets.length,
+        errors: this.loadingState.errors
       };
+
     } catch (error) {
-      console.error('Worker: Batch preload failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        loadingState: { ...this.loadingState }
-      };
+      console.error('Worker: Asset preloading failed:', error);
+      throw error;
     }
   }
 
   async preloadAsset(url: string): Promise<string> {
-    if (
-      this.preloadedAssets.has(url) ||
-      url.startsWith("data:image/") || 
-      url.startsWith("blob:")
-    ) {
+    if (this.preloadedAssets.has(url)) {
+      return url;
+    }
+
+    if (url.startsWith("data:") || url.startsWith("blob:")) {
+      this.preloadedAssets.add(url);
       return url;
     }
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'force-cache',
+        credentials: 'same-origin'
+      });
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch asset: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const contentType = response.headers.get("Content-Type") || "";
       const extension = url.split('.').pop()?.toLowerCase();
 
-      if (extension === 'svg') {
-        const svgContent = await response.text();
-        if (!svgContent.includes('<svg')) {
+      // Handle different types of assets
+      if (extension === 'svg' || contentType.includes('svg')) {
+        const text = await response.text();
+        if (!text.includes('<svg')) {
           throw new Error('Invalid SVG content');
         }
         this.preloadedAssets.add(url);
-        this.loadingState.assetsLoaded += 1;
-        return url; // Assuming the URL is valid
-      } else if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico'].includes(extension || '')) {
+        return url;
+      } else if (
+        contentType.startsWith('image/') ||
+        ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension || '')
+      ) {
+        // Create blob URL for images
         const blob = await response.blob();
         const objectURL = URL.createObjectURL(blob);
-        // You might want to store objectURL if needed
+        this.objectUrls.add(objectURL); // Track for cleanup
         this.preloadedAssets.add(url);
-        this.loadingState.assetsLoaded += 1;
-        return objectURL;
-      } else {
-        console.warn(`Worker: Unsupported asset type for URL: ${url}`);
-        return url;
+        
+        // Verify the blob is loadable
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', objectURL, true);
+          xhr.responseType = 'blob';
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              resolve(void 0);
+            } else {
+              reject(new Error(`Failed to verify blob: ${xhr.statusText}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Failed to verify blob'));
+          xhr.send();
+        });
+
+        return url; // Return original URL since it's now cached
       }
+
+      // For other types of assets
+      this.preloadedAssets.add(url);
+      return url;
+
     } catch (error) {
       console.error(`Worker: Failed to preload asset ${url}:`, error);
-      this.loadingState.errors.push(`Failed to load ${url}`);
-      return '';
+      throw error;
     }
   }
 
@@ -432,35 +518,20 @@ class WorkerImpl implements WorkerApi {
     this.priceUpdateInterval = null;
     this.logoCleanupInterval = null;
     this.logoRefreshInterval = null;
+    this.cleanup();
   }
 
-  async preloadAssets(assets: string[]): Promise<{
-    loaded: number;
-    total: number;
-    errors: string[];
-  }> {
-    console.log(`Worker: Preloading ${assets.length} assets...`);
-    let loaded = 0;
-    const errors: string[] = [];
-
-    for (const asset of assets) {
+  // Clean up method to be called when stopping the worker
+  private cleanup() {
+    // Revoke any created object URLs
+    this.objectUrls.forEach(url => {
       try {
-        await this.preloadAsset(asset);
-        loaded++;
+        URL.revokeObjectURL(url);
       } catch (error) {
-        console.error(`Worker: Failed to preload asset ${asset}:`, error);
-        errors.push(
-          `Failed to load ${asset}: ${error instanceof Error ? error.message : String(error)}`
-        );
-        loaded++; // Increment to show progress even on error
+        console.warn(`Failed to revoke object URL: ${url}`, error);
       }
-    }
-
-    return {
-      loaded,
-      total: assets.length,
-      errors,
-    };
+    });
+    this.objectUrls.clear();
   }
 
   // ... [Other methods remain unchanged]

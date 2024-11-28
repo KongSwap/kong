@@ -9,7 +9,7 @@ import { get } from "svelte/store";
 import { auth } from "./auth";
 import * as Comlink from "comlink";
 import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-import type { WorkerApi, BatchPreloadResult, UpdateType } from "$lib/workers/updateWorker";
+import type { WorkerApi, UpdateType } from "$lib/workers/updateWorker";
 import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
 import { appLoader } from "$lib/services/appLoader"; // Import appLoader
 
@@ -26,54 +26,19 @@ class UpdateWorkerService {
   }
 
   async initialize() {
+    const INIT_TIMEOUT = 60000; // 60 seconds timeout
+    
     try {
-      console.log('Initializing update worker service...');
-      
-      // Add visibility change listener
-      document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-      
-      this.worker = new Worker(
-        new URL("../workers/updateWorker.ts", import.meta.url),
-        { type: "module" },
-      );
-
-      // Set up message handler
-      this.worker.addEventListener('message', this.handleWorkerMessage.bind(this));
-
-      // Create proxy to worker with proper typing
-      this.workerApi = Comlink.wrap<WorkerApi>(this.worker);
-      
-      // First load tokens if they haven't been loaded yet
-      const tokens = get(tokenStore);
-      if (!tokens?.tokens?.length) {
-        await tokenStore.loadTokens();
-      }
-      
-      // Send tokens to the worker
-      await this.workerApi.setTokens(tokens.tokens);
-
-      // Optionally, trigger token logo loading
-      console.log('UpdateWorkerService: Instructing worker to load token logos...');
-      await this.loadTokenLogos();
-
-      // Start updates and wait for initial data
-      const updateStarted = await this.startUpdates();
-      if (!updateStarted) {
-        console.warn('Failed to start worker updates, falling back to direct updates');
-        this.startFallbackUpdates();
-        return false;
-      }
-      
-      // Wait for initial token logos to be loaded
-      await this.loadTokenLogos();
-      
-      this.isInitialized = true;
-      console.log('Update worker service initialized successfully');
-      
+      await Promise.race([
+        this.initializeWorker(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Initialization timeout')), INIT_TIMEOUT)
+        )
+      ]);
       return true;
     } catch (error) {
-      console.error("Failed to initialize update worker:", error);
-      // Fallback to non-worker updates if worker fails
+      console.error('Failed to initialize update worker service:', error);
+      // Start fallback updates if worker initialization fails
       this.startFallbackUpdates();
       return false;
     }
@@ -376,45 +341,6 @@ class UpdateWorkerService {
     return this.workerApi.preloadAsset(url);
   }
 
-  async batchPreloadAssets(assets: string[], batchSize: number = 5): Promise<BatchPreloadResult> {
-    // If worker is not initialized, use direct asset loading
-    if (!this.workerApi) {
-      try {
-        const results = await Promise.all(
-          assets.map(async (url) => {
-            try {
-              await this.preloadAsset(url);
-              return { success: true };
-            } catch {
-              return { success: false };
-            }
-          })
-        );
-        
-        return {
-          success: true,
-          loadingState: {
-            assetsLoaded: results.filter(r => r.success).length,
-            totalAssets: assets.length,
-            errors: []
-          }
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          loadingState: {
-            assetsLoaded: 0,
-            totalAssets: assets.length,
-            errors: []
-          }
-        };
-      }
-    }
-    
-    return this.workerApi.batchPreloadAssets(assets, batchSize);
-  }
-
   async loadTokenLogos(): Promise<boolean> {
     if (!this.workerApi) {
       console.error('Worker API not available for loading token logos');
@@ -440,6 +366,47 @@ class UpdateWorkerService {
       this.worker = null;
       this.workerApi = null;
     }
+  }
+
+  // Add this private method to handle worker initialization
+  private async initializeWorker(): Promise<void> {
+    console.log('Initializing update worker service...');
+    
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+    
+    this.worker = new Worker(
+      new URL("../workers/updateWorker.ts", import.meta.url),
+      { type: "module" },
+    );
+
+    // Set up message handler
+    this.worker.addEventListener('message', this.handleWorkerMessage.bind(this));
+
+    // Create proxy to worker with proper typing
+    this.workerApi = Comlink.wrap<WorkerApi>(this.worker);
+    
+    // First load tokens if they haven't been loaded yet
+    const tokens = get(tokenStore);
+    if (!tokens?.tokens?.length) {
+      await tokenStore.loadTokens();
+    }
+    
+    // Send tokens to the worker
+    await this.workerApi.setTokens(tokens.tokens);
+
+    // Start updates and wait for initial data
+    const updateStarted = await this.startUpdates();
+    if (!updateStarted) {
+      console.warn('Failed to start worker updates, falling back to direct updates');
+      this.startFallbackUpdates();
+      return;
+    }
+    
+    // Wait for initial token logos to be loaded
+    await this.loadTokenLogos();
+    
+    this.isInitialized = true;
   }
 }
 

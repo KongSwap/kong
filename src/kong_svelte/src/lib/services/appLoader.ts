@@ -42,20 +42,6 @@ export class AppLoader {
     });
   }
 
-  private async initializeWallet(): Promise<void> {
-    try {
-      await auth.initialize();
-    } catch (error) {
-      console.error("Failed to initialize wallet:", error);
-      this.updateLoadingState({
-        errors: [
-          ...get(this._loadingState).errors,
-          "Failed to initialize wallet",
-        ],
-      });
-    }
-  }
-
   // Asset preloading with priority, batching, and tracking
   private shouldSkipPreload(url: string): boolean {
     return url.startsWith("data:image/") || url.startsWith("blob:");
@@ -133,66 +119,13 @@ export class AppLoader {
     }
   }
 
-  // Component assets configuration
-  private buttonSizeVariants = {
-    small: ["green", "yellow"], // btnsmall only has green and yellow
-    medium: ["blue", "green", "yellow"],
-    big: ["blue", "green", "yellow"],
-  };
-
-  private buttonStates = ["default", "pressed", "selected"];
-  private mainPanelVariants = ["green", "red"];
-  private secondaryPanelVariants = ["green"];
-  private panelParts = ["tl", "tm", "tr", "ml", "mr", "bl", "bm", "br"];
-
-  private getRequiredComponentAssets(): string[] {
-    const components: string[] = [];
-
-    // Generate button components
-    Object.entries(this.buttonSizeVariants).forEach(([size, variants]) =>
-      variants.forEach((variant) =>
-        this.buttonStates.forEach((state) => {
-          const prefix =
-            size === "small" ? "btnsmall" : size === "big" ? "bigbtn" : "btn";
-          components.push(
-            `/pxcomponents/${prefix}-${variant}-${state}-l.svg`,
-            `/pxcomponents/${prefix}-${variant}-${state}-mid.svg`,
-            `/pxcomponents/${prefix}-${variant}-${state}-r.svg`,
-          );
-        }),
-      ),
-    );
-
-    // Add main panel components
-    this.mainPanelVariants.forEach((variant) => {
-      this.panelParts.forEach((part) => {
-        components.push(`/pxcomponents/panel-${variant}-main-${part}.svg`);
-      });
-    });
-
-    // Add secondary panel components (no ml/mr parts)
-    this.secondaryPanelVariants.forEach((variant) => {
-      this.panelParts.forEach((part) => {
-        if (!["ml", "mr"].includes(part)) {
-          components.push(`/pxcomponents/panel-s-${variant}-${part}.svg`);
-        }
-      });
-    });
-
-    return components;
-  }
-
   private backgrounds = [
-    "/backgrounds/pools.webp",
-    "/backgrounds/kong_jungle2.webp",
-    "/backgrounds/grass.webp",
     "/backgrounds/skyline.svg",
   ];
 
   private async preloadAssets(): Promise<void> {
     try {
-      const requiredComponents = this.getRequiredComponentAssets();
-      const allAssets = [...requiredComponents, ...this.backgrounds];
+      const allAssets = [...this.backgrounds];
       
       this.updateLoadingState({
         totalAssets: allAssets.length,
@@ -233,14 +166,10 @@ export class AppLoader {
         console.warn('Worker initialization failed, continuing with fallback updates');
       }
 
-      // Wait for token logos to load
-      const logosLoaded = await updateWorkerService.loadTokenLogos();
-
-      // Load UI assets
-      await this.preloadAssets();
-
       // Initialize remaining services
       await Promise.all([
+        updateWorkerService.loadTokenLogos(),
+        this.preloadAssets(),
         tokenStore.loadPrices(),
         this.initializeSettings()
       ]);

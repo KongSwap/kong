@@ -19,6 +19,9 @@ export const tokenLogoStore = writable<Record<string, TokenLogoUrl>>({
 
 let loadingPromises: Record<string, Promise<string>> = {};
 
+// Add a cache for failed logo attempts
+const failedLogoAttempts = new Set<string>();
+
 export async function saveTokenLogo(canister_id: string, image_url: string): Promise<void> {
   try {
     await kongDB.images.put({
@@ -62,7 +65,6 @@ export async function getTokenLogo(canister_id: string): Promise<string> {
       return await fetchTokenLogo(canister_id);
     }
 
-    console.log('Returning cached logo for:', canister_id);
     return image.image_url || DEFAULT_LOGOS.DEFAULT;
   } catch (error) {
     console.error('Error getting token logo:', error);
@@ -238,15 +240,19 @@ export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl>
     // Check if we already have a loading promise for this canister
     if (loadingPromises[canister_id]) {
       console.log('Using existing loading promise for:', canister_id);
-      return await loadingPromises[canister_id];
+      try {
+        return await loadingPromises[canister_id];
+      } catch (error) {
+        // If the existing promise fails, we'll create a new one below
+        console.warn('Existing promise failed, creating new one:', error);
+        delete loadingPromises[canister_id];
+      }
     }
 
-    // Create new loading promise
-    loadingPromises[canister_id] = (async () => {
+    // Create new loading promise with proper cleanup
+    const promise = (async () => {
       try {
         const metadata = await getTokenMetadata(canister_id);
-
-        // Try all possible logo keys
         const logoKeys = ['icrc1:logo', 'icrc1:icrc1_logo', 'logo', 'icrc1_logo'];
         let logoEntry = null;
         
@@ -281,12 +287,23 @@ export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl>
         }));
 
         return logoUrl;
-      } finally {
-        delete loadingPromises[canister_id];
+      } catch (error) {
+        console.error('Error in fetchTokenLogo:', error);
+        return DEFAULT_LOGOS.DEFAULT;
       }
     })();
 
-    return await loadingPromises[canister_id];
+    // Store the promise and ensure cleanup
+    loadingPromises[canister_id] = promise;
+    
+    try {
+      return await promise;
+    } finally {
+      // Only cleanup if this is still our promise
+      if (loadingPromises[canister_id] === promise) {
+        delete loadingPromises[canister_id];
+      }
+    }
   } catch (error) {
     console.error('Error in fetchTokenLogo:', error);
     return DEFAULT_LOGOS.DEFAULT;

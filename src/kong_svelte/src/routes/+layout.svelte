@@ -117,14 +117,7 @@
 {:else}
   <div 
     class="tv-wrapper app-container"
-    in:fade|local={{ duration: skipTransition ? 0 : 400, delay: 0 }}
   >
-    {#if mainTransitionComplete && showStatic && !initialTransitionDone}
-      <div 
-        class="animation top-0 left-0 right-0 bottom-0 opacity-50 z-[10] absolute pointer-events-none"
-        out:fade={{ duration: 500 }}
-      ></div>
-    {/if}
     <PageWrapper page={currentPath}>
       <div class="nav-container">
         <Navbar />

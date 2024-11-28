@@ -1,7 +1,6 @@
 <!-- PageWrapper.svelte -->
 <script lang="ts">
   import type { Component } from "svelte";
-  import { assetCache } from "$lib/services/assetCache";
   import { onMount } from "svelte";
   import { themeStore } from "$lib/stores/themeStore";
   import ModalContainer from "$lib/components/common/ModalContainer.svelte";
@@ -9,6 +8,7 @@
   import { browser } from "$app/environment";
   import Clouds from "../stats/Clouds.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
+  import { fade } from "svelte/transition";
 
   let { page, children } = $props<{
     page?: string;
