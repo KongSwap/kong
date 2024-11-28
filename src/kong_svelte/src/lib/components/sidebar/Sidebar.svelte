@@ -15,6 +15,7 @@
   import SocialSection from "./SocialSection.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";
   import PoolList from "./PoolList.svelte";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
 
   export let isOpen: boolean;
   export let onClose: () => void;
@@ -52,10 +53,24 @@
     }
   }
 
-  // Live database subscriptions
-  const tokens = liveQuery(() => kongDB.tokens.toArray());
-  const pools = liveQuery(() => kongDB.pools.toArray());
-  const transactions = liveQuery(() => kongDB.transactions.toArray());
+  // Live database subscriptions with debug logging
+  const tokens = liveQuery(async () => {
+    const dbTokens = await kongDB.tokens.toArray();
+    return dbTokens;
+  });
+
+  const pools = liveQuery(async () => {
+    const dbPools = await kongDB.pools.toArray();
+    return dbPools;
+  });
+
+  const transactions = liveQuery(async () => {
+    const dbTransactions = await kongDB.transactions.toArray();
+    return dbTransactions;
+  });
+
+  // Subscribe to token store for balances
+  $: storeBalances = $tokenStore.balances;
 </script>
 
 {#if isOpen}

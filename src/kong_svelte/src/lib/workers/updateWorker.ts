@@ -167,7 +167,7 @@ class WorkerImpl implements WorkerApi {
         return cachedLogo;
       }
 
-      const response = await fetchTokenLogo(token);
+      const response = await fetchTokenLogo(token.canister_id);
       
       // Cache the logo if it's not the default
       if (response) {
@@ -350,7 +350,7 @@ class WorkerImpl implements WorkerApi {
           try {
             const token = this.tokens.find(t => t.canister_id === logo.canister_id);
             if (token) {
-              await fetchTokenLogo(token);
+              await fetchTokenLogo(token.canister_id);
             }
           } catch (error) {
             console.error(`Worker: Error refreshing logo for ${logo.canister_id}:`, error);

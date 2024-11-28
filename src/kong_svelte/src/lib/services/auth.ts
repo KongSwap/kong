@@ -30,23 +30,6 @@ export const canisterIDLs = {
   icrc2: icrc2idl,
 };
 
-// Helper function to create anonymous actor
-// export const createAnonymousActorHelper = async (canisterId: string, idl: any) => {
-//   const agent = HttpAgent.createSync({
-//     host: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://icp0.io",
-//   });
-
-//   // Always fetch root key in local development
-//   if (process.env.DFX_NETWORK !== "ic") {
-//     await agent.fetchRootKey().catch(console.error);
-//   }
-
-//   return Actor.createActor(idl as any, {
-//     agent,
-//     canisterId,
-//   });
-// };
-
 // Add a constant for the storage key
 const LAST_WALLET_KEY = 'kongSelectedWallet';
 
@@ -103,7 +86,7 @@ function createAuthStore(pnp: PNP) {
       try {
         const result = await pnp.connect(walletId);
         
-        if (result && 'owner' in result) {
+        if (result && 'owner' in result) {          
           const newState = { 
             isConnected: true,
             account: result,
@@ -116,13 +99,21 @@ function createAuthStore(pnp: PNP) {
             saveLastWallet(walletId);
           }
 
-          // Force a refresh of the userStore
-          const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false });
-          await Promise.all([
-            actor.get_user(),
-            TokenService.fetchBalances()
-          ]);
-          return result;
+          // Force a refresh of the userStore and token balances
+          const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false, requiresSigning: false });
+          
+          try {
+            const [_, balances] = await Promise.all([
+              actor.get_user(),
+              TokenService.fetchBalances(undefined, result.owner.toString())
+            ]);
+            tokenStore.updateBalances(balances);
+            return result;
+          } catch (error) {
+            console.error('Error fetching user data or balances:', error);
+            localStorage.removeItem("kongSelectedWallet");
+            throw error;
+          }
         } else {
           console.log("Invalid connection result:", result);
           set({ isConnected: false, account: null, isInitialized: true });

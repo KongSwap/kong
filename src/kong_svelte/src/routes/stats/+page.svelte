@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { writable, derived } from "svelte/store";
   import { t } from "$lib/services/translations";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -77,29 +78,29 @@
     ([$tokenStore, $poolStore]) => {
       const calculateVolume = (pools: any[]): number => {
         return pools.reduce((acc, pool) => {
-          const volume = Number(pool.rolling_24h_volume || 0n) / 1e8;
+          const volume = Number(pool?.rolling_24h_volume || 0n) / 1e6;
           return acc + volume;
         }, 0);
       };
 
       const calculateLiquidity = (pools: any[]): number => {
         return pools.reduce((acc, pool) => {
-          const tvl = Number(pool.tvl || 0n) / 1e8;
+          const tvl = Number(pool.tvl);
           return acc + tvl;
         }, 0);
       };
 
       const calculateFees = (pools: any[]): number => {
         return pools.reduce((acc, pool) => {
-          const fees = Number(pool.rolling_24h_lp_fee || 0n) / 1e8;
+          const fees = Number(pool.rolling_24h_lp_fee || 0n) / 1e6;
           return acc + fees;
         }, 0);
       };
 
       return {
-        totalVolume: formatToNonZeroDecimal(calculateVolume($poolStore.pools)),
-        totalLiquidity: formatToNonZeroDecimal(calculateLiquidity($poolStore.pools)),
-        totalFees: formatToNonZeroDecimal(calculateFees($poolStore.pools))
+        totalVolume: calculateVolume($poolStore.pools),
+        totalLiquidity: calculateLiquidity($poolStore.pools),
+        totalFees: formatUsdValue(calculateFees($poolStore.pools))
       };
     }
   );

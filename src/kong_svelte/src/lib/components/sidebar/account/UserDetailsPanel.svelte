@@ -11,6 +11,7 @@
   onMount(async () => {
     const actor = await auth.getActor(kongBackendId, kongBackendIDL, {
       anon: false,
+      requiresSigning: false
     });
     console.log("actor:", actor);
     const res = await actor.get_user();

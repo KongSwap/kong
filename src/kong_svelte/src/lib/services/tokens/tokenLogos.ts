@@ -4,12 +4,16 @@ import { writable, get } from 'svelte/store';
 import { getTokenMetadata } from './tokenUtils';
 
 export const IMAGE_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+// Define a type for logo URLs
+export type TokenLogoUrl = string;
+
 export const DEFAULT_LOGOS = {
   [ICP_CANISTER_ID]: '/tokens/icp.webp',
   DEFAULT: '/tokens/not_verified.webp'
 } as const;
 
-export const tokenLogoStore = writable<Record<string, string>>({
+export const tokenLogoStore = writable<Record<string, TokenLogoUrl>>({
   ...DEFAULT_LOGOS
 });
 
@@ -29,19 +33,36 @@ export async function saveTokenLogo(canister_id: string, image_url: string): Pro
 
 export async function getTokenLogo(canister_id: string): Promise<string> {
   try {
-    const image = await kongDB.images.get({ canister_id });
+    console.log('Getting logo for canister:', canister_id);
+    
+    // First check if it's a default logo
+    if (canister_id in DEFAULT_LOGOS) {
+      return DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS];
+    }
+
+    // Query by canister_id using equals instead of get
+    const image = await kongDB.images
+      .where('canister_id')
+      .equals(canister_id)
+      .first();
+
     if (!image) {
-      return DEFAULT_LOGOS.DEFAULT;
+      return await fetchTokenLogo(canister_id);
     }
 
     // Check if the logo is older than 24 hours
     const ONE_DAY = 24 * 60 * 60 * 1000;
     if (!image.timestamp || Date.now() - image.timestamp > ONE_DAY) {
+      console.log('Logo expired for:', canister_id);
       // Logo is too old, delete it and refetch
-      await kongDB.images.delete(image.id);
-      return await fetchTokenLogo({ canister_id });
+      await kongDB.images
+        .where('canister_id')
+        .equals(canister_id)
+        .delete();
+      return await fetchTokenLogo(canister_id);
     }
 
+    console.log('Returning cached logo for:', canister_id);
     return image.image_url || DEFAULT_LOGOS.DEFAULT;
   } catch (error) {
     console.error('Error getting token logo:', error);
@@ -136,7 +157,7 @@ export async function getAllTokenLogos(tokens: any[]): Promise<any[]> {
       .filter(token => !cachedCanisterIds.has(token.canister_id))
       .map(async token => {
         try {
-          const image_url = await fetchTokenLogo(token);
+          const image_url = await fetchTokenLogo(token.canister_id);
           const newImage = {
             canister_id: token.canister_id,
             image_url,
@@ -207,120 +228,65 @@ export async function cleanupExpiredTokenLogos(): Promise<void> {
   }
 }
 
-export async function fetchTokenLogo(token: any): Promise<string> {
-  const MAX_RETRIES = 1;
-  const RETRY_DELAY = 1000; // 1 second
-
+export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl> {  
   try {
-    if (!token?.canister_id) {
-      console.debug('No canister_id for token:', token);
+    if (!canister_id) {
+      console.debug('No canister_id provided');
       return DEFAULT_LOGOS.DEFAULT;
     }
 
-    // Use a local variable to track our loading promise
-    let loadingPromise = loadingPromises[token.canister_id];
-    if (loadingPromise) {
-      try {
-        return await loadingPromise;
-      } catch (error) {
-        console.warn('Previous loading attempt failed:', error);
-        // Clear the failed promise so we can try again
-        delete loadingPromises[token.canister_id];
-      }
+    // Check if we already have a loading promise for this canister
+    if (loadingPromises[canister_id]) {
+      console.log('Using existing loading promise for:', canister_id);
+      return await loadingPromises[canister_id];
     }
 
-    // Create a new loading promise
-    loadingPromise = (async () => {
-      try {          
-        // Check cache first
-        const cachedLogo = await getTokenLogo(token.canister_id);
-        if (cachedLogo && cachedLogo !== DEFAULT_LOGOS.DEFAULT) {
-          return cachedLogo;
-        }
+    // Create new loading promise
+    loadingPromises[canister_id] = (async () => {
+      try {
+        const metadata = await getTokenMetadata(canister_id);
 
-        let retryCount = 0;
-        let lastError: Error | null = null;
-
-        while (retryCount < MAX_RETRIES) {
-          try {
-            // Fetch metadata with timeout
-            const metadataPromise = getTokenMetadata(token.canister_id);
-            const metadata = await Promise.race([
-              metadataPromise,
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Metadata fetch timeout')), 10000))
-            ]);
-
-            // Try all possible logo keys
-            const logoKeys = ['icrc1:logo', 'icrc1:icrc1_logo', 'logo', 'icrc1_logo'];
-            let logoEntry = null;
-            
-            for (const key of logoKeys) {
-              const entry = metadata.find(([k]) => k === key);
-              if (entry) {
-                logoEntry = entry;
-                break;
-              }
-            }
-
-            if (!logoEntry) {
-              console.warn('No logo found in metadata');
-              return DEFAULT_LOGOS.DEFAULT;
-            }
-
-            const [_, value] = logoEntry;
-            
-            // Handle both Text and Blob formats
-            if ('Text' in value && value.Text) {
-              // Validate URL format
-              try {
-                new URL(value.Text);
-                await saveTokenLogo(token.canister_id, value.Text);
-                return value.Text;
-              } catch {
-                throw new Error('Invalid logo URL format');
-              }
-            } else if ('Blob' in value && value.Blob) {
-              try {
-                const base64 = btoa(String.fromCharCode(...value.Blob));
-                const mimeType = 'image/png';
-                const dataUrl = `data:${mimeType};base64,${base64}`;
-                
-                // Validate the data URL by loading it
-                await new Promise((resolve, reject) => {
-                  const img = new Image();
-                  img.onload = resolve;
-                  img.onerror = () => reject(new Error('Failed to load data URL'));
-                  img.src = dataUrl;
-                });
-                
-                await saveTokenLogo(token.canister_id, dataUrl);
-                return dataUrl;
-              } catch (error) {
-                throw new Error(`Failed to process Blob logo: ${error}`);
-              }
-            }
-
-            return DEFAULT_LOGOS.DEFAULT;
-          } catch (error) {
-            lastError = error as Error;
-            retryCount++;
-            
-            if (retryCount < MAX_RETRIES) {
-              await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * retryCount));
-            }
+        // Try all possible logo keys
+        const logoKeys = ['icrc1:logo', 'icrc1:icrc1_logo', 'logo', 'icrc1_logo'];
+        let logoEntry = null;
+        
+        for (const key of logoKeys) {
+          const entry = metadata.find(([k]) => k === key);
+          if (entry) {
+            logoEntry = entry;
+            console.log('Found logo entry with key:', key);
+            break;
           }
         }
 
-        return DEFAULT_LOGOS.DEFAULT;
+        if (!logoEntry) {
+          return DEFAULT_LOGOS.DEFAULT;
+        }
+
+        const [_, value] = logoEntry;
+        let logoUrl: TokenLogoUrl = DEFAULT_LOGOS.DEFAULT;
+
+        if ('Text' in value && value.Text) {
+          logoUrl = value.Text as TokenLogoUrl;
+        } else if ('Blob' in value && value.Blob) {
+          const base64 = btoa(String.fromCharCode(...value.Blob));
+          logoUrl = `data:image/png;base64,${base64}` as TokenLogoUrl;
+        }
+
+        // Save to DB and store
+        await saveTokenLogo(canister_id, logoUrl);
+        tokenLogoStore.update(logos => ({
+          ...logos,
+          [canister_id]: logoUrl
+        }));
+
+        return logoUrl;
       } finally {
-        // Clean up the loading promise when done
-        delete loadingPromises[token.canister_id];
+        delete loadingPromises[canister_id];
       }
     })();
 
-    // Store the promise for deduplication
-    loadingPromises[token.canister_id] = loadingPromise;
-    return loadingPromise;
+    return await loadingPromises[canister_id];
   } catch (error) {
     console.error('Error in fetchTokenLogo:', error);
     return DEFAULT_LOGOS.DEFAULT;

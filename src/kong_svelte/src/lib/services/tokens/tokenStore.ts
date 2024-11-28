@@ -141,6 +141,19 @@ function createTokenStore() {
     }
   });
 
+  // Add pool update handler
+  eventBus.on('poolsUpdated', async (pools: BE.Pool[]) => {
+    store.update(state => ({
+      ...state,
+      tokens: state.tokens.map(token => ({
+        ...token,
+        pools: pools.filter(p => p.address_0 === token.canister_id),
+        total_24h_volume: BigInt(pools.filter(p => p.address_0 === token.canister_id)
+          .reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)),
+      }))
+    }));
+  });
+
   return {
     subscribe: store.subscribe,
     update: store.update,
@@ -348,6 +361,24 @@ function createTokenStore() {
       // Cleanup any active subscriptions or connections
       store.set(initialState);
     },
+    updateBalances: (newBalances: Record<string, { in_tokens: bigint; in_usd: string }>) => {
+      store.update(state => {
+        const updatedState = {
+          ...state,
+          balances: { ...newBalances }
+        };
+        return updatedState;
+      });
+    },
+    updateTokenBalance: (tokenId: string, balance: { in_tokens: bigint; in_usd: string }) => {
+      store.update(state => ({
+        ...state,
+        balances: {
+          ...state.balances,
+          [tokenId]: balance
+        }
+      }));
+    },
   };
 }
 
@@ -376,6 +407,8 @@ export const tokenStore: {
   getToken: (canister_id: string) => FE.Token | null;
   claimFaucetTokens: () => Promise<void>;
   cleanup: () => Promise<void>;
+  updateBalances: (newBalances: Record<string, { in_tokens: bigint; in_usd: string }>) => void;
+  updateTokenBalance: (tokenId: string, balance: { in_tokens: bigint; in_usd: string }) => void;
 } = createTokenStore();
 
 const liveTokensQuery = liveQuery(async () => {
@@ -445,8 +478,8 @@ export const favoriteTokens = derived(
   }
 );
 
-export const portfolioValue = derived([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
-  if (!$tokenStore?.tokens || !$poolStore?.pools) return "0.00";
+export const portfolioValue = derived(tokenStore, ($tokenStore) => {
+  if (!$tokenStore?.tokens) return "0.00";
   let totalValue = 0.0;
 
   for (const token of $tokenStore.tokens) {

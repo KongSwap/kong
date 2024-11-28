@@ -20,6 +20,7 @@
   let showStatic = $state(true);
   let mainTransitionComplete = $state(false);
   let initialTransitionDone = $state(false);
+  let skipTransition = $state(true);
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
@@ -74,85 +75,18 @@
   }
 
   // Custom transition for CRT effect
-  function crtTransition(node: HTMLElement, { 
+  function pageTransition(node: HTMLElement, { 
     delay = 0,
-    duration = 800,
-    reverse = false
+    duration = 400
   }) {
     return {
       delay,
       duration,
-      css: (t: number, u: number) => {
-        if (initialTransitionDone) {
-          return '';
-        }
-
-        const phase = Math.min(u * 2, 2);
-        let scaleX = 1;
-        let scaleY = 1;
-        
-        if (!reverse) {
-          if (phase <= 1) {
-            const compress = 1 - (Math.pow(phase, 3) * 0.95);
-            scaleX = compress;
-            scaleY = compress;
-          } else {
-            const stretchPhase = phase - 1;
-            scaleX = 0.05 + (Math.pow(stretchPhase, 0.5) * 3);
-            scaleY = Math.max(0.05 - (stretchPhase * 0.05), 0.001);
-          }
-        } else {
-          if (phase <= 0.5) {
-            // Phase 1: Start as horizontal line
-            scaleX = 1;
-            scaleY = 0.001;
-          } else if (phase <= 1) {
-            // Phase 2: Expand vertically from horizontal line
-            const expandPhase = (phase - 0.5);
-            scaleX = 1;
-            scaleY = 1;
-          } else {
-            // Phase 3: Stay at full size
-            scaleX = 1;
-            scaleY = 1;
-          }
-        }
-
-        // Calculate opacity and flash effects
-        let opacity, flash;
-        if (!reverse) {
-          if (phase <= 1) {
-            opacity = 1 - (Math.pow(phase, 2) * 0.7);
-          } else {
-            const endPhase = Math.max(0, (phase - 1.7) / 0.3);
-            opacity = 0.3 + (Math.sin(endPhase * Math.PI) * 0.7);
-          }
-          const flashPoint = Math.max(0, (phase - 1.7) / 0.3);
-          flash = Math.sin(flashPoint * Math.PI);
-        } else {
-          if (phase <= 0.5) {
-            // Initial horizontal line with flash
-            opacity = 1;
-            flash = 0;
-          } else if (phase <= 1.5) {
-            // Maintain consistent brightness during expansion
-            opacity = 1;
-            flash = 0;
-          } else {
-            // Final state
-            opacity = 1;
-            flash = 0;
-          }
-        }
-        
-        if (t === 1) {
-          mainTransitionComplete = true;
-        }
-        
+      css: (t: number) => {
+        const eased = cubicOut(t);
         return `
-          transform: scale(${scaleX}, ${scaleY});
-          opacity: ${opacity};
-          filter: brightness(${1 + flash * 5}) contrast(${1 + flash * 3});
+          opacity: ${eased};
+          transform: scale(${0.95 + (0.05 * eased)});
         `;
       }
     };
@@ -171,6 +105,10 @@
   function handleLoadingScreenEnd() {
     showLoadingScreen = false;
     initialLoad = false;
+    skipTransition = true;
+    setTimeout(() => {
+      skipTransition = false;
+    }, 500);
   }
 </script>
 
@@ -183,7 +121,7 @@
 {:else}
   <div 
     class="tv-wrapper app-container"
-    in:crtTransition|local={{ duration: 800, delay: 0, reverse: false }}
+    in:fade|local={{ duration: skipTransition ? 0 : 400, delay: 0 }}
   >
     {#if mainTransitionComplete && showStatic && !initialTransitionDone}
       <div 
@@ -199,8 +137,7 @@
         {#key currentPath}
           <div
             class="w-full h-full"
-            class:glitch-transition={!$hasNavigated}
-            in:crtTransition={{ duration: 800, delay: 200, reverse: true }}
+            in:fade={{ duration: skipTransition ? 0 : 400, delay: skipTransition ? 0 : 200 }}
           >
             {@render children?.()}
           </div>
@@ -218,26 +155,7 @@
   height: 100%;
   display: flex;
   background-color: #010101;
-  background-image: repeating-radial-gradient(circle at 17% 32%, rgba(255, 255, 255, 0.5), rgba(0, 0, 0, 0.2) 0.00085px);
-  animation: tv-static 0.5s linear infinite;
 }
-.animation {
-  width: 100%;
-  height: 100%;
-  margin: auto;
-  background-image: repeating-radial-gradient(circle at 17% 32%, rgba(255, 255, 255, 0.5), rgba(0, 0, 0, 0.2) 0.00085px);
-  animation: tv-static 0.5s linear infinite;
-}
-@keyframes tv-static {
-  from {
-    background-size: 100% 100%;
-  }
-
-  to {
-    background-size: 200% 200%;
-  }
-}
-
 
   .nav-container {
     background-color: transparent;

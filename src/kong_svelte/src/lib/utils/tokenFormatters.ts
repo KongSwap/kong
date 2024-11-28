@@ -1,3 +1,5 @@
+import { formatToNonZeroDecimal } from "./numberFormatUtils";
+
 /**
  * Formats a raw token balance considering its decimals
  * @param rawBalance The raw balance as a string (big integer format)
@@ -43,12 +45,12 @@ export function formatUsdValue(value: number): string {
     
     // For very small values, show up to 8 decimals
     if (value < 0.00001) {
-        return `$${value.toFixed(8).replace(/\.?0+$/, '')}`;
+        return `$${formatToNonZeroDecimal(value).replace(/\.?0+$/, '')}`;
     }
     
     // For small values (under 1), show up to 6 decimals
     if (value < 1) {
-        return `$${value.toFixed(6).replace(/\.?0+$/, '')}`;
+        return `$${formatToNonZeroDecimal(value).replace(/\.?0+$/, '')}`;
     }
     
     if (value >= 1000000) {

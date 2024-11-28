@@ -95,7 +95,6 @@
     try {
       // Try to preload the skyline asset
       skylineUrl = await updateWorkerService.preloadAsset("/backgrounds/skyline.svg");
-      console.log("PageWrapper: skyline.svg preloaded successfully:", skylineUrl);
     } catch (error) {
       console.error("Failed to preload skyline.svg in PageWrapper:", error);
       skylineError = true;

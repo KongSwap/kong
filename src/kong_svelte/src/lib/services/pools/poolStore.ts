@@ -5,6 +5,7 @@ import { tokenStore } from '$lib/services/tokens/tokenStore';
 import BigNumber from 'bignumber.js';
 import { get } from 'svelte/store';
 import { auth } from '../auth';
+import { eventBus } from '$lib/services/tokens/eventBus';
 
 interface PoolState {
   pools: BE.Pool[];
@@ -72,15 +73,6 @@ function createPoolStore() {
           newPoolsMap.set(pool.id, pool);
         });
 
-        tokenStore.update(state => ({
-          ...state,
-          tokens: state.tokens.map(token => ({
-            ...token,
-            pools: pools.filter(p => p.address_0 === token.canister_id),
-            total_24h_volume: BigInt(pools.filter(p => p.address_0 === token.canister_id).reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)),
-          }))
-        }));
-
         // Update the stable store first
         stablePoolsStore.set(pools);
 
@@ -103,6 +95,10 @@ function createPoolStore() {
         cache.lastFetch = Date.now();
         console.log('[PoolStore] Pools data updated successfully');
 
+        // Emit event for token store to update if needed
+        eventBus.emit('poolsUpdated', pools);
+
+        return pools;
       } catch (error) {
         console.error('[PoolStore] Error loading pools:', error);
         update(state => ({
@@ -110,6 +106,7 @@ function createPoolStore() {
           error: error instanceof Error ? error.message : 'Unknown error',
           isLoading: false
         }));
+        throw error;
       }
     },
 

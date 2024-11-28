@@ -1,6 +1,6 @@
 <script lang="ts">
   import { writable, derived } from "svelte/store";
-  import { poolsList, poolsLoading, poolsError } from "$lib/services/pools/poolStore";
+  import { poolsList } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
@@ -276,7 +276,7 @@
                     </div>
                     <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                       <div class="text-sm text-[#8890a4] mb-1">TVL</div>
-                      <div class="font-medium text-white">${Number(pool.tvl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <div class="font-medium text-white">${Number(pool.tvl)}</div>
                     </div>
                     <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                       <div class="text-sm text-[#8890a4] mb-1">Volume 24H</div>

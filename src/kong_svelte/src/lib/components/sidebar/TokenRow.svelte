@@ -5,6 +5,8 @@
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { formatBalance } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
+  import TokenDetails from '$lib/components/common/TokenDetails.svelte';
+
   export let token: any;
   const dispatch = createEventDispatcher();
   let showDetails = false;

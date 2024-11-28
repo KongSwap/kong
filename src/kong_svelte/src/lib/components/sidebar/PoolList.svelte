@@ -30,9 +30,8 @@
   };
 
   // Process pool balances when they update
-  $: {
-    const balances = $poolStore.userPoolBalances as UserBalancesResponse;
-    if (balances?.Ok) {
+  $: balances = $poolStore.userPoolBalances;
+  $: if (balances?.Ok) {
       poolBalances = balances.Ok.map(balance => {
         if ('LP' in balance) {
           return {
@@ -49,7 +48,6 @@
         return null;
       }).filter(Boolean);
       console.log("Processed pool balances:", poolBalances);
-    }
   }
 
   // Update processedPools to use the pool balances

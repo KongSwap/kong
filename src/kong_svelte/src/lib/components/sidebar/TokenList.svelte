@@ -1,10 +1,11 @@
 <script lang="ts">
   import { fade, slide } from 'svelte/transition';
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { tokenLogoStore, fetchTokenLogo } from "$lib/services/tokens/tokenLogos";
+  import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { toggleFavoriteToken } from "$lib/services/tokens/favorites";
   import { onMount } from 'svelte';
+  import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
 
   // Update the token type to include isFavorite
   interface ProcessedToken extends FE.Token {
@@ -26,15 +27,27 @@
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
 
-  onMount(() => {
-    searchInput?.focus();
-  });
+  // Subscribe to token store updates
+  $: storeBalances = $tokenStore.balances;
+  
+  // At the start of the component, add validation logging
+  $: {
+    if (tokens) {
+      const invalidTokens = tokens.filter(t => !t || !t.canister_id);
+      if (invalidTokens.length > 0) {
+        console.warn('TokenList: Found invalid tokens:', invalidTokens);
+      }
+    }
+  }
 
+  // Make sure processedTokens updates when either tokens or storeBalances change
   $: processedTokens = tokens
+    .filter(token => token) // Filter out any undefined tokens
     .map((token): ProcessedToken => {
       const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id);
-      // Get balance info from store
-      const balanceInfo = $tokenStore.balances[token.canister_id] || { in_tokens: 0n, in_usd: '0' };
+      const balanceInfo = storeBalances[token.canister_id] || { in_tokens: 0n, in_usd: '0' };
+      const logoUrl = $tokenLogoStore[token.canister_id] || DEFAULT_LOGOS.DEFAULT;
+      
       const balance = balanceInfo.in_tokens;
       const decimals = token.decimals || 0;
       
@@ -46,7 +59,7 @@
       return {
         ...token,
         ...(formattedToken || {}),
-        logo: $tokenLogoStore[token.canister_id],
+        logo: logoUrl,
         value: normalizedBalance,
         usdValue,
         balance: balance.toString(),
@@ -55,12 +68,13 @@
         isFavorite: Boolean(formattedToken?.isFavorite)
       };
     })
+    .filter(token => token && token.canister_id) // Filter out any malformed tokens
     .sort((a, b) => {
       // Sort by favorites first
       if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1;
       
       // Then sort by value
-      return sortDirection === 'desc' ? b.value - a.value : a.value - b.value;
+      return sortDirection === 'desc' ? b.usdValue - a.usdValue : a.usdValue - b.usdValue;
     });
 
   // Debounce search input
@@ -128,15 +142,6 @@
     
     return false;
   });
-
-  // Fetch logos for tokens that don't have them
-  $: {
-    processedTokens.forEach(token => {
-      if (!$tokenLogoStore[token.canister_id]) {
-        fetchTokenLogo(token.canister_id);
-      }
-    });
-  }
 
   function toggleSort(criteria: string) {
     if (sortBy === criteria) {

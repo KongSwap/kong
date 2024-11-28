@@ -96,7 +96,7 @@
     <td class="tvl-cell">
       <div class="tvl-info">
         <div class="tvl-value">
-          ${formatToNonZeroDecimal(pool.tvl)}
+          {formatUsdValue(pool.tvl)}
         </div>
       </div>
     </td>
@@ -145,7 +145,7 @@
         />
         <div class="token-details">
           <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-          <span class="tvl-badge">TVL: ${formatToNonZeroDecimal(pool.tvl)}</span>
+          <span class="tvl-badge">TVL: ${pool.tvl}</span>
         </div>
       </div>
       <div class="card-actions">

@@ -66,7 +66,7 @@
     try {
       loading = true;
       error = null;
-      const actor = await auth.getActor(kongBackendId, kongBackendIDL, { anon: false });
+      const actor = await auth.getActor(kongBackendId, kongBackendIDL, { anon: false, requiresSigning: false });
       const res = await actor.get_user();
       
       if (!res.Ok) throw new Error('Failed to fetch user data');

@@ -234,7 +234,7 @@ export class TokenService {
 
     // Fetch from network if not cached
     try {
-      const logo = await fetchTokenLogo(token);
+      const logo = await fetchTokenLogo(token.canister_id);
 
       // Validate and cache the logo
       if (logo) {

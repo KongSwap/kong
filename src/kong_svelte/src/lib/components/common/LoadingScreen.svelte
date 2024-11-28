@@ -173,41 +173,11 @@
       progressFill.style.width = currentWidth;
     }
     return {
-      duration: 800,
-      css: (t: number, u: number) => {
-        const phase = u * 2;
-        let scaleX = 1;
-        let scaleY = 1;
-        
-        if (phase <= 1) {
-          const compress = 1 - (Math.pow(phase, 3) * 0.95);
-          scaleX = compress;
-          scaleY = compress;
-        } else {
-          const stretchPhase = phase - 1;
-          scaleX = 0.05 + (Math.pow(stretchPhase, 0.5) * 3);
-          scaleY = Math.max(0.05 - (stretchPhase * 0.05), 0.001);
-        }
-
-        // Calculate opacity with fade and final flash
-        let opacity;
-        if (phase <= 1) {
-          // Fade out during compression
-          opacity = 1 - (Math.pow(phase, 2) * 0.7);
-        } else {
-          // Regain some opacity for final flash
-          const endPhase = Math.max(0, (phase - 1.7) / 0.3);
-          opacity = 0.3 + (Math.sin(endPhase * Math.PI) * 0.7);
-        }
-
-        // Flash effect peaks at the end
-        const flashPoint = Math.max(0, (phase - 1.7) / 0.3);
-        const flash = Math.sin(flashPoint * Math.PI);
-        
+      duration: 400,
+      css: (t: number) => {
         return `
-          transform: scale(${scaleX}, ${scaleY});
-          opacity: ${opacity};
-          filter: brightness(${1 + flash * 5}) contrast(${1 + flash * 3});
+          opacity: ${t};
+          transform: scale(${t});
         `;
       }
     };
@@ -233,6 +203,7 @@
   <div
     class="h-screen top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
     out:handleOutro
+    in:fade={{ duration: 400 }}
     on:outroend
   >
     <div class="screen-curve animation min-h-screen"></div>
@@ -246,37 +217,14 @@
               class="logo-container chrome-frame absolute-center"
               style={containerStyle}
               in:scale|local={{ duration: 400, delay: 200, easing: cubicOut, start: 0.3 }}
-              class:tv-off={isShuttingDown}
-              class:glitching={glitchActive}
-              class:glitching-out={glitchOutActive}
               out:scale|local={{ duration: 200, start: 1 }}
             >
               <div class="logo-inner !p-0 object-cover">
-                <div class="glitch-wrappe object-cover">
-                  <div class="glitch-comp object-cover"
-                  >
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-base"
-                    />
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-layer glitch-r"
-                    />
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-layer glitch-g"
-                    />
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-layer glitch-b"
-                    />
-                  </div>
-                </div>
+                <img
+                  src={currentLogo}
+                  alt="Current Logo"
+                  class="logo-image pixelated !rounded-full !p-0 object-cover"
+                />
               </div>
             </div>
           {/key}
@@ -349,7 +297,8 @@
 
   .neon-text {
     color: #fff;
-    animation: neonFlicker 1.5s infinite;
+    animation: neonFlicker 1.5s ease-in;
+    animation-delay: 1s;
     letter-spacing: 4px;
     text-shadow:
       0 0 7px #fff,
@@ -437,6 +386,7 @@
     height: 100vh;
     overflow: hidden;
     animation: flicker 0.15s infinite;
+    animation-delay: 1.5s;
     background: rgba(16, 16, 16, 0.94);
     display: flex;
     align-items: center;
@@ -502,6 +452,9 @@
       background-size: 100% 2px, 3px 100%;
       pointer-events: none;
       animation: scanlines 1s linear infinite;
+      opacity: 0;
+      animation: fadeInScanlines 2s forwards;
+      animation-delay: 1s;
     }
     
     &::after {
@@ -741,21 +694,6 @@
     height: 100%;
     transform-origin: center;
 
-    &.tv-off {
-      animation: tvShutdown 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-      
-      &::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        width: 100%;
-        background: white;
-        animation: tvLine 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-        z-index: 10;
-      }
-    }
-
     &.glitching {
       .glitch-base {
         animation: glitch-anim 0.4s cubic-bezier(.25, .46, .45, .94) both;
@@ -987,58 +925,27 @@
     }
   }
 
-  @keyframes tvShutdown {
-    0% {
-      transform: scale(1) translateY(0);
-      filter: brightness(1);
-    }
-    10% {
-      transform: scale(1) translateY(0);
-      filter: brightness(2);
-    }
-    25% {
-      transform: scale(1) translateY(0);
-      filter: brightness(0.8);
-    }
-    50% {
-      transform: scaleY(0.005) translateY(0);
-      filter: brightness(0.4);
-    }
-    51% {
-      transform: scaleY(0.002) translateY(0);
-      filter: brightness(0.3);
-    }
-    75% {
-      transform: scaleY(0.001) translateY(0);
-      filter: brightness(0.2);
-    }
-    100% {
-      transform: scaleY(0) translateY(0);
-      filter: brightness(0);
-    }
-  }
-
   @keyframes flicker {
-    0% { opacity: 0.97; }
-    5% { opacity: 0.95; }
-    10% { opacity: 0.9; }
-    15% { opacity: 0.95; }
+    0%, 100% { opacity: 0.98; }
+    5% { opacity: 0.97; }
+    10% { opacity: 0.95; }
+    15% { opacity: 0.96; }
     20% { opacity: 0.98; }
-    25% { opacity: 0.95; }
-    30% { opacity: 0.9; }
-    35% { opacity: 0.95; }
+    25% { opacity: 0.96; }
+    30% { opacity: 0.95; }
+    35% { opacity: 0.96; }
     40% { opacity: 0.98; }
-    45% { opacity: 0.94; }
+    45% { opacity: 0.96; }
     50% { opacity: 0.98; }
-    55% { opacity: 0.95; }
+    55% { opacity: 0.96; }
     60% { opacity: 0.97; }
-    65% { opacity: 0.95; }
+    65% { opacity: 0.96; }
     70% { opacity: 0.98; }
-    75% { opacity: 0.94; }
+    75% { opacity: 0.96; }
     80% { opacity: 0.98; }
-    85% { opacity: 0.96; }
+    85% { opacity: 0.97; }
     90% { opacity: 0.98; }
-    95% { opacity: 0.95; }
+    95% { opacity: 0.96; }
     100% { opacity: 0.98; }
   }
 
@@ -1064,6 +971,7 @@
     position: relative;
     overflow: hidden;
     animation: flicker 0.15s infinite;
+    animation-delay: 1.5s;
     background: rgba(16, 16, 16, 0.94);
 
     &::before {
@@ -1121,6 +1029,9 @@
       background-size: 100% 2px, 3px 100%;
       pointer-events: none;
       animation: scanlines 1s linear infinite;
+      opacity: 0;
+      animation: fadeInScanlines 2s forwards;
+      animation-delay: 1s;
     }
     
     &::after {
@@ -1161,5 +1072,10 @@
       animation: flicker 0.15s infinite;
       mix-blend-mode: overlay;
     }
+  }
+
+  @keyframes fadeInScanlines {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 </style>

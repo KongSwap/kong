@@ -1,11 +1,11 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
     import { auth } from '$lib/services/auth';
     import { fly, fade } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
     import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
     import { TokenService, tokenStore } from '$lib/services/tokens';
+    import { onMount } from 'svelte';
 
     // Accept transactions prop for live data
     export let transactions: any[] = [];
@@ -27,6 +27,7 @@
     let isLoading = false;
     let error: string | null = null;
     let processedTransactions: any[] = [];
+    let pollInterval: NodeJS.Timer;
 
     function processTransaction(tx: any) {
         if ('AddLiquidity' in tx) {
@@ -45,24 +46,43 @@
         return null;
     }
 
-    onMount(() => {
-        if ($auth.isConnected) {
-            TokenService.fetchUserTransactions().then(response => {
-                console.log("TXS", response);
-                
-                if (response.Ok) {
-                    processedTransactions = response.Ok
-                        .map(processTransaction)
-                        .filter(tx => tx !== null);
-                } else if (response.Err) {
-                    error = response.Err;
-                }
-            }).catch(err => {
-                console.error("Error fetching transactions:", err);
-                error = err.message || "Failed to load transactions";
-            });
+    // Watch auth store changes
+    $: if ($auth.isConnected) {
+        loadTransactions();
+    }
+
+    async function loadTransactions() {
+        isLoading = true;
+        error = null;
+        
+        try {
+            const response = await TokenService.fetchUserTransactions();
+            if (response.Ok) {
+                processedTransactions = response.Ok
+                    .map(processTransaction)
+                    .filter(tx => tx !== null);
+            } else if (response.Err) {
+                error = response.Err;
+            }
+        } catch (err) {
+            console.error("Error fetching transactions:", err);
+            error = err.message || "Failed to load transactions";
+        } finally {
             isLoading = false;
         }
+    }
+
+    onMount(() => {
+        // Poll every 30 seconds if connected
+        pollInterval = setInterval(() => {
+            if ($auth.isConnected) {
+                loadTransactions();
+            }
+        }, 30000);
+
+        return () => {
+            if (pollInterval) clearInterval(pollInterval);
+        };
     });
 </script>
 

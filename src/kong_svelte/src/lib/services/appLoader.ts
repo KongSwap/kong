@@ -241,7 +241,6 @@ export class AppLoader {
 
       // Initialize remaining services
       await Promise.all([
-        this.initializePools(),
         tokenStore.loadPrices(),
         this.initializeSettings()
       ]);
@@ -285,21 +284,6 @@ export class AppLoader {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new Error(`Token initialization failed: ${errorMessage}`);
-    }
-  }
-
-  private async initializePools(): Promise<void> {
-    try {
-      // Wait for tokens to be loaded since pools depend on token information
-      // Initialize pools using auth service
-      // Add your pool initialization logic here
-      poolStore.loadPools();
-      poolStore.loadUserPoolBalances();
-    } catch (error) {
-      console.error("Failed to initialize pools:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      throw new Error(`Pool initialization failed: ${errorMessage}`);
     }
   }
 
