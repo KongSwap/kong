@@ -22,7 +22,7 @@
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
-    dispatch('toggleFavorite');
+    dispatch('toggleFavorite', { token });
   }
 
   function handleRowClick() {
@@ -43,7 +43,7 @@
 
   function toggleMenu(e: MouseEvent) {
     e.stopPropagation();
-    showDetails = true;
+    showMenu = !showMenu;
   }
 
   // Close menu when clicking outside
@@ -87,7 +87,7 @@
               on:click={handleFavoriteClick}
               title={token.isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
-              <Star size={16} />
+              <Star size={16} fill={token.isFavorite ? "#ffd700" : "none"} />
             </button>
             <span class="token-symbol">{token.symbol}</span>
           </div>

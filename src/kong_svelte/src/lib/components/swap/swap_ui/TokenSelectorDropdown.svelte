@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onDestroy } from 'svelte';
+    import { onDestroy, onMount } from 'svelte';
     import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
     import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
     import { fade, scale } from 'svelte/transition';
@@ -8,36 +8,53 @@
     import { formatBalance, formatTokenValue } from '$lib/utils/tokenFormatters';
     import { browser } from '$app/environment';
     import Portal from 'svelte-portal';
+    import { Star } from 'lucide-svelte';
   
-    export let show = false;
-    export let onSelect: (token: FE.Token) => void;
-    export let onClose: () => void;
-    export let currentToken: FE.Token;
-    export let otherPanelToken: FE.Token | null = null;
-    export let expandDirection: 'up' | 'down' = 'down';
+    const props = $props();
+    const { 
+      show = false,
+      onSelect,
+      onClose,
+      currentToken,
+      otherPanelToken = null,
+      expandDirection = 'down'
+    } = props;
   
-    let searchQuery = "";
+    let searchQuery = $state("");
     let searchInput: HTMLInputElement;
     let dropdownElement: HTMLDivElement;
-    let hideZeroBalances = false;
-    let isMobile = false;
-    let sortDirection = 'desc';
+    let hideZeroBalances = $state(false);
+    let isMobile = $state(false);
+    let sortDirection = $state('desc');
+    let standardFilter = $state("all");
+    let favorites = $derived($tokenStore.getFavorites());
+    let favoriteCount = $derived($formattedTokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
 
     // Check if we're on mobile
-    $: if (browser) {
-      isMobile = window.innerWidth <= 768;
-      window.addEventListener('resize', () => {
+    $effect(() => {
+      if (browser) {
         isMobile = window.innerWidth <= 768;
-      });
-    }
+        const handleResize = () => {
+          isMobile = window.innerWidth <= 768;
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }
+    });
 
     function clearSearch() {
       searchQuery = "";
       searchInput?.focus();
     }
 
+    function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+      e.preventDefault();
+      e.stopPropagation();
+      tokenStore.toggleFavorite(token.canister_id);
+    }
+
     // Filter tokens based on search and balance
-    $: filteredTokens = $formattedTokens
+    let filteredTokens = $derived($formattedTokens
       .filter((token) => {
         if (!token?.symbol || !token?.name) return false;
         
@@ -47,35 +64,54 @@
                token.name.toLowerCase().includes(searchLower) ||
                token.canister_id.toLowerCase() === searchLower;
 
-        // Filter by balance if enabled
-        if (hideZeroBalances) {
-          const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-          return matchesSearch && balance > 0;
-        }
+        if (!matchesSearch) return false;
 
-        return matchesSearch;
+        // Apply standard filter
+        switch (standardFilter) {
+          case "ck":
+            return token.symbol.toLowerCase().startsWith("ck");
+          case "favorites":
+            return tokenStore.isFavorite(token.canister_id);
+          case "all":
+          default:
+            // Apply balance filter if enabled
+            if (hideZeroBalances) {
+              const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+              return balance > 0;
+            }
+            return true;
+        }
       })
       .sort((a, b) => {
+        // Sort by favorites first
+        const aFavorite = tokenStore.isFavorite(a.canister_id);
+        const bFavorite = tokenStore.isFavorite(b.canister_id);
+        if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+        
+        // Then sort by balance
         const balanceA = Number($tokenStore.balances[a.canister_id]?.in_tokens || 0);
         const balanceB = Number($tokenStore.balances[b.canister_id]?.in_tokens || 0);
         return sortDirection === 'desc' ? balanceB - balanceA : balanceA - balanceB;
-      });
+      }));
 
     function getStaggerDelay(index: number) {
       return index * 30; // 30ms delay between each item
     }
 
     // Load token logos
-    $: {
+    $effect(() => {
       filteredTokens.forEach(token => {
         if (!$tokenLogoStore[token.canister_id]) {
           getTokenLogo(token.canister_id);
         }
       });
-    }
+    });
   
     function handleSelect(token: FE.Token) {
-      onSelect(token);
+      onSelect({
+        ...token,
+        balance: BigInt(token.balance?.toString() || '0')
+      });
       searchQuery = "";
     }
   
@@ -101,13 +137,15 @@
     }
   
     // Focus search input when dropdown opens
-    $: if (show) {
-      setTimeout(() => {
-        searchInput?.focus();
-        window.addEventListener('click', handleClickOutside);
-        window.addEventListener('keydown', handleKeydown);
-      }, 0);
-    }
+    $effect(() => {
+      if (show) {
+        setTimeout(() => {
+          searchInput?.focus();
+          window.addEventListener('click', handleClickOutside);
+          window.addEventListener('keydown', handleKeydown);
+        }, 0);
+      }
+    });
 
     // Cleanup event listeners
     function cleanup() {
@@ -116,13 +154,17 @@
     }
 
     onDestroy(cleanup);
+
+    onMount(async () => {
+      await tokenStore.loadFavorites();
+    });
 </script>
 
 {#if show}
   <Portal target="body">
     <div 
       class="modal-backdrop"
-      on:click|stopPropagation={() => onClose()}
+      on:click={() => onClose()}
       transition:fade={{ duration: 200 }}
     >
       <div
@@ -134,7 +176,7 @@
           opacity: 0,
           easing: cubicOut,
         }}
-        on:click|stopPropagation
+        on:click={(e) => e.stopPropagation()}
       >
         <div class="modal-content">
           <header class="modal-header">
@@ -156,11 +198,14 @@
                   type="text"
                   placeholder="Search tokens"
                   class="search-input"
-                  on:click|stopPropagation
+                  on:click={(e) => e.stopPropagation()}
                 />
                 <button 
                   class="action-button"
-                  on:click|stopPropagation={searchQuery ? clearSearch : handlePaste}
+                  on:click={(e) => {
+                    e.stopPropagation();
+                    searchQuery ? clearSearch() : handlePaste();
+                  }}
                 >
                   {#if searchQuery}
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -178,6 +223,36 @@
             </div>
 
             <div class="filter-bar">
+              <div class="filter-buttons">
+                <button
+                  on:click={() => standardFilter = "all"}
+                  class="filter-btn"
+                  class:active={standardFilter === "all"}
+                  aria-label="Show all tokens"
+                  data-text="All"
+                >
+                  All
+                </button>
+                <button
+                  on:click={() => standardFilter = "ck"}
+                  class="filter-btn"
+                  class:active={standardFilter === "ck"}
+                  aria-label="Show CK tokens"
+                  data-text="CK"
+                >
+                  CK
+                </button>
+                <button
+                  on:click={() => standardFilter = "favorites"}
+                  class="filter-btn"
+                  class:active={standardFilter === "favorites"}
+                  aria-label="Show favorite tokens"
+                  data-text="Favorites ({favoriteCount})"
+                >
+                  Favorites ({favoriteCount})
+                </button>
+              </div>
+
               <div class="filter-options">
                 <label class="filter-toggle">
                   <input
@@ -220,7 +295,8 @@
                   class="token-item"
                   class:selected={currentToken?.canister_id === token.canister_id}
                   class:disabled={otherPanelToken?.canister_id === token.canister_id}
-                  on:click|stopPropagation={() => {
+                  on:click={(e) => {
+                    e.stopPropagation();
                     if (otherPanelToken?.canister_id !== token.canister_id) {
                       handleSelect(token);
                     }
@@ -233,14 +309,27 @@
                       class="token-logo"
                     />
                     <div class="token-details">
-                      <span class="token-symbol">{token.symbol}</span>
+                      <div class="token-symbol-row">
+                        <button 
+                          class="favorite-button"
+                          class:active={tokenStore.isFavorite(token.canister_id)}
+                          on:click={(e) => handleFavoriteClick(e, token)}
+                          title={tokenStore.isFavorite(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <Star 
+                            size={14} 
+                            fill={tokenStore.isFavorite(token.canister_id) ? "#ffd700" : "none"} 
+                          />
+                        </button>
+                        <span class="token-symbol">{token.symbol}</span>
+                      </div>
                       <span class="token-name">{token.name}</span>
                     </div>
                   </div>
                   <div class="token-right">
                     {#if $tokenStore.balances[token.canister_id]}
                       <span class="token-balance">
-                        {formatBalance($tokenStore.balances[token.canister_id].in_tokens, token.decimals)}
+                        {formatBalance($tokenStore.balances[token.canister_id].in_tokens.toString(), token.decimals)}
                       </span>
                     {/if}
                     {#if currentToken?.canister_id === token.canister_id}
@@ -353,7 +442,42 @@
 
   .filter-bar {
     @apply px-4 py-3 border-b border-[#2a2d3d];
-    @apply bg-[#15161c];
+    @apply bg-[#15161c] space-y-3;
+  }
+
+  .filter-buttons {
+    @apply flex flex-wrap gap-2 mb-2 justify-center items-center border-b border-[#2a2d3d];
+  } 
+
+  .filter-btn {
+    @apply px-4 pb-2 flex text-white/80 text-sm;
+    @apply relative;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .filter-btn::before {
+    content: attr(data-text);
+    @apply hidden absolute left-0 font-semibold;
+    width: max-content;
+  }
+
+  .filter-btn:hover,
+  .filter-btn.active {
+    @apply text-yellow-500 font-semibold;
+  }
+
+  .filter-btn::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-[2px];
+    @apply scale-x-0 bg-yellow-300;
+    @apply transition-transform duration-200;
+    transform-origin: center;
+  }
+
+  .filter-btn:hover::after,
+  .filter-btn.active::after {
+    @apply scale-x-100;
   }
 
   .filter-options {
@@ -429,6 +553,19 @@
 
   .token-details {
     @apply flex flex-col gap-0.5;
+  }
+
+  .token-symbol-row {
+    @apply flex items-center gap-2;
+  }
+
+  .favorite-button {
+    @apply p-1 rounded-md text-white/50 bg-white/5
+           transition-all duration-200 hover:bg-white/10 hover:text-white;
+  }
+
+  .favorite-button.active {
+    @apply text-yellow-300 bg-yellow-300/10;
   }
 
   .token-symbol {

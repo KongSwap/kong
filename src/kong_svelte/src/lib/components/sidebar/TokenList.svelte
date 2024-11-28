@@ -30,6 +30,10 @@
   // Subscribe to token store updates
   $: storeBalances = $tokenStore.balances;
   
+  onMount(async () => {
+    await tokenStore.loadFavorites();
+  });
+  
   // At the start of the component, add validation logging
   $: {
     if (tokens) {
@@ -65,7 +69,7 @@
         balance: balance.toString(),
         searchableText: `${token.name || ''} ${token.symbol || ''} ${token.canister_id || ''}`.toLowerCase(),
         canister_id: token.canister_id?.toLowerCase() || '',
-        isFavorite: Boolean(formattedToken?.isFavorite)
+        isFavorite: tokenStore.isFavorite(token.canister_id)
       };
     })
     .filter(token => token && token.canister_id) // Filter out any malformed tokens
@@ -275,7 +279,7 @@
         <div class="token-row-wrapper" transition:slide={{ duration: 200 }}>
           <TokenRow
             {token}
-            on:toggleFavorite={() => toggleFavoriteToken(token.canister_id)}
+            on:toggleFavorite={() => tokenStore.toggleFavorite(token.canister_id)}
           />
           {#if searchQuery && searchMatches[token.canister_id]?.type === 'canister'}
             <div class="match-indicator" transition:fade>

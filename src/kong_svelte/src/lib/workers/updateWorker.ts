@@ -315,7 +315,46 @@ class WorkerImpl implements WorkerApi {
     }
   }
 
-  async preloadAsset(url: string): Promise<string> {
+  private async verifyAssetResponse(response: Response, url: string): Promise<Blob> {
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    
+    // For SVGs, verify the content
+    if (url.endsWith('.svg')) {
+      const text = await blob.text();
+      if (!text.includes('<svg')) {
+        throw new Error('Invalid SVG content');
+      }
+      return blob;
+    }
+    
+    // For images, just verify the blob type
+    if (blob.type.startsWith('image/')) {
+      // In a worker we can't use Image, so we'll just verify the blob type
+      return blob;
+    }
+    
+    return blob;
+  }
+
+  private async fetchWithRetry(url: string, retries = 3): Promise<Response> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url);
+        if (response.ok) return response;
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+      }
+    }
+    throw new Error(`Failed to fetch after ${retries} retries`);
+  }
+
+  public async preloadAsset(url: string): Promise<string> {
     if (this.preloadedAssets.has(url)) {
       return url;
     }
@@ -326,64 +365,15 @@ class WorkerImpl implements WorkerApi {
     }
 
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'force-cache',
-        credentials: 'same-origin'
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const contentType = response.headers.get("Content-Type") || "";
-      const extension = url.split('.').pop()?.toLowerCase();
-
-      // Handle different types of assets
-      if (extension === 'svg' || contentType.includes('svg')) {
-        const text = await response.text();
-        if (!text.includes('<svg')) {
-          throw new Error('Invalid SVG content');
-        }
-        this.preloadedAssets.add(url);
-        return url;
-      } else if (
-        contentType.startsWith('image/') ||
-        ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(extension || '')
-      ) {
-        // Create blob URL for images
-        const blob = await response.blob();
-        const objectURL = URL.createObjectURL(blob);
-        this.objectUrls.add(objectURL); // Track for cleanup
-        this.preloadedAssets.add(url);
-        
-        // Verify the blob is loadable
-        await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('GET', objectURL, true);
-          xhr.responseType = 'blob';
-          xhr.onload = () => {
-            if (xhr.status === 200) {
-              resolve(void 0);
-            } else {
-              reject(new Error(`Failed to verify blob: ${xhr.statusText}`));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Failed to verify blob'));
-          xhr.send();
-        });
-
-        return url; // Return original URL since it's now cached
-      }
-
-      // For other types of assets
+      const response = await this.fetchWithRetry(url);
+      const blob = await this.verifyAssetResponse(response, url);
+      const objectURL = URL.createObjectURL(blob);
+      this.objectUrls.add(objectURL); // Track for cleanup
       this.preloadedAssets.add(url);
-      return url;
-
+      return objectURL;
     } catch (error) {
-      console.error(`Worker: Failed to preload asset ${url}:`, error);
-      throw error;
+      console.error(`Worker: Failed to load ${url}:`, error);
+      return url; // Return original URL as fallback
     }
   }
 

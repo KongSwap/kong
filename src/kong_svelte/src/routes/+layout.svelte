@@ -126,7 +126,7 @@
         {#key currentPath}
           <div
             class="w-full h-full"
-            in:fade={{ duration: skipTransition ? 0 : 200, delay: skipTransition ? 0 : 200 }}
+            in:fade={{ duration: 250 }}
           >
             {@render children?.()}
           </div>

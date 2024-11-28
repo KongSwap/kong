@@ -1,12 +1,23 @@
 <script lang="ts">  
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { Star } from 'lucide-svelte';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { createEventDispatcher } from 'svelte';
 
   interface TokenRowProps {
     token: FE.Token;
     onClick?: () => void;
   }
   let { token, onClick }: TokenRowProps = $props();
+  const dispatch = createEventDispatcher();
+
+  function handleFavoriteClick(e: MouseEvent) {
+    e.stopPropagation();
+    tokenStore.toggleFavorite(token.canister_id);
+  }
+
+  $: isFavorite = tokenStore.isFavorite(token.canister_id);
 </script>
 
 {#if token}
@@ -17,7 +28,17 @@
         <TokenImages tokens={[token]} size={24} />
       </div>
       <div class="text">
-        <span class="symbol">{token.symbol}</span>
+        <div class="symbol-row">
+          <button 
+            class="favorite-button"
+            class:active={isFavorite}
+            on:click={handleFavoriteClick}
+            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Star size={14} fill={isFavorite ? "#ffd700" : "none"} />
+          </button>
+          <span class="symbol">{token.symbol}</span>
+        </div>
         <span class="name" title={token.name}>{token.name}</span>
       </div>
     </div>
@@ -56,6 +77,19 @@
 
   .text {
     @apply flex flex-col min-w-0 gap-0.5;
+  }
+
+  .symbol-row {
+    @apply flex items-center gap-2;
+  }
+
+  .favorite-button {
+    @apply p-1 rounded-md text-white/50 bg-white/5
+           transition-all duration-200 hover:bg-white/10 hover:text-white;
+  }
+
+  .favorite-button.active {
+    @apply text-yellow-300 bg-yellow-300/10;
   }
 
   .symbol {

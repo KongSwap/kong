@@ -1,7 +1,8 @@
 <script lang="ts">
-    import { Search } from "lucide-svelte";
+    import { Search, Star } from "lucide-svelte";
     import { tokenStore } from "$lib/services/tokens/tokenStore";
     import Modal from "$lib/components/common/Modal.svelte";
+    import TokenRowCompact from "$lib/components/sidebar/TokenRowCompact.svelte";
   
     export let show: boolean = false;
     export let tokens: FE.Token[] = [];
@@ -10,10 +11,39 @@
     export let onClose: () => void;
     export let onSelect: (token: FE.Token) => void;
 
-    $: filteredTokens = tokens.filter((token) =>
-      token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      token.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let standardFilter = $state("all");
+    let favoriteCount = $derived(tokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
+
+    $: filteredTokens = tokens
+      .filter((token) => {
+        // First apply search filter
+        const matchesSearch = searchQuery ? (
+          token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          token.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ) : true;
+
+        if (!matchesSearch) return false;
+
+        // Then apply standard filter
+        switch (standardFilter) {
+          case "ck":
+            return token.symbol.toLowerCase().startsWith("ck");
+          case "favorites":
+            return tokenStore.isFavorite(token.canister_id);
+          case "all":
+          default:
+            return true;
+        }
+      })
+      .sort((a, b) => {
+        // Sort by favorites first
+        const aFavorite = tokenStore.isFavorite(a.canister_id);
+        const bFavorite = tokenStore.isFavorite(b.canister_id);
+        if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+        
+        // Then sort by symbol
+        return a.symbol.localeCompare(b.symbol);
+      });
 </script>
 
 <Modal isOpen={show} {onClose} title="Select Token" variant="green">
@@ -45,35 +75,42 @@
       />
     </div>
 
+    <div class="filter-buttons">
+      <button
+        onclick={() => standardFilter = "all"}
+        class="filter-btn"
+        class:active={standardFilter === "all"}
+        aria-label="Show all tokens"
+      >
+        All
+      </button>
+      <button
+        onclick={() => standardFilter = "ck"}
+        class="filter-btn"
+        class:active={standardFilter === "ck"}
+        aria-label="Show CK tokens"
+      >
+        CK
+      </button>
+      <button
+        onclick={() => standardFilter = "favorites"}
+        class="filter-btn"
+        class:active={standardFilter === "favorites"}
+        aria-label="Show favorite tokens"
+      >
+        Favorites ({favoriteCount})
+      </button>
+    </div>
+
     <div class="space-y-2 max-h-96 overflow-y-auto">
       {#each filteredTokens as token}
-        <button
-          class="w-full px-4 py-3 flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
-          on:click={() => {
+        <TokenRowCompact
+          {token}
+          onClick={() => {
             onSelect(token);
             onClose();
           }}
-        >
-          <div class="flex-1 flex items-center space-x-3">
-            <img
-              src={$tokenStore.logos[token.canister_id] || "/tokens/not_verified.webp"}
-              alt={token.symbol}
-              class="w-8 h-8 rounded-full"
-              on:error={(e) => {
-                // @ts-ignore
-                e.currentTarget.src = "/tokens/not_verified.webp";
-              }}
-            />
-            <div class="flex-1">
-              <div class="font-medium text-gray-900 dark:text-white">
-                {token.symbol}
-              </div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">
-                {token.name}
-              </div>
-            </div>
-          </div>
-        </button>
+        />
       {/each}
     </div>
   </div>
@@ -86,5 +123,18 @@
   
   :global(.dark) .dark\:hover\:bg-gray-700:hover {
     background-color: rgba(55, 65, 81, var(--tw-bg-opacity));
+  }
+
+  .filter-buttons {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .filter-btn {
+    @apply px-4 py-2 rounded-lg bg-black/30 border-2 border-white/10 text-white/80 text-sm font-medium
+           transition-all duration-100 hover:border-white/20 hover:text-white;
+  }
+
+  .filter-btn.active {
+    @apply border-yellow-300/50 text-yellow-300 bg-black/50;
   }
 </style>
