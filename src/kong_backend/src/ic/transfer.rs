@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
-use crate::helpers::nat_helpers::{nat_to_u64, nat_zero};
+use crate::helpers::nat_helpers::nat_to_u64;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 
@@ -16,11 +16,7 @@ pub async fn icp_transfer(
     token: &StableToken,
     created_at_time: Option<&Timestamp>,
 ) -> Result<Nat, String> {
-    // Do not send if amount is less than or equal to gas fee
     let amount = Tokens::from_e8s(nat_to_u64(amount).ok_or("Invalid transfer amount")?);
-    if amount <= DEFAULT_FEE {
-        return Ok(nat_zero());
-    };
 
     let transfer_args = TransferArgs {
         memo: Memo(0),
@@ -59,11 +55,6 @@ pub async fn icrc1_transfer(
     token: &StableToken,
     created_at_time: Option<u64>,
 ) -> Result<Nat, String> {
-    // Do not send if amount is less than or equal to gas fee
-    if *amount <= token.fee() {
-        return Ok(nat_zero());
-    };
-
     let id = *token.canister_id().ok_or("Invalid principal id")?;
 
     let transfer_args: TransferArg = TransferArg {
@@ -93,6 +84,9 @@ pub async fn icrc2_transfer_from(
     from_principal_id: &Account,
     to_principal_id: &Account,
 ) -> Result<Nat, String> {
+    if !token.is_icrc2() {
+        return Err("Token does not support ICRC2".to_string());
+    }
     let id = *token.canister_id().ok_or("Invalid principal id")?;
 
     let transfer_from_args = TransferFromArgs {
@@ -105,17 +99,14 @@ pub async fn icrc2_transfer_from(
         created_at_time: None,
     };
 
-    let block_id = match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(
-        id,
-        "icrc2_transfer_from",
-        (transfer_from_args,),
-    )
-    .await
-    .map_err(|e| e.1)?
-    .0
-    {
-        Ok(block_id) => block_id,
-        Err(e) => Err(e.to_string())?,
-    };
+    let block_id =
+        match ic_cdk::call::<(TransferFromArgs,), (Result<Nat, TransferFromError>,)>(id, "icrc2_transfer_from", (transfer_from_args,))
+            .await
+            .map_err(|e| e.1)?
+            .0
+        {
+            Ok(block_id) => block_id,
+            Err(e) => Err(e.to_string())?,
+        };
     Ok(block_id)
 }

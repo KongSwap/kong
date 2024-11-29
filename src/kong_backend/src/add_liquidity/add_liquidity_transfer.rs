@@ -214,7 +214,7 @@ async fn process_add_liquidity(
             Ok(())
         }
         // either icrc1_transfer could not be verified (transfer_id_0.is_err()) or must be an icrc2_transfer_from (tx_id_0.is_none())
-        // which is handled a bit later on
+        // which is handled later on
         Err(e) => Err(e),
     };
 
@@ -234,7 +234,7 @@ async fn process_add_liquidity(
         let tok_id_1 = tok_1.token_id();
         match pool_map::get_by_token_ids(tok_id_0, tok_id_1) {
             Some(pool) => {
-                // now that we know the pool exists, if transfer_0.is_err() and tx_id.is_none() then it's an icrc2_transfer_from
+                // if transfer_0.is_err() and tx_id.is_none() then it's an icrc2_transfer_from
                 if transfer_0.is_err() && tx_id_0.is_none() {
                     transfer_0 =
                         match transfer_from_token(request_id, &caller_id, &TokenIndex::Token0, tok_0, &add_amount_0, &kong_backend, ts)

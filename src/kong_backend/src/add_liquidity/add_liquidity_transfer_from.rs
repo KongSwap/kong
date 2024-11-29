@@ -20,7 +20,8 @@ use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::{stable_token::StableToken, token::Token};
+use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token::Token;
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{add_liquidity_tx::AddLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
@@ -72,6 +73,13 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
     // add_amount_0 and add_amount_1 are the amounts to be added to the pool with the current state
     // these are the amounts that will be transferred to the pool
     let (pool, add_amount_0, add_amount_1, _) = calculate_amounts(&args.token_0, &args.amount_0, &args.token_1, &args.amount_1)?;
+
+    // make sure tokens support ICRC2
+    let token_0 = pool.token_0();
+    let token_1 = pool.token_1();
+    if !token_0.is_icrc2() || !token_1.is_icrc2() {
+        return Err("Tokens must support ICRC2".to_string());
+    }
 
     // make sure user is registered, if not create a new user
     let user_id = user_map::insert(None)?;

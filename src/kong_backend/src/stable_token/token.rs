@@ -20,6 +20,9 @@ pub trait Token {
     fn canister_id(&self) -> Option<&Principal>;
     fn decimals(&self) -> u8;
     fn fee(&self) -> Nat;
+    fn is_icrc1(&self) -> bool;
+    fn is_icrc2(&self) -> bool;
+    fn is_icrc3(&self) -> bool;
     fn on_kong(&self) -> bool;
     fn set_on_kong(&mut self, on_kong: bool);
 }
@@ -103,6 +106,27 @@ impl Token for StableToken {
         match self {
             LP(_) => nat_zero(),
             IC(token) => token.fee.clone(),
+        }
+    }
+
+    fn is_icrc1(&self) -> bool {
+        match self {
+            LP(_) => false,
+            IC(token) => token.icrc1,
+        }
+    }
+
+    fn is_icrc2(&self) -> bool {
+        match self {
+            LP(_) => false,
+            IC(token) => token.icrc2,
+        }
+    }
+
+    fn is_icrc3(&self) -> bool {
+        match self {
+            LP(_) => false,
+            IC(token) => token.icrc3,
         }
     }
 
