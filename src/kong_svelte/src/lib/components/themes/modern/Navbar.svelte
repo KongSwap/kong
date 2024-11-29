@@ -25,12 +25,6 @@
   }
 </script>
 
-<Panel 
-  variant="blue" 
-  type="main" 
-  className="modern-nav-mobile nav-panel"
-  roundedBorders={false}
->
   <div class="nav-container-wrapper">
     <div class="nav-container">
       {#if isMobile}
@@ -103,6 +97,7 @@
                 <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
               </svg>
+              <span class="settings-text">Settings</span>
             </div>
           </button>
 
@@ -127,7 +122,6 @@
       {/if}
     </div>
   </div>
-</Panel>
 
 {#if navOpen && isMobile}
   <div class="mobile-menu" transition:fade={{ duration: 200 }}>
@@ -286,13 +280,22 @@
 
   /* Settings Button */
   .settings-btn {
-    padding: 0.75rem;
-    min-width: 40px;
-    width: 40px;
+    padding: 0.75rem 1.25rem;
+    min-width: 120px;
+    width: auto;
+    background: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.15);
   }
 
-  .settings-btn.spinning svg {
-    animation: spin 1s linear infinite;
+  .settings-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+  }
+
+  .settings-text {
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
   /* Wallet Button */
@@ -343,6 +346,10 @@
       width: 36px;
     }
 
+    .settings-text {
+      display: none;
+    }
+
     .wallet-btn {
       min-width: 100px;
     }
@@ -371,7 +378,6 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    max-width: 320px;
     position: relative;
     z-index: 2;
     margin: 0 auto;
@@ -379,7 +385,7 @@
 
   .logo-wide {
     width: 100%;
-    height: 2rem;
+    height: 3rem;
     filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
     transition: all 0.3s ease;
     position: relative;

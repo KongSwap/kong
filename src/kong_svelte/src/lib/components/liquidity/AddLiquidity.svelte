@@ -1,0 +1,562 @@
+<script lang="ts">
+    import { fade } from "svelte/transition";
+    import { onMount } from "svelte";
+    import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
+    import Portal from 'svelte-portal';
+    import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
+    import { PoolService } from '$lib/services/pools/PoolService';
+    import LiquidityPanel from "./LiquidityPanel.svelte";
+    import { addLiquidityStore } from '$lib/services/pools/addLiquidityStore';
+    import { goto } from "$app/navigation";
+
+    export let token0: FE.Token | null = null;
+    export let token1: FE.Token | null = null;
+    export let amount0: string = "0";
+    export let amount1: string = "0";
+    export let token0Balance: string = "0";
+    export let token1Balance: string = "0";
+
+    let loading = false;
+    let error: string | null = null;
+
+    let panels = [
+        { id: "token0", type: "pay", title: "Token 1" },
+        { id: "token1", type: "receive", title: "Token 2" },
+    ];
+
+    // Monitor token props changes
+    $: {
+        console.log("AddLiquidity component tokens:", { token0, token1 });
+    }
+
+    $: {
+        console.log("Component state:", {
+            token0,
+            token1,
+            amount0,
+            amount1,
+            loading,
+            error,
+            buttonText
+        });
+    }
+
+    async function handleInput(index: 0 | 1, event: CustomEvent) {
+        console.log("AddLiquidity handleInput:", { 
+            index, 
+            event,
+            eventDetail: event.detail,
+            value: event.detail?.value || event.detail?.detail?.value
+        });
+        
+        const input = event.detail?.value || event.detail?.detail?.value;
+        if (!input) {
+            console.log("No input value found");
+            return;
+        }
+        
+        // Update the amount immediately
+        if (index === 0) {
+            amount0 = input;
+            console.log("Updated amount0:", amount0);
+        } else {
+            amount1 = input;
+            console.log("Updated amount1:", amount1);
+        }
+
+        // Only calculate other amount if we have both tokens and input is not empty
+        if (token0 && token1 && input !== '') {
+            try {
+                if (index === 0) {
+                    const parsedAmount = parseTokenAmount(input, token0.decimals);
+                    console.log("Calculating amount1 based on input:", parsedAmount.toString());
+                    const result = await PoolService.addLiquidityAmounts(
+                        token0.token,
+                        parsedAmount,
+                        token1.token
+                    );
+                    
+                    if (result.Ok) {
+                        amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
+                        console.log("Updated amount1:", amount1);
+                    }
+                } else {
+                    const parsedAmount = parseTokenAmount(input, token1.decimals);
+                    console.log("Calculating amount0 based on input:", parsedAmount.toString());
+                    const result = await PoolService.addLiquidityAmounts(
+                        token1.token,
+                        parsedAmount,
+                        token0.token
+                    );
+                    
+                    if (result.Ok) {
+                        amount0 = formatTokenAmount(result.Ok.amount_0, token0.decimals);
+                        console.log("Updated amount0:", amount0);
+                    }
+                }
+            } catch (err) {
+                console.error("Error calculating liquidity amounts:", err);
+                error = err.message;
+            }
+        }
+
+        console.log("Final amounts after input:", { amount0, amount1 });
+    }
+
+    function handleTokenSelect(index: 0 | 1, event: CustomEvent) {
+        console.log("AddLiquidity: Token select triggered", { index, event });
+        
+        const button = event.detail.button as HTMLElement;
+        if (!button) {
+            console.log("No button element found in event detail");
+            return;
+        }
+        
+        const rect = button.getBoundingClientRect();
+        const position = {
+            x: rect.right + 8,
+            y: rect.top,
+            height: rect.height,
+            windowHeight: window.innerHeight,
+            windowWidth: window.innerWidth
+        };
+
+        console.log("Opening token selector with position:", position);
+        addLiquidityStore.toggleTokenSelector(
+            index === 0 ? 'token0' : 'token1',
+            position
+        );
+    }
+
+    function handleTokenSelected(token: FE.Token, index: 0 | 1) {
+        console.log("Token selected:", { token, index });
+        if (index === 0) {
+            token0 = token;
+        } else {
+            token1 = token;
+        }
+        
+        addLiquidityStore.closeTokenSelector();
+        console.log("After token selection:", { token0, token1 });
+    }
+
+    async function handleSubmit() {
+        try {
+            loading = true;
+            error = null;
+
+            const parsedAmount0 = parseTokenAmount(amount0, token0.decimals);
+            const parsedAmount1 = parseTokenAmount(amount1, token1.decimals);
+
+            const addLiquidityArgs = {
+                token_0: token0,
+                amount_0: parsedAmount0,
+                token_1: token1,
+                amount_1: parsedAmount1
+            };
+
+            const result = await PoolService.addLiquidity(addLiquidityArgs);
+            
+            if (result.Ok) {
+                amount0 = "0";
+                amount1 = "0";
+                goto("/earn");
+            } else if (result.Err) {
+                error = result.Err;
+            }
+        } catch (err) {
+            console.error('Error submitting liquidity:', err);
+            // If it's a wallet connection issue, show a more user-friendly message
+            if (err.message?.includes('reconnect')) {
+                error = "Please disconnect and reconnect your wallet";
+            } else {
+                error = err instanceof Error ? err.message : 'Failed to add liquidity';
+            }
+        } finally {
+            loading = false;
+        }
+    }
+
+    function handleBack() {
+        goto("/earn");
+    }
+
+    $: {
+        console.log("Button text calculation:", {
+            token0,
+            token1,
+            amount0,
+            amount1,
+            amount0Type: typeof amount0,
+            amount1Type: typeof amount1,
+            amount0Value: Number(amount0),
+            amount1Value: Number(amount1),
+            condition1: !token0 || !token1,
+            condition2: amount0 === "" || amount1 === "",
+            condition3: Number(amount0) === 0 || Number(amount1) === 0
+        });
+    }
+
+    $: buttonText = error 
+        ? error 
+        : !token0 || !token1 
+        ? "Select Tokens" 
+        : !amount0 || !amount1 || parseFloat(amount0) <= 0 || parseFloat(amount1) <= 0
+        ? "Enter Amounts" 
+        : "Add Liquidity";
+
+    // Add store subscription
+    $: tokenSelectorState = $addLiquidityStore;
+
+    let liquidityMode: 'full' | 'custom' = 'full';
+    let isTransitioning = false;
+    let previousMode: 'full' | 'custom' = 'full';
+
+    function handleModeChange(mode: 'full' | 'custom') {
+        if (mode === liquidityMode || isTransitioning) return;
+        isTransitioning = true;
+        previousMode = liquidityMode;
+        setTimeout(() => {
+            liquidityMode = mode;
+            setTimeout(() => {
+                isTransitioning = false;
+            }, 300);
+        }, 150);
+    }
+
+    async function handleReverseTokens() {
+        if (loading) return;
+        
+        const tempToken = token0;
+        const tempAmount = amount0;
+        
+        token0 = token1;
+        token1 = tempToken;
+        amount0 = amount1;
+        amount1 = tempAmount;
+    }
+
+    // Add initial amount calculation
+    onMount(async () => {
+        if (token0 && token1) {
+            try {
+                const result = await PoolService.addLiquidityAmounts(
+                    token0.token,
+                    parseTokenAmount("1", token0.decimals),
+                    token1.token
+                );
+                
+                if (result.Ok) {
+                    amount0 = "1";
+                    amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
+                }
+            } catch (err) {
+                console.error("Error calculating initial liquidity amounts:", err);
+            }
+        }
+    });
+</script>
+
+<div class="swap-wrapper">
+    <div class="swap-container" in:fade={{ duration: 420 }}>
+        <div class="header">
+            <button class="back-button" on:click={handleBack}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Back to Pools
+            </button>
+            <h2>Add Liquidity</h2>
+        </div>
+
+        <div class="panels-container">
+            <div class="panels-wrapper">
+                <div class="panel">
+                    <LiquidityPanel
+                        title={panels[0].title}
+                        token={token0}
+                        amount={amount0}
+                        on:amountChange={(e) => handleInput(0, e)}
+                        on:tokenSelect={(e) => handleTokenSelect(0, e)}
+                        showPrice={false}
+                        disabled={false}
+                        panelType="pay"
+                    />
+                </div>
+
+                <div class="panel">
+                    <LiquidityPanel
+                        title={panels[1].title}
+                        token={token1}
+                        amount={amount1}
+                        onAmountChange={(e) => handleInput(1, e)}
+                        on:tokenSelect={(e) => handleTokenSelect(1, e)}
+                        showPrice={false}
+                        disabled={false}
+                        panelType="receive"
+                    />
+                </div>
+            </div>
+
+            <div class="swap-footer">
+                <button
+                    class="swap-button"
+                    class:error={error}
+                    class:processing={loading}
+                    class:ready={!error}
+                    on:click={handleSubmit}
+                    disabled={!token0 || !token1 || parseFloat(amount0) <= 0 || parseFloat(amount1) <= 0 || loading}
+                >
+                    <div class="button-content">
+                        {#key buttonText}
+                            <span class="button-text" in:fade={{ duration: 200 }}>
+                                {buttonText}
+                            </span>
+                        {/key}
+                        {#if loading}
+                            <div class="loading-spinner"></div>
+                        {/if}
+                    </div>
+                    {#if !error}
+                        <div class="button-glow"></div>
+                    {/if}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{#if $addLiquidityStore.showToken0Selector}
+    <Portal target="body">
+        <TokenSelectorDropdown
+            show={true}
+            currentToken={token0}
+            otherPanelToken={token1}
+            position={$addLiquidityStore.tokenSelectorPosition}
+            onSelect={(token) => handleTokenSelected(token, 0)}
+            onClose={() => addLiquidityStore.closeTokenSelector()}
+        />
+    </Portal>
+{/if}
+
+{#if $addLiquidityStore.showToken1Selector}
+    <Portal target="body">
+        <TokenSelectorDropdown
+            show={true}
+            currentToken={token1}
+            otherPanelToken={token0}
+            position={$addLiquidityStore.tokenSelectorPosition}
+            onSelect={(token) => handleTokenSelected(token, 1)}
+            onClose={() => addLiquidityStore.closeTokenSelector()}
+        />
+    </Portal>
+{/if}
+
+<div class="mode-selector">
+    <div class="mode-selector-background" style="transform: translateX({liquidityMode === 'custom' ? '100%' : '0'})"></div>
+    <button
+        class="mode-button"
+        class:selected={liquidityMode === "full"}
+        class:transitioning={isTransitioning && previousMode === "custom"}
+        on:click={() => handleModeChange('full')}
+    >
+        <span class="mode-text">Full Range</span>
+    </button>
+    <button
+        class="mode-button"
+        class:selected={liquidityMode === "custom"}
+        class:transitioning={isTransitioning && previousMode === "full"}
+        on:click={() => handleModeChange('custom')}
+    >
+        <span class="mode-text">Custom Range</span>
+    </button>
+</div>
+
+<button
+    class="switch-button"
+    class:disabled={loading}
+    on:click={handleReverseTokens}
+    disabled={loading}
+>
+    <div class="switch-button-inner">
+        <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            class="swap-arrow"
+        >
+            <path
+                d="M7 10l5 5 5-5M7 14l5 5 5-5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                fill="none"
+            />
+        </svg>
+    </div>
+</button>
+
+<style lang="postcss">
+    .swap-container {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        gap: 12px;
+    }
+
+    .back-button {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+        font-weight: 500;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .back-button:hover {
+        color: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: white;
+        margin: 0;
+    }
+
+    .panels-container {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .panels-wrapper {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 240px;
+    }
+
+    .panel {
+        position: relative;
+        z-index: 1;
+    }
+
+    .swap-button {
+        @apply relative overflow-hidden;
+        @apply w-full py-3 px-4 rounded-lg;
+        @apply transition-all duration-200 ease-out;
+        @apply disabled:opacity-50 disabled:cursor-not-allowed;
+        margin-top: 4px;
+        background: linear-gradient(135deg, 
+            rgba(55, 114, 255, 0.95) 0%, 
+            rgba(69, 128, 255, 0.95) 100%
+        );
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
+        transform: translateY(0);
+    }
+
+    .swap-button:hover:not(:disabled) {
+        background: linear-gradient(135deg, 
+            rgba(85, 134, 255, 1) 0%, 
+            rgba(99, 148, 255, 1) 100%
+        );
+        border-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 
+            0 4px 12px rgba(55, 114, 255, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .button-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .button-text {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        text-align: center;
+    }
+
+    .loading-spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .button-glow {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            circle at center,
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0) 70%
+        );
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .swap-button:hover .button-glow {
+        opacity: 1;
+    }
+
+    .swap-button.error {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+        box-shadow: none;
+        border: none;
+    }
+
+    .swap-button.processing {
+        background: linear-gradient(135deg, #3772ff 0%, #4580ff 100%);
+        cursor: wait;
+        opacity: 0.8;
+        animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 0.8; }
+        50% { opacity: 0.6; }
+        100% { opacity: 0.8; }
+    }
+</style> 

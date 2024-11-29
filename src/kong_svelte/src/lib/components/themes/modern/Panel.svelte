@@ -35,31 +35,30 @@
   </div>
 </div>
 
-<style lang="postcss">
+<style>
 .modern-panel {
-  @apply relative rounded-xl overflow-hidden;
+  position: relative;
+  overflow: visible;
   background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 
-    0 32px 64px -16px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(32px);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: white;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  border-radius: 16px;
 }
 
 .modern-panel.no-rounded {
-  @apply rounded-none;
+  border-radius: 0;
   border: none !important;
-  border-radius: 0 !important;
 }
 
 .modern-panel.green {
   background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
   border: 1px solid rgba(32, 201, 151, 0.12);
+  box-shadow: 0 0 20px rgba(32, 201, 151, 0.05);
 }
 
 .modern-panel.green.no-rounded {
@@ -69,6 +68,7 @@
 .modern-panel.yellow {
   background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
   border: 1px solid rgba(255, 207, 0, 0.12);
+  box-shadow: 0 0 20px rgba(255, 207, 0, 0.05);
 }
 
 .modern-panel.yellow.no-rounded {
@@ -78,6 +78,7 @@
 .modern-panel.blue {
   background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
   border: 1px solid rgba(0, 122, 255, 0.12);
+  box-shadow: 0 0 20px rgba(0, 122, 255, 0.05);
 }
 
 .modern-panel.blue.no-rounded {
@@ -85,22 +86,16 @@
 }
 
 .modern-panel.main {
-  @apply backdrop-blur-3xl;
+  backdrop-filter: blur(48px);
   background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 32px 64px -16px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
 }
 
 .modern-panel.secondary {
   background: linear-gradient(180deg, rgba(18, 20, 32, 0.98) 0%, rgba(12, 14, 24, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0);
-  box-shadow: 
-    0 24px 48px -12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
 }
 
 .panel {
@@ -111,25 +106,22 @@
 }
 
 .panel:not(.no-rounded) {
-  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 16px;
+  overflow: hidden;
 }
 
 /* Premium edge highlight */
 .panel:not(.no-rounded)::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 2px;
+  inset: 0;
   padding: 1px;
+  border-radius: 16px;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0.03) 50%,
-    rgba(255, 255, 255, 0.01) 100%
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.02) 100%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -142,45 +134,39 @@
 .panel::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   border-radius: 16px;
   background: radial-gradient(
     circle at 50% 0%,
-    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.03) 0%,
     transparent 70%
   );
   pointer-events: none;
 }
 
 /* Glass effect for content */
-:global(.panel > *) {
+.panel > * {
   position: relative;
   z-index: 1;
 }
 
-.auto-size {
-}
-
 /* Custom scrollbar styles */
-:global(.modern-panel *::-webkit-scrollbar) {
+.modern-panel *::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
-:global(.modern-panel *::-webkit-scrollbar-track) {
+.modern-panel *::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 2px;
 }
 
-:global(.modern-panel *::-webkit-scrollbar-thumb) {
+.modern-panel *::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 2px;
 }
 
-:global(.modern-panel *::-webkit-scrollbar-thumb:hover) {
+.modern-panel *::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
@@ -196,6 +182,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 100%;
 }
 
 .panel-content {

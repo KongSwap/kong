@@ -457,24 +457,25 @@
         <button
           class="switch-button"
           class:disabled={isProcessing}
+          class:rotating={isRotating}
           on:click={handleReverseTokens}
           disabled={isProcessing}
         >
           <div class="switch-button-inner">
             <svg
+              class="switch-icon"
+              viewBox="0 0 24 24"
               width="24"
               height="24"
-              viewBox="0 0 24 24"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              class="swap-arrow"
             >
               <path
-                d="M7 10l5 5 5-5M7 14l5 5 5-5"
+                d="M7.5 3.5L4.5 6.5L7.5 9.5M4.5 6.5H16.5C18.71 6.5 20.5 8.29 20.5 10.5C20.5 11.48 20.14 12.37 19.55 13.05M16.5 20.5L19.5 17.5L16.5 14.5M19.5 17.5H7.5C5.29 17.5 3.5 15.71 3.5 13.5C3.5 12.52 3.86 11.63 4.45 10.95"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.5"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                fill="none"
               />
             </svg>
           </div>
@@ -671,7 +672,7 @@
 
   .swap-button {
     @apply relative overflow-hidden;
-    @apply w-full py-3 px-4 rounded-lg;
+    @apply w-full py-4 px-6;
     @apply transition-all duration-200 ease-out;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
     margin-top: 4px;
@@ -682,6 +683,8 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
     transform: translateY(0);
+    min-height: 64px;
+    border-radius: 16px;
   }
 
   .swap-button:hover:not(:disabled) {
@@ -749,19 +752,19 @@
 
   .button-text {
     @apply text-white font-semibold;
-    font-size: 0.9375rem;
+    font-size: 1.125rem;
     letter-spacing: 0.01em;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 120px;
+    min-width: 140px;
     text-align: center;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   }
 
   .loading-spinner {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: white;
     border-radius: 50%;
@@ -814,7 +817,28 @@
     border: none;
     border-radius: 50%;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background: transparent;
+    background: #1C2333;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .switch-button:hover:not(.disabled) {
+    background: #252B3D;
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .switch-button:active:not(.disabled) {
+    transform: translate(-50%, -50%) scale(0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .switch-button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #1C2333;
   }
 
   .switch-button-inner {
@@ -823,39 +847,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .switch-button:hover:not(.disabled) .switch-button-inner {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(0, 122, 255, 0.15);
+  .switch-button.rotating .switch-button-inner {
+    transform: rotate(180deg);
   }
 
-  .switch-button:active:not(.disabled) .switch-button-inner {
-    transform: scale(0.95);
+  .switch-icon {
+    transition: all 0.2s ease;
+    opacity: 0.9;
+    width: 24px;
+    height: 24px;
+    color: currentColor;
   }
 
-  .switch-button.disabled {
-    cursor: not-allowed;
-  }
-
-  .switch-button.disabled .switch-button-inner {
-    opacity: 0.5;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .swap-arrow {
-    color: rgba(255, 255, 255, 0.9);
-    transition: color 0.2s ease;
-  }
-
-  .switch-button:hover:not(.disabled) .swap-arrow {
-    color: white;
+  .switch-button:hover:not(.disabled) .switch-icon {
+    transform: scale(1.1);
+    opacity: 1;
   }
 
   .panels-container {

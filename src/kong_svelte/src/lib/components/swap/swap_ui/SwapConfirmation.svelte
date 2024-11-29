@@ -234,14 +234,24 @@
       </div>
 
       <div class="button-container">
-        <Button
-          text={isCountingDown ? `Confirming ${countdown}...` : "Confirm Swap"}
-          variant="yellow"
-          size="big"
-          onClick={handleConfirm}
+        <button
+          class="swap-button"
+          class:processing={isLoading || isCountingDown}
+          on:click={handleConfirm}
           disabled={isLoading || isCountingDown}
-          width="100%"
-        />
+        >
+          <div class="button-content">
+            <span class="button-text">
+              {isCountingDown ? `Confirming ${countdown}...` : "Confirm Swap"}
+            </span>
+            {#if isLoading || isCountingDown}
+              <div class="loading-spinner"></div>
+            {/if}
+          </div>
+          {#if !isLoading && !isCountingDown}
+            <div class="button-glow"></div>
+          {/if}
+        </button>
       </div>
     </div>
   {/if}
@@ -260,7 +270,6 @@
     flex-direction: column;
     gap: 16px;
     overflow-y: auto;
-    padding-right: 8px;
     margin-bottom: 16px;
   }
 
@@ -337,5 +346,112 @@
     color: rgb(239, 68, 68);
     font-size: 16px;
     max-width: 300px;
+  }
+
+  .swap-button {
+    position: relative;
+    width: 100%;
+    padding: 16px 24px;
+    min-height: 64px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, 
+      rgba(55, 114, 255, 0.95) 0%, 
+      rgba(69, 128, 255, 0.95) 100%
+    );
+    box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
+    transform: translateY(0);
+    transition: all 0.2s ease-out;
+    overflow: hidden;
+  }
+
+  .swap-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, 
+      rgba(85, 134, 255, 1) 0%, 
+      rgba(99, 148, 255, 1) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 
+      0 4px 12px rgba(55, 114, 255, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .swap-button:active:not(:disabled) {
+    transform: translateY(0);
+    background: linear-gradient(135deg, 
+      rgba(45, 104, 255, 1) 0%, 
+      rgba(59, 118, 255, 1) 100%
+    );
+    box-shadow: 0 2px 4px rgba(55, 114, 255, 0.2);
+    transition-duration: 0.1s;
+  }
+
+  .swap-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .button-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .button-text {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    min-width: 140px;
+    text-align: center;
+  }
+
+  .loading-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .button-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0) 70%
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .swap-button:hover .button-glow {
+    opacity: 1;
+  }
+
+  .swap-button.processing {
+    animation: pulse 2s infinite ease-in-out;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pulse {
+    0% { opacity: 0.8; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.8; }
   }
 </style>

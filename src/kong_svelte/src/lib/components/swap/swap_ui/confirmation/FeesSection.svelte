@@ -31,29 +31,30 @@
 
 <style>
   .section {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 12px;
+    background: rgba(26, 27, 35, 0.6);
+    border: 1px solid rgba(42, 45, 61, 1);
+    border-radius: 12px;
+    padding: 16px;
   }
 
   .fee-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 8px 0;
   }
 
   .fee-row:not(:last-child) {
-    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .label {
-    color: #ffd700;
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .amount {
-    font-size: 1rem;
+    font-size: 16px;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -61,11 +62,10 @@
   }
 
   .value {
-    color: #ffffff;
+    color: white;
   }
 
   .token {
-    color: #ffd700;
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
   }
 </style>
