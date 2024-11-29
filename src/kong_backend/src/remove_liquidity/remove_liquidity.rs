@@ -299,9 +299,86 @@ fn update_liquidity_pool(
     Ok(())
 }
 
+// send payout tokens to user and final balance integrity checks
+// - send payout token_0 and token_1 to user
+// - any failures to send tokens will be saved as claims
+// - check the actual balances of the canister vs. expected balances in stable memory
+// - update successsful request reply
+#[allow(clippy::too_many_arguments)]
+async fn send_payout_tokens(
+    request_id: u64,
+    user_id: u32,
+    pool: &StablePool,
+    payout_amount_0: &Nat,
+    payout_lp_fee_0: &Nat,
+    payout_amount_1: &Nat,
+    payout_lp_fee_1: &Nat,
+    remove_lp_token_amount: &Nat,
+    ts: u64,
+) -> RemoveLiquidityReply {
+    // Token0
+    let token_0 = pool.token_0();
+    // Token1
+    let token_1 = pool.token_1();
+
+    let caller_id = caller_id();
+    let mut transfer_ids = Vec::new();
+    let mut claim_ids = Vec::new();
+
+    // send payout token_0 to the user
+    transfer_token(
+        request_id,
+        user_id,
+        &caller_id,
+        TokenIndex::Token0,
+        &token_0,
+        payout_amount_0,
+        payout_lp_fee_0,
+        &mut transfer_ids,
+        &mut claim_ids,
+        ts,
+    )
+    .await;
+
+    // send payout token_1 to the user
+    transfer_token(
+        request_id,
+        user_id,
+        &caller_id,
+        TokenIndex::Token1,
+        &token_1,
+        payout_amount_1,
+        payout_lp_fee_1,
+        &mut transfer_ids,
+        &mut claim_ids,
+        ts,
+    )
+    .await;
+
+    let remove_liquidity_tx = RemoveLiquidityTx::new_success(
+        pool.pool_id,
+        user_id,
+        request_id,
+        payout_amount_0,
+        payout_lp_fee_0,
+        payout_amount_1,
+        payout_lp_fee_1,
+        remove_lp_token_amount,
+        &transfer_ids,
+        &claim_ids,
+        ts,
+    );
+    let tx_id = tx_map::insert(&StableTx::RemoveLiquidity(remove_liquidity_tx.clone()));
+    let reply = create_remove_liquidity_reply_with_tx_id(tx_id, &remove_liquidity_tx);
+    request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
+
+    reply
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn transfer_token(
     request_id: u64,
+    user_id: u32,
     to_principal_id: &Account,
     token_index: TokenIndex,
     token: &StableToken,
@@ -309,7 +386,6 @@ async fn transfer_token(
     payout_lp_fee: &Nat,
     transfer_ids: &mut Vec<u64>,
     claim_ids: &mut Vec<u64>,
-    user_id: u32,
     ts: u64,
 ) {
     let token_id = token.token_id();
@@ -361,82 +437,6 @@ async fn transfer_token(
             };
         }
     }
-}
-
-// send payout tokens to user and final balance integrity checks
-// - send payout token_0 and token_1 to user
-// - any failures to send tokens will be saved as claims
-// - check the actual balances of the canister vs. expected balances in stable memory
-// - update successsful request reply
-#[allow(clippy::too_many_arguments)]
-async fn send_payout_tokens(
-    request_id: u64,
-    user_id: u32,
-    pool: &StablePool,
-    payout_amount_0: &Nat,
-    payout_lp_fee_0: &Nat,
-    payout_amount_1: &Nat,
-    payout_lp_fee_1: &Nat,
-    remove_lp_token_amount: &Nat,
-    ts: u64,
-) -> RemoveLiquidityReply {
-    // Token0
-    let token_0 = pool.token_0();
-    // Token1
-    let token_1 = pool.token_1();
-
-    let caller_id = caller_id();
-    let mut transfer_ids = Vec::new();
-    let mut claim_ids = Vec::new();
-
-    // send payout token_0 to the user
-    transfer_token(
-        request_id,
-        &caller_id,
-        TokenIndex::Token0,
-        &token_0,
-        payout_amount_0,
-        payout_lp_fee_0,
-        &mut transfer_ids,
-        &mut claim_ids,
-        user_id,
-        ts,
-    )
-    .await;
-
-    // send payout token_1 to the user
-    transfer_token(
-        request_id,
-        &caller_id,
-        TokenIndex::Token1,
-        &token_1,
-        payout_amount_1,
-        payout_lp_fee_1,
-        &mut transfer_ids,
-        &mut claim_ids,
-        user_id,
-        ts,
-    )
-    .await;
-
-    let remove_liquidity_tx = RemoveLiquidityTx::new_success(
-        pool.pool_id,
-        user_id,
-        request_id,
-        payout_amount_0,
-        payout_lp_fee_0,
-        payout_amount_1,
-        payout_lp_fee_1,
-        remove_lp_token_amount,
-        &transfer_ids,
-        &claim_ids,
-        ts,
-    );
-    let tx_id = tx_map::insert(&StableTx::RemoveLiquidity(remove_liquidity_tx.clone()));
-    let reply = create_remove_liquidity_reply_with_tx_id(tx_id, &remove_liquidity_tx);
-    request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
-
-    reply
 }
 
 fn return_tokens(request_id: u64, pool: &StablePool, transfer_lp_token: &Result<(), String>, remove_lp_token_amount: &Nat, ts: u64) {

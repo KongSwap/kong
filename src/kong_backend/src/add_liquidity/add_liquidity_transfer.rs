@@ -348,7 +348,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("AddLiq #{} failed: {}", request_id, e));
+                return Err(format!("AddLiq #{} failed. {}", request_id, e));
             }
         };
 
@@ -432,12 +432,6 @@ async fn verify_transfer_token(
     }
 }
 
-// failed transaction
-// return any tokens back to the user
-// - icrc1_transfer of token_0 and token_1 the user deposited
-// - icrc2_transfer_from of token_0 and token_1 that was executed
-// - any failures to return tokens back to users are saved as claims
-// - update failed request reply
 #[allow(clippy::too_many_arguments)]
 async fn return_tokens(
     request_id: u64,
@@ -455,90 +449,36 @@ async fn return_tokens(
 ) {
     let mut claim_ids = Vec::new();
 
-    // make sure token is valid and transfer was verified. If so, then return the token back to the user
     if token_0.is_some() && transfer_0.is_ok() {
-        request_map::update_status(request_id, StatusCode::ReturnToken0, None);
-
         let token_0 = token_0.unwrap();
-        let token_id_0 = token_0.token_id();
-        let fee_0 = token_0.fee();
-
-        let amount_0_with_gas = nat_subtract(amount_0, &fee_0).unwrap_or(nat_zero());
-        match icrc1_transfer(&amount_0_with_gas, to_principal_id, token_0, None).await {
-            Ok(block_id) => {
-                let transfer_id = transfer_map::insert(&StableTransfer {
-                    transfer_id: 0,
-                    request_id,
-                    is_send: false,
-                    amount: amount_0_with_gas,
-                    token_id: token_id_0,
-                    tx_id: TxId::BlockIndex(block_id),
-                    ts,
-                });
-                transfer_ids.push(transfer_id);
-                request_map::update_status(request_id, StatusCode::ReturnToken0Success, None);
-            }
-            Err(e) => {
-                // attempt to return token_0 failed, so save as a claim
-                let message = match claim_map::insert(&StableClaim::new(
-                    user_id,
-                    token_id_0,
-                    amount_0,
-                    Some(request_id),
-                    Some(Address::PrincipalId(*to_principal_id)),
-                    ts,
-                )) {
-                    Ok(claim_id) => {
-                        claim_ids.push(claim_id);
-                        format!("Saved as claim #{}. {}", claim_id, e)
-                    }
-                    Err(e) => format!("Failed to save claim: {}", e),
-                };
-                request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
-            }
-        }
+        return_token(
+            request_id,
+            user_id,
+            to_principal_id,
+            &TokenIndex::Token0,
+            token_0,
+            amount_0,
+            transfer_ids,
+            &mut claim_ids,
+            ts,
+        )
+        .await;
     }
 
     if token_1.is_some() && transfer_1.is_ok() {
-        request_map::update_status(request_id, StatusCode::ReturnToken1, None);
-
         let token_1 = token_1.unwrap();
-        let token_id_1 = token_1.token_id();
-        let fee_1 = token_1.fee();
-
-        let amount_1_with_gas = nat_subtract(amount_1, &fee_1).unwrap_or(nat_zero());
-        match icrc1_transfer(&amount_1_with_gas, to_principal_id, token_1, None).await {
-            Ok(block_id) => {
-                let transfer_id = transfer_map::insert(&StableTransfer {
-                    transfer_id: 0,
-                    request_id,
-                    is_send: false,
-                    amount: amount_1_with_gas,
-                    token_id: token_id_1,
-                    tx_id: TxId::BlockIndex(block_id),
-                    ts,
-                });
-                transfer_ids.push(transfer_id);
-                request_map::update_status(request_id, StatusCode::ReturnToken1Success, None);
-            }
-            Err(e) => {
-                let message = match claim_map::insert(&StableClaim::new(
-                    user_id,
-                    token_id_1,
-                    amount_1,
-                    Some(request_id),
-                    Some(Address::PrincipalId(*to_principal_id)),
-                    ts,
-                )) {
-                    Ok(claim_id) => {
-                        claim_ids.push(claim_id);
-                        format!("Saved as claim #{}. {}", claim_id, e)
-                    }
-                    Err(e) => format!("Failed to save claim. {}", e),
-                };
-                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
-            }
-        }
+        return_token(
+            request_id,
+            user_id,
+            to_principal_id,
+            &TokenIndex::Token1,
+            token_1,
+            amount_1,
+            transfer_ids,
+            &mut claim_ids,
+            ts,
+        )
+        .await;
     }
 
     let pool_id = pool_id.unwrap_or(0);
@@ -548,5 +488,67 @@ async fn return_tokens(
     // archive claims to kong_data
     for claim_id in claim_ids {
         claim_map::archive_claim_to_kong_data(claim_id);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn return_token(
+    request_id: u64,
+    user_id: u32,
+    to_principal_id: &Account,
+    token_index: &TokenIndex,
+    token: &StableToken,
+    amount: &Nat,
+    transfer_ids: &mut Vec<u64>,
+    claim_ids: &mut Vec<u64>,
+    ts: u64,
+) {
+    let token_id = token.token_id();
+    let fee = token.fee();
+
+    match token_index {
+        TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0, None),
+        TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1, None),
+    };
+
+    let amount_with_gas = nat_subtract(amount, &fee).unwrap_or(nat_zero());
+    match icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await {
+        Ok(block_id) => {
+            let transfer_id = transfer_map::insert(&StableTransfer {
+                transfer_id: 0,
+                request_id,
+                is_send: false,
+                amount: amount_with_gas,
+                token_id,
+                tx_id: TxId::BlockIndex(block_id),
+                ts,
+            });
+            transfer_ids.push(transfer_id);
+            match token_index {
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0Success, None),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1Success, None),
+            };
+        }
+        Err(e) => {
+            // attempt to return token failed, so save as a claim
+            let message = match claim_map::insert(&StableClaim::new(
+                user_id,
+                token_id,
+                amount,
+                Some(request_id),
+                Some(Address::PrincipalId(*to_principal_id)),
+                ts,
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim: {}", e),
+            };
+            match token_index {
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message)),
+            };
+        }
     }
 }
