@@ -102,16 +102,15 @@ pub fn transfer(token_id: u32, to_user_id: u32, amount: &Nat) -> Result<StableLP
     };
     update(&from_user);
 
+    // get user's LP token balance if already exists or create new
     if let Some(to_user_lp_token) = get_by_token_id_by_user_id(token_id, to_user_id) {
-        // to_user already has some LP token, add to existing balance
         update(&StableLPToken {
             amount: nat_add(&to_user_lp_token.amount, amount),
             ts,
             ..to_user_lp_token
         });
     } else {
-        // otherwise, create new LP token for to_user
-        insert(&StableLPToken::new(to_user_id, token_id, amount.clone(), ts));
+        insert(&StableLPToken::new(to_user_id, token_id, amount.clone(), ts))?;
     }
 
     Ok(from_user)

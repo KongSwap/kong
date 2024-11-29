@@ -517,15 +517,17 @@ fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token
                 ..lp_token.clone()
             };
             lp_token_map::update(&new_user_lp_token);
+            request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None);
         }
         None => {
             // new entry
             let new_user_lp_token = StableLPToken::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
-            lp_token_map::insert(&new_user_lp_token);
+            match lp_token_map::insert(&new_user_lp_token) {
+                Ok(_) => request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None),
+                Err(e) => request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(&e)),
+            };
         }
     }
-
-    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None);
 
     Ok(())
 }
@@ -697,5 +699,11 @@ async fn return_tokens(
         ts,
     );
     request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
+
+    // archive claims to kong_data
+    for claim_id in claim_ids {
+        claim_map::archive_claim_to_kong_data(claim_id);
+    }
+
     reply
 }

@@ -1,5 +1,6 @@
 use wildmatch::WildMatch;
 
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::POOL_MAP;
@@ -208,10 +209,10 @@ fn archive_pool(pool: StablePool) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => ic_cdk::print(format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
+                    Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
                 }
             }
-            Err(e) => ic_cdk::print(format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
+            Err(e) => error_log(&format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
         }
     });
 }

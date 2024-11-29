@@ -4,15 +4,13 @@ use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_reply_helpers::{create_add_liquidity_reply_failed, create_add_liquidity_reply_with_tx_id};
-use super::add_liquidity_transfer_from::transfer_from_token;
+use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
-use crate::helpers::nat_helpers::{
-    nat_add, nat_divide, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
-};
+use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify::verify_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
-use crate::stable_pool::{pool_map, stable_pool::StablePool};
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_pool::pool_map;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::token_map;
 use crate::stable_token::{stable_token::StableToken, token::Token};
@@ -186,98 +184,6 @@ async fn check_arguments(
     Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1))
 }
 
-/// calculate the ratio of amounts (amount_0 and amount_1) to be added to the pool to maintain constant K
-/// calculate the LP token amount for the user
-///
-/// returns (amount_0, amount_1, add_lp_token_amount)
-pub fn calculate_amounts(token_0: &str, amount_0: &Nat, token_1: &str, amount_1: &Nat) -> Result<(StablePool, Nat, Nat, Nat), String> {
-    // Pool - make sure pool exists, refresh balances of the pool to make sure we have the latest state
-    let pool = pool_map::get_by_tokens(token_0, token_1)?;
-    // Token0
-    let token_0 = pool.token_0();
-    let symbol_0 = pool.symbol_0();
-    // reserve_0 is the total balance of token_0 in the pool = balance_0 + lp_fee_0
-    let reserve_0 = nat_add(&pool.balance_0, &pool.lp_fee_0);
-    // Token1
-    let token_1 = pool.token_1();
-    let symbol_1 = pool.symbol_1();
-    let reserve_1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
-    // LP token
-    let lp_token = pool.lp_token();
-    let lp_token_id = lp_token.token_id();
-    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
-
-    if nat_is_zero(&reserve_0) && nat_is_zero(&reserve_1) {
-        // new pool as there are no balances - take user amounts as initial ratio
-        // initialize LP tokens as sqrt(amount_0 * amount_1)
-        // convert the amounts to the same decimal precision as the LP token
-        let amount_0_in_lp_token_decimals = nat_to_decimal_precision(amount_0, token_0.decimals(), lp_token.decimals());
-        let amount_1_in_lp_token_decimals = nat_to_decimal_precision(amount_1, token_1.decimals(), lp_token.decimals());
-        let add_lp_token_amount = nat_sqrt(&nat_multiply(&amount_0_in_lp_token_decimals, &amount_1_in_lp_token_decimals));
-        return Ok((pool, amount_0.clone(), amount_1.clone(), add_lp_token_amount));
-    }
-
-    // amount_0 * reserve_1 = amount_1 * reserve_0 for constant K
-    let amount_0_reserve_1 = nat_multiply(amount_0, &reserve_1);
-    let amount_1_reserve_0 = nat_multiply(amount_1, &reserve_0);
-    // if the ratio of the user amounts is the same as the pool ratio, then the amounts are correct
-    // rarely happens as there are rounding precision errors
-    if amount_0_reserve_1 == amount_1_reserve_0 {
-        // calculate the LP token amount for the user
-        // add_lp_token_amount = lp_total_supply * amount_0 / reserve_0
-        let amount_0_in_lp_token_decimals = nat_to_decimal_precision(amount_0, token_0.decimals(), lp_token.decimals());
-        let reserve_0_in_lp_token_decimals = nat_to_decimal_precision(&reserve_0, token_0.decimals(), lp_token.decimals());
-        let numerator_in_lp_token_decimals = nat_multiply(&lp_total_supply, &amount_0_in_lp_token_decimals);
-        let add_lp_token_amount =
-            nat_divide(&numerator_in_lp_token_decimals, &reserve_0_in_lp_token_decimals).ok_or("Invalid LP token amount")?;
-        return Ok((pool, amount_0.clone(), amount_1.clone(), add_lp_token_amount));
-    }
-
-    // determine if the ratio of the user amounts is same or greater than the pool ratio (reserve_1 / reserve_0)
-    // using amount_0 to calculate the amount_1 that should be added to the pool
-    // amount_1 = amount_0 * reserve_1 / reserve_0
-    // convert amount_0 and reserve_0 to token_1 decimal precision
-    let amount_0_in_token_1_decimals = nat_to_decimal_precision(amount_0, token_0.decimals(), token_1.decimals());
-    let reserve_0_in_token_1_decimals = nat_to_decimal_precision(&reserve_0, token_0.decimals(), token_1.decimals());
-    // amount_0 * reserve_1 - do the multiplication first before divison to avoid loss of precision
-    let numerator_in_token_1_decimals = nat_multiply(&amount_0_in_token_1_decimals, &reserve_1);
-    let amount_1_in_token_1_decimals =
-        nat_divide(&numerator_in_token_1_decimals, &reserve_0_in_token_1_decimals).ok_or("Invalid amount_1")?;
-    // if amount_1 is equal or greater than calculated by the pool ratio, then use amount_0 and amount_1
-    if *amount_1 >= amount_1_in_token_1_decimals {
-        // calculate the LP token amount for the user
-        // add_lp_token_amount = lp_total_supply * amount_0 / reserve_0
-        let amount_0_in_lp_token_decimals = nat_to_decimal_precision(amount_0, token_0.decimals(), lp_token.decimals());
-        let reserve_0_in_lp_token_decimals = nat_to_decimal_precision(&reserve_0, token_0.decimals(), lp_token.decimals());
-        let numerator_in_lp_token_decimals = nat_multiply(&lp_total_supply, &amount_0_in_lp_token_decimals);
-        let add_lp_token_amount =
-            nat_divide(&numerator_in_lp_token_decimals, &reserve_0_in_lp_token_decimals).ok_or("Invalid LP token amount")?;
-        return Ok((pool, amount_0.clone(), amount_1_in_token_1_decimals, add_lp_token_amount));
-    }
-
-    // using amount_1 to calculate the amount_0 that should be added to the pool
-    // amount_0 = amount_1 * reserve_0 / reserve_1
-    let amount_1_in_token_0_decimals = nat_to_decimal_precision(amount_1, token_1.decimals(), token_0.decimals());
-    let reserve_1_in_token_0_decimals = nat_to_decimal_precision(&reserve_1, token_1.decimals(), token_0.decimals());
-    let numerator_in_token_0_decimals = nat_multiply(&amount_1_in_token_0_decimals, &reserve_0);
-    let amount_0_in_token_0_decimals =
-        nat_divide(&numerator_in_token_0_decimals, &reserve_1_in_token_0_decimals).ok_or("Invalid amount_0")?;
-    if *amount_0 >= amount_0_in_token_0_decimals {
-        let amount_1_in_lp_token_decimals = nat_to_decimal_precision(amount_1, token_1.decimals(), lp_token.decimals());
-        let reserve_1_in_lp_token_decimals = nat_to_decimal_precision(&reserve_1, token_1.decimals(), lp_token.decimals());
-        let numerator_in_lp_token_decimals = nat_multiply(&lp_total_supply, &amount_1_in_lp_token_decimals);
-        let add_lp_token_amount =
-            nat_divide(&numerator_in_lp_token_decimals, &reserve_1_in_lp_token_decimals).ok_or("Invalid LP token amount")?;
-        return Ok((pool, amount_0_in_token_0_decimals, amount_1.clone(), add_lp_token_amount));
-    }
-
-    // pool ratio must have changed from initial calculation and amount_0 and amount_1 are not enough now
-    Err(format!(
-        "Incorrect ratio. Required {} {} or {} {}",
-        amount_0_in_token_1_decimals, symbol_0, amount_1_in_token_0_decimals, symbol_1
-    ))
-}
-
 #[allow(clippy::too_many_arguments)]
 async fn process_add_liquidity(
     request_id: u64,
@@ -317,51 +223,70 @@ async fn process_add_liquidity(
         Err(e) => Err(e),
     };
 
-    let pool_id = if token_0.is_some() && token_1.is_some() {
-        let token_0 = token_0.unwrap();
-        let token_id_0 = token_0.token_id();
-        let token_1 = token_1.unwrap();
-        let token_id_1 = token_1.token_id();
-        match pool_map::get_by_token_ids(token_id_0, token_id_1) {
+    let pool = if token_0.is_some() && token_1.is_some() {
+        let tok_0 = token_0.unwrap();
+        let tok_id_0 = tok_0.token_id();
+        let tok_1 = token_1.unwrap();
+        let tok_id_1 = tok_1.token_id();
+        match pool_map::get_by_token_ids(tok_id_0, tok_id_1) {
             Some(pool) => {
+                let caller_id = caller_id();
+                let kong_backend = kong_settings_map::get().kong_backend_account;
+
                 // now that we know the pool exists, if transfer_0.is_err() and tx_id.is_none() then it's an icrc2_transfer_from
                 if transfer_0.is_err() && tx_id_0.is_none() {
-                    transfer_0 = match transfer_from_token(request_id, &TokenIndex::Token0, token_0, &add_amount_0, ts).await {
-                        Ok(transfer_id) => {
-                            transfer_ids.push(transfer_id);
-                            Ok(())
+                    transfer_0 =
+                        match transfer_from_token(request_id, &caller_id, &TokenIndex::Token0, tok_0, &add_amount_0, &kong_backend, ts)
+                            .await
+                        {
+                            Ok(transfer_id) => {
+                                transfer_ids.push(transfer_id);
+                                Ok(())
+                            }
+                            Err(e) => Err(e),
                         }
-                        Err(e) => Err(e),
-                    }
                 }
+
                 // only icrc2_transfer_from token 1 if transfer_0 was successful
                 if transfer_0.is_ok() && transfer_1.is_err() && tx_id_1.is_none() {
-                    transfer_1 = match transfer_from_token(request_id, &TokenIndex::Token1, token_1, &add_amount_1, ts).await {
-                        Ok(transfer_id) => {
-                            transfer_ids.push(transfer_id);
-                            Ok(())
+                    transfer_1 =
+                        match transfer_from_token(request_id, &caller_id, &TokenIndex::Token1, tok_1, &add_amount_1, &kong_backend, ts)
+                            .await
+                        {
+                            Ok(transfer_id) => {
+                                transfer_ids.push(transfer_id);
+                                Ok(())
+                            }
+                            Err(e) => Err(e),
                         }
-                        Err(e) => Err(e),
-                    }
                 }
-                Some(pool.pool_id)
+                pool
             }
             None => {
                 request_map::update_status(request_id, StatusCode::PoolNotFound, None);
-                None
+                return_tokens(
+                    request_id,
+                    user_id,
+                    None,
+                    token_0,
+                    &transfer_0,
+                    &add_amount_0,
+                    token_1,
+                    &transfer_1,
+                    &add_amount_1,
+                    &mut transfer_ids,
+                    ts,
+                )
+                .await;
+                return Err(format!("AddLiq #{} failed. Pool not found", request_id));
             }
         }
     } else {
         request_map::update_status(request_id, StatusCode::PoolNotFound, None);
-        None
-    };
-
-    // pool must exist and both transfers must be successful
-    if pool_id.is_none() || transfer_0.is_err() || transfer_1.is_err() {
         return_tokens(
             request_id,
             user_id,
-            pool_id,
+            None,
             token_0,
             &transfer_0,
             &add_amount_0,
@@ -372,48 +297,73 @@ async fn process_add_liquidity(
             ts,
         )
         .await;
-        let error = match transfer_0 {
-            Ok(_) => match transfer_1 {
-                Err(e) => format!("AddLiq #{} failed to transfer token 1: {}", request_id, e),
-                _ => format!("AddLiq #{} failed to transfer", request_id),
-            },
-            Err(e) => format!("AddLiq #{} failed to transfer token 0: {}", request_id, e),
-        };
-        return Err(error);
-    }
+        return Err(format!("AddLiq #{} failed. Pool not found", request_id));
+    };
 
-    // update liqudity pool with new added amounts
-    match update_liquidity_pool(request_id, user_id, pool_id.unwrap(), &add_amount_0, &add_amount_1, ts) {
-        Ok((pool, amount_0, amount_1, add_lp_token_amount)) => Ok(check_balances(
+    // both transfers must be successful
+    if transfer_0.is_err() || transfer_1.is_err() {
+        return_tokens(
             request_id,
             user_id,
-            pool.pool_id,
-            &amount_0,
-            &amount_1,
-            &add_lp_token_amount,
+            Some(pool.pool_id),
+            token_0,
+            &transfer_0,
+            &add_amount_0,
+            token_1,
+            &transfer_1,
+            &add_amount_1,
             &mut transfer_ids,
             ts,
         )
-        .await),
-        Err(e) => {
-            return_tokens(
-                request_id,
-                user_id,
-                pool_id,
-                token_0,
-                &transfer_0,
-                &add_amount_0,
-                token_1,
-                &transfer_1,
-                &add_amount_1,
-                &mut transfer_ids,
-                ts,
-            )
-            .await;
-            let error = format!("AddLiq #{} failed to update pool: {}", request_id, e);
-            Err(error)
-        }
+        .await;
+        return Err(if transfer_0.is_err() {
+            format!("AddLiq #{} failed. {}", request_id, transfer_0.unwrap_err())
+        } else {
+            format!("AddLiq #{} failed. {}", request_id, transfer_1.unwrap_err())
+        });
     }
+
+    // re-calculate with latest pool state and make sure amounts are valid
+    let (pool, amount_0, amount_1, add_lp_token_amount) =
+        match update_liquidity_pool(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts) {
+            Ok((pool, amount_0, amount_1, add_lp_token_amount)) => (pool, amount_0, amount_1, add_lp_token_amount),
+            Err(e) => {
+                // LP amounts are incorrect. return token_0 and token_1 back to user
+                return_tokens(
+                    request_id,
+                    user_id,
+                    Some(pool.pool_id),
+                    token_0,
+                    &transfer_0,
+                    &add_amount_0,
+                    token_1,
+                    &transfer_1,
+                    &add_amount_1,
+                    &mut transfer_ids,
+                    ts,
+                )
+                .await;
+                return Err(format!("AddLiq #{} failed: {}", request_id, e));
+            }
+        };
+
+    // successful, add tx and update request with reply
+    let add_liquidity_tx = AddLiquidityTx::new_success(
+        pool.pool_id,
+        user_id,
+        request_id,
+        &amount_0,
+        &amount_1,
+        &add_lp_token_amount,
+        &transfer_ids,
+        &Vec::new(),
+        ts,
+    );
+    let tx_id = tx_map::insert(&StableTx::AddLiquidity(add_liquidity_tx.clone()));
+    let reply = create_add_liquidity_reply_with_tx_id(tx_id, &add_liquidity_tx);
+    request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
+
+    Ok(reply)
 }
 
 async fn verify_transfer_token(
@@ -438,8 +388,8 @@ async fn verify_transfer_token(
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
                 let error = format!(
-                    "AddLiq #{} failed to verify tx {} #{}: duplicate block id",
-                    request_id, symbol, tx_id
+                    "AddLiq #{} failed to verify tx_id #{} {}. Duplicate block id",
+                    request_id, tx_id, symbol
                 );
                 match token_index {
                     TokenIndex::Token0 => {
@@ -467,7 +417,7 @@ async fn verify_transfer_token(
             Ok(transfer_id)
         }
         Err(e) => {
-            let error = format!("AddLiq #{} failed to verify tx {} #{}: {}", request_id, symbol, tx_id, e);
+            let error = format!("AddLiq #{} failed to verify tx_id #{} {}. {}", request_id, tx_id, symbol, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
@@ -475,123 +425,6 @@ async fn verify_transfer_token(
             Err(error)
         }
     }
-}
-
-/// update the liquidity pool with the new liquidity amounts
-/// ensure we have the latest state of the pool before adding the new amounts
-fn update_liquidity_pool(
-    request_id: u64,
-    user_id: u32,
-    pool_id: u32,
-    add_amount_0: &Nat,
-    add_amount_1: &Nat,
-    ts: u64,
-) -> Result<(StablePool, Nat, Nat, Nat), String> {
-    request_map::update_status(request_id, StatusCode::CalculatePoolAmounts, None);
-
-    // refresh pool with the latest state
-    match pool_map::get_by_pool_id(pool_id) {
-        Some(pool) => {
-            let token_0_address_with_chain = pool.token_0().address_with_chain();
-            let token_1_address_with_chain = pool.token_1().address_with_chain();
-            // re-calculate the amounts to be added to the pool with new state (after token_0 and token_1 transfers)
-            // add_amount_0 and add_amount_1 are the transferred amounts from the initial calculations
-            // amount_0, amount_1 and add_lp_token_amount will be the actual amounts to be added to the pool
-            match calculate_amounts(&token_0_address_with_chain, add_amount_0, &token_1_address_with_chain, add_amount_1) {
-                Ok((pool, amount_0, amount_1, add_lp_token_amount)) => {
-                    request_map::update_status(request_id, StatusCode::CalculatePoolAmountsSuccess, None);
-
-                    request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
-                    let update_pool = StablePool {
-                        balance_0: nat_add(&pool.balance_0, &amount_0),
-                        balance_1: nat_add(&pool.balance_1, &amount_1),
-                        ..pool.clone()
-                    };
-                    pool_map::update(&update_pool);
-
-                    request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
-
-                    // update user's LP token amount
-                    match update_lp_token(request_id, user_id, pool.lp_token_id, &add_lp_token_amount, ts) {
-                        Ok(_) => Ok((pool, amount_0, amount_1, add_lp_token_amount)),
-                        Err(e) => Err(e),
-                    }
-                }
-                Err(e) => {
-                    request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&e));
-                    Err(e)
-                }
-            }
-        }
-        None => {
-            let error = format!("AddLiq #{} failed: pool not found", request_id);
-            request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&error));
-            Err(error)
-        }
-    }
-}
-
-/// update the user's LP token amount
-/// ensure we have the latest state of the LP token before adding the new amounts
-fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token_amount: &Nat, ts: u64) -> Result<(), String> {
-    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmount, None);
-
-    // refresh with the latest state if the entry exists
-    match lp_token_map::get_by_token_id(lp_token_id) {
-        Some(lp_token) => {
-            // update adding the new deposit amount
-            let new_user_lp_token = StableLPToken {
-                amount: nat_add(&lp_token.amount, add_lp_token_amount),
-                ts,
-                ..lp_token.clone()
-            };
-            lp_token_map::update(&new_user_lp_token);
-        }
-        None => {
-            // new entry
-            let new_user_lp_token = StableLPToken::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
-            lp_token_map::insert(&new_user_lp_token);
-        }
-    }
-
-    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None);
-
-    Ok(())
-}
-
-// return and unused tokens and final balance integrity checks
-// - return any extra tokens back to the user
-// - any failures to return tokens back to user are saved as claims
-// - check the actual balances of the canister vs. expected balances in stable memory for token_0 and token_1
-// - update successful request reply
-#[allow(clippy::too_many_arguments)]
-async fn check_balances(
-    request_id: u64,
-    user_id: u32,
-    pool_id: u32,
-    amount_0: &Nat,
-    amount_1: &Nat,
-    add_lp_token_amount: &Nat,
-    transfer_ids: &mut [u64],
-    ts: u64,
-) -> AddLiquidityReply {
-    let add_liquidity_tx = AddLiquidityTx::new_success(
-        pool_id,
-        user_id,
-        request_id,
-        amount_0,
-        amount_1,
-        add_lp_token_amount,
-        transfer_ids,
-        &Vec::new(),
-        ts,
-    );
-    // insert tx
-    let tx_id = tx_map::insert(&StableTx::AddLiquidity(add_liquidity_tx.clone()));
-    // need to pass in the tx_id to the reply
-    let reply = create_add_liquidity_reply_with_tx_id(tx_id, &add_liquidity_tx);
-    request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
-    reply
 }
 
 // failed transaction
@@ -615,7 +448,6 @@ async fn return_tokens(
     ts: u64,
 ) {
     let caller_id = caller_id();
-    // claims are used to store any failed transfers back to the user
     let mut claim_ids = Vec::new();
 
     // make sure token is valid and transfer was verified. If so, then return the token back to the user
@@ -707,4 +539,9 @@ async fn return_tokens(
     let pool_id = pool_id.unwrap_or(0);
     let reply = create_add_liquidity_reply_failed(pool_id, request_id, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply));
+
+    // archive claims to kong_data
+    for claim_id in claim_ids {
+        claim_map::archive_claim_to_kong_data(claim_id);
+    }
 }

@@ -2,6 +2,7 @@ use candid::Nat;
 
 use super::tx_id::TxId;
 
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TRANSFER_MAP;
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
@@ -30,7 +31,29 @@ pub fn insert(transfer: &StableTransfer) -> u64 {
             transfer_id,
             ..transfer.clone()
         };
-        map.insert(StableTransferId(transfer_id), insert_transfer);
+        map.insert(StableTransferId(transfer_id), insert_transfer.clone());
+        // archive new transfer
+        archive_transfer(insert_transfer);
         transfer_id
     })
+}
+
+fn archive_transfer(transfer: StableTransfer) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&transfer) {
+            Ok(transfer_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_transfer", (transfer_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive transfer #{}. {}", transfer.transfer_id, e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize transfer #{}. {}", transfer.transfer_id, e)),
+        }
+    });
 }

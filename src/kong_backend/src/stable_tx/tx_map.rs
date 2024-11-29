@@ -1,3 +1,6 @@
+use std::cmp::min;
+use std::ops::Bound;
+
 use super::add_liquidity_tx::AddLiquidityTx;
 use super::add_pool_tx::AddPoolTx;
 use super::remove_liquidity_tx::RemoveLiquidityTx;
@@ -6,9 +9,8 @@ use super::stable_tx::StableTx::{AddLiquidity, AddPool, RemoveLiquidity, Send, S
 use super::stable_tx::{StableTx, StableTxId};
 use super::swap_tx::SwapTx;
 use super::tx::Tx;
-use std::cmp::min;
-use std::ops::Bound;
 
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TX_MAP;
 use crate::stable_pool::pool_map;
@@ -97,7 +99,29 @@ pub fn insert(tx: &StableTx) -> u64 {
             Swap(tx) => Swap(SwapTx { tx_id, ..tx.clone() }),
             Send(tx) => Send(SendTx { tx_id, ..tx.clone() }),
         };
-        map.insert(StableTxId(tx_id), insert_tx);
+        map.insert(StableTxId(tx_id), insert_tx.clone());
+        // archive new tx
+        archive_tx(insert_tx);
         tx_id
     })
+}
+
+fn archive_tx(tx: StableTx) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&tx) {
+            Ok(tx_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_tx", (tx_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive tx_id #{}. {}", tx.tx_id(), e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize tx_id #{}. {}", tx.tx_id(), e)),
+        }
+    });
 }
