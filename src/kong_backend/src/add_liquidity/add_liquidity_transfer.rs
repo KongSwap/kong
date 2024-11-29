@@ -1,4 +1,5 @@
 use candid::Nat;
+use icrc_ledger_types::icrc1::account::Account;
 
 use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
@@ -200,6 +201,9 @@ async fn process_add_liquidity(
     let add_amount_0 = args.amount_0.clone();
     let add_amount_1 = args.amount_1.clone();
 
+    let caller_id = caller_id();
+    let kong_backend = kong_settings_map::get().kong_backend_account;
+
     // empty vector to store the block ids of the on-chain transfers
     let mut transfer_ids = Vec::new();
 
@@ -230,9 +234,6 @@ async fn process_add_liquidity(
         let tok_id_1 = tok_1.token_id();
         match pool_map::get_by_token_ids(tok_id_0, tok_id_1) {
             Some(pool) => {
-                let caller_id = caller_id();
-                let kong_backend = kong_settings_map::get().kong_backend_account;
-
                 // now that we know the pool exists, if transfer_0.is_err() and tx_id.is_none() then it's an icrc2_transfer_from
                 if transfer_0.is_err() && tx_id_0.is_none() {
                     transfer_0 =
@@ -267,6 +268,7 @@ async fn process_add_liquidity(
                 return_tokens(
                     request_id,
                     user_id,
+                    &caller_id,
                     None,
                     token_0,
                     &transfer_0,
@@ -286,6 +288,7 @@ async fn process_add_liquidity(
         return_tokens(
             request_id,
             user_id,
+            &caller_id,
             None,
             token_0,
             &transfer_0,
@@ -305,6 +308,7 @@ async fn process_add_liquidity(
         return_tokens(
             request_id,
             user_id,
+            &caller_id,
             Some(pool.pool_id),
             token_0,
             &transfer_0,
@@ -332,6 +336,7 @@ async fn process_add_liquidity(
                 return_tokens(
                     request_id,
                     user_id,
+                    &caller_id,
                     Some(pool.pool_id),
                     token_0,
                     &transfer_0,
@@ -437,6 +442,7 @@ async fn verify_transfer_token(
 async fn return_tokens(
     request_id: u64,
     user_id: u32,
+    to_principal_id: &Account,
     pool_id: Option<u32>,
     token_0: Option<&StableToken>,
     transfer_0: &Result<(), String>,
@@ -447,7 +453,6 @@ async fn return_tokens(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) {
-    let caller_id = caller_id();
     let mut claim_ids = Vec::new();
 
     // make sure token is valid and transfer was verified. If so, then return the token back to the user
@@ -459,7 +464,7 @@ async fn return_tokens(
         let fee_0 = token_0.fee();
 
         let amount_0_with_gas = nat_subtract(amount_0, &fee_0).unwrap_or(nat_zero());
-        match icrc1_transfer(&amount_0_with_gas, &caller_id, token_0, None).await {
+        match icrc1_transfer(&amount_0_with_gas, to_principal_id, token_0, None).await {
             Ok(block_id) => {
                 let transfer_id = transfer_map::insert(&StableTransfer {
                     transfer_id: 0,
@@ -480,7 +485,7 @@ async fn return_tokens(
                     token_id_0,
                     amount_0,
                     Some(request_id),
-                    Some(Address::PrincipalId(caller_id)),
+                    Some(Address::PrincipalId(*to_principal_id)),
                     ts,
                 )) {
                     Ok(claim_id) => {
@@ -502,7 +507,7 @@ async fn return_tokens(
         let fee_1 = token_1.fee();
 
         let amount_1_with_gas = nat_subtract(amount_1, &fee_1).unwrap_or(nat_zero());
-        match icrc1_transfer(&amount_1_with_gas, &caller_id, token_1, None).await {
+        match icrc1_transfer(&amount_1_with_gas, to_principal_id, token_1, None).await {
             Ok(block_id) => {
                 let transfer_id = transfer_map::insert(&StableTransfer {
                     transfer_id: 0,
@@ -522,7 +527,7 @@ async fn return_tokens(
                     token_id_1,
                     amount_1,
                     Some(request_id),
-                    Some(Address::PrincipalId(caller_id)),
+                    Some(Address::PrincipalId(*to_principal_id)),
                     ts,
                 )) {
                     Ok(claim_id) => {

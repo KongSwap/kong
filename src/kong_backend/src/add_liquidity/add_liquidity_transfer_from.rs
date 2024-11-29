@@ -228,8 +228,8 @@ async fn process_add_liquidity(
             return_tokens(
                 request_id,
                 user_id,
-                pool,
                 &caller_id,
+                pool,
                 Some(add_amount_0),
                 None,
                 &mut transfer_ids,
@@ -249,8 +249,8 @@ async fn process_add_liquidity(
                 return_tokens(
                     request_id,
                     user_id,
-                    pool,
                     &caller_id,
+                    pool,
                     Some(add_amount_0),
                     Some(add_amount_1),
                     &mut transfer_ids,
@@ -407,8 +407,8 @@ fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token
 async fn return_tokens(
     request_id: u64,
     user_id: u32,
-    pool: &StablePool,
     to_principal_id: &Account,
+    pool: &StablePool,
     amount_0: Option<&Nat>,
     amount_1: Option<&Nat>,
     transfer_ids: &mut Vec<u64>,
