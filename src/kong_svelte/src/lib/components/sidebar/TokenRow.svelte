@@ -127,31 +127,17 @@
 <style>
   .token-row {
     flex: 1;
-    background: rgba(42, 45, 61, 0.3);
     cursor: pointer;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(58, 62, 82, 0.3);
-    outline: none;
     transform-origin: center;
-    will-change: transform, box-shadow, background-color, border-color;
+    will-change: transform;
   }
 
   .token-row:hover {
-    background: rgba(42, 45, 61, 0.8);
-    border-color: rgba(58, 62, 82, 0.8);
-    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.3);
     transform: translateY(-1px);
   }
 
   .token-row.pressed {
     transform: scale(0.98);
-    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.2);
-    background: rgba(42, 45, 61, 1);
-  }
-
-  .token-row:focus {
-    box-shadow: 0 0 0 2px rgba(78, 132, 255, 0.5);
-    border-color: rgba(78, 132, 255, 0.5);
   }
 
   .token-content {
@@ -169,7 +155,7 @@
   }
 
   .token-image {
-    transition: transform 200ms ease;
+    transform: scale(1);
   }
 
   .token-image.hovered {
@@ -190,31 +176,30 @@
   .favorite-button {
     padding: 4px;
     border-radius: 8px;
-    color: rgba(255, 255, 255, 0.5); /* Slightly brighter */
-    background: rgba(255, 255, 255, 0.08); /* Slightly brighter */
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.05);
   }
 
   .favorite-button:hover {
     color: rgba(255, 255, 255, 1);
-    background: rgba(255, 255, 255, 0.15);
     transform: scale(1.1);
+    background-color: rgba(255, 255, 255, 0.1);
   }
 
   .favorite-button.active {
     color: #ffd700;
-    background: rgba(255, 215, 0, 0.15); /* Slightly brighter */
+    background-color: rgba(253, 224, 71, 0.1);
   }
 
   .token-symbol {
     font-size: 18px;
     font-weight: bold;
-    color: rgba(255, 255, 255, 0.95); /* Brighter */
+    color: rgba(255, 255, 255, 0.95);
   }
 
   .token-name {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.75); /* Brighter */
+    color: rgba(255, 255, 255, 0.75);
   }
 
   .token-right {
@@ -233,12 +218,12 @@
   .balance {
     font-size: 16px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.95); /* Brighter */
+    color: rgba(255, 255, 255, 0.95);
   }
 
   .usd-value {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.75); /* Brighter */
+    color: rgba(255, 255, 255, 0.75);
   }
 
   .menu-container {
@@ -246,12 +231,9 @@
   }
 
   .menu-button {
-    color: rgba(255, 255, 255, 0.7); /* Brighter */
-    background: rgba(32, 35, 48, 0.6); /* More transparent */
+    color: rgba(255, 255, 255, 0.7);
     border: none;
-    border-radius: 0 12px 12px 0; /* Rounded right corners */
     cursor: pointer;
-    transition: all 200ms ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -261,10 +243,5 @@
 
   .menu-button:hover {
     color: white;
-    background: rgba(42, 45, 61, 0.9); /* Darker on hover */
-  }
-
-  .menu-button:active {
-    background: rgba(42, 45, 61, 1); /* Darkest when active */
   }
 </style>

@@ -29,6 +29,15 @@
     let processedTransactions: any[] = [];
     let pollInterval: NodeJS.Timer;
 
+    // Add filter state
+    let selectedFilter: string = 'all';
+    const filterOptions = [
+        { id: 'all', label: 'All' },
+        { id: 'swap', label: 'Swaps' },
+        { id: 'pool', label: 'Pool' },
+        { id: 'send', label: 'Send' }
+    ];
+
     function processTransaction(tx: any) {
         if ('AddLiquidity' in tx) {
             return {
@@ -86,106 +95,211 @@
     });
 </script>
 
-<div class="transaction-history" in:fly={{ y: 20, duration: 400, easing: cubicOut }}>
-    {#if isLoading}
-        <div class="loading-state" in:fade>
-            <LoadingIndicator />
-            <p>Loading your transaction history...</p>
-        </div>
-    {:else if error}
-        <div class="error-state" in:fade>
-            <p>{error}</p>
-        </div>
-    {:else if processedTransactions.length === 0}
-        <div class="empty-state" in:fade>
-            <p>No transactions found</p>
-        </div>
-    {:else}
-        {#each processedTransactions as tx}
-            <div class="transaction-item" in:fade>
-                <div class="transaction-header">
-                    <span class="timestamp">{tx.formattedDate}</span>
-                    <span class="status {tx.status?.toLowerCase() || 'pending'}">{tx.status || 'Pending'}</span>
-                </div>
-                <div class="transaction-details">
-                    <div class="transaction-type">{tx.type}</div>
-                    {#if tx.type === 'Add Liquidity'}
-                        <div class="amount-row">
-                            <span>Added:</span>
-                            <span>
-                                {tx.amount_0} {tx.symbol_0} + 
-                                {tx.amount_1} {tx.symbol_1}
-                            </span>
-                        </div>
-                        <div class="amount-row">
-                            <span>Received:</span>
-                            <span>{tx.lp_amount} LP</span>
-                        </div>
-                    {/if}
-                </div>
-            </div>
+<div class="transaction-history-wrapper">
+    <!-- Add filter buttons at the top -->
+    <div class="filter-buttons">
+        {#each filterOptions as option}
+            <button 
+                class="filter-btn {selectedFilter === option.id ? 'active' : ''}"
+                on:click={() => selectedFilter = option.id}
+            >
+                {option.label}
+            </button>
         {/each}
-    {/if}
+    </div>
+    
+    <div class="transaction-history-content">
+        <div class="transaction-history">
+            {#if isLoading}
+                <div class="loading-state" in:fade>
+                    <LoadingIndicator />
+                    <p>Loading your transaction history...</p>
+                </div>
+            {:else if error}
+                <div class="error-state" in:fade>
+                    <p>{error}</p>
+                </div>
+            {:else if processedTransactions.length === 0}
+                <div class="empty-state" in:fade>
+                    <p>No transactions found</p>
+                </div>
+            {:else}
+                {#each processedTransactions as tx}
+                    <div class="transaction-item" in:fade>
+                        <div class="transaction-header">
+                            <span class="timestamp">{tx.formattedDate}</span>
+                            <span class="status {tx.status?.toLowerCase() || 'pending'}">{tx.status || 'Pending'}</span>
+                        </div>
+                        <div class="transaction-details">
+                            <div class="transaction-type">{tx.type}</div>
+                            {#if tx.type === 'Add Liquidity'}
+                                <div class="amount-row">
+                                    <span>Added:</span>
+                                    <span>
+                                        {tx.amount_0} {tx.symbol_0} + 
+                                        {tx.amount_1} {tx.symbol_1}
+                                    </span>
+                                </div>
+                                <div class="amount-row">
+                                    <span>Received:</span>
+                                    <span>{tx.lp_amount} LP</span>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                {/each}
+            {/if}
+        </div>
+    </div>
 </div>
 
 <style lang="postcss">
-    .transaction-history {
-        @apply flex flex-col gap-4 p-4;
-    }
+  .transaction-history-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
 
-    .transaction-item {
-        @apply bg-gray-800/50 rounded-lg p-4;
-    }
+  .transaction-history-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
 
-    .transaction-header {
-        @apply flex justify-between items-center mb-2;
-    }
+  .transaction-history-content::-webkit-scrollbar {
+    width: 6px;
+  }
 
-    .timestamp {
-        @apply text-sm text-gray-400;
-    }
+  .transaction-history-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-    .status {
-        @apply text-sm px-2 py-1 rounded;
-    }
+  .transaction-history-content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
 
-    .status.completed {
-        @apply bg-green-500/20 text-green-400;
-    }
+  .transaction-history-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
 
-    .status.pending {
-        @apply bg-yellow-500/20 text-yellow-400;
-    }
+  .transaction-history {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    min-height: 100%;
+  }
 
-    .status.failed {
-        @apply bg-red-500/20 text-red-400;
-    }
+  .transaction-item {
+    background-color: rgba(31, 41, 55, 0.5);
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
 
-    .transaction-details {
-        @apply space-y-2;
-    }
+  .transaction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
 
-    .amount-row {
-        @apply flex justify-between items-center text-sm;
-    }
+  .timestamp {
+    font-size: 0.875rem;
+    color: rgb(156, 163, 175);
+  }
 
-    .loading-state, .error-state, .empty-state {
-        @apply text-center p-8 text-gray-400;
-    }
+  .status {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+  }
 
-    .transaction-type {
-        @apply text-sm font-medium text-white/80 mb-2;
-    }
+  .status.completed {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: rgb(74, 222, 128);
+  }
 
-    .status.success {
-        @apply bg-green-500/20 text-green-400;
-    }
+  .status.pending {
+    background-color: rgba(234, 179, 8, 0.2);
+    color: rgb(250, 204, 21);
+  }
 
-    .status.pending {
-        @apply bg-yellow-500/20 text-yellow-400;
-    }
+  .status.failed {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: rgb(248, 113, 113);
+  }
 
-    .status.failed {
-        @apply bg-red-500/20 text-red-400;
-    }
+  .transaction-details {
+    margin-top: 0.5rem;
+  }
+
+  .amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+  }
+
+  .loading-state,
+  .error-state,
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 160px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.875rem;
+  }
+
+  .transaction-type {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 0.5rem;
+  }
+
+  .status.success {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: rgb(74, 222, 128);
+  }
+
+  .status.pending {
+    background-color: rgba(234, 179, 8, 0.2);
+    color: rgb(250, 204, 21);
+  }
+
+  .status.failed {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: rgb(248, 113, 113);
+  }
+
+  .filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-bottom: 1px solid rgb(55, 65, 81);
+  }
+
+  .filter-btn {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    color: rgb(156, 163, 175);
+    transition: background-color 0.2s;
+  }
+
+  .filter-btn:hover {
+    background-color: rgba(55, 65, 81, 0.5);
+  }
+
+  .filter-btn.active {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: rgb(96, 165, 250);
+  }
 </style>

@@ -149,10 +149,10 @@
           </div>
         </button>
       </div>
-      <nav class="grid grid-cols-3 gap-3 rounded-lg">
+      <nav class="grid grid-cols-3 rounded-lg overflow-hidden">
         {#each tabs as tab (tab)}
           <button
-            class="tab-button relative py-2.5 px-4 rounded-md text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-white"
+            class="tab-button relative py-2.5 px-4 text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-white"
             class:active-tab={activeTab === tab}
             on:click={() => setActiveTab(tab)}
             role="tab"
@@ -272,17 +272,19 @@
 
   .tab-button {
     background: rgba(0, 0, 0, 0.1);
-    border: 1px solid transparent;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .tab-button:last-child {
+    border-right: none;
   }
 
   .tab-button:hover {
     background: rgba(0, 0, 0, 0.2);
-    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .active-tab {
     background: rgba(59, 130, 246, 0.2) !important;
-    border: 1px solid rgba(59, 130, 246, 0.3) !important;
     color: #3b82f6 !important;
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
   }

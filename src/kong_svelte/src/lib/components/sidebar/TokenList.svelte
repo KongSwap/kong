@@ -325,135 +325,193 @@
 
 <style lang="postcss">
   .token-list {
-    @apply flex flex-col h-full overflow-hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
   }
 
   .tokens-content {
-    @apply flex-1 min-h-0 overflow-hidden;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .controls-wrapper {
-    @apply flex flex-col;
-    @apply bg-[#15161c];
+    display: flex;
+    flex-direction: column;
   }
 
   .search-section {
-    @apply sticky top-0 z-10;
-    @apply border-b border-[#2a2d3d];
-    @apply bg-[#15161c];
-    @apply rounded-t-[6px];
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .search-input-wrapper {
-    @apply relative flex items-center;
-    @apply bg-[#2a2d3d] p-3;
-    @apply rounded-t-[6px];
+    position: relative;
+    display: flex;
+    align-items: center;
   }
 
   .search-input {
-    @apply flex-1 bg-transparent border-none;
-    @apply text-white placeholder-white/50;
-    @apply focus:outline-none;
-    @apply text-base pr-12;
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 0;
+    padding-right: 2.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-bottom-color: rgba(255, 255, 255, 0.5);
   }
 
   .action-button {
-    @apply absolute right-5 top-1/2 -translate-y-1/2;
-    @apply flex items-center justify-center;
-    @apply w-8 h-8 rounded-lg;
-    @apply bg-white/10 text-white/70;
-    @apply hover:bg-white/15 hover:text-white;
-    @apply transition-colors;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.2s;
+  }
+
+  .action-button:hover {
+    color: white;
   }
 
   .filter-bar {
-    @apply px-4 py-3 border-b border-[#2a2d3d];
-    @apply bg-[#15161c];
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .filter-options {
-    @apply flex items-center justify-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .filter-toggle {
-    @apply flex items-center gap-2;
-    @apply text-sm text-white/70;
-    @apply cursor-pointer hover:text-white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+  }
+
+  .filter-toggle:hover {
+    color: white;
   }
 
   .sort-toggle {
-    @apply flex items-center gap-2;
-    @apply text-sm text-white/70;
-    @apply cursor-pointer hover:text-white;
-    @apply select-none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .sort-toggle:hover {
+    color: white;
   }
 
   .sort-arrow {
-    @apply transition-transform duration-200;
+    transition: transform 0.2s;
   }
 
   .sort-arrow.ascending {
-    @apply rotate-180;
+    transform: rotate(180deg);
   }
 
   .toggle-label {
-    @apply select-none;
-  }
-
-  .filter-toggle input[type="checkbox"] {
-    @apply w-4 h-4 rounded;
-    @apply border border-[#2a2d3d];
-    @apply bg-[#2a2d3d];
-    @apply checked:bg-blue-500;
-    @apply transition-colors;
-    @apply focus:ring-2 focus:ring-blue-500/50;
+    user-select: none;
   }
 
   .tokens-container {
-    @apply h-full overflow-y-auto;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2d3d transparent;
+  }
+
+  .tokens-container::-webkit-scrollbar {
+    width: 0.375rem;
+  }
+
+  .tokens-container::-webkit-scrollbar-track {
+    background: #15161c;
+    border-radius: 0.25rem;
+  }
+
+  .tokens-container::-webkit-scrollbar-thumb {
+    background: #2a2d3d;
+    border-radius: 0.25rem;
   }
 
   .empty-state {
-    @apply flex flex-col items-center justify-center gap-3
-           min-h-[160px] text-white/40 text-sm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 160px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.875rem;
   }
 
   .clear-search-button {
-    @apply px-4 py-2 text-sm font-medium
-           bg-[#2a2d3d]/30 text-white/70
-           rounded-lg transition-all
-           hover:bg-[#2a2d3d]/50 hover:text-white
-           border border-white/10;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .portfolio-value {
-    @apply px-4 py-3 border-b border-[#2a2d3d];
-  }
-
-  .value-row {
-    @apply flex items-center justify-between;
-  }
-
-  .value-label {
-    @apply text-sm text-white/70;
-  }
-
-  .value-amount {
-    @apply text-base font-medium text-white;
+  .clear-search-button:hover {
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .match-indicator {
-    @apply px-4 py-1 text-xs flex items-center gap-2;
+    padding: 0.25rem 1rem;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .match-type {
-    @apply text-white/50 capitalize;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: capitalize;
   }
 
   .match-label {
-    @apply inline-block px-2 py-0.5 
-           bg-white/5 text-white/60
-           rounded-full text-xs
-           font-mono;
+    display: inline-block;
+    padding: 0 0.5rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-family: monospace;
   }
 </style>

@@ -493,7 +493,7 @@
         >
           <div class="button-content">
             {#key buttonText}
-              <span class="button-text" in:fade={{ duration: 200 }}>
+              <span class="button-text swap-button-text" in:fade={{ duration: 200 }}>
                 {buttonText}
               </span>
             {/key}
@@ -660,14 +660,15 @@
   }
 
   .button-text {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    @apply text-white font-semibold text-xl;
+    letter-spacing: 0.01em;
     display: flex;
     align-items: center;
+    gap: 6px;
     justify-content: center;
-    min-width: 120px;
+    min-width: 140px;
     text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   .swap-button {
@@ -908,5 +909,17 @@
 
   .button-text :first-child {
     animation: subtle-bounce 2s infinite ease-in-out;
+  }
+
+  .swap-button-text {
+    @apply text-white font-semibold;
+    font-size: 24px !important; /* Using !important to ensure it takes precedence */
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    text-align: center;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   }
 </style>

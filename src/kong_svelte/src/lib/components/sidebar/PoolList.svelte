@@ -99,47 +99,35 @@
   }
 </script>
 
-<div class="pool-list">
-  <div class="header-section">
-    <h3>Liquidity Positions</h3>
-    <button class="add-button" on:click={handleAddLiquidity}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      Add Position
-    </button>
-  </div>
+<div class="pool-list-wrapper">
+  <div class="pool-list-content">
+    <div class="pool-list">
 
-  <div class="pools-content">
-    {#if loading && processedPools.length === 0}
-      <div class="empty-state">Loading positions...</div>
-    {:else if error}
-      <div class="empty-state error">{error}</div>
-    {:else if processedPools.length === 0}
-      <div class="empty-state">
-        <div class="empty-icon">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+      {#if loading && processedPools.length === 0}
+        <div class="loading-state" in:fade>
+          <p>Loading positions...</p>
         </div>
-        <p>No active positions</p>
-        <button class="primary-button" on:click={handleAddLiquidity}>
-          Add Position
-        </button>
-      </div>
-    {:else}
-      <div class="pools-container">
+      {:else if error}
+        <div class="error-state" in:fade>
+          <p>{error}</p>
+        </div>
+      {:else if processedPools.length === 0}
+        <div class="empty-state" in:fade>
+          <p>No active positions</p>
+          <button class="primary-button" on:click={handleAddLiquidity}>
+            Add Position
+          </button>
+        </div>
+      {:else}
         {#each processedPools as pool (pool.id)}
-          <div class="pool-row" 
-               in:fly={{ y: 20, duration: 400, delay: 200 }}
-               out:fade={{ duration: 200 }}>
+          <div class="pool-item" in:fade>
             <div class="pool-content">
               <div class="pool-left">
                 <TokenImages 
                   tokens={[
                     $tokenStore.tokens.find(token => token.canister_id === pool.address_0),
                     $tokenStore.tokens.find(token => token.canister_id === pool.address_1)
-                    ]} 
+                  ]} 
                   size={36}
                 />
                 <div class="pool-info">
@@ -151,141 +139,98 @@
             </div>
           </div>
         {/each}
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </div>
 
-<style>
+<style lang="postcss">
+  .pool-list-wrapper {
+    @apply flex flex-col h-full overflow-hidden;
+  }
+
+  .pool-list-content {
+    @apply flex-1 min-h-0 overflow-y-auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+
+  .pool-list-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .pool-list-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .pool-list-content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  .pool-list-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
   .pool-list {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: #15161c;
-    border-radius: 12px;
-    overflow: hidden;
+    @apply flex flex-col gap-4 p-4 min-h-full;
   }
 
   .header-section {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-    background: #15161c;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    @apply flex justify-between items-center mb-2;
   }
 
   .header-section h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-base font-semibold text-white/90;
   }
 
   .add-button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    background: rgba(59, 130, 246, 0.1);
-    color: rgb(59, 130, 246);
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 8px;
-    transition: all 200ms;
+    @apply flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-400 bg-blue-500/10 rounded-lg transition-all duration-200;
   }
 
   .add-button:hover {
-    background: rgba(59, 130, 246, 0.15);
+    @apply bg-blue-500/20;
   }
 
-  .pools-content {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .pool-row {
-    background: rgba(42, 45, 61, 0.3);
-    border: 1px solid rgba(58, 62, 82, 0.3);
-    transition: all 200ms;
-    margin: 8px;
-    border-radius: 12px;
-  }
-
-  .pool-row:hover {
-    background: rgba(42, 45, 61, 0.8);
-    border-color: rgba(58, 62, 82, 0.8);
-    transform: translateY(-1px);
+  .pool-item {
+    @apply bg-gray-800/50 rounded-lg p-4;
   }
 
   .pool-content {
-    padding: 16px;
+    @apply space-y-2;
   }
 
   .pool-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    @apply flex items-center gap-4;
   }
 
   .pool-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    @apply flex flex-col gap-1;
   }
 
   .pool-pair {
-    font-size: 16px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.95);
+    @apply text-base font-medium text-white/95;
   }
 
   .pool-balance {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 48px 24px;
-    color: rgba(255, 255, 255, 0.7);
-    text-align: center;
-  }
-
-  .empty-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    background: rgba(59, 130, 246, 0.1);
-    border-radius: 12px;
-    color: rgb(59, 130, 246);
-  }
-
-  .primary-button {
-    padding: 8px 16px;
-    background: rgb(59, 130, 246);
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 8px;
-    transition: all 200ms;
-  }
-
-  .primary-button:hover {
-    background: rgb(37, 99, 235);
-  }
-
-  .error {
-    color: rgb(239, 68, 68);
+    @apply text-sm text-white/70;
   }
 
   .pool-usd-value {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
+    @apply text-xs text-white/50;
+  }
+
+  .loading-state, .error-state, .empty-state {
+    @apply flex flex-col items-center justify-center gap-3
+           min-h-[160px] text-white/40 text-sm;
+  }
+
+  .primary-button {
+    @apply px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-blue-600;
+  }
+
+  .error-state {
+    @apply text-red-400;
   }
 </style>
