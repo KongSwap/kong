@@ -28,25 +28,21 @@ use crate::stable_user::user_map;
 
 pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
-
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
 
-    match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        }
-    }
+    let reply = process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts)
+        .await
+        .inspect_err(|e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(e));
+        })?;
+
+    request_map::update_status(request_id, StatusCode::Success, None);
+    Ok(reply)
 }
 
 pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
-
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
 

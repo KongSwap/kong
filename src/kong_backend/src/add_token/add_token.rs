@@ -29,9 +29,8 @@ use crate::stable_token::token_map;
 /// - The token already exists.
 #[update(guard = "caller_is_kingkong")]
 async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
-    // Ensure the token does not already exist.
     if token_map::get_by_address(&args.token).is_ok() {
-        return Err(format!("Add token {} already exists", args.token));
+        return Err(format!("Token {} already exists", args.token));
     }
 
     // Default on_kong to false

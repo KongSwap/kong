@@ -21,12 +21,11 @@ use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
-
-    let receive_amount = args.receive_amount.clone();
     let ts = get_time();
+    let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
-    match process_swap(
+    let reply = process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -38,23 +37,18 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         ts,
     )
     .await
-    {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        }
-    }
+    .inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    })?;
+
+    request_map::update_status(request_id, StatusCode::Success, None);
+    Ok(reply)
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
-
-    let receive_amount = args.receive_amount.clone();
     let ts = get_time();
+    let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
     ic_cdk::spawn(async move {

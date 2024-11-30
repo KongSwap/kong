@@ -25,24 +25,18 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
-    match check_arguments(&args, request_id, ts).await {
-        Ok((pay_token, pay_amount, transfer_id)) => {
-            match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
-                Ok(reply) => {
-                    request_map::update_status(request_id, StatusCode::Success, None);
-                    Ok(reply)
-                }
-                Err(e) => {
-                    request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-                    Err(e)
-                }
-            }
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        }
-    }
+    let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    })?;
+
+    let reply = process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts)
+        .await
+        .inspect_err(|e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(e));
+        })?;
+
+    request_map::update_status(request_id, StatusCode::Success, None);
+    Ok(reply)
 }
 
 pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
@@ -50,22 +44,15 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
+    let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    })?;
+
     ic_cdk::spawn(async move {
-        match check_arguments(&args, request_id, ts).await {
-            Ok((pay_token, pay_amount, transfer_id)) => {
-                match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
-                    Ok(_) => {
-                        request_map::update_status(request_id, StatusCode::Success, None);
-                    }
-                    Err(e) => {
-                        request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-                    }
-                }
-            }
-            Err(e) => {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            }
-        }
+        match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+        };
     });
 
     Ok(request_id)

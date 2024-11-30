@@ -15,7 +15,7 @@ use crate::ic::{
     guards::not_in_maintenance_mode,
     icp::is_icp,
     id::{caller_id, is_caller_controller},
-    logging::{error_log, info_log},
+    logging::error_log,
     transfer::{icrc1_transfer, icrc2_transfer_from},
     verify::verify_transfer,
 };
@@ -57,11 +57,10 @@ enum TokenIndex {
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
         check_arguments(&args).await?;
-
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args.clone()), ts));
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
 
-    match process_add_pool(
+    let reply = process_add_pool(
         request_id,
         user_id,
         &token_0,
@@ -77,16 +76,12 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         ts,
     )
     .await
-    {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        }
-    }
+    .inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    })?;
+
+    request_map::update_status(request_id, StatusCode::Success, None);
+    Ok(reply)
 }
 
 /// Check the arguments are valid, create new token_0 if it does not exist and calculate the amounts to be added to the pool

@@ -26,37 +26,30 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
-    match check_arguments(&args, request_id, ts).await {
-        Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1)) => {
-            match process_add_liquidity(
-                request_id,
-                user_id,
-                token_0.as_ref(),
-                tx_id_0.as_ref(),
-                transfer_id_0,
-                token_1.as_ref(),
-                tx_id_1.as_ref(),
-                transfer_id_1,
-                &args,
-                ts,
-            )
-            .await
-            {
-                Ok(reply) => {
-                    request_map::update_status(request_id, StatusCode::Success, None);
-                    Ok(reply)
-                }
-                Err(e) => {
-                    request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-                    Err(e)
-                }
-            }
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        }
-    }
+    let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
+        check_arguments(&args, request_id, ts).await.inspect_err(|e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(e));
+        })?;
+
+    let reply = process_add_liquidity(
+        request_id,
+        user_id,
+        token_0.as_ref(),
+        tx_id_0.as_ref(),
+        transfer_id_0,
+        token_1.as_ref(),
+        tx_id_1.as_ref(),
+        transfer_id_1,
+        &args,
+        ts,
+    )
+    .await
+    .inspect_err(|e| {
+        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    })?;
+
+    request_map::update_status(request_id, StatusCode::Success, None);
+    Ok(reply)
 }
 
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {
@@ -64,27 +57,27 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
+    let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
+        check_arguments(&args, request_id, ts).await.inspect_err(|e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(e));
+        })?;
+
     ic_cdk::spawn(async move {
-        match check_arguments(&args, request_id, ts).await {
-            Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1)) => {
-                match process_add_liquidity(
-                    request_id,
-                    user_id,
-                    token_0.as_ref(),
-                    tx_id_0.as_ref(),
-                    transfer_id_0,
-                    token_1.as_ref(),
-                    tx_id_1.as_ref(),
-                    transfer_id_1,
-                    &args,
-                    ts,
-                )
-                .await
-                {
-                    Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
-                    Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
-                }
-            }
+        match process_add_liquidity(
+            request_id,
+            user_id,
+            token_0.as_ref(),
+            tx_id_0.as_ref(),
+            transfer_id_0,
+            token_1.as_ref(),
+            tx_id_1.as_ref(),
+            transfer_id_1,
+            &args,
+            ts,
+        )
+        .await
+        {
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
     });
@@ -92,7 +85,7 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
     Ok(request_id)
 }
 
-/// if any of the transfer is valid, then must proceed as we mayb need to return the token back to the user
+/// if any of the transfer is valid, then must proceed as we may need to return the token back to the user
 async fn check_arguments(
     args: &AddLiquidityArgs,
     request_id: u64,

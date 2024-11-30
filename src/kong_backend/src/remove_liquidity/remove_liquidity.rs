@@ -32,16 +32,12 @@ enum TokenIndex {
 ///   - payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1 does not include gas fees
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidityReply, String> {
-    // check arguments
-    // can use the calculated payout amounts here as no inter-canister calls are made until send_payout_tokens()
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
-
-    // initialize a new remove liquidity request with request_id
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
 
-    match process_remove_liquidity(
+    let reply = match process_remove_liquidity(
         request_id,
         user_id,
         &pool,
@@ -54,24 +50,23 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     )
     .await
     {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
+        Ok(reply) => reply,
         Err(e) => {
             request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
+            return Err(e);
         }
-    }
+    };
+
+    request_map::update_status(request_id, StatusCode::Success, None);
+    Ok(reply)
 }
 
 #[update]
 pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
-
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args.clone()), ts));
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
 
     ic_cdk::spawn(async move {
         match process_remove_liquidity(
@@ -87,16 +82,11 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
         )
         .await
         {
-            Ok(_) => {
-                request_map::update_status(request_id, StatusCode::Success, None);
-            }
-            Err(e) => {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            }
-        }
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+        };
     });
 
-    // return the request_id asynchrounously
     Ok(request_id)
 }
 
