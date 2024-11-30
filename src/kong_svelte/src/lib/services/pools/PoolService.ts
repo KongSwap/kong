@@ -200,23 +200,36 @@ export class PoolService {
   public static async fetchUserPoolBalances(): Promise<FE.UserPoolBalance[]> {
     try {
       const wallet = get(auth);
+      console.log('[PoolService] Fetching user pool balances, wallet state:', {
+        isConnected: wallet.isConnected,
+        hasAccount: !!wallet.account,
+        accountOwner: wallet.account?.owner
+      });
+
       if (!wallet.isConnected || !wallet.account?.owner) {
+        console.log('[PoolService] Wallet not connected or no account owner, returning empty balances');
         return [];
       }
       
+      console.log('[PoolService] Creating actor...');
       const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false, requiresSigning: false});
+      
       if (!actor) {
+        console.error('[PoolService] Actor creation failed');
         throw new Error('Actor not available');
       }
-
+      
+      console.log('[PoolService] Actor created successfully, fetching balances...');
       const balances = await actor.user_balances([]);
+      console.log('[PoolService] Balances fetched successfully:', balances);
+      
       return balances;
     } catch (error) {
       if (error.message?.includes('Anonymous user')) {
-        // Return empty array for anonymous users
+        console.log('[PoolService] Anonymous user detected, returning empty balances');
         return [];
       }
-      console.error('Error fetching user pool balances:', error);
+      console.error('[PoolService] Error fetching user pool balances:', error);
       throw error;
     }
   }

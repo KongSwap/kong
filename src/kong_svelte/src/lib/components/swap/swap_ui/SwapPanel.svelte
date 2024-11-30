@@ -401,24 +401,8 @@
       margin-top: -0.15rem;
     }
 
-    .token-panel :global(.button-group) {
-      transform: scale(0.9);
-    }
-
     .mobile-text {
       font-size: 0.7rem;
-    }
-  }
-
-  .token-panel {
-    position: relative;
-  }
-
-  @media (max-width: 420px) {
-    .token-panel:first-of-type::after {
-      width: 2.25rem;
-      height: 2.25rem;
-      bottom: -18px;
     }
   }
 
@@ -427,7 +411,7 @@
   }
 
   .token-selector-button {
-    min-width: 140px;
+    min-width: 180px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -486,15 +470,4 @@
     color: rgba(255, 255, 255, 0.5);
   }
 
-  .dropdown-overlay {
-    z-index: 100;
-  }
-
-  .dropdown-content {
-    z-index: 101;
-    border-radius: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(17, 24, 39, 0.95);
-    backdrop-filter: blur(8px);
-  }
 </style>
