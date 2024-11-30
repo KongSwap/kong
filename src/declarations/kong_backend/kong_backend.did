@@ -67,7 +67,6 @@ type TokenReply = variant {
 };
 type LPTokenReply = record {
     token_id : nat32;
-    pool_symbol : text;
     name : text;
     chain : text;
     symbol : text;
@@ -81,7 +80,6 @@ type LPTokenReply = record {
 };
 type ICTokenReply = record {
     token_id : nat32;
-    pool_symbol : text;
     name : text;
     chain : text;
     symbol : text;

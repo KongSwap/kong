@@ -40,10 +40,10 @@ impl Token for StableToken {
         match self {
             LP(_) => None, // currently LP tokens don't have pool
             IC(_) => {
-                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings_map::get().ckusdt_address_with_chain) {
+                if let Some(pool) = pool_map::get_by_token_ids(self.token_id(), kong_settings_map::get().ckusdt_token_id) {
                     return Some(pool.pool_id);
                 }
-                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings_map::get().icp_address_with_chain) {
+                if let Some(pool) = pool_map::get_by_token_ids(self.token_id(), kong_settings_map::get().icp_token_id) {
                     return Some(pool.pool_id);
                 }
                 None
