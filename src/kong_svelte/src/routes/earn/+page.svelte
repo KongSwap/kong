@@ -7,9 +7,14 @@
   import { onMount } from 'svelte';
   import { goto } from "$app/navigation";
   import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-svelte';
+  import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
 
   // Navigation state
   const activeSection = writable("pools");
+  
+  // Modal state
+  let showPoolDetails = false;
+  let selectedPool = null;
   
   // Sort state
   const sortColumn = writable("rolling_24h_volume");
@@ -52,6 +57,11 @@
 
   function handleAddLiquidity(token0: string, token1: string) {
     goto(`/earn/add?token0=${token0}&token1=${token1}`);
+  }
+
+  function handleShowDetails(pool) {
+    selectedPool = pool;
+    showPoolDetails = true;
   }
 
   // Search and filter functionality
@@ -201,6 +211,7 @@
                     tokenMap={$tokenMap}
                     isEven={i % 2 === 0}
                     onAddLiquidity={handleAddLiquidity}
+                    onShowDetails={() => handleShowDetails(pool)}
                   />
                 {/each}
               </tbody>
@@ -261,12 +272,20 @@
                         <div class="text-xs text-[#8890a4]">Pool Tokens</div>
                       </div>
                     </div>
-                    <button
-                      on:click={() => handleAddLiquidity(pool.address_0, pool.address_1)}
-                      class="px-4 py-2 text-sm bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
-                    >
-                      Add Liquidity
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button
+                        on:click={() => handleAddLiquidity(pool.address_0, pool.address_1)}
+                        class="px-4 py-2 text-sm bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                      >
+                        Add Liquidity
+                      </button>
+                      <button
+                        on:click={() => handleShowDetails(pool)}
+                        class="px-4 py-2 text-sm bg-[#2a2d3d] text-white rounded-lg hover:bg-[#2a2d3d]/90 transition-colors duration-200"
+                      >
+                        Details
+                      </button>
+                    </div>
                   </div>
                   
                   <div class="grid grid-cols-2 gap-4">
@@ -296,6 +315,19 @@
     {/if}
   </div>
 </section>
+
+{#if showPoolDetails && selectedPool}
+  <PoolDetails 
+    pool={selectedPool}
+    tokenMap={$tokenMap}
+    showModal={showPoolDetails}
+    positions={[]}
+    onClose={() => {
+      showPoolDetails = false;
+      selectedPool = null;
+    }}
+  />
+{/if}
 
 <style lang="postcss">
   .earn-cards {

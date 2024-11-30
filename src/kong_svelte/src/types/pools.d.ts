@@ -40,6 +40,7 @@ declare global {
       symbol: string;
       lp_fee_bps: number;
       on_kong: boolean;
+      tvl?: number;
     }
   }
 }

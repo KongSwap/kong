@@ -3,15 +3,13 @@
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
-  import Button from "$lib/components/common/Button.svelte";
   import { goto } from "$app/navigation";
-  import type { Position } from "$lib/types";
-    import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   export let pool: BE.Pool;
   export let tokenMap: Map<string, any>;
   export let onClose: () => void;
-  export let positions: Position[] = [];
+  export let positions: BE.Position[] = [];
   export let showModal: boolean;
 
   let activeTab: 'details' | 'add-liquidity' | 'positions' = 'details';
@@ -40,7 +38,7 @@
 </script>
 
 <Modal
-  show={showModal}
+  isOpen={showModal}
   title="Pool Details"
   onClose={handleClose}
   variant="green"
@@ -49,12 +47,14 @@
   <div class="pool-details">
     <div class="pool-header">
       <div class="token-info">
-        <TokenImages tokens={[token0, token1]} overlap={12} />
+        <TokenImages tokens={[token0, token1]} overlap={12} size={32} />
         <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
       </div>
       
       <div class="quick-actions">
-        <Button variant="green" size="small" text="Swap" onClick={handleSwap} />
+        <button class="action-btn" on:click={handleSwap}>
+          Swap
+        </button>
       </div>
     </div>
 
@@ -93,47 +93,41 @@
         <h4>Pool Reserves</h4>
         <div class="reserves-grid">
           <div class="reserve-item">
-            <TokenImages tokens={[token0]} />
+            <TokenImages tokens={[token0]} size={24} />
             <div class="reserve-info">
               <span class="token-symbol">{pool.symbol_0}</span>
-              <span class="token-amount">{formatTokenAmount(pool.balance_0, token0?.decimals || 8)}</span>
+              <span class="token-amount">{formatTokenAmount(pool.balance_0.toString(), token0?.decimals || 8)}</span>
             </div>
           </div>
           <div class="reserve-item">
-            <TokenImages tokens={[token1]} />
+            <TokenImages tokens={[token1]} size={24} />
             <div class="reserve-info">
               <span class="token-symbol">{pool.symbol_1}</span>
-              <span class="token-amount">{formatTokenAmount(pool.balance_1, token1?.decimals || 8)}</span>
+              <span class="token-amount">{formatTokenAmount(pool.balance_1.toString(), token1?.decimals || 8)}</span>
             </div>
           </div>
         </div>
       </div>
     {:else if activeTab === 'positions'}
-      <div class="positions-container">
+      <div class="positions-list">
         {#if positions.length === 0}
           <div class="empty-state">
             <p>You don't have any positions in this pool yet.</p>
-            <Button 
-              variant="green" 
-              size="small" 
-              text="Add Liquidity" 
-              onClick={() => activeTab = 'add-liquidity'} 
-            />
+            <button class="action-btn" on:click={() => activeTab = 'add-liquidity'}>
+              Add Liquidity
+            </button>
           </div>
         {:else}
           {#each positions as position}
             <div class="position-item">
-              <div class="position-header">
-                <span class="position-label">Position #{position.id}</span>
-                <span class="position-value">${formatToNonZeroDecimal(position.value)}</span>
-              </div>
-              <div class="position-tokens">
+              <h4>Your Position</h4>
+              <div class="token-amounts">
                 <div class="token-amount">
-                  <TokenImages tokens={[token0]} />
+                  <TokenImages tokens={[token0]} size={24} />
                   <span>{formatTokenAmount(position.amount0, token0?.decimals)} {pool.symbol_0}</span>
                 </div>
                 <div class="token-amount">
-                  <TokenImages tokens={[token1]} />
+                  <TokenImages tokens={[token1]} size={24} />
                   <span>{formatTokenAmount(position.amount1, token1?.decimals)} {pool.symbol_1}</span>
                 </div>
               </div>
@@ -166,7 +160,7 @@
   }
 
   .pool-header {
-    @apply flex justify-between items-center;
+    @apply flex justify-between items-center mb-4;
   }
 
   .token-info {
@@ -174,42 +168,38 @@
   }
 
   .token-pair {
-    @apply text-xl font-semibold text-white m-0;
+    @apply text-xl font-medium text-white;
+  }
+
+  .action-btn {
+    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+           bg-[#60A5FA]/20 text-[#60A5FA] border border-[#60A5FA]/30
+           hover:bg-[#60A5FA]/30 hover:border-[#60A5FA]/50;
   }
 
   .tabs {
-    @apply flex gap-8 mb-6 relative;
-    &::after {
-      content: '';
-      @apply absolute bottom-0 left-0 right-0 h-[1px] bg-white/20;
-    }
+    @apply flex gap-2 p-1 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] mb-6;
   }
 
   .tab-btn {
-    @apply px-2 py-3 text-white/60 relative cursor-pointer font-medium;
-    @apply bg-transparent border-none transition-colors;
-    @apply hover:text-white;
+    @apply flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200
+           text-[#8890a4] hover:text-white;
+  }
 
-    &.active {
-      @apply text-white;
-      &::after {
-        content: '';
-        @apply absolute bottom-0 left-0 right-0 h-[2px] bg-white;
-        z-index: 1;
-      }
-    }
+  .tab-btn.active {
+    @apply bg-[#2a2d3d] text-white;
   }
 
   .stats-grid {
-    @apply grid grid-cols-2 md:grid-cols-4 gap-4;
+    @apply grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6;
   }
 
   .stat-item {
-    @apply bg-emerald-900/50 rounded-lg p-4 flex flex-col;
+    @apply flex flex-col gap-1 p-4 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .stat-label {
-    @apply text-sm text-white/60;
+    @apply text-sm text-[#8890a4];
   }
 
   .stat-value {
@@ -217,19 +207,19 @@
   }
 
   .pool-reserves {
-    @apply mt-6;
+    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4;
   }
 
   .pool-reserves h4 {
-    @apply text-lg font-medium text-white mb-4;
+    @apply text-sm text-[#8890a4] mb-4;
   }
 
   .reserves-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+    @apply flex flex-col gap-4;
   }
 
   .reserve-item {
-    @apply flex items-center gap-3 bg-emerald-900/30 rounded-lg p-4;
+    @apply flex items-center gap-3 p-3 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .reserve-info {
@@ -237,42 +227,52 @@
   }
 
   .token-symbol {
-    @apply text-sm text-white/80;
+    @apply text-sm text-[#8890a4];
   }
 
   .token-amount {
     @apply text-white font-medium;
   }
 
-  .positions-container {
+  .positions-list {
     @apply flex flex-col gap-4;
   }
 
   .empty-state {
-    @apply flex flex-col items-center gap-4 py-8 text-white/60;
+    @apply flex flex-col items-center gap-4 p-8 text-center;
+  }
+
+  .empty-state p {
+    @apply text-[#8890a4];
   }
 
   .position-item {
-    @apply bg-emerald-900/30 rounded-lg p-4 flex flex-col gap-3;
+    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4;
   }
 
-  .position-header {
-    @apply flex justify-between items-center;
+  .position-item h4 {
+    @apply text-sm text-[#8890a4] mb-4;
   }
 
-  .position-label {
-    @apply text-white/60 text-sm;
-  }
-
-  .position-value {
-    @apply text-white font-medium;
-  }
-
-  .position-tokens {
-    @apply flex flex-col gap-2;
+  .token-amounts {
+    @apply flex flex-col gap-3;
   }
 
   .token-amount {
-    @apply flex items-center gap-2 text-white;
+    @apply flex items-center gap-3 p-3 rounded-lg bg-[#2a2d3d]/50;
+  }
+
+  @media (max-width: 640px) {
+    .stats-grid {
+      @apply grid-cols-2;
+    }
+
+    .stat-item {
+      @apply p-3;
+    }
+
+    .stat-value {
+      @apply text-base;
+    }
   }
 </style>

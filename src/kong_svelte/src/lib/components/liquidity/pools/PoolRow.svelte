@@ -6,8 +6,6 @@
     } from "$lib/utils/numberFormatUtils";
     import TokenImages from "$lib/components/common/TokenImages.svelte";
     import Button from "$lib/components/common/Button.svelte";
-    import Modal from "$lib/components/common/Modal.svelte";
-    import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
     import { Flame, MoreVertical } from "lucide-svelte";
     import { onMount } from 'svelte';
     import { formatTokenValue, formatUsdValue, fromRawAmount, toRawAmount } from "$lib/utils/tokenFormatters";
@@ -16,20 +14,18 @@
     export let tokenMap: Map<string, any>;
     export let isEven: boolean;
     export let onAddLiquidity: (token0: string, token1: string) => void;
+    export let onShowDetails: () => void;
   
-    let showPoolDetails = false;
-    let showAddLiquidity = false;
     let isMobile = false;
     let isSmallMobile = false;
     let isTableCompact = false;
-    let hideSwap = false;
-    let showSwapButton = true;
+    let showDetailsButton = true;
   
     onMount(() => {
       const checkMobile = () => {
         isMobile = window.innerWidth < 900;
         isSmallMobile = window.innerWidth < 640;
-        showSwapButton = window.innerWidth >= 1150;
+        showDetailsButton = window.innerWidth >= 1150;
       };
       
       checkMobile();
@@ -41,25 +37,7 @@
     });
   
     function handleAddLiquidity() {
-      goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
-    }
-  
-    function handleAddLiquidityClose() {
-      showAddLiquidity = false;
-    }
-  
-    function handleSwap() {
-      if (pool.address_0 && pool.address_1) {
-        goto(`/swap?from=${pool.address_0}&to=${pool.address_1}`);
-      }
-    }
-  
-    function handleClose() {
-      showPoolDetails = false;
-    }
-  
-    function handleViewDetails() {
-      showPoolDetails = true;
+      onAddLiquidity(pool.address_0, pool.address_1);
     }
   
     $: apyColor =
@@ -122,12 +100,12 @@
         >
           Add LP
         </button>
-        {#if showSwapButton}
+        {#if showDetailsButton}
           <button 
-            class="action-btn swap"
-            on:click={handleSwap}
+            class="action-btn details"
+            on:click={onShowDetails}
           >
-            Swap
+            Details
           </button>
         {/if}
       </div>
@@ -153,20 +131,17 @@
           class="action-btn add-lp"
           on:click={handleAddLiquidity}
         >
-          Actions
+          Add LP
+        </button>
+        <button
+          class="action-btn details"
+          on:click={onShowDetails}
+        >
+          Details
         </button>
       </div>
     </div>
   </div>
-{/if}
-
-{#if showPoolDetails}
-  <PoolDetails 
-    showModal={showPoolDetails} 
-    onClose={handleClose}
-    {pool}
-    {tokenMap}
-  />
 {/if}
 
 <style>
@@ -288,6 +263,18 @@
   }
 
   .swap:hover {
+    background-color: rgba(107, 114, 128, 0.3);
+    border-color: rgba(107, 114, 128, 0.5);
+    color: #d1d5db;
+  }
+
+  .details {
+    background-color: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+  }
+
+  .details:hover {
     background-color: rgba(107, 114, 128, 0.3);
     border-color: rgba(107, 114, 128, 0.5);
     color: #d1d5db;
