@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Plus } from "lucide-svelte";
     import { fade } from "svelte/transition";
-    import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
+    import { formatTokenAmount, parseTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import { poolStore } from "$lib/services/pools/poolStore";
     import Portal from 'svelte-portal';
     import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
@@ -20,6 +20,7 @@
     export let onInput: (index: 0 | 1, value: string) => void;
     export let onSubmit: () => void;
     export let previewMode: boolean = false;
+    export let pool: BE.Pool | null = null;
 
     let showToken0Selector = false;
     let showToken1Selector = false;
@@ -41,43 +42,6 @@
             amount1 = input;
         }
 
-        if (token0 && token1) {
-            const inputValue = input === '' ? '0' : input;
-            
-            try {
-                console.log('Calculating liquidity amounts...');
-                if (index === 0) {
-                    const parsedAmount = parseTokenAmount(inputValue, token0.decimals);
-                    console.log('Token0 parsed amount:', parsedAmount);
-                    const result = await PoolService.addLiquidityAmounts(
-                        token0.token,
-                        parsedAmount,
-                        token1.token
-                    );
-                    
-                    if (result.Ok) {
-                        amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
-                        console.log('Set amount1 to:', amount1);
-                    }
-                } else {
-                    const parsedAmount = parseTokenAmount(inputValue, token1.decimals);
-                    const result = await PoolService.addLiquidityAmounts(
-                        token1.token,
-                        parsedAmount,
-                        token0.token
-                    );
-                    
-                    if (result.Ok) {
-                        amount0 = formatTokenAmount(result.Ok.amount_0, token0.decimals);
-                        console.log('Set amount0 to:', amount0);
-                    }
-                }
-            } catch (err) {
-                console.error("Error calculating liquidity amounts:", err);
-                error = err.message;
-            }
-        }
-        
         onInput(index, input);
     }
 
@@ -117,6 +81,20 @@
         : "Review Transaction";
 
     $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance();
+
+    // Helper function to format large numbers with commas and fixed decimals
+    function formatLargeNumber(value: string | number | bigint, decimals: number = 2): string {
+        const num = Number(value) / 1e6; // Convert from microdollars to dollars
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }).format(num);
+    }
+
+    // Helper function to format ratio with 6 decimal places
+    function formatRatio(value: number): string {
+        return formatToNonZeroDecimal(value);
+    }
 </script>
 
 <Panel variant="green" width="auto" className="liquidity-panel w-full max-w-[690px]">
@@ -232,6 +210,28 @@
         >
             {buttonText}
         </button>
+
+        {#if pool}
+        <div class="pool-info mt-4">
+            <div class="pool-stats-grid">
+                <div class="pool-stat">
+                    <span class="stat-value">${formatLargeNumber(pool.balance)}</span>
+                    <span class="stat-label">TVL</span>
+                </div>
+                <div class="pool-stat">
+                    <span class="stat-value">${formatLargeNumber(pool.rolling_24h_volume)}</span>
+                    <span class="stat-label">24h Vol</span>
+                </div>
+                <div class="pool-stat">
+                    <span class="stat-value">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
+                    <span class="stat-label">APY</span>
+                </div>
+            </div>
+            <div class="pool-ratio">
+                <span>1 {pool.symbol_0} = {formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0))} {pool.symbol_1}</span>
+            </div>
+        </div>
+        {/if}
     </div>
 </Panel>
 
@@ -337,6 +337,40 @@
     @media (max-width: 420px) {
         .amount-input {
             @apply text-2xl mt-[-0.15rem];
+        }
+    }
+
+    .pool-info {
+        @apply border-t border-white/10 pt-4;
+    }
+
+    .pool-stats-grid {
+        @apply grid grid-cols-3 gap-2 bg-white/5 rounded-lg p-3;
+    }
+
+    .pool-stat {
+        @apply flex flex-col items-center;
+    }
+
+    .stat-value {
+        @apply text-base font-medium text-white;
+    }
+
+    .stat-label {
+        @apply text-xs text-white/60;
+    }
+
+    .pool-ratio {
+        @apply mt-2 text-sm text-white/80 text-center;
+    }
+
+    @media (min-width: 640px) {
+        .stat-value {
+            @apply text-lg;
+        }
+        
+        .stat-label {
+            @apply text-sm;
         }
     }
 </style>

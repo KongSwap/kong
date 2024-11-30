@@ -8,6 +8,7 @@
   import { PoolService } from "$lib/services/pools/PoolService";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
+  import { auth } from "$lib/services/auth";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -17,6 +18,8 @@
   let error: string | null = null;
   let token0Balance = "0";
   let token1Balance = "0";
+  let pool: BE.Pool | null = null;
+  let previewMode = false;
 
   $: {
     if ($formattedTokens) {
@@ -31,6 +34,28 @@
     }
     if (token1) {
       token1Balance = $tokenStore.balances[token1.canister_id]?.in_tokens?.toString() || "0";
+    }
+  }
+
+  $: {
+    // When either token changes, try to fetch pool info
+    if (token0 && token1) {
+      fetchPoolInfo();
+    } else {
+      pool = null;
+    }
+  }
+
+  async function fetchPoolInfo() {
+    try {
+      const pools = await PoolService.fetchPoolsData();
+      pool = pools.pools.find(
+        p => (p.address_0 === token0?.canister_id && p.address_1 === token1?.canister_id) ||
+             (p.address_0 === token1?.canister_id && p.address_1 === token0?.canister_id)
+      ) || null;
+    } catch (err) {
+      console.error('Error fetching pool info:', err);
+      pool = null;
     }
   }
 
@@ -106,54 +131,76 @@
   function handleInput(index: 0 | 1, value: string) {
     if (index === 0) {
       amount0 = value;
+      if (pool && value) {
+        // Calculate amount1 based on pool ratio
+        const parsedAmount0 = Number(parseTokenAmount(value, token0?.decimals || 8));
+        const ratio = Number(pool.balance_1) / Number(pool.balance_0);
+        const calculatedAmount1 = parsedAmount0 * ratio;
+        amount1 = (calculatedAmount1 / Math.pow(10, token1?.decimals || 8)).toString();
+      }
     } else {
       amount1 = value;
+      if (pool && value) {
+        // Calculate amount0 based on pool ratio
+        const parsedAmount1 = Number(parseTokenAmount(value, token1?.decimals || 8));
+        const ratio = Number(pool.balance_0) / Number(pool.balance_1);
+        const calculatedAmount0 = parsedAmount1 * ratio;
+        amount0 = (calculatedAmount0 / Math.pow(10, token0?.decimals || 8)).toString();
+      }
     }
     error = null;
   }
 
   async function handleSubmit() {
-    if (!token0 || !token1 || !amount0 || !amount1) {
-        error = "Please fill in all fields";
-        return;
-    }
-    
     try {
+        if (!token0 || !token1 || !amount0 || !amount1) {
+            error = "Please fill in all fields";
+            return;
+        }
+
         loading = true;
         error = null;
+        previewMode = true;
 
-        const parsedAmount0 = parseTokenAmount(amount0, token0.decimals);
-        const parsedAmount1 = parseTokenAmount(amount1, token1.decimals);
-
-        const addLiquidityArgs = {
+        const params = {
             token_0: token0,
-            amount_0: parsedAmount0,
-            tx_id_0: null as number[] | undefined,
+            amount_0: parseTokenAmount(amount0, token0.decimals),
             token_1: token1,
-            amount_1: parsedAmount1,
-            tx_id_1: null as number[] | undefined
+            amount_1: parseTokenAmount(amount1, token1.decimals),
         };
 
-        const result = await PoolService.addLiquidity(addLiquidityArgs);
+        // Let PoolService handle the authentication
+        const requestId = await PoolService.addLiquidity(params);
         
-        type AddLiquidityResult = { Ok?: any, Err?: string };
-        const typedResult = result as AddLiquidityResult;
-        
-        if (typedResult.Ok) {
-            await poolStore.loadUserPoolBalances();
-            
-            amount0 = "0";
-            amount1 = "0";
-            
-            goto("/earn");
-        } else if (typedResult.Err) {
-            error = typedResult.Err;
-        }
+        // Poll for status
+        const pollStatus = async () => {
+            try {
+                const status = await PoolService.pollRequestStatus(requestId);
+                
+                if (status.statuses.includes('Success')) {
+                    await poolStore.loadUserPoolBalances();
+                    goto("/earn");
+                } else if (status.statuses.some(s => 
+                    s.toLowerCase().includes('failed') || 
+                    s.toLowerCase().includes('error')
+                )) {
+                    throw new Error(status.statuses[status.statuses.length - 1]);
+                } else {
+                    // Continue polling
+                    setTimeout(pollStatus, 2000);
+                }
+            } catch (err) {
+                throw err;
+            }
+        };
+
+        await pollStatus();
+
     } catch (err) {
-        console.error('Error submitting liquidity:', err);
-        error = err instanceof Error ? err.message : 'Failed to add liquidity';
-    } finally {
+        console.error("Error adding liquidity:", err);
+        error = err.message;
         loading = false;
+        previewMode = false;
     }
   }
 
@@ -185,7 +232,8 @@
       onTokenSelect={handleTokenSelect}
       onInput={handleInput}
       onSubmit={handleSubmit}
-      previewMode={false}
+      {previewMode}
+      {pool}
     />
   </div>
 </div>

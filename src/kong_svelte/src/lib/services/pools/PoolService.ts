@@ -136,13 +136,13 @@ export class PoolService {
           params.token_1,
           params.amount_1,
         ),
-        auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true})
+        auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend)
       ]);
 
       const result = await actor.add_liquidity_async({
-        token_0: params.token_0.token,
+        token_0: params.token_0.symbol,
         amount_0: params.amount_0,
-        token_1: params.token_1.token,
+        token_1: params.token_1.symbol,
         amount_1: params.amount_1,
         tx_id_0: params.tx_id_0 || [],
         tx_id_1: params.tx_id_1 || []
@@ -164,7 +164,7 @@ export class PoolService {
    */
   public static async pollRequestStatus(requestId: bigint): Promise<any> {
     try {
-      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
       const result = await actor.requests([requestId]);
       
       if (!result.Ok || result.Ok.length === 0) {
@@ -181,7 +181,7 @@ export class PoolService {
   public static async removeLiquidity(params: any): Promise<string> {
     await requireWalletConnection();
     try {
-      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
       const result = await actor.remove_liquidity_async({
         token_0: params.token0,
         token_1: params.token1,
