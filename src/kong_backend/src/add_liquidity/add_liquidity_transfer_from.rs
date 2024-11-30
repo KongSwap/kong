@@ -90,18 +90,16 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
 /// calculate the ratio of amounts (amount_0 and amount_1) to be added to the pool to maintain constant K
 /// calculate the LP token amount for the user
 ///
-/// returns (amount_0, amount_1, add_lp_token_amount)
+/// returns (pool, amount_0, amount_1, add_lp_token_amount)
 pub fn calculate_amounts(token_0: &str, amount_0: &Nat, token_1: &str, amount_1: &Nat) -> Result<(StablePool, Nat, Nat, Nat), String> {
     // Pool - make sure pool exists, refresh balances of the pool to make sure we have the latest state
     let pool = pool_map::get_by_tokens(token_0, token_1)?;
     // Token0
     let token_0 = pool.token_0();
-    let symbol_0 = pool.symbol_0();
     // reserve_0 is the total balance of token_0 in the pool = balance_0 + lp_fee_0
     let reserve_0 = nat_add(&pool.balance_0, &pool.lp_fee_0);
     // Token1
     let token_1 = pool.token_1();
-    let symbol_1 = pool.symbol_1();
     let reserve_1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
     // LP token
     let lp_token = pool.lp_token();
@@ -173,10 +171,7 @@ pub fn calculate_amounts(token_0: &str, amount_0: &Nat, token_1: &str, amount_1:
     }
 
     // pool ratio must have changed from initial calculation and amount_0 and amount_1 are not enough now
-    Err(format!(
-        "Incorrect ratio. Required {} {} or {} {}",
-        amount_0_in_token_1_decimals, symbol_0, amount_1_in_token_0_decimals, symbol_1
-    ))
+    Err("Incorrect ratio of amount_0 and amount_1".to_string())
 }
 
 async fn process_add_liquidity(
@@ -244,7 +239,7 @@ async fn process_add_liquidity(
                 ts,
             )
             .await;
-            return Err(format!("AddLiq #{} failed. {}", request_id, e));
+            return Err(format!("Req #{} failed. {}", request_id, e));
         }
     };
 
@@ -265,7 +260,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("AddLiq #{} failed. {}", request_id, e));
+                return Err(format!("Req #{} failed. {}", request_id, e));
             }
         };
 
@@ -297,7 +292,6 @@ pub async fn transfer_from_token(
     to_principal_id: &Account,
     ts: u64,
 ) -> Result<u64, String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     match token_index {
@@ -325,7 +319,7 @@ pub async fn transfer_from_token(
             Ok(transfer_id)
         }
         Err(e) => {
-            let error = format!("AddLiq #{} failed transfer_from user {} {}. {}", request_id, amount, symbol, e,);
+            let error = format!("Req #{} failed. {}", request_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(&e)),

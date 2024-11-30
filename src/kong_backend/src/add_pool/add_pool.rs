@@ -299,20 +299,20 @@ async fn process_add_pool(
                                 .await);
                             }
                             Err(e) => {
-                                let error = format!("AddPool Req #{}: Failed to update pool: {}", request_id, e);
+                                let error = format!("Req #{} failed. {}", request_id, e);
                                 error_log(&error);
                             }
                         }
                     }
                     Err(e) => {
-                        let error = format!("AddPool Req #{}: Failed to add pool: {}", request_id, e);
+                        let error = format!("Req #{} failed. {}", request_id, e);
                         error_log(&error);
                         request_map::update_status(request_id, StatusCode::AddPoolFailed, Some(&e));
                     }
                 }
             }
             Err(e) => {
-                let error = format!("AddPool Req #{}: Failed to add token: {}", request_id, e);
+                let error = format!("Req #{} failed. {}", request_id, e);
                 error_log(&error);
                 request_map::update_status(request_id, StatusCode::AddLPTokenFailed, Some(&e));
             }
@@ -360,7 +360,6 @@ async fn verify_transfer_token(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     match token_index {
@@ -373,17 +372,13 @@ async fn verify_transfer_token(
         Ok(_) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
-                let message = format!("Duplicate block id: #{}", tx_id);
-                let info = format!(
-                    "AddPool Req #{}: Failed to verify tx {} {}: {}",
-                    request_id, amount, symbol, message
-                );
-                info_log(&info);
+                let e = format!("Duplicate block id: #{}", tx_id);
+                let error = format!("Req #{} failed. {}", request_id, e);
                 match token_index {
-                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&message)),
-                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&message)),
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
                 };
-                return Err(message);
+                return Err(error);
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
@@ -402,13 +397,12 @@ async fn verify_transfer_token(
             Ok(())
         }
         Err(e) => {
-            let info = format!("AddPool Req #{}: Failed to verify tx {} {}: {}", request_id, amount, symbol, e);
-            info_log(&info);
+            let error = format!("Req #{} failed. {}", request_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
             };
-            Err(e)
+            Err(error)
         }
     }
 }
@@ -422,7 +416,6 @@ async fn transfer_from_token(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     let caller_id = caller_id();
@@ -453,16 +446,12 @@ async fn transfer_from_token(
             Ok(())
         }
         Err(e) => {
-            let info = format!(
-                "AddPool Req #{}: Failed to transfer_from user {} {}: {}",
-                request_id, amount, symbol, e
-            );
-            info_log(&info);
+            let error = format!("Req #{} failed.{}", request_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(&e)),
             };
-            Err(e)
+            Err(error)
         }
     }
 }
@@ -551,8 +540,6 @@ async fn check_balances(
 ) -> AddPoolReply {
     let claim_ids = Vec::new();
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-
     let add_pool_tx = AddPoolTx::new_success(
         pool_id,
         user_id,
@@ -573,12 +560,6 @@ async fn check_balances(
     reply
 }
 
-// failed transaction
-// return any tokens back to the user
-// - icrc1_transfer of token_0 and token_1 the user deposited
-// - icrc2_transfer_from of token_0 and token_1 that was executed
-// - any failures to return tokens back to users are saved as claims
-// - update failed request reply
 #[allow(clippy::too_many_arguments)]
 async fn return_tokens(
     request_id: u64,
@@ -684,8 +665,6 @@ async fn return_tokens(
             }
         }
     }
-
-    request_map::update_status(request_id, StatusCode::Failed, None);
 
     let reply = create_add_pool_reply_failed(
         &chain_0,

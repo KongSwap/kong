@@ -195,14 +195,14 @@ async fn process_remove_liquidity(
     let transfer_lp_token = remove_lp_token(request_id, &lp_token, remove_lp_token_amount, ts);
     if transfer_lp_token.is_err() {
         return_tokens(request_id, pool, &transfer_lp_token, remove_lp_token_amount, ts);
-        return Err(format!("RemLiq #{} failed. {}", request_id, transfer_lp_token.unwrap_err()));
+        return Err(format!("Req #{} failed. {}", request_id, transfer_lp_token.unwrap_err()));
     }
 
     // update liquidity pool with new removed amounts
     let update_liquidity_pool = update_liquidity_pool(request_id, pool, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1);
     if update_liquidity_pool.is_err() {
         return_tokens(request_id, pool, &transfer_lp_token, remove_lp_token_amount, ts);
-        return Err(format!("RemLiq #{} failed. {}", request_id, update_liquidity_pool.unwrap_err()));
+        return Err(format!("Req #{} failed. {}", request_id, update_liquidity_pool.unwrap_err()));
     }
 
     // successful, add tx and update request with reply
@@ -273,7 +273,7 @@ fn return_lp_token(lp_token: &StableToken, remove_lp_token_amount: &Nat, ts: u64
             lp_token_map::update(&new_user_lp_token);
             Ok(())
         }
-        None => Err("Unable to find user's LP tokens amount".to_string())?,
+        None => Err("Unable to find LP tokens balance".to_string())?,
     }
 }
 

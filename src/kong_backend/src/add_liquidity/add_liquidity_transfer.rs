@@ -234,7 +234,6 @@ async fn process_add_liquidity(
         let tok_id_1 = tok_1.token_id();
         match pool_map::get_by_token_ids(tok_id_0, tok_id_1) {
             Some(pool) => {
-                // if transfer_0.is_err() and tx_id.is_none() then it's an icrc2_transfer_from
                 if transfer_0.is_err() && tx_id_0.is_none() {
                     transfer_0 =
                         match transfer_from_token(request_id, &caller_id, &TokenIndex::Token0, tok_0, &add_amount_0, &kong_backend, ts)
@@ -247,8 +246,6 @@ async fn process_add_liquidity(
                             Err(e) => Err(e),
                         }
                 }
-
-                // only icrc2_transfer_from token 1 if transfer_0 was successful
                 if transfer_0.is_ok() && transfer_1.is_err() && tx_id_1.is_none() {
                     transfer_1 =
                         match transfer_from_token(request_id, &caller_id, &TokenIndex::Token1, tok_1, &add_amount_1, &kong_backend, ts)
@@ -280,7 +277,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("AddLiq #{} failed. Pool not found", request_id));
+                return Err(format!("Req #{} failed. Pool not found", request_id));
             }
         }
     } else {
@@ -300,7 +297,7 @@ async fn process_add_liquidity(
             ts,
         )
         .await;
-        return Err(format!("AddLiq #{} failed. Pool not found", request_id));
+        return Err(format!("Req #{} failed. Pool not found", request_id));
     };
 
     // both transfers must be successful
@@ -320,11 +317,11 @@ async fn process_add_liquidity(
             ts,
         )
         .await;
-        return Err(if transfer_0.is_err() {
-            format!("AddLiq #{} failed. {}", request_id, transfer_0.unwrap_err())
+        if transfer_0.is_err() {
+            return Err(format!("Req #{} failed. {}", request_id, transfer_0.unwrap_err()));
         } else {
-            format!("AddLiq #{} failed. {}", request_id, transfer_1.unwrap_err())
-        });
+            return Err(format!("Req #{} failed. {}", request_id, transfer_1.unwrap_err()));
+        };
     }
 
     // re-calculate with latest pool state and make sure amounts are valid
@@ -348,7 +345,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("AddLiq #{} failed. {}", request_id, e));
+                return Err(format!("Req #{} failed. {}", request_id, e));
             }
         };
 
@@ -379,7 +376,6 @@ async fn verify_transfer_token(
     amount: &Nat,
     ts: u64,
 ) -> Result<u64, String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     match token_index {
@@ -392,17 +388,11 @@ async fn verify_transfer_token(
         Ok(_) => {
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
-                let error = format!(
-                    "AddLiq #{} failed to verify tx_id #{} {}. Duplicate block id",
-                    request_id, tx_id, symbol
-                );
+                let e = format!("Duplicate block id #{}", tx_id);
+                let error = format!("Req #{} failed. {}", request_id, e);
                 match token_index {
-                    TokenIndex::Token0 => {
-                        request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some("Duplicate block id"))
-                    }
-                    TokenIndex::Token1 => {
-                        request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some("Duplicate block id"))
-                    }
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
                 };
                 return Err(error);
             }
@@ -422,7 +412,7 @@ async fn verify_transfer_token(
             Ok(transfer_id)
         }
         Err(e) => {
-            let error = format!("AddLiq #{} failed to verify tx_id #{} {}. {}", request_id, tx_id, symbol, e);
+            let error = format!("Req #{} failed. {}", request_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
