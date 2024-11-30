@@ -154,7 +154,7 @@ async fn check_arguments(
                 Err(e) => Err(e),
             }
         }
-        _ => Err("Unable to verify transfer_0".to_string()),
+        _ => Err("Tx_id_0 not specified".to_string()),
     };
 
     let transfer_id_1 = match tx_id_1.clone() {
@@ -167,7 +167,7 @@ async fn check_arguments(
                 Err(e) => Err(e),
             }
         }
-        _ => Err("Unable to verify transfer_1".to_string()),
+        _ => Err("Tx_id_1 not specified".to_string()),
     };
 
     // one of the transfers must be successful
@@ -382,12 +382,11 @@ async fn verify_transfer_token(
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
                 let e = format!("Duplicate block id #{}", tx_id);
-                let error = format!("Req #{} failed. {}", request_id, e);
                 match token_index {
                     TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
                     TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
                 };
-                return Err(error);
+                return Err(e);
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
@@ -405,12 +404,11 @@ async fn verify_transfer_token(
             Ok(transfer_id)
         }
         Err(e) => {
-            let error = format!("Req #{} failed. {}", request_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
             };
-            Err(error)
+            Err(e)
         }
     }
 }

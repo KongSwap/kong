@@ -8,6 +8,7 @@ use super::add_token_reply_helpers::to_add_token_reply;
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_token::ic_token::ICToken;
+use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token_map;
 
@@ -79,4 +80,10 @@ pub async fn add_ic_token(token: &str, on_kong: bool) -> Result<StableToken, Str
 
     // Retrieves the inserted token by its ID.
     token_map::get_by_token_id(token_id).ok_or_else(|| format!("Failed to add token {}", token))
+}
+
+pub fn add_lp_token(token_0: &StableToken, token_1: &StableToken, on_kong: bool) -> Result<StableToken, String> {
+    let lp_token = StableToken::LP(LPToken::new(token_0, token_1, on_kong));
+    let token_id = token_map::insert(&lp_token)?;
+    token_map::get_by_token_id(token_id).ok_or_else(|| "Failed to add LP token".to_string())
 }

@@ -8,8 +8,6 @@ use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::LP_TOKEN_MAP;
 use crate::stable_user::user_map;
 
-pub const LP_DECIMALS: u8 = 8; // LP token decimal
-
 /// get lp_token of the caller
 pub fn get_by_token_id(token_id: u32) -> Option<StableLPToken> {
     let user_id = user_map::get_by_caller().ok().flatten()?.user_id;

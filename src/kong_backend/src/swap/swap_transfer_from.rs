@@ -73,7 +73,6 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     Ok(request_id)
 }
 
-#[allow(clippy::type_complexity)]
 async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
     let pay_token = token_map::get_by_token(&args.pay_token)?;
     let pay_amount = args.pay_amount.clone();
@@ -94,10 +93,14 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
         return Err("Pay tx_id not supported".to_string());
     }
 
+    if !pay_token.is_icrc2() {
+        return Err("Pay token must support ICRC2".to_string());
+    }
+
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
 
-    // calculate receive_amount and swaps
+    // calculate receive_amount and swaps. do after user_id is created as it will be needed to calculate the receive_amount (user fee level)
     // no needs to store the return values as it'll be called again in process_swap
     calculate_amounts(&pay_token, &pay_amount, &receive_token, args.receive_amount.as_ref(), max_slippage)?;
 

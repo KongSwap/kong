@@ -315,12 +315,11 @@ pub async fn transfer_from_token(
             Ok(transfer_id)
         }
         Err(e) => {
-            let error = format!("Req #{} failed. {}", request_id, e);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(&e)),
             };
-            Err(error)
+            Err(e)
         }
     }
 }

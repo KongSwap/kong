@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     txs::dump_txs(&db_client, &tokens_map, &pools_map).await?;
 
     // Dump to kong_data
-    kong_settings::update_kong_settings(&kong_data).await?;
+    //kong_settings::update_kong_settings(&kong_data).await?;
     users::update_users(&kong_data).await?;
     tokens::update_tokens(&kong_data).await?;
     pools::update_pools(&kong_data).await?;
