@@ -19,6 +19,12 @@
   let token1Balance = "0";
 
   $: {
+    if ($formattedTokens) {
+      initializeFromParams();
+    }
+  }
+
+  $: {
     // Update balances when tokens change
     if (token0) {
       token0Balance = $tokenStore.balances[token0.canister_id]?.in_tokens?.toString() || "0";
@@ -35,7 +41,7 @@
 
     if (token0Address && $formattedTokens) {
         const selectedToken = $formattedTokens.find((t) => t.canister_id === token0Address);
-        if (selectedToken) {
+        if (selectedToken && (!token0 || token0.canister_id !== token0Address)) {
             token0 = {
                 canister_id: selectedToken.canister_id,
                 name: selectedToken.name,
@@ -61,7 +67,7 @@
 
     if (token1Address && $formattedTokens) {
         const selectedToken = $formattedTokens.find((t) => t.canister_id === token1Address);
-        if (selectedToken) {
+        if (selectedToken && (!token1 || token1.canister_id !== token1Address)) {
             token1 = {
                 canister_id: selectedToken.canister_id,
                 name: selectedToken.name,
@@ -85,15 +91,6 @@
         }
     }
   }
-
-  onMount(async () => {
-    try {
-      await initializeFromParams();
-    } catch (err) {
-      console.error("Error initializing:", err);
-      error = "Failed to initialize tokens";
-    }
-  });
 
   function updateURL() {
     const searchParams = new URLSearchParams($page.url.searchParams);
