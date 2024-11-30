@@ -6,6 +6,7 @@
     import Portal from 'svelte-portal';
     import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
     import { PoolService } from '$lib/services/pools/PoolService';
+    import Panel from '$lib/components/common/Panel.svelte';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -20,9 +21,6 @@
     export let onSubmit: () => void;
     export let previewMode: boolean = false;
 
-    let liquidityMode: 'full' | 'custom' = 'full';
-    let isTransitioning = false;
-    let previousMode: 'full' | 'custom' = 'full';
     let showToken0Selector = false;
     let showToken1Selector = false;
 
@@ -119,102 +117,123 @@
         : "Review Transaction";
 
     $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance();
-
-    function handleModeChange(mode: 'full' | 'custom') {
-        if (mode === liquidityMode) return;
-        previousMode = liquidityMode;
-        isTransitioning = true;
-        liquidityMode = mode;
-        setTimeout(() => {
-            isTransitioning = false;
-        }, 300);
-    }
 </script>
 
-<div class="mode-selector">
-    <div class="mode-buttons">
+<Panel variant="green" width="auto" className="liquidity-panel w-full max-w-[690px]">
+    <div class="flex flex-col min-h-[165px] box-border relative rounded-lg">
+        <header>
+            <div class="flex items-center justify-between gap-4 min-h-[2.5rem] mb-5">
+                <h2 class="text-[clamp(1.5rem,4vw,2rem)] font-semibold text-white m-0 tracking-tight leading-none">
+                    Add Liquidity
+                </h2>
+            </div>
+        </header>
+
+        <div class="token-input-container">
+            <div class="relative flex-grow mb-2">
+                <div class="flex items-center gap-4">
+                    <div class="relative flex-1">
+                        <input
+                            type="text"
+                            placeholder="0.00"
+                            value={amount0}
+                            on:input={(e) => handleInput(0, e)}
+                            class="amount-input"
+                        />
+                    </div>
+                    <div class="token-selector-wrapper">
+                        <button 
+                            class="token-selector-button" 
+                            on:click={() => openTokenSelector(0)}
+                        >
+                            {#if token0}
+                                <div class="token-info">
+                                    <img src={token0.logo} alt={token0.symbol} class="token-logo" />
+                                    <span class="token-symbol">{token0.symbol}</span>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            {:else}
+                                <span class="select-token-text">Select Token</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            {/if}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="balance-info">
+                <span>Available: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'} {token0?.symbol || ''}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-white/50 font-normal tracking-wide">Est Value</span>
+                    <span class="pl-1 text-white/50 font-medium tracking-wide">
+                        ${getUsdValue(amount0, token0)}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="plus-icon">
+            <Plus size={24} />
+        </div>
+
+        <div class="token-input-container">
+            <div class="relative flex-grow mb-2">
+                <div class="flex items-center gap-4">
+                    <div class="relative flex-1">
+                        <input
+                            type="text"
+                            placeholder="0.00"
+                            value={amount1}
+                            on:input={(e) => handleInput(1, e)}
+                            class="amount-input"
+                        />
+                    </div>
+                    <div class="token-selector-wrapper">
+                        <button 
+                            class="token-selector-button" 
+                            on:click={() => openTokenSelector(1)}
+                        >
+                            {#if token1}
+                                <div class="token-info">
+                                    <img src={token1.logo} alt={token1.symbol} class="token-logo" />
+                                    <span class="token-symbol">{token1.symbol}</span>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            {:else}
+                                <span class="select-token-text">Select Token</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            {/if}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="balance-info">
+                <span>Available: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'} {token1?.symbol || ''}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-white/50 font-normal tracking-wide">Est Value</span>
+                    <span class="pl-1 text-white/50 font-medium tracking-wide">
+                        ${getUsdValue(amount1, token1)}
+                    </span>
+                </div>
+            </div>
+        </div>
+
         <button
-            class="mode-button {liquidityMode === 'full' ? 'active' : ''}"
-            on:click={() => handleModeChange('full')}
+            class="submit-button"
+            disabled={!isValid || loading}
+            on:click={onSubmit}
         >
-            Full Range
-        </button>
-        <button
-            class="mode-button {liquidityMode === 'custom' ? 'active' : ''}"
-            on:click={() => handleModeChange('custom')}
-        >
-            Custom Range
+            {buttonText}
         </button>
     </div>
-</div>
-
-<div class="form-container">
-    <div class="token-input-container">
-        <div class="token-input">
-            <button 
-                class="token-selector-button" 
-                on:click={() => openTokenSelector(0)}
-            >
-                {#if token0}
-                    <img src={token0.logo} alt={token0.symbol} class="token-logo" />
-                    <span>{token0.symbol}</span>
-                {:else}
-                    <span>Select Token</span>
-                {/if}
-            </button>
-            <input
-                type="text"
-                placeholder="0.0"
-                value={amount0}
-                on:input={(e) => handleInput(0, e)}
-                class="amount-input"
-            />
-        </div>
-        <div class="balance-info">
-            <span>Balance: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'}</span>
-            <span>${getUsdValue(amount0, token0)}</span>
-        </div>
-    </div>
-
-    <div class="plus-icon">
-        <Plus size={24} />
-    </div>
-
-    <div class="token-input-container">
-        <div class="token-input">
-            <button 
-                class="token-selector-button" 
-                on:click={() => openTokenSelector(1)}
-            >
-                {#if token1}
-                    <img src={token1.logo} alt={token1.symbol} class="token-logo" />
-                    <span>{token1.symbol}</span>
-                {:else}
-                    <span>Select Token</span>
-                {/if}
-            </button>
-            <input
-                type="text"
-                placeholder="0.0"
-                value={amount1}
-                on:input={(e) => handleInput(1, e)}
-                class="amount-input"
-            />
-        </div>
-        <div class="balance-info">
-            <span>Balance: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'}</span>
-            <span>${getUsdValue(amount1, token1)}</span>
-        </div>
-    </div>
-
-    <button
-        class="submit-button"
-        disabled={!isValid || loading}
-        on:click={onSubmit}
-    >
-        {buttonText}
-    </button>
-</div>
+</Panel>
 
 <!-- Token Selectors -->
 {#if showToken0Selector}
@@ -250,68 +269,74 @@
 {/if}
 
 <style lang="postcss">
-    .mode-selector {
-        @apply flex flex-col gap-2 mb-4;
-    }
-
-    .mode-buttons {
-        @apply flex gap-2;
-    }
-
-    .mode-button {
-        @apply px-4 py-2 rounded-lg bg-gray-800 text-white/60 hover:text-white
-               transition-colors duration-200;
-    }
-
-    .mode-button.active {
-        @apply bg-blue-600 text-white;
-    }
-
-    .form-container {
-        @apply flex flex-col gap-4;
+    .liquidity-panel {
+        @apply relative;
     }
 
     .token-input-container {
-        @apply bg-gray-800 rounded-lg p-4;
+        @apply mb-4;
     }
 
-    .token-input {
-        @apply flex items-center gap-4;
+    .token-selector-wrapper {
+        @apply min-w-[180px];
     }
 
     .token-selector-button {
-        @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700
-               hover:bg-gray-600 transition-colors duration-200;
+        @apply w-full flex items-center justify-between;
+        @apply bg-white/5 hover:bg-white/10;
+        @apply rounded-xl px-4 py-3;
+        @apply border border-white/10;
+        @apply transition-colors duration-150;
+    }
+
+    .token-info {
+        @apply flex items-center gap-2 min-w-[140px];
     }
 
     .token-logo {
-        @apply w-6 h-6 rounded-full;
+        @apply w-8 h-8 rounded-full bg-white/5 object-contain;
+    }
+
+    .token-symbol {
+        @apply text-[15px] text-white font-medium min-w-[80px];
+    }
+
+    .select-token-text {
+        @apply text-[15px] text-white/70 min-w-[120px] text-left;
     }
 
     .amount-input {
-        @apply flex-1 bg-transparent text-right text-xl font-medium
-               focus:outline-none;
+        @apply flex-1 min-w-0 bg-transparent border-none;
+        @apply text-white text-[2.5rem] font-medium tracking-tight;
+        @apply w-full relative z-10 p-0;
+        @apply opacity-85 focus:outline-none focus:text-white;
+        @apply disabled:text-white/65 placeholder:text-white/65;
     }
 
     .balance-info {
-        @apply flex justify-between mt-2 text-sm text-white/60;
+        @apply flex justify-between mt-2;
+        @apply text-[clamp(0.75rem,2vw,0.875rem)] text-white/50;
     }
 
     .plus-icon {
-        @apply flex justify-center text-white/60;
+        @apply flex justify-center text-white/50 my-2;
     }
 
     .submit-button {
-        @apply w-full px-6 py-3 rounded-lg bg-blue-600 text-white font-medium
-               disabled:opacity-50 disabled:cursor-not-allowed
-               hover:bg-blue-700 transition-colors duration-200;
+        @apply w-full px-6 py-3 rounded-xl;
+        @apply bg-blue-600 text-white font-medium;
+        @apply disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply hover:bg-blue-700 transition-colors duration-200;
+        @apply mt-4;
     }
 
-    .token-selector-overlay {
-        @apply fixed inset-0 flex items-center justify-center bg-black/50 z-50;
+    .chevron {
+        @apply w-5 h-5 text-white/50;
     }
 
-    :global(.token-selector-overlay .token-selector) {
-        @apply bg-gray-900 rounded-lg p-4 w-full max-w-md mx-4;
+    @media (max-width: 420px) {
+        .amount-input {
+            @apply text-2xl mt-[-0.15rem];
+        }
     }
 </style>

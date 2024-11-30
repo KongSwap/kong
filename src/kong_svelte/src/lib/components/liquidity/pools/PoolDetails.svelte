@@ -156,11 +156,11 @@
 
 <style lang="postcss">
   .pool-details {
-    @apply flex flex-col gap-6;
+    @apply flex flex-col gap-4;
   }
 
   .pool-header {
-    @apply flex justify-between items-center mb-4;
+    @apply flex justify-between items-center mb-2;
   }
 
   .token-info {
@@ -172,17 +172,17 @@
   }
 
   .action-btn {
-    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+    @apply px-4 py-1 text-sm font-medium rounded-lg transition-all duration-200
            bg-[#60A5FA]/20 text-[#60A5FA] border border-[#60A5FA]/30
            hover:bg-[#60A5FA]/30 hover:border-[#60A5FA]/50;
   }
 
   .tabs {
-    @apply flex gap-2 p-1 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] mb-6;
+    @apply flex gap-2 p-1 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] mb-4;
   }
 
   .tab-btn {
-    @apply flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200
+    @apply flex-1 px-4 py-1 text-sm font-medium rounded-md transition-all duration-200
            text-[#8890a4] hover:text-white;
   }
 
@@ -191,11 +191,11 @@
   }
 
   .stats-grid {
-    @apply grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6;
+    @apply grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4;
   }
 
   .stat-item {
-    @apply flex flex-col gap-1 p-4 rounded-lg bg-[#2a2d3d]/50;
+    @apply flex flex-col gap-1 p-2 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .stat-label {
@@ -207,19 +207,19 @@
   }
 
   .pool-reserves {
-    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4;
+    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-3;
   }
 
   .pool-reserves h4 {
-    @apply text-sm text-[#8890a4] mb-4;
+    @apply text-sm text-[#8890a4] mb-2;
   }
 
   .reserves-grid {
-    @apply flex flex-col gap-4;
+    @apply flex flex-col gap-2;
   }
 
   .reserve-item {
-    @apply flex items-center gap-3 p-3 rounded-lg bg-[#2a2d3d]/50;
+    @apply flex items-center gap-3 p-2 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .reserve-info {
@@ -235,11 +235,11 @@
   }
 
   .positions-list {
-    @apply flex flex-col gap-4;
+    @apply flex flex-col gap-2;
   }
 
   .empty-state {
-    @apply flex flex-col items-center gap-4 p-8 text-center;
+    @apply flex flex-col items-center gap-2 p-4 text-center;
   }
 
   .empty-state p {
@@ -247,19 +247,19 @@
   }
 
   .position-item {
-    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4;
+    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-3;
   }
 
   .position-item h4 {
-    @apply text-sm text-[#8890a4] mb-4;
+    @apply text-sm text-[#8890a4] mb-2;
   }
 
   .token-amounts {
-    @apply flex flex-col gap-3;
+    @apply flex flex-col gap-2;
   }
 
   .token-amount {
-    @apply flex items-center gap-3 p-3 rounded-lg bg-[#2a2d3d]/50;
+    @apply flex items-center gap-3 p-2 rounded-lg bg-[#2a2d3d]/50;
   }
 
   @media (max-width: 640px) {
@@ -268,7 +268,7 @@
     }
 
     .stat-item {
-      @apply p-3;
+      @apply p-2;
     }
 
     .stat-value {

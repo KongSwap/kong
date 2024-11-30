@@ -173,7 +173,6 @@
       </svg>
       <span>Back to Pools</span>
     </button>
-    <h1>Add Liquidity</h1>
   </div>
 
   <div class="form-container">

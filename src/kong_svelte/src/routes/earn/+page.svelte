@@ -75,13 +75,18 @@
   $: filteredPools = $poolsList.filter(pool => {
     if (!debouncedSearchTerm) return true;
     
+    const token0 = $tokenMap.get(pool.address_0);
+    const token1 = $tokenMap.get(pool.address_1);
+    
     const searchMatches = [
       pool.symbol_0.toLowerCase(),
       pool.symbol_1.toLowerCase(), 
       `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
       `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
       pool.address_0?.toLowerCase() || '',
-      pool.address_1?.toLowerCase() || ''
+      pool.address_1?.toLowerCase() || '',
+      token0?.name?.toLowerCase() || '',
+      token1?.name?.toLowerCase() || ''
     ];
 
     return searchMatches.some(match => match.includes(debouncedSearchTerm));
@@ -173,7 +178,7 @@
           <div class="flex items-center justify-between mb-4 sticky top-0 bg-[#1a1b23] z-10">
             <input
               type="text"
-              placeholder="Search by token name or address..."
+              placeholder="Search by token symbol, name, or address..."
               bind:value={searchTerm}
               class="w-full px-4 py-2 bg-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#60A5FA]/50"
             />
@@ -387,14 +392,6 @@
   .overflow-auto {
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
-  }
-
-  .overflow-auto::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-
-  .overflow-auto::-webkit-scrollbar-track {
-    @apply bg-transparent;
   }
 
   .overflow-auto::-webkit-scrollbar-thumb {
