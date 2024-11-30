@@ -11,13 +11,13 @@
   let toToken: FE.Token | null = null;
   let currentMode: 'normal' | 'pro' = 'normal';
 
-  onMount(() => {
-    const unsubscribe = page.subscribe(($page) => {
-      fromToken = tokenStore.getToken($page.url.searchParams.get('from') || '');
-      toToken = tokenStore.getToken($page.url.searchParams.get('to') || '');
-    });
-    return () => unsubscribe();
-  });
+  $: if ($tokenStore.tokens && $tokenStore.tokens.length > 0) {
+    const fromCanisterId = $page.url.searchParams.get('from');
+    const toCanisterId = $page.url.searchParams.get('to');
+    
+    fromToken = fromCanisterId ? tokenStore.getToken(fromCanisterId) : null;
+    toToken = toCanisterId ? tokenStore.getToken(toCanisterId) : null;
+  }
 
   const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
     currentMode = event.detail.mode;
