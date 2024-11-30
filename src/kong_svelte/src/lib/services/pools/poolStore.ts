@@ -174,6 +174,12 @@ function createPoolStore() {
         // Process each balance item
         const processedBalances = balances.map(item => {
           const lpData = item.LP || item;
+          // Find matching pool to get the pool ID
+          const matchingPool = get(poolsList).find(p => 
+            p.symbol_0 === lpData.symbol_0 && 
+            p.symbol_1 === lpData.symbol_1
+          );
+          
           return {
             name: lpData.name,
             symbol: lpData.symbol || `${lpData.symbol_0}/${lpData.symbol_1}`,
@@ -185,7 +191,8 @@ function createPoolStore() {
             usd_balance: lpData.usd_balance,
             usd_amount_0: lpData.usd_amount_0,
             usd_amount_1: lpData.usd_amount_1,
-            ts: lpData.ts
+            ts: lpData.ts,
+            pool_id: matchingPool?.pool_id
           };
         }).filter(Boolean);
 

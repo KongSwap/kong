@@ -36,13 +36,28 @@ export class PoolService {
   }
 
   // Pool Operations
-  public static async getPoolDetails(poolId: string): Promise<BE.Pool> {
+  public static async getPoolDetails(poolId: string | number): Promise<BE.Pool> {
     try {
-      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
-      return await actor.get_by_pool_id(poolId);
+      console.log('[PoolService] Getting pool details for ID:', poolId);
+      const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend);
+      
+      // Ensure we have a number for the pool ID
+      const numericPoolId = typeof poolId === 'string' ? parseInt(poolId) : poolId;
+      if (isNaN(numericPoolId)) {
+        throw new Error(`Invalid pool ID: ${poolId}`);
+      }
+      
+      console.log('[PoolService] Fetching pool with numeric ID:', numericPoolId);
+      const pool = await actor.get_by_pool_id(numericPoolId);
+      
+      if (!pool) {
+        throw new Error(`Pool ${poolId} not found`);
+      }
+      
+      return pool;
     } catch (error) {
-      console.error('Error fetching pool details:', error);
-      throw new Error(`Failed to fetch details for pool ${poolId}`);
+      console.error('[PoolService] Error fetching pool details:', error);
+      throw error;
     }
   }
 

@@ -6,6 +6,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { createEventDispatcher } from "svelte";
+  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
 
   const dispatch = createEventDispatcher();
   export let pools: any[] = [];
@@ -13,6 +14,8 @@
   let error: string | null = null;
   let poolBalances: any[] = [];
   let processedPools: any[] = [];
+  let selectedPool = null;
+  let showUserPoolModal = false;
 
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;
@@ -63,8 +66,8 @@
   }
 
   function handlePoolItemClick(pool) {
-    console.log("Pool item clicked:", pool);
-    dispatch('poolClick', pool);
+    selectedPool = pool;
+    showUserPoolModal = true;
   }
 
   onMount(() => {
@@ -103,7 +106,6 @@
             class="pool-item" 
             in:fade 
             on:click={() => handlePoolItemClick(pool)}
-            on:keydown={(e) => e.key === 'Enter' && handlePoolItemClick(pool)}
             role="button"
             tabindex="0"
           >
@@ -132,6 +134,17 @@
     </div>
   </div>
 </div>
+
+{#if selectedPool}
+  <UserPool
+    pool={selectedPool}
+    bind:showModal={showUserPoolModal}
+    on:close={() => showUserPoolModal = false}
+    on:liquidityRemoved={() => {
+      loadPoolBalances();
+    }}
+  />
+{/if}
 
 <style lang="postcss">
   .pool-list-wrapper {

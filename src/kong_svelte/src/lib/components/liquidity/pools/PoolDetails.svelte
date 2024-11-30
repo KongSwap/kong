@@ -4,6 +4,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { goto } from "$app/navigation";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import PoolList from "$lib/components/sidebar/PoolList.svelte";
 
   export let pool: BE.Pool;
   export let tokenMap: Map<string, any>;
@@ -38,18 +39,6 @@
     if (pool.address_0 && pool.address_1) {
       goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
     }
-  }
-
-  function calculatePositionValue(position: BE.Position): string {
-    const amount0Value = Number(position.amount0) * (token0?.price || 0);
-    const amount1Value = Number(position.amount1) * (token1?.price || 0);
-    return formatToNonZeroDecimal(amount0Value + amount1Value);
-  }
-
-  function calculatePositionShare(position: BE.Position): string {
-    const totalLiquidity = Number(pool.balance_0) + Number(pool.balance_1);
-    const positionLiquidity = Number(position.amount0) + Number(position.amount1);
-    return ((positionLiquidity / totalLiquidity) * 100).toFixed(2);
   }
 </script>
 
@@ -137,41 +126,7 @@
           </div>
         </div>
       {:else}
-        {#if positions.length > 0}
-          <div class="positions-section">
-            {#each positions as position}
-              <div class="position-item">
-                <div class="position-header">
-                  <span class="position-value">${calculatePositionValue(position)}</span>
-                  <span class="position-share">{calculatePositionShare(position)}% of pool</span>
-                </div>
-                <div class="token-amounts">
-                  <div class="token-amount">
-                    <TokenImages tokens={[token0]} size={24} />
-                    <div class="token-details">
-                      <span class="token-quantity">{formatTokenAmount(position.amount0, token0?.decimals)} {pool.symbol_0}</span>
-                      <span class="token-value">${formatToNonZeroDecimal(Number(position.amount0) * (token0?.price || 0))}</span>
-                    </div>
-                  </div>
-                  <div class="token-amount">
-                    <TokenImages tokens={[token1]} size={24} />
-                    <div class="token-details">
-                      <span class="token-quantity">{formatTokenAmount(position.amount1, token1?.decimals)} {pool.symbol_1}</span>
-                      <span class="token-value">${formatToNonZeroDecimal(Number(position.amount1) * (token1?.price || 0))}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <div class="no-positions">
-            <p>You don't have any positions in this pool yet.</p>
-            <button class="action-btn add-liquidity" on:click={handleAddLiquidity}>
-              Add Liquidity
-            </button>
-          </div>
-        {/if}
+        <PoolList pools={[pool]} />
       {/if}
     </div>
   </div>
@@ -241,46 +196,6 @@
     @apply bg-[#2a2d3d] text-white;
   }
 
-  .positions-section {
-    @apply flex flex-col gap-4;
-  }
-
-  .position-item {
-    @apply bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4;
-  }
-
-  .position-header {
-    @apply flex justify-between items-center mb-3 pb-3 border-b border-[#2a2d3d];
-  }
-
-  .position-value {
-    @apply text-lg font-medium text-white;
-  }
-
-  .position-share {
-    @apply text-sm text-[#8890a4];
-  }
-
-  .token-amounts {
-    @apply flex flex-col gap-3;
-  }
-
-  .token-amount {
-    @apply flex items-center gap-3;
-  }
-
-  .token-details {
-    @apply flex flex-col;
-  }
-
-  .token-quantity {
-    @apply text-white font-medium;
-  }
-
-  .token-value {
-    @apply text-sm text-[#8890a4];
-  }
-
   .pool-reserves h4 {
     @apply text-sm text-[#8890a4] mb-3;
   }
@@ -303,13 +218,5 @@
 
   .token-amount {
     @apply text-white font-medium;
-  }
-
-  .no-positions {
-    @apply flex flex-col items-center gap-4 p-8 text-center;
-  }
-
-  .no-positions p {
-    @apply text-[#8890a4] mb-2;
   }
 </style>

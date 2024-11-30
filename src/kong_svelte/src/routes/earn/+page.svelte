@@ -14,6 +14,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import PoolList from "$lib/components/sidebar/PoolList.svelte";
+  import Modal from "$lib/components/common/Modal.svelte";
 
   type UserBalance = {
     name: string;
@@ -165,18 +166,19 @@
 
   function handlePoolClick(event) {
     const pool = event.detail;
-    console.log("Pool clicked:", pool);
+    console.log("[Earn] Pool clicked:", pool);
     // Find the original pool data with all necessary information
     const fullPool = $poolsList.find(p => 
       p.symbol_0 === pool.symbol_0 && 
       p.symbol_1 === pool.symbol_1 &&
       p.pool_id
     );
-    console.log("Found full pool:", fullPool);
-    if (fullPool) {
+    console.log("[Earn] Found full pool:", fullPool);
+    if (fullPool && typeof fullPool.pool_id === 'number') {
+      console.log("[Earn] Setting selected pool with ID:", fullPool.pool_id);
       selectedUserPool = fullPool;
     } else {
-      console.error("Could not find matching pool with ID");
+      console.error("[Earn] Could not find matching pool with valid ID");
     }
   }
 </script>
@@ -439,12 +441,17 @@
 {/if}
 
 {#if selectedUserPool}
-  <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50">
+  <Modal
+    isOpen={!!selectedUserPool}
+    title={`${selectedUserPool.symbol_0}/${selectedUserPool.symbol_1} Pool Details`}
+    onClose={() => selectedUserPool = null}
+    width="max-w-2xl"
+  >
     <UserPool
-      poolId={selectedUserPool.pool_id.toString()}
+      poolId={selectedUserPool.pool_id}
       on:close={() => selectedUserPool = null}
     />
-  </div>
+  </Modal>
 {/if}
 
 <style lang="postcss">
