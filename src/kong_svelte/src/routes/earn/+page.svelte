@@ -60,6 +60,17 @@
     };
   });
 
+  onMount(async () => {
+    if ($auth.isConnected) {
+      await poolStore.loadUserPoolBalances();
+    }
+  });
+
+  // Watch for auth changes and reload balances
+  $: if ($auth.isConnected) {
+    poolStore.loadUserPoolBalances();
+  }
+
   // Instead of creating our own derived store, use the existing formattedTokens
   const tokenMap = derived(formattedTokens, ($tokens) => {
     const map = new Map();
@@ -148,34 +159,24 @@
   });
 
   // Process user pool balances
-  $: processedUserPools = Array.isArray($userPoolBalances) ? $userPoolBalances.map(balance => {
-    const token0 = $tokenMap.get(balance.symbol_0);
-    const token1 = $tokenMap.get(balance.symbol_1);
-    
-    return {
-      id: balance.name,
-      name: balance.name,
-      symbol: balance.symbol,
-      symbol_0: balance.symbol_0,
-      symbol_1: balance.symbol_1,
-      balance: balance.balance.toString(),
-      amount_0: balance.amount_0,
-      amount_1: balance.amount_1,
-      usd_balance: balance.usd_balance,
-      address_0: token0?.canister_id || balance.symbol_0,
-      address_1: token1?.canister_id || balance.symbol_1
-    };
-  }) : [];
+  $: {
+    console.log("UserPoolBalances in earn page:", $userPoolBalances);
+  }
 
   function handlePoolClick(event) {
     const pool = event.detail;
+    console.log("Pool clicked:", pool);
     // Find the original pool data with all necessary information
     const fullPool = $poolsList.find(p => 
       p.symbol_0 === pool.symbol_0 && 
-      p.symbol_1 === pool.symbol_1
+      p.symbol_1 === pool.symbol_1 &&
+      p.pool_id
     );
+    console.log("Found full pool:", fullPool);
     if (fullPool) {
       selectedUserPool = fullPool;
+    } else {
+      console.error("Could not find matching pool with ID");
     }
   }
 </script>

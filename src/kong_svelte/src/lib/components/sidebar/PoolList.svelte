@@ -30,6 +30,7 @@
         amount_0: pool.amount_0,
         amount_1: pool.amount_1,
         usd_balance: pool.usd_balance,
+        pool_id: pool.pool_id,
         address_0: pool.symbol_0,
         address_1: pool.symbol_1
       }));
@@ -59,6 +60,11 @@
 
   function handleAddLiquidity() {
     window.location.href = '/earn';
+  }
+
+  function handlePoolItemClick(pool) {
+    console.log("Pool item clicked:", pool);
+    dispatch('poolClick', pool);
   }
 
   onMount(() => {
@@ -93,13 +99,20 @@
         </div>
       {:else}
         {#each processedPools as pool (pool.id)}
-          <div class="pool-item" in:fade>
+          <div 
+            class="pool-item" 
+            in:fade 
+            on:click={() => handlePoolItemClick(pool)}
+            on:keydown={(e) => e.key === 'Enter' && handlePoolItemClick(pool)}
+            role="button"
+            tabindex="0"
+          >
             <div class="pool-content">
               <div class="pool-left">
                 <TokenImages 
                   tokens={[
-                    $tokenStore.tokens.find(token => token.canister_id === pool.address_0),
-                    $tokenStore.tokens.find(token => token.canister_id === pool.address_1)
+                    $tokenStore.tokens.find(token => token.symbol === pool.symbol_0),
+                    $tokenStore.tokens.find(token => token.symbol === pool.symbol_1)
                   ]} 
                   size={36}
                 />
@@ -108,6 +121,9 @@
                   <span class="pool-balance">{parseFloat(pool.balance).toFixed(8)} LP</span>
                   <span class="pool-usd-value">${parseFloat(pool.usd_balance).toFixed(2)}</span>
                 </div>
+              </div>
+              <div class="pool-right">
+                <span class="view-details">View Details →</span>
               </div>
             </div>
           </div>
@@ -170,7 +186,7 @@
   }
 
   .pool-content {
-    @apply space-y-2;
+    @apply flex justify-between items-center;
   }
 
   .pool-left {
@@ -205,5 +221,17 @@
 
   .error-state {
     @apply text-red-400;
+  }
+
+  .pool-right {
+    @apply flex items-center;
+  }
+
+  .view-details {
+    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200;
+  }
+
+  .pool-item:hover .view-details {
+    @apply opacity-100;
   }
 </style>
