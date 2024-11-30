@@ -319,8 +319,8 @@
             on:click|stopPropagation={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
               const position = {
-                x: rect.right + 8, // Position from the right edge of button
-                y: rect.top,      // Align with top of button
+                x: rect.right + 8,
+                y: rect.top,
                 height: rect.height,
                 windowHeight: window.innerHeight,
                 windowWidth: window.innerWidth
@@ -339,7 +339,7 @@
                   alt={token.symbol}
                   class="token-logo"
                 />
-                <span class="token-symbol">{token.symbol}</span>
+                <span class="token-symbol hide-on-mobile">{token.symbol}</span>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
@@ -358,11 +358,11 @@
     <footer class="text-white text-[clamp(0.75rem,2vw,0.875rem)]">
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide">
+          <span class="text-white/50 font-normal tracking-wide mobile-text">
             Available:
           </span>
           <button
-            class="pl-1 text-white/70 font-semibold tracking-tight"
+            class="pl-1 text-white/70 font-semibold tracking-tight mobile-text"
             class:clickable={title === "You Pay" && !disabled}
             on:click={handleMaxClick}
           >
@@ -376,8 +376,8 @@
           </button>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide">Est Value</span>
-          <span class="pl-1 text-white/50 font-medium tracking-wide">
+          <span class="text-white/50 font-normal tracking-wide mobile-text">Est Value</span>
+          <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
@@ -386,75 +386,115 @@
   </div>
 </Panel>
 
-<style lang="postcss">
+<style>
   .clickable:hover {
-    @apply text-yellow-500;
+    color: #eab308;
   }
 
   .high {
-    @apply text-red-500;
+    color: #ef4444;
   }
 
   @media (max-width: 420px) {
     input {
-      @apply text-2xl mt-[-0.15rem];
+      font-size: 1.5rem;
+      margin-top: -0.15rem;
     }
 
-    :global(.token-panel .button-group) {
-      @apply scale-90;
+    .token-panel :global(.button-group) {
+      transform: scale(0.9);
+    }
+
+    .mobile-text {
+      font-size: 0.7rem;
     }
   }
 
-  :global(.token-panel) {
-    @apply relative;
+  .token-panel {
+    position: relative;
   }
 
   @media (max-width: 420px) {
-    :global(.token-panel:first-of-type::after) {
-      @apply w-9 h-9 bottom-[-18px];
+    .token-panel:first-of-type::after {
+      width: 2.25rem;
+      height: 2.25rem;
+      bottom: -18px;
     }
   }
 
   .token-selector-wrapper {
-    @apply min-w-[180px];
+    position: relative;
   }
 
   .token-selector-button {
-    @apply w-full flex items-center justify-between;
-    @apply bg-white/5 hover:bg-white/10;
-    @apply rounded-xl px-4 py-3;
-    @apply border border-white/10;
-    @apply transition-colors duration-150;
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color 150ms;
+    gap: 0.75rem;
+  }
+
+  .token-selector-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
 
   .token-info {
-    @apply flex items-center gap-2 min-w-[140px];
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .token-logo {
-    @apply w-8 h-8 rounded-full bg-white/5;
-    @apply object-contain;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    background-color: rgba(255, 255, 255, 0.05);
+    object-fit: contain;
   }
 
   .token-symbol {
-    @apply text-[15px] text-white font-medium min-w-[80px];
+    font-size: 15px;
+    color: white;
+    font-weight: 500;
+  }
+
+  @media (max-width: 420px) {
+    .hide-on-mobile {
+      display: none;
+    }
+
+    .token-selector-button {
+      min-width: auto;
+      gap: 0.5rem;
+    }
   }
 
   .select-token-text {
-    @apply text-[15px] text-white/70 min-w-[120px] text-left;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: left;
   }
 
   .chevron {
-    @apply w-5 h-5 text-white/50;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: rgba(255, 255, 255, 0.5);
   }
 
-  /* Ensure the dropdown appears above other elements */
-  :global(.dropdown-overlay) {
-    @apply z-[100];
+  .dropdown-overlay {
+    z-index: 100;
   }
 
-  :global(.dropdown-content) {
-    @apply z-[101] rounded-xl border border-white/10;
-    @apply bg-gray-900/95 backdrop-blur-md;
+  .dropdown-content {
+    z-index: 101;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(8px);
   }
 </style>
