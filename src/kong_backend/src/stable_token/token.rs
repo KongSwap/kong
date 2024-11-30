@@ -5,12 +5,9 @@ use super::stable_token::StableToken::{IC, LP};
 use super::token_map;
 
 use crate::helpers::nat_helpers::nat_zero;
-use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_pool::pool_map;
 
 pub trait Token {
     fn token_id(&self) -> u32;
-    fn pool_id(&self) -> Option<u32>;
     fn name(&self) -> String;
     fn chain(&self) -> String;
     fn symbol(&self) -> String;
@@ -32,22 +29,6 @@ impl Token for StableToken {
         match self {
             LP(token) => token.token_id,
             IC(token) => token.token_id,
-        }
-    }
-
-    // Pool ID of the token
-    fn pool_id(&self) -> Option<u32> {
-        match self {
-            LP(_) => None, // currently LP tokens don't have pool
-            IC(_) => {
-                if let Some(pool) = pool_map::get_by_token_ids(self.token_id(), kong_settings_map::get().ckusdt_token_id) {
-                    return Some(pool.pool_id);
-                }
-                if let Some(pool) = pool_map::get_by_token_ids(self.token_id(), kong_settings_map::get().icp_token_id) {
-                    return Some(pool.pool_id);
-                }
-                None
-            }
         }
     }
 
