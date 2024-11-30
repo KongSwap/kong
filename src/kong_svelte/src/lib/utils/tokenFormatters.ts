@@ -15,24 +15,21 @@ export function formatBalance(rawBalance: string | undefined, decimals: number =
     // Format with appropriate decimal places
     if (value === 0) return "0";
     
-    // For very small values, show full precision up to 8 decimals
-    if (value < 0.00001) {
+    // For very small values (< 0.000001), show up to 8 decimals
+    if (value < 0.000001 && value > 0) {
         return value.toFixed(8).replace(/\.?0+$/, '');
     }
     
-    // For small values (under 1), show up to 6 decimals
-    if (value < 1) {
+    // For small values (< 0.01), show up to 6 decimals
+    if (value < 0.01) {
         return value.toFixed(6).replace(/\.?0+$/, '');
     }
     
-    // For larger numbers, use locale string but trim unnecessary decimals
-    const formatted = value.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
+    // For normal values, show up to 4 decimals
+    return value.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
         maximumFractionDigits: 4
-    });
-    
-    // Remove trailing zeros after decimal point
-    return formatted.replace(/\.?0+$/, '');
+    }).replace(/\.?0+$/, '');
 }
 
 /**

@@ -118,41 +118,62 @@ function createTokenStore() {
         .filter((result) => result.status === "fulfilled")
         .map((result) => (result as PromiseFulfilledResult<FE.Token>).value);
 
+      // Load prices first
+      const prices = await TokenService.fetchPrices(validTokens);
+      
+      // Then load balances if we have a wallet
+      let balances = {};
+      if(wallet.account && wallet.account.owner) {
+        balances = await loadBalances(wallet.account.owner);
+      }
+
+      // Update everything at once to prevent multiple re-renders
       store.update((s) => ({
         ...s,
         tokens: validTokens,
+        prices,
+        balances,
+        isLoading: false,
       }));
-      if(wallet.account && wallet.account.owner) {
-        const balances = await loadBalances(wallet.account.owner);
-        
-        store.update((s) => ({
-          ...s,
-          balances,
-        }));
-      }
+
     } catch (error: any) {
       console.error("Error enriching tokens:", error);
       store.update((s) => ({
         ...s,
         error: error.message,
-        tokens: [],
+        isLoading: false,
       }));
       toastStore.error("Failed to enrich tokens");
     }
   });
 
-  // Add pool update handler
-  eventBus.on('poolsUpdated', async (pools: BE.Pool[]) => {
+  // Add pool update handler with debounce to prevent rapid updates
+  const debouncedPoolUpdate = debounce(async (pools: BE.Pool[]) => {
+    const currentStore = get(store);
+    const updatedTokens = currentStore.tokens.map(token => ({
+      ...token,
+      pools: pools.filter(p => p.address_0 === token.canister_id),
+      total_24h_volume: BigInt(pools
+        .filter(p => p.address_0 === token.canister_id)
+        .reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)
+      ),
+    }));
+
+    // Update tokens and trigger a price refresh
     store.update(state => ({
       ...state,
-      tokens: state.tokens.map(token => ({
-        ...token,
-        pools: pools.filter(p => p.address_0 === token.canister_id),
-        total_24h_volume: BigInt(pools.filter(p => p.address_0 === token.canister_id)
-          .reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)),
-      }))
+      tokens: updatedTokens,
     }));
-  });
+
+    // Refresh prices after pool update
+    const prices = await TokenService.fetchPrices(updatedTokens);
+    store.update(state => ({
+      ...state,
+      prices,
+    }));
+  }, 1000);
+
+  eventBus.on('poolsUpdated', debouncedPoolUpdate);
 
   return {
     subscribe: store.subscribe,
@@ -436,7 +457,23 @@ export const formattedTokens = derived(
         const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
         const amount = toTokenDecimals(balance.toString(), token.decimals);
         const price = $tokenStore.prices[token.canister_id] || 0;
-        const formattedBalance = amount.toFormat(token.decimals);
+        
+        // Format balance with appropriate decimals based on value
+        let formattedBalance;
+        const numericAmount = Number(amount);
+        if (numericAmount === 0) {
+          formattedBalance = "0";
+        } else if (numericAmount < 0.000001) {
+          formattedBalance = amount.toFormat(8);
+        } else if (numericAmount < 0.01) {
+          formattedBalance = amount.toFormat(6);
+        } else {
+          formattedBalance = amount.toFormat(4);
+        }
+        
+        // Remove trailing zeros
+        formattedBalance = formattedBalance.replace(/\.?0+$/, '');
+        
         const usdValue = amount.times(price);
         const isFavorite = favorites.includes(token.canister_id);
 
@@ -478,21 +515,27 @@ export const favoriteTokens = derived(
   }
 );
 
-export const portfolioValue = derived(tokenStore, ($tokenStore) => {
-  if (!$tokenStore?.tokens) return "0.00";
-  let totalValue = 0.0;
+export const portfolioValue = derived(
+  [tokenStore, formattedTokens],
+  ([$tokenStore, $formattedTokens]) => {
+    if (!$formattedTokens) return "$0.00";
 
-  for (const token of $tokenStore.tokens) {
-    const usdValue = Number(
-      $tokenStore?.balances[token.canister_id]?.in_usd?.replace(/,/g, '') || "0",
-    );
-    totalValue += usdValue;
+    const total = $formattedTokens.reduce((sum, token) => {
+      const balance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
+      const price = $tokenStore.prices[token.canister_id] || 0;
+      const amount = Number(balance) / Math.pow(10, token.decimals);
+      return sum + (amount * price);
+    }, 0);
+
+    // Format with commas and 2 decimal places
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(total);
   }
-  return totalValue.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
-});
+);
 
 export const tokenPrices = derived(tokenStore, ($store) => $store?.prices ?? {});
 

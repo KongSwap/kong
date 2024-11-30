@@ -183,10 +183,7 @@
         }
 
         maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
-        const maxInDecimals = maxAmount.dividedBy(
-          new BigNumber(10).pow(decimals),
-        );
-        const formattedMax = maxInDecimals.toFixed(decimals);
+        const formattedMax = formatTokenAmount(maxAmount.toString(), decimals);
 
         if (inputElement) {
           inputElement.value = formattedMax;
@@ -198,7 +195,7 @@
           }),
         );
 
-        animatedAmount.set(maxInDecimals.toNumber(), {
+        animatedAmount.set(Number(formattedMax), {
           duration: ANIMATION_BASE_DURATION * 2,
           easing: cubicOut,
         });

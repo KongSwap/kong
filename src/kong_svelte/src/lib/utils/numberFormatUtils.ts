@@ -7,9 +7,23 @@ import BigNumber from "bignumber.js";
  * @returns Formatted decimal string.
  */
 export function formatTokenAmount(amount: string, decimals: number): string {
-  return new BigNumber(amount)
-    .dividedBy(new BigNumber(10).pow(decimals))
-    .toFixed(decimals, BigNumber.ROUND_DOWN);
+  const value = new BigNumber(amount)
+    .dividedBy(new BigNumber(10).pow(decimals));
+
+  if (value.isZero()) return "0";
+
+  // For very small values (< 0.000001), show up to 8 decimals
+  if (value.isLessThan(0.000001) && !value.isZero()) {
+    return value.toFormat(8).replace(/\.?0+$/, '');
+  }
+
+  // For small values (< 0.01), show up to 6 decimals
+  if (value.isLessThan(0.01)) {
+    return value.toFormat(6).replace(/\.?0+$/, '');
+  }
+
+  // For normal values, show up to 4 decimals
+  return value.toFormat(4).replace(/\.?0+$/, '');
 }
 
 /**
