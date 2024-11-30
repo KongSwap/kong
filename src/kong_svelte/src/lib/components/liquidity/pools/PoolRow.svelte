@@ -127,12 +127,6 @@
         </div>
       </div>
       <div class="card-actions">
-        <button 
-          class="action-btn add-lp"
-          on:click={handleAddLiquidity}
-        >
-          Add LP
-        </button>
         <button
           class="action-btn details"
           on:click={onShowDetails}
@@ -346,6 +340,10 @@
 
     .tvl-badge {
       font-size: 0.6875rem;
+    }
+
+    .card-actions .add-lp {
+      display: none;
     }
   }
 </style>

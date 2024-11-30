@@ -274,12 +274,6 @@
                     </div>
                     <div class="flex items-center gap-2">
                       <button
-                        on:click={() => handleAddLiquidity(pool.address_0, pool.address_1)}
-                        class="px-4 py-2 text-sm bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
-                      >
-                        Add Liquidity
-                      </button>
-                      <button
                         on:click={() => handleShowDetails(pool)}
                         class="px-4 py-2 text-sm bg-[#2a2d3d] text-white rounded-lg hover:bg-[#2a2d3d]/90 transition-colors duration-200"
                       >
