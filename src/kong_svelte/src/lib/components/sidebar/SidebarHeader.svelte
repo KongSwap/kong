@@ -162,11 +162,11 @@
           >
             <div class="flex items-center justify-center gap-2">
               {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain" alt="" />
+                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain hidden md:block" alt="" />
               {/if}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
               {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain" alt="" />
+                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain hidden md:block" alt="" />
               {/if}
             </div>
           </button>
@@ -213,14 +213,6 @@
     text-align: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    transition: transform 0.2s ease;
-    :hover {
-      backdrop-filter: blur(10px);
-    }
-  }
-
-  .portfolio-value:hover {
-    transform: scale(1.02);
   }
 
   .portfolio-refresh-button {
@@ -254,20 +246,40 @@
     color: white;
     gap: 8px;
     z-index: 1;
+    pointer-events: none;
   }
 
   .refresh-overlay :global(svg) {
     transition: transform 0.3s ease;
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
-    transform: rotate(180deg);
+  @media (hover: hover) {
+    .portfolio-refresh-button:hover .refresh-overlay {
+      opacity: 0.85;
+    }
+
+    .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
+      transform: rotate(180deg);
+    }
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay,
-  .portfolio-refresh-button:focus-visible .refresh-overlay {
-    opacity: 0.85;
-    backdrop-filter: blur(7px);
+  @media (hover: none) {
+    .portfolio-value {
+      background: rgba(255, 255, 255, 0.1);
+      transition: none;
+    }
+
+    .portfolio-refresh-button {
+      transition: none;
+    }
+
+    .refresh-overlay {
+      display: none;
+    }
+
+    .portfolio-refresh-button:active {
+      transform: none;
+    }
   }
 
   .tab-button {
@@ -308,10 +320,6 @@
     animation: glow 2s ease-in-out infinite;
     border-radius: 6px;
     z-index: 2;
-  }
-
-  .portfolio-refresh-button:hover .refresh-overlay {
-    opacity: 0.85;
   }
 
   @keyframes glow-animation {

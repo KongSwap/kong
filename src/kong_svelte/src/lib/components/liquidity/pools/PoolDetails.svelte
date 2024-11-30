@@ -77,25 +77,6 @@
       </div>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-item">
-        <span class="stat-label">TVL</span>
-        <span class="stat-value">${formatBigIntToUSD(pool.balance)}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">24h Volume</span>
-        <span class="stat-value">${formatBigIntToUSD(pool.rolling_24h_volume)}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">APY</span>
-        <span class="stat-value apy" style="color: {apyColor}">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Fee</span>
-        <span class="stat-value">{pool.lp_fee_bps / 100}%</span>
-      </div>
-    </div>
-
     <div class="tabs">
       <button
         class="tab-button"
@@ -115,21 +96,42 @@
 
     <div class="tab-content">
       {#if activeTab === 'info'}
-        <div class="pool-reserves">
-          <h4>Pool Reserves</h4>
-          <div class="reserves-grid">
-            <div class="reserve-item">
-              <TokenImages tokens={[token0]} size={24} />
-              <div class="reserve-info">
-                <span class="token-symbol">{pool.symbol_0}</span>
-                <span class="token-amount">{formatTokenAmount(pool.balance_0.toString(), token0?.decimals || 8)}</span>
-              </div>
+        <div class="info-content">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">TVL</span>
+              <span class="stat-value">${formatBigIntToUSD(pool.balance)}</span>
             </div>
-            <div class="reserve-item">
-              <TokenImages tokens={[token1]} size={24} />
-              <div class="reserve-info">
-                <span class="token-symbol">{pool.symbol_1}</span>
-                <span class="token-amount">{formatTokenAmount(pool.balance_1.toString(), token1?.decimals || 8)}</span>
+            <div class="stat-item">
+              <span class="stat-label">24h Volume</span>
+              <span class="stat-value">${formatBigIntToUSD(pool.rolling_24h_volume)}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">APY</span>
+              <span class="stat-value apy" style="color: {apyColor}">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Fee</span>
+              <span class="stat-value">{pool.lp_fee_bps / 100}%</span>
+            </div>
+          </div>
+
+          <div class="pool-reserves">
+            <h4>Pool Reserves</h4>
+            <div class="reserves-grid">
+              <div class="reserve-item">
+                <TokenImages tokens={[token0]} size={24} />
+                <div class="reserve-info">
+                  <span class="token-symbol">{pool.symbol_0}</span>
+                  <span class="token-amount">{formatTokenAmount(pool.balance_0.toString(), token0?.decimals || 8)}</span>
+                </div>
+              </div>
+              <div class="reserve-item">
+                <TokenImages tokens={[token1]} size={24} />
+                <div class="reserve-info">
+                  <span class="token-symbol">{pool.symbol_1}</span>
+                  <span class="token-amount">{formatTokenAmount(pool.balance_1.toString(), token1?.decimals || 8)}</span>
+                </div>
               </div>
             </div>
           </div>
