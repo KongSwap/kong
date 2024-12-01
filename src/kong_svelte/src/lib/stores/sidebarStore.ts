@@ -10,7 +10,7 @@ interface SidebarState {
 
 function createSidebarStore() {
     const { subscribe, update, set } = writable<SidebarState>({
-        isExpanded: false,
+        isExpanded: false,  // Always start collapsed
         width: 527,
         sortBy: 'value',
         sortDirection: 'desc',
@@ -28,18 +28,17 @@ function createSidebarStore() {
         toggleExpand: () => {
             update(state => ({
                 ...state,
-                isExpanded: !state.isExpanded,
-                width: state.isExpanded ? 527 : window.innerWidth - 32 // 1rem margin on each side (16px * 2)
+                isExpanded: false,  // Always collapse when toggling
+                width: 527  // Keep consistent width
             }));
         },
         setWidth: (width: number) => {
-            update(state => ({ ...state, width }));
+            update(state => ({ ...state, width: Math.min(width, 527) }));  // Never allow width larger than 527
         },
         setSortBy: (sortBy: 'name' | 'balance' | 'value' | 'price') => {
             update(state => ({
                 ...state,
                 sortBy,
-                // If clicking the same sort option, toggle direction
                 sortDirection: state.sortBy === sortBy 
                     ? (state.sortDirection === 'asc' ? 'desc' : 'asc')
                     : 'desc'

@@ -130,7 +130,7 @@
           </button>
         </div>
       </div>
-      <div class="portfolio-value mt-2">
+      <div class="portfolio-value">
         <button
           class="portfolio-refresh-button"
           on:click={handleReload}

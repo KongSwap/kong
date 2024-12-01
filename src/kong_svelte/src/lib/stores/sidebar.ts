@@ -19,8 +19,8 @@ function createSidebarStore() {
 
   return {
     subscribe,
-    toggle: () => update(state => ({ ...state, isExpanded: !state.isExpanded })),
-    toggleExpand: () => update(state => ({ ...state, isExpanded: true })),
+    toggle: () => update(state => ({ ...state, isExpanded: false })),  // Always collapse
+    toggleExpand: () => update(state => ({ ...state, isExpanded: false })),  // Always collapse
     collapse: () => update(state => ({ ...state, isExpanded: false })),
     setFilterText: (text: string) => update(state => ({ ...state, filterText: text })),
     setSortBy: (sortBy: SidebarState['sortBy']) => update(state => ({ ...state, sortBy })),
