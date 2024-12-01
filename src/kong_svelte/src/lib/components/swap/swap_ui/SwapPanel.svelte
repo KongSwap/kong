@@ -371,6 +371,7 @@
                 tokenInfo?.canister_id
               ]?.in_tokens?.toString() || "0",
               decimals,
+              false
             )}
             {token?.symbol}
           </button>
@@ -378,7 +379,7 @@
         <div class="flex items-center gap-2">
           <span class="text-white/50 font-normal tracking-wide mobile-text">Est Value</span>
           <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
-            ${formatToNonZeroDecimal(tradeUsdValue)}
+            ${formatToNonZeroDecimal(tradeUsdValue, false)}
           </span>
         </div>
       </div>

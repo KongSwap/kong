@@ -7,6 +7,8 @@
   import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { createEventDispatcher } from "svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
+  import { goto } from "$app/navigation";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
 
   const dispatch = createEventDispatcher();
   export let pools: any[] = [];
@@ -105,7 +107,8 @@
   }
 
   function handleAddLiquidity() {
-    window.location.href = '/earn';
+    sidebarStore.close();
+    goto('/earn/add');
   }
 
   function handlePoolItemClick(pool) {

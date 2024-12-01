@@ -94,21 +94,27 @@ export class PoolService {
   public static async calculateRemoveLiquidityAmounts(
     token0Symbol: string,
     token1Symbol: string,
-    lpTokenAmount: bigint
-  ): Promise<any> {
+    lpTokenAmount: number | bigint
+  ): Promise<[bigint, bigint]> {
     try {
-      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      // Convert floating point number to whole number with proper decimal precision
+      const lpTokenBigInt = typeof lpTokenAmount === 'number' 
+        ? BigInt(Math.floor(lpTokenAmount * 1e8)) // Assuming 8 decimal places for LP tokens
+        : lpTokenAmount;
+
+      const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      
       const result = await actor.remove_liquidity_amounts(
         token0Symbol,
         token1Symbol,
-        lpTokenAmount
+        lpTokenBigInt
       );
       
       if (!result.Ok) {
         throw new Error(result.Err || 'Failed to calculate removal amounts');
       }
       
-      return result;
+      return result.Ok;
     } catch (error) {
       console.error('Error calculating removal amounts:', error);
       throw error;
@@ -193,15 +199,29 @@ export class PoolService {
     }
   }
 
-  public static async removeLiquidity(params: any): Promise<string> {
+  public static async removeLiquidity(params: {
+    token0: string,
+    token1: string,
+    lpTokenAmount: number | bigint
+  }): Promise<string> {
     await requireWalletConnection();
     try {
-      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
+      // Convert floating point number to whole number with proper decimal precision
+      const lpTokenBigInt = typeof params.lpTokenAmount === 'number'
+        ? BigInt(Math.floor(params.lpTokenAmount * 1e8)) // Assuming 8 decimal places for LP tokens
+        : params.lpTokenAmount;
+
+      const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
       const result = await actor.remove_liquidity_async({
         token_0: params.token0,
         token_1: params.token1,
-        remove_lp_token_amount: params.lpTokenAmount
+        remove_lp_token_amount: lpTokenBigInt
       });
+
+      if (!result.Ok) {
+        throw new Error('Failed to remove liquidity');
+      }
+
       return result.Ok;
     } catch (error) {
       console.error('Error removing liquidity:', error);
