@@ -12,7 +12,7 @@
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
 
-  let activeTab: 'trade' | 'app' = 'trade';
+  let activeTab: 'settings' = 'settings';
   let soundEnabled = true;
   let settingsSubscription: () => void;
   let slippageValue: number = 2.0;
@@ -20,6 +20,7 @@
   let isMobile = false;
   let isIcNetwork = process.env.DFX_NETWORK === 'ic';
   let showClaimButton = !isIcNetwork;
+  let isCustomSlippage = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [0.5, 1, 2, 3, 5];
@@ -49,6 +50,7 @@
     soundEnabled = $settingsStore.sound_enabled;
     slippageValue = $settingsStore.max_slippage || 2.0;
     slippageInputValue = slippageValue.toString();
+    isCustomSlippage = !quickSlippageValues.includes(slippageValue);
   }
 
   function handleQuickSlippageSelect(value: number) {
@@ -59,7 +61,11 @@
     settingsStore.updateSetting('max_slippage', value);
     slippageValue = value;
     slippageInputValue = value.toString();
+    isCustomSlippage = false;
     toastStore.success(`Slippage updated to ${value}%`);
+    if (value > 10) {
+      toastStore.warning('Hmm... high slippage. Trade carefully!');
+    }
   }
 
   function handleSlippageChange(e: Event) {
@@ -69,6 +75,10 @@
       settingsStore.updateSetting('max_slippage', boundedValue);
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
+      isCustomSlippage = !quickSlippageValues.includes(boundedValue);
+      if (boundedValue > 10) {
+        toastStore.warning('Hmm... high slippage. Trade carefully!');
+      }
     }
   }
 
@@ -91,6 +101,10 @@
       if (value >= 0 && value <= 99) {
         settingsStore.updateSetting('max_slippage', value);
         slippageValue = value;
+        isCustomSlippage = !quickSlippageValues.includes(value);
+        if (value > 10) {
+          toastStore.warning('Hmm... high slippage. Trade carefully!');
+        }
       }
     }
   }
@@ -100,6 +114,7 @@
       // Reset to default value
       slippageInputValue = '2.0';
       slippageValue = 2.0;
+      isCustomSlippage = false;
       toastStore.error('Please connect your wallet to save settings');
       return;
     }
@@ -109,13 +124,18 @@
       // Reset to last valid value from settings
       slippageInputValue = $settingsStore.max_slippage?.toString() || '2.0';
       slippageValue = $settingsStore.max_slippage || 2.0;
+      isCustomSlippage = !quickSlippageValues.includes(slippageValue);
     } else {
       const boundedValue = Math.min(Math.max(value, 0), 99);
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       settingsStore.updateSetting('max_slippage', boundedValue);
+      isCustomSlippage = !quickSlippageValues.includes(boundedValue);
       if (boundedValue !== value) {
         toastStore.success(`Slippage bounded to ${boundedValue}%`);
+      }
+      if (boundedValue > 10) {
+        toastStore.warning('Hmm... high slippage. Trade carefully!');
       }
     }
   }
@@ -145,33 +165,14 @@
   };
 
   async function resetDatabase() {
-    if (confirm('Are you sure you want to reset the database? This will clear all cached data.')) {
-      try {
-        if (settingsSubscription) {
-          settingsSubscription();
-        }
-        
-        await Promise.all([
-          kongDB.close(),
-          tokenStore.cleanup && tokenStore.cleanup(),
-        ]);
-        
-        await Dexie.delete('kong_db');
-        await assetCache.clearCache();
-        
-        toastStore.success('Database and asset cache reset successfully. Reloading...');
-        window.location.reload();
-      } catch (error) {
-        console.error('Error resetting database:', error);
-        toastStore.error('Failed to reset database');
-        
-        try {
-          await kongDB.open();
-        } catch (reopenError) {
-          console.error('Error reopening database:', reopenError);
-          window.location.reload();
-        }
-      }
+    try {
+      await kongDB.delete();
+      await assetCache.clearCache();
+      toastStore.success('Database cleared successfully');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error clearing database:', error);
+      toastStore.error('Failed to clear database');
     }
   }
 
@@ -191,55 +192,27 @@
 </script>
 
 <div class="settings-container">
-  <!-- Tab Navigation -->
-  <div class="tabs-container">
-    <div class="tabs-wrapper">
-      <button 
-        class="tab-button" 
-        class:active={activeTab === 'trade'}
-        on:click={() => activeTab = 'trade'}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/>
-          <path d="m19 9-5 5-4-4-3 3"/>
-        </svg>
-        <span>Trade</span>
-      </button>
-      <button 
-        class="tab-button" 
-        class:active={activeTab === 'app'}
-        on:click={() => activeTab = 'app'}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        <span>App</span>
-      </button>
-    </div>
-  </div>
-
-  {#if activeTab === 'trade'}
-    <!-- Trade Settings -->
-    <div class="setting-sections">
-      <!-- Slippage Section -->
-      <div class="setting-section">
-        <div class="setting-header">
-          <h3>Slippage Tolerance</h3>
+  <div class="setting-sections">
+    <!-- Slippage Section -->
+    <div class="setting-section">
+      <div class="setting-header">
+        <h3>Slippage Tolerance</h3>
+      </div>
+      <div class="slippage-content">
+        <div class="quick-slippage-buttons">
+          {#each quickSlippageValues as value}
+            <button
+              class="quick-slippage-button"
+              class:active={slippageValue === value}
+              on:click={() => handleQuickSlippageSelect(value)}
+            >
+              {value}%
+            </button>
+          {/each}
         </div>
-        <div class="slippage-content">
-          <div class="quick-slippage-buttons">
-            {#each quickSlippageValues as value}
-              <button
-                class="quick-slippage-button"
-                class:active={slippageValue === value}
-                on:click={() => handleQuickSlippageSelect(value)}
-              >
-                {value}%
-              </button>
-            {/each}
-          </div>
-          <div class="custom-slippage-input">
+        <div class="custom-slippage-wrapper">
+          <span class="custom-slippage-label">Custom:</span>
+          <div class="custom-slippage-input" class:active={isCustomSlippage}>
             <input
               type="text"
               class="slippage-input"
@@ -251,43 +224,43 @@
             <span class="percentage-symbol">%</span>
           </div>
         </div>
-      </div>
-
-      <!-- Favorites Section - Single Row -->
-      <div class="setting-section-row">
-        <h3>Favorites</h3>
-        <button class="action-button" on:click={clearFavorites}>
-          Clear Favorites
-        </button>
-      </div>
-
-      {#if showClaimButton}
-        <div class="setting-section-row">
-          <h3>Test Tokens</h3>
-          <button class="action-button" on:click={claimTokens}>
-            Claim Test Tokens
-          </button>
-        </div>
-      {/if}
-    </div>
-  {:else}
-    <!-- App Settings -->
-    <div class="setting-sections">
-      <!-- Sound Section - Single Row -->
-      <div class="setting-section-row">
-        <h3>Sound Effects</h3>
-        <Toggle checked={soundEnabled} on:change={handleToggleSound} />
-      </div>
-
-      <!-- Database Section - Single Row -->
-      <div class="setting-section-row">
-        <h3>Database</h3>
-        <button class="action-button" on:click={resetDatabase}>
-          Clear Database
-        </button>
+        {#if slippageValue > 10}
+          <div class="warning-text">
+            Warning: High slippage may result in unfavorable trades
+          </div>
+        {/if}
       </div>
     </div>
-  {/if}
+
+    <!-- Other Settings -->
+    <div class="setting-row">
+      <span class="setting-label">Sound Effects</span>
+      <Toggle checked={soundEnabled} on:change={handleToggleSound} />
+    </div>
+
+    <div class="setting-row">
+      <span class="setting-label">Favorite Tokens</span>
+      <button class="action-button" on:click={clearFavorites}>
+        Clear Favorites
+      </button>
+    </div>
+
+    {#if showClaimButton}
+      <div class="setting-row">
+        <span class="setting-label">Test Tokens</span>
+        <button class="action-button" on:click={claimTokens}>
+          Claim Tokens
+        </button>
+      </div>
+    {/if}
+
+    <div class="setting-row">
+      <span class="setting-label">Clear App Data</span>
+      <button class="action-button warning" on:click={resetDatabase}>
+        Clear Data
+      </button>
+    </div>
+  </div>
 </div>
 
 <style lang="postcss">
@@ -295,44 +268,8 @@
     @apply w-full text-white;
   }
 
-  .tabs-container {
-    @apply w-full bg-black/20 border-b border-white/10 mb-6 rounded-lg overflow-hidden;
-  }
-
-  .tabs-wrapper {
-    @apply grid grid-cols-2 w-full;
-  }
-
-  .tab-button {
-    @apply flex items-center justify-center gap-2 py-3 px-4 w-full
-           text-white/90 hover:bg-white/5 font-medium transition-colors duration-200
-           border-r border-white/10 last:border-r-0;
-  }
-
-  .tab-button.active {
-    @apply bg-white/10 text-white;
-  }
-
-  .tab-button span {
-    @apply text-center;
-  }
-
   .setting-sections {
-    @apply grid gap-6 max-w-full;
-  }
-
-  @media (max-width: 768px) {
-    .tabs-container {
-      @apply mb-4;
-    }
-
-    .tab-button {
-      @apply py-2 px-3;
-    }
-
-    .setting-sections {
-      @apply gap-3;
-    }
+    @apply grid gap-4 max-w-full;
   }
 
   .setting-section {
@@ -349,16 +286,6 @@
     @apply text-lg font-semibold text-white;
   }
 
-  @media (max-width: 768px) {
-    .setting-header h3 {
-      @apply text-base;
-    }
-  }
-
-  .setting-content {
-    @apply grid gap-4 w-full max-w-full;
-  }
-
   .slippage-content {
     @apply grid gap-4;
   }
@@ -368,22 +295,34 @@
   }
 
   .quick-slippage-button {
-    @apply w-full px-3 py-2.5 rounded-lg 
-           bg-black/20 text-white/90 text-base font-medium
-           border border-white/10 transition-all duration-200
-           hover:border-white/20 hover:bg-black/30
-           focus:outline-none focus:ring-2 focus:ring-yellow-300/50;
+    @apply min-w-[80px] px-3 py-2.5 rounded-lg 
+           bg-gray-800 text-white/90 text-base font-medium
+           border border-gray-700 transition-all duration-200
+           hover:bg-gray-700 hover:border-gray-600
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50;
   }
 
   .quick-slippage-button.active {
-    @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50
-           ring-2 ring-yellow-300/50;
+    @apply bg-blue-600 text-white border-blue-500
+           ring-2 ring-blue-500/50;
+  }
+
+  .custom-slippage-wrapper {
+    @apply flex items-center gap-4;
+  }
+
+  .custom-slippage-label {
+    @apply text-white/90 font-medium whitespace-nowrap;
   }
 
   .custom-slippage-input {
-    @apply flex items-center gap-2 
+    @apply flex items-center gap-2 flex-1
            px-4 py-3 rounded-lg bg-black/20 
-           border border-white/10;
+           border border-white/10 transition-all duration-200;
+  }
+
+  .custom-slippage-input.active {
+    @apply border-yellow-500 bg-yellow-500/10;
   }
 
   .slippage-input {
@@ -395,23 +334,57 @@
     @apply text-white/70 font-medium;
   }
 
-  .setting-section-row {
-    @apply flex items-center justify-between py-3 px-4 bg-slate-800/50 rounded-lg;
-    @apply border border-slate-700/30 backdrop-blur-md;
-    @apply transition-all duration-200;
+  .warning-text {
+    @apply text-yellow-500 text-sm font-medium;
   }
 
-  .setting-section-row h3 {
+  .setting-row {
+    @apply flex items-center justify-between py-3 px-4 
+           bg-black/20 rounded-lg border border-white/10
+           hover:bg-black/30 transition-all duration-200;
+  }
+
+  .setting-label {
     @apply text-white/90 text-base font-medium;
   }
 
   .action-button {
-    @apply px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500/80 rounded-lg;
-    @apply text-white/90 text-sm font-medium transition-all duration-200;
-    @apply border border-indigo-500/30;
+    @apply min-w-[140px] px-4 py-2 rounded-lg 
+           bg-blue-600 text-white text-sm font-medium
+           border border-blue-500 transition-all duration-200
+           hover:bg-blue-500 hover:border-blue-400
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50;
+  }
+
+  .action-button.warning {
+    @apply bg-red-600 border-red-500
+           hover:bg-red-500 hover:border-red-400
+           focus:ring-red-500/50;
   }
 
   .action-button:hover {
-    @apply shadow-lg shadow-indigo-500/20;
+    @apply transform -translate-y-0.5 shadow-lg shadow-blue-500/20;
+  }
+
+  .action-button.warning:hover {
+    @apply shadow-red-500/20;
+  }
+
+  @media (max-width: 768px) {
+    .setting-header h3 {
+      @apply text-base;
+    }
+    
+    .quick-slippage-buttons {
+      @apply grid-cols-3;
+    }
+    
+    .quick-slippage-button {
+      @apply min-w-[60px] px-2 py-2 text-sm;
+    }
+    
+    .action-button {
+      @apply min-w-[100px] px-3 py-1.5;
+    }
   }
 </style>

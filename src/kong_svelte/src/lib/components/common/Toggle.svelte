@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   
   export let checked: boolean = false;
-  export let color: string = "yellow";
+  export let color: string = "blue"; // Changed default to blue
   export let size: "sm" | "md" | "lg" = "md";
   export let disabled: boolean = false;
   export let label: string = "Toggle";
@@ -35,7 +35,7 @@
     },
   };
 
-  $: activeColor = colorMap[color] || colorMap.yellow;
+  $: activeColor = colorMap[color] || colorMap.blue; // Changed fallback to blue
   $: style = `--active-color: ${activeColor};`;
   $: sizeClass = sizeMap[size] || sizeMap.md;
 
@@ -73,6 +73,7 @@
 
   .toggle-button.active {
     background: var(--active-color);
+    box-shadow: 0 0 10px var(--active-color); /* Added subtle glow effect */
   }
 
   .toggle-slider {
@@ -89,7 +90,7 @@
   }
 
   .toggle-button.active:hover:not(.disabled) {
-    filter: brightness(110%);
+    filter: brightness(120%); /* Increased brightness on hover */
   }
 
   .toggle-button:focus {
