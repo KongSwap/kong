@@ -28,6 +28,8 @@
     currentWalletFavorites,
   } from "$lib/services/tokens/favoriteStore";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { page } from "$app/stores";
+    import { tokens, type IndexerToken } from "$lib/services/indexer/api";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -68,11 +70,9 @@
 
   // Enhanced loading state with type safety
   const tokensLoading = derived(
-    [tokenStore, poolStore, formattedTokens],
-    ([$tokenStore, $poolStore, $formattedTokens]): boolean =>
-      $tokenStore.isLoading ||
-      $poolStore.isLoading ||
-      !$formattedTokens?.length,
+    [tokenStore, poolStore],
+    ([$tokenStore, $poolStore]): boolean =>
+      $tokenStore.isLoading || $poolStore.isLoading,
   );
 
   // Improved error handling with null checks
@@ -81,77 +81,6 @@
     ([$tokenStore, $poolStore]): string | null =>
       $tokenStore.error || $poolStore.error || null,
   );
-
-  // Enhanced market stats calculation
-  const marketStats = derived<
-    [typeof tokenStore, typeof poolStore],
-    MarketStats
-  >([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
-    const calculateVolume = (pools: any[]): string => {
-      const total = pools.reduce((acc, pool) => {
-        const volume = Number(pool?.rolling_24h_volume || 0n) / 1e6;
-        return acc + volume;
-      }, 0);
-      return total.toString();
-    };
-
-    const calculateLiquidity = (pools: any[]): string => {
-      const total = pools.reduce((acc, pool) => {
-        const tvl = Number(pool.tvl);
-        return acc + tvl;
-      }, 0);
-      return total.toString();
-    };
-
-    const calculateFees = (pools: any[]): string => {
-      const total = pools.reduce((acc, pool) => {
-        const fees = Number(pool.rolling_24h_lp_fee || 0n) / 1e6;
-        return acc + fees;
-      }, 0);
-      return total.toString();
-    };
-
-    return {
-      totalVolume: calculateVolume($poolStore.pools),
-      totalLiquidity: calculateLiquidity($poolStore.pools),
-      totalFees: calculateFees($poolStore.pools),
-    };
-  });
-
-  // Enhanced token stats with better type safety
-  const tokenStats = derived(tokenStore, ($tokenStore) => {
-    const calculateActiveTokens = (tokens: any[], balances: any): number => {
-      return (
-        tokens?.filter(
-          (token) =>
-            balances[token.canister_id]?.in_tokens > 0n ||
-            token.total_24h_volume > 0n,
-        ).length || 0
-      );
-    };
-
-    const calculateMarketCap = (tokens: any[], prices: any): number => {
-      return (
-        tokens?.reduce((acc, token) => {
-          const price = prices[token.canister_id] || 0;
-          const supply =
-            Number(token.total_supply || 0) / Math.pow(10, token.decimals || 8);
-          return acc + price * supply;
-        }, 0) || 0
-      );
-    };
-
-    return {
-      totalTokens: $tokenStore.tokens?.length || 0,
-      activeTokens: calculateActiveTokens(
-        $tokenStore.tokens,
-        $tokenStore.balances,
-      ),
-      marketCap: formatToNonZeroDecimal(
-        calculateMarketCap($tokenStore.tokens, $tokenStore.prices),
-      ),
-    };
-  });
 
   // Enhanced clipboard functionality with better error handling
   async function copyToClipboard(tokenId: string): Promise<void> {
@@ -167,33 +96,12 @@
     }
   }
 
-  // Handle swap button click
-  async function handleSwap(token: FE.Token, event: MouseEvent) {
-    event.stopPropagation(); // Prevent row click
-    swapState.setPayToken(token);
-    swapState.update((s) => ({
-      ...s,
-      showPayTokenSelector: false, // Don't show selector since we already picked a token
-    }));
-    await goto("/swap");
-  }
-
-  // Handle row click for token selection
-  function handleTokenSelect(token: FE.Token) {
-    swapState.setPayToken(token);
-    swapState.update((s) => ({
-      ...s,
-      showPayTokenSelector: true,
-    }));
-  }
 
   // Debounced search with proper typing
   const debouncedSearch = debounce((value: string) => {
     searchQuery.set(value);
   }, DEBOUNCE_DELAY);
 
-  // Subscribe to token store updates
-  $: storeBalances = $tokenStore.balances;
 
   onMount(async () => {
     await tokenStore.loadFavorites();
@@ -202,162 +110,19 @@
   // Create a writable store for activeTab
   const activeTabStore = writable<"all" | "favorites">("all");
 
-  // Create a reactive statement to watch for price changes
-  $: if ($formattedTokens) {
-    previousPrices.update((prev) => {
-      const next = { ...prev };
-      $formattedTokens.forEach((token) => {
-        const currentPrice = token.price;
-        if (prev[token.canister_id] === undefined) {
-          // Initialize price for first time
-          next[token.canister_id] = currentPrice;
-        } else if (currentPrice !== prev[token.canister_id]) {
-          // Price has changed, keep the old price for animation
-          next[token.canister_id] = prev[token.canister_id];
-          // Schedule an update to store the new price after animation
-          setTimeout(() => {
-            previousPrices.update((p) => ({
-              ...p,
-              [token.canister_id]: currentPrice,
-            }));
-          }, 1500); // Match animation duration
-        }
-      });
-      return next;
-    });
-  }
+  // Initialize activeTab from URL query param
+  $: activeTabStore.set($page.url.searchParams.get("tab") === "favorites" ? "favorites" : "all");
 
-  // Update the filteredSortedTokens derived store
-  const filteredSortedTokens = derived(
-    [
-      formattedTokens,
-      searchQuery,
-      sortColumnStore,
-      sortDirectionStore,
-      currentWalletFavorites,
-      poolsList,
-      tokenStore,
-      activeTabStore,
-      previousPrices
-    ],
-    ([
-      $formattedTokens,
-      $searchQuery,
-      $sortColumn,
-      $sortDirection,
-      $currentWalletFavorites,
-      $poolsList,
-      $tokenStore,
-      $activeTab,
-      $previousPrices
-    ]) => {
-      if (!$formattedTokens) return [];
-
-      // First filter tokens
-      let filtered = $formattedTokens
-        .filter((token) => {
-          // First check favorites tab - only filter if in favorites tab
-          if ($activeTab === "favorites" && !$currentWalletFavorites.includes(token.canister_id)) {
-            return false;
-          }
-
-          // Then check search query
-          if (!$searchQuery) return true;
-          const searchLower = $searchQuery.toLowerCase();
-          return (
-            token.name?.toLowerCase().includes(searchLower) ||
-            token.symbol?.toLowerCase().includes(searchLower) ||
-            token.canister_id?.toLowerCase().includes(searchLower)
-          );
-        })
-        .map((token) => {
-          // Get all pools for this token
-          const tokenPools = $poolsList.filter(pool => 
-            pool.address_0 === token.canister_id || 
-            pool.address_1 === token.canister_id
-          );
-
-          // Calculate TVL for this token
-          const tvl = tokenPools.reduce((total, pool) => {
-            const tokenPrice = $tokenStore.prices[token.canister_id] || 0;
-            if (pool.address_0 === token.canister_id) {
-              return total + (Number(pool.balance_0) * tokenPrice) / Math.pow(10, token.decimals);
-            } else {
-              return total + (Number(pool.balance_1) * tokenPrice) / Math.pow(10, token.decimals);
-            }
-          }, 0);
-
-          // Calculate 24h volume
-          let volume24h = 0;
-          if (token.canister_id === process.env.CANISTER_ID_CKUSDT_LEDGER) {
-            // For ckUSDT, sum up volume from all pools that include ckUSDT
-            volume24h = $poolsList.reduce((total, pool) => {
-              if (pool.address_0 === token.canister_id || pool.address_1 === token.canister_id) {
-                return total + Number(pool.rolling_24h_volume || 0) / Math.pow(10, 6);
-              }
-              return total;
-            }, 0);
-          } else {
-            // For other tokens, use total_24h_volume which is already in USD
-            volume24h = Number(token.total_24h_volume) / Math.pow(10, 6);
-          }
-
-          // Calculate price change percentage
-          const prevPrice = $previousPrices[token.canister_id] || token.price;
-          const priceChange = ((token.price - prevPrice) / prevPrice) * 100;
-          const price_change_24h = isNaN(priceChange) ? 0 : Number(priceChange.toFixed(2));
-
-          return {
-            ...token,
-            tvl,
-            volume24h,
-            price_change_24h,
-            isFavorite: $currentWalletFavorites.includes(token.canister_id),
-            balance: BigInt(token.balance || "0") // Convert balance to BigInt to fix type error
-          };
-        });
-
-      // Sort by the selected column
-      return filtered.sort((a, b) => {
-        switch ($sortColumn) {
-          case 'tvl':
-            return $sortDirection === 'desc' ? b.tvl - a.tvl : a.tvl - b.tvl;
-          case 'volume24h':
-            return $sortDirection === 'desc' ? b.volume24h - a.volume24h : a.volume24h - b.volume24h;
-          case 'price':
-            return $sortDirection === 'desc' ? b.price - a.price : a.price - b.price;
-          case 'price_change_24h':
-            return $sortDirection === 'desc' ? b.price_change_24h - a.price_change_24h : a.price_change_24h - b.price_change_24h;
-          case 'name':
-            return $sortDirection === 'desc' 
-              ? b.name.localeCompare(a.name)
-              : a.name.localeCompare(b.name);
-          case 'favorite':
-            return $sortDirection === 'desc' ? b.isFavorite - a.isFavorite : a.isFavorite - b.isFavorite;
-          default:
-            return b.tvl - a.tvl; // Default sort by TVL
-        }
-      });
+  // Update URL when tab changes
+  $: {
+    const currentTab = $activeTabStore;
+    if (currentTab === "favorites") {
+      goto(`?tab=favorites`, { replaceState: true });
+    } else {
+      goto(`?`, { replaceState: true });
     }
-  );
-
-  // Mock data for volume chart only
-  const mockVolumeData = writable([
-    { date: "11/20", value: 1250000 },
-    { date: "11/21", value: 980000 },
-    { date: "11/22", value: 1450000 },
-    { date: "11/23", value: 2100000 },
-    { date: "11/24", value: 1680000 },
-    { date: "11/25", value: 1890000 },
-    { date: "11/26", value: 2350000 },
-  ]);
-
-  // Replace the existing volumeData with mock data
-  const volumeData = mockVolumeData;
-
-  function handleTokenSelectClose() {
-    swapState.update((s) => ({ ...s, showPayTokenSelector: false }));
   }
+
 
   // Update the getPriceChangeClass function to be more precise
   function getPriceChangeClass(
@@ -380,13 +145,15 @@
   }
 
   // Update the toggleFavorite function
-  async function toggleFavorite(token: FE.Token, event: MouseEvent) {
+  async function toggleFavorite(token: IndexerToken, event: MouseEvent) {
     event.stopPropagation(); // Prevent row click
-    await favoriteStore.toggleFavorite(token.canister_id);
+    await favoriteStore.toggleFavorite(token.address);
   }
 
   // Subscribe to tokenStore
   $: $tokenStore;
+  
+
 </script>
 
 <section class="flex justify-center w-full px-4">
@@ -399,7 +166,7 @@
             <h3>Total Volume (24h)</h3>
             <p>Trading activity in the last 24 hours</p>
             <div class="apy">
-              ${formatToNonZeroDecimal($marketStats.totalVolume)}
+              <!-- ${formatToNonZeroDecimal($marketStats.totalVolume)} -->
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -412,7 +179,7 @@
             <h3>Total Liquidity</h3>
             <p>Total value locked in pools</p>
             <div class="apy">
-              ${formatToNonZeroDecimal($marketStats.totalLiquidity)}
+              <!-- ${formatToNonZeroDecimal($marketStats.totalLiquidity)} -->
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -425,7 +192,7 @@
             <h3>Total Fees (24h)</h3>
             <p>Fees earned by liquidity providers</p>
             <div class="apy">
-              ${formatToNonZeroDecimal($marketStats.totalFees)}
+              <!-- ${formatToNonZeroDecimal($marketStats.totalFees)} -->
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -438,23 +205,22 @@
       <Panel variant="green" type="main" className="content-panel">
         <div class="flex justify-between items-center mb-4">
           <div class="flex items-center gap-4">
-           
-            {#if $auth.isConnected}
-              <div class="tab-group">
-                <button
-                  class="tab-button {$activeTabStore === 'all' ? 'active' : ''}"
+            <div class="tab-group">
+              <button
+                class="tab-button {$activeTabStore === 'all' ? 'active' : ''}"
                   on:click={() => activeTabStore.set("all")}
                 >
                   All Tokens
                 </button>
+              {#if $auth.isConnected}
                 <button
                   class="tab-button {$activeTabStore === 'favorites' ? 'active' : ''}"
                   on:click={() => activeTabStore.set("favorites")}
                 >
                   Favorites ({$currentWalletFavorites.length})
                 </button>
-              </div>
-            {/if}
+              {/if}
+            </div>
           </div>
           <div class="search-container">
             <input
@@ -514,7 +280,7 @@
                   />
                   <TableHeader
                     column="price_change_24h"
-                    label="Change"
+                    label="Change (1D)"
                     textClass="text-right min-w-[100px]"
                     sortColumn={$sortColumnStore}
                     sortDirection={$sortDirectionStore}
@@ -529,8 +295,8 @@
                     onsort={handleSort}
                   />
                   <TableHeader
-                    column="tvl"
-                    label="TVL"
+                    column="marketCap"
+                    label="Market Cap"
                     textClass="text-right min-w-[120px]"
                     sortColumn={$sortColumnStore}
                     sortDirection={$sortDirectionStore}
@@ -547,28 +313,28 @@
                 </tr>
               </thead>
               <tbody>
-                {#each $filteredSortedTokens as token (token.canister_id)}
+                {#each $tokens as token (token.address)}
                   {@const priceChangeClass =
-                    token.price_change_24h > 0
+                    token.metrics.priceChange24h > 0
                       ? "positive"
-                      : token.price_change_24h < 0
+                      : token.metrics.priceChange24h < 0
                         ? "negative"
                         : ""}
                   <tr
                     class="token-row"
-                    on:click={() => handleTokenSelect(token)}
+ 
                   >
                     {#if $auth.isConnected}
                       <td class="favorite-cell">
                         <button
                           class="favorite-button {$currentWalletFavorites.includes(
-                            token.canister_id,
+                            token.address
                           )
                             ? 'active'
                             : ''}"
                           on:click={(e) => toggleFavorite(token, e)}
                         >
-                          {#if $currentWalletFavorites.includes(token.canister_id)}
+                          {#if $currentWalletFavorites.includes(token.address)}
                             <Star
                               class="star-icon filled"
                               size={16}
@@ -583,7 +349,7 @@
                     {/if}
                     <td class="token-cell">
                       <TokenImages
-                        tokens={[token]}
+                        tokens={[]}
                         containerClass="token-image"
                         size={32}
                       />
@@ -592,13 +358,10 @@
                         <span class="token-symbol">{token.symbol}</span>
                       </div>
                     </td>
-                    <td
-                      class="price-cell"
-                      title={formatToNonZeroDecimal(token.price)}
-                    >
-                      {#key token.price}
+                    <td class="price-cell">
+                      {#key token.metrics.price}
                         <span class={getPriceChangeClass(token, $previousPrices)}>
-                          ${formatToNonZeroDecimal(token.price)}
+                          ${formatToNonZeroDecimal(token.metrics.price)}
                           {#if getPriceChangeClass(token, $previousPrices) === "price-up"}
                             <div transition:fade={{ duration: 1500 }}>
                               <ArrowUp class="price-arrow up" size={14} />
@@ -611,33 +374,30 @@
                         </span>
                       {/key}
                     </td>
-                    <td
-                      class="change-cell text-right {priceChangeClass}"
-                      title={`${token.price_change_24h}%`}
-                    >
-                      {#key token.price_change_24h}
+                    <td class="change-cell text-right {priceChangeClass}">
+                      {#key token.metrics.priceChange24h}
                         <span>
-                          {token.price_change_24h}%
+                          {token.metrics.priceChange24h.toFixed(2)}%
                         </span>
                       {/key}
                     </td>
                     <td class="text-right">
-                      {#key token.volume24h}
-                        {formatUsdValue(token.volume24h)}
+                      {#key token.metrics.volume24h}
+                        <span>{formatUsdValue(token.metrics.volume24h)}</span>
                       {/key}
                     </td>
                     <td class="text-right">
-                      {#key token.tvl}
-                        {formatUsdValue(token.tvl.toString())}
+                      {#key token.metrics.marketCap}
+                        <span>{formatUsdValue(token.metrics.marketCap.toString())}</span>
                       {/key}
                     </td>
                     <td class="actions-cell">
                       <button
                         class="action-button"
                         on:click|stopPropagation={() =>
-                          copyToClipboard(token.canister_id)}
+                          copyToClipboard(token.address)}
                       >
-                        {$copyStates[token.canister_id] || "Copy ID"}
+                        {$copyStates[token.address] || "Copy ID"}
                       </button>
                     </td>
                   </tr>

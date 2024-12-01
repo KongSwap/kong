@@ -50,7 +50,9 @@ export function formatUsdValue(value: number | string): string {
     if (valueNumber < 1) {
         return `$${formatToNonZeroDecimal(valueNumber).replace(/\.?0+$/, '')}`;
     }
-    
+    if (valueNumber >= 1_000_000_000) {
+        return `$${(valueNumber / 1000000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}B`;
+    }
     if (valueNumber >= 1000000) {
         return `$${(valueNumber / 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}M`;
     }

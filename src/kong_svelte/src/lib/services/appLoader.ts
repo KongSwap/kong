@@ -6,6 +6,7 @@ import { auth, canisterIDLs } from "$lib/services/auth";
 import { assetCache } from "$lib/services/assetCache";
 import { canisterId as kongBackendCanisterId } from "../../../../declarations/kong_backend";
 import { updateWorkerService } from "$lib/services/updateWorkerService";
+import { fetchTokens } from "./indexer/api";
 
 interface LoadingState {
   isLoading: boolean;
@@ -201,7 +202,10 @@ export class AppLoader {
       const wallet = get(auth);
 
       // Load tokens and wait for completion
-      await Promise.all([tokenStore.loadTokens()]);
+      await Promise.all([
+        tokenStore.loadTokens(),
+        fetchTokens()
+      ]);
 
       // If wallet is connected, load balances
       console.log(wallet);
