@@ -10,11 +10,11 @@ pub trait Token {
     fn token_id(&self) -> u32;
     fn name(&self) -> String;
     fn chain(&self) -> String;
-    fn symbol(&self) -> String;
-    fn symbol_with_chain(&self) -> String;
     fn address(&self) -> String;
     fn address_with_chain(&self) -> String;
     fn canister_id(&self) -> Option<&Principal>;
+    fn symbol(&self) -> String;
+    fn symbol_with_chain(&self) -> String;
     fn decimals(&self) -> u8;
     fn fee(&self) -> Nat;
     fn is_icrc1(&self) -> bool;
@@ -46,17 +46,6 @@ impl Token for StableToken {
         }
     }
 
-    fn symbol(&self) -> String {
-        match self {
-            LP(token) => token.symbol.to_string(),
-            IC(token) => token.symbol.to_string(),
-        }
-    }
-
-    fn symbol_with_chain(&self) -> String {
-        format!("{}.{}", self.chain(), self.symbol())
-    }
-
     fn address(&self) -> String {
         match self {
             // for LP tokens, use address as it's used as the unique identifier
@@ -74,6 +63,17 @@ impl Token for StableToken {
             LP(_) => None,
             IC(token) => Some(&token.canister_id),
         }
+    }
+
+    fn symbol(&self) -> String {
+        match self {
+            LP(token) => token.symbol.to_string(),
+            IC(token) => token.symbol.to_string(),
+        }
+    }
+
+    fn symbol_with_chain(&self) -> String {
+        format!("{}.{}", self.chain(), self.symbol())
     }
 
     fn decimals(&self) -> u8 {

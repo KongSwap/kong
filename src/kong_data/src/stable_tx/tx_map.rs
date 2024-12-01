@@ -6,7 +6,7 @@ use std::ops::Bound;
 use crate::stable_memory::TX_MAP;
 use crate::stable_pool::pool_map;
 
-const MAX_TXS: usize = 20;
+const MAX_TXS: usize = 100;
 
 /// get txs filtered by user_id and token_id
 /// if you call get_by_user_and_token_id(None, None, None) it will return all txs

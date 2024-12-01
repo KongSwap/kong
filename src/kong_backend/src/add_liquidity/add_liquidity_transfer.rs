@@ -371,7 +371,6 @@ async fn verify_transfer_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1, None),
     };
 
-    // verify the transfer
     match verify_transfer(token, tx_id, amount).await {
         Ok(_) => {
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()

@@ -59,9 +59,11 @@ type AddPoolReply = record {
     request_id : nat64;
     status : text;
     chain_0 : text;
+    address_0 : text;
     symbol_0 : text;
     amount_0 : nat;
     chain_1 : text;
+    address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
     add_lp_token_amount : nat;
@@ -87,9 +89,11 @@ type AddLiquidityReply = record {
     request_id : nat64;
     status : text;
     chain_0 : text;
+    address_0 : text;
     symbol_0 : text;
     amount_0 : nat;
     chain_1 : text;
+    address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
     add_lp_token_amount : nat;
@@ -109,10 +113,12 @@ type RemoveLiquidityReply = record {
     request_id : nat64;
     status : text;
     chain_0 : text;
+    address_0 : text;
     symbol_0 : text;
     amount_0 : nat;
     lp_fee_0 : nat;
     chain_1 : text;
+    address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
     lp_fee_1 : nat;
@@ -135,9 +141,11 @@ type SwapArgs = record {
 type SwapTxReply = record {
     pool_symbol : text;
     pay_chain : text;
+    pay_address : text;
     pay_symbol : text;
     pay_amount : nat;
     receive_chain : text;
+    receive_address : text;
     receive_symbol : text;
     receive_amount : nat;
     price : float64;
@@ -150,9 +158,11 @@ type SwapReply = record {
     request_id : nat64;
     status : text;
     pay_chain : text;
+    pay_address : text;
     pay_symbol : text;
     pay_amount : nat;
     receive_chain : text;
+    receive_address : text;
     receive_symbol : text;
     receive_amount : nat;
     mid_price : float64;
