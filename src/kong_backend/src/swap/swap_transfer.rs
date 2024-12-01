@@ -100,7 +100,8 @@ async fn process_swap(
     args: &SwapArgs,
     ts: u64,
 ) -> Result<SwapReply, String> {
-    // empty vector to store the block ids of the on-chain transfers
+    let caller_id = caller_id();
+
     let mut transfer_ids = Vec::new();
     transfer_ids.push(pay_transfer_id);
 
@@ -110,7 +111,7 @@ async fn process_swap(
             request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
             // return pay token back to user
             return_pay_token(request_id, user_id, pay_token, pay_amount, None, &mut transfer_ids, ts).await;
-            let error = format!("Swap #{} failed: {}", request_id, e);
+            let error = format!("Req #{} failed. {}", request_id, e);
             return Err(error);
         }
     };
@@ -128,7 +129,7 @@ async fn process_swap(
             ts,
         )
         .await;
-        return Err("Swap #{} failed: Pay amount is zero".to_string());
+        return Err(format!("Req #{} failed. Pay amount is zero", request_id));
     }
     // use specified max slippage or use default
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
@@ -149,49 +150,51 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                let error = format!("Swap #{} failed: Invalid receive address", request_id);
-                return Err(error);
+                return Err(format!("Req #{} failed. Invalid receive address", request_id));
             }
         },
-        None => Address::PrincipalId(caller_id()),
+        None => Address::PrincipalId(caller_id),
     };
 
-    match update_liquidity_pool(request_id, pay_token, pay_amount, &receive_token, receive_amount, max_slippage) {
-        Ok((receive_amount, mid_price, price, slippage, swaps)) => Ok(send_receive_token(
-            request_id,
-            user_id,
-            pay_token,
-            pay_amount,
-            &receive_token,
-            &receive_amount,
-            &to_address,
-            &mut transfer_ids,
-            mid_price,
-            price,
-            slippage,
-            &swaps,
-            ts,
-        )
-        .await),
-        Err(e) => {
-            return_pay_token(
-                request_id,
-                user_id,
-                pay_token,
-                pay_amount,
-                Some(&receive_token),
-                &mut transfer_ids,
-                ts,
-            )
-            .await;
-            let error = format!("Swap #{} failed: {}", request_id, e);
-            Err(error)
-        }
-    }
+    let (receive_amount, mid_price, price, slippage, swaps) =
+        match update_liquidity_pool(request_id, pay_token, pay_amount, &receive_token, receive_amount, max_slippage) {
+            Ok((receive_amount, mid_price, price, slippage, swaps)) => (receive_amount, mid_price, price, slippage, swaps),
+            Err(e) => {
+                return_pay_token(
+                    request_id,
+                    user_id,
+                    pay_token,
+                    pay_amount,
+                    Some(&receive_token),
+                    &mut transfer_ids,
+                    ts,
+                )
+                .await;
+                return Err(format!("Req #{} failed. {}", request_id, e));
+            }
+        };
+
+    let reply = send_receive_token(
+        request_id,
+        user_id,
+        pay_token,
+        pay_amount,
+        &receive_token,
+        &receive_amount,
+        &to_address,
+        &mut transfer_ids,
+        mid_price,
+        price,
+        slippage,
+        &swaps,
+        ts,
+    )
+    .await;
+
+    Ok(reply)
 }
 
 async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat, amount: &Nat, ts: u64) -> Result<u64, String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     request_map::update_status(request_id, StatusCode::VerifyPayToken, None);
@@ -201,9 +204,9 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
         Ok(_) => {
             // contain() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
-                let error = format!("Swap #{} failed to verify tx {} #{}: duplicate block id", request_id, symbol, tx_id);
-                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some("Duplicate block id"));
-                return Err(error);
+                let e = format!("Duplicate block id #{}", tx_id);
+                request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
+                return Err(e);
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
@@ -218,9 +221,8 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
             Ok(transfer_id)
         }
         Err(e) => {
-            let error = format!("Swap #{} failed to verify tx {} #{}: {}", request_id, symbol, tx_id, e);
             request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
-            Err(error)
+            Err(e)
         }
     }
 }

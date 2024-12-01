@@ -200,10 +200,11 @@ async fn process_add_liquidity(
         &mut transfer_ids,
         ts,
     )
-    .await?;
+    .await
+    .map_err(|e| format!("Token_0 transfer_from failed. {}", e))?;
 
     // transfer_from token_1. if this fails, return token_0 back to user
-    if transfer_from_token(
+    if let Err(e) = transfer_from_token(
         request_id,
         &caller_id,
         &TokenIndex::Token1,
@@ -214,7 +215,6 @@ async fn process_add_liquidity(
         ts,
     )
     .await
-    .is_err()
     {
         return_tokens(
             request_id,
@@ -227,7 +227,7 @@ async fn process_add_liquidity(
             ts,
         )
         .await;
-        return Err(format!("Req #{} failed. Transfer from token_1 failed", request_id));
+        return Err(format!("Req #{}. Token_1 transfer_from failed. {}", request_id, e));
     };
 
     // re-calculate with latest pool state and make sure amounts are valid
