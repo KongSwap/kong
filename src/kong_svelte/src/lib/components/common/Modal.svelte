@@ -5,6 +5,7 @@
   import { fade, scale } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
+  import Toast from "./Toast.svelte";
 
   export let isOpen = false;
   export let title: string;
@@ -45,6 +46,7 @@
 
 <svelte:window on:keydown={handleEscape} />
 <Portal target="#portal-target">
+  <Toast />
   {#if isOpen}
     <div
       class="modal-overlay"

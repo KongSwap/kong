@@ -14,7 +14,7 @@
     }
 </script>
 
-<div class="fixed top-4 right-4 z-[10000] flex flex-col items-end gap-2 max-w-md">
+<div class="toast-wrapper">
     {#each $toastStore as toast (toast.id)}
         <div
             class="w-full"
@@ -22,7 +22,7 @@
             out:fade={{ duration: 200 }}
             on:click={() => dismissToast(toast.id)}
         >
-            <div class="toast-container backdrop-blur-sm {styles[toast.type]}">
+            <div class="toast-container {styles[toast.type]}">
                 <div class="content">
                     {#if toast.title}
                         <div class="title">{toast.title}</div>
@@ -35,10 +35,22 @@
 </div>
 
 <style lang="postcss">
+    .toast-wrapper {
+        @apply fixed top-4 right-4 z-[999999] flex flex-col items-end gap-2 max-w-md;
+        isolation: isolate;
+        transform: translateZ(0);
+        will-change: transform;
+        pointer-events: none;
+    }
+
     .toast-container {
         @apply cursor-pointer rounded-lg border shadow-lg text-white;
         @apply transition-all duration-200 hover:translate-y-[-2px] hover:shadow-xl;
         @apply flex items-start p-4;
+        pointer-events: auto;
+        transform: translateZ(1px);
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
     }
 
     .content {
