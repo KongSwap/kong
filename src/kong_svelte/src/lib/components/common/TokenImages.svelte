@@ -15,17 +15,22 @@
   style="width: {validTokens.length * (size - overlap) + overlap}px"
 >
   {#each validTokens as token, i}
-    <img
-      class="relative inline-block rounded-full ring-0 ring-black bg-white object-cover"
+    <div 
+      class="relative inline-block rounded-full bg-slate-800"
       style="
         height: {size}px;
         width: {size}px;
         z-index: {30 - (i * 10)};
         margin-left: {i === 0 ? 0 : -overlap}px;
       "
-      src={token?.canister_id ? ($tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp') : '/tokens/not_verified.webp'}
-      alt={token?.symbol ?? 'Unknown Token'}
-      loading="eager"
-    />
+    >
+      <img
+        class="w-full h-full rounded-full object-contain"
+        style="background-color: white; object-fit: contain;"
+        src={token?.canister_id ? ($tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp') : '/tokens/not_verified.webp'}
+        alt={token?.symbol ?? 'Unknown Token'}
+        loading="eager"
+      />
+    </div>
   {/each}
 </div>

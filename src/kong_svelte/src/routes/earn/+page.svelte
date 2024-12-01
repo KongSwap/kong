@@ -353,18 +353,14 @@
                   <div class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200">
                     <div class="flex items-center justify-between mb-4">
                       <div class="flex items-center space-x-2">
-                        <div class="relative flex items-center">
-                          <img 
-                            src={$tokenMap.get(pool.address_0)?.logo || ''} 
-                            alt={pool.symbol_0}
-                            class="w-8 h-8 rounded-full ring-2 ring-[#1a1b23]"
-                          />
-                          <img 
-                            src={$tokenMap.get(pool.address_1)?.logo || ''} 
-                            alt={pool.symbol_1}
-                            class="w-8 h-8 rounded-full -ml-3 ring-2 ring-[#1a1b23]"
-                          />
-                        </div>
+                        <TokenImages
+                          tokens={[
+                            $tokenMap.get(pool.address_0),
+                            $tokenMap.get(pool.address_1)
+                          ]}
+                          size={32}
+                          overlap={12}
+                        />
                         <div>
                           <div class="font-medium text-white">{pool.symbol_0}/{pool.symbol_1}</div>
                           <div class="text-xs text-[#8890a4]">Pool Tokens</div>

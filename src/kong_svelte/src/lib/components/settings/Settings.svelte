@@ -225,146 +225,66 @@
       <!-- Slippage Section -->
       <div class="setting-section">
         <div class="setting-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <text x="4" y="19" font-size="18" font-weight="bold">%</text>
-          </svg>
           <h3>Slippage Tolerance</h3>
         </div>
-        <div class="setting-content">
-          <div class="slippage-container">
-            <p class="slippage-description">
-              Your transaction will revert if the price changes unfavorably by more than this percentage.
-            </p>
-            
-            <!-- Quick select buttons in their own row -->
-            <div class="quick-select-row">
-              {#each quickSlippageValues as value}
-                <button
-                  class="quick-select-btn"
-                  class:active={slippageValue === value}
-                  on:click={() => handleQuickSlippageSelect(value)}
-                >
-                  {value}%
-                </button>
-              {/each}
-            </div>
-
-            <!-- Custom input in its own row -->
-            <div class="custom-input-row">
-              <span class="custom-label">Enter custom slippage:</span>
-              <div class="custom-input-container" class:active={!quickSlippageValues.includes(slippageValue)}>
-                <input
-                  type="text"
-                  inputmode="decimal"
-                  placeholder="Custom"
-                  class="slippage-input"
-                  bind:value={slippageInputValue}
-                  on:input={handleSlippageInput}
-                  on:blur={handleSlippageBlur}
-                />
-                <span class="percentage-symbol">%</span>
-              </div>
-            </div>
-
-            {#if parseFloat(slippageInputValue) > 5}
-              <div class="warning-message">
-                <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 9v4M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>High slippage increases risk of price impact</span>
-              </div>
-            {:else if parseFloat(slippageInputValue) < 0.1}
-              <div class="warning-message">
-                <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 9v4M12 17h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>Transaction may fail due to low slippage tolerance</span>
-              </div>
-            {/if}
+        <div class="slippage-content">
+          <div class="quick-slippage-buttons">
+            {#each quickSlippageValues as value}
+              <button
+                class="quick-slippage-button"
+                class:active={slippageValue === value}
+                on:click={() => handleQuickSlippageSelect(value)}
+              >
+                {value}%
+              </button>
+            {/each}
+          </div>
+          <div class="custom-slippage-input">
+            <input
+              type="text"
+              class="slippage-input"
+              value={slippageInputValue}
+              on:input={handleSlippageInput}
+              on:change={handleSlippageChange}
+              on:blur={handleSlippageBlur}
+            />
+            <span class="percentage-symbol">%</span>
           </div>
         </div>
       </div>
 
-      <!-- Development Tools Section -->
-      {#if !isIcNetwork}
-        <div class="setting-section">
-          <div class="setting-header">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20M2 12h20"/>
-            </svg>
-            <h3>Development Tools</h3>
-          </div>
-          <div class="setting-content">
-            <div class="grid grid-flow-col justify-between items-center">
-              <button
-                class="claim-button"
-                on:click={claimTokens}
-              >
-                Claim Test Tokens
-              </button>
-            </div>
-          </div>
+      <!-- Favorites Section - Single Row -->
+      <div class="setting-section-row">
+        <h3>Favorites</h3>
+        <button class="action-button" on:click={clearFavorites}>
+          Clear Favorites
+        </button>
+      </div>
+
+      {#if showClaimButton}
+        <div class="setting-section-row">
+          <h3>Test Tokens</h3>
+          <button class="action-button" on:click={claimTokens}>
+            Claim Test Tokens
+          </button>
         </div>
       {/if}
-
-      <!-- Favorites Section -->
-      <div class="setting-section">
-        <div class="setting-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-          </svg>
-          <h3>Favorite Tokens</h3>
-        </div>
-        <div class="setting-content">
-          <div class="grid grid-flow-col justify-between items-center">
-            <button
-              class="clear-button"
-              on:click={clearFavorites}
-            >
-              Clear Favorites
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   {:else}
     <!-- App Settings -->
     <div class="setting-sections">
-      <!-- Sound Section -->
-      <div class="setting-section">
-        <div class="setting-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 5 6 9H2v6h4l5 4V5z"/>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          </svg>
-          <h3>Sound</h3>
-        </div>
-        <div class="setting-content">
-          <div class="grid grid-flow-col justify-between items-center">
-            <Toggle checked={soundEnabled} on:change={handleToggleSound} />
-          </div>
-        </div>
+      <!-- Sound Section - Single Row -->
+      <div class="setting-section-row">
+        <h3>Sound Effects</h3>
+        <Toggle checked={soundEnabled} on:change={handleToggleSound} />
       </div>
 
-      <!-- Data Management Section -->
-      <div class="setting-section">
-        <div class="setting-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/>
-            <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/>
-          </svg>
-          <h3>Data Management</h3>
-        </div>
-        <div class="setting-content">
-          <div class="grid grid-flow-col justify-between items-center">
-            <button
-              class="data-button"
-              on:click={resetDatabase}
-            >
-              Reset Database
-            </button>
-          </div>
-        </div>
+      <!-- Database Section - Single Row -->
+      <div class="setting-section-row">
+        <h3>Database</h3>
+        <button class="action-button" on:click={resetDatabase}>
+          Clear Database
+        </button>
       </div>
     </div>
   {/if}
@@ -413,22 +333,6 @@
     .setting-sections {
       @apply gap-3;
     }
-
-    .quick-select-btn {
-      @apply px-2 py-1 text-sm;
-    }
-
-    .custom-input-container {
-      @apply px-2 py-1;
-    }
-
-    .slippage-input {
-      @apply w-12 text-sm;
-    }
-
-    .theme-button, .data-button, .clear-button, .claim-button {
-      @apply px-3 py-1.5 text-sm;
-    }
   }
 
   .setting-section {
@@ -455,16 +359,15 @@
     @apply grid gap-4 w-full max-w-full;
   }
 
-
-  .slippage-container {
+  .slippage-content {
     @apply grid gap-4;
   }
 
-  .quick-select-row {
+  .quick-slippage-buttons {
     @apply grid grid-cols-5 gap-2;
   }
 
-  .quick-select-btn {
+  .quick-slippage-button {
     @apply w-full px-3 py-2.5 rounded-lg 
            bg-black/20 text-white/90 text-base font-medium
            border border-white/10 transition-all duration-200
@@ -472,34 +375,17 @@
            focus:outline-none focus:ring-2 focus:ring-yellow-300/50;
   }
 
-  .quick-select-btn.active {
+  .quick-slippage-button.active {
     @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50
            ring-2 ring-yellow-300/50;
   }
 
-  .custom-input-row {
-    @apply flex items-center gap-4 
+  .custom-slippage-input {
+    @apply flex items-center gap-2 
            px-4 py-3 rounded-lg bg-black/20 
            border border-white/10;
   }
 
-  .custom-label {
-    @apply text-white/90 font-medium whitespace-nowrap;
-  }
-
-  .custom-input-container {
-    @apply flex items-center gap-2 flex-1
-           px-3 py-2 rounded-lg bg-black/30
-           border border-white/10 transition-all duration-200
-           hover:border-white/20 focus-within:border-yellow-300/50
-           focus-within:ring-2 focus-within:ring-yellow-300/50;
-  }
-
-  .custom-input-container.active {
-    @apply bg-yellow-300/20 border-yellow-300/50
-           ring-2 ring-yellow-300/50;
-  }
-
   .slippage-input {
     @apply w-full bg-transparent text-white/90 text-base font-medium
            focus:outline-none text-right pr-1;
@@ -509,108 +395,23 @@
     @apply text-white/70 font-medium;
   }
 
-  .warning-message {
-    @apply flex items-center gap-2 mt-3 px-3 py-2
-           bg-yellow-300/10 rounded-lg border border-yellow-300/20
-           text-sm text-yellow-300/90;
+  .setting-section-row {
+    @apply flex items-center justify-between py-3 px-4 bg-slate-800/50 rounded-lg;
+    @apply border border-slate-700/30 backdrop-blur-md;
+    @apply transition-all duration-200;
   }
 
-  .warning-icon {
-    @apply w-4 h-4 stroke-yellow-300/90;
+  .setting-section-row h3 {
+    @apply text-white/90 text-base font-medium;
   }
 
-  @media (max-width: 768px) {
-    .quick-select-row {
-      @apply grid-cols-3 grid-rows-2;
-    }
-
-    .custom-input-row {
-      @apply flex-col items-start gap-2 px-3 py-2;
-    }
-
-    .custom-input-container {
-      @apply w-full;
-    }
-
-    .quick-select-btn {
-      @apply px-2 py-2 text-sm;
-    }
-
-    .slippage-input {
-      @apply text-sm;
-    }
+  .action-button {
+    @apply px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500/80 rounded-lg;
+    @apply text-white/90 text-sm font-medium transition-all duration-200;
+    @apply border border-indigo-500/30;
   }
 
-  .data-button, .clear-button, .claim-button {
-    @apply px-4 py-2 rounded-lg bg-black/20 hover:bg-black/30 
-           transition-colors duration-200 text-white/90
-           border border-white/10 hover:border-white/20;
-  }
-
-  .slippage-description {
-    @apply text-sm text-white/70 mb-4;
-  }
-
-  .quick-select-row {
-    @apply grid grid-cols-5 gap-2;
-  }
-
-  .quick-select-btn {
-    @apply w-full px-3 py-2.5 rounded-lg 
-           bg-black/20 text-white/90 text-base font-medium
-           border border-white/10 transition-all duration-200
-           hover:border-white/20 hover:bg-black/30
-           focus:outline-none focus:ring-2 focus:ring-yellow-300/50;
-  }
-
-  .quick-select-btn.active {
-    @apply bg-yellow-300/20 text-yellow-300 border-yellow-300/50
-           ring-2 ring-yellow-300/50;
-  }
-
-  .custom-input-container {
-    @apply relative flex items-center w-full
-           px-3 py-2 rounded-lg bg-black/20 
-           border border-white/10 transition-all duration-200
-           hover:border-white/20 focus-within:border-yellow-300/50
-           focus-within:ring-2 focus-within:ring-yellow-300/50;
-  }
-
-  .custom-input-container.active {
-    @apply bg-yellow-300/20 border-yellow-300/50
-           ring-2 ring-yellow-300/50;
-  }
-
-  .slippage-input {
-    @apply w-full bg-transparent text-white/90 text-base font-medium
-           focus:outline-none text-right pr-1;
-  }
-
-  .percentage-symbol {
-    @apply text-white/70 font-medium;
-  }
-
-  .warning-message {
-    @apply flex items-center gap-2 mt-3 px-3 py-2
-           bg-yellow-300/10 rounded-lg border border-yellow-300/20
-           text-sm text-yellow-300/90;
-  }
-
-  .warning-icon {
-    @apply w-4 h-4 stroke-yellow-300/90;
-  }
-
-  @media (max-width: 768px) {
-    .quick-select-row {
-      @apply grid-cols-3;
-    }
-
-    .quick-select-btn, .custom-input-container {
-      @apply px-2 py-2 text-sm;
-    }
-
-    .slippage-input {
-      @apply text-sm;
-    }
+  .action-button:hover {
+    @apply shadow-lg shadow-indigo-500/20;
   }
 </style>
