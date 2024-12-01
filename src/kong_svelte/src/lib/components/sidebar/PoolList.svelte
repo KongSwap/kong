@@ -236,8 +236,8 @@
                 />
                 <div class="pool-info">
                   <span class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-                  <span class="pool-balance">{parseFloat(pool.balance).toFixed(8)} LP</span>
-                  <span class="pool-usd-value">${parseFloat(pool.usd_balance).toFixed(2)}</span>
+                  <span class="pool-balance">{pool.balance} LP</span>
+                  <span class="pool-usd-value">${pool.usd_balance}</span>
                 </div>
               </div>
               <div class="pool-right">
