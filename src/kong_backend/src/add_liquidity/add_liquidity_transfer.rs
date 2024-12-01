@@ -9,11 +9,9 @@ use super::add_liquidity_transfer_from::transfer_from_token;
 use crate::helpers::nat_helpers::{
     nat_add, nat_divide, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero,
 };
-use crate::ic::{
-    address::Address, get_time::get_time, id::caller_id, logging::error_log, transfer::icrc1_transfer, verify::verify_transfer,
-};
+use crate::ic::{address::Address, get_time::get_time, id::caller_id, transfer::icrc1_transfer, verify::verify_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_lp_token_ledger::{lp_token_ledger, stable_lp_token_ledger::StableLPTokenLedger};
+use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::token_map;
@@ -207,7 +205,7 @@ pub fn calculate_amounts(token_0: &str, amount_0: &Nat, token_1: &str, amount_1:
     // LP token
     let lp_token = pool.lp_token();
     let lp_token_id = lp_token.token_id();
-    let lp_total_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
 
     if nat_is_zero(&reserve_0) && nat_is_zero(&reserve_1) {
         // new pool as there are no balances - take user amounts as initial ratio
@@ -539,20 +537,20 @@ fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token
     request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmount, None);
 
     // refresh with the latest state if the entry exists
-    match lp_token_ledger::get_by_token_id(lp_token_id) {
+    match lp_token_map::get_by_token_id(lp_token_id) {
         Some(lp_token) => {
             // update adding the new deposit amount
-            let new_user_lp_token = StableLPTokenLedger {
+            let new_user_lp_token = StableLPToken {
                 amount: nat_add(&lp_token.amount, add_lp_token_amount),
                 ts,
                 ..lp_token.clone()
             };
-            lp_token_ledger::update(&new_user_lp_token);
+            lp_token_map::update(&new_user_lp_token);
         }
         None => {
             // new entry
-            let new_user_lp_token = StableLPTokenLedger::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
-            lp_token_ledger::insert(&new_user_lp_token);
+            let new_user_lp_token = StableLPToken::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
+            lp_token_map::insert(&new_user_lp_token);
         }
     }
 
@@ -626,7 +624,6 @@ async fn return_tokens(
 
         let token_0 = token_0.unwrap();
         let token_id_0 = token_0.token_id();
-        let symbol_0 = token_0.symbol();
         let fee_0 = token_0.fee();
 
         let amount_0_with_gas = nat_subtract(amount_0, &fee_0).unwrap_or(nat_zero());
@@ -646,20 +643,20 @@ async fn return_tokens(
             }
             Err(e) => {
                 // attempt to return token_0 failed, so save as a claim
-                let claim_id = claim_map::insert(&StableClaim::new(
+                let message = match claim_map::insert(&StableClaim::new(
                     user_id,
                     token_id_0,
                     amount_0,
                     Some(request_id),
                     Some(Address::PrincipalId(caller_id)),
                     ts,
-                ));
-                claim_ids.push(claim_id);
-                let message = format!("{}. Saved as claim #{}", e, claim_id);
-                error_log(&format!(
-                    "AddLiq #{} Kong failed to return {} {}: {}",
-                    request_id, amount_0, symbol_0, message
-                ));
+                )) {
+                    Ok(claim_id) => {
+                        claim_ids.push(claim_id);
+                        format!("Saved as claim #{}. {}", claim_id, e)
+                    }
+                    Err(e) => format!("Failed to save claim: {}", e),
+                };
                 request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
             }
         }
@@ -670,7 +667,6 @@ async fn return_tokens(
 
         let token_1 = token_1.unwrap();
         let token_id_1 = token_1.token_id();
-        let symbol_1 = token_1.symbol();
         let fee_1 = token_1.fee();
 
         let amount_1_with_gas = nat_subtract(amount_1, &fee_1).unwrap_or(nat_zero());
@@ -689,20 +685,20 @@ async fn return_tokens(
                 request_map::update_status(request_id, StatusCode::ReturnToken1Success, None);
             }
             Err(e) => {
-                let claim_id = claim_map::insert(&StableClaim::new(
+                let message = match claim_map::insert(&StableClaim::new(
                     user_id,
                     token_id_1,
                     amount_1,
                     Some(request_id),
                     Some(Address::PrincipalId(caller_id)),
                     ts,
-                ));
-                claim_ids.push(claim_id);
-                let message = format!("{}. Saved as claim #{}", e, claim_id);
-                error_log(&format!(
-                    "AddLiq #{} Kong failed to return {} {}: {}",
-                    request_id, amount_1, symbol_1, message
-                ));
+                )) {
+                    Ok(claim_id) => {
+                        claim_ids.push(claim_id);
+                        format!("Saved as claim #{}. {}", claim_id, e)
+                    }
+                    Err(e) => format!("Failed to save claim. {}", e),
+                };
                 request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
             }
         }

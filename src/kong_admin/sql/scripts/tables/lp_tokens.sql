@@ -1,4 +1,4 @@
-CREATE TABLE lp_token_ledger (
+CREATE TABLE lp_tokens (
     lp_token_id BIGINT PRIMARY KEY,
     user_id INT REFERENCES users(user_id) NOT NULL,
     token_id INT REFERENCES tokens(token_id) NOT NULL,

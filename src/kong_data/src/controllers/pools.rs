@@ -1,9 +1,9 @@
-use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::POOL_MAP;
+use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 
 const MAX_POOLS: usize = 1_000;
 
@@ -42,4 +42,19 @@ fn update_pools(tokens: String) -> Result<String, String> {
     });
 
     Ok("Pools updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kong_backend")]
+fn update_pool(stable_pool_json: String) -> Result<String, String> {
+    let pool: StablePool = match serde_json::from_str(&stable_pool_json) {
+        Ok(pool) => pool,
+        Err(e) => return Err(format!("Invalid pool: {}", e)),
+    };
+
+    POOL_MAP.with(|pool_map| {
+        let mut map = pool_map.borrow_mut();
+        map.insert(StablePoolId(pool.pool_id), pool);
+    });
+
+    Ok("Pool updated".to_string())
 }

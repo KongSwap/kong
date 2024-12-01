@@ -6,7 +6,7 @@ use super::send_reply_helpers::{create_send_reply_failed, create_send_reply_with
 
 use crate::chains::chains::LP_CHAIN;
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_request::request_map;
 use crate::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::stable_token::StableToken::LP;
@@ -18,7 +18,7 @@ use crate::stable_user::user_map;
 
 /// Send LP token to another user
 #[update(guard = "not_in_maintenance_mode")]
-fn send(args: SendArgs) -> Result<SendReply, String> {
+async fn send(args: SendArgs) -> Result<SendReply, String> {
     // support only for LP tokens
     let lp_token = match token_map::get_by_token(&args.token) {
         Ok(LP(token)) => token,
@@ -47,7 +47,7 @@ fn send(args: SendArgs) -> Result<SendReply, String> {
     request_map::update_status(request_id, StatusCode::Start, None);
 
     request_map::update_status(request_id, StatusCode::SendLPTokenToUser, None);
-    let reply = match lp_token_ledger::transfer(lp_token_id, to_user_id, amount) {
+    let reply = match lp_token_map::transfer(lp_token_id, to_user_id, amount) {
         Ok(_) => {
             request_map::update_status(request_id, StatusCode::SendLPTokenToUserSuccess, None);
 

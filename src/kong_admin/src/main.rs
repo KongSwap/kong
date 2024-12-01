@@ -12,7 +12,7 @@ mod kong_backend;
 mod kong_data;
 mod kong_settings;
 mod kong_update;
-mod lp_token_ledger;
+mod lp_tokens;
 mod math_helpers;
 mod nat_helpers;
 mod pools;
@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let tokens_map = tokens::load_tokens(&db_client).await?;
     let pools_map = pools::dump_pools(&db_client, &tokens_map).await?;
     // let pools_map = pools::load_pools(&db_client).await?;
-    lp_token_ledger::dump_lp_token_ledger(&db_client, &tokens_map).await?;
+    lp_tokens::dump_lp_tokens(&db_client, &tokens_map).await?;
     requests::dump_requests(&db_client).await?;
     claims::dump_claims(&db_client, &tokens_map).await?;
     transfers::dump_transfers(&db_client, &tokens_map).await?;
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     users::update_users(&kong_data).await?;
     tokens::update_tokens(&kong_data).await?;
     pools::update_pools(&kong_data).await?;
-    lp_token_ledger::update_lp_token_ledger(&kong_data).await?;
+    lp_tokens::update_lp_tokens(&kong_data).await?;
     requests::update_requests(&kong_data).await?;
     claims::update_claims(&kong_data).await?;
     transfers::update_transfers(&kong_data).await?;
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // users::update_users(&kong_backend).await?;
     // tokens::update_tokens(&kong_backend).await?;
     // pools::update_pools(&kong_backend).await?;
-    // lp_token_ledger::update_lp_token_ledger(&kong_backend).await?;
+    // lp_tokens::update_lp_tokens(&kong_backend).await?;
     // requests::update_requests(&kong_backend).await?;
     // claims::update_claims(&kong_backend).await?;
     // transfers::update_transfers(&kong_backend).await?;

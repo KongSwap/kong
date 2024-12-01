@@ -1,9 +1,9 @@
-use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::MESSAGE_MAP;
+use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 
 const MAX_MESSAGE: usize = 1_000;
 
@@ -43,4 +43,19 @@ fn update_messages(stable_messages: String) -> Result<String, String> {
     });
 
     Ok("Messages updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kong_backend")]
+fn update_message(stable_message_json: String) -> Result<String, String> {
+    let message: StableMessage = match serde_json::from_str(&stable_message_json) {
+        Ok(message) => message,
+        Err(e) => return Err(format!("Invalid message: {}", e)),
+    };
+
+    MESSAGE_MAP.with(|message_map| {
+        let mut map = message_map.borrow_mut();
+        map.insert(StableMessageId(message.message_id), message);
+    });
+
+    Ok("Message updated".to_string())
 }

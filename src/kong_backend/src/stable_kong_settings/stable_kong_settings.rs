@@ -1,23 +1,25 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_stable_structures::{storable::Bound, Storable};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 
 use crate::ic::{
+    canister_address::KONG_DATA,
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
     id::{kong_account, kong_backend_id},
 };
 use crate::stable_memory::{
-    CLAIM_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
-    TX_MAP, USER_MAP,
+    CLAIM_MAP, LP_TOKEN_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP,
+    TX_ARCHIVE_MAP, TX_MAP, USER_MAP,
 };
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct StableKongSettings {
     pub kong_backend_id: String,
     pub kong_backend_account: Account,
+    pub kong_data: Principal,
     pub maintenance_mode: bool,
     pub kingkong: Vec<u32>, // list of user_ids for maintainers
     pub ckusdt_token_id: u32,
@@ -36,18 +38,19 @@ pub struct StableKongSettings {
     pub user_map_idx: u32,     // counter for USER_MAP
     pub token_map_idx: u32,    // counter for TOKEN_MAP
     pub pool_map_idx: u32,     // counter for POOL_MAP
-    pub claim_map_idx: u64,    // counter for CLAIM_MAP
-    pub message_map_idx: u64,  // counter for MESSAGE_MAP
+    pub tx_map_idx: u64,       // counter for TX_MAP
     pub request_map_idx: u64,  // counter for REQUEST_MAP
     pub transfer_map_idx: u64, // counter for TRANSFER_MAP
-    pub tx_map_idx: u64,       // counter for TX_MAP
+    pub claim_map_idx: u64,    // counter for CLAIM_MAP
+    pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
+    pub message_map_idx: u64,  // counter for MESSAGE_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
     pub stats_interval_secs: u64,
     pub requests_archive_interval_secs: u64,
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
-    pub lp_token_ledger_archive_interval_secs: u64,
+    pub lp_tokens_archive_interval_secs: u64,
 }
 
 impl Default for StableKongSettings {
@@ -56,6 +59,7 @@ impl Default for StableKongSettings {
         let token_map_idx = TOKEN_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let pool_map_idx = POOL_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let claim_map_idx = CLAIM_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
+        let lp_token_map_idx = LP_TOKEN_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let message_map_idx = MESSAGE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let request_map_idx = cmp::max(
             REQUEST_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
@@ -72,6 +76,7 @@ impl Default for StableKongSettings {
         Self {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
+            kong_data: Principal::from_text(KONG_DATA).unwrap(),
             maintenance_mode: false,
             kingkong: vec![100, 101], // default kingkong users
             ckusdt_token_id: CKUSDT_TOKEN_ID,
@@ -90,18 +95,19 @@ impl Default for StableKongSettings {
             user_map_idx,
             token_map_idx,
             pool_map_idx,
-            claim_map_idx,
-            message_map_idx,
+            tx_map_idx,
             request_map_idx,
             transfer_map_idx,
-            tx_map_idx,
+            claim_map_idx,
+            lp_token_map_idx,
+            message_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
             transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
             stats_interval_secs: 3600,                   // stats every hour
             requests_archive_interval_secs: 3600,        // archive requests every hour
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
-            lp_token_ledger_archive_interval_secs: 3600, // archive lp_positions every hour
+            lp_tokens_archive_interval_secs: 3600,       // archive lp_positions every hour
         }
     }
 }

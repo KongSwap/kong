@@ -1,9 +1,10 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_stable_structures::{storable::Bound, Storable};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 
 use crate::ic::{
+    canister_address::KONG_DATA,
     ckusdt::{CKUSDT_ADDRESS, CKUSDT_ADDRESS_WITH_CHAIN, CKUSDT_SYMBOL, CKUSDT_SYMBOL_WITH_CHAIN, CKUSDT_TOKEN_ID},
     icp::{ICP_ADDRESS, ICP_ADDRESS_WITH_CHAIN, ICP_SYMBOL, ICP_SYMBOL_WITH_CHAIN, ICP_TOKEN_ID},
     id::{kong_account, kong_backend_id},
@@ -13,6 +14,7 @@ use crate::ic::{
 pub struct StableKongSettings {
     pub kong_backend_id: String,
     pub kong_backend_account: Account,
+    pub kong_data: Principal,
     pub maintenance_mode: bool,
     pub kingkong: Vec<u32>, // list of user_ids for maintainers
     pub ckusdt_token_id: u32,
@@ -31,11 +33,12 @@ pub struct StableKongSettings {
     pub user_map_idx: u32,     // counter for USER_MAP
     pub token_map_idx: u32,    // counter for TOKEN_MAP
     pub pool_map_idx: u32,     // counter for POOL_MAP
-    pub claim_map_idx: u64,    // counter for CLAIM_MAP
-    pub message_map_idx: u64,  // counter for MESSAGE_MAP
+    pub tx_map_idx: u64,       // counter for TX_MAP
     pub request_map_idx: u64,  // counter for REQUEST_MAP
     pub transfer_map_idx: u64, // counter for TRANSFER_MAP
-    pub tx_map_idx: u64,       // counter for TX_MAP
+    pub claim_map_idx: u64,    // counter for CLAIM_MAP
+    pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
+    pub message_map_idx: u64,  // counter for MESSAGE_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
     pub stats_interval_secs: u64,
@@ -50,14 +53,16 @@ impl Default for StableKongSettings {
         let user_map_idx = 0;
         let token_map_idx = 0;
         let pool_map_idx = 0;
-        let claim_map_idx = 0;
-        let message_map_idx = 0;
+        let tx_map_idx = 0;
         let request_map_idx = 0;
         let transfer_map_idx = 0;
-        let tx_map_idx = 0;
+        let claim_map_idx = 0;
+        let lp_token_map_idx = 0;
+        let message_map_idx = 0;
         Self {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
+            kong_data: Principal::from_text(KONG_DATA).unwrap(),
             maintenance_mode: false,
             kingkong: vec![100, 101], // default kingkong users
             ckusdt_token_id: CKUSDT_TOKEN_ID,
@@ -76,11 +81,12 @@ impl Default for StableKongSettings {
             user_map_idx,
             token_map_idx,
             pool_map_idx,
-            claim_map_idx,
-            message_map_idx,
+            tx_map_idx,
             request_map_idx,
             transfer_map_idx,
-            tx_map_idx,
+            claim_map_idx,
+            lp_token_map_idx,
+            message_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
             transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
             stats_interval_secs: 3600,                   // stats every hour

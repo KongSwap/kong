@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
+use crate::messages::message_reply::MessagesReply;
+use crate::messages::message_reply_helpers::to_messages_reply;
 use crate::stable_memory::MESSAGE_MAP;
 use crate::stable_message::message_map;
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
@@ -49,6 +51,16 @@ fn update_messages(stable_messages: String) -> Result<String, String> {
     Ok("Messages updated".to_string())
 }
 
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn get_message(message_id: Option<u64>, user_id: Option<u32>, num_messages: Option<u16>) -> Result<Vec<MessagesReply>, String> {
+    let num_messages = num_messages.map(|n| n as usize);
+    let messages = message_map::get_by_message_id(message_id, user_id, num_messages)
+        .iter()
+        .map(to_messages_reply)
+        .collect();
+    Ok(messages)
+}
+
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct AddMessageArgs {
     pub to_user_id: u32,
@@ -60,8 +72,8 @@ pub struct AddMessageArgs {
 async fn add_message(args: AddMessageArgs) -> Result<String, String> {
     let ts = get_time();
     let message = StableMessage::new(args.to_user_id, &args.title, &args.message, ts);
-    let message_id = message_map::insert(&message);
-    let message = message_map::get_by_message_id(message_id).ok_or_else(|| format!("Failed to add message {}", args.title))?;
+    let message_id = message_map::insert(&message)?;
+    let message = message_map::get_by_message_id(Some(message_id), None, None);
 
     serde_json::to_string(&message).map_err(|e| format!("Failed to serialize: {}", e))
 }

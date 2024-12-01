@@ -12,7 +12,7 @@ use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::verify::verify_transfer;
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
@@ -144,7 +144,7 @@ async fn process_swap(
         return Err("Swap #{} failed: Pay amount is zero".to_string());
     }
     // use specified max slippage or use default
-    let max_slippage = args.max_slippage.unwrap_or(kong_settings::get().default_max_slippage);
+    let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
         Some(ref address) => match get_address(address) {

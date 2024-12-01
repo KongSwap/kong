@@ -5,7 +5,7 @@ use super::stable_token::StableToken::{IC, LP};
 use super::token_map;
 
 use crate::helpers::nat_helpers::nat_zero;
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_map;
 
 pub trait Token {
@@ -37,10 +37,10 @@ impl Token for StableToken {
         match self {
             LP(_) => None, // currently LP tokens don't have pool
             IC(_) => {
-                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings::get().ckusdt_address_with_chain) {
+                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings_map::get().ckusdt_address_with_chain) {
                     return Some(pool.pool_id);
                 }
-                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings::get().icp_address_with_chain) {
+                if let Ok(pool) = pool_map::get_by_tokens(&self.address_with_chain(), &kong_settings_map::get().icp_address_with_chain) {
                     return Some(pool.pool_id);
                 }
                 None

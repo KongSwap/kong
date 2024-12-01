@@ -2,7 +2,7 @@ use candid::Nat;
 
 use super::tx_id::TxId;
 
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TRANSFER_MAP;
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 
@@ -25,7 +25,7 @@ pub fn contain(token_id: u32, block_id: &Nat) -> bool {
 pub fn insert(transfer: &StableTransfer) -> u64 {
     TRANSFER_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let transfer_id = kong_settings::inc_transfer_map_idx();
+        let transfer_id = kong_settings_map::inc_transfer_map_idx();
         let insert_transfer = StableTransfer {
             transfer_id,
             ..transfer.clone()

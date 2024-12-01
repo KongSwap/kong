@@ -13,7 +13,7 @@ use crate::ic::{
 use crate::stable_claim::claim_map;
 use crate::stable_claim::{
     claim_map::{
-        insert_attempt_request_id, update_claimed_status, update_claiming_status, update_too_many_attempts_status, update_unclaimed_status,
+        add_attempt_request_id, update_claimed_status, update_claiming_status, update_too_many_attempts_status, update_unclaimed_status,
     },
     stable_claim::{ClaimStatus, StableClaim},
 };
@@ -152,8 +152,6 @@ async fn send_claim(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let symbol = token.symbol();
-
     // set the claim status to claiming to prevent reentrancy before sending the claim
     update_claiming_status(claim_id);
 
@@ -185,16 +183,14 @@ async fn send_claim(
         }
         Err(e) => {
             // claim failed. add attempt_request_id to claim
-            insert_attempt_request_id(claim_id, request_id);
-            let error = format!("Claim Req #{}: Kong failed to send {} {}: {}", request_id, amount, symbol, e);
-            error_log(&error);
+            add_attempt_request_id(claim_id, request_id);
 
             // revert claim status to unclaimed
             update_unclaimed_status(claim_id);
 
             request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
 
-            Err(error)
+            Err(format!("Failed to send claim #{}. {}", claim_id, e))
         }
     }
 }

@@ -3,9 +3,9 @@ use ic_cdk::query;
 
 use super::add_liquidity_amounts_reply::AddLiquidityAmountsReply;
 
-use crate::ic::guards::not_in_maintenance_mode;
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_to_decimal_precision};
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::ic::guards::not_in_maintenance_mode;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_pool::pool_map;
 use crate::stable_token::token::Token;
 
@@ -37,7 +37,7 @@ fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Resul
         // LP token
         let lp_token = pool.lp_token();
         let lp_token_id = lp_token.token_id();
-        let lp_total_supply = lp_token_ledger::get_total_supply(lp_token_id);
+        let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
 
         if nat_is_zero(&reserve_0) || nat_is_zero(&reserve_1) {
             Err(format!("Zero balances in pool {}", symbol))?
@@ -92,7 +92,7 @@ fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Resul
         // LP token
         let lp_token = pool.lp_token();
         let lp_token_id = lp_token.token_id();
-        let lp_total_supply = lp_token_ledger::get_total_supply(lp_token_id);
+        let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
 
         if nat_is_zero(&reserve_0) || nat_is_zero(&reserve_1) {
             Err(format!("Zero balances in pool {}", symbol))?

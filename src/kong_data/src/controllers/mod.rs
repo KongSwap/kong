@@ -1,6 +1,6 @@
 mod claims;
 mod kong_settings;
-mod lp_token_ledger;
+mod lp_tokens;
 mod messages;
 mod pools;
 mod requests;

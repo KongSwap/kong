@@ -2,8 +2,9 @@ use super::referral_code::{generate_referral_code, REFERRAL_INTERVAL};
 use super::stable_user::{StableUser, StableUserId};
 
 use crate::ic::id::{caller_principal_id, principal_id_is_not_anonymous};
+use crate::ic::logging::error_log;
 use crate::ic::{get_time::get_time, management::get_pseudo_seed};
-use crate::stable_kong_settings::kong_settings;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::USER_MAP;
 use crate::user::user_name::generate_user_name;
 
@@ -70,7 +71,7 @@ pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
 }
 
 pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
-    let mut user = match get_by_caller() {
+    let user = match get_by_caller() {
         // if user already exists, return user profile without updating referrer code
         // once a user is created, the referrer code cannot be updated
         Ok(Some(mut user)) => {
@@ -94,35 +95,54 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
         }
         Ok(None) => {
             // new user, create random user name and referral code
-            let mut user = StableUser::default();
             let mut rng = get_pseudo_seed()?;
-            user.user_name = generate_user_name(&mut rng);
-            user.my_referral_code = generate_referral_code(&mut rng);
-            // leave user.user_id as 0, will be set below
             // if referred_by is provided, check if it is a valid referral code
-            if let Some(referred_by) = referred_by {
-                if let Some(referrer) = get_user_by_referral_code(referred_by) {
-                    user.referred_by = Some(referrer.user_id);
-                    user.referred_by_expires_at = Some(get_time() + REFERRAL_INTERVAL);
-                }
-            }
+            let (referred_by, referred_by_expires_at) = match referred_by {
+                Some(referred) => match get_user_by_referral_code(referred) {
+                    Some(referred_user) => (Some(referred_user.user_id), Some(get_time() + REFERRAL_INTERVAL)),
+                    None => (None, None),
+                },
+                None => (None, None),
+            };
+            let user = StableUser {
+                user_id: kong_settings_map::inc_user_map_idx(),
+                user_name: generate_user_name(&mut rng),
+                my_referral_code: generate_referral_code(&mut rng),
+                referred_by,
+                referred_by_expires_at,
+                ..Default::default()
+            };
+            // archive new user
+            archive_user(user.clone());
             user
         }
         Err(e) => Err(e)?, // do not allow anonymous user
     };
 
     // update user data
-    // if new user, assign user_id
     USER_MAP.with(|m| {
-        let mut map = m.borrow_mut();
-        let user_id = if user.user_id == 0 {
-            let user_id = kong_settings::inc_user_map_idx();
-            user = StableUser { user_id, ..user };
-            user_id
-        } else {
-            user.user_id
-        };
-        map.insert(StableUserId(user_id), user);
+        let user_id = user.user_id;
+        m.borrow_mut().insert(StableUserId(user_id), user);
         Ok(user_id)
     })
+}
+
+fn archive_user(user: StableUser) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&user) {
+            Ok(user_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user.user_id, e)),
+                };
+            }
+            Err(e) => error_log(&format!("Failed to serialize user_id #{}. {}", user.user_id, e)),
+        }
+    });
 }
