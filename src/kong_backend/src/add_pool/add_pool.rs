@@ -231,14 +231,26 @@ async fn process_add_pool(
     ts: u64,
 ) -> Result<AddPoolReply, String> {
     let caller_id = caller_id();
+    let kong_backend = kong_settings_map::get().kong_backend_account;
+    let mut transfer_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    let mut transfer_ids = Vec::new();
-
     let transfer_0 = match tx_id_0 {
         Some(block_id) => verify_transfer_token(request_id, &TokenIndex::Token0, token_0, block_id, amount_0, &mut transfer_ids, ts).await,
-        None => transfer_from_token(request_id, &TokenIndex::Token0, token_0, amount_0, &mut transfer_ids, ts).await,
+        None => {
+            transfer_from_token(
+                request_id,
+                &caller_id,
+                &TokenIndex::Token0,
+                token_0,
+                amount_0,
+                &kong_backend,
+                &mut transfer_ids,
+                ts,
+            )
+            .await
+        }
     };
 
     let transfer_1 = match tx_id_1 {
@@ -248,7 +260,17 @@ async fn process_add_pool(
             if transfer_0.is_err() {
                 Err("Token_0 transfer failed".to_string())
             } else {
-                transfer_from_token(request_id, &TokenIndex::Token1, token_1, amount_1, &mut transfer_ids, ts).await
+                transfer_from_token(
+                    request_id,
+                    &caller_id,
+                    &TokenIndex::Token1,
+                    token_1,
+                    amount_1,
+                    &kong_backend,
+                    &mut transfer_ids,
+                    ts,
+                )
+                .await
             }
         }
     };
@@ -418,24 +440,25 @@ async fn verify_transfer_token(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn transfer_from_token(
     request_id: u64,
+    from_principal_id: &Account,
     token_index: &TokenIndex,
     token: &StableToken,
     amount: &Nat,
+    to_principal_id: &Account,
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
     let token_id = token.token_id();
-
-    let caller_id = caller_id();
 
     match token_index {
         TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0, None),
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1, None),
     };
 
-    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings_map::get().kong_backend_account).await {
+    match icrc2_transfer_from(token, amount, from_principal_id, to_principal_id).await {
         Ok(block_id) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after icrc2_transfer_from()
             // as icrc2_transfer_from() does a new transfer so block_id should be new

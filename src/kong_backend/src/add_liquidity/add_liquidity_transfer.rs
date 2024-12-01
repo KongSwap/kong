@@ -144,28 +144,22 @@ async fn check_arguments(
     }
 
     // transfer_id_0 is used to store if the transfer was successful
-    let transfer_id_0 = match tx_id_0.clone() {
+    let transfer_id_0 = match &tx_id_0 {
         Some(tx_id) if token_0.is_some() => {
-            let token_index = TokenIndex::Token0;
+            let token = token_0.as_ref().unwrap();
             let amount = &args.amount_0;
-            let token = token_0.clone().unwrap();
-            match verify_transfer_token(request_id, &token_index, &token, &tx_id, amount, ts).await {
-                Ok(transfer_id) => Ok(transfer_id),
-                Err(e) => Err(e),
-            }
+            let transfer_id = verify_transfer_token(request_id, &TokenIndex::Token0, token, tx_id, amount, ts).await?;
+            Ok(transfer_id)
         }
         _ => Err("Tx_id_0 not specified".to_string()),
     };
 
-    let transfer_id_1 = match tx_id_1.clone() {
+    let transfer_id_1 = match &tx_id_1 {
         Some(tx_id) if token_1.is_some() => {
-            let token_index = TokenIndex::Token1;
+            let token = token_1.as_ref().unwrap();
             let amount = &args.amount_1;
-            let token = token_1.clone().unwrap();
-            match verify_transfer_token(request_id, &token_index, &token, &tx_id, amount, ts).await {
-                Ok(transfer_id) => Ok(transfer_id),
-                Err(e) => Err(e),
-            }
+            let transfer_id = verify_transfer_token(request_id, &TokenIndex::Token1, token, tx_id, amount, ts).await?;
+            Ok(transfer_id)
         }
         _ => Err("Tx_id_1 not specified".to_string()),
     };
@@ -191,13 +185,12 @@ async fn process_add_liquidity(
     args: &AddLiquidityArgs,
     ts: u64,
 ) -> Result<AddLiquidityReply, String> {
-    let add_amount_0 = args.amount_0.clone();
-    let add_amount_1 = args.amount_1.clone();
+    let add_amount_0 = &args.amount_0;
+    let add_amount_1 = &args.amount_1;
 
     let caller_id = caller_id();
     let kong_backend = kong_settings_map::get().kong_backend_account;
 
-    // empty vector to store the block ids of the on-chain transfers
     let mut transfer_ids = Vec::new();
 
     let mut transfer_0 = match transfer_id_0 {
@@ -228,28 +221,30 @@ async fn process_add_liquidity(
         match pool_map::get_by_token_ids(tok_id_0, tok_id_1) {
             Some(pool) => {
                 if transfer_0.is_err() && tx_id_0.is_none() {
-                    transfer_0 =
-                        match transfer_from_token(request_id, &caller_id, &TokenIndex::Token0, tok_0, &add_amount_0, &kong_backend, ts)
-                            .await
-                        {
-                            Ok(transfer_id) => {
-                                transfer_ids.push(transfer_id);
-                                Ok(())
-                            }
-                            Err(e) => Err(e),
-                        }
+                    transfer_0 = transfer_from_token(
+                        request_id,
+                        &caller_id,
+                        &TokenIndex::Token0,
+                        tok_0,
+                        add_amount_0,
+                        &kong_backend,
+                        &mut transfer_ids,
+                        ts,
+                    )
+                    .await;
                 }
                 if transfer_0.is_ok() && transfer_1.is_err() && tx_id_1.is_none() {
-                    transfer_1 =
-                        match transfer_from_token(request_id, &caller_id, &TokenIndex::Token1, tok_1, &add_amount_1, &kong_backend, ts)
-                            .await
-                        {
-                            Ok(transfer_id) => {
-                                transfer_ids.push(transfer_id);
-                                Ok(())
-                            }
-                            Err(e) => Err(e),
-                        }
+                    transfer_1 = transfer_from_token(
+                        request_id,
+                        &caller_id,
+                        &TokenIndex::Token1,
+                        tok_1,
+                        add_amount_1,
+                        &kong_backend,
+                        &mut transfer_ids,
+                        ts,
+                    )
+                    .await;
                 }
                 pool
             }
@@ -262,10 +257,10 @@ async fn process_add_liquidity(
                     None,
                     token_0,
                     &transfer_0,
-                    &add_amount_0,
+                    add_amount_0,
                     token_1,
                     &transfer_1,
-                    &add_amount_1,
+                    add_amount_1,
                     &mut transfer_ids,
                     ts,
                 )
@@ -282,10 +277,10 @@ async fn process_add_liquidity(
             None,
             token_0,
             &transfer_0,
-            &add_amount_0,
+            add_amount_0,
             token_1,
             &transfer_1,
-            &add_amount_1,
+            add_amount_1,
             &mut transfer_ids,
             ts,
         )
@@ -302,10 +297,10 @@ async fn process_add_liquidity(
             Some(pool.pool_id),
             token_0,
             &transfer_0,
-            &add_amount_0,
+            add_amount_0,
             token_1,
             &transfer_1,
-            &add_amount_1,
+            add_amount_1,
             &mut transfer_ids,
             ts,
         )
@@ -319,7 +314,7 @@ async fn process_add_liquidity(
 
     // re-calculate with latest pool state and make sure amounts are valid
     let (pool, amount_0, amount_1, add_lp_token_amount) =
-        match update_liquidity_pool(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts) {
+        match update_liquidity_pool(request_id, user_id, &pool, add_amount_0, add_amount_1, ts) {
             Ok((pool, amount_0, amount_1, add_lp_token_amount)) => (pool, amount_0, amount_1, add_lp_token_amount),
             Err(e) => {
                 // LP amounts are incorrect. return token_0 and token_1 back to user
@@ -330,10 +325,10 @@ async fn process_add_liquidity(
                     Some(pool.pool_id),
                     token_0,
                     &transfer_0,
-                    &add_amount_0,
+                    add_amount_0,
                     token_1,
                     &transfer_1,
-                    &add_amount_1,
+                    add_amount_1,
                     &mut transfer_ids,
                     ts,
                 )

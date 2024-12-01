@@ -185,58 +185,49 @@ async fn process_add_liquidity(
 
     let caller_id = caller_id();
     let kong_backend = kong_settings_map::get().kong_backend_account;
+    let mut transfer_ids = Vec::new();
 
-    // update the request status
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    // transfer_from token_0
-    // if this fails, nothing to return so just return the error
-    let token_0_transfer_id = transfer_from_token(
+    // transfer_from token_0. if this fails, nothing to return so just return the error
+    transfer_from_token(
         request_id,
         &caller_id,
         &TokenIndex::Token0,
         &token_0,
         add_amount_0,
         &kong_backend,
+        &mut transfer_ids,
         ts,
     )
     .await?;
 
-    // from this point, token_0 has been transferred to the pool. Any errors from now on will need to return token_0 back to the user
-    // transfer_ids stores the block ids of the on-chain transfers
-    let mut transfer_ids = Vec::new();
-    transfer_ids.push(token_0_transfer_id);
-
-    // transfer_from token_1
-    match transfer_from_token(
+    // transfer_from token_1. if this fails, return token_0 back to user
+    if transfer_from_token(
         request_id,
         &caller_id,
         &TokenIndex::Token1,
         &token_1,
         add_amount_1,
         &kong_backend,
+        &mut transfer_ids,
         ts,
     )
     .await
+    .is_err()
     {
-        Ok(token_1_transfer_id) => {
-            transfer_ids.push(token_1_transfer_id);
-        }
-        Err(e) => {
-            // transfer_from token_1 failed. return token_0 back to user
-            return_tokens(
-                request_id,
-                user_id,
-                &caller_id,
-                pool,
-                Some(add_amount_0),
-                None,
-                &mut transfer_ids,
-                ts,
-            )
-            .await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
-        }
+        return_tokens(
+            request_id,
+            user_id,
+            &caller_id,
+            pool,
+            Some(add_amount_0),
+            None,
+            &mut transfer_ids,
+            ts,
+        )
+        .await;
+        return Err(format!("Req #{} failed. Transfer from token_1 failed", request_id));
     };
 
     // re-calculate with latest pool state and make sure amounts are valid
@@ -279,6 +270,7 @@ async fn process_add_liquidity(
     Ok(reply)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transfer_from_token(
     request_id: u64,
     from_principal_id: &Account,
@@ -286,8 +278,9 @@ pub async fn transfer_from_token(
     token: &StableToken,
     amount: &Nat,
     to_principal_id: &Account,
+    transfer_ids: &mut Vec<u64>,
     ts: u64,
-) -> Result<u64, String> {
+) -> Result<(), String> {
     let token_id = token.token_id();
 
     match token_index {
@@ -308,11 +301,12 @@ pub async fn transfer_from_token(
                 tx_id: TxId::BlockIndex(block_id),
                 ts,
             });
+            transfer_ids.push(transfer_id);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Success, None),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Success, None),
             };
-            Ok(transfer_id)
+            Ok(())
         }
         Err(e) => {
             match token_index {
