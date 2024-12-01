@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
-  import { fade, scale } from "svelte/transition";
+  import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+  import { fade, scale, fly } from "svelte/transition";
   import { backOut } from "svelte/easing";
   import Button from "$lib/components/common/Button.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy } from "svelte";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";
 
@@ -14,121 +14,149 @@
   export let receiveAmount: string;
   export let receiveToken: FE.Token;
   export let onClose: () => void;
+  export let principalId: string;
 
-  let countdown = 4;
-  let countdownInterval: ReturnType<typeof setInterval>;
-  let isCountdownActive = false;
+  let showCopiedToast = false;
 
-  $: if (show) {
-    resetAndStartCountdown();
+  // Play sound effect when modal opens
+  $: if (show && $settingsStore.sound_enabled) {
+    const audio = new Audio(coinReceivedSound);
+    audio.play();
   }
 
-  function resetAndStartCountdown() {
-    clearInterval(countdownInterval);
-    countdown = 4;
-    isCountdownActive = true;
-    startCountdown();
+  function handleClose() {
+    onClose();
   }
 
-  function startCountdown() {
-    if ($settingsStore.sound_enabled) {
-      const audio1 = new Audio(coinReceivedSound);
-      const audio2 = new Audio(coinReceivedSound);
-      const audio3 = new Audio(coinReceivedSound);
+  async function copyTradeDetails() {
+    const formattedPaidAmount = formatTokenAmount(payAmount, payToken.decimals).toString();
+    const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
 
-      setTimeout(() => {
-        audio1.play();
-      }, 300);
+    const tradeDetails = 
+      `Trade completed on KongSwap\n` +
+      `Swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol}\n` +
+      `View trade: https://kongswap.io/swap?ref=${principalId}`;
 
-      setTimeout(() => {
-        audio2.play();
-      }, 600);
-
-      setTimeout(() => {
-        audio3.play();
-      }, 900);
-    }
-
-    countdownInterval = setInterval(() => {
-      countdown--;
-      if (countdown <= 0) {
-        clearInterval(countdownInterval);
-        isCountdownActive = false;
-        onClose();
-      }
-    }, 1000);
-  }
-
-  function handleClick() {
-    if (isCountdownActive && show) {
-      clearInterval(countdownInterval);
-      isCountdownActive = false;
-    } else {
-      onClose();
+    try {
+      await navigator.clipboard.writeText(tradeDetails);
+      showCopiedToast = true;
+      setTimeout(() => showCopiedToast = false, 2000);
+    } catch (err) {
+      console.error('Failed to copy trade details:', err);
     }
   }
 
   onDestroy(() => {
-    clearInterval(countdownInterval);
-    isCountdownActive = false;
+    showCopiedToast = false;
   });
 </script>
 
 {#if show}
   <div
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center"
-    transition:fade={{ duration: 200 }}
-    on:click={handleClick}
+    class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center"
+    transition:fade={{ duration: 300 }}
+    on:click={handleClose}
   >
     <div
-      class="bg-gradient-to-br from-yellow-400/90 to-lime-400/90 p-8 rounded-t-2xl rounded-b-xl max-w-md w-full mx-4 shadow-2xl relative"
+      class="modal-container bg-[#0a0f1f]/90 p-6 rounded-2xl max-w-md w-full mx-4 shadow-2xl relative overflow-hidden border border-indigo-500/10"
       transition:scale={{ duration: 400, easing: backOut }}
       on:click|stopPropagation
     >
-      <!-- Progress bar -->
-      <div
-        class="absolute bottom-0 left-0 h-3 bg-yellow-500 rounded-b-xl"
-        style="width: {(countdown / 5) * 100}%; transition: width 1s linear"
-      />
-
-      <div class="text-center" in:scale={{ delay: 200, duration: 400 }}>
-        <div class="text-6xl mb-4 flex items-center justify-center">
-          <img src="/stats/banana_dance.gif" class="w-1/2" alt="Success" />
+      <div class="stars" />
+      <div class="twinkling" />
+      
+      <div class="text-center space-y-4 relative z-10" in:scale={{ delay: 200, duration: 400 }}>
+        <div class="flex items-center justify-center">
+          <img src="/stats/banana_dance.gif" class="w-24 opacity-90 hover:scale-110 transition-transform duration-300" alt="Success" />
         </div>
-        <h2 class="text-2xl font-bold mb-6">Swap Complete!</h2>
+        
+        <div class="space-y-4">
+          <h2 class="text-xl font-medium bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-200">
+            Trade Completed
+          </h2>
+          
+          <div class="bg-[#0c1529]/50 backdrop-blur rounded-xl p-4 border border-indigo-500/10 hover:border-indigo-500/20 transition-colors duration-300">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-sm text-indigo-200/70">Sent</div>
+              <div class="font-medium text-indigo-100">
+                {formatTokenAmount(payAmount, payToken.decimals).toString()} {payToken.symbol}
+              </div>
+            </div>
 
-        <div class="bg-white/20 backdrop-blur rounded-xl p-4 mb-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="text-sm opacity-80">You paid</div>
-            <div class="font-bold">{formatTokenAmount(payAmount, payToken.decimals).toString()} {payToken.symbol}</div>
+            <div class="flex justify-center my-2">
+              <div class="text-indigo-400/50">↓</div>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-indigo-200/70">Received</div>
+              <div class="font-medium text-indigo-100">
+                {formatTokenAmount(receiveAmount, receiveToken.decimals).toString()} {receiveToken.symbol}
+              </div>
+            </div>
           </div>
 
-          <div class="flex justify-center my-2">
-            <div class="text-2xl">⬇️</div>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <div class="text-sm opacity-80">You received</div>
-            <div class="font-bold">{formatTokenAmount(receiveAmount, receiveToken.decimals).toString()} {receiveToken.symbol}</div>
+          <div class="flex gap-2">
+            <Button variant="blue" onClick={copyTradeDetails} width="50%" className="bg-indigo-900/50 hover:bg-indigo-800/50">
+              Copy Details
+            </Button>
+            <Button variant="green" onClick={handleClose} width="50%" className="bg-blue-900/50 hover:bg-blue-800/50">
+              Close
+            </Button>
           </div>
         </div>
-
-        <Button variant="yellow" onClick={handleClick} width="100%">
-          {isCountdownActive ? `Closing in ${countdown}... ` : "Close"}
-        </Button>
       </div>
     </div>
+    
+    {#if showCopiedToast}
+      <div 
+        class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-900/90 text-indigo-50 px-4 py-2 rounded-lg shadow-lg border border-indigo-500/20"
+        in:fly={{ y: 20, duration: 300 }}
+        out:fade
+      >
+        Trade details copied to clipboard
+      </div>
+    {/if}
     <BananaRain />
   </div>
 {/if}
 
 <style>
-  .bg-gradient-to-br {
-    background-color: rgba(255, 255, 255, 0.9);
+  .modal-container {
+    background: linear-gradient(to bottom right, rgba(13, 17, 23, 0.97), rgba(23, 27, 43, 0.97));
+    box-shadow: 0 0 40px rgba(66, 153, 225, 0.1);
   }
 
-  /* Smooth transition for progress bar */
-  [style*="width:"] {
-    transition: width 0.2s linear;
+  .stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent url('/stars.png') repeat;
+    z-index: 0;
+    opacity: 0.5;
+    animation: move-stars 400s linear infinite;
+  }
+
+  .twinkling {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent url('/twinkling.png') repeat;
+    z-index: 1;
+    opacity: 0.3;
+    animation: move-clouds 200s linear infinite;
+  }
+
+  @keyframes move-stars {
+    from {background-position: 0 0;}
+    to {background-position: 10000px 0;}
+  }
+
+  @keyframes move-clouds {
+    from {background-position: 0 0;}
+    to {background-position: 10000px 0;}
   }
 </style>
