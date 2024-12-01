@@ -82,3 +82,30 @@ export const parseTokenAmount = (formattedAmount: number | string, decimals: num
   // Convert to bigint
   return BigInt(amount.toString());
 };
+
+export function formatDisplayNumber(rawNum: number | string | bigint, decimals: number = 6): string {
+  // Convert bigint or string to number
+  const num = typeof rawNum === 'bigint' 
+    ? Number(rawNum)
+    : typeof rawNum === 'string' 
+      ? Number(rawNum) 
+      : rawNum;
+  
+  // Convert from raw value to decimal value
+  const convertedNum = num / Math.pow(10, decimals);
+  
+  if (convertedNum >= 1e9) {
+    return `${(convertedNum / 1e9).toFixed(2)}B`;
+  } else if (convertedNum >= 1e6) {
+    return `${(convertedNum / 1e6).toFixed(2)}M`;
+  } else if (convertedNum >= 1e3) {
+    return `${(convertedNum / 1e3).toFixed(2)}K`;
+  }
+  
+  // For small numbers, use more decimal places
+  if (convertedNum < 0.01) {
+    return convertedNum.toFixed(6);
+  }
+  
+  return convertedNum.toFixed(2);
+}

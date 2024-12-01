@@ -181,50 +181,63 @@
       console.error("[Earn] Could not find matching pool with valid ID");
     }
   }
+
+  function formatLargeNumber(rawNum: number, isPreFormatted: boolean = false): string {
+    // If the number is already formatted (like TVL), don't divide by decimals again
+    const num = isPreFormatted ? Number(rawNum) : Number(rawNum) / 1e6;
+    
+    if (num >= 1e9) {
+      return (num / 1e9).toFixed(2) + 'B';
+    } else if (num >= 1e6) {
+      return (num / 1e6).toFixed(2) + 'M';
+    } else if (num >= 1e3) {
+      return (num / 1e3).toFixed(2) + 'K';
+    }
+    return num.toFixed(2);
+  }
 </script>
 
-<section class="flex flex-col w-full h-full px-4 pb-4">
-  <div class="z-10 flex flex-col w-full h-full max-w-[1300px] mx-auto gap-4">
-    <!-- Earn Hub Navigation -->
-    <div class="earn-cards {isMobile ? 'mobile-tabs' : ''}">
+<section class="flex flex-col w-full h-full px-4 pb-4 {isMobile ? 'pb-24' : ''}">
+  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4">
+    <!-- Hide earn cards on mobile since we have bottom nav -->
+    <div class="earn-cards" class:hidden={isMobile}>
       <button 
-        class="earn-card {$activeSection === 'pools' ? 'active' : ''} {isMobile ? 'mobile-tab' : ''}"
+        class="earn-card"
+        class:active={$activeSection === 'pools'}
         on:click={() => activeSection.set('pools')}
       >
         <div class="card-content">
           <h3>Pools</h3>
-          {#if !isMobile}
-            <p>Provide liquidity and earn trading fees</p>
-            <div class="apy">Up to {$highestApr.toFixed(2)}% APR</div>
-          {/if}
+          <p>Provide liquidity and earn trading fees</p>
+          <div class="apy">Up to {$highestApr.toFixed(2)}% APR</div>
         </div>
       </button>
 
       <button 
-        class="earn-card coming-soon {isMobile ? 'mobile-tab' : ''}"
+        class="earn-card coming-soon"
         disabled
       >
         <div class="card-content">
-          <h3>Staking {isMobile ? '•' : ''} <span class="soon-tag-inline">Soon</span></h3>
-          {#if !isMobile}
-            <p>Lock tokens to earn staking rewards</p>
-            <div class="apy">Up to 25% APY</div>
-            <div class="soon-tag">Coming Soon</div>
-          {/if}
+          <h3>Staking</h3>
+          <p>Lock tokens to earn staking rewards</p>
+          <div class="coming-soon-label">
+            <span class="coming-soon-icon">🚀</span>
+            Coming Soon
+          </div>
         </div>
       </button>
 
       <button
-        class="earn-card coming-soon {isMobile ? 'mobile-tab' : ''}"
+        class="earn-card coming-soon"
         disabled
       >
         <div class="card-content">
-          <h3>Lending {isMobile ? '•' : ''} <span class="soon-tag-inline">Soon</span></h3>
-          {#if !isMobile}
-            <p>Lend assets and earn interest</p>
-            <div class="apy">Up to 12% APY</div>
-            <div class="soon-tag">Coming Soon</div>
-          {/if}
+          <h3>Lending</h3>
+          <p>Lend assets and earn interest</p>
+          <div class="coming-soon-label">
+            <span class="coming-soon-icon">🚀</span>
+            Coming Soon
+          </div>
         </div>
       </button>
     </div>
@@ -379,19 +392,29 @@
                     <div class="grid grid-cols-2 gap-4">
                       <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                         <div class="text-sm text-[#8890a4] mb-1">Price</div>
-                        <div class="font-medium text-white">${Number(pool.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</div>
+                        <div class="font-medium text-white">
+                          ${Number(pool.price) < 0.01 
+                            ? Number(pool.price).toFixed(6)
+                            : Number(pool.price).toFixed(2)}
+                        </div>
                       </div>
                       <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                         <div class="text-sm text-[#8890a4] mb-1">TVL</div>
-                        <div class="font-medium text-white">${Number(pool.tvl)}</div>
+                        <div class="font-medium text-white">
+                          ${formatLargeNumber(Number(pool.tvl), true)}
+                        </div>
                       </div>
                       <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                         <div class="text-sm text-[#8890a4] mb-1">Volume 24H</div>
-                        <div class="font-medium text-white">${Number(pool.rolling_24h_volume).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div class="font-medium text-white">
+                          ${formatLargeNumber(Number(pool.rolling_24h_volume))}
+                        </div>
                       </div>
                       <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                         <div class="text-sm text-[#8890a4] mb-1">APY</div>
-                        <div class="font-medium text-[#60A5FA]">{Number(pool.rolling_24h_apy).toFixed(2)}%</div>
+                        <div class="font-medium text-[#60A5FA]">
+                          {Number(pool.rolling_24h_apy).toFixed(2)}%
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -423,6 +446,39 @@
   </div>
 </section>
 
+{#if isMobile}
+  <nav class="mobile-nav">
+    <div class="mobile-nav-container">
+      <button 
+        class="mobile-nav-item"
+        class:active={$activeSection === 'pools'}
+        on:click={() => activeSection.set('pools')}
+      >
+        <span class="nav-icon">💧</span>
+        <span class="nav-label">Pools</span>
+      </button>
+
+      <button 
+        class="mobile-nav-item disabled"
+        disabled
+      >
+        <span class="nav-icon">🔒</span>
+        <span class="nav-label">Staking</span>
+        <span class="soon-label">Soon</span>
+      </button>
+
+      <button 
+        class="mobile-nav-item disabled"
+        disabled
+      >
+        <span class="nav-icon">💰</span>
+        <span class="nav-label">Lending</span>
+        <span class="soon-label">Soon</span>
+      </button>
+    </div>
+  </nav>
+{/if}
+
 {#if showPoolDetails && selectedPool}
   <PoolDetails 
     pool={selectedPool}
@@ -450,92 +506,135 @@
   </Modal>
 {/if}
 
-<style lang="postcss">
+<style>
   .earn-cards {
-    @apply grid md:grid-cols-3 gap-4;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
   }
 
   .earn-card {
-    @apply relative flex items-start p-4 rounded-lg transition-all duration-200
-           bg-[#1a1b23]/60 border border-[#2a2d3d] text-left
-           hover:shadow-sm hover:shadow-[#60A5FA]/5 backdrop-blur-sm;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: rgba(26, 27, 35, 0.6);
+    border: 1px solid #2a2d3d;
+    text-align: left;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
   }
 
   .earn-card:not(.coming-soon):hover {
-    @apply bg-[#1e1f2a]/80 border-[#60A5FA]/30
-           shadow-[0_0_10px_rgba(96,165,250,0.1)]
-           transform scale-[1.01];
+    background-color: rgba(30, 31, 42, 0.8);
+    border-color: rgba(96, 165, 250, 0.3);
+    box-shadow: 0 0 10px rgba(96, 165, 250, 0.1);
+    transform: scale(1.01);
   }
 
   .earn-card.active {
-    @apply bg-gradient-to-b from-[#1e1f2a] to-[#1a1b23]
-           border-[#60A5FA]/20
-           shadow-[0_0_15px_rgba(96,165,250,0.1)];
+    background: linear-gradient(to bottom, #1e1f2a, #1a1b23);
+    border-color: rgba(96, 165, 250, 0.2);
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.1);
   }
 
   .earn-card.coming-soon {
-    @apply cursor-not-allowed opacity-60;
+    cursor: not-allowed;
+    opacity: 0.8;
+    background: linear-gradient(to bottom, rgba(30, 31, 42, 0.4), rgba(26, 27, 35, 0.4));
   }
 
   .card-content {
-    @apply flex flex-col gap-1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
   }
 
   .card-content h3 {
-    @apply text-lg text-white;
+    font-size: 1.125rem;
+    color: white;
   }
 
   .card-content p {
-    @apply text-[#8890a4] text-sm;
+    color: #8890a4;
+    font-size: 0.875rem;
   }
 
   .apy {
-    @apply text-[#60A5FA] font-medium mt-2 text-sm;
+    color: #60A5FA;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
   }
 
-  .soon-tag {
-    @apply absolute top-3 right-3 bg-[#60A5FA] text-white px-2 py-0.5
-           rounded-md text-xs font-medium;
+  .coming-soon-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #60A5FA;
   }
 
-  .soon-tag-inline {
-    @apply text-xs text-[#60A5FA] font-medium ml-2;
+  /* Mobile Navigation */
+  .mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(26, 27, 35, 0.9);
+    border-top: 1px solid #2a2d3d;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
-  table {
-    @apply border-collapse;
+  .mobile-nav-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    height: 4rem;
   }
 
-  th {
-    @apply sticky top-0 px-4 py-3 text-sm font-medium text-[#8890a4] border-b border-[#2a2d3d] bg-[#1a1b23] z-10;
+  .mobile-nav-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    color: #8890a4;
+    transition: color 0.2s;
   }
 
-  /* Scrollbar Styling */
-  .overflow-auto {
-    scrollbar-width: thin;
-    scrollbar-color: #2a2d3d transparent;
+  .mobile-nav-item.active {
+    color: #60A5FA;
   }
 
-  .overflow-auto::-webkit-scrollbar-thumb {
-    @apply bg-[#2a2d3d] rounded-full hover:bg-[#3a3d4d] transition-colors duration-200;
+  .mobile-nav-item.disabled {
+    opacity: 0.6;
   }
 
-  /* For mobile, use flex instead of grid */
+  .nav-icon {
+    font-size: 1.25rem;
+  }
+
+  .nav-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .soon-label {
+    position: absolute;
+    top: 0.75rem;
+    font-size: 0.625rem;
+    color: #60A5FA;
+  }
+
   @media (max-width: 768px) {
     .earn-cards {
-      @apply flex flex-row gap-2 overflow-x-auto pb-2;
-    }
-
-    .earn-card {
-      @apply flex-1 min-w-[140px] py-2 px-3;
-    }
-
-    .earn-card .card-content h3 {
-      @apply text-sm text-center whitespace-nowrap;
-    }
-
-    .soon-tag-inline {
-      @apply text-[10px] ml-1;
+      display: none;
     }
   }
 </style>
