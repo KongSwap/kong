@@ -456,7 +456,7 @@
 
   @media (max-width: 420px) {
     input {
-      font-size: 1.5rem;
+      font-size: 2rem;
       margin-top: -0.15rem;
     }
 
@@ -518,7 +518,7 @@
   }
 
   .select-token-text {
-    font-size: 15px;
+    font-size: 2rem;
     color: rgba(255, 255, 255, 0.7);
     text-align: left;
   }
