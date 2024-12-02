@@ -33,21 +33,35 @@
     console.log("Raw balances in PoolList:", balances);
     if (Array.isArray(balances)) {
       poolBalances = balances;
-      processedPools = balances.map(pool => ({
-        id: pool.name,
-        name: pool.name,
-        symbol: pool.symbol,
-        symbol_0: pool.symbol_0,
-        symbol_1: pool.symbol_1,
-        balance: pool.balance.toString(),
-        amount_0: pool.amount_0,
-        amount_1: pool.amount_1,
-        usd_balance: pool.usd_balance,
-        pool_id: pool.pool_id,
-        address_0: pool.symbol_0,
-        address_1: pool.symbol_1,
-        searchableText: `${pool.symbol_0}/${pool.symbol_1} ${pool.name || ''} ${pool.pool_id || ''}`.toLowerCase()
-      }));
+      processedPools = balances.map(pool => {
+        // Look up tokens in tokenStore
+        const token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
+        const token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
+        
+        console.log("Found tokens:", {
+          symbol0: pool.symbol_0,
+          token0,
+          symbol1: pool.symbol_1,
+          token1
+        });
+        
+        return {
+          id: pool.name,
+          name: pool.name,
+          symbol: pool.symbol,
+          symbol_0: pool.symbol_0,
+          symbol_1: pool.symbol_1,
+          balance: pool.balance.toString(),
+          amount_0: pool.amount_0,
+          amount_1: pool.amount_1,
+          usd_balance: pool.usd_balance,
+          pool_id: pool.pool_id,
+          address_0: pool.symbol_0,
+          address_1: pool.symbol_1,
+          // Use canister_id instead of canisterId
+          searchableText: `${pool.symbol_0}/${pool.symbol_1} ${pool.name || ''} ${token0?.canister_id || ''} ${token1?.canister_id || ''}`.toLowerCase()
+        };
+      });
       console.log("Final processedPools:", processedPools);
     } else {
       poolBalances = [];
@@ -147,7 +161,7 @@
           bind:this={searchInput}
           bind:value={searchQuery}
           type="text"
-          placeholder="Search pools by name or token"
+          placeholder="Search pools by name, token, or canister ID"
           class="search-input"
         />
         {#if searchQuery}
