@@ -14,6 +14,8 @@
   export let pools: any[] = [];
   export let filterPair: {token0?: string, token1?: string} = {}; // Filter by specific token pair
   export let filterToken: string = ''; // Filter by single token
+  export let initialSearch: string = ""; // Initial search term
+  export let pool: any = null; // Single pool to display
 
   let loading = true;
   let error: string | null = null;
@@ -21,81 +23,110 @@
   let processedPools: any[] = [];
   let selectedPool = null;
   let showUserPoolModal = false;
-  let searchQuery = '';
+  let searchQuery = initialSearch;
   let searchInput: HTMLInputElement;
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
   let sortDirection = 'desc';
+  let isSearching = false;
+  let searchResultsReady = false;
+  let initialFilterApplied = false;
 
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;
   $: {
-    console.log("Raw balances in PoolList:", balances);
     if (Array.isArray(balances)) {
       poolBalances = balances;
       processedPools = balances
-        .filter(pool => Number(pool.balance) > 0) // Filter out pools with 0 balance
-        .map(pool => {
-          // Look up tokens in tokenStore
-          const token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
-          const token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
+        .filter(poolBalance => Number(poolBalance.balance) > 0)
+        .map(poolBalance => {
+          const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);
+          const token1 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_1);
           
-          console.log("Found tokens:", {
-            symbol0: pool.symbol_0,
-            token0,
-            symbol1: pool.symbol_1,
-            token1
-          });
+          // Create searchable text with more variations and aliases
+          const searchableText = [
+            poolBalance.symbol_0,
+            poolBalance.symbol_1,
+            `${poolBalance.symbol_0}/${poolBalance.symbol_1}`,
+            poolBalance.name || '',
+            token0?.name || '',
+            token1?.name || '',
+            token0?.canister_id || '',
+            token1?.canister_id || '',
+            // Add common aliases
+            poolBalance.symbol_0 === 'ICP' ? 'internet computer protocol dfinity' : '',
+            poolBalance.symbol_1 === 'ICP' ? 'internet computer protocol dfinity' : '',
+            poolBalance.symbol_0 === 'USDT' ? 'tether usdt' : '',
+            poolBalance.symbol_1 === 'USDT' ? 'tether usdt' : '',
+            poolBalance.symbol_0 === 'BTC' ? 'bitcoin btc' : '',
+            poolBalance.symbol_1 === 'BTC' ? 'bitcoin btc' : '',
+            poolBalance.symbol_0 === 'ETH' ? 'ethereum eth' : '',
+            poolBalance.symbol_1 === 'ETH' ? 'ethereum eth' : '',
+          ].join(' ').toLowerCase();
           
           return {
-            id: pool.name,
-            name: pool.name,
-            symbol: pool.symbol,
-            symbol_0: pool.symbol_0,
-            symbol_1: pool.symbol_1,
-            balance: pool.balance.toString(),
-            amount_0: pool.amount_0,
-            amount_1: pool.amount_1,
-            usd_balance: pool.usd_balance,
-            pool_id: pool.pool_id,
-            address_0: pool.symbol_0,
-            address_1: pool.symbol_1,
-            // Use canister_id instead of canisterId
-            searchableText: `${pool.symbol_0}/${pool.symbol_1} ${pool.name || ''} ${token0?.canister_id || ''} ${token1?.canister_id || ''}`.toLowerCase()
+            id: poolBalance.name,
+            name: poolBalance.name,
+            symbol: poolBalance.symbol,
+            symbol_0: poolBalance.symbol_0,
+            symbol_1: poolBalance.symbol_1,
+            balance: poolBalance.balance.toString(),
+            amount_0: poolBalance.amount_0,
+            amount_1: poolBalance.amount_1,
+            usd_balance: poolBalance.usd_balance,
+            pool_id: poolBalance.pool_id,
+            address_0: poolBalance.symbol_0,
+            address_1: poolBalance.symbol_1,
+            searchableText
           };
         });
-      console.log("Final processedPools:", processedPools);
+
+      // If we have a specific pool to display, immediately filter for it
+      if (pool && !initialFilterApplied) {
+        searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
+        debouncedSearchQuery = searchQuery.toLowerCase();
+        initialFilterApplied = true;
+        searchResultsReady = true;
+        isSearching = false;
+      }
     } else {
       poolBalances = [];
       processedPools = [];
     }
   }
 
-  // Debounce search input
-  $: {
+  // Debounce search input only when user is actively searching
+  $: if (!initialFilterApplied || searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`) {
+    isSearching = true;
+    searchResultsReady = false;
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       debouncedSearchQuery = searchQuery.toLowerCase();
+      setTimeout(() => {
+        searchResultsReady = true;
+        isSearching = false;
+      }, 100);
     }, 150);
   }
 
   // Filter pools based on search, pair filter, and token filter
   $: filteredPools = processedPools
-    .filter(pool => {
-      // Apply search filter
+    .filter(poolItem => {
+      if (pool) {
+        return poolItem.symbol_0 === pool.symbol_0 && poolItem.symbol_1 === pool.symbol_1;
+      }
+      
       if (debouncedSearchQuery) {
-        return pool.searchableText.includes(debouncedSearchQuery);
+        return poolItem.searchableText.includes(debouncedSearchQuery);
       }
       
-      // Apply pair filter
       if (filterPair.token0 && filterPair.token1) {
-        return (pool.symbol_0 === filterPair.token0 && pool.symbol_1 === filterPair.token1) ||
-               (pool.symbol_0 === filterPair.token1 && pool.symbol_1 === filterPair.token0);
+        return (poolItem.symbol_0 === filterPair.token0 && poolItem.symbol_1 === filterPair.token1) ||
+               (poolItem.symbol_0 === filterPair.token1 && poolItem.symbol_1 === filterPair.token0);
       }
       
-      // Apply single token filter
       if (filterToken) {
-        return pool.symbol_0 === filterToken || pool.symbol_1 === filterToken;
+        return poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken;
       }
       
       return true;
@@ -109,9 +140,23 @@
     try {
       loading = true;
       error = null;
-      console.log("Loading pool balances...");
+      
       await poolStore.loadUserPoolBalances();
-      console.log("Pool balances loaded");
+      
+      // Don't show loading state for specific pool view
+      if (!pool) {
+        isSearching = true;
+        searchResultsReady = false;
+      }
+      
+      // If we have initial search or specific pool, apply filter immediately
+      if ((initialSearch || pool) && !initialFilterApplied) {
+        searchQuery = pool ? `${pool.symbol_0}/${pool.symbol_1}` : initialSearch;
+        debouncedSearchQuery = searchQuery.toLowerCase();
+        initialFilterApplied = true;
+      }
+      
+      searchResultsReady = true;
     } catch (err) {
       console.error("Error loading pool balances:", err);
       error = err.message;
@@ -119,6 +164,7 @@
       processedPools = [];
     } finally {
       loading = false;
+      isSearching = false;
     }
   }
 
@@ -126,8 +172,8 @@
     goto('/earn/add');
   }
 
-  function handlePoolItemClick(pool) {
-    selectedPool = pool;
+  function handlePoolItemClick(poolItem) {
+    selectedPool = poolItem;
     showUserPoolModal = true;
   }
 
@@ -157,6 +203,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="pool-list-wrapper" on:keydown={handleKeydown}>
   <div class="controls-wrapper">
+    {#if !pool}
     <div class="search-section">
       <div class="search-input-wrapper">
         <input
@@ -205,6 +252,7 @@
         </svg>
       </div>
     </div>
+    {/if}
   </div>
 
   <div class="pool-list-content">
@@ -213,13 +261,17 @@
         <div class="loading-state" in:fade>
           <p>Loading positions...</p>
         </div>
+      {:else if !pool && (isSearching || !searchResultsReady)}
+        <div class="loading-state" in:fade>
+          <p>Finding pools...</p>
+        </div>
       {:else if error}
         <div class="error-state" in:fade>
           <p>{error}</p>
         </div>
       {:else if filteredPools.length === 0}
         <div class="empty-state" in:fade>
-          {#if searchQuery}
+          {#if searchQuery && !pool}
             <p>No pools found matching "{searchQuery}"</p>
             <button 
               class="clear-search-button"
@@ -230,20 +282,22 @@
             >
               Clear Search
             </button>
-          {:else}
+          {:else if !pool}
             <p>No active positions</p>
             <button class="primary-button" on:click={handleAddLiquidity}>
               Add Position
             </button>
+          {:else}
+            <p>No matching pool found</p>
           {/if}
         </div>
       {:else}
-        {#each filteredPools as pool (pool.id)}
+        {#each filteredPools as poolItem (poolItem.id)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div 
             class="pool-item" 
             in:slide={{ duration: 200 }}
-            on:click={() => handlePoolItemClick(pool)}
+            on:click={() => handlePoolItemClick(poolItem)}
             role="button"
             tabindex="0"
           >
@@ -251,15 +305,15 @@
               <div class="pool-left">
                 <TokenImages 
                   tokens={[
-                    $tokenStore.tokens.find(token => token.symbol === pool.symbol_0),
-                    $tokenStore.tokens.find(token => token.symbol === pool.symbol_1)
+                    $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_0),
+                    $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_1)
                   ]} 
                   size={36}
                 />
                 <div class="pool-info">
-                  <div class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</div>
+                  <div class="pool-pair">{poolItem.symbol_0}/{poolItem.symbol_1}</div>
                   <div class="pool-balance">
-                    {Number(pool.balance).toLocaleString(undefined, {
+                    {Number(poolItem.balance).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 8
                     })} LP
@@ -269,7 +323,7 @@
               <div class="pool-right">
                 <div class="value-info">
                   <div class="usd-value">
-                    ${formatToNonZeroDecimal(pool.usd_balance)}
+                    ${formatToNonZeroDecimal(poolItem.usd_balance)}
                   </div>
                 </div>
                 <div class="view-details">
@@ -410,5 +464,10 @@
 
   .error-state {
     @apply text-red-400;
+  }
+
+  .loading-state {
+    @apply flex flex-col items-center justify-center gap-3
+           min-h-[160px] text-white/40 text-sm animate-pulse;
   }
 </style>

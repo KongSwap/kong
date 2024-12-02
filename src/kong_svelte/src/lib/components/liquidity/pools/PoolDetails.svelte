@@ -40,6 +40,10 @@
       goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
     }
   }
+
+  let showPositions = false;
+
+  $: poolName = `${pool.symbol_0}/${pool.symbol_1}`;
 </script>
 
 <Modal
@@ -69,22 +73,24 @@
     <div class="tabs">
       <button
         class="tab-button"
-        class:active={activeTab === 'info'}
-        on:click={() => activeTab = 'info'}
+        class:active={!showPositions}
+        on:click={() => showPositions = false}
       >
         Info
       </button>
       <button
         class="tab-button"
-        class:active={activeTab === 'positions'}
-        on:click={() => activeTab = 'positions'}
+        class:active={showPositions}
+        on:click={() => showPositions = true}
       >
         Your Positions
       </button>
     </div>
 
     <div class="tab-content">
-      {#if activeTab === 'info'}
+      {#if showPositions}
+        <PoolList initialSearch={poolName} />
+      {:else}
         <div class="info-content">
           <div class="stats-grid">
             <div class="stat-item">
@@ -125,8 +131,6 @@
             </div>
           </div>
         </div>
-      {:else}
-        <PoolList pools={[pool]} />
       {/if}
     </div>
   </div>

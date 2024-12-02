@@ -7,6 +7,7 @@
     import TokenSelectorDropdown from '$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte';
     import { PoolService } from '$lib/services/pools/PoolService';
     import Panel from '$lib/components/common/Panel.svelte';
+    import AddLiquidityConfirmation from './AddLiquidityConfirmation.svelte';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -24,6 +25,7 @@
 
     let showToken0Selector = false;
     let showToken1Selector = false;
+    let showConfirmation = false;
 
     $: {
         if ($poolStore.userPoolBalances) {
@@ -76,11 +78,13 @@
         ? "Select Tokens"
         : !amount0 || !amount1
         ? "Enter Amounts"
+        : !pool
+        ? "No Pool Found"
         : loading
         ? "Loading..."
         : "Review Transaction";
 
-    $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance();
+    $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance() && pool !== null;
 
     // Helper function to format large numbers with commas and fixed decimals
     function formatLargeNumber(value: string | number | bigint, decimals: number = 2): string {
@@ -94,6 +98,16 @@
     // Helper function to format ratio with 6 decimal places
     function formatRatio(value: number): string {
         return formatToNonZeroDecimal(value);
+    }
+
+    function handleSubmit() {
+        if (!isValid || loading) return;
+        showConfirmation = true;
+    }
+
+    async function handleConfirmAdd() {
+        await onSubmit();
+        showConfirmation = false;
     }
 </script>
 
@@ -206,31 +220,39 @@
         <button
             class="submit-button"
             disabled={!isValid || loading}
-            on:click={onSubmit}
+            on:click={handleSubmit}
         >
             {buttonText}
         </button>
 
-        {#if pool}
-        <div class="pool-info mt-4">
-            <div class="pool-stats-grid">
-                <div class="pool-stat">
-                    <span class="stat-value">${formatLargeNumber(pool.balance)}</span>
-                    <span class="stat-label">TVL</span>
+        {#if token0 && token1}
+            {#if pool}
+                <div class="pool-info mt-4">
+                    <div class="pool-stats-grid">
+                        <div class="pool-stat">
+                            <span class="stat-value">${formatLargeNumber(pool.balance)}</span>
+                            <span class="stat-label">TVL</span>
+                        </div>
+                        <div class="pool-stat">
+                            <span class="stat-value">${formatLargeNumber(pool.rolling_24h_volume)}</span>
+                            <span class="stat-label">24h Vol</span>
+                        </div>
+                        <div class="pool-stat">
+                            <span class="stat-value">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
+                            <span class="stat-label">APY</span>
+                        </div>
+                    </div>
+                    <div class="pool-ratio">
+                        <span>1 {pool.symbol_0} = {formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0))} {pool.symbol_1}</span>
+                    </div>
                 </div>
-                <div class="pool-stat">
-                    <span class="stat-value">${formatLargeNumber(pool.rolling_24h_volume)}</span>
-                    <span class="stat-label">24h Vol</span>
+            {:else}
+                <div class="pool-info mt-4">
+                    <div class="no-pool-message">
+                        <span>This pool doesn't exist yet.</span>
+                    </div>
                 </div>
-                <div class="pool-stat">
-                    <span class="stat-value">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
-                    <span class="stat-label">APY</span>
-                </div>
-            </div>
-            <div class="pool-ratio">
-                <span>1 {pool.symbol_0} = {formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0))} {pool.symbol_1}</span>
-            </div>
-        </div>
+            {/if}
         {/if}
     </div>
 </Panel>
@@ -264,8 +286,21 @@
                 onTokenSelect(1);
             }}
             onClose={() => showToken1Selector = false}
+            restrictedTokens={['ICP', 'ckUSDT']}
         />
     </Portal>
+{/if}
+
+{#if showConfirmation}
+    <AddLiquidityConfirmation
+        {token0}
+        {token1}
+        {amount0}
+        {amount1}
+        {pool}
+        onClose={() => showConfirmation = false}
+        onConfirm={handleConfirmAdd}
+    />
 {/if}
 
 <style lang="postcss">
@@ -372,5 +407,10 @@
         .stat-label {
             @apply text-sm;
         }
+    }
+
+    .no-pool-message {
+        @apply flex items-center justify-center p-4 rounded-lg bg-white/5 text-white/80;
+        font-size: 0.95rem;
     }
 </style>

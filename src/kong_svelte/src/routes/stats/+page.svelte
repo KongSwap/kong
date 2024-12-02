@@ -271,22 +271,6 @@
           );
         })
         .map((token) => {
-          // Get all pools for this token
-          const tokenPools = $poolsList.filter(pool => 
-            pool.address_0 === token.canister_id || 
-            pool.address_1 === token.canister_id
-          );
-
-          // Calculate TVL for this token
-          const tvl = tokenPools.reduce((total, pool) => {
-            const tokenPrice = $tokenStore.prices[token.canister_id] || 0;
-            if (pool.address_0 === token.canister_id) {
-              return total + (Number(pool.balance_0) * tokenPrice) / Math.pow(10, token.decimals);
-            } else {
-              return total + (Number(pool.balance_1) * tokenPrice) / Math.pow(10, token.decimals);
-            }
-          }, 0);
-
           // Calculate 24h volume
           let volume24h = 0;
           if (token.canister_id === process.env.CANISTER_ID_CKUSDT_LEDGER) {
@@ -309,7 +293,6 @@
 
           return {
             ...token,
-            tvl,
             volume24h,
             price_change_24h,
             isFavorite: $currentWalletFavorites.includes(token.canister_id),
@@ -320,8 +303,6 @@
       // Sort by the selected column
       return filtered.sort((a, b) => {
         switch ($sortColumn) {
-          case 'tvl':
-            return $sortDirection === 'desc' ? b.tvl - a.tvl : a.tvl - b.tvl;
           case 'volume24h':
             return $sortDirection === 'desc' ? b.volume24h - a.volume24h : a.volume24h - b.volume24h;
           case 'price':
@@ -335,7 +316,7 @@
           case 'favorite':
             return $sortDirection === 'desc' ? b.isFavorite - a.isFavorite : a.isFavorite - b.isFavorite;
           default:
-            return b.tvl - a.tvl; // Default sort by TVL
+            return b.volume24h - a.volume24h; // Default sort by volume
         }
       });
     }
@@ -529,14 +510,6 @@
                     onsort={handleSort}
                   />
                   <TableHeader
-                    column="tvl"
-                    label="TVL"
-                    textClass="text-right min-w-[120px]"
-                    sortColumn={$sortColumnStore}
-                    sortDirection={$sortDirectionStore}
-                    onsort={handleSort}
-                  />
-                  <TableHeader
                     column="actions"
                     label="Actions"
                     textClass="text-right min-w-[120px]"
@@ -624,11 +597,6 @@
                     <td class="text-right">
                       {#key token.volume24h}
                         {formatUsdValue(token.volume24h)}
-                      {/key}
-                    </td>
-                    <td class="text-right">
-                      {#key token.tvl}
-                        {formatUsdValue(token.tvl.toString())}
                       {/key}
                     </td>
                     <td class="actions-cell">

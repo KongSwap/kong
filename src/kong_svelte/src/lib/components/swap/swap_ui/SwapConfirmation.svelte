@@ -5,7 +5,6 @@
     getTokenDecimals,
   } from "$lib/services/tokens/tokenStore";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import Button from "$lib/components/common/Button.svelte";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
@@ -24,9 +23,8 @@
   export let lpFees: string[] = [];
 
   let isLoading = false;
-  let isCountingDown = false; // Added for countdown state
+  let isCountingDown = false;
   let error = "";
-  let isInitializing = true;
   let countdown = 2;
   let countdownInterval: NodeJS.Timeout;
   let initialQuoteLoaded = false;
@@ -44,7 +42,6 @@
   onMount(async () => {
     cleanComponent();
     try {
-      isInitializing = true;
       const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
 
@@ -61,7 +58,6 @@
           receiveDecimals,
         );
 
-        // Only update routing path and fees on initial load
         if (quote.Ok.txs.length > 0 && !initialQuoteLoaded) {
           initialQuoteLoaded = true;
           routingPath = [
@@ -95,23 +91,20 @@
     } catch (err) {
       error = err instanceof Error ? err.message : "Failed to get quote";
       setTimeout(() => onClose(), 2000);
-    } finally {
-      isInitializing = false;
     }
   });
 
   async function handleConfirm() {
-    if (isLoading || isCountingDown) return; // Prevent multiple triggers
+    if (isLoading || isCountingDown) return;
 
     isLoading = true;
     error = "";
 
     try {
-      const success = onConfirm();
+      const success = await onConfirm();
       if (success) {
-        // Start countdown
         isCountingDown = true;
-        countdown = 2; // Reset countdown
+        countdown = 2;
         countdownInterval = setInterval(() => {
           countdown--;
           if (countdown <= 0) {
@@ -150,7 +143,6 @@
       if (!token) return acc;
 
       const decimals = token.decimals || 8;
-      // Parse the fee value safely
       const feeValue = parseFloat(fees[i]) || 0;
 
       try {
@@ -171,7 +163,6 @@
 
     const scaleFactor = 10n ** BigInt(decimals);
     const scaledValue = decimal * Number(scaleFactor);
-    // Ensure we're converting a valid number
     return BigInt(Math.floor(Math.max(0, scaledValue)));
   }
 
@@ -197,14 +188,7 @@
   variant="green"
   height="auto"
 >
-  {#if isInitializing}
-    <div class="loading-container">
-      <div class="loading-spinner">
-        <div class="spinner-ring"></div>
-        <span class="loading-text">Getting latest price...</span>
-      </div>
-    </div>
-  {:else if error}
+  {#if error}
     <div class="error-container">
       <div class="error-icon">!</div>
       <p class="error-message">{error}</p>
