@@ -8,7 +8,6 @@
   import { createEventDispatcher } from "svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
 
   const dispatch = createEventDispatcher();
   export let pools: any[] = [];
@@ -33,35 +32,37 @@
     console.log("Raw balances in PoolList:", balances);
     if (Array.isArray(balances)) {
       poolBalances = balances;
-      processedPools = balances.map(pool => {
-        // Look up tokens in tokenStore
-        const token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
-        const token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
-        
-        console.log("Found tokens:", {
-          symbol0: pool.symbol_0,
-          token0,
-          symbol1: pool.symbol_1,
-          token1
+      processedPools = balances
+        .filter(pool => Number(pool.balance) > 0) // Filter out pools with 0 balance
+        .map(pool => {
+          // Look up tokens in tokenStore
+          const token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
+          const token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
+          
+          console.log("Found tokens:", {
+            symbol0: pool.symbol_0,
+            token0,
+            symbol1: pool.symbol_1,
+            token1
+          });
+          
+          return {
+            id: pool.name,
+            name: pool.name,
+            symbol: pool.symbol,
+            symbol_0: pool.symbol_0,
+            symbol_1: pool.symbol_1,
+            balance: pool.balance.toString(),
+            amount_0: pool.amount_0,
+            amount_1: pool.amount_1,
+            usd_balance: pool.usd_balance,
+            pool_id: pool.pool_id,
+            address_0: pool.symbol_0,
+            address_1: pool.symbol_1,
+            // Use canister_id instead of canisterId
+            searchableText: `${pool.symbol_0}/${pool.symbol_1} ${pool.name || ''} ${token0?.canister_id || ''} ${token1?.canister_id || ''}`.toLowerCase()
+          };
         });
-        
-        return {
-          id: pool.name,
-          name: pool.name,
-          symbol: pool.symbol,
-          symbol_0: pool.symbol_0,
-          symbol_1: pool.symbol_1,
-          balance: pool.balance.toString(),
-          amount_0: pool.amount_0,
-          amount_1: pool.amount_1,
-          usd_balance: pool.usd_balance,
-          pool_id: pool.pool_id,
-          address_0: pool.symbol_0,
-          address_1: pool.symbol_1,
-          // Use canister_id instead of canisterId
-          searchableText: `${pool.symbol_0}/${pool.symbol_1} ${pool.name || ''} ${token0?.canister_id || ''} ${token1?.canister_id || ''}`.toLowerCase()
-        };
-      });
       console.log("Final processedPools:", processedPools);
     } else {
       poolBalances = [];
@@ -121,7 +122,6 @@
   }
 
   function handleAddLiquidity() {
-    sidebarStore.close();
     goto('/earn/add');
   }
 
@@ -153,6 +153,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="pool-list-wrapper" on:keydown={handleKeydown}>
   <div class="controls-wrapper">
     <div class="search-section">
@@ -165,6 +166,7 @@
           class="search-input"
         />
         {#if searchQuery}
+          <!-- svelte-ignore a11y_consider_explicit_label -->
           <button 
             class="clear-button"
             on:click={() => {
@@ -182,6 +184,7 @@
     </div>
 
     <div class="filter-bar">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
       <div class="sort-toggle" on:click={() => {
         sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
       }}>
@@ -235,6 +238,7 @@
         </div>
       {:else}
         {#each filteredPools as pool (pool.id)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div 
             class="pool-item" 
             in:slide={{ duration: 200 }}
@@ -328,7 +332,7 @@
   }
 
   .pool-list {
-    @apply flex flex-col gap-2 p-4;
+    @apply flex flex-col gap-2 mt-2;
   }
 
   .pool-item {

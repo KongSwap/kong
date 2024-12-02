@@ -183,7 +183,7 @@
         }
 
         maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
-        const formattedMax = formatTokenAmount(maxAmount.toString(), decimals);
+        const formattedMax = formatTokenAmount(maxAmount.toString(), decimals).replace(/,/g, '');
 
         if (inputElement) {
           inputElement.value = formattedMax;
@@ -195,10 +195,6 @@
           }),
         );
 
-        animatedAmount.set(Number(formattedMax), {
-          duration: ANIMATION_BASE_DURATION * 2,
-          easing: cubicOut,
-        });
       } catch (error) {
         console.error("Error in handleMaxClick:", error);
         toastStore.error("Failed to set max amount");
@@ -242,6 +238,26 @@
     if (token?.canister_id && !$tokenLogoStore[token.canister_id]) {
       getTokenLogo(token.canister_id);
     }
+  }
+
+  // Function to format the amount with cascading smaller digits
+  function formatCascadingAmount(amount: string) {
+    if (!amount.includes('.')) return amount;
+
+    const [integerPart, decimalPart] = amount.split('.');
+    if (!decimalPart) return amount;
+
+    let formattedDecimal = '';
+    // Start at 95% and decrease by smaller increments, with a minimum of 75%
+    let currentSize = 95;
+
+    for (let i = 0; i < decimalPart.length; i++) {
+      // Reduce size by 5% for each digit, but don't go below 75%
+      currentSize = Math.max(75, 95 - (i * 5));
+      formattedDecimal += `<span style="font-size: ${currentSize}%">${decimalPart[i]}</span>`;
+    }
+
+    return `${integerPart}.<span class="decimal-part">${formattedDecimal}</span>`;
   }
 
   // Display calculations
@@ -298,20 +314,33 @@
     <div class="relative flex-grow mb-[-1px] h-[68px]">
       <div class="flex items-center gap-1 h-[69%] box-border rounded-md">
         <div class="relative flex-1">
-          <input
-            bind:this={inputElement}
-            type="text"
-            inputmode="decimal"
-            pattern="[0-9]*"
-            placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-white text-[2.5rem] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
-            value={displayAmount}
-            on:input={handleInput}
-            on:focus={() => (inputFocused = true)}
-            on:blur={() => (inputFocused = false)}
-            {disabled}
-            readonly={panelType === "receive"}
-          />
+          {#if title === "You Receive" && displayAmount.includes('.')}
+            <div class="flex-1 min-w-0 text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight text-white/85">
+              {displayAmount.split('.')[0]}.
+              <span class="decimal-part">
+                {#each displayAmount.split('.')[1].split('') as digit, i}
+                  <span style="font-size: {Math.max(70, 90 - (i * 5))}%" class="digit">
+                    {digit}
+                  </span>
+                {/each}
+              </span>
+            </div>
+          {:else}
+            <input
+              bind:this={inputElement}
+              type="text"
+              inputmode="decimal"
+              pattern="[0-9]*"
+              placeholder="0.00"
+              class="flex-1 min-w-0 bg-transparent border-none text-white text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
+              value={displayAmount}
+              on:input={handleInput}
+              on:focus={() => (inputFocused = true)}
+              on:blur={() => (inputFocused = false)}
+              {disabled}
+              readonly={panelType === "receive"}
+            />
+          {/if}
         </div>
         <div class="token-selector-wrapper relative">
           <button
@@ -371,7 +400,6 @@
                 tokenInfo?.canister_id
               ]?.in_tokens?.toString() || "0",
               decimals,
-              false
             )}
             {token?.symbol}
           </button>
@@ -379,7 +407,7 @@
         <div class="flex items-center gap-2">
           <span class="text-white/50 font-normal tracking-wide mobile-text">Est Value</span>
           <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
-            ${formatToNonZeroDecimal(tradeUsdValue, false)}
+            ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
       </div>
@@ -469,6 +497,47 @@
     width: 1.25rem;
     height: 1.25rem;
     color: rgba(255, 255, 255, 0.5);
+  }
+
+  .decimal-part {
+    display: inline-flex;
+    align-items: baseline;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .digit {
+    display: inline-block;
+    transition: font-size 0.2s ease;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 420px) {
+    .decimal-part {
+      font-size: 90%; /* Slightly smaller base size on mobile */
+    }
+
+    /* Limit number of visible decimal places on very small screens */
+    @media (max-width: 360px) {
+      .decimal-part {
+        max-width: 120px; /* Adjust based on your needs */
+      }
+    }
+  }
+
+  /* Ensure token selector stays compact on mobile */
+  @media (max-width: 420px) {
+    .token-selector-button {
+      padding: 0.5rem 0.75rem;
+      min-width: auto;
+    }
+
+    .token-logo {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
   }
 
 </style>

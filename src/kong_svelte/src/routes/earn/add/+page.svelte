@@ -38,11 +38,14 @@
   }
 
   $: {
-    // When either token changes, try to fetch pool info
-    if (token0 && token1) {
-      fetchPoolInfo();
-    } else {
-      pool = null;
+    // When either token changes, try to fetch pool info and update URL
+    if (token0 || token1) {
+      updateURL();
+      if (token0 && token1) {
+        fetchPoolInfo();
+      } else {
+        pool = null;
+      }
     }
   }
 
@@ -118,7 +121,7 @@
   }
 
   function updateURL() {
-    const searchParams = new URLSearchParams($page.url.searchParams);
+    const searchParams = new URLSearchParams();
     if (token0) searchParams.set("token0", token0.canister_id);
     if (token1) searchParams.set("token1", token1.canister_id);
     goto(`?${searchParams.toString()}`, { replaceState: true });

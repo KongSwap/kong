@@ -212,7 +212,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    padding-right: 16px;
+    padding-right: 0px;
   }
 
   .balance {

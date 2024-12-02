@@ -594,9 +594,9 @@
     display: flex;
     gap: 1px;
     margin-bottom: 12px;
-    padding: 2px;
+    padding: 8px;
     background: rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
@@ -611,7 +611,7 @@
       rgba(55, 114, 255, 0.15), 
       rgba(55, 114, 255, 0.2)
     );
-    border-radius: 6px;
+    border-radius: 12px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 0;
   }
@@ -622,7 +622,7 @@
     flex: 1;
     padding: 6px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: 16px;
     font-size: 0.875rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.7);

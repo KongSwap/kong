@@ -21,6 +21,19 @@
     $: token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
     $: token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
 
+    // Reset state when modal opens/closes
+    $: if (!showModal) {
+        resetState();
+    }
+
+    function resetState() {
+        removeLiquidityAmount = '';
+        estimatedAmounts = { amount0: '0', amount1: '0' };
+        error = null;
+        showConfirmation = false;
+        isRemoving = false;
+    }
+
     function setPercentage(percent: number) {
         const maxAmount = parseFloat(pool.balance);
         removeLiquidityAmount = ((maxAmount * percent) / 100).toString();
@@ -71,9 +84,8 @@
             });
 
             dispatch('liquidityRemoved');
-            removeLiquidityAmount = '';
+            resetState();
             showModal = false;
-            estimatedAmounts = { amount0: '0', amount1: '0' };
         } catch (err) {
             console.error('Error removing liquidity:', err);
             error = err.message;
@@ -105,26 +117,26 @@
             </button>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-label">LP Token Balance</span>
-                <span class="stat-value">{pool.balance}</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Total Value</span>
-                <span class="stat-value">${formatToNonZeroDecimal(pool.usd_balance)}</span>
-            </div>
-            <div class="stat-item mobile-full">
-                <span class="stat-label">{pool.symbol_0} Amount</span>
-                <span class="stat-value">{pool.amount_0}</span>
-            </div>
-            <div class="stat-item mobile-full">
-                <span class="stat-label">{pool.symbol_1} Amount</span>
-                <span class="stat-value">{pool.amount_1}</span>
-            </div>
-        </div>
-
         {#if !showConfirmation}
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">LP Token Balance</span>
+                    <span class="stat-value">{pool.balance}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Value</span>
+                    <span class="stat-value">${formatToNonZeroDecimal(pool.usd_balance)}</span>
+                </div>
+                <div class="stat-item mobile-full">
+                    <span class="stat-label">{pool.symbol_0} Amount</span>
+                    <span class="stat-value">{pool.amount_0}</span>
+                </div>
+                <div class="stat-item mobile-full">
+                    <span class="stat-label">{pool.symbol_1} Amount</span>
+                    <span class="stat-value">{pool.amount_1}</span>
+                </div>
+            </div>
+
             <div class="remove-liquidity-section">
                 <div class="input-container">
                     <label class="input-label mb-2">
@@ -183,14 +195,6 @@
                 <div class="confirmation-details">
                     <h4 class="confirmation-title">Confirm Removal</h4>
                     <div class="confirmation-info">
-                        <div class="confirmation-amount-wrapper">
-                            <span>Removing:</span>
-                            <span class="highlight">{removeLiquidityAmount} LP Tokens</span>
-                        </div>
-                        <div class="returns-header">
-                            <span>You will receive:</span>
-                            <div class="returns-divider" />
-                        </div>
                         <div class="token-returns">
                             <div class="token-return">
                                 <TokenImages tokens={[token0]} size={20} />
@@ -369,14 +373,6 @@
 
     .confirmation-info {
         @apply space-y-4;
-    }
-
-    .confirmation-amount-wrapper {
-        @apply flex justify-between items-center text-white;
-    }
-
-    .highlight {
-        @apply text-blue-400 font-semibold;
     }
 
     .token-returns {

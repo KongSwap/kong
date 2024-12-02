@@ -2,7 +2,6 @@
   import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { fade, scale, fly } from "svelte/transition";
   import { backOut } from "svelte/easing";
-  import Button from "$lib/components/common/Button.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import { onDestroy } from "svelte";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
@@ -96,12 +95,18 @@
           </div>
 
           <div class="flex gap-2">
-            <Button variant="blue" onClick={copyTradeDetails} width="50%" className="bg-indigo-900/50 hover:bg-indigo-800/50">
+            <button 
+              class="swap-button blue-button"
+              on:click={copyTradeDetails}
+            >
               Copy Details
-            </Button>
-            <Button variant="green" onClick={handleClose} width="50%" className="bg-blue-900/50 hover:bg-blue-800/50">
+            </button>
+            <button 
+              class="swap-button red-button"
+              on:click={handleClose}
+            >
               Close
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -148,6 +153,48 @@
     z-index: 1;
     opacity: 0.3;
     animation: move-clouds 200s linear infinite;
+  }
+
+  .swap-button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    color: white;
+  }
+
+  .blue-button {
+    background: linear-gradient(135deg, 
+      rgba(55, 114, 255, 0.8) 0%, 
+      rgba(55, 114, 255, 0.9) 100%
+    );
+  }
+
+  .blue-button:hover {
+    background: linear-gradient(135deg, 
+      rgba(55, 114, 255, 0.9) 0%, 
+      rgba(55, 114, 255, 1) 100%
+    );
+    transform: translateY(-1px);
+  }
+
+  .red-button {
+    background: linear-gradient(135deg, 
+      rgba(239, 68, 68, 0.8) 0%, 
+      rgba(239, 68, 68, 0.9) 100%
+    );
+  }
+
+  .red-button:hover {
+    background: linear-gradient(135deg, 
+      rgba(239, 68, 68, 0.9) 0%, 
+      rgba(239, 68, 68, 1) 100%
+    );
+    transform: translateY(-1px);
   }
 
   @keyframes move-stars {

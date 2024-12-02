@@ -96,6 +96,10 @@
 </script>
 
 <div class="transaction-history-wrapper">
+    <div class="notice-banner">
+        Note: Currently showing only recent activity. Full transaction history coming soon!
+    </div>
+
     <!-- Add filter buttons at the top -->
     <div class="filter-buttons">
         {#each filterOptions as option}
@@ -159,6 +163,15 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+  }
+
+  .notice-banner {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: rgb(147, 197, 253);
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.875rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
   }
 
   .transaction-history-content {
