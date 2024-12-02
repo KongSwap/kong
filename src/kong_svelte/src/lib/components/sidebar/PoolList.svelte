@@ -308,7 +308,7 @@
                     $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_0),
                     $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_1)
                   ]} 
-                  size={36}
+                  size={32}
                 />
                 <div class="pool-info">
                   <div class="pool-pair">{poolItem.symbol_0}/{poolItem.symbol_1}</div>
@@ -322,12 +322,20 @@
               </div>
               <div class="pool-right">
                 <div class="value-info">
-                  <div class="usd-value">
+                  <span class="usd-value">
                     ${formatToNonZeroDecimal(poolItem.usd_balance)}
-                  </div>
+                  </span>
                 </div>
-                <div class="view-details">
-                  View Details →
+                <div class="chevron-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" 
+                       width="20" height="20" 
+                       viewBox="0 0 24 24" 
+                       fill="none" 
+                       stroke="currentColor" 
+                       stroke-width="2"
+                       class="chevron-right">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
                 </div>
               </div>
             </div>
@@ -367,8 +375,8 @@
   }
 
   .search-input {
-    @apply w-full bg-transparent border-none py-3 text-white placeholder-gray-500
-           focus:outline-none focus:ring-0;
+    @apply w-full bg-transparent border-none py-2 sm:py-3 px-3 text-sm sm:text-base
+           text-white placeholder-gray-500 focus:outline-none focus:ring-0;
   }
 
   .clear-button {
@@ -376,11 +384,13 @@
   }
 
   .filter-bar {
-    @apply py-3 border-t border-gray-800 flex justify-between items-center;
+    @apply py-2 sm:py-3 px-3 border-t border-gray-800 
+           flex justify-between items-center text-sm;
   }
 
   .sort-toggle {
-    @apply flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors;
+    @apply flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm 
+           text-gray-400 cursor-pointer hover:text-white transition-colors;
   }
 
   .sort-arrow {
@@ -398,68 +408,85 @@
   }
 
   .pool-list {
-    @apply flex flex-col gap-2 mt-2;
+    @apply flex flex-col gap-1.5 sm:gap-2 mt-2;
   }
 
   .pool-item {
-    @apply bg-gray-800/50 rounded-lg p-4 cursor-pointer 
+    @apply bg-gray-800/50 rounded-lg p-3 sm:p-4 cursor-pointer 
            hover:bg-gray-800/70 transition-all duration-200
            border border-transparent hover:border-blue-500/30;
   }
 
   .pool-content {
-    @apply flex justify-between items-center w-full;
+    @apply flex items-center justify-between w-full gap-2;
   }
 
   .pool-left {
-    @apply flex items-center gap-4;
+    @apply flex items-center gap-2 sm:gap-4 flex-1 min-w-0;
   }
 
   .pool-info {
-    @apply flex flex-col gap-1;
+    @apply flex flex-col gap-0.5 sm:gap-1 flex-1 min-w-0;
   }
 
   .pool-pair {
-    @apply text-lg font-medium text-white/95;
+    @apply text-base sm:text-lg font-medium text-white/95 truncate;
   }
 
   .pool-balance {
-    @apply text-sm text-white/70;
+    @apply text-sm text-white/70 truncate;
   }
 
   .pool-right {
-    @apply flex items-center gap-4;
+    @apply flex items-center gap-3 sm:gap-4;
   }
 
   .value-info {
-    @apply flex flex-col items-end;
+    @apply flex items-center justify-end min-w-[100px] sm:min-w-[120px];
   }
 
   .usd-value {
-    @apply text-base font-medium text-white/95;
+    @apply text-base sm:text-lg font-medium text-white/90 tabular-nums;
   }
 
-  .view-details {
-    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200 ml-4;
+  .chevron-wrapper {
+    @apply flex items-center justify-center w-6 sm:w-8;
   }
 
-  .pool-item:hover .view-details {
-    @apply opacity-100;
+  .chevron-right {
+    @apply text-white/40 w-5 h-5 sm:w-6 sm:h-6;
+  }
+
+  /* Hide chevron on mobile if needed */
+  @media (max-width: 370px) {
+    .chevron-wrapper {
+      @apply hidden;
+    }
+    
+    .value-info {
+      @apply min-w-[80px];
+    }
+    
+    .usd-value {
+      @apply text-sm;
+    }
   }
 
   .loading-state, .error-state, .empty-state {
-    @apply flex flex-col items-center justify-center gap-3
-           min-h-[160px] text-white/40 text-sm;
+    @apply flex flex-col items-center justify-center gap-2 sm:gap-3
+           min-h-[120px] sm:min-h-[160px] text-white/40 text-sm
+           px-4 text-center;
   }
 
   .primary-button {
-    @apply px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
-           transition-all duration-200 hover:bg-blue-600;
+    @apply px-3 sm:px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-blue-600 w-full sm:w-auto;
   }
 
   .clear-search-button {
-    @apply px-4 py-2 bg-gray-800 text-white/70 text-sm font-medium rounded-lg
-           transition-all duration-200 hover:bg-gray-700 hover:text-white;
+    @apply px-3 sm:px-4 py-2 bg-gray-800 text-white/70 text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-gray-700 hover:text-white
+           w-full sm:w-auto;
   }
 
   .error-state {
@@ -469,5 +496,17 @@
   .loading-state {
     @apply flex flex-col items-center justify-center gap-3
            min-h-[160px] text-white/40 text-sm animate-pulse;
+  }
+
+  .pool-list-content::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  .pool-list-content::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .pool-list-content::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full;
   }
 </style>

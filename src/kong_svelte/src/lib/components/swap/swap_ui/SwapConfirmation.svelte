@@ -5,6 +5,7 @@
     getTokenDecimals,
   } from "$lib/services/tokens/tokenStore";
   import { SwapService } from "$lib/services/swap/SwapService";
+  import { swapState } from "$lib/services/swap/SwapStateService";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
@@ -102,19 +103,7 @@
 
     try {
       const success = await onConfirm();
-      if (success) {
-        isCountingDown = true;
-        countdown = 2;
-        countdownInterval = setInterval(() => {
-          countdown--;
-          if (countdown <= 0) {
-            clearInterval(countdownInterval);
-            cleanComponent();
-            onClose();
-          }
-        }, 1000);
-      } else {
-        isLoading = false;
+      if (!success) {
         error = "Swap failed";
       }
     } catch (err) {
@@ -179,6 +168,17 @@
       receiveToken: receiveToken,
     };
   }
+
+  function handleClose() {
+    cleanComponent();
+    swapState.update(state => ({
+      ...state,
+      isProcessing: false,
+      showConfirmation: false,
+      error: null
+    }));
+    onClose();
+  }
 </script>
 
 <Modal
@@ -220,19 +220,19 @@
       <div class="button-container">
         <button
           class="swap-button"
-          class:processing={isLoading || isCountingDown}
+          class:processing={isLoading}
           on:click={handleConfirm}
-          disabled={isLoading || isCountingDown}
+          disabled={isLoading}
         >
           <div class="button-content">
             <span class="button-text">
-              {isCountingDown ? `Confirming ${countdown}...` : "Confirm Swap"}
+              {isLoading ? "Processing..." : "Confirm Swap"}
             </span>
-            {#if isLoading || isCountingDown}
+            {#if isLoading}
               <div class="loading-spinner"></div>
             {/if}
           </div>
-          {#if !isLoading && !isCountingDown}
+          {#if !isLoading}
             <div class="button-glow"></div>
           {/if}
         </button>

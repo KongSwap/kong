@@ -33,7 +33,8 @@ export interface SwapState {
     payToken: FE.Token | null;
     receiveAmount: string;
     receiveToken: FE.Token | null;
-  };
+    principalId: string;
+  } | null;
 }
 
 export interface SwapStore extends Writable<SwapState> {
@@ -77,12 +78,7 @@ function createSwapStore(): SwapStore {
       pay: false,
       receive: false
     },
-    successDetails: {
-      payAmount: '',
-      payToken: null,
-      receiveAmount: '',
-      receiveToken: null
-    }
+    successDetails: null
   };
 
   const { subscribe, set, update } = writable<SwapState>(initialState);

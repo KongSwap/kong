@@ -27,6 +27,7 @@
   import { walletsList } from "@windoge98/plug-n-play";
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
+  import { slide } from 'svelte/transition';
 
   let isProcessing = false;
   let rotationCount = 0;
@@ -90,7 +91,9 @@
   let buttonText = '';
 
   $: {
-    if ($swapState.isProcessing) {
+    if ($swapState.showSuccessModal) {
+      buttonText = 'Swap';
+    } else if ($swapState.isProcessing) {
       buttonText = 'Processing...';
     } else if ($swapState.error) {
       buttonText = `${$swapState.error}`;
@@ -154,18 +157,18 @@
   }
 
   async function handleSwap(): Promise<boolean> {
-    if (
-      !$swapState.payToken ||
-      !$swapState.receiveToken ||
-      !$swapState.payAmount ||
-      $swapState.isProcessing
-    ) {
+    if (!$swapState.payToken || !$swapState.receiveToken || !$swapState.payAmount || $swapState.isProcessing) {
       return false;
     }
 
     try {
-      swapState.setIsProcessing(true);
-      swapState.setError(null);
+      // Set initial processing state
+      swapState.update(state => ({
+        ...state,
+        isProcessing: true,
+        error: null,
+        showConfirmation: false // Hide confirmation immediately when processing starts
+      }));
 
       // Create new swap entry and store its ID
       currentSwapId = swapStatusStore.addSwap({
@@ -187,20 +190,25 @@
         lpFees: $swapState.lpFees,
       });
 
-      if (success) {
-        toastStore.success("Swap successful");
-        return true;
-      } else {
-        toastStore.error("Swap failed");
+      if (!success) {
+        swapState.update(state => ({
+          ...state,
+          isProcessing: false,
+          error: "Swap failed"
+        }));
         return false;
       }
+
+      return true;
+
     } catch (error) {
       console.error("Swap error:", error);
-      toastStore.error("Swap failed: " + (error.message || "Unknown error"));
+      swapState.update(state => ({
+        ...state,
+        isProcessing: false,
+        error: error.message || "Unknown error"
+      }));
       return false;
-    } finally {
-      swapState.setIsProcessing(false);
-      currentSwapId = null;
     }
   }
 
@@ -455,6 +463,40 @@
   $: if ($swapState.payToken && $swapState.receiveToken && $swapState.payAmount) {
     updateSwapQuote();
   }
+
+  let isReceivePanelExpanded = false;
+  let isMobile = false;
+
+  // Add resize handler
+  onMount(() => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 768;
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  });
+
+  // Add toggle function
+  function toggleReceivePanel() {
+    isReceivePanelExpanded = !isReceivePanelExpanded;
+  }
+
+  function handleSuccessModalClose() {
+    swapState.update(state => ({
+      ...state,
+      showSuccessModal: false,
+      isProcessing: false,
+      error: null,
+      // Reset other relevant states
+      payAmount: '',
+      receiveAmount: '',
+    }));
+  }
 </script>
 
 <div class="swap-wrapper">
@@ -495,20 +537,6 @@
           />
         </div>
 
-        <div class="panel">
-          <SwapPanel
-            title={panels[1].title}
-            token={$swapState.receiveToken}
-            amount={$swapState.receiveAmount}
-            onAmountChange={handleAmountChange}
-            onTokenSelect={() => handleTokenSelect("receive")}
-            showPrice={true}
-            slippage={$swapState.swapSlippage}
-            disabled={false}
-            panelType="receive"
-          />
-        </div>
-
         <button
           class="switch-button"
           class:disabled={isProcessing}
@@ -535,6 +563,59 @@
             </svg>
           </div>
         </button>
+
+        {#if isMobile}
+          <button 
+            class="receive-panel-toggle"
+            on:click={toggleReceivePanel}
+            aria-expanded={isReceivePanelExpanded}
+          >
+            <span>You Receive</span>
+            <span class="toggle-amount">
+              {#if $swapState.receiveToken && $swapState.receiveAmount}
+                {$swapState.receiveAmount} {$swapState.receiveToken.symbol}
+              {:else}
+                Select token
+              {/if}
+            </span>
+            <svg
+              class="toggle-icon"
+              class:expanded={isReceivePanelExpanded}
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+            >
+              <path
+                d="M7 10l5 5 5-5"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        {/if}
+
+        {#if !isMobile || (isMobile && isReceivePanelExpanded)}
+          <div 
+            class="panel receive-panel"
+            class:mobile-expanded={isMobile && isReceivePanelExpanded}
+            transition:slide={{ duration: 300 }}
+          >
+            <SwapPanel
+              title={panels[1].title}
+              token={$swapState.receiveToken}
+              amount={$swapState.receiveAmount}
+              onAmountChange={handleAmountChange}
+              onTokenSelect={() => handleTokenSelect("receive")}
+              showPrice={true}
+              slippage={$swapState.swapSlippage}
+              disabled={false}
+              panelType="receive"
+            />
+          </div>
+        {/if}
       </div>
 
       <div class="swap-footer">
@@ -626,7 +707,7 @@
 <SwapSuccessModal
   show={$swapState.showSuccessModal}
   {...$swapState.successDetails}
-  onClose={() => swapState.setShowSuccessModal(false)}
+  onClose={handleSuccessModalClose}
 />
 
 {#if isSettingsModalOpen}
@@ -989,5 +1070,49 @@
 
   .button-text.warning {
     font-weight: 600;
+  }
+
+  .receive-panel-toggle {
+    @apply w-full mt-2 p-4 rounded-xl;
+    @apply flex items-center justify-between;
+    @apply bg-gray-800 border border-gray-700;
+    @apply transition-colors duration-200;
+    @apply hover:bg-gray-900;
+  }
+
+  .receive-panel-toggle:focus {
+    @apply outline-none ring-2 ring-blue-500;
+  }
+
+  .toggle-amount {
+    @apply text-gray-300 font-medium;
+  }
+
+  .toggle-icon {
+    @apply w-5 h-5 text-gray-400;
+    @apply transition-transform duration-200;
+  }
+
+  .toggle-icon.expanded {
+    @apply transform rotate-180;
+  }
+
+  .receive-panel {
+    @apply transition-all duration-300;
+  }
+
+  .receive-panel.mobile-expanded {
+    @apply mt-2;
+  }
+
+  @media (max-width: 767px) {
+    .panels-wrapper {
+      @apply flex-col;
+    }
+
+    .switch-button {
+      @apply static transform-none translate-x-0 translate-y-0;
+      @apply mx-auto my-2;
+    }
   }
 </style>

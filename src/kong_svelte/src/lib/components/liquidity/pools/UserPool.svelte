@@ -221,12 +221,13 @@
     isOpen={showModal}
     title="Pool Position"
     onClose={handleClose}
-    width="700px"
+    width="600px"
+    height="auto"
 >
     <div class="pool-details">
         <div class="pool-header">
             <div class="token-info">
-                <TokenImages tokens={[token0, token1]} overlap={12} size={32} />
+                <TokenImages tokens={[token0, token1]} overlap={12} size={28} />
                 <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
             </div>
         </div>
@@ -447,29 +448,29 @@
 <style lang="postcss">
     .pool-details {
         @apply flex flex-col min-h-0;
-        min-height: 550px;
+        min-height: min(550px, 90vh);
     }
 
     .pool-header {
-        @apply px-6 py-4 border-b border-white/10;
+        @apply py-3 sm:py-4 border-b border-white/10;
     }
 
     .token-info {
-        @apply flex items-center gap-3 flex-1;
+        @apply flex items-center gap-2 sm:gap-3;
     }
 
     .token-pair {
-        @apply text-xl font-medium text-white;
+        @apply text-lg sm:text-xl font-medium text-white;
     }
 
     .action-tabs {
-        @apply flex gap-1 p-1 mt-4 mb-6
+        @apply flex gap-1 p-1 mt-3 sm:mt-4 mb-4 sm:mb-6
                bg-black/20 rounded-lg;
     }
 
     .tab-button {
-        @apply flex-1 px-4 py-2.5
-               text-sm font-medium text-white/60 
+        @apply flex-1 px-2 sm:px-4 py-2 sm:py-2.5
+               text-xs sm:text-sm font-medium text-white/60 
                rounded-md transition-all
                hover:text-white hover:bg-white/5;
     }
@@ -479,268 +480,132 @@
     }
 
     .tab-content {
-        @apply flex-1 overflow-y-auto min-h-0 px-6;
+        @apply flex-1 overflow-y-auto min-h-0 
+               pb-3 sm:pb-6;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    }
+
+    .tab-content::-webkit-scrollbar {
+        @apply w-1;
+    }
+
+    .tab-content::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    .tab-content::-webkit-scrollbar-thumb {
+        @apply bg-white/10 rounded-full;
     }
 
     .stats-grid {
-        @apply grid grid-cols-2 gap-4;
-    }
-
-    /* Mobile styles for stats grid */
-    @media (max-width: 640px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        .stats-grid .mobile-full {
-            grid-column: span 2;
-        }
+        @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4;
     }
 
     .stat-item {
-        @apply flex flex-col gap-2 p-4 rounded-xl bg-[#1a1d2d] border border-white/5;
+        @apply flex flex-col gap-1.5 sm:gap-2 p-3 sm:p-4 
+               rounded-xl bg-[#1a1d2d] border border-white/5;
     }
 
     .stat-label {
-        @apply text-sm font-medium text-[#8890a4];
+        @apply text-xs sm:text-sm font-medium text-[#8890a4];
     }
 
     .stat-value {
-        @apply text-lg font-semibold text-white;
-    }
-
-    .remove-liquidity-section {
-        @apply flex flex-col h-full;
-    }
-
-    .input-container {
-        @apply space-y-3;
-    }
-
-    .input-label {
-        @apply block text-sm font-medium text-[#8890a4];
-    }
-
-    .input-wrapper {
-        @apply space-y-3;
-    }
-
-    .liquidity-input {
-        @apply w-full bg-[#1a1d2d] border border-white/5 rounded-xl p-4 text-white text-lg font-medium
-               focus:outline-none focus:ring-2 focus:ring-blue-500/50;
+        @apply text-base sm:text-lg font-semibold text-white;
     }
 
     .percentage-buttons {
-        @apply grid grid-cols-4 gap-2;
-    }
-
-    /* Mobile styles for percentage buttons */
-    @media (max-width: 640px) {
-        .percentage-buttons {
-            grid-template-columns: repeat(2, 1fr);
-        }
+        @apply grid grid-cols-2 sm:grid-cols-4 gap-2;
     }
 
     .percent-btn {
-        @apply px-3 py-2 bg-[#2a2d3d] rounded-lg hover:bg-[#3a3d4d] transition-colors
-               text-white font-medium text-sm border border-white/5;
-    }
-
-    .estimated-returns {
-        @apply bg-[#1a1d2d] rounded-xl p-4 border border-white/5 mb-6;
-    }
-
-    .returns-header {
-        @apply flex items-center gap-3 mb-3;
-    }
-
-    .returns-label {
-        @apply text-sm font-medium text-[#8890a4];
-    }
-
-    .returns-divider {
-        @apply flex-1 border-t border-white/5;
-    }
-
-    .return-amounts {
-        @apply space-y-2;
-    }
-
-    .token-return {
-        @apply flex items-center justify-between gap-3 p-3 bg-[#2a2d3d]/50 rounded-lg;
-    }
-
-    .token-info {
-        @apply flex items-center gap-3 flex-1;
-    }
-
-    .token-details {
-        @apply flex flex-col;
-    }
-
-    .token-amount {
-        @apply text-white font-medium;
-    }
-
-    .usd-value {
-        @apply text-sm text-white/60;
-    }
-
-    .preview-btn {
-        @apply w-full mt-2 py-4 bg-blue-600
-               text-white font-semibold rounded-xl transition-all duration-200
-               hover:bg-blue-700
-               disabled:opacity-50 disabled:cursor-not-allowed;
-    }
-
-    /* Mobile styles for preview button */
-    @media (max-width: 640px) {
-        .stat-item {
-            padding: 0.5rem;
-        }
-    }
-
-    .confirmation-section {
-        @apply space-y-6;
-    }
-
-    .confirmation-details {
-        @apply bg-[#1a1d2d] rounded-xl p-6 border border-white/5;
-    }
-
-    .confirmation-title {
-        @apply text-lg font-semibold mb-4 text-white;
-    }
-
-    .confirmation-info {
-        @apply space-y-4;
-    }
-
-    .token-returns {
-        @apply space-y-2 p-3 bg-[#2a2d3d] rounded-lg;
-    }
-
-    .confirmation-buttons {
-        @apply flex gap-4;
-    }
-
-    .btn-secondary {
-        @apply flex-1 px-4 py-3 bg-[#2a2d3d] text-white font-semibold rounded-xl
-               hover:bg-[#3a3d4d] transition-all duration-200
-               disabled:opacity-50 disabled:cursor-not-allowed
+        @apply px-2 sm:px-3 py-1.5 sm:py-2 
+               bg-[#2a2d3d] rounded-lg hover:bg-[#3a3d4d] 
+               transition-colors text-white font-medium text-xs sm:text-sm 
                border border-white/5;
     }
 
-    .btn-primary {
-        @apply flex-1 px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl
-               hover:bg-blue-700 transition-all duration-200
-               disabled:opacity-50 disabled:cursor-not-allowed;
+    .token-return {
+        @apply flex items-center justify-between gap-2 sm:gap-3 
+               p-2 sm:p-3 bg-[#2a2d3d]/50 rounded-lg;
     }
 
-    /* Mobile styles for confirmation buttons */
-    @media (max-width: 640px) {
-        .confirmation-buttons {
-            position: fixed;
-            bottom: 1.5rem;
-            left: 1.5rem;
-            right: 1.5rem;
-            z-index: 50;
-        }
+    .token-details {
+        @apply flex flex-col gap-0.5 flex-1 min-w-0;
     }
 
-    .error-message {
-        @apply p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm;
+    .token-amount {
+        @apply text-sm sm:text-base text-white font-medium truncate;
     }
 
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-    input[type="number"] {
-        -moz-appearance: textfield;
-    }
-
-    .stat-item.highlight {
-        @apply bg-[#2a2d3d] border-blue-500/30;
-    }
-    
-    .stat-subtitle {
-        @apply text-xs text-[#8890a4] mt-1;
-    }
-
-    .token-amount-header {
-        @apply flex items-center gap-2 mb-1;
-    }
-
-    .remove-liquidity-section {
-        @apply flex flex-col h-full;
-    }
-
-    .remove-content {
-        @apply flex-1;
-    }
-
-    .button-container {
-        @apply mt-auto pt-6;
-    }
-
-    .info-section {
-        @apply pb-6;
-    }
-
-    .earnings-section {
-        @apply space-y-4;
-    }
-
-    .earnings-title {
-        @apply text-lg font-semibold text-white mb-4;
+    .usd-value {
+        @apply text-xs sm:text-sm text-white/60;
     }
 
     .earnings-grid {
-        @apply grid grid-cols-2 gap-4;
+        @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4;
     }
 
     .earnings-disclaimer {
-        @apply text-sm text-[#8890a4] mt-4 text-center;
-    }
-
-    @media (max-width: 640px) {
-        .earnings-grid {
-            @apply grid-cols-1;
-        }
-    }
-
-    .earnings-header {
-        @apply flex justify-between items-center mb-6;
-    }
-
-    .current-apy {
-        @apply text-sm text-[#8890a4];
-    }
-
-    .apy-value {
-        @apply text-white font-semibold;
-    }
-
-    .no-apy-message {
-        @apply text-center text-[#8890a4] py-8;
-    }
-
-    .stat-subtitle {
-        @apply text-xs text-[#8890a4] mt-1;
-    }
-
-    .total-value {
-        @apply mt-4 text-right text-sm text-[#8890a4];
-    }
-
-    .total-value .value {
-        @apply text-white font-semibold;
+        @apply text-xs sm:text-sm text-[#8890a4] mt-3 sm:mt-4 
+               text-center px-3 sm:px-0;
     }
 
     .remove-btn {
-        @apply w-full mt-4 py-4 bg-red-600 text-white font-semibold rounded-xl
-               transition-all duration-200 hover:bg-red-700
-               disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply fixed sm:relative bottom-0 left-0 right-0 sm:bottom-auto
+               w-full mt-4 py-4
+               bg-gradient-to-r from-red-600 to-red-500
+               text-white font-semibold text-lg
+               rounded-none sm:rounded-xl
+               transition-all duration-200
+               disabled:opacity-50 disabled:cursor-not-allowed
+               border border-white/10;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
+    }
+
+    .remove-btn:hover:not(:disabled) {
+        @apply from-red-500 to-red-400;
+        transform: translateY(-1px);
+        box-shadow: 
+            0 4px 12px rgba(239, 68, 68, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .remove-btn:active:not(:disabled) {
+        transform: translateY(0);
+        @apply from-red-700 to-red-600;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+        transition-duration: 0.1s;
+    }
+
+    .remove-liquidity-section {
+        @apply pb-20 sm:pb-0;
+    }
+
+    .error-message {
+        @apply fixed bottom-[72px] sm:relative sm:bottom-auto
+               left-3 right-3 sm:left-auto sm:right-auto
+               p-3 sm:p-4 mb-0 sm:mb-4
+               bg-red-500/20 border border-red-500/30 
+               rounded-xl text-red-400;
+    }
+
+    .liquidity-input {
+        @apply w-full bg-[#1a1d2d] border border-white/5 
+               rounded-xl p-3 sm:p-4 
+               text-base sm:text-lg font-medium text-white
+               focus:outline-none focus:ring-2 focus:ring-blue-500/50;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    .token-amount-header {
+        @apply flex items-center gap-1.5 sm:gap-2 mb-1;
+    }
+
+    .total-value {
+        @apply mt-3 sm:mt-4 text-right text-xs sm:text-sm text-[#8890a4]
+               px-2 sm:px-0;
     }
 </style>
