@@ -99,15 +99,18 @@ pub fn insert(tx: &StableTx) -> u64 {
             Swap(tx) => Swap(SwapTx { tx_id, ..tx.clone() }),
             Send(tx) => Send(SendTx { tx_id, ..tx.clone() }),
         };
-        map.insert(StableTxId(tx_id), insert_tx.clone());
-        // archive new tx
-        archive_tx(insert_tx);
+        map.insert(StableTxId(tx_id), insert_tx);
         tx_id
     })
 }
 
-fn archive_tx(tx: StableTx) {
+pub fn archive_tx_to_kong_data(tx_id: u64) {
     ic_cdk::spawn(async move {
+        let tx = match get_by_user_and_token_id(Some(tx_id), None, None, Some(1)).pop() {
+            Some(tx) => tx,
+            None => return,
+        };
+
         match serde_json::to_string(&tx) {
             Ok(tx_json) => {
                 let kong_data = kong_settings_map::get().kong_data;

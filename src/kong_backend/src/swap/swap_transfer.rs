@@ -4,6 +4,7 @@ use super::return_pay_token::return_pay_token;
 use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
 use super::swap_reply::SwapReply;
+use super::swap_transfer_from::archive_to_kong_data;
 use super::update_liquidity_pool::update_liquidity_pool;
 
 use crate::helpers::nat_helpers::nat_is_zero;
@@ -23,26 +24,36 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
+    let request = StableRequest::new(user_id, &Request::Swap(args.clone()), ts);
+    let request_id = request_map::insert(&request);
 
     let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
         request_map::update_status(request_id, StatusCode::Failed, Some(e));
     })?;
 
-    let reply = process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts)
+    let result = process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts)
         .await
-        .inspect_err(|e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(e));
-        })?;
+        .map_or_else(
+            |e| {
+                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                Err(e)
+            },
+            |reply| {
+                request_map::update_status(request_id, StatusCode::Success, None);
+                Ok(reply)
+            },
+        );
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-    Ok(reply)
+    archive_to_kong_data(request);
+
+    result
 }
 
 pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
     let user_id = user_map::insert(args.referred_by.as_deref())?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
+    let request = StableRequest::new(user_id, &Request::Swap(args.clone()), ts);
+    let request_id = request_map::insert(&request);
 
     let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
         request_map::update_status(request_id, StatusCode::Failed, Some(e));
@@ -53,6 +64,8 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
+
+        archive_to_kong_data(request);
     });
 
     Ok(request_id)
@@ -109,19 +122,17 @@ async fn process_swap(
         Ok(token) => token,
         Err(e) => {
             request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
-            // return pay token back to user
-            return_pay_token(request_id, user_id, pay_token, pay_amount, None, &mut transfer_ids, ts).await;
-            let error = format!("Req #{} failed. {}", request_id, e);
-            return Err(error);
+            return_pay_token(request_id, user_id, &caller_id, pay_token, pay_amount, None, &mut transfer_ids, ts).await;
+            return Err(format!("Req #{} failed. {}", request_id, e));
         }
     };
     let receive_amount = args.receive_amount.as_ref();
     if nat_is_zero(pay_amount) {
         request_map::update_status(request_id, StatusCode::PayTokenAmountIsZero, None);
-        // return pay token back to user
         return_pay_token(
             request_id,
             user_id,
+            &caller_id,
             pay_token,
             pay_amount,
             Some(&receive_token),
@@ -139,10 +150,10 @@ async fn process_swap(
             Some(address) => address,
             None => {
                 request_map::update_status(request_id, StatusCode::ReceiveAddressNotFound, None);
-                // return pay token back to user
                 return_pay_token(
                     request_id,
                     user_id,
+                    &caller_id,
                     pay_token,
                     pay_amount,
                     Some(&receive_token),
@@ -163,6 +174,7 @@ async fn process_swap(
                 return_pay_token(
                     request_id,
                     user_id,
+                    &caller_id,
                     pay_token,
                     pay_amount,
                     Some(&receive_token),

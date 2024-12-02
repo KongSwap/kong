@@ -170,16 +170,14 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
         let pool_id = kong_settings_map::inc_pool_map_idx();
         let insert_pool = StablePool { pool_id, ..pool.clone() };
         map.insert(StablePoolId(pool_id), insert_pool.clone());
-        // archive new pool
-        archive_pool(insert_pool);
+        archive_pool_to_kong_data(insert_pool);
         Ok(pool_id)
     })
 }
 
 pub fn update(pool: &StablePool) {
     POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()));
-    // archive updated pool
-    archive_pool(pool.clone());
+    archive_pool_to_kong_data(pool.clone());
 }
 
 pub fn remove(pool_id: u32) -> Result<(), String> {
@@ -197,7 +195,7 @@ pub fn remove(pool_id: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn archive_pool(pool: StablePool) {
+fn archive_pool_to_kong_data(pool: StablePool) {
     ic_cdk::spawn(async move {
         match serde_json::to_string(&pool) {
             Ok(pool_json) => {

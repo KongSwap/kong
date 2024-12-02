@@ -57,9 +57,10 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
         check_arguments(&args).await?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
+    let request = StableRequest::new(user_id, &Request::AddPool(args), ts);
+    let request_id = request_map::insert(&request);
 
-    let reply = process_add_pool(
+    let result = process_add_pool(
         request_id,
         user_id,
         &token_0,
@@ -75,12 +76,20 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         ts,
     )
     .await
-    .inspect_err(|e| {
-        request_map::update_status(request_id, StatusCode::Failed, Some(e));
-    })?;
+    .map_or_else(
+        |e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-    Ok(reply)
+    archive_to_kong_data(request);
+
+    result
 }
 
 /// Check the arguments are valid, create new token_0 if it does not exist and calculate the amounts to be added to the pool
@@ -589,7 +598,6 @@ async fn return_tokens(
     // Token1
     let chain_1 = token_1.chain();
     let symbol_1 = token_1.symbol();
-
     let reply = create_add_pool_reply_failed(
         &chain_0,
         &symbol_0,
@@ -602,11 +610,6 @@ async fn return_tokens(
         ts,
     );
     request_map::update_reply(request_id, Reply::AddPool(reply));
-
-    // archive claims to kong_data
-    for claim_id in claim_ids {
-        claim_map::archive_claim_to_kong_data(claim_id);
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -666,4 +669,17 @@ async fn return_token(
             };
         }
     }
+}
+
+pub fn archive_to_kong_data(request: StableRequest) {
+    request_map::archive_request_to_kong_data(request.request_id);
+    if let Reply::AddPool(reply) = request.reply {
+        for claim_id in reply.claim_ids.iter() {
+            claim_map::archive_claim_to_kong_data(*claim_id);
+        }
+        for transfer_id_reply in reply.transfer_ids.iter() {
+            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+        }
+        tx_map::archive_tx_to_kong_data(reply.tx_id);
+    };
 }

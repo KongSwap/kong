@@ -31,15 +31,18 @@ pub fn insert(transfer: &StableTransfer) -> u64 {
             transfer_id,
             ..transfer.clone()
         };
-        map.insert(StableTransferId(transfer_id), insert_transfer.clone());
-        // archive new transfer
-        archive_transfer(insert_transfer);
+        map.insert(StableTransferId(transfer_id), insert_transfer);
         transfer_id
     })
 }
 
-fn archive_transfer(transfer: StableTransfer) {
+pub fn archive_transfer_to_kong_data(transfer_id: u64) {
     ic_cdk::spawn(async move {
+        let transfer = match get_by_transfer_id(transfer_id) {
+            Some(transfer) => transfer,
+            None => return,
+        };
+
         match serde_json::to_string(&transfer) {
             Ok(transfer_json) => {
                 let kong_data = kong_settings_map::get().kong_data;

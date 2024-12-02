@@ -77,8 +77,13 @@ pub fn update_reply(key: u64, reply: Reply) -> Option<StableRequest> {
     })
 }
 
-fn archive_request(request: StableRequest) {
+pub fn archive_request_to_kong_data(request_id: u64) {
     ic_cdk::spawn(async move {
+        let request = match get_by_request_and_user_id(Some(request_id), None, Some(1)).pop() {
+            Some(request) => request,
+            None => return,
+        };
+
         match serde_json::to_string(&request) {
             Ok(request_json) => {
                 let kong_data = kong_settings_map::get().kong_data;

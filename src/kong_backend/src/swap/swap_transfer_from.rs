@@ -1,4 +1,5 @@
 use candid::Nat;
+use ic_cdk::api::call;
 use icrc_ledger_types::icrc1::account::Account;
 
 use super::calculate_amounts::calculate_amounts;
@@ -14,19 +15,22 @@ use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::transfer::icrc2_transfer_from;
+use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
+use crate::stable_tx::tx_map;
 use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
     let ts = get_time();
     let receive_amount = args.receive_amount.clone();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
+    let request = StableRequest::new(user_id, &Request::Swap(args), ts);
+    let request_id = request_map::insert(&request);
 
-    let reply = process_swap(
+    let result = process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -38,19 +42,28 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         ts,
     )
     .await
-    .inspect_err(|e| {
-        request_map::update_status(request_id, StatusCode::Failed, Some(e));
-    })?;
+    .map_or_else(
+        |e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-    Ok(reply)
+    archive_to_kong_data(request);
+
+    result
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
     let ts = get_time();
     let receive_amount = args.receive_amount.clone();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
+    let request = StableRequest::new(user_id, &Request::Swap(args), ts);
+    let request_id = request_map::insert(&request);
 
     ic_cdk::spawn(async move {
         match process_swap(
@@ -69,6 +82,8 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
+
+        archive_to_kong_data(request);
     });
 
     Ok(request_id)
@@ -141,6 +156,7 @@ async fn process_swap(
                 return_pay_token(
                     request_id,
                     user_id,
+                    &caller_id,
                     pay_token,
                     pay_amount,
                     Some(receive_token),
@@ -207,4 +223,17 @@ async fn transfer_from_token(
             Err(e)
         }
     }
+}
+
+pub fn archive_to_kong_data(request: StableRequest) {
+    request_map::archive_request_to_kong_data(request.request_id);
+    if let Reply::Swap(reply) = request.reply {
+        for claim_id in reply.claim_ids.iter() {
+            claim_map::archive_claim_to_kong_data(*claim_id);
+        }
+        for transfer_id_reply in reply.transfer_ids.iter() {
+            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+        }
+        tx_map::archive_tx_to_kong_data(reply.tx_id);
+    };
 }

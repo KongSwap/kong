@@ -5,6 +5,7 @@ use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
 use super::add_liquidity_reply_helpers::{create_add_liquidity_reply_failed, create_add_liquidity_reply_with_tx_id};
+use super::add_liquidity_transfer_from::archive_to_kong_data;
 use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
@@ -24,14 +25,15 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(None)?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
+    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
+    let request_id = request_map::insert(&request);
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
         check_arguments(&args, request_id, ts).await.inspect_err(|e| {
             request_map::update_status(request_id, StatusCode::Failed, Some(e));
         })?;
 
-    let reply = process_add_liquidity(
+    let result = process_add_liquidity(
         request_id,
         user_id,
         token_0.as_ref(),
@@ -44,18 +46,27 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
         ts,
     )
     .await
-    .inspect_err(|e| {
-        request_map::update_status(request_id, StatusCode::Failed, Some(e));
-    })?;
+    .map_or_else(
+        |e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        },
+        |reply: AddLiquidityReply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-    Ok(reply)
+    archive_to_kong_data(request);
+
+    result
 }
 
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let user_id = user_map::insert(None)?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
+    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
+    let request_id = request_map::insert(&request);
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
         check_arguments(&args, request_id, ts).await.inspect_err(|e| {
@@ -80,6 +91,8 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
+
+        archive_to_kong_data(request);
     });
 
     Ok(request_id)
@@ -350,6 +363,7 @@ async fn process_add_liquidity(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddLiquidity(add_liquidity_tx.clone()));
+
     let reply = create_add_liquidity_reply_with_tx_id(tx_id, &add_liquidity_tx);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
 
@@ -459,11 +473,6 @@ async fn return_tokens(
     let pool_id = pool_id.unwrap_or(0);
     let reply = create_add_liquidity_reply_failed(pool_id, request_id, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply));
-
-    // archive claims to kong_data
-    for claim_id in claim_ids {
-        claim_map::archive_claim_to_kong_data(claim_id);
-    }
 }
 
 #[allow(clippy::too_many_arguments)]

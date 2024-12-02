@@ -40,12 +40,11 @@ pub fn insert(message: &StableMessage) -> Result<u64, String> {
             ..message.clone()
         };
         map.insert(StableMessageId(message_id), insert_message.clone());
-        // archive new message
-        archive_message(insert_message);
         Ok(message_id)
     })
 }
 
+#[allow(dead_code)]
 fn archive_message(message: StableMessage) {
     ic_cdk::spawn(async move {
         match serde_json::to_string(&message) {

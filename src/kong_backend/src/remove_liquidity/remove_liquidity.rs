@@ -35,9 +35,10 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
+    let request = StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts);
+    let request_id = request_map::insert(&request);
 
-    let reply = match process_remove_liquidity(
+    let result = process_remove_liquidity(
         request_id,
         user_id,
         &pool,
@@ -49,16 +50,20 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         ts,
     )
     .await
-    {
-        Ok(reply) => reply,
-        Err(e) => {
+    .map_or_else(
+        |e| {
             request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            return Err(e);
-        }
-    };
+            Err(e)
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-    Ok(reply)
+    archive_to_kong_data(request);
+
+    result
 }
 
 #[update]
@@ -66,7 +71,8 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
+    let request = StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts);
+    let request_id = request_map::insert(&request);
 
     ic_cdk::spawn(async move {
         match process_remove_liquidity(
@@ -85,6 +91,8 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
+
+        archive_to_kong_data(request);
     });
 
     Ok(request_id)
@@ -448,6 +456,19 @@ fn return_tokens(request_id: u64, pool: &StablePool, transfer_lp_token: &Result<
 
     let reply = create_remove_liquidity_reply_failed(pool.pool_id, request_id, ts);
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply));
+}
+
+pub fn archive_to_kong_data(request: StableRequest) {
+    request_map::archive_request_to_kong_data(request.request_id);
+    if let Reply::RemoveLiquidity(reply) = request.reply {
+        for claim_id in reply.claim_ids.iter() {
+            claim_map::archive_claim_to_kong_data(*claim_id);
+        }
+        for transfer_id_reply in reply.transfer_ids.iter() {
+            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+        }
+        tx_map::archive_tx_to_kong_data(reply.tx_id);
+    };
 }
 
 /// api to validate remove_liquidity for SNS proposals

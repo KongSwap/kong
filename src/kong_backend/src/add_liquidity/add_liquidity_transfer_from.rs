@@ -29,28 +29,40 @@ use crate::stable_user::user_map;
 pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
+    let request = StableRequest::new(user_id, &Request::AddLiquidity(args), ts);
+    let request_id = request_map::insert(&request);
 
-    let reply = process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts)
+    let result = process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts)
         .await
-        .inspect_err(|e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(e));
-        })?;
+        .map_or_else(
+            |e| {
+                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                Err(e)
+            },
+            |reply| {
+                request_map::update_status(request_id, StatusCode::Success, None);
+                Ok(reply)
+            },
+        );
 
-    request_map::update_status(request_id, StatusCode::Success, None);
-    Ok(reply)
+    archive_to_kong_data(request);
+
+    result
 }
 
 pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
+    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
+    let request_id = request_map::insert(&request);
 
     ic_cdk::spawn(async move {
         match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
+
+        archive_to_kong_data(request);
     });
 
     Ok(request_id)
@@ -264,6 +276,7 @@ async fn process_add_liquidity(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddLiquidity(add_liquidity_tx.clone()));
+
     let reply = create_add_liquidity_reply_with_tx_id(tx_id, &add_liquidity_tx);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
 
@@ -435,11 +448,6 @@ async fn return_tokens(
 
     let reply = create_add_liquidity_reply_failed(pool.pool_id, request_id, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply));
-
-    // archive claims to kong_data
-    for claim_id in claim_ids {
-        claim_map::archive_claim_to_kong_data(claim_id);
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -499,4 +507,17 @@ async fn return_token(
             };
         }
     }
+}
+
+pub fn archive_to_kong_data(request: StableRequest) {
+    request_map::archive_request_to_kong_data(request.request_id);
+    if let Reply::AddLiquidity(reply) = request.reply {
+        for claim_id in reply.claim_ids.iter() {
+            claim_map::archive_claim_to_kong_data(*claim_id);
+        }
+        for transfer_id_reply in reply.transfer_ids.iter() {
+            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+        }
+        tx_map::archive_tx_to_kong_data(reply.tx_id);
+    };
 }
