@@ -121,7 +121,7 @@
         Trade details copied to clipboard
       </div>
     {/if}
-    <BananaRain />
+    <!-- <BananaRain /> -->
   </div>
 {/if}
 

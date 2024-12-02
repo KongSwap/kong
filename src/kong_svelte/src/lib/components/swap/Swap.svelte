@@ -90,6 +90,20 @@
 
   let buttonText = '';
 
+  // Add this helper function to get token balance
+  function getTokenBalance(tokenId: string): string {
+    if (!tokenId) return "0";
+    const balance = $tokenStore.balances[tokenId]?.in_tokens || BigInt(0);
+    const token = $tokenStore.tokens.find(t => t.canister_id === tokenId);
+    if (!token) return "0";
+    return (Number(balance) / Math.pow(10, token.decimals)).toString();
+  }
+
+  // Add reactive statement to check balance
+  $: insufficientFunds = $swapState.payToken && $swapState.payAmount && 
+      Number($swapState.payAmount) > Number(getTokenBalance($swapState.payToken.canister_id));
+
+  // Update the buttonText reactive statement
   $: {
     if ($swapState.showSuccessModal) {
       buttonText = 'Swap';
@@ -97,6 +111,8 @@
       buttonText = 'Processing...';
     } else if ($swapState.error) {
       buttonText = `${$swapState.error}`;
+    } else if (insufficientFunds) {
+      buttonText = 'Insufficient Funds';
     } else if ($swapState.swapSlippage > userMaxSlippage) {
       buttonText = 'High Slippage - Click to Adjust';
     } else if (!$auth?.account?.owner) {
@@ -111,6 +127,9 @@
   function getButtonTooltip(owner: boolean | undefined, slippageTooHigh: boolean, error: string | null): string {
     if (!owner) {
       return 'Connect to trade';
+    } else if (insufficientFunds) {
+      const balance = getTokenBalance($swapState.payToken?.canister_id);
+      return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
     } else if (slippageTooHigh) {
       return `Slippage: ${$swapState.swapSlippage}% > ${userMaxSlippage}%`;
     } else if (error) {
@@ -344,36 +363,17 @@
       return;
     }
 
+    if (insufficientFunds) {
+      toastStore.showError('Insufficient funds for this swap');
+      return;
+    }
+
     if ($swapState.swapSlippage > userMaxSlippage) {
       isSettingsModalOpen = true;
       return;
     }
 
-    if (!$swapState.payToken || !$swapState.receiveToken) {
-      // Focus the pay panel to select tokens
-      const payPanel = document.querySelector('.panel:first-child input');
-      if (payPanel) {
-        (payPanel as HTMLElement).focus();
-      }
-      return;
-    }
-
-    if (!$swapState.payAmount) {
-      // Focus the pay amount input
-      const payAmountInput = document.querySelector('.panel:first-child input');
-      if (payAmountInput) {
-        (payAmountInput as HTMLElement).focus();
-      }
-      return;
-    }
-
-    swapState.update((state) => ({
-      ...state,
-      showConfirmation: true,
-      isProcessing: false,
-      error: null,
-      showSuccessModal: false,
-    }));
+    handleSwapClick();
   }
 
   // Constants for dropdown positioning
@@ -560,29 +560,21 @@
       <div class="swap-footer">
         <button
           class="swap-button"
-          class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage)}
+          class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage) || insufficientFunds}
           class:processing={$swapState.isProcessing}
-          class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage}
+          class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage && !insufficientFunds}
           on:click={handleButtonAction}
           title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
         >
           <div class="button-content">
-            {#key buttonText}
-              <span 
-                class="button-text swap-button-text" 
-                class:warning={$swapState.swapSlippage > userMaxSlippage}
-                in:fade={{ duration: 200 }}
-              >
-                {buttonText}
-              </span>
-            {/key}
             {#if $swapState.isProcessing}
-              <div class="loading-spinner"></div>
+              <div class="loading-spinner" />
             {/if}
+            <span class="button-text" class:warning={insufficientFunds || $swapState.swapSlippage > userMaxSlippage}>
+              {buttonText}
+            </span>
           </div>
-          {#if !$swapState.error && $swapState.swapSlippage <= userMaxSlippage}
-            <div class="button-glow"></div>
-          {/if}
+          <div class="button-glow" />
         </button>
       </div>
     </div>

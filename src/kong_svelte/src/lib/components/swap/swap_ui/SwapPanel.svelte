@@ -456,7 +456,7 @@
 
   @media (max-width: 420px) {
     input {
-      font-size: 2rem;
+      font-size: 1.88rem;
       margin-top: -0.15rem;
     }
 
