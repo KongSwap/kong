@@ -310,9 +310,11 @@
                 <div class="earnings-section">
                     {#if actualPool?.rolling_24h_apy}
                         <div class="earnings-header">
-                            <h4 class="earnings-title">Estimated Earnings</h4>
-                            <div class="current-apy">
-                                Current APY: <span class="apy-value" style="color: {actualPool.rolling_24h_apy > 100 ? '#FFD700' : actualPool.rolling_24h_apy > 50 ? '#FFA500' : '#FF8C00'}">{actualPool.rolling_24h_apy}%</span>
+                            <div class="apy-card">
+                                <div class="apy-label">Current APY</div>
+                                <div class="apy-value" style="color: {actualPool.rolling_24h_apy > 100 ? '#FFD700' : actualPool.rolling_24h_apy > 50 ? '#FFA500' : '#FF8C00'}">
+                                    {actualPool.rolling_24h_apy}%
+                                </div>
                             </div>
                         </div>
                         <div class="earnings-grid">
@@ -338,7 +340,7 @@
                             </div>
                         </div>
                         <div class="earnings-disclaimer">
-                            * Estimates are based on current APY and position value. Actual returns may vary.
+                            * Returns based on current APY and position value. May vary.
                         </div>
                     {:else}
                         <div class="no-apy-message">
@@ -607,5 +609,24 @@
     .total-value {
         @apply mt-3 sm:mt-4 text-right text-xs sm:text-sm text-[#8890a4]
                px-2 sm:px-0;
+    }
+
+    .earnings-header {
+        @apply mb-6;
+    }
+
+    .apy-card {
+        @apply bg-[#1a1d2d] rounded-xl p-4 sm:p-6
+               border border-white/5
+               flex flex-col items-center gap-2;
+    }
+
+    .apy-label {
+        @apply text-sm sm:text-base text-[#8890a4] font-medium;
+    }
+
+    .apy-value {
+        @apply text-2xl sm:text-4xl font-bold;
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
     }
 </style>
