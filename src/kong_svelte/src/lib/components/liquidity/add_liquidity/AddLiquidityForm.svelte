@@ -8,6 +8,10 @@
     import { PoolService } from '$lib/services/pools/PoolService';
     import Panel from '$lib/components/common/Panel.svelte';
     import AddLiquidityConfirmation from './AddLiquidityConfirmation.svelte';
+    import { tweened } from "svelte/motion";
+    import { cubicOut } from "svelte/easing";
+    import BigNumber from "bignumber.js";
+    import { toastStore } from "$lib/stores/toastStore";
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -33,19 +37,166 @@
         }
     }
 
+    // Constants for formatting and animations
+    const DEFAULT_DECIMALS = 8;
+    const MAX_DISPLAY_DECIMALS_DESKTOP = 12;
+    const MAX_DISPLAY_DECIMALS_MOBILE = 9;
+    const ANIMATION_BASE_DURATION = 200;
+    const ANIMATION_MAX_DURATION = 300;
+
+    // Input state management
+    let input0Element: HTMLInputElement | null = null;
+    let input1Element: HTMLInputElement | null = null;
+    let input0Focused = false;
+    let input1Focused = false;
+    let previousValue0 = "0";
+    let previousValue1 = "0";
+
+    // Animated values for smooth transitions
+    const animatedUsdValue0 = tweened(0, {
+        duration: ANIMATION_BASE_DURATION,
+        easing: cubicOut,
+    });
+
+    const animatedUsdValue1 = tweened(0, {
+        duration: ANIMATION_BASE_DURATION,
+        easing: cubicOut,
+    });
+
+    // Helper functions
+    function formatWithCommas(value: string): string {
+        if (!value) return "0";
+        const parts = value.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return parts.join('.');
+    }
+
+    function getMaxDisplayDecimals(): number {
+        return window.innerWidth <= 420 ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP;
+    }
+
+    function formatDisplayValue(value: string, tokenDecimals: number): string {
+        if (!value || value === "0") return "0";
+        
+        const parts = value.split('.');
+        const maxDecimals = Math.min(getMaxDisplayDecimals(), tokenDecimals);
+        
+        if (parts.length === 2) {
+            parts[1] = parts[1].slice(0, maxDecimals);
+            if (parts[1].length === 0) return parts[0];
+            return parts.join('.');
+        }
+        
+        return parts[0];
+    }
+
+    function isValidNumber(value: string): boolean {
+        if (!value) return true;
+        const regex = /^[0-9]*\.?[0-9]*$/;
+        return regex.test(value);
+    }
+
+    // Enhanced input handling
     async function handleInput(index: 0 | 1, event: Event) {
         const input = (event.target as HTMLInputElement).value;
-        if (!(/^\d*\.?\d*$/.test(input) || input === '')) return;
-        
-        // Update the input value immediately
-        if (index === 0) {
-            amount0 = input;
-        } else {
-            amount1 = input;
+        let value = input.replace(/,/g, '');
+        const currentToken = index === 0 ? token0 : token1;
+
+        // Validate input
+        if (!isValidNumber(value)) {
+            event.target.value = index === 0 ? previousValue0 : previousValue1;
+            return;
         }
 
-        onInput(index, input);
+        // Handle decimal point
+        if (value.includes('.')) {
+            const [whole, decimal] = value.split('.');
+            value = `${whole}.${decimal.slice(0, currentToken?.decimals || DEFAULT_DECIMALS)}`;
+        }
+
+        // Remove leading zeros unless it's "0." or just "0"
+        if (value.length > 1 && value.startsWith('0') && value[1] !== '.') {
+            value = value.replace(/^0+/, '');
+        }
+
+        // If empty or invalid after processing, set to "0"
+        if (!value || value === '.') {
+            value = "0";
+        }
+
+        // Update previous value
+        if (index === 0) {
+            previousValue0 = value;
+            if (input0Element) {
+                input0Element.value = formatWithCommas(value);
+            }
+        } else {
+            previousValue1 = value;
+            if (input1Element) {
+                input1Element.value = formatWithCommas(value);
+            }
+        }
+
+        // Call the parent's onInput handler
+        onInput(index, value);
     }
+
+    // Max button handler
+    async function handleMaxClick(index: 0 | 1) {
+        const currentToken = index === 0 ? token0 : token1;
+        const currentBalance = index === 0 ? token0Balance : token1Balance;
+        
+        if (!currentToken) return;
+
+        try {
+            const balance = new BigNumber(currentBalance);
+            const totalFees = new BigNumber(currentToken.fee.toString());
+            let maxAmount = balance.minus(totalFees);
+
+            if (maxAmount.isLessThanOrEqualTo(0)) {
+                toastStore.error("Insufficient balance to cover the transaction fees");
+                return;
+            }
+
+            maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
+            const formattedMax = formatTokenAmount(maxAmount.toString(), currentToken.decimals).replace(/,/g, '');
+
+            const inputElement = index === 0 ? input0Element : input1Element;
+            if (inputElement) {
+                inputElement.value = formatWithCommas(formattedMax);
+            }
+
+            if (index === 0) {
+                previousValue0 = formattedMax;
+            } else {
+                previousValue1 = formattedMax;
+            }
+
+            onInput(index, formattedMax);
+
+        } catch (error) {
+            console.error("Error in handleMaxClick:", error);
+            toastStore.error("Failed to set max amount");
+        }
+    }
+
+    // Reactive declarations for USD values
+    $: {
+        if (token0?.price && amount0) {
+            const value = parseFloat(amount0) * token0.price;
+            animatedUsdValue0.set(value);
+        }
+        if (token1?.price && amount1) {
+            const value = parseFloat(amount1) * token1.price;
+            animatedUsdValue1.set(value);
+        }
+    }
+
+    // Format display amounts
+    $: displayAmount0 = formatDisplayValue(amount0, token0?.decimals || DEFAULT_DECIMALS);
+    $: displayAmount1 = formatDisplayValue(amount1, token1?.decimals || DEFAULT_DECIMALS);
+    $: formattedDisplayAmount0 = formatWithCommas(displayAmount0);
+    $: formattedDisplayAmount1 = formatWithCommas(displayAmount1);
 
     function getUsdValue(amount: string, token: FE.Token | null): string {
         if (!amount || !token) return "0.00";
@@ -126,11 +277,16 @@
                 <div class="flex items-center gap-4">
                     <div class="relative flex-1">
                         <input
+                            bind:this={input0Element}
                             type="text"
+                            inputmode="decimal"
+                            pattern="[0-9]*"
                             placeholder="0.00"
-                            value={amount0}
-                            on:input={(e) => handleInput(0, e)}
                             class="amount-input"
+                            value={formattedDisplayAmount0}
+                            on:input={(e) => handleInput(0, e)}
+                            on:focus={() => (input0Focused = true)}
+                            on:blur={() => (input0Focused = false)}
                         />
                     </div>
                     <div class="token-selector-wrapper">
@@ -157,11 +313,16 @@
                 </div>
             </div>
             <div class="balance-info">
-                <span>Available: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'} {token0?.symbol || ''}</span>
+                <button 
+                    class="available-balance"
+                    on:click={() => handleMaxClick(0)}
+                >
+                    Available: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'} {token0?.symbol || ''}
+                </button>
                 <div class="flex items-center gap-2">
                     <span class="text-white/50 font-normal tracking-wide">Est Value</span>
                     <span class="pl-1 text-white/50 font-medium tracking-wide">
-                        ${getUsdValue(amount0, token0)}
+                        ${formatToNonZeroDecimal($animatedUsdValue0)}
                     </span>
                 </div>
             </div>
@@ -176,11 +337,16 @@
                 <div class="flex items-center gap-4">
                     <div class="relative flex-1">
                         <input
+                            bind:this={input1Element}
                             type="text"
+                            inputmode="decimal"
+                            pattern="[0-9]*"
                             placeholder="0.00"
-                            value={amount1}
-                            on:input={(e) => handleInput(1, e)}
                             class="amount-input"
+                            value={formattedDisplayAmount1}
+                            on:input={(e) => handleInput(1, e)}
+                            on:focus={() => (input1Focused = true)}
+                            on:blur={() => (input1Focused = false)}
                         />
                     </div>
                     <div class="token-selector-wrapper">
@@ -207,11 +373,16 @@
                 </div>
             </div>
             <div class="balance-info">
-                <span>Available: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'} {token1?.symbol || ''}</span>
+                <button 
+                    class="available-balance"
+                    on:click={() => handleMaxClick(1)}
+                >
+                    Available: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'} {token1?.symbol || ''}
+                </button>
                 <div class="flex items-center gap-2">
                     <span class="text-white/50 font-normal tracking-wide">Est Value</span>
                     <span class="pl-1 text-white/50 font-medium tracking-wide">
-                        ${getUsdValue(amount1, token1)}
+                        ${formatToNonZeroDecimal($animatedUsdValue1)}
                     </span>
                 </div>
             </div>
@@ -412,5 +583,9 @@
     .no-pool-message {
         @apply flex items-center justify-center p-4 rounded-lg bg-white/5 text-white/80;
         font-size: 0.95rem;
+    }
+
+    .available-balance {
+        @apply text-white/70 hover:text-yellow-500 transition-colors duration-150;
     }
 </style>
