@@ -17,7 +17,7 @@
   import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
   import { fade } from 'svelte/transition';
 
-// Props wcith proper TypeScript types
+  // Props with proper TypeScript types
   export let title: string;
   export let token: FE.Token;
   export let amount: string;
@@ -30,6 +30,8 @@
 
   // Constants
   const DEFAULT_DECIMALS = 8;
+  const MAX_DISPLAY_DECIMALS_DESKTOP = 12;
+  const MAX_DISPLAY_DECIMALS_MOBILE = 9;
   const ANIMATION_BASE_DURATION = 200;
   const ANIMATION_MAX_DURATION = 300;
   const ANIMATION_VALUE_MULTIPLIER = 50;
@@ -42,6 +44,8 @@
   let formattedUsdValue = "0.00";
   let calculatedUsdValue = 0;
   let pendingAnimation: any = null;
+  let displayValue = "0";
+  let previousValue = "0";
 
   // Animated values
   const animatedUsdValue = tweened(0, {
@@ -65,6 +69,49 @@
   );
   $: decimals = tokenInfo?.decimals || DEFAULT_DECIMALS;
   $: isIcrc1 = tokenInfo?.icrc1 && !tokenInfo?.icrc2;
+
+  // Format number with commas for display
+  function formatWithCommas(value: string): string {
+    if (!value) return "0";
+    const parts = value.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+
+  // Function to get max decimals based on screen width
+  function getMaxDisplayDecimals(): number {
+    return window.innerWidth <= 420 ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP;
+  }
+
+  // Format display value with proper decimals
+  function formatDisplayValue(value: string): string {
+    if (!value || value === "0") return "0";
+    
+    const parts = value.split('.');
+    const maxDecimals = getMaxDisplayDecimals();
+    
+    if (parts.length === 2) {
+      // For "You Receive" panel, show ellipsis if there are more decimals
+      if (panelType === "receive" && parts[1].length > maxDecimals && decimals > maxDecimals) {
+        parts[1] = parts[1].slice(0, maxDecimals) + "...";
+      } else {
+        // For "You Pay" panel, just truncate
+        parts[1] = parts[1].slice(0, maxDecimals);
+      }
+      
+      if (parts[1].length === 0) return parts[0];
+      return parts.join('.');
+    }
+    
+    return parts[0];
+  }
+
+  // Validate numeric input
+  function isValidNumber(value: string): boolean {
+    if (!value) return true;
+    const regex = /^[0-9]*\.?[0-9]*$/;
+    return regex.test(value);
+  }
 
   // Balance calculations
   $: formattedBalance = calculateFormattedBalance();
@@ -103,10 +150,6 @@
       $tokenStore.balances[tokenInfo?.canister_id || ""]?.in_usd || "0";
     calculatedUsdValue = parseFloat(formattedUsdValue);
 
-    if (pendingAnimation && amount === "0") {
-      pendingAnimation = null;
-    }
-
     if (amount === "0") {
       updateAnimatedValues(0);
     } else {
@@ -134,27 +177,39 @@
   // Event handlers
   function handleInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let value = input.value;
+    let value = input.value.replace(/,/g, '');
+
+    // Validate input
+    if (!isValidNumber(value)) {
+      input.value = previousValue;
+      return;
+    }
+
+    // Handle decimal point
+    if (value.includes('.')) {
+      const [whole, decimal] = value.split('.');
+      value = `${whole}.${decimal.slice(0, decimals)}`;
+    }
 
     // Remove leading zeros unless it's "0." or just "0"
     if (value.length > 1 && value.startsWith('0') && value[1] !== '.') {
       value = value.replace(/^0+/, '');
     }
 
-    // If empty after removing zeros, set to "0"
-    if (!value) {
+    // If empty or invalid after processing, set to "0"
+    if (!value || value === '.') {
       value = "0";
     }
 
-    // Only allow numbers and one decimal point
-    value = value.replace(/[^\d.]/g, '');
-    const parts = value.split('.');
-    if (parts.length > 2) {
-      value = parts[0] + '.' + parts.slice(1).join('');
+    previousValue = value;
+
+    // Format display value with commas
+    if (inputElement) {
+      const formattedValue = formatWithCommas(value);
+      inputElement.value = formattedValue;
     }
 
-    // Update input value and trigger change event
-    input.value = value;
+    // Send the raw value (without commas) to the swap logic
     onAmountChange(
       new CustomEvent("input", {
         detail: { value, panelType },
@@ -186,8 +241,10 @@
         const formattedMax = formatTokenAmount(maxAmount.toString(), decimals).replace(/,/g, '');
 
         if (inputElement) {
-          inputElement.value = formattedMax;
+          inputElement.value = formatWithCommas(formattedMax);
         }
+
+        previousValue = formattedMax;
 
         onAmountChange(
           new CustomEvent("input", {
@@ -221,6 +278,15 @@
         showPayTokenSelector: false
       }));
     }
+
+    // Trigger amount change with current amount when token changes
+    if (amount) {
+      onAmountChange(
+        new CustomEvent("input", {
+          detail: { value: amount, panelType },
+        }),
+      );
+    }
   }
 
   function handleClose() {
@@ -240,33 +306,9 @@
     }
   }
 
-  // Function to format the amount with cascading smaller digits
-  function formatCascadingAmount(amount: string) {
-    if (!amount.includes('.')) return amount;
-
-    const [integerPart, decimalPart] = amount.split('.');
-    if (!decimalPart) return amount;
-
-    let formattedDecimal = '';
-    // Start at 95% and decrease by smaller increments, with a minimum of 75%
-    let currentSize = 95;
-
-    for (let i = 0; i < decimalPart.length; i++) {
-      // Reduce size by 5% for each digit, but don't go below 75%
-      currentSize = Math.max(75, 95 - (i * 5));
-      formattedDecimal += `<span style="font-size: ${currentSize}%">${decimalPart[i]}</span>`;
-    }
-
-    return `${integerPart}.<span class="decimal-part">${formattedDecimal}</span>`;
-  }
-
   // Display calculations
-  $: displayAmount =
-    title === "You Receive"
-      ? amount || "0"
-      : isAnimating
-        ? $animatedAmount.toFixed(decimals)
-        : amount || "0";
+  $: displayAmount = formatDisplayValue(amount || "0");
+  $: formattedDisplayAmount = formatWithCommas(displayAmount);
 
   $: parsedAmount = parseFloat(displayAmount || "0");
   $: tokenPrice = tokenInfo ? ($tokenStore?.prices[tokenInfo.canister_id] || 0) : 0;
@@ -314,33 +356,20 @@
     <div class="relative flex-grow mb-[-1px] h-[68px]">
       <div class="flex items-center gap-1 h-[69%] box-border rounded-md">
         <div class="relative flex-1">
-          {#if title === "You Receive" && displayAmount.includes('.')}
-            <div class="flex-1 min-w-0 text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight text-white/85">
-              {displayAmount.split('.')[0]}.
-              <span class="decimal-part">
-                {#each displayAmount.split('.')[1].split('') as digit, i}
-                  <span style="font-size: {Math.max(70, 90 - (i * 5))}%" class="digit">
-                    {digit}
-                  </span>
-                {/each}
-              </span>
-            </div>
-          {:else}
-            <input
-              bind:this={inputElement}
-              type="text"
-              inputmode="decimal"
-              pattern="[0-9]*"
-              placeholder="0.00"
-              class="flex-1 min-w-0 bg-transparent border-none text-white text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
-              value={displayAmount}
-              on:input={handleInput}
-              on:focus={() => (inputFocused = true)}
-              on:blur={() => (inputFocused = false)}
-              {disabled}
-              readonly={panelType === "receive"}
-            />
-          {/if}
+          <input
+            bind:this={inputElement}
+            type="text"
+            inputmode="decimal"
+            pattern="[0-9]*"
+            placeholder="0.00"
+            class="flex-1 min-w-0 bg-transparent border-none text-white text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
+            value={formattedDisplayAmount}
+            on:input={handleInput}
+            on:focus={() => (inputFocused = true)}
+            on:blur={() => (inputFocused = false)}
+            {disabled}
+            readonly={panelType === "receive"}
+          />
         </div>
         <div class="token-selector-wrapper relative">
           <button
@@ -359,6 +388,7 @@
                 tokenSelectorPosition: position,
                 tokenSelectorOpen: panelType
               }));
+              handleTokenSelect();
             }}
           >
             {#if token}
@@ -395,17 +425,17 @@
             class:clickable={title === "You Pay" && !disabled}
             on:click={handleMaxClick}
           >
-            {tokenInfo && formatTokenAmount(
+            {tokenInfo && formatWithCommas(formatTokenAmount(
               $tokenStore.balances[
                 tokenInfo?.canister_id
               ]?.in_tokens?.toString() || "0",
               decimals,
-            )}
+            ))}
             {token?.symbol}
           </button>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide mobile-text">Est Value</span>
+          <span class="text-white/50 font-normal tracking-wide mobile-text">Value</span>
           <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
@@ -499,35 +529,7 @@
     color: rgba(255, 255, 255, 0.5);
   }
 
-  .decimal-part {
-    display: inline-flex;
-    align-items: baseline;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-
-  .digit {
-    display: inline-block;
-    transition: font-size 0.2s ease;
-  }
-
   /* Mobile optimizations */
-  @media (max-width: 420px) {
-    .decimal-part {
-      font-size: 90%; /* Slightly smaller base size on mobile */
-    }
-
-    /* Limit number of visible decimal places on very small screens */
-    @media (max-width: 360px) {
-      .decimal-part {
-        max-width: 120px; /* Adjust based on your needs */
-      }
-    }
-  }
-
-  /* Ensure token selector stays compact on mobile */
   @media (max-width: 420px) {
     .token-selector-button {
       padding: 0.5rem 0.75rem;
@@ -539,5 +541,4 @@
       height: 1.75rem;
     }
   }
-
 </style>

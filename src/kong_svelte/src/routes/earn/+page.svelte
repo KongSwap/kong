@@ -512,7 +512,8 @@
     width="max-w-2xl"
   >
     <UserPool
-      poolId={selectedUserPool.pool_id}
+      pool={selectedUserPool}
+      showModal={!!selectedUserPool}
       on:close={() => selectedUserPool = null}
     />
   </Modal>

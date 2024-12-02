@@ -97,27 +97,39 @@ export class PoolService {
     lpTokenAmount: number | bigint
   ): Promise<[bigint, bigint]> {
     try {
-      // Convert floating point number to whole number with proper decimal precision
-      const lpTokenBigInt = typeof lpTokenAmount === 'number' 
-        ? BigInt(Math.floor(lpTokenAmount * 1e8)) // Assuming 8 decimal places for LP tokens
-        : lpTokenAmount;
+        const lpTokenBigInt = typeof lpTokenAmount === 'number' 
+            ? BigInt(Math.floor(lpTokenAmount * 1e8)) 
+            : lpTokenAmount;
 
-      const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
-      
-      const result = await actor.remove_liquidity_amounts(
-        token0Symbol,
-        token1Symbol,
-        lpTokenBigInt
-      );
-      
-      if (!result.Ok) {
-        throw new Error(result.Err || 'Failed to calculate removal amounts');
-      }
-      
-      return result.Ok;
+        const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+        
+        console.log('Calling remove_liquidity_amounts with:', {
+            token0Symbol,
+            token1Symbol,
+            lpTokenBigInt: lpTokenBigInt.toString()
+        });
+        
+        const result = await actor.remove_liquidity_amounts(
+            token0Symbol,
+            token1Symbol,
+            lpTokenBigInt
+        );
+        
+        console.log('Backend response:', result);
+
+        if (!result.Ok) {
+            throw new Error(result.Err || 'Failed to calculate removal amounts');
+        }
+        
+        // Handle the correct response format based on .did file
+        const reply = result.Ok;
+        return [
+            BigInt(reply.amount_0),
+            BigInt(reply.amount_1)
+        ];
     } catch (error) {
-      console.error('Error calculating removal amounts:', error);
-      throw error;
+        console.error('Error calculating removal amounts:', error);
+        throw error;
     }
   }
 
@@ -206,26 +218,32 @@ export class PoolService {
   }): Promise<string> {
     await requireWalletConnection();
     try {
-      // Convert floating point number to whole number with proper decimal precision
-      const lpTokenBigInt = typeof params.lpTokenAmount === 'number'
-        ? BigInt(Math.floor(params.lpTokenAmount * 1e8)) // Assuming 8 decimal places for LP tokens
-        : params.lpTokenAmount;
+        // Ensure we're using BigInt for the amount
+        const lpTokenBigInt = typeof params.lpTokenAmount === 'number'
+            ? BigInt(Math.floor(params.lpTokenAmount * 1e8))
+            : params.lpTokenAmount;
 
-      const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false});
-      const result = await actor.remove_liquidity_async({
-        token_0: params.token0,
-        token_1: params.token1,
-        remove_lp_token_amount: lpTokenBigInt
-      });
+        console.log('Calling remove_liquidity_async with:', {
+            token_0: params.token0,
+            token_1: params.token1,
+            remove_lp_token_amount: lpTokenBigInt.toString()
+        });
 
-      if (!result.Ok) {
-        throw new Error('Failed to remove liquidity');
-      }
+        const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend);
+        const result = await actor.remove_liquidity_async({
+            token_0: params.token0,
+            token_1: params.token1,
+            remove_lp_token_amount: lpTokenBigInt
+        });
 
-      return result.Ok;
+        if (!result.Ok) {
+            throw new Error(result.Err || 'Failed to remove liquidity');
+        }
+
+        return result.Ok.toString();
     } catch (error) {
-      console.error('Error removing liquidity:', error);
-      throw new Error('Failed to remove liquidity');
+        console.error('Error removing liquidity:', error);
+        throw new Error(error.message || 'Failed to remove liquidity');
     }
   }
 

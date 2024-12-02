@@ -359,10 +359,8 @@
     flex: 1;
     background: transparent;
     border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.75rem 0;
     color: white;
-    padding: 0.5rem 0;
-    padding-right: 2.5rem;
     font-size: 1rem;
     transition: border-color 0.2s;
   }
@@ -378,7 +376,7 @@
 
   .action-button {
     position: absolute;
-    right: 1rem;
+    right: 0;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
@@ -386,7 +384,6 @@
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    border-radius: 0.5rem;
     color: rgba(255, 255, 255, 0.7);
     transition: color 0.2s;
   }
@@ -396,7 +393,7 @@
   }
 
   .filter-bar {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 

@@ -8,6 +8,7 @@
   import { createEventDispatcher } from "svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
+  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   const dispatch = createEventDispatcher();
   export let pools: any[] = [];
@@ -256,13 +257,24 @@
                   size={36}
                 />
                 <div class="pool-info">
-                  <span class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-                  <span class="pool-balance">{pool.balance} LP</span>
-                  <span class="pool-usd-value">${pool.usd_balance}</span>
+                  <div class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</div>
+                  <div class="pool-balance">
+                    {Number(pool.balance).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 8
+                    })} LP
+                  </div>
                 </div>
               </div>
               <div class="pool-right">
-                <span class="view-details">View Details →</span>
+                <div class="value-info">
+                  <div class="usd-value">
+                    ${formatToNonZeroDecimal(pool.usd_balance)}
+                  </div>
+                </div>
+                <div class="view-details">
+                  View Details →
+                </div>
               </div>
             </div>
           </div>
@@ -293,7 +305,7 @@
   }
 
   .search-section {
-    @apply sticky top-0 z-10 bg-gray-900;
+    @apply sticky top-0 z-10;
   }
 
   .search-input-wrapper {
@@ -301,16 +313,16 @@
   }
 
   .search-input {
-    @apply w-full bg-transparent border-none px-4 py-3 text-white placeholder-gray-500
+    @apply w-full bg-transparent border-none py-3 text-white placeholder-gray-500
            focus:outline-none focus:ring-0;
   }
 
   .clear-button {
-    @apply absolute right-4 text-gray-500 hover:text-white transition-colors;
+    @apply absolute right-0 text-gray-500 hover:text-white transition-colors;
   }
 
   .filter-bar {
-    @apply px-4 py-3 border-t border-gray-800 flex justify-between items-center;
+    @apply py-3 border-t border-gray-800 flex justify-between items-center;
   }
 
   .sort-toggle {
@@ -342,7 +354,7 @@
   }
 
   .pool-content {
-    @apply flex justify-between items-center;
+    @apply flex justify-between items-center w-full;
   }
 
   .pool-left {
@@ -354,15 +366,31 @@
   }
 
   .pool-pair {
-    @apply text-base font-medium text-white/95;
+    @apply text-lg font-medium text-white/95;
   }
 
   .pool-balance {
     @apply text-sm text-white/70;
   }
 
-  .pool-usd-value {
-    @apply text-xs text-white/50;
+  .pool-right {
+    @apply flex items-center gap-4;
+  }
+
+  .value-info {
+    @apply flex flex-col items-end;
+  }
+
+  .usd-value {
+    @apply text-base font-medium text-white/95;
+  }
+
+  .view-details {
+    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200 ml-4;
+  }
+
+  .pool-item:hover .view-details {
+    @apply opacity-100;
   }
 
   .loading-state, .error-state, .empty-state {
@@ -382,17 +410,5 @@
 
   .error-state {
     @apply text-red-400;
-  }
-
-  .pool-right {
-    @apply flex items-center;
-  }
-
-  .view-details {
-    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200;
-  }
-
-  .pool-item:hover .view-details {
-    @apply opacity-100;
   }
 </style>

@@ -6,6 +6,7 @@
     import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
     import { TokenService, tokenStore } from '$lib/services/tokens';
     import { onMount } from 'svelte';
+    import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 
     // Accept transactions prop for live data
     export let transactions: any[] = [];
@@ -50,8 +51,19 @@
                 amount_1: formatTokenAmount(tx.AddLiquidity.amount_1.toString(), 8),
                 lp_amount: formatTokenAmount(tx.AddLiquidity.add_lp_token_amount.toString(), 8)
             };
+        } else if ('Swap' in tx) {
+            return {
+                type: 'Swap',
+                status: tx.Swap.status,
+                formattedDate: new Date(Number(tx.Swap.ts) / 1000000).toLocaleString(),
+                pay_symbol: tx.Swap.pay_symbol,
+                receive_symbol: tx.Swap.receive_symbol,
+                pay_amount: formatTokenAmount(tx.Swap.pay_amount.toString(), 8),
+                receive_amount: formatTokenAmount(tx.Swap.receive_amount.toString(), 8),
+                price: tx.Swap.price,
+                slippage: tx.Swap.slippage
+            };
         }
-        // Add other transaction types here if needed
         return null;
     }
 
@@ -70,6 +82,7 @@
                 processedTransactions = response.Ok
                     .map(processTransaction)
                     .filter(tx => tx !== null);
+                console.log("Processed transactions:", processedTransactions);
             } else if (response.Err) {
                 error = response.Err;
             }
@@ -97,7 +110,7 @@
 
 <div class="transaction-history-wrapper">
     <div class="notice-banner">
-        Note: Currently showing only recent activity. Full transaction history coming soon!
+        Note: Currently showing one only recent activity. Full transaction history coming soon!
     </div>
 
     <!-- Add filter buttons at the top -->
@@ -148,6 +161,19 @@
                                     <span>Received:</span>
                                     <span>{tx.lp_amount} LP</span>
                                 </div>
+                            {:else if tx.type === 'Swap'}
+                                <div class="amount-row">
+                                    <span>Paid:</span>
+                                    <span>{tx.pay_amount} {tx.pay_symbol}</span>
+                                </div>
+                                <div class="amount-row">
+                                    <span>Received:</span>
+                                    <span>{tx.receive_amount} {tx.receive_symbol}</span>
+                                </div>
+                                <div class="amount-row">
+                                    <span>Slippage:</span>
+                                    <span>{tx.slippage}%</span>
+                                </div>
                             {/if}
                         </div>
                     </div>
@@ -180,6 +206,7 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    margin-top: 1rem;
   }
 
   .transaction-history-content::-webkit-scrollbar {
@@ -203,7 +230,6 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding: 1rem;
     min-height: 100%;
   }
 
@@ -295,7 +321,7 @@
   .filter-buttons {
     display: flex;
     gap: 0.5rem;
-    padding: 1rem;
+    padding: 1rem 0;
     border-bottom: 1px solid rgb(55, 65, 81);
   }
 
