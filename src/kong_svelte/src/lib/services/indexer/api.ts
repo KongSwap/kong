@@ -40,3 +40,25 @@ export const fetchTokens = async (): Promise<IndexerToken[]> => {
   kongDB.indexedTokens.bulkPut(data);
   return data;
 };
+
+export interface CandleData {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export const fetchChartData = async (
+  poolId: number, 
+  startTimestamp: number, 
+  endTimestamp: number,
+  resolution: string
+): Promise<CandleData[]> => {
+  const response = await fetch(
+    `${INDEXER_URL}/pools/candlesticks/${poolId}?from=${startTimestamp}&to=${endTimestamp}&resolution=${resolution}`
+  );
+  const data = await response.json();
+  return data;
+};

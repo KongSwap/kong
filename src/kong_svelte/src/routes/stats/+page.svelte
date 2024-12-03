@@ -322,7 +322,7 @@
                         : ""}
                   <tr
                     class="token-row"
- 
+                    on:click={() => goto(`/stats/${token.address}`)}
                   >
                     {#if $auth.isConnected}
                       <td class="favorite-cell">
