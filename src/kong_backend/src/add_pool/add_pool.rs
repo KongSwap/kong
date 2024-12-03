@@ -338,18 +338,17 @@ async fn process_add_pool(
 
     // add pool
     request_map::update_status(request_id, StatusCode::AddPool, None);
-    let pool = StablePool::new(
+    let pool = match add_new_pool(
         token_0.token_id(),
         token_1.token_id(),
         lp_fee_bps,
         kong_fee_bps,
         lp_token.token_id(),
         on_kong,
-    );
-    let pool_id = match pool_map::insert(&pool) {
-        Ok(pool_id) => {
+    ) {
+        Ok(pool) => {
             request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
-            pool_id
+            pool
         }
         Err(e) => {
             request_map::update_status(request_id, StatusCode::AddPoolFailed, Some(&e));
@@ -377,7 +376,7 @@ async fn process_add_pool(
 
     // successful, add tx and update request with reply
     let add_pool_tx = AddPoolTx::new_success(
-        pool_id,
+        pool.pool_id,
         user_id,
         request_id,
         amount_0,
@@ -669,6 +668,20 @@ async fn return_token(
             };
         }
     }
+}
+
+// add_pool() taken
+fn add_new_pool(
+    token_id_0: u32,
+    token_id_1: u32,
+    lp_fee_bps: u8,
+    kong_fee_bps: u8,
+    lp_token_id: u32,
+    on_kong: bool,
+) -> Result<StablePool, String> {
+    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong);
+    let pool_id = pool_map::insert(&pool)?;
+    pool_map::get_by_pool_id(pool_id).ok_or_else(|| "Failed to add pool".to_string())
 }
 
 pub fn archive_to_kong_data(request: StableRequest) {
