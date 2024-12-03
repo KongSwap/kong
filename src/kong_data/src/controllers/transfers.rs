@@ -2,7 +2,7 @@ use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TRANSFER_MAP;
 
 const MAX_TRANSFERS: usize = 1_000;
@@ -45,7 +45,7 @@ fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
     Ok("Transfers updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
+#[update(hidden = true, guard = "caller_is_kong_backend")]
 fn update_transfer(stable_transfer_json: String) -> Result<String, String> {
     let transfer: StableTransfer = match serde_json::from_str(&stable_transfer_json) {
         Ok(transfer) => transfer,
