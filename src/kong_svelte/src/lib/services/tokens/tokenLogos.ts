@@ -35,9 +35,7 @@ export async function saveTokenLogo(canister_id: string, image_url: string): Pro
 }
 
 export async function getTokenLogo(canister_id: string): Promise<string> {
-  try {
-    console.log('Getting logo for canister:', canister_id);
-    
+  try {    
     // First check if it's a default logo
     if (canister_id in DEFAULT_LOGOS) {
       return DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS];
@@ -239,7 +237,6 @@ export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl>
 
     // Check if we already have a loading promise for this canister
     if (loadingPromises[canister_id]) {
-      console.log('Using existing loading promise for:', canister_id);
       try {
         return await loadingPromises[canister_id];
       } catch (error) {

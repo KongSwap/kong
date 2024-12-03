@@ -15,6 +15,7 @@ export interface SwapState {
   isProcessing: boolean;
   error: string | null;
   tokenSelectorOpen: 'pay' | 'receive' | null;
+  tokenSelectorPosition: { x: number; y: number; windowWidth: number } | null;
   showPayTokenSelector: boolean;
   showReceiveTokenSelector: boolean;
   showConfirmation: boolean;
@@ -65,6 +66,7 @@ function createSwapStore(): SwapStore {
     isProcessing: false,
     error: null,
     tokenSelectorOpen: null,
+    tokenSelectorPosition: null,
     showPayTokenSelector: false,
     showReceiveTokenSelector: false,
     showConfirmation: false,

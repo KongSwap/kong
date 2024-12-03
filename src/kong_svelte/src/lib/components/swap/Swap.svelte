@@ -55,6 +55,7 @@
 
   const dispatch = createEventDispatcher<{
     modeChange: { mode: 'normal' | 'pro' };
+    tokenChange: { fromToken: FE.Token | null; toToken: FE.Token | null };
   }>();
 
   let previousMode = currentMode;
@@ -169,10 +170,6 @@
       error: null,
       showSuccessModal: false,
     }));
-
-    console.log("showConfirmation before:", $swapState.showConfirmation);
-
-    console.log("showConfirmation after:", $swapState.showConfirmation);
   }
 
   async function handleSwap(): Promise<boolean> {
@@ -250,35 +247,14 @@
     }
   }
 
-  async function handleTokenSelected(token: FE.Token, panelType: PanelType) {
-    const currentState = get(swapState);
-    
-    // If selecting the same token that's in the other panel, reverse the positions
-    if (
-      (panelType === "pay" &&
-        token.canister_id === currentState.receiveToken?.canister_id) ||
-      (panelType === "receive" &&
-        token.canister_id === currentState.payToken?.canister_id)
-    ) {
-      handleReverseTokens();
-      return;
-    }
-
-    // Update token and close selector
+  async function handleTokenSelected(token: FE.Token, panelType: PanelType) {    
     if (panelType === 'pay') {
       swapState.setPayToken(token);
-      swapState.update(s => ({ ...s, showPayTokenSelector: false }));
     } else {
       swapState.setReceiveToken(token);
-      swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
     }
-
-    // Update URL
-    if (token.canister_id) {
-      updateTokenInURL(panelType === 'pay' ? 'from' : 'to', token.canister_id);
-    }
-
-    // Get new quote if we have all required data
+    
+    swapState.closeTokenSelector();
     await updateSwapQuote();
   }
 
@@ -364,7 +340,7 @@
     }
 
     if (insufficientFunds) {
-      toastStore.showError('Insufficient funds for this swap');
+      toastStore.error('Insufficient funds for this swap');
       return;
     }
 
@@ -475,107 +451,124 @@
       receiveAmount: '',
     }));
   }
+
+  // Add reactive variables for token changes
+  $: fromToken = $swapState.payToken;
+  $: toToken = $swapState.receiveToken;
+
+  // Watch for token changes and dispatch event
+  $: {
+    if ($swapState.payToken || $swapState.receiveToken) {
+      dispatch('tokenChange', {
+        fromToken: $swapState.payToken,
+        toToken: $swapState.receiveToken
+      });
+    }
+  }
 </script>
 
-<div class="swap-wrapper">
-  <div class="swap-container" in:fade={{ duration: 420 }}>
-    <div class="mode-selector">
-      <div class="mode-selector-background" style="transform: translateX({currentMode === 'pro' ? '100%' : '0'})"></div>
-      <button
-        class="mode-button"
-        class:selected={currentMode === "normal"}
-        class:transitioning={isTransitioning && previousMode === "pro"}
-        on:click={() => handleModeChange('normal')}
-      >
-        <span class="mode-text">Normal</span>
-      </button>
-      <button
-        class="mode-button"
-        class:selected={currentMode === "pro"}
-        class:transitioning={isTransitioning && previousMode === "normal"}
-        on:click={() => handleModeChange('pro')}
-      >
-        <span class="mode-text">Pro</span>
-      </button>
-    </div>
-
-    <div class="panels-container">
-      <div class="panels-wrapper">
-        <div class="panel">
-          <SwapPanel
-            title={panels[0].title}
-            token={$swapState.payToken}
-            amount={$swapState.payAmount}
-            onAmountChange={handleAmountChange}
-            onTokenSelect={() => handleTokenSelect("pay")}
-            showPrice={false}
-            slippage={$swapState.swapSlippage}
-            disabled={false}
-            panelType="pay"
-          />
-        </div>
-
+<!-- Template content -->
+<div class="swap-container">
+  <div class="swap-wrapper">
+    <div class="swap-container" in:fade={{ duration: 420 }}>
+      <div class="mode-selector">
+        <div class="mode-selector-background" style="transform: translateX({currentMode === 'pro' ? '100%' : '0'})"></div>
         <button
-          class="switch-button"
-          class:disabled={isProcessing}
-          class:rotating={isRotating}
-          on:click={handleReverseTokens}
-          disabled={isProcessing}
+          class="mode-button"
+          class:selected={currentMode === "normal"}
+          class:transitioning={isTransitioning && previousMode === "pro"}
+          on:click={() => handleModeChange('normal')}
         >
-          <div class="switch-button-inner">
-            <svg
-              class="switch-icon"
-              viewBox="0 0 24 24"
-              width="24"
-              height="24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M7.5 3.5L4.5 6.5L7.5 9.5M4.5 6.5H16.5C18.71 6.5 20.5 8.29 20.5 10.5C20.5 11.48 20.14 12.37 19.55 13.05M16.5 20.5L19.5 17.5L16.5 14.5M19.5 17.5H7.5C5.29 17.5 3.5 15.71 3.5 13.5C3.5 12.52 3.86 11.63 4.45 10.95"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
+          <span class="mode-text">Normal</span>
         </button>
-
-        <div class="panel">
-          <SwapPanel
-            title={panels[1].title}
-            token={$swapState.receiveToken}
-            amount={$swapState.receiveAmount}
-            onAmountChange={handleAmountChange}
-            onTokenSelect={() => handleTokenSelect("receive")}
-            showPrice={true}
-            slippage={$swapState.swapSlippage}
-            disabled={false}
-            panelType="receive"
-          />
-        </div>
+        <button
+          class="mode-button"
+          class:selected={currentMode === "pro"}
+          class:transitioning={isTransitioning && previousMode === "normal"}
+          on:click={() => handleModeChange('pro')}
+        >
+          <span class="mode-text">Pro</span>
+        </button>
       </div>
 
-      <div class="swap-footer">
-        <button
-          class="swap-button"
-          class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage) || insufficientFunds}
-          class:processing={$swapState.isProcessing}
-          class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage && !insufficientFunds}
-          on:click={handleButtonAction}
-          title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
-        >
-          <div class="button-content">
-            {#if $swapState.isProcessing}
-              <div class="loading-spinner" />
-            {/if}
-            <span class="button-text" class:warning={insufficientFunds || $swapState.swapSlippage > userMaxSlippage}>
-              {buttonText}
-            </span>
+      <div class="panels-container">
+        <div class="panels-wrapper">
+          <div class="panel">
+            <SwapPanel
+              title={panels[0].title}
+              token={$swapState.payToken}
+              amount={$swapState.payAmount}
+              onAmountChange={handleAmountChange}
+              onTokenSelect={() => handleTokenSelect("pay")}
+              showPrice={false}
+              slippage={$swapState.swapSlippage}
+              disabled={false}
+              panelType="pay"
+            />
           </div>
-          <div class="button-glow" />
-        </button>
+
+          <button
+            class="switch-button"
+            class:disabled={isProcessing}
+            class:rotating={isRotating}
+            on:click={handleReverseTokens}
+            disabled={isProcessing}
+          >
+            <div class="switch-button-inner">
+              <svg
+                class="switch-icon"
+                viewBox="0 0 24 24"
+                width="24"
+                height="24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.5 3.5L4.5 6.5L7.5 9.5M4.5 6.5H16.5C18.71 6.5 20.5 8.29 20.5 10.5C20.5 11.48 20.14 12.37 19.55 13.05M16.5 20.5L19.5 17.5L16.5 14.5M19.5 17.5H7.5C5.29 17.5 3.5 15.71 3.5 13.5C3.5 12.52 3.86 11.63 4.45 10.95"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+          </button>
+
+          <div class="panel">
+            <SwapPanel
+              title={panels[1].title}
+              token={$swapState.receiveToken}
+              amount={$swapState.receiveAmount}
+              onAmountChange={handleAmountChange}
+              onTokenSelect={() => handleTokenSelect("receive")}
+              showPrice={true}
+              slippage={$swapState.swapSlippage}
+              disabled={false}
+              panelType="receive"
+            />
+          </div>
+        </div>
+
+        <div class="swap-footer">
+          <button
+            class="swap-button"
+            class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage) || insufficientFunds}
+            class:processing={$swapState.isProcessing}
+            class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage && !insufficientFunds}
+            on:click={handleButtonAction}
+            title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
+          >
+            <div class="button-content">
+              {#if $swapState.isProcessing}
+                <div class="loading-spinner" />
+              {/if}
+              <span class="button-text" class:warning={insufficientFunds || $swapState.swapSlippage > userMaxSlippage}>
+                {buttonText}
+              </span>
+            </div>
+            <div class="button-glow" />
+          </button>
+        </div>
       </div>
     </div>
   </div>

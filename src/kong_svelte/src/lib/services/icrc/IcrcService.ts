@@ -201,7 +201,7 @@ export class IcrcService {
     } = {},
   ): Promise<Result<bigint>> {
     try {
-      const actor = await auth.getActor(token.canister_id, "icrc1", {
+      const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
         anon: false,
         requiresSigning: true,
       });

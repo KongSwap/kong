@@ -1,145 +1,175 @@
 <script lang="ts">
 import { page } from "$app/stores";
-import { onMount } from "svelte";
-import { 
-  createChart, 
-  type IChartApi, 
-  type Time,
-  type HistogramData,
-  type CandlestickData
-} from 'lightweight-charts';
-import { fetchChartData, tokens, type CandleData } from "$lib/services/indexer/api";
+import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
+import { fetchTransactions, tokens, type Transaction } from "$lib/services/indexer/api";
 import { poolStore } from "$lib/services/pools";
+import { formatDistance } from 'date-fns';
 
 const tokenAddress = $page.params.id;
-let chartContainer: HTMLElement;
-let chart: IChartApi;
 
 $: token = $tokens?.find(t => t.address === tokenAddress);
-$: console.log('token:', token);
-
 $: biggestPool = $poolStore?.pools?.filter(p => p.address_0 === tokenAddress)
-  .sort((a, b) => b.tvl - a.tvl)[0];
-$: console.log('biggestPool:', biggestPool);
+  .sort((a, b) => b.tvl - a.tvl)[1];
 
-interface FormattedCandle extends Omit<CandleData, 'time'> {
-  time: Time;
-}
+// Update state type
+let transactions: Transaction[] = [];
+let isLoadingTxns = true;
 
-const cleanup = () => {
-  window.removeEventListener('resize', handleResize);
-  if (chart) {
-    chart.remove();
-  }
-};
+// Add pagination state
+let currentPage = 1;
+const pageSize = 20;
+let totalTransactions = 0;
 
-const initChart = async () => {
-  if (!biggestPool || !chartContainer) return;
-  
-  // Destroy existing chart if it exists
-  if (chart) {
-    chart.remove();
-  }
+// Add state for pagination info
+let totalPages = 0;
 
-  chart = createChart(chartContainer, {
-    layout: {
-      background: { color: 'transparent' },
-      textColor: '#d1d5db',
-    },
-    grid: {
-      vertLines: { color: '#334155' },
-      horzLines: { color: '#334155' },
-    },
-    width: chartContainer.clientWidth,
-    height: 400,
-  });
-
-  const candlestickSeries = chart.addCandlestickSeries({
-    upColor: '#22c55e',
-    downColor: '#ef4444',
-    borderVisible: false,
-    wickUpColor: '#22c55e',
-    wickDownColor: '#ef4444',
-  });
-
-  const volumeSeries = chart.addHistogramSeries({
-    color: '#60a5fa',
-    priceFormat: {
-      type: 'volume',
-    },
-    priceScaleId: '',
-  });
-
-  // Set the volume series position
-  volumeSeries.priceScale().applyOptions({
-    scaleMargins: {
-      top: 0.8,
-      bottom: 0,
-    },
-  });
-
-  const endTimestamp = Date.now();
-  const startTimestamp = endTimestamp - (7 * 24 * 60 * 60 * 1000);
+// Update fetch function to use pagination
+const loadTransactionData = async (page: number = 1) => {
+  if (!biggestPool) return;
   
   try {
-    const candleData = await fetchChartData(
-      Number(biggestPool.pool_id),
-      startTimestamp,
-      endTimestamp,
-      'D'
-    );
-    console.log(candleData);
-
-    const formattedCandleData: CandlestickData<Time>[] = candleData.map((candle) => ({
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-      time: Math.floor(candle.time / 1000) as Time
-    }));
-
-    candlestickSeries.setData(formattedCandleData);
-    
-    const volumeData: HistogramData<Time>[] = candleData.map((candle) => ({
-      time: Math.floor(candle.time / 1000) as Time,
-      value: candle.volume,
-      color: candle.close >= candle.open ? '#22c55e80' : '#ef444480'
-    }));
-    
-    volumeSeries.setData(volumeData);
+    isLoadingTxns = true;
+    console.log('Loading transactions for pool:', biggestPool.pool_id, 'page:', page);
+    const response = await fetchTransactions(Number(biggestPool.pool_id), page, pageSize);
+    transactions = response;
+    console.log('Received transactions:', transactions);
   } catch (error) {
-    console.error('Failed to fetch chart data:', error);
+    console.error('Failed to fetch transactions:', error);
+  } finally {
+    isLoadingTxns = false;
   }
 };
 
-const handleResize = () => {
-  if (chart && chartContainer) {
-    chart.applyOptions({
-      width: chartContainer.clientWidth,
-    });
+// Add pagination controls to the template
+const loadNextPage = () => {
+  currentPage++;
+  loadTransactionData(currentPage);
+};
+
+const loadPrevPage = () => {
+  if (currentPage > 1) {
+    currentPage--;
+    loadTransactionData(currentPage);
   }
 };
 
-// Watch for changes in biggestPool and chartContainer
-$: if (biggestPool && chartContainer) {
-  initChart();
+// Watch for changes in biggestPool
+$: if (biggestPool) {
+  currentPage = 1; // Reset to first page when pool changes
+  loadTransactionData(currentPage);
 }
 
-onMount(() => {
-  window.addEventListener('resize', handleResize);
-  return cleanup;
-});
+// Add helper functions to handle the number formatting
+const formatAmount = (amount: string, decimals: number): string => {
+  return (Number(amount) / Math.pow(10, decimals)).toFixed(2);
+};
+
+const formatPrice = (price: string): string => {
+  return Number(price).toFixed(6);
+};
+
+// Add helper function to calculate the correct price
+const calculatePrice = (tx: Transaction, tokenSymbol: string | undefined): string => {
+  if (!tokenSymbol) return "0";
+  
+  // If we're selling the token (it's the pay token), divide receive by pay
+  if (tx.paySymbol === tokenSymbol) {
+    return (Number(tx.receiveAmount) / Math.pow(10, tx.receiveToken.decimals) / 
+           (Number(tx.payAmount) / Math.pow(10, tx.payToken.decimals))).toFixed(6);
+  }
+  // If we're buying the token (it's the receive token), divide pay by receive
+  else {
+    return (Number(tx.payAmount) / Math.pow(10, tx.payToken.decimals) / 
+           (Number(tx.receiveAmount) / Math.pow(10, tx.receiveToken.decimals))).toFixed(6);
+  }
+};
 </script>
 
 <div class="p-4">
   <h1 class="text-2xl font-bold text-white mb-6">{token?.name} ({token?.symbol})</h1>
   
   {#if token && biggestPool}
-    <div class="bg-slate-800 rounded-lg p-4">
-      <div 
-        bind:this={chartContainer} 
-        class="w-full h-[400px]"
-      />
+    <TradingViewChart 
+      poolId={Number(biggestPool.pool_id)} 
+      symbol={biggestPool.symbol} 
+    />
+
+    <!-- Transactions Table -->
+    <div class="bg-[#14161A] rounded-lg p-4">
+      <h2 class="text-xl font-semibold text-white mb-4">Recent Transactions</h2>
+      
+      {#if isLoadingTxns}
+        <div class="text-white">Loading transactions...</div>
+      {:else if transactions.length === 0}
+        <div class="text-white">No transactions found</div>
+      {:else}
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-white">
+            <thead class="text-sm uppercase bg-gray-800">
+              <tr>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Price</th>
+                <th class="px-4 py-3">Amount</th>
+                <th class="px-4 py-3">Total Value</th>
+                <th class="px-4 py-3">Time</th>
+                <th class="px-4 py-3">Tx</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each transactions as tx}
+                <tr class="border-b border-slate-700">
+                  <td class="px-4 py-3">
+                    <span class={tx.paySymbol === token?.symbol ? 'text-red-500' : 'text-green-500'}>
+                      {tx.paySymbol === token?.symbol ? 'Sell' : 'Buy'}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    ${calculatePrice(tx, token?.symbol)}
+                  </td>
+                  <td class="px-4 py-3">
+                    {formatAmount(tx.payAmount, tx.payToken.decimals)} {tx.paySymbol}
+                  </td>
+                  <td class="px-4 py-3">
+                    {formatAmount(tx.receiveAmount, tx.receiveToken.decimals)} {tx.receiveSymbol}
+                  </td>
+                  <td class="px-4 py-3">
+                    {formatDistance(new Date(Number(tx.ts) / 1_000_000), new Date(), { addSuffix: true })}
+                  </td>
+                  <td class="px-4 py-3">
+                    <a 
+                      href={`https://explorer.sui.io/txblock/${tx.txId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-blue-400 hover:text-blue-300"
+                    >
+                      View
+                    </a>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+          
+          <!-- Add pagination controls -->
+          <div class="mt-4 flex justify-between items-center">
+            <button 
+              class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+              on:click={loadPrevPage}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+            <span class="text-white">Page {currentPage}</span>
+            <button 
+              class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+              on:click={loadNextPage}
+              disabled={transactions.length < pageSize}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
   {:else}
     <div class="text-white">Loading...</div>
