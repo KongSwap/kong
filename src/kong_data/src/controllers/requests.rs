@@ -47,6 +47,21 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
     Ok("Requests updated".to_string())
 }
 
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_request(stable_request_json: String) -> Result<String, String> {
+    let request: StableRequest = match serde_json::from_str(&stable_request_json) {
+        Ok(request) => request,
+        Err(e) => return Err(format!("Invalid request: {}", e)),
+    };
+
+    REQUEST_MAP.with(|request_map| {
+        let mut map = request_map.borrow_mut();
+        map.insert(StableRequestId(request.request_id), request);
+    });
+
+    Ok("Request updated".to_string())
+}
+
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn get_requests(request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<u16>) -> Result<Vec<RequestReply>, String> {
     let num_requests = num_requests.map(|n| n as usize);

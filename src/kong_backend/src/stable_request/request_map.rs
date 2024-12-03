@@ -5,6 +5,7 @@ use super::reply::Reply;
 use super::stable_request::{StableRequest, StableRequestId};
 use super::status::{Status, StatusCode};
 
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::REQUEST_MAP;
 
@@ -42,7 +43,7 @@ pub fn insert(request: &StableRequest) -> u64 {
             request_id,
             ..request.clone()
         };
-        map.insert(StableRequestId(request_id), insert_request);
+        map.insert(StableRequestId(request_id), insert_request.clone());
         request_id
     })
 }
@@ -74,4 +75,29 @@ pub fn update_reply(key: u64, reply: Reply) -> Option<StableRequest> {
             None => None,
         }
     })
+}
+
+pub fn archive_request_to_kong_data(request_id: u64) {
+    ic_cdk::spawn(async move {
+        let request = match get_by_request_and_user_id(Some(request_id), None, Some(1)).pop() {
+            Some(request) => request,
+            None => return,
+        };
+
+        match serde_json::to_string(&request) {
+            Ok(request_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_request", (request_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive request_id#{}. {}", request.request_id, e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize request_id #{}. {}", request.request_id, e)),
+        }
+    });
 }

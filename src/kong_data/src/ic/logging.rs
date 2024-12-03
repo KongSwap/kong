@@ -3,6 +3,7 @@
 /// # Arguments
 ///
 /// * `msg` - The message to log.
+#[allow(dead_code)]
 pub fn info_log(msg: &str) {
     log("INFO", msg);
 }
@@ -12,6 +13,7 @@ pub fn info_log(msg: &str) {
 /// # Arguments
 ///
 /// * `msg` - The message to log.
+#[allow(dead_code)]
 pub fn error_log(msg: &str) {
     log("ERROR", msg);
 }

@@ -4,7 +4,7 @@ use std::ops::Bound;
 
 use crate::stable_memory::REQUEST_MAP;
 
-const MAX_REQUESTS: usize = 20;
+const MAX_REQUESTS: usize = 100;
 
 /// get requests filtered by user_id
 pub fn get_by_request_and_user_id(start_request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<usize>) -> Vec<StableRequest> {

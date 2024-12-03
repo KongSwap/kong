@@ -199,16 +199,14 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
             StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
         };
         map.insert(StableTokenId(token_id), insert_token.clone());
-        // archive new token
-        archive_token(insert_token);
+        archive_token_to_kong_data(insert_token);
         Ok(token_id)
     })
 }
 
 pub fn update(token: &StableToken) {
     TOKEN_MAP.with(|m| m.borrow_mut().insert(StableTokenId(token.token_id()), token.clone()));
-    // archive updated token
-    archive_token(token.clone());
+    archive_token_to_kong_data(token.clone());
 }
 
 pub fn remove(token_id: u32) -> Result<(), String> {
@@ -218,7 +216,7 @@ pub fn remove(token_id: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn archive_token(token: StableToken) {
+fn archive_token_to_kong_data(token: StableToken) {
     ic_cdk::spawn(async move {
         match serde_json::to_string(&token) {
             Ok(token_json) => {

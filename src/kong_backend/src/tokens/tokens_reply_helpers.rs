@@ -4,22 +4,15 @@ use super::ic_reply::ICReply;
 use super::lp_reply::LPReply;
 
 use crate::stable_lp_token::lp_token_map;
-use crate::stable_pool::pool_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
 use crate::stable_token::token::Token;
 
 pub fn to_token_reply(token: &StableToken) -> TokensReply {
     let token_id = token.token_id();
-    let pool_symbol = token
-        .pool_id()
-        .and_then(|pool_id| pool_map::get_by_pool_id(pool_id).map(|pool| pool.symbol()))
-        .unwrap_or_else(|| "Pool not found".to_string());
-
     match token {
         LP(lp_token) => TokensReply::LP(LPReply {
             token_id,
-            pool_symbol,
             chain: token.chain(),
             name: token.name(),
             symbol: token.symbol(),
@@ -36,7 +29,6 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
         }),
         IC(ic_token) => TokensReply::IC(ICReply {
             token_id,
-            pool_symbol,
             chain: token.chain(),
             name: token.name(),
             symbol: token.symbol(),

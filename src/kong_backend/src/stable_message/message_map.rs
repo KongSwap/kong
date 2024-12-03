@@ -2,6 +2,7 @@ use std::ops::Bound;
 
 use super::stable_message::{StableMessage, StableMessageId};
 
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::MESSAGE_MAP;
 
@@ -41,4 +42,25 @@ pub fn insert(message: &StableMessage) -> Result<u64, String> {
         map.insert(StableMessageId(message_id), insert_message.clone());
         Ok(message_id)
     })
+}
+
+#[allow(dead_code)]
+fn archive_message(message: StableMessage) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&message) {
+            Ok(message_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_message", (message_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive message_id#{}. {}", message.message_id, e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize message_id #{}. {}", message.message_id, e)),
+        }
+    });
 }

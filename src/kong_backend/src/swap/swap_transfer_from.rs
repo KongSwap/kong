@@ -1,4 +1,5 @@
 use candid::Nat;
+use icrc_ledger_types::icrc1::account::Account;
 
 use super::calculate_amounts::calculate_amounts;
 use super::return_pay_token::return_pay_token;
@@ -6,6 +7,7 @@ use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
 use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
+use super::archive_to_kong_data::archive_to_kong_data;
 
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
@@ -21,12 +23,12 @@ use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
-
-    let receive_amount = args.receive_amount.clone();
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
+    let receive_amount = args.receive_amount.clone();
+    let request = StableRequest::new(user_id, &Request::Swap(args), ts);
+    let request_id = request_map::insert(&request);
 
-    match process_swap(
+    let result = process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -38,24 +40,28 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         ts,
     )
     .await
-    {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
-        Err(e) => {
+    .map_or_else(
+        |e| {
             request_map::update_status(request_id, StatusCode::Failed, Some(&e));
             Err(e)
-        }
-    }
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
+
+    archive_to_kong_data(request);
+
+    result
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
-
-    let receive_amount = args.receive_amount.clone();
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
+    let receive_amount = args.receive_amount.clone();
+    let request = StableRequest::new(user_id, &Request::Swap(args), ts);
+    let request_id = request_map::insert(&request);
 
     ic_cdk::spawn(async move {
         match process_swap(
@@ -74,12 +80,13 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
+
+        archive_to_kong_data(request);
     });
 
     Ok(request_id)
 }
 
-#[allow(clippy::type_complexity)]
 async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, StableToken, f64, Address), String> {
     let pay_token = token_map::get_by_token(&args.pay_token)?;
     let pay_amount = args.pay_amount.clone();
@@ -100,10 +107,14 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
         return Err("Pay tx_id not supported".to_string());
     }
 
+    if !pay_token.is_icrc2() {
+        return Err("Pay token must support ICRC2".to_string());
+    }
+
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
 
-    // calculate receive_amount and swaps
+    // calculate receive_amount and swaps. do after user_id is created as it will be needed to calculate the receive_amount (user fee level)
     // no needs to store the return values as it'll be called again in process_swap
     calculate_amounts(&pay_token, &pay_amount, &receive_token, args.receive_amount.as_ref(), max_slippage)?;
 
@@ -124,65 +135,71 @@ async fn process_swap(
     to_address: &Address,
     ts: u64,
 ) -> Result<SwapReply, String> {
-    // update the request status
+    let caller_id = caller_id();
+    let kong_backend = kong_settings_map::get().kong_backend_account;
+    let mut transfer_ids = Vec::new();
+
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    // process transfer_from of pay token
-    let pay_transfer_id = transfer_from_token(request_id, pay_token, pay_amount, ts).await?;
-
-    // from this point, pay token has been transferred to the canister. Any errors from now on we will need to return pay token back to the user
-    // empty vector to store the block ids of the on-chain transfers
-    let mut transfer_ids = Vec::new();
-    transfer_ids.push(pay_transfer_id);
+    transfer_from_token(request_id, &caller_id, pay_token, pay_amount, &kong_backend, &mut transfer_ids, ts)
+        .await
+        .map_err(|e| format!("Pay token transfer_from failed. {}", e))?;
 
     // re-calculate receive_amount and swaps with the latest pool state
-    match update_liquidity_pool(request_id, pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
-        Ok((receive_amount, mid_price, price, slippage, swaps)) => {
-            // send_receive_token() will always return a SwapReply
-            Ok(send_receive_token(
-                request_id,
-                user_id,
-                pay_token,
-                pay_amount,
-                receive_token,
-                &receive_amount,
-                to_address,
-                &mut transfer_ids,
-                mid_price,
-                price,
-                slippage,
-                &swaps,
-                ts,
-            )
-            .await)
-        }
-        Err(e) => {
-            // return pay token back to user
-            return_pay_token(
-                request_id,
-                user_id,
-                pay_token,
-                pay_amount,
-                Some(receive_token),
-                &mut transfer_ids,
-                ts,
-            )
-            .await;
-            let error = format!("Swap #{} failed: {}", request_id, e);
-            Err(error)
-        }
-    }
+    let (receive_amount, mid_price, price, slippage, swaps) =
+        match update_liquidity_pool(request_id, pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
+            Ok((receive_amount, mid_price, price, slippage, swaps)) => (receive_amount, mid_price, price, slippage, swaps),
+            Err(e) => {
+                // return pay token back to user
+                return_pay_token(
+                    request_id,
+                    user_id,
+                    &caller_id,
+                    pay_token,
+                    pay_amount,
+                    Some(receive_token),
+                    &mut transfer_ids,
+                    ts,
+                )
+                .await;
+                return Err(format!("Req #{} failed. {}", request_id, e));
+            }
+        };
+
+    let reply = send_receive_token(
+        request_id,
+        user_id,
+        pay_token,
+        pay_amount,
+        receive_token,
+        &receive_amount,
+        to_address,
+        &mut transfer_ids,
+        mid_price,
+        price,
+        slippage,
+        &swaps,
+        ts,
+    )
+    .await;
+
+    Ok(reply)
 }
 
-async fn transfer_from_token(request_id: u64, token: &StableToken, amount: &Nat, ts: u64) -> Result<u64, String> {
-    let symbol = token.symbol();
+async fn transfer_from_token(
+    request_id: u64,
+    from_principal_id: &Account,
+    token: &StableToken,
+    amount: &Nat,
+    to_principal_id: &Account,
+    transfer_ids: &mut Vec<u64>,
+    ts: u64,
+) -> Result<(), String> {
     let token_id = token.token_id();
-
-    let caller_id = caller_id();
 
     request_map::update_status(request_id, StatusCode::SendPayToken, None);
 
-    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings_map::get().kong_backend_account).await {
+    match icrc2_transfer_from(token, amount, from_principal_id, to_principal_id).await {
         Ok(tx_id) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP to prevent reentrancy issues after icrc2_transfer_from()
             // as icrc2_transfer_from() does a new transfer so tx_id will be new
@@ -195,13 +212,13 @@ async fn transfer_from_token(request_id: u64, token: &StableToken, amount: &Nat,
                 tx_id: TxId::BlockIndex(tx_id),
                 ts,
             });
+            transfer_ids.push(transfer_id);
             request_map::update_status(request_id, StatusCode::SendPayTokenSuccess, None);
-            Ok(transfer_id)
+            Ok(())
         }
         Err(e) => {
-            let error = format!("Swap #{} failed transfer_from user {} {}: {}", request_id, amount, symbol, e,);
             request_map::update_status(request_id, StatusCode::SendPayTokenFailed, Some(&e));
-            Err(error)
+            Err(e)
         }
     }
 }

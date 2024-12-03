@@ -112,8 +112,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
                 referred_by_expires_at,
                 ..Default::default()
             };
-            // archive new user
-            archive_user(user.clone());
+            archive_user_to_kong_data(user.clone());
             user
         }
         Err(e) => Err(e)?, // do not allow anonymous user
@@ -127,7 +126,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
     })
 }
 
-fn archive_user(user: StableUser) {
+fn archive_user_to_kong_data(user: StableUser) {
     ic_cdk::spawn(async move {
         match serde_json::to_string(&user) {
             Ok(user_json) => {

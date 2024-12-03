@@ -8,6 +8,8 @@ use crate::chains::chains::LP_CHAIN;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
 
+pub const LP_DECIMALS: u8 = 8; // LP token decimal
+
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct LPToken {
     pub token_id: u32,
@@ -18,7 +20,7 @@ pub struct LPToken {
 }
 
 impl LPToken {
-    pub fn new(token_0: &StableToken, token_1: &StableToken, decimals: u8, on_kong: bool) -> Self {
+    pub fn new(token_0: &StableToken, token_1: &StableToken, on_kong: bool) -> Self {
         let symbol = token::symbol(token_0, token_1);
         // LP token's address is the combination of token_0's token_id and token_1's token_id
         // which is unique making it a unique identifier for the LP token
@@ -27,7 +29,7 @@ impl LPToken {
             token_id: 0,
             symbol,
             address,
-            decimals,
+            decimals: LP_DECIMALS,
             on_kong,
         }
     }

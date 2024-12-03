@@ -46,31 +46,15 @@ pub struct StablePool {
 
 impl StablePool {
     pub fn symbol(&self) -> String {
-        format!("{}_{}", self.symbol_0(), self.symbol_1())
+        format!("{}_{}", self.token_0().symbol(), self.token_1().symbol())
     }
 
     pub fn token_0(&self) -> StableToken {
         token_map::get_by_token_id(self.token_id_0).unwrap()
     }
 
-    pub fn chain_0(&self) -> String {
-        self.token_0().chain().to_string()
-    }
-
-    pub fn symbol_0(&self) -> String {
-        self.token_0().symbol().to_string()
-    }
-
     pub fn token_1(&self) -> StableToken {
         token_map::get_by_token_id(self.token_id_1).unwrap()
-    }
-
-    pub fn chain_1(&self) -> String {
-        self.token_1().chain().to_string()
-    }
-
-    pub fn symbol_1(&self) -> String {
-        self.token_1().symbol().to_string()
     }
 
     pub fn lp_token(&self) -> StableToken {
