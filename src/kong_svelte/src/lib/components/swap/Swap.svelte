@@ -27,6 +27,7 @@
   import { walletsList } from "@windoge98/plug-n-play";
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
+  import { slide } from 'svelte/transition';
 
   let isProcessing = false;
   let rotationCount = 0;
@@ -89,13 +90,31 @@
 
   let buttonText = '';
 
+  // Add this helper function to get token balance
+  function getTokenBalance(tokenId: string): string {
+    if (!tokenId) return "0";
+    const balance = $tokenStore.balances[tokenId]?.in_tokens || BigInt(0);
+    const token = $tokenStore.tokens.find(t => t.canister_id === tokenId);
+    if (!token) return "0";
+    return (Number(balance) / Math.pow(10, token.decimals)).toString();
+  }
+
+  // Add reactive statement to check balance
+  $: insufficientFunds = $swapState.payToken && $swapState.payAmount && 
+      Number($swapState.payAmount) > Number(getTokenBalance($swapState.payToken.canister_id));
+
+  // Update the buttonText reactive statement
   $: {
-    if ($swapState.isProcessing) {
+    if ($swapState.showSuccessModal) {
+      buttonText = 'Swap';
+    } else if ($swapState.isProcessing) {
       buttonText = 'Processing...';
     } else if ($swapState.error) {
       buttonText = `${$swapState.error}`;
+    } else if (insufficientFunds) {
+      buttonText = 'Insufficient Funds';
     } else if ($swapState.swapSlippage > userMaxSlippage) {
-      buttonText = 'Click to Adjust Slippage';
+      buttonText = 'High Slippage - Click to Adjust';
     } else if (!$auth?.account?.owner) {
       buttonText = 'Click to Connect Wallet';
     } else if (!$swapState.payAmount) {
@@ -108,6 +127,9 @@
   function getButtonTooltip(owner: boolean | undefined, slippageTooHigh: boolean, error: string | null): string {
     if (!owner) {
       return 'Connect to trade';
+    } else if (insufficientFunds) {
+      const balance = getTokenBalance($swapState.payToken?.canister_id);
+      return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
     } else if (slippageTooHigh) {
       return `Slippage: ${$swapState.swapSlippage}% > ${userMaxSlippage}%`;
     } else if (error) {
@@ -154,18 +176,18 @@
   }
 
   async function handleSwap(): Promise<boolean> {
-    if (
-      !$swapState.payToken ||
-      !$swapState.receiveToken ||
-      !$swapState.payAmount ||
-      $swapState.isProcessing
-    ) {
+    if (!$swapState.payToken || !$swapState.receiveToken || !$swapState.payAmount || $swapState.isProcessing) {
       return false;
     }
 
     try {
-      swapState.setIsProcessing(true);
-      swapState.setError(null);
+      // Set initial processing state
+      swapState.update(state => ({
+        ...state,
+        isProcessing: true,
+        error: null,
+        showConfirmation: false // Hide confirmation immediately when processing starts
+      }));
 
       // Create new swap entry and store its ID
       currentSwapId = swapStatusStore.addSwap({
@@ -187,20 +209,25 @@
         lpFees: $swapState.lpFees,
       });
 
-      if (success) {
-        toastStore.success("Swap successful");
-        return true;
-      } else {
-        toastStore.error("Swap failed");
+      if (!success) {
+        swapState.update(state => ({
+          ...state,
+          isProcessing: false,
+          error: "Swap failed"
+        }));
         return false;
       }
+
+      return true;
+
     } catch (error) {
       console.error("Swap error:", error);
-      toastStore.error("Swap failed: " + (error.message || "Unknown error"));
+      swapState.update(state => ({
+        ...state,
+        isProcessing: false,
+        error: error.message || "Unknown error"
+      }));
       return false;
-    } finally {
-      swapState.setIsProcessing(false);
-      currentSwapId = null;
     }
   }
 
@@ -209,6 +236,7 @@
 
     if (panelType === "pay") {
       await swapState.setPayAmount(value);
+      await updateSwapQuote();
     } else {
       await swapState.setReceiveAmount(value);
     }
@@ -222,9 +250,9 @@
     }
   }
 
-  function handleTokenSelected(token: FE.Token, panelType: PanelType) {
+  async function handleTokenSelected(token: FE.Token, panelType: PanelType) {
     const currentState = get(swapState);
-
+    
     // If selecting the same token that's in the other panel, reverse the positions
     if (
       (panelType === "pay" &&
@@ -236,24 +264,22 @@
       return;
     }
 
-    // Otherwise just update the selected token
+    // Update token and close selector
     if (panelType === 'pay') {
       swapState.setPayToken(token);
       swapState.update(s => ({ ...s, showPayTokenSelector: false }));
-      if (token.canister_id) {
-        updateTokenInURL('from', token.canister_id);
-      }
     } else {
       swapState.setReceiveToken(token);
       swapState.update(s => ({ ...s, showReceiveTokenSelector: false }));
-      if (token.canister_id) {
-        updateTokenInURL('to', token.canister_id);
-      }
     }
 
-    if ($swapState.payAmount) {
-      debouncedGetQuote($swapState.payAmount);
+    // Update URL
+    if (token.canister_id) {
+      updateTokenInURL(panelType === 'pay' ? 'from' : 'to', token.canister_id);
     }
+
+    // Get new quote if we have all required data
+    await updateSwapQuote();
   }
 
   async function handleReverseTokens() {
@@ -264,15 +290,23 @@
     
     const tempPayToken = $swapState.payToken;
     const tempPayAmount = $swapState.payAmount;
+    const tempReceiveAmount = $swapState.receiveAmount;
     
+    // Update tokens
     swapState.setPayToken($swapState.receiveToken);
     swapState.setReceiveToken(tempPayToken);
     
-    if (tempPayAmount) {
+    // Set the new pay amount
+    if (tempReceiveAmount && tempReceiveAmount !== "0") {
+      await swapState.setPayAmount(tempReceiveAmount);
+    } else if (tempPayAmount) {
       await swapState.setPayAmount(tempPayAmount);
     }
     
-    // Update URL params if both tokens are present
+    // Update quote with reversed tokens
+    await updateSwapQuote();
+    
+    // Update URL params
     if ($swapState.payToken?.canister_id && $swapState.receiveToken?.canister_id) {
       updateTokenInURL('from', $swapState.payToken.canister_id);
       updateTokenInURL('to', $swapState.receiveToken.canister_id);
@@ -329,36 +363,17 @@
       return;
     }
 
+    if (insufficientFunds) {
+      toastStore.showError('Insufficient funds for this swap');
+      return;
+    }
+
     if ($swapState.swapSlippage > userMaxSlippage) {
       isSettingsModalOpen = true;
       return;
     }
 
-    if (!$swapState.payToken || !$swapState.receiveToken) {
-      // Focus the pay panel to select tokens
-      const payPanel = document.querySelector('.panel:first-child input');
-      if (payPanel) {
-        (payPanel as HTMLElement).focus();
-      }
-      return;
-    }
-
-    if (!$swapState.payAmount) {
-      // Focus the pay amount input
-      const payAmountInput = document.querySelector('.panel:first-child input');
-      if (payAmountInput) {
-        (payAmountInput as HTMLElement).focus();
-      }
-      return;
-    }
-
-    swapState.update((state) => ({
-      ...state,
-      showConfirmation: true,
-      isProcessing: false,
-      error: null,
-      showSuccessModal: false,
-    }));
+    handleSwapClick();
   }
 
   // Constants for dropdown positioning
@@ -400,6 +415,66 @@
     viewBox: "0 0 35 42",
     path: "M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
   };
+
+  // Add a new state for quote loading
+  let isQuoteLoading = false;
+
+  // Update the updateSwapQuote function
+  async function updateSwapQuote() {
+    const state = get(swapState);
+    
+    if (!state.payToken || !state.receiveToken || !state.payAmount || state.payAmount === "0") {
+      swapState.update(s => ({
+        ...s,
+        receiveAmount: "0",
+        swapSlippage: 0
+      }));
+      return;
+    }
+
+    try {
+      isQuoteLoading = true; // Use separate loading state for quotes
+      
+      const quote = await SwapService.getSwapQuote(
+        state.payToken,
+        state.receiveToken,
+        state.payAmount
+      );
+      
+      swapState.update(s => ({
+        ...s,
+        receiveAmount: quote.receiveAmount,
+        swapSlippage: quote.slippage,
+      }));
+    } catch (error) {
+      console.error("Error getting quote:", error);
+      swapState.update(s => ({
+        ...s,
+        receiveAmount: "0",
+        swapSlippage: 0,
+        error: "Failed to get quote"
+      }));
+    } finally {
+      isQuoteLoading = false;
+    }
+  }
+
+  // Add reactive statement to update quote when tokens change
+  $: if ($swapState.payToken && $swapState.receiveToken && $swapState.payAmount) {
+    updateSwapQuote();
+  }
+
+  function handleSuccessModalClose() {
+    swapState.update(state => ({
+      ...state,
+      showSuccessModal: false,
+      isProcessing: false,
+      error: null,
+      // Reset other relevant states
+      payAmount: '',
+      receiveAmount: '',
+    }));
+  }
 </script>
 
 <div class="swap-wrapper">
@@ -440,20 +515,6 @@
           />
         </div>
 
-        <div class="panel">
-          <SwapPanel
-            title={panels[1].title}
-            token={$swapState.receiveToken}
-            amount={$swapState.receiveAmount}
-            onAmountChange={handleAmountChange}
-            onTokenSelect={() => handleTokenSelect("receive")}
-            showPrice={true}
-            slippage={$swapState.swapSlippage}
-            disabled={false}
-            panelType="receive"
-          />
-        </div>
-
         <button
           class="switch-button"
           class:disabled={isProcessing}
@@ -480,30 +541,40 @@
             </svg>
           </div>
         </button>
+
+        <div class="panel">
+          <SwapPanel
+            title={panels[1].title}
+            token={$swapState.receiveToken}
+            amount={$swapState.receiveAmount}
+            onAmountChange={handleAmountChange}
+            onTokenSelect={() => handleTokenSelect("receive")}
+            showPrice={true}
+            slippage={$swapState.swapSlippage}
+            disabled={false}
+            panelType="receive"
+          />
+        </div>
       </div>
 
       <div class="swap-footer">
         <button
           class="swap-button"
-          class:error={$swapState.error || $swapState.swapSlippage > userMaxSlippage}
+          class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage) || insufficientFunds}
           class:processing={$swapState.isProcessing}
-          class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage}
+          class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage && !insufficientFunds}
           on:click={handleButtonAction}
           title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
         >
           <div class="button-content">
-            {#key buttonText}
-              <span class="button-text swap-button-text" in:fade={{ duration: 200 }}>
-                {buttonText}
-              </span>
-            {/key}
             {#if $swapState.isProcessing}
-              <div class="loading-spinner"></div>
+              <div class="loading-spinner" />
             {/if}
+            <span class="button-text" class:warning={insufficientFunds || $swapState.swapSlippage > userMaxSlippage}>
+              {buttonText}
+            </span>
           </div>
-          {#if !$swapState.error && $swapState.swapSlippage <= userMaxSlippage}
-            <div class="button-glow"></div>
-          {/if}
+          <div class="button-glow" />
         </button>
       </div>
     </div>
@@ -567,7 +638,7 @@
 <SwapSuccessModal
   show={$swapState.showSuccessModal}
   {...$swapState.successDetails}
-  onClose={() => swapState.setShowSuccessModal(false)}
+  onClose={handleSuccessModalClose}
 />
 
 {#if isSettingsModalOpen}
@@ -594,9 +665,9 @@
     display: flex;
     gap: 1px;
     margin-bottom: 12px;
-    padding: 2px;
+    padding: 8px;
     background: rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
@@ -611,7 +682,7 @@
       rgba(55, 114, 255, 0.15), 
       rgba(55, 114, 255, 0.2)
     );
-    border-radius: 6px;
+    border-radius: 12px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 0;
   }
@@ -622,7 +693,7 @@
     flex: 1;
     padding: 6px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: 16px;
     font-size: 0.875rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.7);
@@ -921,5 +992,14 @@
     min-width: 140px;
     text-align: center;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  }
+
+  .swap-button.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+    box-shadow: none;
+  }
+
+  .button-text.warning {
+    font-weight: 600;
   }
 </style>

@@ -8,12 +8,14 @@
   import { createEventDispatcher } from "svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   const dispatch = createEventDispatcher();
   export let pools: any[] = [];
   export let filterPair: {token0?: string, token1?: string} = {}; // Filter by specific token pair
   export let filterToken: string = ''; // Filter by single token
+  export let initialSearch: string = ""; // Initial search term
+  export let pool: any = null; // Single pool to display
 
   let loading = true;
   let error: string | null = null;
@@ -21,65 +23,110 @@
   let processedPools: any[] = [];
   let selectedPool = null;
   let showUserPoolModal = false;
-  let searchQuery = '';
+  let searchQuery = initialSearch;
   let searchInput: HTMLInputElement;
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
   let sortDirection = 'desc';
+  let isSearching = false;
+  let searchResultsReady = false;
+  let initialFilterApplied = false;
 
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;
   $: {
-    console.log("Raw balances in PoolList:", balances);
     if (Array.isArray(balances)) {
       poolBalances = balances;
-      processedPools = balances.map(pool => ({
-        id: pool.name,
-        name: pool.name,
-        symbol: pool.symbol,
-        symbol_0: pool.symbol_0,
-        symbol_1: pool.symbol_1,
-        balance: pool.balance.toString(),
-        amount_0: pool.amount_0,
-        amount_1: pool.amount_1,
-        usd_balance: pool.usd_balance,
-        pool_id: pool.pool_id,
-        address_0: pool.symbol_0,
-        address_1: pool.symbol_1,
-        searchableText: `${pool.symbol_0}/${pool.symbol_1} ${pool.name || ''} ${pool.pool_id || ''}`.toLowerCase()
-      }));
-      console.log("Final processedPools:", processedPools);
+      processedPools = balances
+        .filter(poolBalance => Number(poolBalance.balance) > 0)
+        .map(poolBalance => {
+          const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);
+          const token1 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_1);
+          
+          // Create searchable text with more variations and aliases
+          const searchableText = [
+            poolBalance.symbol_0,
+            poolBalance.symbol_1,
+            `${poolBalance.symbol_0}/${poolBalance.symbol_1}`,
+            poolBalance.name || '',
+            token0?.name || '',
+            token1?.name || '',
+            token0?.canister_id || '',
+            token1?.canister_id || '',
+            // Add common aliases
+            poolBalance.symbol_0 === 'ICP' ? 'internet computer protocol dfinity' : '',
+            poolBalance.symbol_1 === 'ICP' ? 'internet computer protocol dfinity' : '',
+            poolBalance.symbol_0 === 'USDT' ? 'tether usdt' : '',
+            poolBalance.symbol_1 === 'USDT' ? 'tether usdt' : '',
+            poolBalance.symbol_0 === 'BTC' ? 'bitcoin btc' : '',
+            poolBalance.symbol_1 === 'BTC' ? 'bitcoin btc' : '',
+            poolBalance.symbol_0 === 'ETH' ? 'ethereum eth' : '',
+            poolBalance.symbol_1 === 'ETH' ? 'ethereum eth' : '',
+          ].join(' ').toLowerCase();
+          
+          return {
+            id: poolBalance.name,
+            name: poolBalance.name,
+            symbol: poolBalance.symbol,
+            symbol_0: poolBalance.symbol_0,
+            symbol_1: poolBalance.symbol_1,
+            balance: poolBalance.balance.toString(),
+            amount_0: poolBalance.amount_0,
+            amount_1: poolBalance.amount_1,
+            usd_balance: poolBalance.usd_balance,
+            pool_id: poolBalance.pool_id,
+            address_0: poolBalance.symbol_0,
+            address_1: poolBalance.symbol_1,
+            searchableText
+          };
+        });
+
+      // If we have a specific pool to display, immediately filter for it
+      if (pool && !initialFilterApplied) {
+        searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
+        debouncedSearchQuery = searchQuery.toLowerCase();
+        initialFilterApplied = true;
+        searchResultsReady = true;
+        isSearching = false;
+      }
     } else {
       poolBalances = [];
       processedPools = [];
     }
   }
 
-  // Debounce search input
-  $: {
+  // Debounce search input only when user is actively searching
+  $: if (!initialFilterApplied || searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`) {
+    isSearching = true;
+    searchResultsReady = false;
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       debouncedSearchQuery = searchQuery.toLowerCase();
+      setTimeout(() => {
+        searchResultsReady = true;
+        isSearching = false;
+      }, 100);
     }, 150);
   }
 
   // Filter pools based on search, pair filter, and token filter
   $: filteredPools = processedPools
-    .filter(pool => {
-      // Apply search filter
+    .filter(poolItem => {
+      if (pool) {
+        return poolItem.symbol_0 === pool.symbol_0 && poolItem.symbol_1 === pool.symbol_1;
+      }
+      
       if (debouncedSearchQuery) {
-        return pool.searchableText.includes(debouncedSearchQuery);
+        return poolItem.searchableText.includes(debouncedSearchQuery);
       }
       
-      // Apply pair filter
       if (filterPair.token0 && filterPair.token1) {
-        return (pool.symbol_0 === filterPair.token0 && pool.symbol_1 === filterPair.token1) ||
-               (pool.symbol_0 === filterPair.token1 && pool.symbol_1 === filterPair.token0);
+        return (poolItem.symbol_0 === filterPair.token0 && poolItem.symbol_1 === filterPair.token1) ||
+               (poolItem.symbol_0 === filterPair.token1 && poolItem.symbol_1 === filterPair.token0);
       }
       
-      // Apply single token filter
       if (filterToken) {
-        return pool.symbol_0 === filterToken || pool.symbol_1 === filterToken;
+        return poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken;
       }
       
       return true;
@@ -93,9 +140,23 @@
     try {
       loading = true;
       error = null;
-      console.log("Loading pool balances...");
+      
       await poolStore.loadUserPoolBalances();
-      console.log("Pool balances loaded");
+      
+      // Don't show loading state for specific pool view
+      if (!pool) {
+        isSearching = true;
+        searchResultsReady = false;
+      }
+      
+      // If we have initial search or specific pool, apply filter immediately
+      if ((initialSearch || pool) && !initialFilterApplied) {
+        searchQuery = pool ? `${pool.symbol_0}/${pool.symbol_1}` : initialSearch;
+        debouncedSearchQuery = searchQuery.toLowerCase();
+        initialFilterApplied = true;
+      }
+      
+      searchResultsReady = true;
     } catch (err) {
       console.error("Error loading pool balances:", err);
       error = err.message;
@@ -103,16 +164,16 @@
       processedPools = [];
     } finally {
       loading = false;
+      isSearching = false;
     }
   }
 
   function handleAddLiquidity() {
-    sidebarStore.close();
     goto('/earn/add');
   }
 
-  function handlePoolItemClick(pool) {
-    selectedPool = pool;
+  function handlePoolItemClick(poolItem) {
+    selectedPool = poolItem;
     showUserPoolModal = true;
   }
 
@@ -139,18 +200,21 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="pool-list-wrapper" on:keydown={handleKeydown}>
   <div class="controls-wrapper">
+    {#if !pool}
     <div class="search-section">
       <div class="search-input-wrapper">
         <input
           bind:this={searchInput}
           bind:value={searchQuery}
           type="text"
-          placeholder="Search pools by name or token"
+          placeholder="Search pools by name, token, or canister ID"
           class="search-input"
         />
         {#if searchQuery}
+          <!-- svelte-ignore a11y_consider_explicit_label -->
           <button 
             class="clear-button"
             on:click={() => {
@@ -168,6 +232,7 @@
     </div>
 
     <div class="filter-bar">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
       <div class="sort-toggle" on:click={() => {
         sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
       }}>
@@ -187,6 +252,7 @@
         </svg>
       </div>
     </div>
+    {/if}
   </div>
 
   <div class="pool-list-content">
@@ -195,13 +261,17 @@
         <div class="loading-state" in:fade>
           <p>Loading positions...</p>
         </div>
+      {:else if !pool && (isSearching || !searchResultsReady)}
+        <div class="loading-state" in:fade>
+          <p>Finding pools...</p>
+        </div>
       {:else if error}
         <div class="error-state" in:fade>
           <p>{error}</p>
         </div>
       {:else if filteredPools.length === 0}
         <div class="empty-state" in:fade>
-          {#if searchQuery}
+          {#if searchQuery && !pool}
             <p>No pools found matching "{searchQuery}"</p>
             <button 
               class="clear-search-button"
@@ -212,19 +282,22 @@
             >
               Clear Search
             </button>
-          {:else}
+          {:else if !pool}
             <p>No active positions</p>
             <button class="primary-button" on:click={handleAddLiquidity}>
               Add Position
             </button>
+          {:else}
+            <p>No matching pool found</p>
           {/if}
         </div>
       {:else}
-        {#each filteredPools as pool (pool.id)}
+        {#each filteredPools as poolItem (poolItem.id)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div 
             class="pool-item" 
             in:slide={{ duration: 200 }}
-            on:click={() => handlePoolItemClick(pool)}
+            on:click={() => handlePoolItemClick(poolItem)}
             role="button"
             tabindex="0"
           >
@@ -232,19 +305,38 @@
               <div class="pool-left">
                 <TokenImages 
                   tokens={[
-                    $tokenStore.tokens.find(token => token.symbol === pool.symbol_0),
-                    $tokenStore.tokens.find(token => token.symbol === pool.symbol_1)
+                    $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_0),
+                    $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_1)
                   ]} 
-                  size={36}
+                  size={32}
                 />
                 <div class="pool-info">
-                  <span class="pool-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-                  <span class="pool-balance">{pool.balance} LP</span>
-                  <span class="pool-usd-value">${pool.usd_balance}</span>
+                  <div class="pool-pair">{poolItem.symbol_0}/{poolItem.symbol_1}</div>
+                  <div class="pool-balance">
+                    {Number(poolItem.balance).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 8
+                    })} LP
+                  </div>
                 </div>
               </div>
               <div class="pool-right">
-                <span class="view-details">View Details →</span>
+                <div class="value-info">
+                  <span class="usd-value">
+                    ${formatToNonZeroDecimal(poolItem.usd_balance)}
+                  </span>
+                </div>
+                <div class="chevron-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" 
+                       width="20" height="20" 
+                       viewBox="0 0 24 24" 
+                       fill="none" 
+                       stroke="currentColor" 
+                       stroke-width="2"
+                       class="chevron-right">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -275,7 +367,7 @@
   }
 
   .search-section {
-    @apply sticky top-0 z-10 bg-gray-900;
+    @apply sticky top-0 z-10;
   }
 
   .search-input-wrapper {
@@ -283,20 +375,22 @@
   }
 
   .search-input {
-    @apply w-full bg-transparent border-none px-4 py-3 text-white placeholder-gray-500
-           focus:outline-none focus:ring-0;
+    @apply w-full bg-transparent border-none py-2 sm:py-3 px-3 text-sm sm:text-base
+           text-white placeholder-gray-500 focus:outline-none focus:ring-0;
   }
 
   .clear-button {
-    @apply absolute right-4 text-gray-500 hover:text-white transition-colors;
+    @apply absolute right-0 text-gray-500 hover:text-white transition-colors;
   }
 
   .filter-bar {
-    @apply px-4 py-3 border-t border-gray-800 flex justify-between items-center;
+    @apply py-2 sm:py-3 px-3 border-t border-gray-800 
+           flex justify-between items-center text-sm;
   }
 
   .sort-toggle {
-    @apply flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors;
+    @apply flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm 
+           text-gray-400 cursor-pointer hover:text-white transition-colors;
   }
 
   .sort-arrow {
@@ -314,67 +408,105 @@
   }
 
   .pool-list {
-    @apply flex flex-col gap-2 p-4;
+    @apply flex flex-col gap-1.5 sm:gap-2 mt-2;
   }
 
   .pool-item {
-    @apply bg-gray-800/50 rounded-lg p-4 cursor-pointer 
+    @apply bg-gray-800/50 rounded-lg p-3 sm:p-4 cursor-pointer 
            hover:bg-gray-800/70 transition-all duration-200
            border border-transparent hover:border-blue-500/30;
   }
 
   .pool-content {
-    @apply flex justify-between items-center;
+    @apply flex items-center justify-between w-full gap-2;
   }
 
   .pool-left {
-    @apply flex items-center gap-4;
+    @apply flex items-center gap-2 sm:gap-4 flex-1 min-w-0;
   }
 
   .pool-info {
-    @apply flex flex-col gap-1;
+    @apply flex flex-col gap-0.5 sm:gap-1 flex-1 min-w-0;
   }
 
   .pool-pair {
-    @apply text-base font-medium text-white/95;
+    @apply text-base sm:text-lg font-medium text-white/95 truncate;
   }
 
   .pool-balance {
-    @apply text-sm text-white/70;
+    @apply text-sm text-white/70 truncate;
   }
 
-  .pool-usd-value {
-    @apply text-xs text-white/50;
+  .pool-right {
+    @apply flex items-center gap-3 sm:gap-4;
+  }
+
+  .value-info {
+    @apply flex items-center justify-end min-w-[100px] sm:min-w-[120px];
+  }
+
+  .usd-value {
+    @apply text-base sm:text-lg font-medium text-white/90 tabular-nums;
+  }
+
+  .chevron-wrapper {
+    @apply flex items-center justify-center w-6 sm:w-8;
+  }
+
+  .chevron-right {
+    @apply text-white/40 w-5 h-5 sm:w-6 sm:h-6;
+  }
+
+  /* Hide chevron on mobile if needed */
+  @media (max-width: 370px) {
+    .chevron-wrapper {
+      @apply hidden;
+    }
+    
+    .value-info {
+      @apply min-w-[80px];
+    }
+    
+    .usd-value {
+      @apply text-sm;
+    }
   }
 
   .loading-state, .error-state, .empty-state {
-    @apply flex flex-col items-center justify-center gap-3
-           min-h-[160px] text-white/40 text-sm;
+    @apply flex flex-col items-center justify-center gap-2 sm:gap-3
+           min-h-[120px] sm:min-h-[160px] text-white/40 text-sm
+           px-4 text-center;
   }
 
   .primary-button {
-    @apply px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
-           transition-all duration-200 hover:bg-blue-600;
+    @apply px-3 sm:px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-blue-600 w-full sm:w-auto;
   }
 
   .clear-search-button {
-    @apply px-4 py-2 bg-gray-800 text-white/70 text-sm font-medium rounded-lg
-           transition-all duration-200 hover:bg-gray-700 hover:text-white;
+    @apply px-3 sm:px-4 py-2 bg-gray-800 text-white/70 text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-gray-700 hover:text-white
+           w-full sm:w-auto;
   }
 
   .error-state {
     @apply text-red-400;
   }
 
-  .pool-right {
-    @apply flex items-center;
+  .loading-state {
+    @apply flex flex-col items-center justify-center gap-3
+           min-h-[160px] text-white/40 text-sm animate-pulse;
   }
 
-  .view-details {
-    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200;
+  .pool-list-content::-webkit-scrollbar {
+    @apply w-1.5;
   }
 
-  .pool-item:hover .view-details {
-    @apply opacity-100;
+  .pool-list-content::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .pool-list-content::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full;
   }
 </style>

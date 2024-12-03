@@ -42,7 +42,7 @@
 
   function toggleMenu(e: MouseEvent) {
     e.stopPropagation();
-    showMenu = !showMenu;
+    showDetails = true;
   }
 
   // Close menu when clicking outside
@@ -130,14 +130,7 @@
     cursor: pointer;
     transform-origin: center;
     will-change: transform;
-  }
-
-  .token-row:hover {
-    transform: translateY(-1px);
-  }
-
-  .token-row.pressed {
-    transform: scale(0.98);
+    transition: background-color 0.1s ease;
   }
 
   .token-content {
@@ -151,15 +144,10 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    padding-left: 16px;
   }
 
   .token-image {
     transform: scale(1);
-  }
-
-  .token-image.hovered {
-    transform: scale(1.05);
   }
 
   .token-info {
@@ -212,7 +200,6 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    padding-right: 16px;
   }
 
   .balance {

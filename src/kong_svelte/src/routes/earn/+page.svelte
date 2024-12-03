@@ -89,6 +89,12 @@
     return Math.max(...$pools.map(pool => Number(pool.rolling_24h_apy)));
   });
 
+  // Get count of pools with non-zero balance
+  const activePoolCount = derived(userPoolBalances, ($balances) => {
+    if (!Array.isArray($balances)) return 0;
+    return $balances.filter(balance => balance.balance > 0n).length;
+  });
+
   function handleAddLiquidity(token0: string, token1: string) {
     goto(`/earn/add?token0=${token0}&token1=${token1}`);
   }
@@ -273,9 +279,9 @@
                 }}
               >
                 Your Pools
-                {#if Array.isArray($userPoolBalances) && $userPoolBalances.length > 0}
+                {#if $activePoolCount > 0}
                   <span class="ml-2 px-2 py-0.5 bg-[#2a2d3d] rounded-full text-xs">
-                    {$userPoolBalances.length}
+                    {$activePoolCount}
                   </span>
                 {/if}
               </button>
@@ -506,7 +512,8 @@
     width="max-w-2xl"
   >
     <UserPool
-      poolId={selectedUserPool.pool_id}
+      pool={selectedUserPool}
+      showModal={!!selectedUserPool}
       on:close={() => selectedUserPool = null}
     />
   </Modal>

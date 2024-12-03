@@ -202,6 +202,12 @@
     padding: 20px 0;
   }
 
+  @media (max-width: 818px) {
+    .nav-container-wrapper {
+      padding: 10px 0;
+    }
+  }
+
   .nav-container {
     width: 100%;
     max-width: 1200px;

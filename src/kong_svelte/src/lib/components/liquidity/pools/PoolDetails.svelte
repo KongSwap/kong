@@ -40,6 +40,10 @@
       goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
     }
   }
+
+  let showPositions = false;
+
+  $: poolName = `${pool.symbol_0}/${pool.symbol_1}`;
 </script>
 
 <Modal
@@ -51,9 +55,11 @@
 >
   <div class="pool-details">
     <div class="pool-header">
-      <div class="token-info">
-        <TokenImages tokens={[token0, token1]} overlap={12} size={32} />
-        <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
+      <div class="header-content">
+        <div class="token-info">
+          <TokenImages tokens={[token0, token1]} overlap={12} size={32} />
+          <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
+        </div>
       </div>
       
       <div class="quick-actions">
@@ -69,39 +75,43 @@
     <div class="tabs">
       <button
         class="tab-button"
-        class:active={activeTab === 'info'}
-        on:click={() => activeTab = 'info'}
+        class:active={!showPositions}
+        on:click={() => showPositions = false}
       >
         Info
       </button>
       <button
         class="tab-button"
-        class:active={activeTab === 'positions'}
-        on:click={() => activeTab = 'positions'}
+        class:active={showPositions}
+        on:click={() => showPositions = true}
       >
         Your Positions
       </button>
     </div>
 
     <div class="tab-content">
-      {#if activeTab === 'info'}
+      {#if showPositions}
+        <PoolList initialSearch={poolName} />
+      {:else}
         <div class="info-content">
           <div class="stats-grid">
-            <div class="stat-item">
+            <div class="stat-item full-width">
               <span class="stat-label">TVL</span>
               <span class="stat-value">${formatBigIntToUSD(pool.balance)}</span>
             </div>
-            <div class="stat-item">
+            <div class="stat-item full-width">
               <span class="stat-label">24h Volume</span>
               <span class="stat-value">${formatBigIntToUSD(pool.rolling_24h_volume)}</span>
             </div>
-            <div class="stat-item">
-              <span class="stat-label">APY</span>
-              <span class="stat-value apy" style="color: {apyColor}">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Fee</span>
-              <span class="stat-value">{pool.lp_fee_bps / 100}%</span>
+            <div class="stat-row">
+              <div class="stat-item flex-1">
+                <span class="stat-label">APY</span>
+                <span class="stat-value apy" style="color: {apyColor}">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
+              </div>
+              <div class="stat-item flex-1">
+                <span class="stat-label">Fee</span>
+                <span class="stat-value">{pool.lp_fee_bps / 100}%</span>
+              </div>
             </div>
           </div>
 
@@ -125,8 +135,6 @@
             </div>
           </div>
         </div>
-      {:else}
-        <PoolList pools={[pool]} />
       {/if}
     </div>
   </div>
@@ -138,7 +146,11 @@
   }
 
   .pool-header {
-    @apply flex justify-between items-center mb-4;
+    @apply flex flex-col gap-4 mb-4;
+  }
+
+  .header-content {
+    @apply flex items-center justify-between;
   }
 
   .token-info {
@@ -150,11 +162,11 @@
   }
 
   .quick-actions {
-    @apply flex items-center gap-2;
+    @apply flex gap-2 w-full;
   }
 
   .action-btn {
-    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200;
+    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 flex-1;
   }
 
   .action-btn.add-liquidity {
@@ -168,11 +180,19 @@
   }
 
   .stats-grid {
-    @apply grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4;
+    @apply flex flex-col gap-4 mb-4;
+  }
+
+  .stat-row {
+    @apply flex gap-4;
   }
 
   .stat-item {
     @apply flex flex-col gap-1 p-3 rounded-lg bg-[#2a2d3d]/50;
+  }
+
+  .stat-item.full-width {
+    @apply w-full;
   }
 
   .stat-label {
@@ -218,5 +238,32 @@
 
   .token-amount {
     @apply text-white font-medium;
+  }
+
+  /* Desktop styles */
+  @media (min-width: 640px) {
+    .pool-header {
+      @apply flex-row justify-between items-center;
+    }
+
+    .quick-actions {
+      @apply w-auto;
+    }
+
+    .action-btn {
+      @apply w-auto flex-initial min-w-[120px];
+    }
+
+    .stats-grid {
+      @apply grid grid-cols-2;
+    }
+
+    .stat-item.full-width {
+      @apply col-span-1;
+    }
+
+    .stat-row {
+      @apply col-span-2;
+    }
   }
 </style>
