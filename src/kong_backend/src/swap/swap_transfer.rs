@@ -1,31 +1,30 @@
 use candid::Nat;
 
+use super::archive_to_kong_data::archive_to_kong_data;
 use super::return_pay_token::return_pay_token;
 use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
 use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
-use super::archive_to_kong_data::archive_to_kong_data;
 
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
 use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
+use crate::ic::verify::verify_transfer;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_user::user_map;
-use crate::ic::verify::verify_transfer;
 
 pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     // as user has transferred the pay token, we need to log the request immediately and verify the transfer
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(args.referred_by.as_deref())?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::Swap(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
     let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
         request_map::update_status(request_id, StatusCode::Failed, Some(e));
@@ -44,7 +43,9 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
             },
         );
 
-    archive_to_kong_data(request);
+    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+        archive_to_kong_data(request);
+    }
 
     result
 }
@@ -52,8 +53,7 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
 pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
     let user_id = user_map::insert(args.referred_by.as_deref())?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::Swap(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
     let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
         request_map::update_status(request_id, StatusCode::Failed, Some(e));
@@ -65,7 +65,9 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        archive_to_kong_data(request);
+        if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+            archive_to_kong_data(request);
+        }
     });
 
     Ok(request_id)

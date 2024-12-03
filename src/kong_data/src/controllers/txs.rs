@@ -1,7 +1,7 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TX_MAP;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
@@ -47,7 +47,7 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
     Ok("Txs updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
+#[update(hidden = true, guard = "caller_is_kong_backend")]
 fn update_tx(stable_tx_json: String) -> Result<String, String> {
     let tx: StableTx = match serde_json::from_str(&stable_tx_json) {
         Ok(tx) => tx,

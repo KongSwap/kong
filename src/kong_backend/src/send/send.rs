@@ -43,8 +43,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     let user_id = user_map::insert(None)?;
 
     let ts: u64 = get_time();
-    let request = StableRequest::new(user_id, &Request::Send(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Send(args.clone()), ts));
 
     let result = process_send(
         request_id,
@@ -68,7 +67,9 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
         },
     );
 
-    archive_to_kong_data(request);
+    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+        archive_to_kong_data(request);
+    }
 
     result
 }
@@ -111,9 +112,9 @@ fn process_send(
     Ok(reply)
 }
 
-fn archive_to_kong_data(request: StableRequest) {
+fn archive_to_kong_data(request: &StableRequest) {
     request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::Send(reply) = request.reply {
+    if let Reply::Send(reply) = &request.reply {
         tx_map::archive_tx_to_kong_data(reply.tx_id);
     };
 }

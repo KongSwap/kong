@@ -1,13 +1,13 @@
 use candid::Nat;
 use icrc_ledger_types::icrc1::account::Account;
 
+use super::archive_to_kong_data::archive_to_kong_data;
 use super::calculate_amounts::calculate_amounts;
 use super::return_pay_token::return_pay_token;
 use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
 use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
-use super::archive_to_kong_data::archive_to_kong_data;
 
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
@@ -25,8 +25,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
     let ts = get_time();
     let receive_amount = args.receive_amount.clone();
-    let request = StableRequest::new(user_id, &Request::Swap(args), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
     let result = process_swap(
         request_id,
@@ -51,7 +50,9 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         },
     );
 
-    archive_to_kong_data(request);
+    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+        archive_to_kong_data(request);
+    }
 
     result
 }
@@ -60,8 +61,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let (user_id, pay_token, pay_amount, receive_token, max_slippage, to_address) = check_arguments(&args).await?;
     let ts = get_time();
     let receive_amount = args.receive_amount.clone();
-    let request = StableRequest::new(user_id, &Request::Swap(args), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
     ic_cdk::spawn(async move {
         match process_swap(
@@ -81,7 +81,9 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        archive_to_kong_data(request);
+        if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+            archive_to_kong_data(request);
+        }
     });
 
     Ok(request_id)

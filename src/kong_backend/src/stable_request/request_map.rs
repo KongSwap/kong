@@ -51,13 +51,14 @@ pub fn insert(request: &StableRequest) -> u64 {
 pub fn update_status(key: u64, status_code: StatusCode, message: Option<&str>) -> Option<StableRequest> {
     REQUEST_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        match map.iter().find(|(k, _)| k.0 == key) {
-            Some((k, mut v)) => {
+        let key = StableRequestId(key);
+        match map.get(&key) {
+            Some(mut v) => {
                 v.statuses.push(Status {
                     status_code,
                     message: message.map(|s| s.to_string()),
                 });
-                map.insert(k, v)
+                map.insert(key, v)
             }
             None => None,
         }
@@ -67,10 +68,11 @@ pub fn update_status(key: u64, status_code: StatusCode, message: Option<&str>) -
 pub fn update_reply(key: u64, reply: Reply) -> Option<StableRequest> {
     REQUEST_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        match map.iter().find(|(k, _)| k.0 == key) {
-            Some((k, mut v)) => {
+        let key = StableRequestId(key);
+        match map.get(&key) {
+            Some(mut v) => {
                 v.reply = reply;
-                map.insert(k, v)
+                map.insert(key, v)
             }
             None => None,
         }

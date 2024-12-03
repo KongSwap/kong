@@ -35,8 +35,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
 
     let result = process_remove_liquidity(
         request_id,
@@ -61,7 +60,9 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         },
     );
 
-    archive_to_kong_data(request);
+    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+        archive_to_kong_data(request);
+    }
 
     result
 }
@@ -71,8 +72,7 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
     let (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
         check_arguments(&args).await?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
 
     ic_cdk::spawn(async move {
         match process_remove_liquidity(
@@ -92,7 +92,9 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        archive_to_kong_data(request);
+        if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+            archive_to_kong_data(request);
+        }
     });
 
     Ok(request_id)
@@ -458,9 +460,9 @@ fn return_tokens(request_id: u64, pool: &StablePool, transfer_lp_token: &Result<
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply));
 }
 
-pub fn archive_to_kong_data(request: StableRequest) {
+pub fn archive_to_kong_data(request: &StableRequest) {
     request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::RemoveLiquidity(reply) = request.reply {
+    if let Reply::RemoveLiquidity(reply) = &request.reply {
         for claim_id in reply.claim_ids.iter() {
             claim_map::archive_claim_to_kong_data(*claim_id);
         }

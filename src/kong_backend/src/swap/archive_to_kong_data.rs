@@ -3,9 +3,9 @@ use crate::stable_request::{reply::Reply, request_map, stable_request::StableReq
 use crate::stable_transfer::transfer_map;
 use crate::stable_tx::tx_map;
 
-pub fn archive_to_kong_data(request: StableRequest) {
+pub fn archive_to_kong_data(request: &StableRequest) {
     request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::Swap(reply) = request.reply {
+    if let Reply::Swap(reply) = &request.reply {
         for claim_id in reply.claim_ids.iter() {
             claim_map::archive_claim_to_kong_data(*claim_id);
         }

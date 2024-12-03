@@ -57,8 +57,7 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
         check_arguments(&args).await?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::AddPool(args), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
 
     let result = process_add_pool(
         request_id,
@@ -87,7 +86,9 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         },
     );
 
-    archive_to_kong_data(request);
+    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
+        archive_to_kong_data(request);
+    }
 
     result
 }
@@ -684,9 +685,9 @@ fn add_new_pool(
     pool_map::get_by_pool_id(pool_id).ok_or_else(|| "Failed to add pool".to_string())
 }
 
-pub fn archive_to_kong_data(request: StableRequest) {
+pub fn archive_to_kong_data(request: &StableRequest) {
     request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::AddPool(reply) = request.reply {
+    if let Reply::AddPool(reply) = &request.reply {
         for claim_id in reply.claim_ids.iter() {
             claim_map::archive_claim_to_kong_data(*claim_id);
         }
