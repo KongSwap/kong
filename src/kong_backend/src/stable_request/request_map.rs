@@ -94,7 +94,7 @@ pub fn archive_request_to_kong_data(request_id: u64) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive request_id#{}. {}", request.request_id, e)),
+                    Err(e) => error_log(&format!("Failed to archive request_id #{}. {}", request.request_id, e)),
                 }
             }
             Err(e) => error_log(&format!("Failed to serialize request_id #{}. {}", request.request_id, e)),
