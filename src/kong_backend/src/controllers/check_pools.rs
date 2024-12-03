@@ -39,9 +39,7 @@ fn to_check_pool_reply(
 /// for each token, the actual, expected, and difference in balances
 #[update(hidden = true, guard = "caller_is_kingkong")]
 async fn check_pools() -> Result<Vec<CheckPoolReply>, String> {
-    let mut pools = Vec::new();
     let tokens = token_map::get_on_kong();
-
     // for each token, get the actual, expected, and difference in balances asynchonously
     let futures = tokens
         .iter()
@@ -51,15 +49,15 @@ async fn check_pools() -> Result<Vec<CheckPoolReply>, String> {
         })
         .collect::<Vec<_>>();
     let results = join_all(futures).await;
-    // fancy way of creating a vector of check_token_balances result and skipping ones that have errors
-    results
-        .into_iter()
+
+    let pools = results
+        .iter()
         .filter_map(|result| match result {
             Ok((token, actual_balance, expected_balance, diff_balance)) => {
-                to_check_pool_reply(&token, &actual_balance, &expected_balance, &diff_balance)
+                to_check_pool_reply(token, actual_balance, expected_balance, diff_balance)
             }
             Err(_) => None,
         })
-        .for_each(|reply| pools.push(reply));
+        .collect();
     Ok(pools)
 }

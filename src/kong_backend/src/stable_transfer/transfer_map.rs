@@ -2,7 +2,8 @@ use candid::Nat;
 
 use super::tx_id::TxId;
 
-use crate::stable_kong_settings::kong_settings;
+use crate::ic::logging::error_log;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TRANSFER_MAP;
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 
@@ -25,7 +26,7 @@ pub fn contain(token_id: u32, block_id: &Nat) -> bool {
 pub fn insert(transfer: &StableTransfer) -> u64 {
     TRANSFER_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let transfer_id = kong_settings::inc_transfer_map_idx();
+        let transfer_id = kong_settings_map::inc_transfer_map_idx();
         let insert_transfer = StableTransfer {
             transfer_id,
             ..transfer.clone()
@@ -33,4 +34,29 @@ pub fn insert(transfer: &StableTransfer) -> u64 {
         map.insert(StableTransferId(transfer_id), insert_transfer);
         transfer_id
     })
+}
+
+pub fn archive_transfer_to_kong_data(transfer_id: u64) {
+    ic_cdk::spawn(async move {
+        let transfer = match get_by_transfer_id(transfer_id) {
+            Some(transfer) => transfer,
+            None => return,
+        };
+
+        match serde_json::to_string(&transfer) {
+            Ok(transfer_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_transfer", (transfer_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive transfer #{}. {}", transfer.transfer_id, e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize transfer #{}. {}", transfer.transfer_id, e)),
+        }
+    });
 }

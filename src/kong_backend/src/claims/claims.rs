@@ -11,12 +11,7 @@ use crate::ic::{
     transfer::{icp_transfer, icrc1_transfer},
 };
 use crate::stable_claim::claim_map;
-use crate::stable_claim::{
-    claim_map::{
-        insert_attempt_request_id, update_claimed_status, update_claiming_status, update_too_many_attempts_status, update_unclaimed_status,
-    },
-    stable_claim::{ClaimStatus, StableClaim},
-};
+use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim};
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
@@ -56,7 +51,7 @@ pub async fn process_claims() {
 
             if claim.attempt_request_id.len() > 50 {
                 // if claim has more than 50 attempts, update status to too_many_attempts and investigate manually
-                update_too_many_attempts_status(claim.claim_id);
+                claim_map::update_too_many_attempts_status(claim.claim_id);
                 continue;
             } else if claim.attempt_request_id.len() > 20 {
                 let last_attempt_request_id = claim.attempt_request_id.last().unwrap();
@@ -152,10 +147,8 @@ async fn send_claim(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let symbol = token.symbol();
-
     // set the claim status to claiming to prevent reentrancy before sending the claim
-    update_claiming_status(claim_id);
+    claim_map::update_claiming_status(claim_id);
 
     request_map::update_status(request_id, StatusCode::ClaimToken, None);
 
@@ -177,24 +170,25 @@ async fn send_claim(
             transfer_ids.push(transfer_id);
 
             // claim successful. update claim status
-            update_claimed_status(claim_id, request_id, transfer_id);
+            claim_map::update_claimed_status(claim_id, request_id, transfer_id);
 
             request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
+
+            // archive claim to kong_data
+            claim_map::archive_claim_to_kong_data(claim_id);
 
             Ok(())
         }
         Err(e) => {
-            // claim failed. add attempt_request_id to claim
-            insert_attempt_request_id(claim_id, request_id);
-            let error = format!("Claim Req #{}: Kong failed to send {} {}: {}", request_id, amount, symbol, e);
-            error_log(&error);
-
             // revert claim status to unclaimed
-            update_unclaimed_status(claim_id);
+            claim_map::update_unclaimed_status(claim_id, request_id);
 
             request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
 
-            Err(error)
+            // archive claim to kong_data
+            claim_map::archive_claim_to_kong_data(claim_id);
+
+            Err(format!("Failed to send claim #{}. {}", claim_id, e))
         }
     }
 }

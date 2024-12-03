@@ -7,7 +7,7 @@ use super::user_balances_reply::UserBalancesReply;
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
 use crate::ic::ckusdt::{ckusdt_amount, to_ckusdt_decimals_f64};
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode_and_caller_is_not_anonymous};
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
 use crate::stable_token::token::Token;
@@ -44,10 +44,10 @@ pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesRep
 
 fn user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option<UserBalancesReply> {
     let lp_token_id = token.token_id;
-    let lp_token = lp_token_ledger::get_by_token_id_by_user_id(lp_token_id, user_id)?;
+    let lp_token = lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id)?;
     // user balance and total supply of the LP token
     let user_lp_token_balance = lp_token.amount;
-    let lp_token_total_supply = lp_token_ledger::get_total_supply(lp_token_id);
+    let lp_token_total_supply = lp_token_map::get_total_supply(lp_token_id);
     // pool of the LP token
     let pool = token.pool_of()?;
 

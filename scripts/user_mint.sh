@@ -9,6 +9,7 @@ fi
 IDENTITY="--identity kong_token_minter"
 
 TO_PRINCIPAL_ID=$(dfx identity ${NETWORK} --identity kong_user1 get-principal)
+#TO_PRINCIPAL_ID=lxm55-254xc-c6obr-ygh6x-dd4n6-vmqfc-jsbwo-gbi5n-lrpol-haxdl-zae
 
 # 100,000 ICP
 AMOUNT=10_000_000_000_000

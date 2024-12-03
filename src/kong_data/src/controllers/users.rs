@@ -1,9 +1,9 @@
-use crate::stable_user::stable_user::{StableUser, StableUserId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::USER_MAP;
+use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
 
@@ -41,4 +41,19 @@ fn update_users(stable_users_json: String) -> Result<String, String> {
     });
 
     Ok("Users updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kong_backend")]
+fn update_user(stable_user_json: String) -> Result<String, String> {
+    let user: StableUser = match serde_json::from_str(&stable_user_json) {
+        Ok(user) => user,
+        Err(e) => return Err(format!("Invalid user: {}", e)),
+    };
+
+    USER_MAP.with(|user_map| {
+        let mut map = user_map.borrow_mut();
+        map.insert(StableUserId(user.user_id), user);
+    });
+
+    Ok("User updated".to_string())
 }

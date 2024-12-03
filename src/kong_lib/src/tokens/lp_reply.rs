@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(CandidType, Clone, Debug, Serialize, Deserialize)]
 pub struct LPReply {
     pub token_id: u32,
-    pub pool_symbol: String,
     pub name: String,
     pub chain: String,
     pub symbol: String,

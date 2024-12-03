@@ -1,9 +1,10 @@
 use candid::Nat;
+use icrc_ledger_types::icrc1::account::Account;
 
 use super::swap_reply_helpers::create_swap_reply_failed;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
-use crate::ic::{address::Address, id::caller_id, logging::error_log, transfer::icrc1_transfer};
+use crate::ic::{address::Address, transfer::icrc1_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_request::reply::Reply;
 use crate::stable_request::request_map;
@@ -11,25 +12,23 @@ use crate::stable_request::status::StatusCode;
 use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn return_pay_token(
     request_id: u64,
     user_id: u32,
+    to_principal_id: &Account,
     pay_token: &StableToken,
     pay_amount: &Nat,
     receive_token: Option<&StableToken>,
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) {
-    // Pay Token
-    let pay_symbol = pay_token.symbol();
-
-    let caller_id = caller_id();
     let mut claim_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::ReturnPayToken, None);
 
     let pay_amount_with_gas = nat_subtract(pay_amount, &pay_token.fee()).unwrap_or(nat_zero());
-    match icrc1_transfer(&pay_amount_with_gas, &caller_id, pay_token, None).await {
+    match icrc1_transfer(&pay_amount_with_gas, to_principal_id, pay_token, None).await {
         Ok(tx_id) => {
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
@@ -44,20 +43,20 @@ pub async fn return_pay_token(
             request_map::update_status(request_id, StatusCode::ReturnPayTokenSuccess, None);
         }
         Err(e) => {
-            let claim_id = claim_map::insert(&StableClaim::new(
+            let message = match claim_map::insert(&StableClaim::new(
                 user_id,
                 pay_token.token_id(),
                 pay_amount,
                 Some(request_id),
-                Some(Address::PrincipalId(caller_id)),
+                Some(Address::PrincipalId(*to_principal_id)),
                 ts,
-            ));
-            claim_ids.push(claim_id);
-            let message = format!("{} Saved as claim #{}", e, claim_id);
-            error_log(&format!(
-                "Swap Req #{} Kong failed to return {} {}: {}",
-                request_id, pay_amount, pay_symbol, message
-            ));
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim. {}", e),
+            };
             request_map::update_status(request_id, StatusCode::ReturnPayTokenFailed, Some(&message));
         }
     };

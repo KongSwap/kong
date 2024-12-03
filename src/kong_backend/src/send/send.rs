@@ -1,3 +1,4 @@
+use candid::Nat;
 use ic_cdk::update;
 
 use super::send_args::SendArgs;
@@ -6,7 +7,7 @@ use super::send_reply_helpers::{create_send_reply_failed, create_send_reply_with
 
 use crate::chains::chains::LP_CHAIN;
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::stable_lp_token::transfer::transfer;
 use crate::stable_request::request_map;
 use crate::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::stable_token::StableToken::LP;
@@ -18,7 +19,7 @@ use crate::stable_user::user_map;
 
 /// Send LP token to another user
 #[update(guard = "not_in_maintenance_mode")]
-fn send(args: SendArgs) -> Result<SendReply, String> {
+async fn send(args: SendArgs) -> Result<SendReply, String> {
     // support only for LP tokens
     let lp_token = match token_map::get_by_token(&args.token) {
         Ok(LP(token)) => token,
@@ -42,34 +43,77 @@ fn send(args: SendArgs) -> Result<SendReply, String> {
     let user_id = user_map::insert(None)?;
 
     let ts: u64 = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Send(args.clone()), ts));
+    let request = StableRequest::new(user_id, &Request::Send(args.clone()), ts);
+    let request_id = request_map::insert(&request);
 
+    let result = process_send(
+        request_id,
+        user_id,
+        to_user_id,
+        to_address,
+        lp_token_id,
+        lp_token_chain,
+        &lp_token_symbol,
+        amount,
+        ts,
+    )
+    .map_or_else(
+        |e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
+
+    archive_to_kong_data(request);
+
+    result
+}
+
+#[allow(clippy::too_many_arguments)]
+fn process_send(
+    request_id: u64,
+    from_user_id: u32,
+    to_user_id: u32,
+    to_address: &str,
+    lp_token_id: u32,
+    lp_token_chain: &str,
+    lp_token_symbol: &str,
+    amount: &Nat,
+    ts: u64,
+) -> Result<SendReply, String> {
     request_map::update_status(request_id, StatusCode::Start, None);
 
     request_map::update_status(request_id, StatusCode::SendLPTokenToUser, None);
-    let reply = match lp_token_ledger::transfer(lp_token_id, to_user_id, amount) {
+    match transfer(lp_token_id, to_user_id, amount) {
         Ok(_) => {
             request_map::update_status(request_id, StatusCode::SendLPTokenToUserSuccess, None);
-
-            request_map::update_status(request_id, StatusCode::Success, None);
-
-            // insert a send_tx
-            let send_tx = SendTx::new_success(user_id, request_id, to_user_id, lp_token_id, amount, ts);
-            let tx_id = tx_map::insert(&StableTx::Send(send_tx.clone()));
-            // update request with successful reply
-            create_send_reply_with_tx_id(tx_id, &send_tx)
         }
         Err(e) => {
             request_map::update_status(request_id, StatusCode::SendLPTokenToUserFailed, Some(&e));
 
-            request_map::update_status(request_id, StatusCode::Failed, None);
-
-            // update request with failed reply
-            create_send_reply_failed(request_id, lp_token_chain, &lp_token_symbol, amount, to_address, ts)
+            let reply = create_send_reply_failed(request_id, lp_token_chain, lp_token_symbol, amount, to_address, ts);
+            request_map::update_reply(request_id, Reply::Send(reply.clone()));
+            return Err(format!("Req #{} failed. {}", request_id, e));
         }
-    };
+    }
 
+    // successful, add send_tx and update request with reply
+    let send_tx = SendTx::new_success(from_user_id, request_id, to_user_id, lp_token_id, amount, ts);
+    let tx_id = tx_map::insert(&StableTx::Send(send_tx.clone()));
+
+    let reply = create_send_reply_with_tx_id(tx_id, &send_tx);
     request_map::update_reply(request_id, Reply::Send(reply.clone()));
 
     Ok(reply)
+}
+
+fn archive_to_kong_data(request: StableRequest) {
+    request_map::archive_request_to_kong_data(request.request_id);
+    if let Reply::Send(reply) = request.reply {
+        tx_map::archive_tx_to_kong_data(reply.tx_id);
+    };
 }

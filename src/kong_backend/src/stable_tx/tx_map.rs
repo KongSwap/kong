@@ -1,3 +1,6 @@
+use std::cmp::min;
+use std::ops::Bound;
+
 use super::add_liquidity_tx::AddLiquidityTx;
 use super::add_pool_tx::AddPoolTx;
 use super::remove_liquidity_tx::RemoveLiquidityTx;
@@ -6,10 +9,9 @@ use super::stable_tx::StableTx::{AddLiquidity, AddPool, RemoveLiquidity, Send, S
 use super::stable_tx::{StableTx, StableTxId};
 use super::swap_tx::SwapTx;
 use super::tx::Tx;
-use std::cmp::min;
-use std::ops::Bound;
 
-use crate::stable_kong_settings::kong_settings;
+use crate::ic::logging::error_log;
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::TX_MAP;
 use crate::stable_pool::pool_map;
 
@@ -89,7 +91,7 @@ pub fn get_by_user_and_token_id(
 pub fn insert(tx: &StableTx) -> u64 {
     TX_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let tx_id = kong_settings::inc_tx_map_idx();
+        let tx_id = kong_settings_map::inc_tx_map_idx();
         let insert_tx = match tx {
             AddPool(tx) => AddPool(AddPoolTx { tx_id, ..tx.clone() }),
             AddLiquidity(tx) => AddLiquidity(AddLiquidityTx { tx_id, ..tx.clone() }),
@@ -100,4 +102,29 @@ pub fn insert(tx: &StableTx) -> u64 {
         map.insert(StableTxId(tx_id), insert_tx);
         tx_id
     })
+}
+
+pub fn archive_tx_to_kong_data(tx_id: u64) {
+    ic_cdk::spawn(async move {
+        let tx = match get_by_user_and_token_id(Some(tx_id), None, None, Some(1)).pop() {
+            Some(tx) => tx,
+            None => return,
+        };
+
+        match serde_json::to_string(&tx) {
+            Ok(tx_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_tx", (tx_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive tx_id #{}. {}", tx.tx_id(), e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize tx_id #{}. {}", tx.tx_id(), e)),
+        }
+    });
 }

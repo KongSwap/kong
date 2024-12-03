@@ -1,11 +1,12 @@
 use candid::Nat;
 use ic_cdk::update;
+use icrc_ledger_types::icrc1::account::Account;
 
 use super::add_pool_args::AddPoolArgs;
 use super::add_pool_reply::AddPoolReply;
 use super::add_pool_reply_helpers::{create_add_pool_reply_failed, create_add_pool_reply_with_tx_id};
 
-use crate::add_token::add_token::add_ic_token;
+use crate::add_token::add_token::{add_ic_token, add_lp_token};
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_multiply, nat_sqrt, nat_subtract, nat_to_decimal_precision, nat_zero};
 use crate::ic::{
@@ -15,19 +16,17 @@ use crate::ic::{
     guards::not_in_maintenance_mode,
     icp::is_icp,
     id::{caller_id, is_caller_controller},
-    logging::{error_log, info_log},
     transfer::{icrc1_transfer, icrc2_transfer_from},
     verify::verify_transfer,
 };
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
-use crate::stable_kong_settings::kong_settings;
-use crate::stable_lp_token_ledger::lp_token_ledger;
-use crate::stable_lp_token_ledger::lp_token_ledger::LP_DECIMALS;
-use crate::stable_lp_token_ledger::stable_lp_token_ledger::StableLPTokenLedger;
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_lp_token::lp_token_map;
+use crate::stable_lp_token::stable_lp_token::StableLPToken;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
-use crate::stable_token::lp_token::LPToken;
+use crate::stable_token::lp_token::LP_DECIMALS;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token;
 use crate::stable_token::token::Token;
@@ -57,11 +56,11 @@ enum TokenIndex {
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
         check_arguments(&args).await?;
-
     let ts = get_time();
-    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args.clone()), ts));
+    let request = StableRequest::new(user_id, &Request::AddPool(args), ts);
+    let request_id = request_map::insert(&request);
 
-    match process_add_pool(
+    let result = process_add_pool(
         request_id,
         user_id,
         &token_0,
@@ -77,16 +76,20 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         ts,
     )
     .await
-    {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
-        Err(e) => {
+    .map_or_else(
+        |e| {
             request_map::update_status(request_id, StatusCode::Failed, Some(&e));
             Err(e)
-        }
-    }
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
+
+    archive_to_kong_data(request);
+
+    result
 }
 
 /// Check the arguments are valid, create new token_0 if it does not exist and calculate the amounts to be added to the pool
@@ -118,10 +121,10 @@ async fn check_arguments(
     }
 
     // can overwrite lp_fee_bps
-    let default_lp_fee_bps = kong_settings::get().default_lp_fee_bps;
+    let default_lp_fee_bps = kong_settings_map::get().default_lp_fee_bps;
     let lp_fee_bps = args.lp_fee_bps.unwrap_or(default_lp_fee_bps);
 
-    let default_kong_fee_bps = kong_settings::get().default_kong_fee_bps;
+    let default_kong_fee_bps = kong_settings_map::get().default_kong_fee_bps;
     // only controllers can set kong_fee_bps otherwise use default
     let kong_fee_bps = match is_caller_controller() {
         true => args.kong_fee_bps.unwrap_or(default_kong_fee_bps),
@@ -158,8 +161,8 @@ async fn check_arguments(
         _ => {
             return Err(format!(
                 "Token_1 must be {} or {}",
-                kong_settings::get().ckusdt_symbol,
-                kong_settings::get().icp_symbol
+                kong_settings_map::get().ckusdt_symbol,
+                kong_settings_map::get().icp_symbol
             ))
         }
     };
@@ -236,121 +239,162 @@ async fn process_add_pool(
     on_kong: bool,
     ts: u64,
 ) -> Result<AddPoolReply, String> {
+    let caller_id = caller_id();
+    let kong_backend = kong_settings_map::get().kong_backend_account;
     let mut transfer_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    let mut transfer_token_0 = match tx_id_0 {
+    let transfer_0 = match tx_id_0 {
         Some(block_id) => verify_transfer_token(request_id, &TokenIndex::Token0, token_0, block_id, amount_0, &mut transfer_ids, ts).await,
-        None => transfer_from_token(request_id, &TokenIndex::Token0, token_0, amount_0, &mut transfer_ids, ts).await,
+        None => {
+            transfer_from_token(
+                request_id,
+                &caller_id,
+                &TokenIndex::Token0,
+                token_0,
+                amount_0,
+                &kong_backend,
+                &mut transfer_ids,
+                ts,
+            )
+            .await
+        }
     };
 
-    let mut transfer_token_1 = match tx_id_1 {
+    let transfer_1 = match tx_id_1 {
         Some(block_id) => verify_transfer_token(request_id, &TokenIndex::Token1, token_1, block_id, amount_1, &mut transfer_ids, ts).await,
         None => {
             //  if transfer_token_0 failed, no need to icrc2_transfer_from token_1
-            if transfer_token_0.is_err() {
+            if transfer_0.is_err() {
                 Err("Token_0 transfer failed".to_string())
             } else {
-                transfer_from_token(request_id, &TokenIndex::Token1, token_1, amount_1, &mut transfer_ids, ts).await
+                transfer_from_token(
+                    request_id,
+                    &caller_id,
+                    &TokenIndex::Token1,
+                    token_1,
+                    amount_1,
+                    &kong_backend,
+                    &mut transfer_ids,
+                    ts,
+                )
+                .await
             }
         }
     };
 
-    // if transfer_token_0 and transfer_token_1 was successful continue processing
-    // re-calculate the amounts to be added to the pool with latest state (after token_0 and token_1 transfers)
-    if transfer_token_0 == Ok(()) && transfer_token_1 == Ok(()) {
-        // add LP token
-        request_map::update_status(request_id, StatusCode::AddLPToken, None);
-        let lp_token = StableToken::LP(LPToken::new(token_0, token_1, LP_DECIMALS, on_kong));
-        // insert LP token
-        match token_map::insert(&lp_token) {
-            Ok(lp_token_token_id) => {
-                request_map::update_status(request_id, StatusCode::AddLPTokenSuccess, None);
+    // both transfers must be successful
+    if transfer_0.is_err() || transfer_1.is_err() {
+        return_tokens(
+            request_id,
+            user_id,
+            &caller_id,
+            &transfer_0,
+            token_0,
+            amount_0,
+            &transfer_1,
+            token_1,
+            amount_1,
+            &mut transfer_ids,
+            on_kong,
+            ts,
+        )
+        .await;
+        if transfer_0.is_err() {
+            return Err(format!("Req #{} failed. {}", request_id, transfer_0.unwrap_err()));
+        } else {
+            return Err(format!("Req #{} failed. {}", request_id, transfer_1.unwrap_err()));
+        };
+    }
 
-                // add pool
-                request_map::update_status(request_id, StatusCode::AddPool, None);
-                let pool = StablePool::new(
-                    token_0.token_id(),
-                    token_1.token_id(),
-                    lp_fee_bps,
-                    kong_fee_bps,
-                    lp_token_token_id,
-                    on_kong,
-                );
-                match pool_map::insert(&pool) {
-                    Ok(pool_id) => {
-                        request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
-
-                        // update pool with new balances
-                        match update_liquidity_pool(request_id, user_id, pool_id, amount_0, amount_1, add_lp_token_amount, ts) {
-                            Ok(_) => {
-                                return Ok(check_balances(
-                                    request_id,
-                                    user_id,
-                                    pool_id,
-                                    amount_0,
-                                    amount_1,
-                                    add_lp_token_amount,
-                                    &transfer_ids,
-                                    on_kong,
-                                    ts,
-                                )
-                                .await);
-                            }
-                            Err(e) => {
-                                let error = format!("AddPool Req #{}: Failed to update pool: {}", request_id, e);
-                                error_log(&error);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        let error = format!("AddPool Req #{}: Failed to add pool: {}", request_id, e);
-                        error_log(&error);
-                        request_map::update_status(request_id, StatusCode::AddPoolFailed, Some(&e));
-                    }
-                }
-            }
-            Err(e) => {
-                let error = format!("AddPool Req #{}: Failed to add token: {}", request_id, e);
-                error_log(&error);
-                request_map::update_status(request_id, StatusCode::AddLPTokenFailed, Some(&e));
-            }
+    // add LP token
+    request_map::update_status(request_id, StatusCode::AddLPToken, None);
+    let lp_token = match add_lp_token(token_0, token_1, on_kong) {
+        Ok(lp_token) => {
+            request_map::update_status(request_id, StatusCode::AddLPTokenSuccess, None);
+            lp_token
         }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::AddLPTokenFailed, Some(&e));
+            return_tokens(
+                request_id,
+                user_id,
+                &caller_id,
+                &transfer_0,
+                token_0,
+                amount_0,
+                &transfer_1,
+                token_1,
+                amount_1,
+                &mut transfer_ids,
+                on_kong,
+                ts,
+            )
+            .await;
+            return Err(format!("Req #{} failed. {}", request_id, e));
+        }
+    };
 
-        // error occurred. no updates to the pool, just return token_0 and token_1 below
-    }
+    // add pool
+    request_map::update_status(request_id, StatusCode::AddPool, None);
+    let pool = StablePool::new(
+        token_0.token_id(),
+        token_1.token_id(),
+        lp_fee_bps,
+        kong_fee_bps,
+        lp_token.token_id(),
+        on_kong,
+    );
+    let pool_id = match pool_map::insert(&pool) {
+        Ok(pool_id) => {
+            request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
+            pool_id
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::AddPoolFailed, Some(&e));
+            return_tokens(
+                request_id,
+                user_id,
+                &caller_id,
+                &transfer_0,
+                token_0,
+                amount_0,
+                &transfer_1,
+                token_1,
+                amount_1,
+                &mut transfer_ids,
+                on_kong,
+                ts,
+            )
+            .await;
+            return Err(format!("Req #{} failed. {}", request_id, e));
+        }
+    };
 
-    // otherwise, errors occurred so return tokens
-    // however, if tx_id_0 or tx_id_1 was used, but the other leg failed, we do not return the successful token
-    // in the case of tx_id_0 or tx_id_1, it would be risky to return the token and can lead to loss of funds
-    // we only return tokens in the case icrc2_transfer_from was used and we are sure the transfer occurred
-    if tx_id_0.is_some() && transfer_token_0.is_ok() && transfer_token_1.is_err() {
-        transfer_token_0 = Err("Token_0 verified success, Token_1 failed".to_string());
-    }
-    if tx_id_1.is_some() && transfer_token_1.is_ok() && transfer_token_0.is_err() {
-        transfer_token_1 = Err("Token_0 failed, Token_1 verified success".to_string());
-    }
+    // update pool with new balances
+    update_liquidity_pool(request_id, user_id, &pool, amount_0, amount_1, add_lp_token_amount, ts);
 
-    // send back token_0 and token_1 to user based on transfer_from_token_0 and transfer_from_token_1
-    // record on-chain transfers in transfer_ids
-    Ok(return_tokens(
-        request_id,
+    // successful, add tx and update request with reply
+    let add_pool_tx = AddPoolTx::new_success(
+        pool_id,
         user_id,
-        &transfer_token_0,
-        token_0,
-        amount_0, // send back the original add_amount_0
-        &transfer_token_1,
-        token_1,
-        amount_1, // send back the original add_amount_1
-        &mut transfer_ids,
+        request_id,
+        amount_0,
+        amount_1,
+        add_lp_token_amount,
+        &transfer_ids,
+        &Vec::new(),
         on_kong,
         ts,
-    )
-    .await)
+    );
+    let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
+    let reply = create_add_pool_reply_with_tx_id(tx_id, &add_pool_tx);
+    request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
+
+    Ok(reply)
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn verify_transfer_token(
     request_id: u64,
     token_index: &TokenIndex,
@@ -360,7 +404,6 @@ async fn verify_transfer_token(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
 
     match token_index {
@@ -368,22 +411,16 @@ async fn verify_transfer_token(
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1, None),
     };
 
-    // verify the transfer
     match verify_transfer(token, tx_id, amount).await {
         Ok(_) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after verify_transfer()
             if transfer_map::contain(token_id, tx_id) {
-                let message = format!("Duplicate block id: #{}", tx_id);
-                let info = format!(
-                    "AddPool Req #{}: Failed to verify tx {} {}: {}",
-                    request_id, amount, symbol, message
-                );
-                info_log(&info);
+                let e = format!("Duplicate block id: #{}", tx_id);
                 match token_index {
-                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&message)),
-                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&message)),
+                    TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
+                    TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
                 };
-                return Err(message);
+                return Err(e);
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
@@ -402,8 +439,6 @@ async fn verify_transfer_token(
             Ok(())
         }
         Err(e) => {
-            let info = format!("AddPool Req #{}: Failed to verify tx {} {}: {}", request_id, amount, symbol, e);
-            info_log(&info);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::VerifyToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::VerifyToken1Failed, Some(&e)),
@@ -416,23 +451,22 @@ async fn verify_transfer_token(
 #[allow(clippy::too_many_arguments)]
 async fn transfer_from_token(
     request_id: u64,
+    from_principal_id: &Account,
     token_index: &TokenIndex,
     token: &StableToken,
     amount: &Nat,
+    to_principal_id: &Account,
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) -> Result<(), String> {
-    let symbol = token.symbol();
     let token_id = token.token_id();
-
-    let caller_id = caller_id();
 
     match token_index {
         TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0, None),
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1, None),
     };
 
-    match icrc2_transfer_from(token, amount, &caller_id, &kong_settings::get().kong_backend_account).await {
+    match icrc2_transfer_from(token, amount, from_principal_id, to_principal_id).await {
         Ok(block_id) => {
             // insert_transfer() will use the latest state of TRANSFER_MAP so no reentrancy issues after icrc2_transfer_from()
             // as icrc2_transfer_from() does a new transfer so block_id should be new
@@ -453,11 +487,6 @@ async fn transfer_from_token(
             Ok(())
         }
         Err(e) => {
-            let info = format!(
-                "AddPool Req #{}: Failed to transfer_from user {} {}: {}",
-                request_id, amount, symbol, e
-            );
-            info_log(&info);
             match token_index {
                 TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::SendToken0Failed, Some(&e)),
                 TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::SendToken1Failed, Some(&e)),
@@ -470,117 +499,57 @@ async fn transfer_from_token(
 fn update_liquidity_pool(
     request_id: u64,
     user_id: u32,
-    pool_id: u32,
+    pool: &StablePool,
     amount_0: &Nat,
     amount_1: &Nat,
     add_lp_token_amount: &Nat,
     ts: u64,
-) -> Result<(), String> {
+) {
     request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
 
-    // refresh with the latest state
-    match pool_map::get_by_pool_id(pool_id) {
-        Some(pool) => {
-            let update_pool = StablePool {
-                balance_0: nat_add(&pool.balance_0, amount_0),
-                balance_1: nat_add(&pool.balance_1, amount_1),
-                ..pool.clone()
-            };
-            pool_map::update(&update_pool);
+    let update_pool = StablePool {
+        balance_0: nat_add(&pool.balance_0, amount_0),
+        balance_1: nat_add(&pool.balance_1, amount_1),
+        ..pool.clone()
+    };
+    pool_map::update(&update_pool);
+    request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 
-            request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
-
-            // update user's LP token amount
-            match update_lp_token(request_id, user_id, pool.lp_token_id, add_lp_token_amount, ts) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(e),
-            }
-        }
-        None => {
-            let error = format!("Pool id {} not found", pool_id);
-            request_map::update_status(request_id, StatusCode::UpdatePoolAmountsFailed, Some(&error));
-            Err(error)
-        }
-    }
+    // update user's LP token amount
+    update_lp_token(request_id, user_id, pool.lp_token_id, add_lp_token_amount, ts);
 }
 
-fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token_amount: &Nat, ts: u64) -> Result<(), String> {
+fn update_lp_token(request_id: u64, user_id: u32, lp_token_id: u32, add_lp_token_amount: &Nat, ts: u64) {
     request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmount, None);
 
     // refresh with the latest state if the entry exists
-    match lp_token_ledger::get_by_token_id(lp_token_id) {
+    match lp_token_map::get_by_token_id(lp_token_id) {
         Some(lp_token) => {
             // update adding the new deposit amount
-            let new_user_lp_token = StableLPTokenLedger {
+            let new_user_lp_token = StableLPToken {
                 amount: nat_add(&lp_token.amount, add_lp_token_amount),
                 ts,
                 ..lp_token.clone()
             };
-            lp_token_ledger::update(&new_user_lp_token);
+            lp_token_map::update(&new_user_lp_token);
+            request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None);
         }
         None => {
             // new entry
-            let new_user_lp_token = StableLPTokenLedger::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
-            lp_token_ledger::insert(&new_user_lp_token);
+            let new_user_lp_token = StableLPToken::new(user_id, lp_token_id, add_lp_token_amount.clone(), ts);
+            match lp_token_map::insert(&new_user_lp_token) {
+                Ok(_) => request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None),
+                Err(e) => request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountFailed, Some(&e)),
+            };
         }
     }
-
-    request_map::update_status(request_id, StatusCode::UpdateUserLPTokenAmountSuccess, None);
-
-    Ok(())
 }
 
-// return and unused tokens and final balance integrity checks
-// - return any extra tokens back to the user
-// - any failures to return tokens back to user are saved as claims
-// - check the actual balances of the canister vs. expected balances in stable memory for token_0 and token_1
-// - update successful request reply
-#[allow(clippy::too_many_arguments)]
-async fn check_balances(
-    request_id: u64,
-    user_id: u32,
-    pool_id: u32,
-    amount_0: &Nat,
-    amount_1: &Nat,
-    add_lp_token_amount: &Nat,
-    transfer_ids: &[u64],
-    on_kong: bool,
-    ts: u64,
-) -> AddPoolReply {
-    let claim_ids = Vec::new();
-
-    request_map::update_status(request_id, StatusCode::Success, None);
-
-    let add_pool_tx = AddPoolTx::new_success(
-        pool_id,
-        user_id,
-        request_id,
-        amount_0,
-        amount_1,
-        add_lp_token_amount,
-        transfer_ids,
-        &claim_ids,
-        on_kong,
-        ts,
-    );
-    // insert tx
-    let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
-    // need to pass in the tx_id to the reply
-    let reply = create_add_pool_reply_with_tx_id(tx_id, &add_pool_tx);
-    request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
-    reply
-}
-
-// failed transaction
-// return any tokens back to the user
-// - icrc1_transfer of token_0 and token_1 the user deposited
-// - icrc2_transfer_from of token_0 and token_1 that was executed
-// - any failures to return tokens back to users are saved as claims
-// - update failed request reply
 #[allow(clippy::too_many_arguments)]
 async fn return_tokens(
     request_id: u64,
     user_id: u32,
+    to_principal_id: &Account,
     transfer_from_token_0: &Result<(), String>,
     token_0: &StableToken,
     amount_0: &Nat,
@@ -590,101 +559,45 @@ async fn return_tokens(
     transfer_ids: &mut Vec<u64>,
     on_kong: bool,
     ts: u64,
-) -> AddPoolReply {
+) {
+    let mut claim_ids = Vec::new();
+
+    if transfer_from_token_0.is_ok() {
+        return_token(
+            request_id,
+            user_id,
+            to_principal_id,
+            &TokenIndex::Token0,
+            token_0,
+            amount_0,
+            transfer_ids,
+            &mut claim_ids,
+            ts,
+        )
+        .await;
+    }
+
+    if transfer_from_token_1.is_ok() {
+        return_token(
+            request_id,
+            user_id,
+            to_principal_id,
+            &TokenIndex::Token1,
+            token_1,
+            amount_1,
+            transfer_ids,
+            &mut claim_ids,
+            ts,
+        )
+        .await;
+    }
+
     // Token0
     let chain_0 = token_0.chain();
     let symbol_0 = token_0.symbol();
     // Token1
     let chain_1 = token_1.chain();
     let symbol_1 = token_1.symbol();
-
-    let caller_id = caller_id();
-    // claims are used to store any failed transfers back to the user
-    let mut claim_ids = Vec::new();
-
-    if transfer_from_token_0.is_ok() {
-        // if transfer_token_0 was successful, then need to return token_0 back to the user
-        request_map::update_status(request_id, StatusCode::ReturnToken0, None);
-
-        // transfer back amount_0 of token_0
-        let amount_0_with_gas = nat_subtract(amount_0, &token_0.fee()).unwrap_or(nat_zero());
-        match icrc1_transfer(&amount_0_with_gas, &caller_id, token_0, None).await {
-            Ok(block_id) => {
-                let transfer_id = transfer_map::insert(&StableTransfer {
-                    transfer_id: 0,
-                    request_id,
-                    is_send: false,
-                    amount: amount_0_with_gas,
-                    token_id: token_0.token_id(),
-                    tx_id: TxId::BlockIndex(block_id),
-                    ts,
-                });
-                transfer_ids.push(transfer_id);
-                request_map::update_status(request_id, StatusCode::ReturnToken0Success, None);
-            }
-            Err(e) => {
-                // attemp to return token_0 failed, so save as a claim
-                let claim_id = claim_map::insert(&StableClaim::new(
-                    user_id,
-                    token_0.token_id(),
-                    amount_0,
-                    Some(request_id),
-                    Some(Address::PrincipalId(caller_id)),
-                    ts,
-                ));
-                claim_ids.push(claim_id);
-                let message = format!("{}. Saved as claim #{}", e, claim_id);
-                error_log(&format!(
-                    "AddPool Req #{}: Failed to return {} {}: {}",
-                    request_id, amount_0, symbol_0, message
-                ));
-                request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message));
-            }
-        }
-    }
-
-    if transfer_from_token_1.is_ok() {
-        // if transfer_token_1 was successful, then need to return token_1 back to the user
-        request_map::update_status(request_id, StatusCode::ReturnToken1, None);
-
-        // transfer back amount_1 of token_1
-        let amount_1_with_gas = nat_subtract(amount_1, &token_1.fee()).unwrap_or(nat_zero());
-        match icrc1_transfer(&amount_1_with_gas, &caller_id, token_1, None).await {
-            Ok(block_id) => {
-                let transfer_id = transfer_map::insert(&StableTransfer {
-                    transfer_id: 0,
-                    request_id,
-                    is_send: false,
-                    amount: amount_1_with_gas,
-                    token_id: token_1.token_id(),
-                    tx_id: TxId::BlockIndex(block_id),
-                    ts,
-                });
-                transfer_ids.push(transfer_id);
-                request_map::update_status(request_id, StatusCode::ReturnToken1Success, None);
-            }
-            Err(e) => {
-                let claim_id = claim_map::insert(&StableClaim::new(
-                    user_id,
-                    token_1.token_id(),
-                    amount_1,
-                    Some(request_id),
-                    Some(Address::PrincipalId(caller_id)),
-                    ts,
-                ));
-                claim_ids.push(claim_id);
-                let message = format!("{}. Saved as claim #{}", e, claim_id);
-                error_log(&format!(
-                    "AddPool Req #{}: Failed to return {} {}: {}",
-                    request_id, amount_1, symbol_1, message
-                ));
-                request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message));
-            }
-        }
-    }
-
-    request_map::update_status(request_id, StatusCode::Failed, None);
-
     let reply = create_add_pool_reply_failed(
         &chain_0,
         &symbol_0,
@@ -696,6 +609,77 @@ async fn return_tokens(
         on_kong,
         ts,
     );
-    request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
-    reply
+    request_map::update_reply(request_id, Reply::AddPool(reply));
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn return_token(
+    request_id: u64,
+    user_id: u32,
+    to_principal_id: &Account,
+    token_index: &TokenIndex,
+    token: &StableToken,
+    amount: &Nat,
+    transfer_ids: &mut Vec<u64>,
+    claim_ids: &mut Vec<u64>,
+    ts: u64,
+) {
+    match token_index {
+        TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0, None),
+        TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1, None),
+    };
+
+    let amount_0_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
+    match icrc1_transfer(&amount_0_with_gas, to_principal_id, token, None).await {
+        Ok(block_id) => {
+            let transfer_id = transfer_map::insert(&StableTransfer {
+                transfer_id: 0,
+                request_id,
+                is_send: false,
+                amount: amount_0_with_gas,
+                token_id: token.token_id(),
+                tx_id: TxId::BlockIndex(block_id),
+                ts,
+            });
+            transfer_ids.push(transfer_id);
+            match token_index {
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0Success, None),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1Success, None),
+            };
+        }
+        Err(e) => {
+            // attempt to return token_0 failed, so save as a claim
+            let message = match claim_map::insert(&StableClaim::new(
+                user_id,
+                token.token_id(),
+                amount,
+                Some(request_id),
+                Some(Address::PrincipalId(*to_principal_id)),
+                ts,
+            )) {
+                Ok(claim_id) => {
+                    claim_ids.push(claim_id);
+                    format!("Saved as claim #{}. {}", claim_id, e)
+                }
+                Err(e) => format!("Failed to save claim. {}", e),
+            };
+            match token_index {
+                TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0Failed, Some(&message)),
+                TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1Failed, Some(&message)),
+            };
+        }
+    }
+}
+
+pub fn archive_to_kong_data(request: StableRequest) {
+    request_map::archive_request_to_kong_data(request.request_id);
+    if let Reply::AddPool(reply) = request.reply {
+        for claim_id in reply.claim_ids.iter() {
+            claim_map::archive_claim_to_kong_data(*claim_id);
+        }
+        for transfer_id_reply in reply.transfer_ids.iter() {
+            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+        }
+        tx_map::archive_tx_to_kong_data(reply.tx_id);
+    };
 }

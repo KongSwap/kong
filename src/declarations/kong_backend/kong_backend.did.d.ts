@@ -118,7 +118,6 @@ export interface ICTokenReply {
   'icrc1' : boolean,
   'icrc2' : boolean,
   'icrc3' : boolean,
-  'pool_symbol' : string,
   'symbol' : string,
   'on_kong' : boolean,
 }
@@ -142,7 +141,6 @@ export interface LPTokenReply {
   'name' : string,
   'address' : string,
   'pool_id_of' : number,
-  'pool_symbol' : string,
   'total_supply' : bigint,
   'symbol' : string,
   'on_kong' : boolean,
@@ -402,11 +400,15 @@ export interface _SERVICE {
     AddLiquidityAsyncResult
   >,
   'add_pool' : ActorMethod<[AddPoolArgs], AddPoolResult>,
-  'add_token' : ActorMethod<[AddTokenArgs], AddTokenResult>,
   'check_pools' : ActorMethod<[], CheckPoolsResult>,
-  'get_requests' : ActorMethod<[[] | [bigint], [] | [number]], RequestsResult>,
-  'get_transfers' : ActorMethod<[[] | [bigint]], TransfersResult>,
-  'get_txs' : ActorMethod<[[] | [bigint], [] | [number]], TxsResult>,
+  'get_requests' : ActorMethod<
+    [[] | [bigint], [] | [number], [] | [number]],
+    RequestsResult
+  >,
+  'get_txs' : ActorMethod<
+    [[] | [bigint], [] | [bigint], [] | [number], [] | [number]],
+    TxsResult
+  >,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc1_name' : ActorMethod<[], string>,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,

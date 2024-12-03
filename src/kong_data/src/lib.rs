@@ -12,7 +12,7 @@ mod requests;
 mod send;
 mod stable_claim;
 mod stable_kong_settings;
-mod stable_lp_token_ledger;
+mod stable_lp_token;
 mod stable_memory;
 mod stable_message;
 mod stable_pool;
@@ -28,4 +28,4 @@ mod txs;
 mod user;
 
 pub const APP_NAME: &str = "Kong Data";
-pub const APP_VERSION: &str = "v0.0.12";
+pub const APP_VERSION: &str = "v0.0.13";

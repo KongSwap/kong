@@ -1,7 +1,8 @@
 use wildmatch::WildMatch;
 
-use crate::stable_kong_settings::kong_settings;
-use crate::stable_lp_token_ledger::lp_token_ledger;
+use crate::ic::logging::error_log;
+use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_token::stable_token::StableToken;
@@ -163,30 +164,53 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
     if exists(&pool.token_0(), &pool.token_1()) {
         Err(format!("Pool {} already exists", pool.symbol()))?
     }
+
     POOL_MAP.with(|m| {
         let mut map = m.borrow_mut();
-        let pool_id = kong_settings::inc_pool_map_idx();
+        let pool_id = kong_settings_map::inc_pool_map_idx();
         let insert_pool = StablePool { pool_id, ..pool.clone() };
-        map.insert(StablePoolId(pool_id), insert_pool);
+        map.insert(StablePoolId(pool_id), insert_pool.clone());
+        archive_pool_to_kong_data(insert_pool);
         Ok(pool_id)
     })
 }
 
-pub fn update(pool: &StablePool) -> Option<StablePool> {
-    POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()))
+pub fn update(pool: &StablePool) {
+    POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()));
+    archive_pool_to_kong_data(pool.clone());
 }
 
-pub fn remove(pool_id: u32) -> Result<String, String> {
+pub fn remove(pool_id: u32) -> Result<(), String> {
     // remove pool
     let pool = POOL_MAP
         .with(|m| m.borrow_mut().remove(&StablePoolId(pool_id)))
         .ok_or("Unable to remove pool".to_string())?;
 
     // remove LP token
-    token_map::remove(pool.lp_token_id).ok_or("Unable to remove LP token")?;
+    token_map::remove(pool.lp_token_id)?;
 
-    // remove LP token ledger
-    lp_token_ledger::remove(pool.lp_token_id)?;
+    // remove LP token
+    lp_token_map::remove(pool.lp_token_id)?;
 
-    Ok(format!("Pool {} removed", pool.symbol()))
+    Ok(())
+}
+
+fn archive_pool_to_kong_data(pool: StablePool) {
+    ic_cdk::spawn(async move {
+        match serde_json::to_string(&pool) {
+            Ok(pool_json) => {
+                let kong_data = kong_settings_map::get().kong_data;
+                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_pool", (pool_json,))
+                    .await
+                    .map_err(|e| e.1)
+                    .unwrap_or_else(|e| (Err(e),))
+                    .0
+                {
+                    Ok(_) => (),
+                    Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
+                }
+            }
+            Err(e) => error_log(&format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
+        }
+    });
 }

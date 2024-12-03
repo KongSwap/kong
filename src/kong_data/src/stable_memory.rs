@@ -1,6 +1,6 @@
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
-use crate::stable_lp_token_ledger::stable_lp_token_ledger::{StableLPTokenLedger, StableLPTokenLedgerId};
+use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
@@ -22,7 +22,7 @@ pub const TX_MEMORY_ID: MemoryId = MemoryId::new(4);
 pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(5);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(6);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
-pub const LP_TOKEN_LEDGER_MEMORY_ID: MemoryId = MemoryId::new(8);
+pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(8);
 pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
 
 thread_local! {
@@ -72,8 +72,8 @@ thread_local! {
     });
 
     // stable memory for storing all LP tokens for users
-    pub static LP_TOKEN_LEDGER: RefCell<StableBTreeMap<StableLPTokenLedgerId, StableLPTokenLedger, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_LEDGER_MEMORY_ID)))
+    pub static LP_TOKEN_MAP: RefCell<StableBTreeMap<StableLPTokenId, StableLPToken, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_MEMORY_ID)))
     });
 
     // stable memory for storing all messages
