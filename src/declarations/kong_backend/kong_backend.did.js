@@ -359,7 +359,6 @@ export const idlFactory = ({ IDL }) => {
     'icrc1' : IDL.Bool,
     'icrc2' : IDL.Bool,
     'icrc3' : IDL.Bool,
-    'pool_symbol' : IDL.Text,
     'symbol' : IDL.Text,
     'on_kong' : IDL.Bool,
   });
@@ -372,7 +371,6 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'address' : IDL.Text,
     'pool_id_of' : IDL.Nat32,
-    'pool_symbol' : IDL.Text,
     'total_supply' : IDL.Nat,
     'symbol' : IDL.Text,
     'on_kong' : IDL.Bool,

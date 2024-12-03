@@ -18,19 +18,23 @@ pub fn to_txs(txs: &[SwapCalc], ts: u64) -> Vec<SwapTxReply> {
 fn to_swap_tx_reply(swap: &SwapCalc, ts: u64) -> Option<SwapTxReply> {
     let pool = pool_map::get_by_pool_id(swap.pool_id)?;
     let pay_token = token_map::get_by_token_id(swap.pay_token_id)?;
-    let pay_chain = pay_token.chain().to_string();
-    let pay_symbol = pay_token.symbol().to_string();
+    let pay_chain = pay_token.chain();
+    let pay_address = pay_token.address();
+    let pay_symbol = pay_token.symbol();
     let receive_token = token_map::get_by_token_id(swap.receive_token_id)?;
-    let receive_chain = receive_token.chain().to_string();
-    let receive_symbol = receive_token.symbol().to_string();
+    let receive_chain = receive_token.chain();
+    let receive_address = receive_token.address();
+    let receive_symbol = receive_token.symbol();
     let price = swap.get_price().unwrap_or(BigRational::zero());
     let price_f64 = price_rounded(&price).unwrap_or(0_f64);
     Some(SwapTxReply {
         pool_symbol: pool.symbol(),
         pay_chain,
+        pay_address,
         pay_symbol,
         pay_amount: swap.pay_amount.clone(),
         receive_chain,
+        receive_address,
         receive_symbol,
         receive_amount: swap.receive_amount.clone(),
         price: price_f64,
@@ -46,23 +50,37 @@ pub fn create_swap_reply(swap_tx: &SwapTx) -> SwapReply {
 
 pub fn create_swap_reply_with_tx_id(tx_id: u64, swap_tx: &SwapTx) -> SwapReply {
     let pay_token = token_map::get_by_token_id(swap_tx.pay_token_id);
-    let (pay_chain, pay_symbol) = pay_token.map_or_else(
-        || ("Pay chain not found".to_string(), "Pay symbol not found".to_string()),
-        |token| (token.chain().to_string(), token.symbol().to_string()),
+    let (pay_chain, pay_address, pay_symbol) = pay_token.map_or_else(
+        || {
+            (
+                "Pay chain not found".to_string(),
+                "Pay address not found".to_string(),
+                "Pay symbol not found".to_string(),
+            )
+        },
+        |token| (token.chain(), token.address(), token.symbol()),
     );
     let receive_token = token_map::get_by_token_id(swap_tx.receive_token_id);
-    let (receive_chain, receive_symbol) = receive_token.map_or_else(
-        || ("Receive chain not found".to_string(), "Receive symbol not found".to_string()),
-        |token| (token.chain().to_string(), token.symbol().to_string()),
+    let (receive_chain, receive_address, receive_symbol) = receive_token.map_or_else(
+        || {
+            (
+                "Receive chain not found".to_string(),
+                "Receive address not found".to_string(),
+                "Receive symbol not found".to_string(),
+            )
+        },
+        |token| (token.chain(), token.address(), token.symbol()),
     );
     SwapReply {
         tx_id,
         request_id: swap_tx.request_id,
         status: swap_tx.status.to_string(),
         pay_chain,
+        pay_address,
         pay_symbol,
         pay_amount: swap_tx.pay_amount.clone(),
         receive_chain,
+        receive_address,
         receive_symbol,
         receive_amount: swap_tx.receive_amount.clone(),
         mid_price: swap_tx.mid_price,

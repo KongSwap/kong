@@ -49,7 +49,7 @@ pub fn is_caller_controller() -> bool {
 /// Check to make sure Principal Id is not anonymous
 pub fn principal_id_is_not_anonymous(principal_id: &str) -> Result<(), String> {
     if principal_id == Principal::anonymous().to_text() {
-        return Err("Anonymous user".to_string());
+        return Err("Anonymous user not allowed".to_string());
     }
     Ok(())
 }

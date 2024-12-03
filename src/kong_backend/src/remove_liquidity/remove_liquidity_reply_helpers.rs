@@ -40,7 +40,7 @@ pub fn create_remove_liquidity_reply_with_tx_id(tx_id: u64, remove_liquidity_tx:
     }
 }
 
-pub fn create_remove_liquidity_reply_failed(pool_id: u32, request_id: u64, transfer_ids: &[u64], ts: u64) -> RemoveLiquidityReply {
+pub fn create_remove_liquidity_reply_failed(pool_id: u32, request_id: u64, ts: u64) -> RemoveLiquidityReply {
     let (symbol, chain_0, symbol_0, chain_1, symbol_1) = pool_map::get_by_pool_id(pool_id)
         .map(|pool| (pool.symbol(), pool.chain_0(), pool.symbol_0(), pool.chain_1(), pool.symbol_1()))
         .unwrap_or((
@@ -64,8 +64,8 @@ pub fn create_remove_liquidity_reply_failed(pool_id: u32, request_id: u64, trans
         amount_1: nat_zero(),
         lp_fee_1: nat_zero(),
         remove_lp_token_amount: nat_zero(),
-        transfer_ids: to_transfer_ids(transfer_ids),
-        claim_ids: Vec::new(), // if failed, claims_ids is empty as no LP tokens are returned
+        transfer_ids: Vec::new(), // if failed, transfer_ids is empty as no tokens are returned
+        claim_ids: Vec::new(),    // if failed, claims_ids is empty as no LP tokens are returned
         ts,
     }
 }

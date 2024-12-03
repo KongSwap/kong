@@ -44,3 +44,18 @@ fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
 
     Ok("Transfers updated".to_string())
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_transfer(stable_transfer_json: String) -> Result<String, String> {
+    let transfer: StableTransfer = match serde_json::from_str(&stable_transfer_json) {
+        Ok(transfer) => transfer,
+        Err(e) => return Err(format!("Invalid transfer: {}", e)),
+    };
+
+    TRANSFER_MAP.with(|transfer_map| {
+        let mut map = transfer_map.borrow_mut();
+        map.insert(StableTransferId(transfer.transfer_id), transfer);
+    });
+
+    Ok("Transfer updated".to_string())
+}

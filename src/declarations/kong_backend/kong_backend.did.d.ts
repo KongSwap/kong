@@ -118,7 +118,6 @@ export interface ICTokenReply {
   'icrc1' : boolean,
   'icrc2' : boolean,
   'icrc3' : boolean,
-  'pool_symbol' : string,
   'symbol' : string,
   'on_kong' : boolean,
 }
@@ -142,7 +141,6 @@ export interface LPTokenReply {
   'name' : string,
   'address' : string,
   'pool_id_of' : number,
-  'pool_symbol' : string,
   'total_supply' : bigint,
   'symbol' : string,
   'on_kong' : boolean,

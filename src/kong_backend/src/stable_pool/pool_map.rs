@@ -1,5 +1,6 @@
 use wildmatch::WildMatch;
 
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::POOL_MAP;
@@ -169,16 +170,14 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
         let pool_id = kong_settings_map::inc_pool_map_idx();
         let insert_pool = StablePool { pool_id, ..pool.clone() };
         map.insert(StablePoolId(pool_id), insert_pool.clone());
-        // archive new pool
-        archive_pool(insert_pool);
+        archive_pool_to_kong_data(insert_pool);
         Ok(pool_id)
     })
 }
 
 pub fn update(pool: &StablePool) {
     POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()));
-    // archive updated pool
-    archive_pool(pool.clone());
+    archive_pool_to_kong_data(pool.clone());
 }
 
 pub fn remove(pool_id: u32) -> Result<(), String> {
@@ -196,7 +195,7 @@ pub fn remove(pool_id: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn archive_pool(pool: StablePool) {
+fn archive_pool_to_kong_data(pool: StablePool) {
     ic_cdk::spawn(async move {
         match serde_json::to_string(&pool) {
             Ok(pool_json) => {
@@ -208,10 +207,10 @@ fn archive_pool(pool: StablePool) {
                     .0
                 {
                     Ok(_) => (),
-                    Err(e) => ic_cdk::print(format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
+                    Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
                 }
             }
-            Err(e) => ic_cdk::print(format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
+            Err(e) => error_log(&format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
         }
     });
 }

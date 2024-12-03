@@ -87,9 +87,9 @@ pub async fn send_receive_token(
         &claim_ids,
         ts,
     );
-    // insert tx
     let tx_id = tx_map::insert(&StableTx::Swap(swap_tx.clone()));
     let reply = create_swap_reply_with_tx_id(tx_id, &swap_tx);
     request_map::update_reply(request_id, Reply::Swap(reply.clone()));
+
     reply
 }
