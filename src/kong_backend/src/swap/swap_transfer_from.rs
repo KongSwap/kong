@@ -1,5 +1,4 @@
 use candid::Nat;
-use ic_cdk::api::call;
 use icrc_ledger_types::icrc1::account::Account;
 
 use super::calculate_amounts::calculate_amounts;
@@ -8,6 +7,7 @@ use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
 use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
+use super::archive_to_kong_data::archive_to_kong_data;
 
 use crate::helpers::nat_helpers::nat_is_zero;
 use crate::ic::address::Address;
@@ -15,12 +15,10 @@ use crate::ic::address_helpers::get_address;
 use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::transfer::icrc2_transfer_from;
-use crate::stable_claim::claim_map;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
+use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
-use crate::stable_tx::tx_map;
 use crate::stable_user::user_map;
 
 pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
@@ -223,17 +221,4 @@ async fn transfer_from_token(
             Err(e)
         }
     }
-}
-
-pub fn archive_to_kong_data(request: StableRequest) {
-    request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::Swap(reply) = request.reply {
-        for claim_id in reply.claim_ids.iter() {
-            claim_map::archive_claim_to_kong_data(*claim_id);
-        }
-        for transfer_id_reply in reply.transfer_ids.iter() {
-            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
-        }
-        tx_map::archive_tx_to_kong_data(reply.tx_id);
-    };
 }
