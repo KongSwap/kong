@@ -309,7 +309,7 @@ const debouncedFetchData = debounce(async () => {
 </script>
 
 <div 
-  class="relative w-full h-full min-h-[400px]"
+  class="relative w-full h-full min-h-[400px] !p-0"
   bind:this={chartContainer}
 >
   {#if isLoadingChart}

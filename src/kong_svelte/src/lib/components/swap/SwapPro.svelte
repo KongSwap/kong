@@ -78,70 +78,13 @@
       <Panel
         variant="green"
         type="main"
-        className={`chart-area !p-0 ${isChartMinimized ? "minimized" : ""} ${
-          isFullscreen ? "fullscreen" : ""
-        }`}
+        className={`chart-area !p-0`}
         width="100%"
         height="100%"
       >
-        <div class="chart-controls">
-          <div class="chart-buttons">
-            <button
-              class="chart-control-btn"
-              on:click={() => (isFullscreen = !isFullscreen)}
-              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                {#if isFullscreen}
-                  <path
-                    d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
-                  />
-                {:else}
-                  <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
-                {/if}
-              </svg>
-            </button>
-            <button
-              class="chart-control-btn"
-              on:click={() => (isChartMinimized = !isChartMinimized)}
-              title={isChartMinimized ? "Maximize" : "Minimize"}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                {#if isChartMinimized}
-                  <path
-                    d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
-                  />
-                {:else}
-                  <path d="M4 14h6m-6-4h6m4 0h6m-6 4h6" />
-                {/if}
-              </svg>
-            </button>
-          </div>
-        </div>
         <div
-          class="chart-wrapper"
+          class="chart-wrapper !p-0"
           class:minimized={isChartMinimized}
-          class:fullscreen={isFullscreen}
         >
           {#if fromToken && toToken}
             <TradingViewChart 
