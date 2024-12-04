@@ -67,9 +67,9 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
         },
     );
 
-    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
-        archive_to_kong_data(request);
-    }
+    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+        .first()
+        .map(archive_to_kong_data);
 
     result
 }

@@ -44,9 +44,9 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
             },
         );
 
-    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
-        archive_to_kong_data(request);
-    }
+    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+        .first()
+        .map(archive_to_kong_data);
 
     result
 }
@@ -54,8 +54,7 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
 pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     ic_cdk::spawn(async move {
         match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
@@ -63,9 +62,9 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
-            archive_to_kong_data(request);
-        }
+        request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+            .first()
+            .map(archive_to_kong_data);
     });
 
     Ok(request_id)

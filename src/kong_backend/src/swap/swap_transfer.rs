@@ -65,9 +65,9 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
-            archive_to_kong_data(request);
-        }
+        request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+            .first()
+            .map(archive_to_kong_data);
     });
 
     Ok(request_id)
