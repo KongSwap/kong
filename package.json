@@ -1,20 +1,21 @@
 {
+  "name": "kongswap",
+  "private": true,
   "engines": {
     "node": ">=16.0.0",
     "pnpm": ">=7.0.0"
   },
-  "name": "kongswap",
   "scripts": {
-    "build": "pnpm run build --workspaces --if-present",
-    "prebuild": "pnpm run prebuild --workspaces --if-present",
-    "pretest": "pnpm run prebuild --workspaces --if-present",
-    "start": "pnpm start --workspaces --if-present",
-    "test": "pnpm test --workspaces --if-present"
+    "build": "pnpm -r build",
+    "prebuild": "pnpm -r prebuild",
+    "pretest": "pnpm -r prebuild",
+    "start": "pnpm -r start",
+    "test": "pnpm -r test"
   },
-  "type": "module",
   "workspaces": [
-    "src/kong_svelte"
+    "src/*"
   ],
+  "type": "module",
   "dependencies": {
     "@dfinity/agent": "^2.1.3",
     "@dfinity/auth-client": "^2.1.3",

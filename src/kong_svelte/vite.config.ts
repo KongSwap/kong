@@ -22,10 +22,16 @@ export default defineConfig(({ mode }: ConfigEnv) => {
     build: {
       emptyOutDir: true,
       sourcemap: true,
+      chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor': ['svelte'],
+          manualChunks: (id) => {
+            if (id.includes('node_modules/svelte')) {
+              return 'vendor';
+            }
+            if (id.includes('charting_library')) {
+              return 'charting';
+            }
           },
         },
         external: [
@@ -81,7 +87,22 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             },
           ],
         },
-
+        workbox: {
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.js$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'js-cache',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 30 * 24 * 60 * 60
+                }
+              }
+            }
+          ]
+        }
       }),
       viteCompression({
         verbose: true,
@@ -115,8 +136,8 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       ],
     },
     worker: {
-      plugins: [sveltekit()],
-      format: 'es',
+      plugins: () => [sveltekit()],
+      format: 'es' as const,
     },
     define: {
       'process.env.CANISTER_ID_KONG_BACKEND': JSON.stringify(env.CANISTER_ID_KONG_BACKEND),
