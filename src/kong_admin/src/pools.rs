@@ -12,25 +12,27 @@ use super::math_helpers::round_f64;
 
 pub fn serialize_pool(pool: &StablePool) -> serde_json::Value {
     json!({
-        "pool_id": pool.pool_id,
-        "token_id_0": pool.token_id_0,
-        "balance_0": pool.balance_0.to_string(),
-        "lp_fee_0": pool.lp_fee_0.to_string(),
-        "kong_fee_0": pool.kong_fee_0.to_string(),
-        "token_id_1": pool.token_id_1,
-        "balance_1": pool.balance_1.to_string(),
-        "lp_fee_1": pool.lp_fee_1.to_string(),
-        "kong_fee_1": pool.kong_fee_1.to_string(),
-        "lp_fee_bps": pool.lp_fee_bps,
-        "kong_fee_bps": pool.kong_fee_bps,
-        "lp_token_id": pool.lp_token_id,
-        "on_kong": pool.on_kong,
-        "rolling_24h_volume": pool.rolling_24h_volume.to_string(),
-        "rolling_24h_lp_fee": pool.rolling_24h_lp_fee.to_string(),
-        "rolling_24h_num_swaps": pool.rolling_24h_num_swaps.to_string(),
-        "rolling_24h_apy": pool.rolling_24h_apy,
-        "total_volume": pool.total_volume.to_string(),
-        "total_lp_fee": pool.total_lp_fee.to_string(),
+        "StablePool": {
+            "pool_id": pool.pool_id,
+            "token_id_0": pool.token_id_0,
+            "balance_0": pool.balance_0.to_string(),
+            "lp_fee_0": pool.lp_fee_0.to_string(),
+            "kong_fee_0": pool.kong_fee_0.to_string(),
+            "token_id_1": pool.token_id_1,
+            "balance_1": pool.balance_1.to_string(),
+            "lp_fee_1": pool.lp_fee_1.to_string(),
+            "kong_fee_1": pool.kong_fee_1.to_string(),
+            "lp_fee_bps": pool.lp_fee_bps,
+            "kong_fee_bps": pool.kong_fee_bps,
+            "lp_token_id": pool.lp_token_id,
+            "on_kong": pool.on_kong,
+            "rolling_24h_volume": pool.rolling_24h_volume.to_string(),
+            "rolling_24h_lp_fee": pool.rolling_24h_lp_fee.to_string(),
+            "rolling_24h_num_swaps": pool.rolling_24h_num_swaps.to_string(),
+            "rolling_24h_apy": pool.rolling_24h_apy,
+            "total_volume": pool.total_volume.to_string(),
+            "total_lp_fee": pool.total_lp_fee.to_string(),
+        }
     })
 }
 

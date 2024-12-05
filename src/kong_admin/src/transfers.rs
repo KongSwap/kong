@@ -32,13 +32,15 @@ pub fn serialize_tx_id(tx_id: &TxId) -> serde_json::Value {
 
 pub fn serialize_transfer(transfer: &StableTransfer) -> serde_json::Value {
     json!({
-        "transfer_id": transfer.transfer_id,
-        "request_id": transfer.request_id,
-        "is_send": transfer.is_send,
-        "amount": transfer.amount.to_string(),
-        "token_id": transfer.token_id,
-        "tx_id": serialize_tx_id(&transfer.tx_id),
-        "ts": transfer.ts,
+        "StableTransfer": {
+            "transfer_id": transfer.transfer_id,
+            "request_id": transfer.request_id,
+            "is_send": transfer.is_send,
+            "amount": transfer.amount.to_string(),
+            "token_id": transfer.token_id,
+            "tx_id": serialize_tx_id(&transfer.tx_id),
+            "ts": transfer.ts,
+        }
     })
 }
 

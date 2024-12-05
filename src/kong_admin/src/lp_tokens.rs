@@ -12,11 +12,13 @@ use super::math_helpers::round_f64;
 
 pub fn serialize_lp_tokens(lp_token: &StableLPToken) -> serde_json::Value {
     json!({
-        "lp_token_id": lp_token.lp_token_id,
-        "user_id": lp_token.user_id,
-        "token_id": lp_token.token_id,
-        "amount": lp_token.amount.to_string(),
-        "ts": lp_token.ts,
+        "StableLPToken": {
+            "lp_token_id": lp_token.lp_token_id,
+            "user_id": lp_token.user_id,
+            "token_id": lp_token.token_id,
+            "amount": lp_token.amount.to_string(),
+            "ts": lp_token.ts,
+        }
     })
 }
 

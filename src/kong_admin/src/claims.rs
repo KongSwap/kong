@@ -49,16 +49,18 @@ pub fn serialize_option_address(address: Option<&Address>) -> serde_json::Value 
 
 pub fn serialize_claim(claim: &StableClaim) -> serde_json::Value {
     json!({
-        "claim_id": claim.claim_id,
-        "user_id": claim.user_id,
-        "token_id": claim.token_id,
-        "status": serialize_claim_status(&claim.status),
-        "amount": claim.amount.to_string(),
-        "request_id": claim.request_id,
-        "to_address": serialize_option_address(claim.to_address.as_ref()),
-        "attempt_request_id": claim.attempt_request_id,
-        "transfer_ids": claim.transfer_ids,
-        "ts": claim.ts,
+        "StableClaim": {
+            "claim_id": claim.claim_id,
+            "user_id": claim.user_id,
+            "token_id": claim.token_id,
+            "status": serialize_claim_status(&claim.status),
+            "amount": claim.amount.to_string(),
+            "request_id": claim.request_id,
+            "to_address": serialize_option_address(claim.to_address.as_ref()),
+            "attempt_request_id": claim.attempt_request_id,
+            "transfer_ids": claim.transfer_ids,
+            "ts": claim.ts,
+        }
     })
 }
 

@@ -22,23 +22,27 @@ enum TokenType {
 pub fn serialize_token(token: &StableToken) -> serde_json::Value {
     match token {
         StableToken::IC(token) => json!({
-            "token_id": token.token_id,
-            "name": token.name,
-            "symbol": token.symbol,
-            "canister_id": token.canister_id.to_string(),
-            "decimals": token.decimals,
-            "fee": token.fee.to_string(),
-            "icrc1": token.icrc1,
-            "icrc2": token.icrc2,
-            "icrc3": token.icrc3,
-            "on_kong": token.on_kong,
+            "IC": {
+                "token_id": token.token_id,
+                "name": token.name,
+                "symbol": token.symbol,
+                "canister_id": token.canister_id.to_string(),
+                "decimals": token.decimals,
+                "fee": token.fee.to_string(),
+                "icrc1": token.icrc1,
+                "icrc2": token.icrc2,
+                "icrc3": token.icrc3,
+                "on_kong": token.on_kong,
+            }
         }),
         StableToken::LP(token) => json!({
-            "token_id": token.token_id,
-            "symbol": token.symbol,
-            "address": token.address,
-            "decimals": token.decimals,
-            "on_kong": token.on_kong,
+            "LP": {
+                "token_id": token.token_id,
+                "symbol": token.symbol,
+                "address": token.address,
+                "decimals": token.decimals,
+                "on_kong": token.on_kong,
+            }
         }),
     }
 }

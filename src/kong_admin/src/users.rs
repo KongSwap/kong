@@ -49,7 +49,7 @@ pub async fn dump_users(db_client: &Client) -> Result<(), Box<dyn std::error::Er
             let campaign1_flags = v.campaign1_flags.clone();
             let last_login_ts = v.last_login_ts as f64 / 1_000_000_000.0;
             let last_swap_ts = v.last_swap_ts as f64 / 1_000_000_000.0;
-            let raw_json = json!(&v);
+            let raw_json = json!({ "StableUser": &v });
 
             db_client
                 .execute(
