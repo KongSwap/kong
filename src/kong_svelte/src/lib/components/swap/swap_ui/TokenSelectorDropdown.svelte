@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte';
     import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-    import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
     import { fade, scale } from 'svelte/transition';
     import { flip } from 'svelte/animate';
     import { cubicOut } from 'svelte/easing';
@@ -148,15 +147,6 @@
     function getStaggerDelay(index: number) {
       return index * 30; // 30ms delay between each item
     }
-
-    // Load token logos
-    $effect(() => {
-      filteredTokens.forEach(match => {
-        if (!$tokenLogoStore[match.token.canister_id]) {
-          getTokenLogo(match.token.canister_id);
-        }
-      });
-    });
   
     function handleSelect(token: FE.Token) {
       onSelect({
@@ -320,7 +310,7 @@
                   >
                     <div class="token-info">
                       <img
-                        src={$tokenLogoStore[token.canister_id] || '/tokens/not_verified.webp'}
+                        src={token?.logo_url}
                         alt={token.symbol}
                         class="token-logo"
                       />

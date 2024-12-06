@@ -1,29 +1,22 @@
 <script lang="ts">
   import { fade, slide } from 'svelte/transition';
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from 'svelte';
   import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
   import { favoriteStore, currentWalletFavorites } from "$lib/services/tokens/favoriteStore";
 
-  // Update the token type to include isFavorite
-  interface ProcessedToken extends FE.Token {
-    logo?: string;
-    value: number;
-    usdValue: number;
-    searchableText: string;
-    canister_id: string;
+
+  type ProcessedToken = FE.Token & {
     isFavorite?: boolean;
-  }
+    balances: string;
+  };
 
   export let tokens: FE.Token[] = [];
   let searchQuery = '';
   let searchInput: HTMLInputElement;
   let hideZeroBalances = false;
-  let sortBy = 'value';
   let sortDirection = 'desc';
-  let isPasting = false;
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
 
@@ -50,25 +43,19 @@
     .map((token): ProcessedToken => {
       const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id);
       const balanceInfo = storeBalances[token.canister_id] || { in_tokens: 0n, in_usd: '0' };
-      const logoUrl = $tokenLogoStore[token.canister_id] || DEFAULT_LOGOS.DEFAULT;
+      const logoUrl = token?.logo_url || DEFAULT_LOGOS.DEFAULT;
       
       const balance = balanceInfo.in_tokens;
       const decimals = token.decimals || 0;
       
       const divisor = BigInt(10) ** BigInt(decimals);
       const normalizedBalance = Number(balance) / Number(divisor);
-      const usdValue = Number(balanceInfo.in_usd);
       
       return {
         ...token,
         ...(formattedToken || {}),
-        logo: logoUrl,
-        value: normalizedBalance,
-        usdValue,
-        balance: balance.toString(),
-        searchableText: `${token.name || ''} ${token.symbol || ''} ${token.canister_id || ''}`.toLowerCase(),
-        canister_id: token.canister_id?.toLowerCase() || '',
-        isFavorite: $currentWalletFavorites.includes(token.canister_id)
+        isFavorite: $currentWalletFavorites.includes(token.canister_id),
+        balance: balance,
       };
     })
     .filter(token => token && token.canister_id)
@@ -78,7 +65,7 @@
       if (!a.isFavorite && b.isFavorite) return 1;
       
       // Then sort by USD value
-      return sortDirection === 'desc' ? b.usdValue - a.usdValue : a.usdValue - b.usdValue;
+      return sortDirection === 'desc' ? Number(storeBalances[b.canister_id]?.in_usd) - Number(storeBalances[a.canister_id]?.in_usd) : Number(storeBalances[a.canister_id]?.in_usd) - Number(storeBalances[b.canister_id]?.in_usd);
     });
 
   // Debounce search input
@@ -102,7 +89,7 @@
   // Update the filter tokens logic
   $: filteredTokens = processedTokens.filter(token => {
     // First check zero balances if enabled
-    if (hideZeroBalances && token.value <= 0) {
+    if (hideZeroBalances && token.balance <= 0) {
       return false;
     }
     
@@ -147,15 +134,6 @@
     return false;
   });
 
-  function toggleSort(criteria: string) {
-    if (sortBy === criteria) {
-      sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
-    } else {
-      sortBy = criteria;
-      sortDirection = 'desc';
-    }
-  }
-
   function handleAddLiquidity() {
     console.log('Add liquidity clicked');
   }
@@ -177,19 +155,9 @@
 
   // Calculate total portfolio value using token balances and USD values
   $: totalPortfolioValue = processedTokens.reduce((total, token) => {
-    const tokenValue = (token.value || 0) * (token.price || 0);
+    const tokenValue = (Number(token.balance || 0)) * (Number(token.metrics?.price || 0));
     return total + tokenValue;
   }, 0);
-
-  // Format USD value
-  function formatUSD(value: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value || 0);
-  }
 
   // Update the helper function for match display
   function getMatchDisplay(match: SearchMatch): string {

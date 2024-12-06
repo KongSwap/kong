@@ -20,15 +20,17 @@ const configurationData = {
 };
 
 export class KongDatafeed {
-  private poolId: number | undefined;
+  private payTokenId: number;
+  private receiveTokenId: number;
   private lastBar: any = null;
   private lastError: Error | null = null;
   private errorRetryCount: number = 0;
   private readonly MAX_RETRIES = 3;
 
-  constructor(poolId: number | undefined) {
-    this.poolId = poolId;
-    console.log('KongDatafeed initialized with poolId:', poolId);
+  constructor(payTokenId: number, receiveTokenId: number) {
+    this.payTokenId = payTokenId;
+    this.receiveTokenId = receiveTokenId;
+    console.log('KongDatafeed initialized with tokens:', { payTokenId, receiveTokenId });
   }
 
   onReady(callback: (configuration: any) => void): void {
@@ -84,17 +86,34 @@ export class KongDatafeed {
     onErrorCallback: (error: string) => void
   ): Promise<void> {
     try {
-      if (!this.poolId) {
+      if (!this.payTokenId || !this.receiveTokenId) {
         onHistoryCallback([], { noData: true });
         return;
       }
 
-      const fromMs = periodParams.from * 1000;
-      const toMs = periodParams.to * 1000;
+      // Convert timestamps to ISO format
+      const startTime = new Date(periodParams.from * 1000).toISOString();
+      const endTime = new Date(periodParams.to * 1000).toISOString();
+
+      // Convert resolution to interval format
+      const intervalMap: Record<string, string> = {
+        '1': '1m',
+        '5': '5m',
+        '15': '15m',
+        '30': '30m',
+        '60': '1h',
+        '240': '4h',
+        '1D': '1d',
+        'D': '1d',
+        '1W': '1w',
+        'W': '1w'
+      };
+      const interval = intervalMap[resolution] || '1d';
       
-      const response = await fetch(
-        `${INDEXER_URL}/pools/candlesticks/${this.poolId}?from=${fromMs}&to=${toMs}&resolution=${resolution}`
-      );
+      const url = `${INDEXER_URL}/swaps/ohlc?pay_token_id=${this.payTokenId}&receive_token_id=${this.receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+      console.log('Fetching chart data from URL:', url);
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -109,12 +128,12 @@ export class KongDatafeed {
       }
 
       const bars = data.map(bar => ({
-        time: Math.floor(new Date(bar.timestamp).getTime()),
-        open: parseFloat(bar.open),
-        high: parseFloat(bar.high),
-        low: parseFloat(bar.low),
-        close: parseFloat(bar.close),
-        volume: parseFloat(bar.volume)
+        time: Math.floor(new Date(bar.candle_start).getTime()),
+        open: bar.open_price,
+        high: bar.high_price,
+        low: bar.low_price,
+        close: bar.close_price,
+        volume: bar.volume
       }))
       .filter(bar => {
         // Validate bar data
@@ -124,8 +143,8 @@ export class KongDatafeed {
                !isNaN(bar.low) && 
                !isNaN(bar.close) && 
                !isNaN(bar.volume) &&
-               bar.time >= fromMs && 
-               bar.time <= toMs;
+               bar.time >= periodParams.from * 1000 && 
+               bar.time <= periodParams.to * 1000;
       })
       .sort((a, b) => a.time - b.time);
       
@@ -143,7 +162,6 @@ export class KongDatafeed {
       
       if (this.errorRetryCount <= this.MAX_RETRIES) {
         console.log(`[getBars]: Retrying (${this.errorRetryCount}/${this.MAX_RETRIES})`);
-        // Wait a bit before retrying
         await new Promise(resolve => setTimeout(resolve, 1000));
         await this.getBars(symbolInfo, resolution, periodParams, onHistoryCallback, onErrorCallback);
       } else {
@@ -158,8 +176,8 @@ export class KongDatafeed {
     onRealtimeCallback: (bar: any) => void,
     subscriberUID: string
   ): void {
-    if (!this.poolId) {
-      console.log('[subscribeBars]: No pool ID available');
+    if (!this.payTokenId || !this.receiveTokenId) {
+      console.log('[subscribeBars]: No token IDs available');
       return;
     }
 
@@ -169,12 +187,13 @@ export class KongDatafeed {
       if (!this.lastBar) return;
 
       try {
-        const to = Math.floor(Date.now() / 1000);
-        const from = Math.floor(this.lastBar.time / 1000);
+        const endTime = new Date().toISOString();
+        const startTime = new Date(this.lastBar.time).toISOString();
+        const interval = resolution === '60' ? '1h' : '1d';
 
-        const response = await fetch(
-          `${INDEXER_URL}/pools/candlesticks/${this.poolId}?from=${from * 1000}&to=${to * 1000}&resolution=${resolution}`
-        );
+        const url = `${INDEXER_URL}/swaps/ohlc?pay_token_id=${this.payTokenId}&receive_token_id=${this.receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+
+        const response = await fetch(url);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -184,15 +203,14 @@ export class KongDatafeed {
         if (!data || !Array.isArray(data) || data.length === 0) return;
 
         const bars = data.map(bar => ({
-          time: Math.floor(new Date(bar.timestamp).getTime()),
-          open: parseFloat(bar.open),
-          high: parseFloat(bar.high),
-          low: parseFloat(bar.low),
-          close: parseFloat(bar.close),
-          volume: parseFloat(bar.volume)
+          time: Math.floor(new Date(bar.candle_start).getTime()),
+          open: bar.open_price,
+          high: bar.high_price,
+          low: bar.low_price,
+          close: bar.close_price,
+          volume: bar.volume
         }))
         .filter(bar => {
-          // Validate bar data
           return !isNaN(bar.time) && 
                  !isNaN(bar.open) && 
                  !isNaN(bar.high) && 

@@ -105,7 +105,7 @@ function createAuthStore(pnp: PNP) {
           try {
             const [_, balances] = await Promise.all([
               actor.get_user(),
-              TokenService.fetchBalances(undefined, result.owner.toString())
+              TokenService.fetchBalances(null, result.owner.toString())
             ]);
             tokenStore.updateBalances(balances);
             return result;

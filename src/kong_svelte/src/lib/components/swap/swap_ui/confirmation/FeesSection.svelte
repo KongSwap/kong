@@ -37,14 +37,14 @@
     padding: 16px;
   }
 
-  .fee-row {
+  .fee_fixed-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
   }
 
-  .fee-row:not(:last-child) {
+  .fee_fixed-row:not(:last-child) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 

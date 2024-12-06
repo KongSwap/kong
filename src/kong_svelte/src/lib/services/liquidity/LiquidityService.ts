@@ -39,7 +39,7 @@ export class LiquidityService {
                 )
             ]);
 
-            const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend);
+            const actor = await auth.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: false, requiresSigning: false });
             const result = await actor.add_liquidity_async({
                 token_0: params.token_0.token,
                 amount_0: params.amount_0,

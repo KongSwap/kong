@@ -4,15 +4,15 @@ import { writable, get } from 'svelte/store';
 import { KongDatafeed } from '$lib/services/tradingview/datafeed';
 import { loadTradingViewLibrary } from '$lib/services/tradingview/widget';
 import { fetchChartData, type CandleData } from "$lib/services/indexer/api";
-import { SwapService } from "$lib/services/swap/SwapService";
 import { poolStore } from "$lib/services/pools";
 import { debounce } from 'lodash-es';
+import type { FE } from "$lib/types";
 
 // Props
 export let poolId: number | undefined;
 export let symbol: string;
-export let fromToken: Token | undefined = undefined;
-export let toToken: Token | undefined = undefined;
+export let fromToken: FE.Token;
+export let toToken: FE.Token;
 
 // Local state
 let chartContainer: HTMLElement;
@@ -65,6 +65,7 @@ $: {
     }
     
     if ((fromToken && toToken) || poolId) {
+      console.log('Triggering data fetch');
       debouncedFetchData();
     }
   }
@@ -93,8 +94,12 @@ function handleResize() {
 }
 
 const initChart = async () => {  
-  if (!chartContainer || !selectedPoolId) {
-    console.log('Missing required elements:', { chartContainer, poolId: selectedPoolId });
+  if (!chartContainer || !fromToken?.token_id || !toToken?.token_id) {
+    console.log('Missing required elements:', { 
+      chartContainer, 
+      fromTokenId: fromToken?.token_id, 
+      toTokenId: toToken?.token_id 
+    });
     isLoadingChart = false;
     return;
   }
@@ -102,14 +107,16 @@ const initChart = async () => {
   try {
     await loadTradingViewLibrary();
     
+    const isMobile = window.innerWidth < 768;
+    
     const widgetOptions = {
-      symbol: symbol || `Pool ${selectedPoolId}`,
-      datafeed: new KongDatafeed(selectedPoolId),
-      interval: '60',
+      symbol: symbol || `${fromToken.symbol}/${toToken.symbol}`,
+      datafeed: new KongDatafeed(fromToken.token_id, toToken.token_id),
+      interval: '240',
       container: chartContainer,
       library_path: '/charting_library/charting_library/',
       width: containerWidth,
-      height: containerHeight,
+      height: isMobile ? 300 : containerHeight,
       locale: 'en',
       fullscreen: false,
       autosize: true,
@@ -126,15 +133,21 @@ const initChart = async () => {
         'header_screenshot',
         'timeframes_toolbar',
         'symbol_info',
-        'legend_widget'
+        ...(isMobile ? [
+          'left_toolbar',
+          'volume_force_overlay',
+          'create_volume_indicator_by_default'
+        ] : [])
       ],
       enabled_features: [
-        'create_volume_indicator_by_default',
-        'left_toolbar',
+        ...(isMobile ? [] : [
+          'create_volume_indicator_by_default',
+          'left_toolbar',
+          'volume_force_overlay'
+        ]),
         'show_chart_property_page',
-        'volume_force_overlay',
         'support_multicharts',
-        'drawing_templates'
+        'legend_widget'
       ],
       custom_css_url: '/tradingview-chart.css',
       loading_screen: { 
@@ -160,10 +173,15 @@ const initChart = async () => {
         "chartProperties.background": "rgba(0,0,0,0)",
         "chartProperties.backgroundType": "solid",
         
+        // Price scale formatting
+        "mainSeriesProperties.priceFormat.precision": 4, // Limit to 4 decimal places
+        "mainSeriesProperties.priceFormat.minMove": 0.0001, // Minimum price movement
+        
         // Price axis
         "scalesProperties.backgroundColor": "rgba(0,0,0,0)",
         "scalesProperties.lineColor": "rgba(30, 41, 59, 0.2)",
         "scalesProperties.textColor": "#9ca3af",
+        "scalesProperties.fontSize": isMobile ? 10 : 12,
         
         // Time axis
         "timeScale.backgroundColor": "rgba(0,0,0,0)",
@@ -171,7 +189,15 @@ const initChart = async () => {
         "timeScale.textColor": "#9ca3af",
         
         // Volume
-        "volumePaneSize": "medium"
+        "volumePaneSize": "medium",
+        ...(isMobile && {
+          'paneProperties.legendProperties.showStudyArguments': false,
+          'paneProperties.legendProperties.showStudyTitles': false,
+          'scalesProperties.fontSize': 10,
+          'timeScale.fontSize': 10,
+          "mainSeriesProperties.priceFormat.precision": 3, // Even fewer decimals on mobile
+          "mainSeriesProperties.priceFormat.minMove": 0.001
+        })
       },
       studies_overrides: {
         "volume.volume.color.0": "#ef4444",
@@ -204,6 +230,13 @@ $: if (containerWidth && containerHeight) {
 }
 
 onMount(() => {
+  console.log('TradingViewChart mounted', { 
+    hasContainer: !!chartContainer, 
+    poolId, 
+    fromToken, 
+    toToken 
+  });
+  
   // Add resize observer
   const resizeObserver = new ResizeObserver(entries => {
     for (const entry of entries) {
@@ -274,11 +307,15 @@ async function getBestPool() {
   }
 }
 
-// Add debounced fetch
+// Update the chart data fetching logic
 const debouncedFetchData = debounce(async () => {
   isLoadingChart = true;
   try {
+    console.log('Fetching data with tokens:', { fromToken, toToken, selectedPoolId });
+    
     const bestPool = fromToken && toToken ? await getBestPool() : { pool_id: selectedPoolId };
+    console.log('Best pool found:', bestPool);
+    
     if (!bestPool?.pool_id) {
       console.log('No suitable pool found for chart');
       isLoadingChart = false;
@@ -286,19 +323,39 @@ const debouncedFetchData = debounce(async () => {
     }
 
     selectedPoolId = bestPool.pool_id;
-    const now = Math.floor(Date.now() / 1000) * 1000;
-    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+    const now = Math.floor(Date.now() / 1000);
+    const startTime = now - (2 * 365 * 24 * 60 * 60);
+    
+    // Get token IDs from the pool using token_id instead of id
+    const payTokenId = fromToken?.token_id || 1;
+    const receiveTokenId = toToken?.token_id || 10;
+    
+    console.log('Fetching chart data with params:', {
+      payTokenId,
+      receiveTokenId,
+      startTime: new Date(startTime * 1000).toISOString(),
+      endTime: new Date(now * 1000).toISOString()
+    });
     
     candleData = await fetchChartData(
-      bestPool.pool_id,
-      sevenDaysAgo,
+      payTokenId,
+      receiveTokenId,
+      startTime,
       now,
-      '60'
+      '240'
     );
+    
+    console.log('Received candle data:', candleData);
 
     if (candleData.length > 0 && chartContainer && !chart) {
+      console.log('Initializing chart with data');
       await initChart();
     } else {
+      console.log('Not initializing chart because:', {
+        hasCandleData: candleData.length > 0,
+        hasContainer: !!chartContainer,
+        hasExistingChart: !!chart
+      });
       isLoadingChart = false;
     }
   } catch (error) {
@@ -309,15 +366,15 @@ const debouncedFetchData = debounce(async () => {
 </script>
 
 <div 
-  class="relative w-full h-full min-h-[400px] !p-0"
+  class="relative w-full h-full !p-0"
   bind:this={chartContainer}
 >
   {#if isLoadingChart}
-    <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
-      <div class="flex flex-col items-center">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
-        <span class="text-white">Loading chart data...</span>
-      </div>
+    <div class="absolute inset-0 bg-[#14161A] flex items-center justify-center">
+      <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
     </div>
   {:else if routingPath.length > 1}
     <div class="absolute top-0 left-0 p-2 bg-black bg-opacity-50 text-white text-sm rounded m-2">
@@ -327,43 +384,85 @@ const debouncedFetchData = debounce(async () => {
 
   <!-- LP Info Header -->
   {#if selectedPoolId && fromToken && toToken}
-    <div class="absolute top-0 left-0 right-0 p-4 bg-black bg-opacity-50 text-white z-10 flex justify-between items-center">
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2">
-          <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs">
-            {fromToken.symbol[0]}
+    <div class="absolute top-0 left-0 right-0 p-2 md:p-4 bg-black bg-opacity-50 text-white z-10">
+      <!-- Mobile Header -->
+      <div class="flex flex-col gap-2 md:hidden">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs">
+              {fromToken.symbol[0]}
+            </div>
+            <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs -ml-2">
+              {toToken.symbol[0]}
+            </div>
+            <span class="font-bold text-sm">{fromToken.symbol}/{toToken.symbol}</span>
           </div>
-          <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs -ml-2">
-            {toToken.symbol[0]}
-          </div>
-          <span class="font-bold">{fromToken.symbol}/{toToken.symbol}</span>
+          {#if selectedPool}
+            <a 
+              href={`/pool/${selectedPool.pool_id}`} 
+              class="px-2 py-1 bg-blue-500 hover:bg-blue-600 rounded text-xs transition-colors"
+            >
+              View Pool
+            </a>
+          {/if}
         </div>
         {#if selectedPool}
-          <div class="flex gap-4 text-sm">
+          <div class="grid grid-cols-3 gap-2 text-xs">
             <div>
-              <span class="text-gray-400">TVL:</span>
-              <span class="ml-1">${selectedPool.tvl?.toLocaleString() || '0'}</span>
+              <span class="text-gray-400">TVL</span>
+              <div class="font-medium">${selectedPool.tvl?.toLocaleString() || '0'}</div>
             </div>
             <div>
-              <span class="text-gray-400">24h Volume:</span>
-              <span class="ml-1">${selectedPool.volume_24h?.toLocaleString() || '0'}</span>
+              <span class="text-gray-400">24h Vol</span>
+              <div class="font-medium">${selectedPool.volume_24h}</div>
             </div>
             <div>
-              <span class="text-gray-400">APR:</span>
-              <span class="ml-1">{selectedPool.apr || '0'}%</span>
+              <span class="text-gray-400">APR</span>
+              <div class="font-medium">{selectedPool.apr || '0'}%</div>
             </div>
           </div>
         {/if}
       </div>
-      <div class="flex gap-2">
-        {#if selectedPool}
-          <a 
-            href={`/pool/${selectedPool.pool_id}`} 
-            class="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded text-sm transition-colors"
-          >
-            View Pool
-          </a>
-        {/if}
+
+      <!-- Desktop Header -->
+      <div class="hidden md:flex justify-between items-center">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs">
+              {fromToken.symbol[0]}
+            </div>
+            <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs -ml-2">
+              {toToken.symbol[0]}
+            </div>
+            <span class="font-bold">{fromToken.symbol}/{toToken.symbol}</span>
+          </div>
+          {#if selectedPool}
+            <div class="flex gap-4 text-sm">
+              <div>
+                <span class="text-gray-400">TVL:</span>
+                <span class="ml-1">${selectedPool.tvl?.toLocaleString() || '0'}</span>
+              </div>
+              <div>
+                <span class="text-gray-400">24h Volume:</span>
+                <span class="ml-1">${selectedPool.volume_24h}</span>
+              </div>
+              <div>
+                <span class="text-gray-400">APR:</span>
+                <span class="ml-1">{selectedPool.apr || '0'}%</span>
+              </div>
+            </div>
+          {/if}
+        </div>
+        <div class="flex gap-2">
+          {#if selectedPool}
+            <a 
+              href={`/pool/${selectedPool.pool_id}`} 
+              class="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded text-sm transition-colors"
+            >
+              View Pool
+            </a>
+          {/if}
+        </div>
       </div>
     </div>
   {/if}
@@ -378,7 +477,6 @@ const debouncedFetchData = debounce(async () => {
   div {
     width: 100%;
     height: 100%;
-    min-height: 400px;
     position: relative;
   }
 
@@ -389,23 +487,49 @@ const debouncedFetchData = debounce(async () => {
     height: 100% !important;
   }
 
-  /* Handle mobile styles */
+  /* Mobile-specific styles */
   @media (max-width: 768px) {
     div {
-      min-height: 300px;
+      min-height: 300px !important;
+    }
+
+    :global(.tradingview-widget-container),
+    :global(.tradingview-widget-container > div) {
+      min-height: 300px !important;
+    }
+
+    /* Adjust chart elements for mobile */
+    :global(.chart-page .chart-container) {
+      height: calc(100% - 35px) !important;
+    }
+
+    :global(.chart-page .chart-container .pane) {
+      height: calc(100% - 20px) !important;
+    }
+
+    /* Make toolbar buttons more touch-friendly */
+    :global(.chart-page .group-wWM3zP_M-) {
+      padding: 8px !important;
+    }
+
+    :global(.chart-page .button-1SxT0q7p-) {
+      min-width: 32px !important;
+      min-height: 32px !important;
     }
   }
 
-  img {
-    object-fit: cover;
-  }
-  
-  .rounded-full {
-    border-radius: 9999px;
-  }
-  
   /* Ensure the chart container accounts for the header */
   .relative {
-    padding-top: 64px; /* Adjust based on header height */
+    padding-top: 80px; /* Increased for mobile header */
+  }
+
+  @media (min-width: 768px) {
+    .relative {
+      padding-top: 64px;
+    }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style> 

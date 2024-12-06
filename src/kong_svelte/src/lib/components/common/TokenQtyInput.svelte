@@ -25,7 +25,7 @@
 	let pool = $derived($poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID));
 	let poolPrice = $derived(pool?.price ? parseFloat(pool.price.toString()) : 0);
 	let usdValue = $derived(formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice));
-	let formattedBalance = $derived(formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee)).toString(), token.decimals));
+	let formattedBalance = $derived(formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee_fixed)).toString(), token.decimals));
 
 	const dispatch = createEventDispatcher();
 
@@ -34,7 +34,7 @@
 	}
 
 	function setMax() {
-		const maxBn = new BigNumber(rawBalance.toString()).minus(token.fee.toString()).toString();
+		const maxBn = new BigNumber(rawBalance.toString()).minus(token.fee_fixed.toString()).toString();
 		const formattedMax = formatTokenAmount(maxBn, token.decimals);
 		value = formattedMax;
 		dispatchInput(formattedMax);

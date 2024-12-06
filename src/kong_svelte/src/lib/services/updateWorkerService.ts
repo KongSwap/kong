@@ -10,7 +10,6 @@ import { auth } from "./auth";
 import * as Comlink from "comlink";
 import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 import type { WorkerApi, UpdateType } from "$lib/workers/updateWorker";
-import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
 import { appLoader } from "$lib/services/appLoader"; // Import appLoader
 
 class UpdateWorkerService {
@@ -63,11 +62,6 @@ class UpdateWorkerService {
 
   private handleWorkerMessage(event: MessageEvent) {
     if (event.data.type === 'TOKEN_LOGOS_LOADED') {
-      // Merge with existing logos
-      tokenLogoStore.update(logos => ({
-        ...logos,
-        ...event.data.logos
-      }));
       return;
     }
 
@@ -341,25 +335,6 @@ class UpdateWorkerService {
     return this.workerApi.preloadAsset(url);
   }
 
-  async loadTokenLogos(): Promise<boolean> {
-    if (!this.workerApi) {
-      console.error('Worker API not available for loading token logos');
-      return false;
-    }
-
-    try {
-      const logos = await this.workerApi.loadTokenLogos();
-
-      // Update the token logo store
-      tokenLogoStore.set(logos);
-      
-      return true;
-    } catch (error) {
-      console.warn('UpdateWorkerService: Failed to load token logos:', error);
-      return false;
-    }
-  }
-
   destroy() {
     if (this.worker) {
       this.worker.terminate();
@@ -402,9 +377,6 @@ class UpdateWorkerService {
       this.startFallbackUpdates();
       return;
     }
-    
-    // Wait for initial token logos to be loaded
-    await this.loadTokenLogos();
     
     this.isInitialized = true;
   }

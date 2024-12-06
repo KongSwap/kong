@@ -51,7 +51,7 @@
             <div class="token-amounts">
                 <div class="token-amount">
                     <div class="token-info">
-                        <img src={token0.logo} alt={token0.symbol} class="token-logo" />
+                        <img src={token0.logo_url} alt={token0.symbol} class="token-logo" />
                         <span class="token-symbol">{token0.symbol}</span>
                     </div>
                     <div class="amount-info">
@@ -64,7 +64,7 @@
 
                 <div class="token-amount">
                     <div class="token-info">
-                        <img src={token1.logo} alt={token1.symbol} class="token-logo" />
+                        <img src={token1.logo_url} alt={token1.symbol} class="token-logo" />
                         <span class="token-symbol">{token1.symbol}</span>
                     </div>
                     <div class="amount-info">

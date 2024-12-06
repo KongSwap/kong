@@ -23,12 +23,13 @@ export class PoolService {
     try {
       const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
       const result = await actor.pools([]);
-      
       if (!result.Ok) {
         throw new Error('Failed to fetch pools');
       }
 
-      return PoolSerializer.serializePoolsResponse(result.Ok);
+
+      const serializedPools = PoolSerializer.serializePoolsResponse(result.Ok);
+      return serializedPools;
     } catch (error) {
       console.error('Error fetching pools:', error);
       throw error;
@@ -101,7 +102,7 @@ export class PoolService {
             ? BigInt(Math.floor(lpTokenAmount * 1e8)) 
             : lpTokenAmount;
 
-        const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+        const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false, requiresSigning: false});
         
         console.log('Calling remove_liquidity_amounts with:', {
             token0Symbol,
@@ -169,7 +170,7 @@ export class PoolService {
           params.token_1,
           params.amount_1,
         ),
-        auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend)
+        auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: false, requiresSigning: false })
       ]);
 
       const result = await actor.add_liquidity_async({
@@ -197,7 +198,7 @@ export class PoolService {
    */
   public static async pollRequestStatus(requestId: bigint): Promise<any> {
     try {
-      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: true});
+      const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false, requiresSigning: false});
       const result = await actor.requests([requestId]);
       
       if (!result.Ok || result.Ok.length === 0) {
@@ -229,7 +230,7 @@ export class PoolService {
             remove_lp_token_amount: lpTokenBigInt.toString()
         });
 
-        const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend);
+        const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false, requiresSigning: false});
         const result = await actor.remove_liquidity_async({
             token_0: params.token0,
             token_1: params.token1,

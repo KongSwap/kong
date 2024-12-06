@@ -19,31 +19,6 @@ declare global {
       in_usd: string;
     }
 
-    interface Token {
-      canister_id: string;
-      name: string;
-      symbol: string;
-      fee: bigint;
-      decimals: number;
-      token: string;
-      token_id: number;
-      chain: string;
-      icrc1: boolean;
-      icrc2: boolean;
-      icrc3: boolean;
-      on_kong: boolean;
-      pool_symbol: string;
-      pools: BE.Pool[];
-      logo?: string;
-      total_24h_volume?: bigint;
-      price?: number;
-      tvl?: number;
-      balance?: bigint;
-      formattedBalance?: string;
-      formattedUsdValue?: string;
-      timestamp?: number;
-    }
-
     interface UserPoolBalance {
       amount_0: bigint;
       amount_1: bigint;
@@ -69,39 +44,6 @@ declare global {
   }
 
   namespace BE {
-    interface ICToken {
-      symbol: string;
-      fee: bigint;
-      decimals: number;
-      token: string;
-      token_id: number;
-      chain: string;
-      name: string;
-      canister_id: string;
-      icrc1: boolean;
-      icrc2: boolean;
-      icrc3: boolean;
-      pool_symbol: string;
-      on_kong: boolean;
-    }
-  
-    interface LPToken {
-      address: string;
-      chain: string;
-      decimals: number;
-      fee: bigint;
-      name: string;
-      on_kong: boolean;
-      pool_id_of: number;
-      pool_symbol: string;
-      symbol: string;
-      token: string;
-      token_id: number;
-      total_supply: bigint;
-    }
-  
-    type Token = { IC?: ICToken, LP?: LPToken };
-
     // Pool Types
   
    type PoolResponse = {

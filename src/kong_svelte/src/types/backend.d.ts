@@ -2,13 +2,15 @@ declare global {
   namespace BE {
     interface ICToken {
       symbol: string;
-      fee: bigint;
+      fee: number;
+      fee_fixed: bigint;
       decimals: number;
       token: string;
       token_id: number;
       chain: string;
       name: string;
       canister_id: string;
+      address: string;  
       icrc1: boolean;
       icrc2: boolean;
       icrc3: boolean;

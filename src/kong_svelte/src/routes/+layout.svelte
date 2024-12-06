@@ -11,16 +11,10 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import LoadingScreen from "$lib/components/common/LoadingScreen.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
-  import { cubicOut } from "svelte/easing";
   import { auth } from "$lib/services/auth";
 
   const hasNavigated = writable(false);
   let showLoadingScreen = $state(true);
-  let isDecompressing = false;
-  let showStatic = $state(true);
-  let mainTransitionComplete = $state(false);
-  let initialTransitionDone = $state(false);
-  let skipTransition = $state(true);
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
@@ -53,51 +47,6 @@
   $effect(() =>{ 
     if (!initialLoad && !$hasNavigated) {
       hasNavigated.set(true);
-    }
-  });
-
-  // Custom transition for decompression effect
-  function decompress(node: HTMLElement, { 
-    delay = 0,
-    duration = 400
-  }) {
-    return {
-      delay,
-      duration,
-      css: (t: number) => {
-        const eased = cubicOut(t);
-        return `
-          transform: scale(${0.9 + (0.1 * eased)});
-          opacity: ${eased};
-        `;
-      }
-    };
-  }
-
-  // Custom transition for CRT effect
-  function pageTransition(node: HTMLElement, { 
-    delay = 0,
-    duration = 400
-  }) {
-    return {
-      delay,
-      duration,
-      css: (t: number) => {
-        const eased = cubicOut(t);
-        return `
-          opacity: ${eased};
-          transform: scale(${0.95 + (0.05 * eased)});
-        `;
-      }
-    };
-  }
-
-  $effect(() => {
-    if (mainTransitionComplete && !initialTransitionDone) {
-      initialTransitionDone = true;
-      setTimeout(() => {
-        showStatic = false;
-      }, 500);
     }
   });
 

@@ -18,123 +18,181 @@
 
   let isSpinning = false;
   let navOpen = false;
-  const tabs = ["swap", "earn"] as const;
+  const tabs = ["swap", "earn", "stats"] as const;
+  type TabType = typeof tabs[number];
 
   function handleNavClose() {
     navOpen = false;
   }
 </script>
 
-  <div class="nav-container-wrapper">
-    <div class="nav-container">
-      {#if isMobile}
-        <div class="left-section">
-          <button
-            class="mobile-icon-btn"
-            on:click={() => (navOpen = !navOpen)}
-            aria-label="Menu"
+<div class="nav-container-wrapper">
+  <div class="nav-container">
+    {#if isMobile}
+      <div class="left-section">
+        <button
+          class="mobile-icon-btn"
+          on:click={() => (navOpen = !navOpen)}
+          aria-label="Menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" y1="12" x2="20" y2="12"></line>
-              <line x1="4" y1="6" x2="20" y2="6"></line>
-              <line x1="4" y1="18" x2="20" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      {:else}
-        <div class="left-section">
-          <nav class="nav-tabs">
-            {#each tabs as tab}
-              <a
-                href="#{tab}"
-                class="nav-link {activeTab === tab ? 'active' : ''}"
-                on:click|preventDefault={() => onTabChange(tab)}
-              >
-                {tab.toUpperCase()}
-              </a>
-            {/each}
-            <a
-              href="#stats"
-              class="nav-link {activeTab === 'stats' ? 'active' : ''}"
-              on:click|preventDefault={() => onTabChange('stats')}
-            >
-              STATS
-            </a>
-          </nav>
-        </div>
-      {/if}
-
-      <div class="center-section">
-        <a href="/" class="logo-link">
-          <img src="/titles/logo-white-wide.png" alt="Kong Logo" class="logo-wide shiny-logo" />
-        </a>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="18" x2="20" y2="18"></line>
+          </svg>
+        </button>
       </div>
-
-      {#if isMobile}
-        <div class="right-section">
-          <button
-            class="mobile-icon-btn"
-            on:click={onConnect}
-            aria-label="Wallet"
+    {:else}
+      <div class="left-section">
+        <nav class="nav-tabs">
+          {#each tabs as tab}
+            <a
+              href="#{tab}"
+              class="nav-link {activeTab === tab ? 'active' : ''}"
+              on:click|preventDefault={() => onTabChange(tab)}
+            >
+              {tab.toUpperCase()}
+            </a>
+          {/each}
+          <a
+            href="#stats"
+            class="nav-link {activeTab === 'stats' ? 'active' : ''}"
+            on:click|preventDefault={() => onTabChange("stats")}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            STATS
+          </a>
+        </nav>
+      </div>
+    {/if}
+
+    <div class="center-section">
+      <a href="/" class="logo-link">
+        <img
+          src="/titles/logo-white-wide.png"
+          alt="Kong Logo"
+          class="logo-wide shiny-logo"
+        />
+      </a>
+    </div>
+
+    {#if isMobile}
+      <div class="right-section">
+        <button
+          class="mobile-icon-btn"
+          on:click={onConnect}
+          aria-label="Wallet"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+            <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
+            <path d="M20 8v8" />
+          </svg>
+        </button>
+      </div>
+    {:else}
+      <div class="right-section">
+        <button
+          class="nav-link settings-btn"
+          class:spinning={isSpinning}
+          on:click={onOpenSettings}
+          aria-label="Settings"
+        >
+          <div class="btn-content uppercase">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+              />
+            </svg>
+            <span class="settings-text">Settings</span>
+          </div>
+        </button>
+
+        <a
+          href="#"
+          class="nav-link wallet-btn"
+          class:selected={sidebarOpen}
+          on:click|preventDefault={onConnect}
+        >
+          <div class="btn-content">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
               <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
               <path d="M20 8v8" />
             </svg>
-          </button>
-        </div>
-      {:else}
-        <div class="right-section">
-          <button
-            class="nav-link settings-btn"
-            class:spinning={isSpinning}
-            on:click={onOpenSettings}
-            aria-label="Settings"
-          >
-            <div class="btn-content">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/>
-              </svg>
-              <span class="settings-text">Settings</span>
-            </div>
-          </button>
-
-          <a
-            href="#"
-            class="nav-link wallet-btn"
-            class:selected={sidebarOpen}
-            on:click|preventDefault={onConnect}
-          >
-            <div class="btn-content">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-                <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
-                <path d="M20 8v8" />
-              </svg>
-              <span class="wallet-text">
-                {$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
-              </span>
-            </div>
-          </a>
-        </div>
-      {/if}
-    </div>
+            <span class="wallet-text uppercase">
+              {$auth.isConnected
+                ? $t("common.openDrawer")
+                : $t("common.connect")}
+            </span>
+          </div>
+        </a>
+      </div>
+    {/if}
   </div>
+</div>
 
 {#if navOpen && isMobile}
   <div class="mobile-menu" transition:fade={{ duration: 200 }}>
     <div class="mobile-menu-overlay" on:click={handleNavClose} />
-    <div class="mobile-menu-content" transition:slide={{ duration: 200, axis: 'x' }}>
+    <div
+      class="mobile-menu-content"
+      transition:slide={{ duration: 200, axis: "x" }}
+    >
       <div class="mobile-menu-header">
-        <h2 class="mobile-menu-title">Menu</h2>
+        <h2 class="mobile-menu-title pr-2 max-w-[200px]">
+          <img
+            src="/titles/logo-white-wide.png"
+            alt="Kong Logo"
+            class="logo-wide shiny-logo"
+          />
+        </h2>
         <button
           class="mobile-close-btn"
           on:click={handleNavClose}
           aria-label="Close menu"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -142,31 +200,77 @@
       </div>
 
       <nav class="mobile-nav">
-        {#each [...tabs, "stats"] as tab}
+        {#each tabs as tab}
           <button
             class="mobile-nav-btn {activeTab === tab ? 'active' : ''}"
-            on:click={() => {
-              onTabChange(tab);
-              handleNavClose();
+            on:click={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              
+              const ripple = document.createElement('div');
+              ripple.style.left = `${x}px`;
+              ripple.style.top = `${y}px`;
+              ripple.className = 'ripple';
+              
+              e.currentTarget.appendChild(ripple);
+              
+              setTimeout(() => {
+                ripple.remove();
+                onTabChange(tab as TabType);
+                handleNavClose();
+              }, 600);
             }}
           >
             {tab.toUpperCase()}
-            <svg class="mobile-nav-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 18l6-6-6-6"/>
+            <svg
+              class="mobile-nav-arrow"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
         {/each}
 
         <button
           class="mobile-nav-btn"
-          on:click={() => {
-            onOpenSettings();
-            handleNavClose();
+          on:click={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const ripple = document.createElement('div');
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            ripple.className = 'ripple';
+            
+            e.currentTarget.appendChild(ripple);
+            
+            setTimeout(() => {
+              ripple.remove();
+              onOpenSettings();
+              handleNavClose();
+            }, 600);
           }}
         >
           SETTINGS
-          <svg class="mobile-nav-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18l6-6-6-6"/>
+          <svg
+            class="mobile-nav-arrow"
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M9 18l6-6-6-6" />
           </svg>
         </button>
       </nav>
@@ -189,8 +293,8 @@
 
 <style>
   @font-face {
-    font-family: 'Alumni Sans';
-    src: url('/fonts/Alumni-Sans-Latin.woff2') format('woff2');
+    font-family: "Alumni Sans";
+    src: url("/fonts/Alumni-Sans-Latin.woff2") format("woff2");
     font-weight: normal;
     font-style: normal;
   }
@@ -223,14 +327,17 @@
   }
 
   /* Section Layout */
-  .left-section, .right-section {
+  .left-section,
+  .right-section {
     flex: 0 0 auto;
     width: 80px;
     display: flex;
     align-items: center;
   }
-  .left-section { justify-content: flex-start; }
-  .center-section { 
+  .left-section {
+    justify-content: flex-start;
+  }
+  .center-section {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
@@ -239,10 +346,17 @@
     align-items: center;
     padding: 0 1rem;
   }
-  .right-section { justify-content: flex-end; gap: 0.75rem; }
+  .right-section {
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
 
   /* Navigation */
-  .nav-tabs { display: flex; align-items: center; gap: 0.75rem; }
+  .nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
 
   .nav-link {
     padding: 0.75rem 1.25rem;
@@ -262,14 +376,15 @@
     justify-content: center;
   }
 
-  .nav-link:hover { 
+  .nav-link:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
   }
-  
-  .nav-link.active, .nav-link.selected {
+
+  .nav-link.active,
+  .nav-link.selected {
     color: white;
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.4);
@@ -336,8 +451,12 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Mobile Adjustments */
@@ -360,7 +479,8 @@
       min-width: 100px;
     }
 
-    .left-section, .right-section {
+    .left-section,
+    .right-section {
       width: 60px;
     }
 
@@ -398,8 +518,8 @@
   }
 
   .logo-wide:hover {
-    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4)) 
-           drop-shadow(0 0 12px rgba(88, 101, 242, 0.3));
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4))
+      drop-shadow(0 0 12px rgba(88, 101, 242, 0.3));
     transform: scale(1.01);
   }
 
@@ -409,7 +529,7 @@
     }
     50% {
       filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4))
-             drop-shadow(0 0 12px rgba(88, 101, 242, 0.3));
+        drop-shadow(0 0 12px rgba(88, 101, 242, 0.3));
     }
     100% {
       filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
@@ -458,12 +578,12 @@
     width: 80%;
     max-width: 320px;
     height: 100%;
-    background: rgba(13, 19, 31, 0.98);
+    background: rgba(15, 23, 42, 0.98);
     backdrop-filter: blur(24px);
-    border-right: 1px solid rgba(78, 114, 178, 0.25);
+    border-right: 1px solid rgba(51, 65, 85, 0.4);
     display: flex;
     flex-direction: column;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
   }
 
   /* Mobile Menu Styles */
@@ -472,15 +592,14 @@
     align-items: center;
     justify-content: space-between;
     padding: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(51, 65, 85, 0.4);
   }
 
   .mobile-menu-title {
-    font-family: 'Alumni Sans', sans-serif;
     font-size: 1.75rem;
     color: white;
     margin: 0;
-    background: linear-gradient(135deg, #ffffff 0%, #ffd700 100%);
+    background: linear-gradient(135deg, #94a3b8 0%, #e2e8f0 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -488,17 +607,17 @@
 
   .mobile-close-btn {
     padding: 0.5rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(226, 232, 240, 0.8);
     border-radius: 0.5rem;
     transition: all 0.2s;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(51, 65, 85, 0.4);
+    border: 1px solid rgba(71, 85, 105, 0.4);
   }
 
   .mobile-close-btn:hover {
     color: white;
-    background: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+    background: rgba(71, 85, 105, 0.6);
+    box-shadow: 0 0 12px rgba(51, 65, 85, 0.3);
   }
 
   .mobile-nav {
@@ -515,27 +634,57 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(226, 232, 240, 0.8);
     font-size: 1.125rem;
     font-weight: 500;
     letter-spacing: 0.05em;
     border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(51, 65, 85, 0.3);
+    border: 1px solid rgba(71, 85, 105, 0.4);
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
   }
 
-  .mobile-nav-btn:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.4);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+    width: 200px;
+    height: 200px;
+    margin-left: -100px;
+    margin-top: -100px;
+  }
+
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .mobile-nav-btn:active {
+    transform: scale(0.98);
   }
 
   .mobile-nav-btn.active {
     color: white;
-    background: rgba(255, 215, 0, 0.15);
-    border-color: rgba(255, 215, 0, 0.3);
-    box-shadow: 0 0 16px rgba(255, 215, 0, 0.1);
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.15);
+  }
+
+  .mobile-nav-btn:hover {
+    color: white;
+    background: rgba(71, 85, 105, 0.4);
+    box-shadow: 0 0 12px rgba(51, 65, 85, 0.2);
   }
 
   .mobile-nav-arrow {
@@ -549,8 +698,8 @@
 
   .mobile-menu-footer {
     padding: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(51, 65, 85, 0.4);
+    background: rgba(15, 23, 42, 0.4);
   }
 
   :global(.nav-panel) {

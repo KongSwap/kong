@@ -45,7 +45,6 @@ export interface WorkerApi {
     total: number;
     errors: string[];
   }>;
-  loadTokenLogos(): Promise<Record<string, string>>;
   setTokens(tokens: FE.Token[]): Promise<void>;
 }
 
@@ -83,10 +82,6 @@ class WorkerImpl implements WorkerApi {
 
   async setTokens(tokens: FE.Token[]): Promise<void> {
     this.tokens = tokens;
-    console.log(`Worker: Received ${tokens.length} tokens`);
-
-    // Optionally, you can trigger logo loading here
-    await this.loadTokenLogos();
   }
 
   async loadTokenLogos(): Promise<Record<string, string>> {
@@ -115,7 +110,7 @@ class WorkerImpl implements WorkerApi {
       for (const batch of batches) {
         const batchResults = await Promise.all(batch.map(async (token) => {
           try {
-            const logoUrl = await this.fetchAndCacheTokenLogo(token, DEFAULT_LOGOS.DEFAULT);
+            const logoUrl = token?.logo;
             totalProcessed++;
             
             // Update progress for each loaded logo
@@ -154,28 +149,6 @@ class WorkerImpl implements WorkerApi {
     } catch (error) {
       console.error('Worker: Error loading token logos:', error);
       return logoMap;
-    }
-  }
-
-  private async fetchAndCacheTokenLogo(token: FE.Token, logo: string): Promise<string | null> {
-    try {
-      // Check if we have a cached version
-      const cachedLogo = await this.getCachedLogo(token.canister_id);
-      if (cachedLogo) {
-        return cachedLogo;
-      }
-
-      const response = await fetchTokenLogo(token.canister_id);
-      
-      // Cache the logo if it's not the default
-      if (response) {
-        await this.cacheLogo(token.canister_id, response);
-      }
-      
-      return response;
-    } catch (error) {
-      console.warn(`Failed to fetch logo for ${token.symbol}:`, error);
-      return null;
     }
   }
 

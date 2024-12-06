@@ -5,22 +5,17 @@ import {
   formatTokenAmount,
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
-import { ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { parseTokens } from "./tokenParsers";
-import {
-  saveTokenLogo,
-  getTokenLogo,
-  fetchTokenLogo,
-  DEFAULT_LOGOS,
-} from "./tokenLogos";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import { fetchTokens } from "../indexer/api";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -29,7 +24,7 @@ export class TokenService {
     { price: number; timestamp: number }
   >();
   private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  private static readonly TOKEN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  public static readonly TOKEN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   public static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -50,7 +45,7 @@ export class TokenService {
         console.log('Using cached tokens');
         // Refresh in background after returning cached data
         setTimeout(() => this.fetchFromNetwork(), 0);
-        return cachedTokens;
+        return cachedTokens as FE.Token[];
       }
 
       return await this.fetchFromNetwork();
@@ -62,22 +57,41 @@ export class TokenService {
 
   private static async fetchFromNetwork(): Promise<FE.Token[]> {
     let retries = 3;
-    let actor;
 
     while (retries > 0) {
       try {
-        actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
-        const result = await actor.tokens(["all"]);
+        const result = await fetchTokens();
         const parsed = parseTokens(result);
+        
+        // Enrich tokens with additional data
+        const enriched = await Promise.all(parsed.map(async (token) => {
+          const price = await this.fetchPrice(token);
+          let total24hVolume = 0;
+          const tokenPools = get(poolStore).pools.filter((p: BE.Pool) => p.address_0 === token.canister_id || p.address_1 === token.canister_id);
+          if(token.symbol === "EXE") {
+            console.log("EXE POOLS", tokenPools);
+          }
+          tokenPools.forEach(async (pool) => {
+            if (pool.rolling_24h_volume) {
+              total24hVolume += Number(pool.rolling_24h_volume.toString()) / (10 ** 6);
+            } 
+          });
+          const enrichedToken: FE.Token = {
+            ...token,
+            metrics: {
+              ...token.metrics,
+              market_cap: token.canister_id === CKUSDT_CANISTER_ID ? (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : token.metrics.market_cap,
+              volume_24h: total24hVolume.toString(),
+            },
+            price,
+          };
 
-        if (parsed.Err) {
-          console.error('Error parsing tokens:', parsed.Err);
-          throw parsed.Err;
-        }
+          return enrichedToken;
+        }));
 
-        // Cache the tokens
+        // Cache the enriched tokens
         await Promise.all(
-          parsed.Ok.map((token) =>
+          enriched.filter(token => token && token.canister_id).map((token) =>
             kongDB.tokens.put({
               ...token,
               timestamp: Date.now(),
@@ -85,7 +99,7 @@ export class TokenService {
           )
         );
 
-        return parsed.Ok;
+        return enriched;
       } catch (error) {
         console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
         retries--;
@@ -94,26 +108,6 @@ export class TokenService {
       }
     }
     return [];
-  }
-
-  private static async cacheTokens(tokens: FE.Token[]): Promise<void> {
-    try {
-      await kongDB.transaction("rw", kongDB.tokens, async () => {
-        // Clear old cache
-        await kongDB.tokens.clear();
-
-        // Add new tokens with timestamp
-        const timestamp = Date.now();
-        const cachedTokens: FE.Token[] = tokens.map((token) => ({
-          ...token,
-          timestamp,
-        }));
-
-        await kongDB.tokens.bulkAdd(cachedTokens);
-      });
-    } catch (error) {
-      console.error("Error caching tokens:", error);
-    }
   }
 
   public static async clearTokenCache(): Promise<void> {
@@ -165,11 +159,10 @@ export class TokenService {
       return Promise.all(
         tokenBatch.map(async (token) => {
           try {
-            const [logo, price, fee] = await Promise.allSettled([
-              this.getCachedLogo(token),
+            const [price, fee] = await Promise.allSettled([
               this.getCachedPrice(token),
-              token?.fee
-                ? Promise.resolve(token.fee)
+              token?.fee_fixed
+                ? Promise.resolve(token.fee_fixed)
                 : this.fetchTokenFee(token),
             ]);
 
@@ -177,10 +170,6 @@ export class TokenService {
               ...token,
               fee: fee.status === "fulfilled" ? fee.value : 0n,
               price: price.status === "fulfilled" ? price.value : 0,
-              logo:
-                logo.status === "fulfilled"
-                  ? logo.value
-                  : "/tokens/not_verified.webp",
             };
           } catch (error) {
             console.error(`Error enriching token ${token.symbol}:`, error);
@@ -205,51 +194,17 @@ export class TokenService {
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
-    const cached = this.priceCache.get(token.canister_id);
+    const cached = this.priceCache.get(token.address);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
       return cached.price;
     }
 
     const price = await this.fetchPrice(token);
-    this.priceCache.set(token.canister_id, {
+    this.priceCache.set(token.address, {
       price,
       timestamp: Date.now(),
     });
     return price;
-  }
-
-  private static async getCachedLogo(token: FE.Token): Promise<string> {
-    // Handle ICP special case first
-    if (token.canister_id === ICP_CANISTER_ID) {
-      const logo = DEFAULT_LOGOS[ICP_CANISTER_ID];
-      await saveTokenLogo(token.canister_id, logo);
-      return logo;
-    }
-
-    // Try to get from DB cache
-    const cachedImage = await getTokenLogo(token.canister_id);
-    if (cachedImage) {
-      return cachedImage;
-    }
-
-    // Fetch from network if not cached
-    try {
-      const logo = await fetchTokenLogo(token.canister_id);
-
-      // Validate and cache the logo
-      if (logo) {
-        await saveTokenLogo(token.canister_id, logo);
-        return logo;
-      } else {
-        await saveTokenLogo(token.canister_id, DEFAULT_LOGOS.DEFAULT);
-        return DEFAULT_LOGOS.DEFAULT;
-      }
-    } catch (error) {
-      console.error("Error fetching token logo:", error);
-      const defaultLogo = DEFAULT_LOGOS.DEFAULT;
-      await saveTokenLogo(token.canister_id, defaultLogo);
-      return defaultLogo;
-    }
   }
 
   public static async fetchBalances(
@@ -278,7 +233,7 @@ export class TokenService {
           } catch (error) {
             // Handle specific token errors more gracefully
             console.warn(
-              `Unable to fetch balance for ${token.symbol} (${token.canister_id}):`,
+              `Unable to fetch balance for ${token.symbol} (${token.address}):`,
               error.message
             );
             balance = BigInt(0);
@@ -300,7 +255,7 @@ export class TokenService {
         }
         const usdValue = parseFloat(actualBalance) * parseFloat(price.toString());
         return {
-          canister_id: token.canister_id,
+          canister_id: token.address,
           balance: {
             in_tokens: balance,
             in_usd: formatToNonZeroDecimal(usdValue),
@@ -317,7 +272,7 @@ export class TokenService {
         });
         
         return {
-          canister_id: token.canister_id,
+          canister_id: token.address,
           balance: {
             in_tokens: BigInt(0),
             in_usd: formatToNonZeroDecimal(0),
@@ -370,8 +325,8 @@ export class TokenService {
       // Check cache unless force refresh is requested
       if (!forceRefresh) {
         const now = Date.now();
-        const lastUpdate = get(tokenStore).lastBalanceUpdate?.[token.canister_id] || 0;
-        const cachedBalance = get(tokenStore).balances?.[token.canister_id];
+        const lastUpdate = get(tokenStore).lastBalanceUpdate?.[token.address] || 0;
+        const cachedBalance = get(tokenStore).balances?.[token.address];
 
         if (cachedBalance && (now - lastUpdate) < 12000) { // 12 second cache
           return cachedBalance;
@@ -392,7 +347,7 @@ export class TokenService {
         ...s,
         lastBalanceUpdate: {
           ...s.lastBalanceUpdate,
-          [token.canister_id]: Date.now()
+          [token.address]: Date.now()
         }
       }));
 
@@ -401,7 +356,7 @@ export class TokenService {
         in_usd: formatToNonZeroDecimal(usdValue),
       };
     } catch (error) {
-      console.error(`Error fetching balance for token ${token.canister_id}:`, error);
+      console.error(`Error fetching balance for token ${token.address}:`, error);
       return {
         in_tokens: BigInt(0),
         in_usd: formatToNonZeroDecimal(0),
@@ -412,7 +367,17 @@ export class TokenService {
   public static async fetchPrices(
     tokens: FE.Token[],
   ): Promise<Record<string, number>> {
+    // Ensure pools are loaded first
     const poolData = await PoolService.fetchPoolsData();
+    if (!poolData?.pools?.length) {
+      console.warn('No pools available for price calculation');
+      return tokens.reduce((acc, token) => {
+        if (token.canister_id) {
+          acc[token.canister_id] = 0;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+    }
     
     // Create an array of promises for all tokens
     const pricePromises = tokens.map(async (token) => {
@@ -438,25 +403,29 @@ export class TokenService {
     await Promise.all(resolvedPrices.map(async (result) => {
       if (result.status === "fulfilled") {
         const { canister_id, price } = result.value;
-        prices[canister_id] = price;
-        
-        try {
-          const token = tokens.find(t => t.canister_id === canister_id);
-          if (token) {
-            await kongDB.tokens.put({
-              ...token,
-              price,
-              timestamp: Date.now()
-            });
+        if (canister_id) {
+          prices[canister_id] = price;
+          
+          try {
+            const token = tokens.find(t => t.canister_id === canister_id);
+            if (token) {
+              await kongDB.tokens.put({
+                ...token,
+                price,
+                timestamp: Date.now()
+              });
+            }
+          } catch (error) {
+            console.error(`Error updating token ${canister_id} in DB:`, error);
           }
-        } catch (error) {
-          console.error(`Error updating token ${canister_id} in DB:`, error);
         }
       }
     }));
 
     // Set USDT price explicitly
-    prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
+    if (process.env.CANISTER_ID_CKUSDT_LEDGER) {
+      prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
+    }
     
     return prices;
   }
@@ -471,10 +440,11 @@ export class TokenService {
     }
 
     // Find all pools containing the token
-    const relevantPools = pools.filter(pool => 
-      pool.address_0 === token.canister_id || 
-      pool.address_1 === token.canister_id
-    );
+    const relevantPools = pools.filter(pool => {
+      const isMatch = pool.address_0 === token.canister_id || 
+                     pool.address_1 === token.canister_id;
+      return isMatch;
+    });
 
     if (relevantPools.length === 0) {
       return 0;
@@ -566,7 +536,6 @@ export class TokenService {
 
   public static async fetchPrice(token: FE.Token): Promise<number> {
     const poolData = get(poolStore);
-
     const relevantPools = poolData.pools.filter(
       (pool) =>
         pool.address_0 === token.canister_id ||
@@ -739,24 +708,7 @@ export class TokenService {
       }));
     }
   }
-
-  private static async calculate24hVolume(
-    token: FE.Token,
-    pools: BE.Pool[],
-  ): Promise<bigint> {
-    let total24hVolume = 0n;
-
-    pools.forEach((pool) => {
-      if (pool.address_0 === token.canister_id || pool.address_1 === token.canister_id) {
-        if (pool.rolling_24h_volume) {
-          total24hVolume += pool.rolling_24h_volume / (10n ** BigInt(token.decimals));
-        }
-      }
-    });
-
-    return total24hVolume;
-  }
-
+  
   private static async fetchTokenFee(token: FE.Token): Promise<bigint> {
     try {
       if (token.canister_id === ICP_CANISTER_ID) {
@@ -773,5 +725,11 @@ export class TokenService {
       // Provide a default fee if necessary
       return BigInt(10000); // Adjust default fee as appropriate
     }
+  }
+
+  private static async calculatePriceChange24h(token: FE.Token): Promise<number> {
+    // You'll need to implement this based on your historical price data
+    // For now returning 0
+    return 0;
   }
 }

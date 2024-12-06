@@ -12,9 +12,7 @@
   } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
-  import { auth } from "$lib/services/auth";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import { tokenLogoStore, getTokenLogo } from '$lib/services/tokens/tokenLogos';
   import { fade } from 'svelte/transition';
 
   // Props with proper TypeScript types
@@ -128,7 +126,7 @@
       );
 
     const feesInTokens = tokenInfo?.fee
-      ? BigInt(tokenInfo.fee) * (isIcrc1 ? 1n : 2n)
+      ? BigInt(tokenInfo.fee.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
       : 0n;
 
     if (balance.toString() === "0") return "0";
@@ -299,13 +297,6 @@
 
   $: isOpen = panelType === "pay" ? $swapState.showPayTokenSelector : $swapState.showReceiveTokenSelector;
 
-  // Load token logo
-  $: {
-    if (token?.canister_id && !$tokenLogoStore[token.canister_id]) {
-      getTokenLogo(token.canister_id);
-    }
-  }
-
   // Display calculations
   $: displayAmount = formatDisplayValue(amount || "0");
   $: formattedDisplayAmount = formatWithCommas(displayAmount);
@@ -394,7 +385,7 @@
             {#if token}
               <div class="token-info">
                 <img
-                  src={$tokenLogoStore[token.canister_id]}
+                  src={token?.logo_url}
                   alt={token.symbol}
                   class="token-logo"
                 />

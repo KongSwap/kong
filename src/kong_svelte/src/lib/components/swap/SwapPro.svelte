@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { fade } from "svelte/transition";
   import Swap from "./Swap.svelte";
   import TransactionHistory from "../sidebar/TransactionHistory.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -16,7 +15,6 @@
   let fromToken = initialFromToken;
   let toToken = initialToToken;
   let isChartMinimized = false;
-  let isFullscreen = false;
   let isMobile: boolean;
   let activeHistoryTab: "my" | "pair" | "orders" = "my";
 
@@ -41,7 +39,7 @@
   });
 
   // Create the symbol from the pool tokens
-  $: chartSymbol = selectedPool ? `${fromToken?.symbol}_${toToken?.symbol}` : '';
+  $: chartSymbol = fromToken && toToken ? `${fromToken?.symbol}/${toToken?.symbol}` : '';
 
   // Handle token selection changes
   function handleTokenChange(event: CustomEvent) {

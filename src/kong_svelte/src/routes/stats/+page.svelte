@@ -3,15 +3,14 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TableHeader from "$lib/components/common/TableHeader.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { poolStore, poolsList } from "$lib/services/pools/poolStore";
+  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { poolStore } from "$lib/services/pools";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import debounce from "lodash-es/debounce";
   import {
     Droplets,
     DollarSign,
-    LineChart,
     BarChart,
     ArrowUp,
     ArrowDown,
@@ -19,7 +18,6 @@
   } from "lucide-svelte";
   import { onMount } from "svelte";
   import { toastStore } from "$lib/stores/toastStore";
-  import { swapState } from "$lib/services/swap/SwapStateService";
   import { goto } from "$app/navigation";
   import { fade } from "svelte/transition";
   import { auth } from "$lib/services/auth";
@@ -29,29 +27,18 @@
   } from "$lib/services/tokens/favoriteStore";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { page } from "$app/stores";
-    import { tokens, type IndexerToken } from "$lib/services/indexer/api";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
-  const COPY_TIMEOUT = 1000;
-  const ANIMATION_DURATION = 300;
-  const CHART_DAYS = 7;
-  const CHART_POINTS = 5;
 
   // Store initialization with TypeScript types
   interface CopyStates {
     [key: string]: string;
   }
 
-  interface MarketStats {
-    totalVolume: string;
-    totalLiquidity: string;
-    totalFees: string;
-  }
-
   // Base stores
   const searchQuery = writable<string>("");
-  const sortColumnStore = writable<string>("volume24h");
+  const sortColumnStore = writable<string>("volume_24h");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const copyStates = writable<CopyStates>({});
   const previousPrices = writable<{ [key: string]: number }>({});
@@ -70,16 +57,16 @@
 
   // Enhanced loading state with type safety
   const tokensLoading = derived(
-    [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]): boolean =>
-      $tokenStore.isLoading || $poolStore.isLoading,
+    [formattedTokens, poolStore],
+    ([$formattedTokens, $poolStore]): boolean =>
+      $formattedTokens.isLoading || $poolStore.isLoading,
   );
 
   // Improved error handling with null checks
   const tokensError = derived(
-    [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]): string | null =>
-      $tokenStore.error || $poolStore.error || null,
+    [formattedTokens, poolStore],
+    ([$formattedTokens, $poolStore]): string | null =>
+      $formattedTokens.error || $poolStore.error || null,
   );
 
   // Enhanced clipboard functionality with better error handling
@@ -130,7 +117,7 @@
     $previousPrices: { [key: string]: number },
   ): string {
     const prevPrice = $previousPrices[token.canister_id];
-    const currentPrice = token.price;
+    const currentPrice = token.metrics.price;
 
     if (prevPrice === undefined || currentPrice === prevPrice) {
       return "";
@@ -145,14 +132,77 @@
   }
 
   // Update the toggleFavorite function
-  async function toggleFavorite(token: IndexerToken, event: MouseEvent) {
+  async function toggleFavorite(token: FE.Token, event: MouseEvent) {
     event.stopPropagation(); // Prevent row click
-    await favoriteStore.toggleFavorite(token.address);
+    await favoriteStore.toggleFavorite(token.canister_id);
   }
 
   // Subscribe to tokenStore
   $: $tokenStore;
   
+
+  // Create a derived store for filtered and sorted tokens
+  const filteredTokens = derived(
+    [formattedTokens, searchQuery, sortColumnStore, sortDirectionStore, activeTabStore],
+    ([$formattedTokens, $searchQuery, $sortColumn, $sortDirection, $activeTab]) => {
+      let tokens = $formattedTokens;
+      
+      // Filter by search query
+      if ($searchQuery) {
+        const query = $searchQuery.toLowerCase();
+        tokens = tokens.filter(token => 
+          token.name.toLowerCase().includes(query) || 
+          token.symbol.toLowerCase().includes(query)
+        );
+      }
+
+      // Filter by favorites if on favorites tab
+      if ($activeTab === 'favorites') {
+        tokens = tokens.filter(token => 
+          $currentWalletFavorites.includes(token.canister_id)
+        );
+      }
+
+      // Sort tokens
+      tokens = [...tokens].sort((a, b) => {
+        let aValue, bValue;
+
+        // Handle different sorting columns
+        switch ($sortColumn) {
+          case 'price':
+            aValue = Number(a?.metrics?.price) || 0;
+            bValue = Number(b?.metrics?.price) || 0;
+            break;
+          case 'price_change_24h':
+            aValue = Number(a?.metrics?.price_change_24h) || 0;
+            bValue = Number(b?.metrics?.price_change_24h) || 0;
+            break;
+          case 'volume_24h':
+            aValue = Number(a?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, '')) || 0;
+            bValue = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, '')) || 0;
+            break;
+          case 'marketCap':
+            aValue = Number(a?.metrics?.market_cap?.replace(/[^0-9.-]+/g, '')) || 0;
+            bValue = Number(b?.metrics?.market_cap?.replace(/[^0-9.-]+/g, '')) || 0;
+            break;
+          case 'name':
+            return $sortDirection === 'asc' 
+              ? a.name.localeCompare(b.name)
+              : b.name.localeCompare(a.name);
+          default:
+            aValue = a[$sortColumn] || 0;
+            bValue = b[$sortColumn] || 0;
+        }
+
+        // Handle the sort direction
+        return $sortDirection === 'asc' 
+          ? aValue - bValue
+          : bValue - aValue;
+      });
+
+      return tokens;
+    }
+  );
 
 </script>
 
@@ -166,7 +216,7 @@
             <h3>Total Volume (24h)</h3>
             <p>Trading activity in the last 24 hours</p>
             <div class="apy">
-              <!-- ${formatToNonZeroDecimal($marketStats.totalVolume)} -->
+              ${formatToNonZeroDecimal($poolStore.totals.rolling_24h_volume)}
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -179,7 +229,7 @@
             <h3>Total Liquidity</h3>
             <p>Total value locked in pools</p>
             <div class="apy">
-              <!-- ${formatToNonZeroDecimal($marketStats.totalLiquidity)} -->
+              ${formatToNonZeroDecimal($poolStore.totals.tvl)}
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -192,7 +242,7 @@
             <h3>Total Fees (24h)</h3>
             <p>Fees earned by liquidity providers</p>
             <div class="apy">
-              <!-- ${formatToNonZeroDecimal($marketStats.totalFees)} -->
+              ${formatToNonZeroDecimal($poolStore.totals.fees_24h)}
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -203,15 +253,15 @@
 
       <!-- Tokens Panel -->
       <Panel variant="green" type="main" className="content-panel">
-        <div class="flex justify-between items-center mb-4">
-          <div class="flex items-center gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 w-full">
+          <div class="w-full sm:w-auto">
             <div class="tab-group">
               <button
                 class="tab-button {$activeTabStore === 'all' ? 'active' : ''}"
-                  on:click={() => activeTabStore.set("all")}
-                >
-                  All Tokens
-                </button>
+                on:click={() => activeTabStore.set("all")}
+              >
+                All Tokens
+              </button>
               {#if $auth.isConnected}
                 <button
                   class="tab-button {$activeTabStore === 'favorites' ? 'active' : ''}"
@@ -222,11 +272,11 @@
               {/if}
             </div>
           </div>
-          <div class="search-container">
+          <div class="w-full sm:w-[250px]">
             <input
               type="text"
               placeholder="Search tokens..."
-              class="search-input"
+              class="w-full px-4 py-2 rounded-lg bg-white/5 text-white placeholder-white/40 border border-white/10 focus:border-white/20 focus:outline-none transition-all duration-200"
               on:input={handleSearch}
             />
           </div>
@@ -287,7 +337,7 @@
                     onsort={handleSort}
                   />
                   <TableHeader
-                    column="volume24h"
+                    column="volume_24h"
                     label="Volume"
                     textClass="text-right min-w-[120px]"
                     sortColumn={$sortColumnStore}
@@ -312,29 +362,30 @@
                   />
                 </tr>
               </thead>
-              <tbody>
-                {#each $tokens as token (token.address)}
+              <tbody class="text-base">
+                {#each $filteredTokens as token (token.canister_id)}
+                  {@const enrichedToken = token as FE.Token}
                   {@const priceChangeClass =
-                    token.metrics.priceChange24h > 0
+                    Number(enrichedToken?.metrics?.price_change_24h) > 0
                       ? "positive"
-                      : token.metrics.priceChange24h < 0
+                      : Number(enrichedToken?.metrics?.price_change_24h) < 0
                         ? "negative"
                         : ""}
                   <tr
                     class="token-row"
-                    on:click={() => goto(`/stats/${token.address}`)}
+                    on:click={() => goto(`/stats/${enrichedToken.canister_id}`)}
                   >
                     {#if $auth.isConnected}
                       <td class="favorite-cell">
                         <button
                           class="favorite-button {$currentWalletFavorites.includes(
-                            token.address
+                            enrichedToken.canister_id
                           )
                             ? 'active'
                             : ''}"
-                          on:click={(e) => toggleFavorite(token, e)}
+                          on:click={(e) => toggleFavorite(enrichedToken, e)}
                         >
-                          {#if $currentWalletFavorites.includes(token.address)}
+                          {#if $currentWalletFavorites.includes(enrichedToken.canister_id)}
                             <Star
                               class="star-icon filled"
                               size={16}
@@ -348,25 +399,25 @@
                       </td>
                     {/if}
                     <td class="token-cell">
-                      <TokenImages
-                        tokens={[]}
-                        containerClass="token-image"
-                        size={32}
-                      />
-                      <div class="token-info">
-                        <span class="token-name">{token.name}</span>
-                        <span class="token-symbol">{token.symbol}</span>
+                      <div class="token-info flex items-center gap-2">
+                        <TokenImages
+                          tokens={[enrichedToken]}
+                          containerClass="token-image"
+                          size={24}
+                        />
+                        <span class="token-name">{enrichedToken.name}</span>
+                        <span class="token-symbol">{enrichedToken.symbol}</span>
                       </div>
                     </td>
                     <td class="price-cell">
-                      {#key token.metrics.price}
-                        <span class={getPriceChangeClass(token, $previousPrices)}>
-                          ${formatToNonZeroDecimal(token.metrics.price)}
-                          {#if getPriceChangeClass(token, $previousPrices) === "price-up"}
+                      {#key enrichedToken?.price}
+                        <span class={getPriceChangeClass(enrichedToken, $previousPrices)}>
+                          ${formatToNonZeroDecimal(enrichedToken?.price || enrichedToken?.metrics?.price)}
+                          {#if getPriceChangeClass(enrichedToken, $previousPrices) === "price-up"}
                             <div transition:fade={{ duration: 1500 }}>
                               <ArrowUp class="price-arrow up" size={14} />
                             </div>
-                          {:else if getPriceChangeClass(token, $previousPrices) === "price-down"}
+                          {:else if getPriceChangeClass(enrichedToken, $previousPrices) === "price-down"}
                             <div transition:fade={{ duration: 1500 }}>
                               <ArrowDown class="price-arrow down" size={14} />
                             </div>
@@ -375,29 +426,29 @@
                       {/key}
                     </td>
                     <td class="change-cell text-right {priceChangeClass}">
-                      {#key token.metrics.priceChange24h}
+                      {#key enrichedToken?.metrics?.price_change_24h}
                         <span>
-                          {token.metrics.priceChange24h.toFixed(2)}%
+                          {enrichedToken?.metrics?.price_change_24h}%
                         </span>
                       {/key}
                     </td>
                     <td class="text-right">
-                      {#key token.metrics.volume24h}
-                        <span>{formatUsdValue(token.metrics.volume24h)}</span>
+                      {#key enrichedToken?.metrics?.volume_24h}
+                        <span>{formatUsdValue(enrichedToken?.metrics?.volume_24h)}</span>
                       {/key}
                     </td>
                     <td class="text-right">
-                      {#key token.metrics.marketCap}
-                        <span>{formatUsdValue(token.metrics.marketCap.toString())}</span>
+                      {#key enrichedToken?.metrics?.market_cap}
+                        <span>{formatUsdValue(enrichedToken?.metrics?.market_cap)}</span>
                       {/key}
                     </td>
                     <td class="actions-cell">
                       <button
                         class="action-button"
                         on:click|stopPropagation={() =>
-                          copyToClipboard(token.address)}
+                          copyToClipboard(enrichedToken.canister_id)}
                       >
-                        {$copyStates[token.address] || "Copy ID"}
+                        {$copyStates[enrichedToken.canister_id] || "Copy ID"}
                       </button>
                     </td>
                   </tr>
@@ -411,7 +462,7 @@
   </div>
 </section>
 
-<style lang="postcss">
+<style scoped lang="postcss">
   /* Replace the existing market-stats styles with these */
   .earn-cards {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-4;
@@ -451,14 +502,144 @@
 
   /* Search Input */
   .search-container {
-    @apply relative;
+    width: 100%;
+    position: relative;
   }
 
   .search-input {
-    @apply w-64 px-4 py-2 rounded-lg bg-white/5 text-white 
-           placeholder-white/40 border border-white/10 
-           focus:border-white/20 focus:outline-none
-           transition-all duration-200;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+  }
+
+  .search-input:focus {
+    border-color: rgba(255, 255, 255, 0.2);
+    outline: none;
+  }
+
+  @media (min-width: 640px) {
+    .search-container {
+      width: 250px;
+    }
+  }
+
+  /* Table Styling */
+  .table-container {
+    @apply overflow-x-auto rounded-lg -mx-4 md:mx-0;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+
+  /* Custom scrollbar styling */
+  .table-container::-webkit-scrollbar {
+    @apply h-1.5;
+  }
+
+  .table-container::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .table-container::-webkit-scrollbar-thumb {
+    @apply bg-white/20 rounded-full hover:bg-white/30;
+  }
+
+  /* Firefox scrollbar */
+  .table-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .data-table {
+    @apply w-full border-collapse min-w-[800px] md:min-w-0;
+  }
+
+  .data-table thead th {
+    @apply px-3 md:px-4 py-3 text-sm font-medium text-white/60
+           border-b border-white/10 whitespace-nowrap sticky top-0 bg-[#1a1b23]/95 backdrop-blur-sm z-10;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-white/5 hover:bg-white/5
+           transition-colors duration-200 cursor-pointer;
+  }
+
+  .data-table td {
+    @apply px-3 md:px-4 py-3 text-sm text-white/80;
+  }
+
+  /* Token Cell Styling */
+  .token-cell {
+    @apply flex items-center gap-2 md:gap-3 relative min-w-[180px];
+  }
+
+  .token-info {
+    @apply flex-grow truncate;
+  }
+
+  .token-name {
+    @apply text-white font-medium truncate max-w-[120px] md:max-w-none;
+  }
+
+  .token-symbol {
+    @apply text-xs md:text-sm text-white/60 hidden sm:inline;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 1024px) {
+    .market-cap-header,
+    td:nth-child(6) {
+      @apply hidden lg:table-cell;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .actions-header,
+    .actions-cell {
+      @apply hidden md:table-cell;
+    }
+
+    .volume-header,
+    td:nth-child(5) {
+      @apply hidden md:table-cell;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .favorite-cell {
+      @apply hidden sm:table-cell;
+    }
+
+    .token-cell {
+      @apply min-w-[140px];
+    }
+
+    .price-cell,
+    .change-cell {
+      @apply text-xs;
+    }
+  }
+
+  /* Ensure the table header text aligns properly */
+  .data-table th.text-right {
+    text-align: right;
+  }
+
+  .data-table th.text-left {
+    text-align: left;
+  }
+
+  /* Price and change cells */
+  .price-cell,
+  .change-cell {
+    white-space: nowrap;
+  }
+
+  /* Search input responsiveness */
+  .search-input {
+    @apply w-full max-w-[200px] md:max-w-[250px];
   }
 
   /* Table Styling */
@@ -489,7 +670,7 @@
   .token-row::after {
     content: "Click to copy ID";
     @apply absolute right-2 top-1/2 -translate-y-1/2 
-           text-xs text-white/40 opacity-0 transition-opacity duration-200
+           text-sm text-white/40 opacity-0 transition-opacity duration-200
            md:hidden;
   }
 
@@ -498,7 +679,7 @@
   }
 
   .data-table td {
-    @apply px-4 py-3 text-sm text-white/80;
+    @apply px-4 py-3 text-base text-white/80;
   }
 
   /* Token Cell Styling */
@@ -769,7 +950,7 @@
   }
 
   .tab-group {
-    @apply flex gap-2 ml-4 text-base;
+    @apply flex gap-2 text-base;
   }
 
   .tab-button {
@@ -847,4 +1028,97 @@
   .change-cell.negative {
     @apply text-red-400;
   }
+
+  /* Panel header layout */
+  .flex.justify-between.items-center.mb-4 {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .flex.justify-between.items-center.mb-4 {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0;
+    }
+  }
+
+  /* Search container */
+  .search-container {
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .search-container {
+      width: auto;
+      min-width: 250px;
+    }
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+  }
+
+  .search-input:focus {
+    border-color: rgba(255, 255, 255, 0.2);
+    outline: none;
+  }
+
+  @media (min-width: 640px) {
+    .search-container {
+      width: auto;
+      min-width: 250px;
+    }
+  }
+
+  /* Tab group container */
+  .flex.items-center.gap-4 {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .flex.items-center.gap-4 {
+      width: auto;
+    }
+  }
+
+  .tab-group {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .tab-button {
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    flex: 1;
+  }
+
+  .tab-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  @media (min-width: 640px) {
+    .tab-button {
+      flex: 0 1 auto;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+    }
+  }
 </style>
+

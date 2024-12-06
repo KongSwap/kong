@@ -210,9 +210,9 @@
 
         <p class="progress-text text-sm mt-4">
           {#if $appLoadingState.totalAssets > 0}
-            <span class="blink">></span> LOADING ASSETS: {isShuttingDown ? frozenProgress : $loadingProgress}%
+            LOADING ASSETS: {isShuttingDown ? frozenProgress : $loadingProgress}%
           {:else}
-            <span class="blink">></span> LOADING...
+            LOADING...
           {/if}
         </p>
 

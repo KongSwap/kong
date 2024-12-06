@@ -5,6 +5,7 @@ import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { getTokenDecimals } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
+import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -102,11 +103,10 @@ function createSwapStore(): SwapStore {
     isInputExceedingBalance,
 
     initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      const $tokenStore = get(tokenStore);
       update(state => ({
         ...state,
-        payToken: initialFromToken || $tokenStore.tokens.find(t => t.symbol === 'ICP') || null,
-        receiveToken: initialToToken || $tokenStore.tokens.find(t => t.symbol === 'ckBTC') || null
+        payToken: initialFromToken || tokenStore.getToken(ICP_CANISTER_ID) || null,
+        receiveToken: initialToToken || tokenStore.getToken(CKUSDT_CANISTER_ID) || null
       }));
     },
 

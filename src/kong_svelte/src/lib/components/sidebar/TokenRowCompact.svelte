@@ -44,8 +44,8 @@
     </div>
     <div class="right">
       <span class="balance">{formatBalance(token.balance?.toString() ?? "0", token.decimals)}</span>
-      {#if token.price}
-        <span class="price">{formatUsdValue(token.price)}</span>
+      {#if token.metrics.price}
+        <span class="price">{formatUsdValue(token.metrics.price)}</span>
       {/if}
     </div>
   </button>

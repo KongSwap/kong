@@ -1,183 +1,934 @@
 <script lang="ts">
-import { page } from "$app/stores";
-import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
-import { fetchTransactions, tokens, type Transaction } from "$lib/services/indexer/api";
-import { poolStore } from "$lib/services/pools";
-import { formatDistance } from 'date-fns';
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { page } from "$app/stores";
+  import { onDestroy } from "svelte";
+  import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { INDEXER_URL } from "$lib/constants/canisterConstants";
+  import { poolStore, type Pool } from "$lib/services/pools";
+  import { formatDistance } from "date-fns";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import type { FE } from "$lib/types";
+  import { userPoolBalances } from "$lib/services/pools/poolStore";
+  import {
+    fetchTransactions,
+    type Transaction,
+  } from "$lib/services/transactions";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import { derived } from "svelte/store";
+  import { fetchChartData, type CandleData } from "$lib/services/indexer/api";
+  import { onMount } from "svelte";
 
-const tokenAddress = $page.params.id;
-
-$: token = $tokens?.find(t => t.address === tokenAddress);
-$: biggestPool = $poolStore?.pools?.filter(p => p.address_0 === tokenAddress)
-  .sort((a, b) => b.tvl - a.tvl)[1];
-
-// Update state type
-let transactions: Transaction[] = [];
-let isLoadingTxns = true;
-
-// Add pagination state
-let currentPage = 1;
-const pageSize = 20;
-let totalTransactions = 0;
-
-// Add state for pagination info
-let totalPages = 0;
-
-// Update fetch function to use pagination
-const loadTransactionData = async (page: number = 1) => {
-  if (!biggestPool) return;
-  
-  try {
-    isLoadingTxns = true;
-    console.log('Loading transactions for pool:', biggestPool.pool_id, 'page:', page);
-    const response = await fetchTransactions(Number(biggestPool.pool_id), page, pageSize);
-    transactions = response;
-    console.log('Received transactions:', transactions);
-  } catch (error) {
-    console.error('Failed to fetch transactions:', error);
-  } finally {
-    isLoadingTxns = false;
+  // Ensure formattedTokens and poolStore are initialized
+  if (!formattedTokens || !poolStore) {
+    throw new Error("Stores are not initialized");
   }
-};
 
-// Add pagination controls to the template
-const loadNextPage = () => {
-  currentPage++;
-  loadTransactionData(currentPage);
-};
+  // Declare our state variables
+  let token = $state<FE.Token | undefined>();
+  let transactions = $state<Transaction[]>([]);
+  let isLoadingTxns = $state(false);
+  let error = $state<string | null>(null);
+  const tokenAddress = $page.params.id;
+  let currentPoolPage = $state(1);
+  const poolsPerPage = 10;
+  let refreshInterval: number;
 
-const loadPrevPage = () => {
-  if (currentPage > 1) {
-    currentPage--;
-    loadTransactionData(currentPage);
+  // Add state for tracking new transactions
+  let newTransactionIds = $state<Set<string>>(new Set());
+
+  // Function to clear transaction highlight after animation
+  const clearTransactionHighlight = (txId: string) => {
+    setTimeout(() => {
+      newTransactionIds.delete(txId);
+      newTransactionIds = newTransactionIds; // Trigger reactivity
+    }, 1000); // Match this with CSS animation duration
+  };
+
+  // Update fetch function to handle new transactions
+  const loadTransactionData = async (
+    page: number = 1,
+    append: boolean = false,
+    isRefresh: boolean = false,
+  ) => {
+    if (!token?.token_id) {
+      console.log("No token ID available, skipping transaction load");
+      isLoadingTxns = false;
+      return;
+    }
+
+    if ((!append && !isRefresh && isLoadingTxns) || (append && isLoadingMore)) {
+      console.log("Already loading transactions, skipping");
+      return;
+    }
+
+    if (!hasMore && append) {
+      console.log("No more transactions to load");
+      return;
+    }
+
+    try {
+      if (append) {
+        isLoadingMore = true;
+      } else if (!isRefresh) {
+        isLoadingTxns = true;
+      }
+
+      const url = `${INDEXER_URL}/tokens/${token.token_id}/transactions?page=${page}&limit=${pageSize}`;
+      console.log("Fetching transactions:", {
+        url,
+        token_id: token.token_id,
+        symbol: token.symbol,
+        page,
+        pageSize,
+      });
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const newTransactions = data.transactions || [];
+
+      if (isRefresh) {
+        // Compare new transactions with existing ones and highlight differences
+        const existingIds = new Set(transactions.map(t => t.tx_id));
+        const updatedTransactions = newTransactions.map(tx => {
+          if (!existingIds.has(tx.tx_id)) {
+            newTransactionIds.add(tx.tx_id);
+            clearTransactionHighlight(tx.tx_id);
+          }
+          return tx;
+        });
+        transactions = updatedTransactions;
+        newTransactionIds = newTransactionIds; // Trigger reactivity
+      } else if (append) {
+        transactions = [...transactions, ...newTransactions];
+      } else {
+        transactions = newTransactions;
+      }
+
+      hasMore = newTransactions.length === pageSize;
+      currentPage = page;
+      error = null;
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+      error =
+        error instanceof Error ? error.message : "Failed to load transactions";
+      hasMore = false;
+    } finally {
+      isLoadingMore = false;
+      isLoadingTxns = false;
+    }
+  };
+
+  // Set up auto-refresh interval
+  $effect(() => {
+    if (token?.token_id) {
+      // Clear existing interval if any
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+
+      // Set up new interval
+      refreshInterval = setInterval(() => {
+        loadTransactionData(1, false, true);
+      }, 10000) as unknown as number;
+
+      // Clean up on token change
+      return () => {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+        }
+      };
+    }
+  });
+
+  // Clean up interval on component destroy
+  onDestroy(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+  });
+
+  // Add pagination state
+  let currentPage = $state(1);
+  const pageSize = 20;
+  let totalTransactions = $state(0);
+
+  // Derived values
+  let ckusdtToken = $derived(
+    $formattedTokens?.find((t) => t.symbol === "ckUSDT"),
+  );
+
+  $effect(() => {
+    token = $formattedTokens?.find(
+      (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
+    );
+  });
+
+  // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
+  let selectedPool = $derived(
+    $poolStore?.pools?.find((p) => {
+      if (!token?.canister_id || !ckusdtToken?.canister_id) return false;
+
+      // Check if this pool contains both our token and CKUSDT and has TVL
+      const hasToken =
+        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
+      const hasUSDT =
+        p.address_0 === ckusdtToken.canister_id ||
+        p.address_1 === ckusdtToken.canister_id;
+      const hasTVL = Number(p.tvl) > 0;
+
+      return hasToken && hasUSDT && hasTVL;
+    }) ||
+      $poolStore?.pools
+        ?.filter((p) => {
+          const hasToken =
+            p.address_0 === token?.canister_id ||
+            p.address_1 === token?.canister_id;
+          const hasTVL = Number(p.tvl) > 200;
+          return hasToken && hasTVL;
+        })
+        ?.sort((a, b) => Number(b.tvl) - Number(a.tvl))[0],
+  );
+
+  let isLoadingMore = $state(false);
+  let hasMore = $state(true);
+  let observer: IntersectionObserver;
+  let loadMoreTrigger: HTMLElement;
+
+  // Add a stable reference for the token ID
+  let currentTokenId = $state<number | null>(null);
+
+  // Watch for token changes
+  $effect(() => {
+    const newTokenId = token?.token_id ?? null;
+    if (newTokenId !== currentTokenId) {
+      console.log("Token ID changed from", currentTokenId, "to", newTokenId);
+      currentTokenId = newTokenId;
+      if (newTokenId !== null) {
+        console.log("Loading transactions for token:", {
+          token_id: newTokenId,
+          symbol: token?.symbol,
+        });
+        transactions = []; // Clear existing transactions
+        currentPage = 1;
+        hasMore = true;
+        error = null;
+        loadTransactionData(1, false);
+      } else {
+        isLoadingTxns = false; // Clear loading state if no token
+      }
+    }
+  });
+
+  function setupIntersectionObserver(element: HTMLElement) {
+    if (observer) observer.disconnect();
+
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+          loadTransactionData(currentPage + 1, true);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      },
+    );
+
+    observer.observe(element);
   }
-};
 
-// Watch for changes in biggestPool
-$: if (biggestPool) {
-  currentPage = 1; // Reset to first page when pool changes
-  loadTransactionData(currentPage);
-}
+  onDestroy(() => {
+    if (observer) observer.disconnect();
+  });
 
-// Add helper functions to handle the number formatting
-const formatAmount = (amount: string, decimals: number): string => {
-  return (Number(amount) / Math.pow(10, decimals)).toFixed(2);
-};
-
-const formatPrice = (price: string): string => {
-  return Number(price).toFixed(6);
-};
-
-// Add helper function to calculate the correct price
-const calculatePrice = (tx: Transaction, tokenSymbol: string | undefined): string => {
-  if (!tokenSymbol) return "0";
-  
-  // If we're selling the token (it's the pay token), divide receive by pay
-  if (tx.paySymbol === tokenSymbol) {
-    return (Number(tx.receiveAmount) / Math.pow(10, tx.receiveToken.decimals) / 
-           (Number(tx.payAmount) / Math.pow(10, tx.payToken.decimals))).toFixed(6);
+  // Add helper functions to handle the number formatting
+  interface ApiTransaction {
+    mid_price: number;
+    pay_amount: number;
+    pay_token_id: number;
+    price: number;
+    receive_amount: number;
+    receive_token_id: number;
+    timestamp?: string;
+    ts?: string;
+    tx_id?: string;
+    user: {
+      principal_id: string;
+    };
   }
-  // If we're buying the token (it's the receive token), divide pay by receive
-  else {
-    return (Number(tx.payAmount) / Math.pow(10, tx.payToken.decimals) / 
-           (Number(tx.receiveAmount) / Math.pow(10, tx.receiveToken.decimals))).toFixed(6);
+
+  const calculateTotalUsdValue = (tx: ApiTransaction): string => {
+    const payToken = $formattedTokens?.find(
+      (t) => t.token_id === tx.pay_token_id,
+    );
+    const receiveToken = $formattedTokens?.find(
+      (t) => t.token_id === tx.receive_token_id,
+    );
+    if (!payToken || !receiveToken) return "0.00";
+
+    // Calculate USD value from pay side
+    const payUsdValue =
+      payToken.symbol === "ckUSDT"
+        ? tx.pay_amount
+        : tx.pay_amount * (payToken.price || 0);
+
+    // Calculate USD value from receive side
+    const receiveUsdValue =
+      receiveToken.symbol === "ckUSDT"
+        ? tx.receive_amount
+        : tx.receive_amount * (receiveToken.price || 0);
+
+    // Use the higher value
+    return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
+  };
+
+  // Function to get paginated pools
+  function getPaginatedPools(pools: Pool[]) {
+    if (!token) return { pools: [], totalPages: 0 };
+
+    const filteredPools = pools
+      .filter(
+        (p) =>
+          p.address_0 === token.canister_id ||
+          p.address_1 === token.canister_id,
+      )
+      .sort((a, b) => Number(b.tvl) - Number(a.tvl));
+
+    return {
+      pools: filteredPools,
+    };
   }
-};
+
+  let isChartDataReady = $derived(
+    Boolean(selectedPool && token && ckusdtToken),
+  );
+
+  // Add helper function to calculate pool share
+  function calculatePoolShare(
+    pool: Pool,
+    userBalance: FE.UserPoolBalance | undefined,
+  ): string {
+    if (!userBalance || !pool.lp_token_supply) return "0%";
+
+    const userLPBalance = BigInt(userBalance.balance || 0);
+    const totalLPSupply = BigInt(pool.lp_token_supply);
+
+    if (totalLPSupply === 0n) return "0%";
+
+    const sharePercentage =
+      Number((userLPBalance * 10000n) / totalLPSupply) / 100;
+    return `${sharePercentage.toFixed(2)}%`;
+  }
+
+  // Add derived value for user balances
+  let userBalances = $derived($userPoolBalances);
+
+
+  // Add derived store for market cap rank
+  const marketCapRank = derived([formattedTokens, page], ([$formattedTokens, $page]) => {
+    const tokenAddress = $page.params.id;
+    const token = $formattedTokens?.find(t => t.address === tokenAddress || t.canister_id === tokenAddress);
+    if (!token) return null;
+    const sortedTokens = [...$formattedTokens].sort((a, b) => (b.metrics.market_cap || 0) - (a.metrics.market_cap || 0));
+    const rank = sortedTokens.findIndex(t => t.canister_id === token.canister_id);
+    return rank !== -1 ? rank + 1 : null; // Return rank as a number or null if not found
+  });
+
+  // Add helper function to calculate 24h volume percentage
+  function calculateVolumePercentage(volume: number, marketCap: number): string {
+    if (!marketCap) return "0.00%";
+    return ((volume / marketCap) * 100).toFixed(2) + "%";
+  }
+
+  let candleData: CandleData[] = $state([]);
+  let lineChartPath = $state('');
+
+  // Fetch candle data for the past week
+  onMount(async () => {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const startTime = now - (10 * 24 * 60 * 60); // 1 week ago
+
+      // Replace with actual token IDs
+      const payTokenId = token?.token_id || 1;
+      const receiveTokenId = ckusdtToken?.token_id || 10;
+
+      const data = await fetchChartData(
+        payTokenId,
+        receiveTokenId,
+        startTime,
+        now,
+        'D' // Daily data
+      );
+
+      console.log('Raw candle data:', data);
+      lineChartPath = generateLineChartPath(data);
+
+      // Use the close_price for the line chart
+      candleData = data.filter(d => d.close_price !== undefined && d.close_price !== null);
+
+      console.log('Filtered candle data:', candleData);
+    } catch (error) {
+      console.error('Failed to fetch candle data:', error);
+    }
+  });
+
+  const maxPrice = $state(Math.max(...candleData.map(d => Number(d.close_price))));
+  const minPrice = $state(Math.min(...candleData.map(d => Number(d.close_price))));
+  const priceRange = $state(maxPrice - minPrice || 1); // Avoid division by zero
+
+
+  // Function to generate SVG path for the line chart
+  function generateLineChartPath(data) {
+    if (!data || data.length === 0) return '';
+
+    const maxPrice = Math.max(...data.map(d => d.close_price));
+    const minPrice = Math.min(...data.map(d => d.close_price));
+    const priceRange = maxPrice - minPrice || 1; // Avoid division by zero
+
+    return data.map((d, i) => {
+      const x = (i / (data.length - 1)) * 100;
+      const y = 30 - ((d.close_price - minPrice) / priceRange) * 30; // Invert y-axis
+      return `${i === 0 ? 'M' : 'L'}${x} ${y}`;
+    }).join(' ');
+  }
 </script>
 
 <div class="p-4">
-  <h1 class="text-2xl font-bold text-white mb-6">{token?.name} ({token?.symbol})</h1>
-  
-  {#if token && biggestPool}
-    <TradingViewChart 
-      poolId={Number(biggestPool.pool_id)} 
-      symbol={biggestPool.symbol} 
-    />
-
-    <!-- Transactions Table -->
-    <div class="bg-[#14161A] rounded-lg p-4">
-      <h2 class="text-xl font-semibold text-white mb-4">Recent Transactions</h2>
-      
-      {#if isLoadingTxns}
-        <div class="text-white">Loading transactions...</div>
-      {:else if transactions.length === 0}
-        <div class="text-white">No transactions found</div>
-      {:else}
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-white">
-            <thead class="text-sm uppercase bg-gray-800">
-              <tr>
-                <th class="px-4 py-3">Type</th>
-                <th class="px-4 py-3">Price</th>
-                <th class="px-4 py-3">Amount</th>
-                <th class="px-4 py-3">Total Value</th>
-                <th class="px-4 py-3">Time</th>
-                <th class="px-4 py-3">Tx</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each transactions as tx}
-                <tr class="border-b border-slate-700">
-                  <td class="px-4 py-3">
-                    <span class={tx.paySymbol === token?.symbol ? 'text-red-500' : 'text-green-500'}>
-                      {tx.paySymbol === token?.symbol ? 'Sell' : 'Buy'}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3">
-                    ${calculatePrice(tx, token?.symbol)}
-                  </td>
-                  <td class="px-4 py-3">
-                    {formatAmount(tx.payAmount, tx.payToken.decimals)} {tx.paySymbol}
-                  </td>
-                  <td class="px-4 py-3">
-                    {formatAmount(tx.receiveAmount, tx.receiveToken.decimals)} {tx.receiveSymbol}
-                  </td>
-                  <td class="px-4 py-3">
-                    {formatDistance(new Date(Number(tx.ts) / 1_000_000), new Date(), { addSuffix: true })}
-                  </td>
-                  <td class="px-4 py-3">
-                    <a 
-                      href={`https://explorer.sui.io/txblock/${tx.txId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-blue-400 hover:text-blue-300"
-                    >
-                      View
-                    </a>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-          
-          <!-- Add pagination controls -->
-          <div class="mt-4 flex justify-between items-center">
-            <button 
-              class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-              on:click={loadPrevPage}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </button>
-            <span class="text-white">Page {currentPage}</span>
-            <button 
-              class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-              on:click={loadNextPage}
-              disabled={transactions.length < pageSize}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      {/if}
-    </div>
+  {#if !$formattedTokens || !$poolStore?.pools}
+    <div class="text-white">Loading token data...</div>
+  {:else if !token}
+    <div class="text-white">Token not found: {tokenAddress}</div>
   {:else}
-    <div class="text-white">Loading...</div>
+    <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
+      <!-- Token Header -->
+      <div class="flex items-center gap-4 px-2">
+        <TokenImages tokens={[token]} size={48} overlap={0} />
+        <div>
+          <h1 class="text-2xl font-bold text-white">{token.name}</h1>
+          <div class="text-slate-400">{token.symbol}</div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+        <!-- Price Panel -->
+        <Panel variant="blue" type="secondary" className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200">
+          <div class="absolute inset-0">
+            <svg class="w-full h-full opacity-40" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path 
+                d={`M0 30 L0 ${30 - ((Number(candleData[0]?.close_price) - minPrice) / priceRange) * 30} ` +
+                   candleData.map((d, i) => {
+                     const x = (i / (candleData.length - 1)) * 100;
+                     const y = 30 - ((Number(d.close_price) - minPrice) / priceRange) * 30;
+                     return `${i === 0 ? '' : 'L'}${x} ${y}`;
+                   }).join(' ') +
+                   ` L100 30 Z`}
+                class="fill-purple-500/20"
+              />
+              <path 
+                d={lineChartPath} 
+                class="stroke-purple-500/40 fill-none"
+                stroke-width="0.5"
+              />
+            </svg>
+          </div>
+          <div class="relative p-4">
+            <div class="text-sm text-slate-400 mb-1">Price</div>
+            <div class="text-lg md:text-xl font-semibold text-white">
+              {formatUsdValue(token?.price || 0)}
+            </div>
+            <div class="text-sm mt-1">
+              <span class={`${Number(token?.metrics?.price_change_24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {Number(token?.metrics?.price_change_24h || 0) >= 0 ? "+" : ""}{token?.metrics?.price_change_24h}%
+              </span>
+              <span class="text-slate-400 ml-1">24h</span>
+            </div>
+          </div>
+        </Panel>
+
+        <!-- 24h Volume Panel -->
+        <Panel
+          variant="blue"
+          type="secondary"
+          className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200"
+        >
+          <div class="absolute inset-0">
+            <svg
+              class="w-full h-full opacity-40"
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0 30 L0 10 Q25 25 50 10 T100 10 L100 30 Z"
+                class="fill-purple-500/20"
+              />
+              <path
+                d="M0 10 Q25 25 50 10 T100 10"
+                class="stroke-purple-500/40 fill-none"
+                stroke-width="0.5"
+              />
+            </svg>
+          </div>
+          <div class="relative p-4">
+            <div class="text-sm text-slate-400 mb-1">24h Volume</div>
+            <div class="text-lg md:text-xl font-semibold text-white truncate">
+              {formatUsdValue(Number(token.metrics.volume_24h))}
+            </div>
+            <div class="text-sm text-slate-400 mt-1">
+              {token.metrics.volume_24h
+                ? `${calculateVolumePercentage(Number(token.metrics.volume_24h), Number(token.metrics.market_cap))} of mcap`
+                : "No volume data"}
+            </div>
+          </div>
+        </Panel>
+
+        <!-- Market Cap Panel -->
+        <Panel
+          variant="blue"
+          type="secondary"
+          className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200"
+        >
+          <div class="absolute inset-0">
+            <svg
+              class="w-full h-full opacity-40"
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0 30 L0 10 Q25 25 50 10 T100 10 L100 30 Z"
+                class="fill-green-500/20"
+              />
+              <path
+                d="M0 10 Q25 25 50 10 T100 10"
+                class="stroke-green-500/40 fill-none"
+                stroke-width="0.5"
+              />
+            </svg>
+          </div>
+          <div class="relative p-4">
+            <div class="text-sm text-slate-400 mb-1">Market Cap</div>
+            <div class="text-lg md:text-xl font-semibold text-white truncate">
+              {formatUsdValue(token?.metrics?.market_cap)}
+            </div>
+            <div class="text-sm text-slate-400 mt-1">
+              Rank #{$marketCapRank !== null ? $marketCapRank : "N/A"}
+            </div>
+          </div>
+        </Panel>
+
+        <!-- Total Supply Panel -->
+        <Panel
+          variant="blue"
+          type="secondary"
+          className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200"
+        >
+          <div class="absolute inset-0">
+            <svg
+              class="w-full h-full opacity-40"
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0 30 L0 10 Q25 25 50 10 T100 10 L100 30 Z"
+                class="fill-orange-500/20"
+              />
+              <path
+                d="M0 10 Q25 25 50 10 T100 10"
+                class="stroke-orange-500/40 fill-none"
+                stroke-width="0.5"
+              />
+            </svg>
+          </div>
+          <div class="relative p-4">
+            <div class="text-sm text-slate-400 mb-1">Total Supply</div>
+            <div class="text-lg md:text-xl font-semibold text-white truncate">
+              {token?.metrics?.total_supply
+                ? formatToNonZeroDecimal(
+                    Number(token.metrics?.total_supply) / 10 ** token.decimals,
+                  )
+                : "0"}
+            </div>
+            <div class="text-sm text-slate-400 mt-1">
+              {token?.symbol || ""} tokens
+            </div>
+          </div>
+        </Panel>
+      </div>
+
+      <!-- Chart Section -->
+      <Panel variant="blue" type="main" className="!p-0 flex-1">
+        <div class="h-[400px] md:h-[calc(100vh-500px)] w-full">
+          {#if isChartDataReady}
+            <TradingViewChart
+              poolId={Number(selectedPool.pool_id)}
+              symbol={`${token.symbol}/${
+                token.symbol === "ckUSDT"
+                  ? $formattedTokens?.find(
+                      (t) =>
+                        t.canister_id ===
+                        (selectedPool.address_0 === token.canister_id
+                          ? selectedPool.address_1
+                          : selectedPool.address_0),
+                    )?.symbol || "Unknown"
+                  : "ckUSDT"
+              }`}
+              toToken={token}
+              fromToken={ckusdtToken}
+            />
+          {:else}
+            <div class="flex items-center justify-center h-full">
+              <div class="loader"></div>
+            </div>
+          {/if}
+        </div>
+      </Panel>
+
+      <!-- Transactions Section -->
+      <div class="flex flex-col md:flex-row gap-4">
+        <Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
+          <div class="flex flex-col h-[600px] w-full">
+            <div class="p-4">
+              <h2 class="text-2xl font-semibold text-white/80">Token Pools</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+              {#if !$poolStore?.pools || !token}
+                <div class="text-white">Loading pools...</div>
+              {:else}
+                {@const paginatedData = getPaginatedPools($poolStore.pools)}
+                <div class="flex-1 overflow-y-auto">
+                  {#each paginatedData.pools as pool}
+                    <div
+                      class="border-b border-slate-700/70 hover:bg-slate-800/30 transition-colors duration-200 p-4"
+                    >
+                      <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                          {#if $formattedTokens}
+                            <TokenImages
+                              tokens={[
+                                token,
+                                $formattedTokens.find(
+                                  (t) =>
+                                    t.canister_id ===
+                                    (pool.address_0 === token.canister_id
+                                      ? pool.address_1
+                                      : pool.address_0),
+                                ),
+                              ].filter((t): t is FE.Token => Boolean(t))}
+                              size={32}
+                              overlap={12}
+                            />
+                          {/if}
+                          <div>
+                            <div class="text-white font-medium">
+                              {token.symbol} /
+                              {$formattedTokens?.find(
+                                (t) =>
+                                  t.canister_id ===
+                                  (pool.address_0 === token.canister_id
+                                    ? pool.address_1
+                                    : pool.address_0),
+                              )?.symbol || "Unknown"}
+                            </div>
+                            <div class="text-xs text-slate-400">
+                              Pool #{pool.pool_id}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="hidden sm:block">
+                          <a
+                            href="/swap?from={pool.address_0}&to={pool.address_1}"
+                            class="inline-block px-3 py-1.5 text-sm bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/30 transition-colors duration-200"
+                          >
+                            Trade
+                          </a>
+                        </div>
+                      </div>
+                      <div
+                        class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm"
+                      >
+                        <div>
+                          <div class="text-slate-400 text-xs mb-1">TVL</div>
+                          <div class="text-white font-medium">
+                            {formatUsdValue(Number(pool.tvl))}
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-slate-400 text-xs mb-1">
+                            24h Volume
+                          </div>
+                          <div class="text-white font-medium">
+                            {formatUsdValue(Number(pool.daily_volume || 0))}
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-slate-400 text-xs mb-1">APY</div>
+                          <div class="text-white font-medium">{pool.apy}%</div>
+                        </div>
+                        <div>
+                          <div class="text-slate-400 text-xs mb-1">
+                            My Share
+                          </div>
+                          <div class="text-white font-medium">
+                            {calculatePoolShare(
+                              pool,
+                              userBalances.find(
+                                (b) =>
+                                  b.symbol_0 === pool.symbol_0 &&
+                                  b.symbol_1 === pool.symbol_1,
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-3 sm:hidden">
+                        <a
+                          href="/swap?from={pool.address_0}&to={pool.address_1}"
+                          class="block w-full text-center px-3 py-1.5 text-sm bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/30 transition-colors duration-200"
+                        >
+                          Trade
+                        </a>
+                      </div>
+                    </div>
+                  {/each}
+
+                  {#if paginatedData.pools.length === 0}
+                    <div
+                      class="flex flex-col items-center justify-center h-full text-center py-8"
+                    >
+                      <div class="text-slate-400 mb-2">No pools found</div>
+                      <div class="text-sm text-slate-500">
+                        There are currently no liquidity pools for this token
+                      </div>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
+          <div class="flex flex-col h-[600px]">
+            <div class="p-4">
+              <h2 class="text-2xl font-semibold text-white/80">
+                Transaction Feed
+              </h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+              {#if isLoadingTxns && transactions.length === 0}
+                <div class="flex items-center justify-center h-full">
+                  <div class="loader"></div>
+                </div>
+              {:else if error}
+                <div class="text-red-400 text-center py-4">{error}</div>
+              {:else if transactions.length === 0}
+                <div class="text-white text-center py-4">
+                  No transactions found
+                </div>
+              {:else}
+                <div class="-mx-4">
+                  <table class="w-full text-left text-white/80">
+                    <tbody>
+                      {#each transactions as tx}
+                        <tr 
+                          class="border-b border-slate-700/70 transition-all duration-300"
+                          class:new-transaction={newTransactionIds.has(tx.tx_id || '')}
+                        >
+                          <td class="px-4 py-3">
+                            <div
+                              class="flex flex-col sm:flex-row items-start sm:items-center gap-2"
+                            >
+                              <span
+                                class="px-2 py-0.5 text-xs bg-slate-700 rounded-full whitespace-nowrap"
+                              >
+                                {tx.user?.principal_id?.slice(0, 8)}
+                              </span>
+                              {#if tx.pay_token_id === token.token_id}
+                                <span
+                                  class="text-white/80 flex flex-wrap items-center gap-1 text-sm"
+                                >
+                                  <span class="text-red-500">Sold</span>
+                                  {formatToNonZeroDecimal(tx.pay_amount)}
+                                  <TokenImages
+                                    tokens={[token]}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  for
+                                  {formatToNonZeroDecimal(tx.receive_amount)}
+                                  <TokenImages
+                                    tokens={[
+                                      $formattedTokens?.find(
+                                        (t) =>
+                                          t.token_id === tx.receive_token_id,
+                                      ),
+                                    ]}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  <span class="whitespace-nowrap"
+                                    >worth {calculateTotalUsdValue(tx)}</span
+                                  >
+                                  <span class="text-slate-400 text-xs"
+                                    >{tx.timestamp
+                                      ? formatDistance(
+                                          new Date(tx.timestamp),
+                                          new Date(),
+                                          { addSuffix: true },
+                                        )
+                                      : "N/A"}</span
+                                  >
+                                </span>
+                              {:else}
+                                <span
+                                  class="text-white/80 flex flex-wrap items-center gap-1 text-sm"
+                                >
+                                  <span class="text-green-500">Bought</span>
+                                  {formatToNonZeroDecimal(tx.receive_amount)}
+                                  <TokenImages
+                                    tokens={[token]}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  for
+                                  {formatToNonZeroDecimal(tx.pay_amount)}
+                                  <TokenImages
+                                    tokens={[
+                                      $formattedTokens?.find(
+                                        (t) => t.token_id === tx.pay_token_id,
+                                      ),
+                                    ]}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  <span class="whitespace-nowrap"
+                                    >worth {calculateTotalUsdValue(tx)}</span
+                                  >
+                                  <span class="text-slate-400 text-xs"
+                                    >{tx.timestamp
+                                      ? formatDistance(
+                                          new Date(tx.timestamp),
+                                          new Date(),
+                                          { addSuffix: true },
+                                        )
+                                      : "N/A"}</span
+                                  >
+                                </span>
+                              {/if}
+                            </div>
+                          </td>
+                          <td class="px-4 py-3 text-right">
+                            {#if tx.tx_id}
+                              <a
+                                href={`https://explorer.sui.io/txblock/${tx.tx_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-blue-400 hover:text-blue-300"
+                                title="View transaction"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  class="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                    clip-rule="evenodd"
+                                  />
+                                </svg>
+                              </a>
+                            {:else}
+                              N/A
+                            {/if}
+                          </td>
+                        </tr>
+                      {/each}
+
+                      <!-- Loading more indicator -->
+                      <tr
+                        bind:this={loadMoreTrigger}
+                        use:setupIntersectionObserver
+                      >
+                        <td colspan="2" class="p-4 text-center">
+                          {#if isLoadingMore}
+                            <div class="flex justify-center">
+                              <div class="loader"></div>
+                            </div>
+                          {:else if !hasMore}
+                            <div class="text-slate-400 text-sm">
+                              No more transactions
+                            </div>
+                          {/if}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              {/if}
+            </div>
+          </div>
+        </Panel>
+      </div>
+    </div>
   {/if}
 </div>
 
 <style>
   :global(.tv-lightweight-charts) {
     font-family: inherit !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .loader {
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #ffffff;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Add animation for new transactions */
+  .new-transaction {
+    animation: highlightTransaction 1s ease-out;
+  }
+
+  @keyframes highlightTransaction {
+    0% {
+      background-color: rgba(34, 197, 94, 0.2); /* Green for buys */
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  tr:has(span.text-red-500).new-transaction {
+    animation: highlightSellTransaction 1s ease-out;
+  }
+
+  @keyframes highlightSellTransaction {
+    0% {
+      background-color: rgba(239, 68, 68, 0.2); /* Red for sells */
+    }
+    100% {
+      background-color: transparent;
+    }
   }
 </style>

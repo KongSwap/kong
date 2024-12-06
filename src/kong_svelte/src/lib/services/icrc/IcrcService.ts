@@ -64,7 +64,7 @@ export class IcrcService {
       let retries = 3;
       const expiresAt =
         BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
-      const totalAmount = payAmount + token.fee;
+      const totalAmount = BigInt(payAmount) + BigInt(token.fee);
 
       // First check if we already have sufficient allowance
       const currentAllowance = await this.checkIcrc2Allowance(
@@ -82,7 +82,7 @@ export class IcrcService {
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: BigInt(totalAmount * 10n),
+        amount: token?.metrics?.total_supply ? BigInt(token?.metrics?.total_supply) : BigInt(totalAmount) * 10n,
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: {
@@ -212,7 +212,7 @@ export class IcrcService {
           owner: toPrincipal,
           subaccount: [],
         },
-        amount,
+        amount: BigInt(amount),
         memo: opts.memo ? opts.memo : [],
         fee: opts.fee ? [opts.fee] : [],
         from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
@@ -254,7 +254,7 @@ export class IcrcService {
         },
         amount,
         memo: opts.memo ? opts.memo : [],
-        fee: opts.fee ? [opts.fee] : [],
+        fee: opts.fee_fixed ? [opts.fee_fixed] : [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
       };
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
 
   export let tokens: FE.Token[] = [];
   export let size: number = 44; // default 44px (h-11 = 44px)
@@ -26,8 +25,8 @@
     >
       <img
         class="w-full h-full rounded-full object-contain"
-        style="background-color: white; object-fit: contain;"
-        src={token?.canister_id ? ($tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp') : '/tokens/not_verified.webp'}
+        style="object-fit: contain;"
+        src={token?.logo_url ? token.logo_url : '/tokens/not_verified.webp'}
         alt={token?.symbol ?? 'Unknown Token'}
         loading="eager"
       />

@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Alumni+Sans:ital,wght@0,100..900;1,100..900&family=Press+Start+2P&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Space+Grotesk:wght@300..700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +7,7 @@
 
 body {
   background-color: #5BB2CF;
+  font-family: 'Exo 2', sans-serif;
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;

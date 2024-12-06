@@ -2,12 +2,11 @@
 import Dexie, { type Table } from 'dexie';
 import type { KongImage, FavoriteToken } from '$lib/services/tokens/types';
 import type { Settings } from '$lib/services/settings/types';
-import type { IndexerToken } from './indexer/api';
 
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
   tokens!: Table<FE.Token, string>; // Table<KongImage, primary key type>
-  indexedTokens!: Table<IndexerToken, string>; // Table<IndexerToken, primary key type>
+  indexedTokens!: Table<FE.Token, string>; // Table<FE.Token, primary key type>
   images!: Table<KongImage, number>; // Table<KongImage, primary key type>
   favorite_tokens!: Table<FavoriteToken, string>; // Table<FavoriteToken, primary key type>
   settings!: Table<Settings, string>; // Add settings table
@@ -17,7 +16,7 @@ export class KongDB extends Dexie {
   constructor() {
     super('kong_db'); // Database name
     this.version(1).stores({
-      indexedTokens: 'id, address, updatedAt',
+      indexedTokens: 'token_id, address, canister_id',
       tokens: 'canister_id, timestamp',
       images: '++id, canister_id, timestamp',
       pools: 'id, address_0, address_1',

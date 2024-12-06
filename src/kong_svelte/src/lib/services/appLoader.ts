@@ -169,7 +169,6 @@ export class AppLoader {
 
       // Initialize remaining services
       await Promise.all([
-        updateWorkerService.loadTokenLogos(),
         this.preloadAssets(),
         tokenStore.loadPrices(),
         this.initializeSettings()
@@ -201,6 +200,9 @@ export class AppLoader {
       // Initialize tokens after wallet connection
       const wallet = get(auth);
 
+      // Load pools first, then tokens
+      await poolStore.loadPools();
+      
       // Load tokens and wait for completion
       await Promise.all([
         tokenStore.loadTokens(),

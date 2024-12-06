@@ -9,7 +9,8 @@ declare global {
       canister_id: string;
       name: string;
       symbol: string;
-      fee: bigint;
+      fee: number;
+      fee_fixed: string;
       decimals: number;
       token: string;
       token_id: number;
@@ -18,16 +19,26 @@ declare global {
       icrc2: boolean;
       icrc3: boolean;
       on_kong: boolean;
+      price?: number;
+      supply?: string;
+      metrics?: {
+        total_supply?: string;
+        price?: string;
+        price_change_24h?: string;
+        volume_24h?: string;
+        market_cap?: string;
+        updated_at?: Date;
+      };
       pool_symbol: string;
       pools: BE.Pool[];
-      logo?: string;
-      total_24h_volume?: bigint;
-      price?: number;
+      logo_url?: string;
+      total_24h_volume?: string;
       tvl?: number;
-      balance?: bigint;
+      balance?: string;
       formattedBalance?: string;
       formattedUsdValue?: string;
       timestamp?: number;
+      address: string;
     }
 
     interface UserPoolBalance {

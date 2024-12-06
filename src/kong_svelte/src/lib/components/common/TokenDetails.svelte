@@ -43,8 +43,8 @@
                         <span class="balance-value">
                             {formatBalance(token.balance?.toString() ?? "0", token.decimals)} {token.symbol}
                         </span>
-                        {#if token.price}
-                            <span class="balance-usd">${token.price.toFixed(8)}</span>
+                        {#if token?.metrics?.price}
+                            <span class="balance-usd">{formatUsdValue(token?.metrics?.price)}</span>
                         {/if}
                     </div>
                 </div>

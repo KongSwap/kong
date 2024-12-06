@@ -6,34 +6,29 @@
   import { auth, selectedWalletId } from "$lib/services/auth";
   import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
-  import { getButtonText } from "./utils";
   import SwapPanel from "$lib/components/swap/swap_ui/SwapPanel.svelte";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
   import SwapConfirmation from "$lib/components/swap/swap_ui/SwapConfirmation.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import { settingsStore } from "$lib/services/settings/settingsStore";
-  import { themeStore } from '$lib/stores/themeStore';
   import { get } from "svelte/store";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import debounce from "lodash-es/debounce";
   import { replaceState } from "$app/navigation";
-  import { writable } from "svelte/store";
   import { createEventDispatcher } from 'svelte';
   import Portal from 'svelte-portal';
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { walletsList } from "@windoge98/plug-n-play";
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
-  import { slide } from 'svelte/transition';
 
   let isProcessing = false;
   let rotationCount = 0;
   let isRotating = false;
   let currentSwapId: string | null = null;
-  let payPanelRef: HTMLElement;
 
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
 

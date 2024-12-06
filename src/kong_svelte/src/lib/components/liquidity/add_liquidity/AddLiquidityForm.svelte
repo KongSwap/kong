@@ -150,7 +150,7 @@
 
         try {
             const balance = new BigNumber(currentBalance);
-            const totalFees = new BigNumber(currentToken.fee.toString());
+            const totalFees = new BigNumber(currentToken.fee_fixed.toString());
             let maxAmount = balance.minus(totalFees);
 
             if (maxAmount.isLessThanOrEqualTo(0)) {
@@ -200,7 +200,7 @@
 
     function getUsdValue(amount: string, token: FE.Token | null): string {
         if (!amount || !token) return "0.00";
-        const price = token.price;
+        const price = token.metrics.price;
         return (price * Number(amount)).toFixed(2);
     }
 
@@ -216,10 +216,16 @@
 
     $: hasInsufficientBalance = () => {
         if (!token0 || !token1 || !amount0 || !amount1) return false;
-        const parsedAmount0 = parseTokenAmount(amount0, token0.decimals) - token0.fee;
-        const parsedAmount1 = parseTokenAmount(amount1, token1.decimals) - token1.fee;
+        
+        // Convert amounts to BigInt, accounting for fees
+        const parsedAmount0 = BigInt(parseTokenAmount(amount0, token0.decimals)) - BigInt(token0.fee_fixed);
+        const parsedAmount1 = BigInt(parseTokenAmount(amount1, token1.decimals)) - BigInt(token1.fee_fixed);
+        
+        // Convert balances to BigInt
         const parsedBalance0 = BigInt(token0Balance);
         const parsedBalance1 = BigInt(token1Balance);
+        
+        // Compare using BigInt operations
         return parsedAmount0 > parsedBalance0 || parsedAmount1 > parsedBalance1;
     };
 
@@ -296,7 +302,7 @@
                         >
                             {#if token0}
                                 <div class="token-info">
-                                    <img src={token0.logo} alt={token0.symbol} class="token-logo" />
+                                    <img src={token0.logo_url} alt={token0.symbol} class="token-logo" />
                                     <span class="token-symbol">{token0.symbol}</span>
                                 </div>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
@@ -356,7 +362,7 @@
                         >
                             {#if token1}
                                 <div class="token-info">
-                                    <img src={token1.logo} alt={token1.symbol} class="token-logo" />
+                                    <img src={token1.logo_url} alt={token1.symbol} class="token-logo" />
                                     <span class="token-symbol">{token1.symbol}</span>
                                 </div>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
