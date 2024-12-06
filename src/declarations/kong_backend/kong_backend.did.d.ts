@@ -129,6 +129,7 @@ export interface ICTransferReply {
   'amount' : bigint,
   'symbol' : string,
 }
+export interface Icrc10SupportedStandards { 'url' : string, 'name' : string }
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
@@ -410,6 +411,10 @@ export interface _SERVICE {
     TxsResult
   >,
   'get_user' : ActorMethod<[], UserResult>,
+  'icrc10_supported_standards' : ActorMethod<
+    [],
+    Array<Icrc10SupportedStandards>
+  >,
   'icrc1_name' : ActorMethod<[], string>,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
   'messages' : ActorMethod<[[] | [bigint]], MessagesResult>,

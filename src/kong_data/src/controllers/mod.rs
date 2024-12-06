@@ -8,4 +8,5 @@ mod status;
 mod tokens;
 mod transfers;
 mod txs;
+mod updates;
 mod users;

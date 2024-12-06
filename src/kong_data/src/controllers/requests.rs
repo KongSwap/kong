@@ -1,12 +1,15 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
+use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_helpers::to_request_reply;
 use crate::stable_memory::REQUEST_MAP;
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
+use crate::stable_update::stable_update::{StableMemory, StableUpdate};
+use crate::stable_update::update_map;
 
 const MAX_REQUESTS: usize = 100;
 
@@ -58,6 +61,15 @@ fn update_request(stable_request_json: String) -> Result<String, String> {
         let mut map = request_map.borrow_mut();
         map.insert(StableRequestId(request.request_id), request.clone());
     });
+
+    // add to UpdateMap for archiving to database
+    let ts = get_time();
+    let update = StableUpdate {
+        update_id: 0,
+        stable_memory: StableMemory::RequestMap(request),
+        ts,
+    };
+    update_map::insert(&update);
 
     Ok("Request updated".to_string())
 }

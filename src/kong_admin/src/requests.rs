@@ -268,7 +268,7 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
     }
 }
 
-pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_requests_on_database(db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"requests.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?
@@ -296,172 +296,177 @@ pub async fn dump_requests(db_client: &Client) -> Result<(), Box<dyn std::error:
         let reader = BufReader::new(file);
         let request_map: BTreeMap<StableRequestId, StableRequest> = serde_json::from_reader(reader)?;
 
-        for (k, v) in request_map.iter() {
-            match v.request {
-                Request::AddPool(_) => {
-                    let request_id = v.request_id as i64;
-                    let user_id = v.user_id as i32;
-                    let request_type = RequestType::AddPool;
-                    let request = serialize_request(&v.request);
-                    let reply = serialize_reply(&v.reply);
-                    let statuses = json!(&v.statuses);
-                    let ts = v.ts as f64 / 1_000_000_000.0;
-
-                    db_client
-                        .execute(
-                            "INSERT INTO requests
-                                (request_id, user_id, request_type, request, reply, statuses, ts)
-                                VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                                ON CONFLICT (request_id) DO UPDATE SET
-                                    user_id = $2,
-                                    request_type = $3,
-                                    request = $4,
-                                    reply = $5,
-                                    statuses = $6,
-                                    ts = to_timestamp($7)",
-                            &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                        )
-                        .await?;
-                    println!("request_id={} saved", k.0);
-                }
-                Request::AddLiquidity(_) => {
-                    let request_id = v.request_id as i64;
-                    let user_id = v.user_id as i32;
-                    let request_type = RequestType::AddLiquidity;
-                    let request = serialize_request(&v.request);
-                    let reply = serialize_reply(&v.reply);
-                    let statuses = json!(&v.statuses);
-                    let ts = v.ts as f64 / 1_000_000_000.0;
-
-                    db_client
-                        .execute(
-                            "INSERT INTO requests
-                                (request_id, user_id, request_type, request, reply, statuses, ts)
-                                VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                                ON CONFLICT (request_id) DO UPDATE SET
-                                    user_id = $2,
-                                    request_type = $3,
-                                    request = $4,
-                                    reply = $5,
-                                    statuses = $6,
-                                    ts = to_timestamp($7)",
-                            &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                        )
-                        .await?;
-                    println!("request_id={} saved", k.0);
-                }
-                Request::RemoveLiquidity(_) => {
-                    let request_id = v.request_id as i64;
-                    let user_id = v.user_id as i32;
-                    let request_type = RequestType::RemoveLiquidity;
-                    let request = serialize_request(&v.request);
-                    let reply = serialize_reply(&v.reply);
-                    let statuses = json!(&v.statuses);
-                    let ts = v.ts as f64 / 1_000_000_000.0;
-
-                    db_client
-                        .execute(
-                            "INSERT INTO requests
-                                (request_id, user_id, request_type, request, reply, statuses, ts)
-                                VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                                ON CONFLICT (request_id) DO UPDATE SET
-                                    user_id = $2,
-                                    request_type = $3,
-                                    request = $4,
-                                    reply = $5,
-                                    statuses = $6,
-                                    ts = to_timestamp($7)",
-                            &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                        )
-                        .await?;
-                    println!("request_id={} saved", k.0);
-                }
-                Request::Swap(_) => {
-                    let request_id = v.request_id as i64;
-                    let user_id = v.user_id as i32;
-                    let request_type = RequestType::Swap;
-                    let request = serialize_request(&v.request);
-                    let reply = serialize_reply(&v.reply);
-                    let statuses = json!(&v.statuses);
-                    let ts = v.ts as f64 / 1_000_000_000.0;
-
-                    db_client
-                        .execute(
-                            "INSERT INTO requests
-                                (request_id, user_id, request_type, request, reply, statuses, ts)
-                                VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                                ON CONFLICT (request_id) DO UPDATE SET
-                                    user_id = $2,
-                                    request_type = $3,
-                                    request = $4,
-                                    reply = $5,
-                                    statuses = $6,
-                                    ts = to_timestamp($7)",
-                            &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                        )
-                        .await?;
-                    println!("request_id={} saved", k.0);
-                }
-                Request::Claim(_) => {
-                    let request_id = v.request_id as i64;
-                    let user_id = v.user_id as i32;
-                    let request_type = RequestType::Claim;
-                    let request = serialize_request(&v.request);
-                    let reply = serialize_reply(&v.reply);
-                    let statuses = json!(&v.statuses);
-                    let ts = v.ts as f64 / 1_000_000_000.0;
-
-                    db_client
-                        .execute(
-                            "INSERT INTO requests
-                                (request_id, user_id, request_type, request, reply, statuses, ts)
-                                VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                                ON CONFLICT (request_id) DO UPDATE SET
-                                    user_id = $2,
-                                    request_type = $3,
-                                    request = $4,
-                                    reply = $5,
-                                    statuses = $6,
-                                    ts = to_timestamp($7)",
-                            &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                        )
-                        .await?;
-                    println!("request_id={} saved", k.0);
-                }
-                Request::Send(_) => {
-                    let request_id = v.request_id as i64;
-                    let user_id = v.user_id as i32;
-                    let request_type = RequestType::Send;
-                    let request = serialize_request(&v.request);
-                    let reply = serialize_reply(&v.reply);
-                    let statuses = json!(&v.statuses);
-                    let ts = v.ts as f64 / 1_000_000_000.0;
-
-                    db_client
-                        .execute(
-                            "INSERT INTO requests
-                                (request_id, user_id, request_type, request, reply, statuses, ts)
-                                VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
-                                ON CONFLICT (request_id) DO UPDATE SET
-                                    user_id = $2,
-                                    request_type = $3,
-                                    request = $4,
-                                    reply = $5,
-                                    statuses = $6,
-                                    ts = to_timestamp($7)",
-                            &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
-                        )
-                        .await?;
-                    println!("request_id={} saved", k.0);
-                }
-            }
+        for v in request_map.values() {
+            insert_request_on_database(v, db_client).await?;
         }
     }
 
     Ok(())
 }
 
-pub async fn update_requests<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn insert_request_on_database(v: &StableRequest, db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
+    match v.request {
+        Request::AddPool(_) => {
+            let request_id = v.request_id as i64;
+            let user_id = v.user_id as i32;
+            let request_type = RequestType::AddPool;
+            let request = serialize_request(&v.request);
+            let reply = serialize_reply(&v.reply);
+            let statuses = json!(&v.statuses);
+            let ts = v.ts as f64 / 1_000_000_000.0;
+
+            db_client
+                .execute(
+                    "INSERT INTO requests
+                        (request_id, user_id, request_type, request, reply, statuses, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                        ON CONFLICT (request_id) DO UPDATE SET
+                            user_id = $2,
+                            request_type = $3,
+                            request = $4,
+                            reply = $5,
+                            statuses = $6,
+                            ts = to_timestamp($7)",
+                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+                )
+                .await?;
+            println!("request_id={} saved", v.request_id);
+        }
+        Request::AddLiquidity(_) => {
+            let request_id = v.request_id as i64;
+            let user_id = v.user_id as i32;
+            let request_type = RequestType::AddLiquidity;
+            let request = serialize_request(&v.request);
+            let reply = serialize_reply(&v.reply);
+            let statuses = json!(&v.statuses);
+            let ts = v.ts as f64 / 1_000_000_000.0;
+
+            db_client
+                .execute(
+                    "INSERT INTO requests
+                        (request_id, user_id, request_type, request, reply, statuses, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                        ON CONFLICT (request_id) DO UPDATE SET
+                            user_id = $2,
+                            request_type = $3,
+                            request = $4,
+                            reply = $5,
+                            statuses = $6,
+                            ts = to_timestamp($7)",
+                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+                )
+                .await?;
+            println!("request_id={} saved", v.request_id);
+        }
+        Request::RemoveLiquidity(_) => {
+            let request_id = v.request_id as i64;
+            let user_id = v.user_id as i32;
+            let request_type = RequestType::RemoveLiquidity;
+            let request = serialize_request(&v.request);
+            let reply = serialize_reply(&v.reply);
+            let statuses = json!(&v.statuses);
+            let ts = v.ts as f64 / 1_000_000_000.0;
+
+            db_client
+                .execute(
+                    "INSERT INTO requests
+                        (request_id, user_id, request_type, request, reply, statuses, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                        ON CONFLICT (request_id) DO UPDATE SET
+                            user_id = $2,
+                            request_type = $3,
+                            request = $4,
+                            reply = $5,
+                            statuses = $6,
+                            ts = to_timestamp($7)",
+                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+                )
+                .await?;
+            println!("request_id={} saved", v.request_id);
+        }
+        Request::Swap(_) => {
+            let request_id = v.request_id as i64;
+            let user_id = v.user_id as i32;
+            let request_type = RequestType::Swap;
+            let request = serialize_request(&v.request);
+            let reply = serialize_reply(&v.reply);
+            let statuses = json!(&v.statuses);
+            let ts = v.ts as f64 / 1_000_000_000.0;
+
+            db_client
+                .execute(
+                    "INSERT INTO requests
+                        (request_id, user_id, request_type, request, reply, statuses, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                        ON CONFLICT (request_id) DO UPDATE SET
+                            user_id = $2,
+                            request_type = $3,
+                            request = $4,
+                            reply = $5,
+                            statuses = $6,
+                            ts = to_timestamp($7)",
+                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+                )
+                .await?;
+            println!("request_id={} saved", v.request_id);
+        }
+        Request::Claim(_) => {
+            let request_id = v.request_id as i64;
+            let user_id = v.user_id as i32;
+            let request_type = RequestType::Claim;
+            let request = serialize_request(&v.request);
+            let reply = serialize_reply(&v.reply);
+            let statuses = json!(&v.statuses);
+            let ts = v.ts as f64 / 1_000_000_000.0;
+
+            db_client
+                .execute(
+                    "INSERT INTO requests
+                        (request_id, user_id, request_type, request, reply, statuses, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                        ON CONFLICT (request_id) DO UPDATE SET
+                            user_id = $2,
+                            request_type = $3,
+                            request = $4,
+                            reply = $5,
+                            statuses = $6,
+                            ts = to_timestamp($7)",
+                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+                )
+                .await?;
+            println!("request_id={} saved", v.request_id);
+        }
+        Request::Send(_) => {
+            let request_id = v.request_id as i64;
+            let user_id = v.user_id as i32;
+            let request_type = RequestType::Send;
+            let request = serialize_request(&v.request);
+            let reply = serialize_reply(&v.reply);
+            let statuses = json!(&v.statuses);
+            let ts = v.ts as f64 / 1_000_000_000.0;
+
+            db_client
+                .execute(
+                    "INSERT INTO requests
+                        (request_id, user_id, request_type, request, reply, statuses, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))
+                        ON CONFLICT (request_id) DO UPDATE SET
+                            user_id = $2,
+                            request_type = $3,
+                            request = $4,
+                            reply = $5,
+                            statuses = $6,
+                            ts = to_timestamp($7)",
+                    &[&request_id, &user_id, &request_type, &request, &reply, &statuses, &ts],
+                )
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn update_requests_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"requests.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?

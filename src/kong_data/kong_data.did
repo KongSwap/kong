@@ -1,3 +1,9 @@
+type Icrc10SupportedStandards = record { 
+    url : text;
+    name : text;
+};
+type Icrc28TrustedOriginsResponse = record { trusted_origins : vec text };
+
 type TxId = variant {
     BlockIndex : nat;
     TransactionId : text;
@@ -185,6 +191,8 @@ type TxsResult = variant { Ok : vec TxsReply; Err : text };
 service : {
     // icrc1 standards
     icrc1_name : () -> (text) query;
+    icrc10_supported_standards : () -> (vec Icrc10SupportedStandards) query;
+    icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
 
     // requests(request_id, num_requests) - returns specific request or all requests of the user
     requests : (opt nat64, opt nat16) -> (RequestsResult) query;

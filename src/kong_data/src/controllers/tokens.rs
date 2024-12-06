@@ -1,10 +1,13 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
+use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_token::token::Token;
+use crate::stable_update::stable_update::{StableMemory, StableUpdate};
+use crate::stable_update::update_map;
 
 const MAX_TOKENS: usize = 1_000;
 
@@ -54,8 +57,17 @@ fn update_token(stable_token_json: String) -> Result<String, String> {
 
     TOKEN_MAP.with(|token_map| {
         let mut map = token_map.borrow_mut();
-        map.insert(StableTokenId(token.token_id()), token);
+        map.insert(StableTokenId(token.token_id()), token.clone());
     });
+
+    // add to UpdateMap for archiving to database
+    let ts = get_time();
+    let update = StableUpdate {
+        update_id: 0,
+        stable_memory: StableMemory::TokenMap(token),
+        ts,
+    };
+    update_map::insert(&update);
 
     Ok("Token updated".to_string())
 }
