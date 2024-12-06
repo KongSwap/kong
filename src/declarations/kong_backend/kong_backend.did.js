@@ -225,6 +225,10 @@ export const idlFactory = ({ IDL }) => {
     'my_referral_code' : IDL.Text,
   });
   const UserResult = IDL.Variant({ 'Ok' : UserReply, 'Err' : IDL.Text });
+  const Icrc10SupportedStandards = IDL.Record({
+    'url' : IDL.Text,
+    'name' : IDL.Text,
+  });
   const Icrc28TrustedOriginsResponse = IDL.Record({
     'trusted_origins' : IDL.Vec(IDL.Text),
   });
@@ -436,6 +440,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'get_user' : IDL.Func([], [UserResult], ['query']),
+    'icrc10_supported_standards' : IDL.Func(
+        [],
+        [IDL.Vec(Icrc10SupportedStandards)],
+        ['query'],
+      ),
     'icrc1_name' : IDL.Func([], [IDL.Text], ['query']),
     'icrc28_trusted_origins' : IDL.Func([], [Icrc28TrustedOriginsResponse], []),
     'messages' : IDL.Func([IDL.Opt(IDL.Nat64)], [MessagesResult], ['query']),

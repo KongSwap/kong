@@ -1,11 +1,14 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
+use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TX_MAP;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_map;
+use crate::stable_update::stable_update::{StableMemory, StableUpdate};
+use crate::stable_update::update_map;
 use crate::txs::txs_reply::TxsReply;
 use crate::txs::txs_reply_helpers::to_txs_reply;
 
@@ -56,8 +59,17 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
 
     TX_MAP.with(|tx_map| {
         let mut map = tx_map.borrow_mut();
-        map.insert(StableTxId(tx.tx_id()), tx);
+        map.insert(StableTxId(tx.tx_id()), tx.clone());
     });
+
+    // add to UpdateMap for archiving to database
+    let ts = get_time();
+    let update = StableUpdate {
+        update_id: 0,
+        stable_memory: StableMemory::TxMap(tx),
+        ts,
+    };
+    update_map::insert(&update);
 
     Ok("Tx updated".to_string())
 }

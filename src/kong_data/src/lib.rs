@@ -20,6 +20,7 @@ mod stable_request;
 mod stable_token;
 mod stable_transfer;
 mod stable_tx;
+mod stable_update;
 mod stable_user;
 mod swap;
 mod tokens;

@@ -31,6 +31,17 @@ impl KongData {
         let icrc1_name = self.agent.query(&self.canister_id, "icrc1_name").with_arg(Encode!()?).await?;
         Ok(Decode!(icrc1_name.as_slice(), String)?)
     }
+
+    #[allow(dead_code)]
+    pub async fn backup_updates(&self, update_id: Option<u64>) -> Result<String> {
+        let result = self
+            .agent
+            .query(&self.canister_id, "backup_updates")
+            .with_arg(Encode!(&update_id)?)
+            .await?;
+        let call_result = Decode!(result.as_slice(), Result<String, String>)?;
+        call_result.map_err(|e| anyhow::anyhow!(e))
+    }
 }
 
 impl KongUpdate for KongData {
@@ -125,6 +136,17 @@ impl KongUpdate for KongData {
     #[allow(dead_code)]
     async fn update_txs(&self, txs: &str) -> Result<String> {
         let result = self.agent.update(&self.canister_id, "update_txs").with_arg(Encode!(&txs)?).await?;
+        let call_result = Decode!(result.as_slice(), Result<String, String>)?;
+        call_result.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    #[allow(dead_code)]
+    async fn update_message(&self, message: &str) -> Result<String> {
+        let result = self
+            .agent
+            .update(&self.canister_id, "update_message")
+            .with_arg(Encode!(&message)?)
+            .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
         call_result.map_err(|e| anyhow::anyhow!(e))
     }

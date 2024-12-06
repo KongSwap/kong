@@ -13,7 +13,6 @@ num-bigint = "0.4.0"
 num-traits = "0.2.14"
 postgres-types = { version = "0.2.8", features = ["derive"] }
 regex = "1.11.1"
-config = "0.14.1"
 candid = "0.10.10"
 ic-agent = "0.39.1"
 rand = "0.8.5"
