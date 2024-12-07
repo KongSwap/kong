@@ -5,8 +5,9 @@ export function getChartConfig(params: {
   containerWidth: number;
   containerHeight: number;
   isMobile: boolean;
+  autosize?: boolean;
 }) {
-  const { symbol, datafeed, container, containerWidth, containerHeight, isMobile } = params;
+  const { symbol, datafeed, container, containerWidth, containerHeight, isMobile, autosize } = params;
 
   return {
     symbol,
@@ -15,10 +16,10 @@ export function getChartConfig(params: {
     container,
     library_path: '/charting_library/charting_library/',
     width: containerWidth,
-    height: isMobile ? 300 : containerHeight,
+    height: containerHeight,
     locale: 'en',
     fullscreen: false,
-    autosize: true,
+    autosize: autosize ?? true,
     theme: 'dark',
     timezone: 'Etc/UTC',
     debug: true,

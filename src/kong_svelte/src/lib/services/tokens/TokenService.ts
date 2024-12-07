@@ -68,9 +68,7 @@ export class TokenService {
           const price = await this.fetchPrice(token);
           let total24hVolume = 0;
           const tokenPools = get(poolStore).pools.filter((p: BE.Pool) => p.address_0 === token.canister_id || p.address_1 === token.canister_id);
-          if(token.symbol === "EXE") {
-            console.log("EXE POOLS", tokenPools);
-          }
+
           tokenPools.forEach(async (pool) => {
             if (pool.rolling_24h_volume) {
               total24hVolume += Number(pool.rolling_24h_volume.toString()) / (10 ** 6);

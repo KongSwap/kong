@@ -82,8 +82,22 @@ onDestroy(() => {
 
 // Handle resize
 function handleResize() {
-  if (chart) {
-    chart.resize(containerWidth, containerHeight);
+  if (chart && chart._ready) {
+    try {
+      const iframe = chartContainer.querySelector('iframe');
+      if (iframe) {
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+      }
+      
+      if (chart._internal_widget) {
+        chart._internal_widget.resize(containerWidth, containerHeight);
+      } else if (typeof chart.resize === 'function') {
+        chart.resize(containerWidth, containerHeight);
+      }
+    } catch (e) {
+      console.warn('Error resizing chart:', e);
+    }
   }
 }
 
@@ -103,12 +117,14 @@ const initChart = async () => {
       container: chartContainer,
       containerWidth,
       containerHeight,
-      isMobile
+      isMobile,
+      autosize: true
     });
 
     const widget = new window.TradingView.widget(chartConfig);
     
     widget.onChartReady(() => {
+      widget._ready = true;
       chartStore.set(widget);
       isLoadingChart = false;
     });
