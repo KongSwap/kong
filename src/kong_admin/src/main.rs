@@ -5,7 +5,7 @@ use std::env;
 use tokio_postgres::NoTls;
 use updates::get_db_updates;
 
-use crate::settings::{read_settings, write_settings, Settings};
+use crate::settings::read_settings;
 
 mod agent;
 mod claims;

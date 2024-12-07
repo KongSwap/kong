@@ -1,3 +1,4 @@
+use chrono::Local;
 use kong_lib::stable_update::stable_update::{StableMemory, StableUpdate};
 use std::collections::BTreeMap;
 use tokio_postgres::Client;
@@ -20,6 +21,10 @@ pub async fn get_db_updates(
     tokens_map: &BTreeMap<u32, u8>,
     pools_map: &BTreeMap<u32, (u32, u32)>,
 ) -> Result<u64, Box<dyn std::error::Error>> {
+    let current_time = Local::now();
+    let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
+    println!("\nDB updates @ {}", formatted_time);
+
     let json = kong_data.backup_db_updates(update_id).await?;
     let db_updates: Vec<StableUpdate> = serde_json::from_str(&json)?;
 
@@ -40,6 +45,8 @@ pub async fn get_db_updates(
             StableMemory::MessageMap(message) => (),
         }
     }
+
+    println!("DB updates {} updated", db_updates.len());
 
     if last_update_id > 0 {
         _ = kong_data.remove_db_updates(last_update_id).await?;
