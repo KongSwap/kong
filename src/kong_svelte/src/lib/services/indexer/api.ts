@@ -3,8 +3,9 @@ import { kongDB } from "../db";
 
 
 export const fetchTokens = async (): Promise<FE.Token[]> => {
-  const response = await fetch(`${INDEXER_URL}/tokens`);
+  const response = await fetch(`${INDEXER_URL}/api/tokens`);
   const data = await response.json();
+  console.log("DATA", data);
   kongDB.indexedTokens.bulkPut(data);
   return data;
 };
@@ -43,7 +44,7 @@ export const fetchChartData = async (
   };
   const interval = intervalMap[resolution] || '1d';
 
-  const url = `${INDEXER_URL}/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+  const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
   console.log('Fetching chart data from URL:', url);
   
   try {
@@ -117,7 +118,7 @@ export const fetchTransactions = async (
   limit: number = 20
 ): Promise<Transaction[]> => {
   try {
-    const url = `${INDEXER_URL}/pools/${poolId}/transactions?page=${page}&limit=${limit}`;
+    const url = `${INDEXER_URL}/api/pools/${poolId}/transactions?page=${page}&limit=${limit}`;
     console.log('Fetching transactions from URL:', url);
     
     const response = await fetch(url);
@@ -133,25 +134,3 @@ export const fetchTransactions = async (
     return [];
   }
 };
-
-// Add IndexerToken type
-export interface IndexerToken {
-  address: string;
-  name: string;
-  symbol: string;
-  decimals: number;
-  token_id: number;
-}
-
-// Update Token interface to match what's expected
-export interface Token {
-  canister_id: string;
-  fee: bigint;
-  token: string;
-  token_id: number;
-  symbol: string;
-  name: string;
-  decimals: number;
-  total_supply: bigint;
-  metadata: any[];
-}

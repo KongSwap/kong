@@ -126,7 +126,11 @@ export class AppLoader {
 
   private async preloadAssets(): Promise<void> {
     try {
-      const allAssets = [...this.backgrounds];
+      // Get token logos from tokenStore
+      const allAssets = [
+        ...this.backgrounds,
+        '/tokens/not_verified.webp' // Add fallback image
+      ];
       
       this.updateLoadingState({
         totalAssets: allAssets.length,
@@ -206,7 +210,6 @@ export class AppLoader {
       // Load tokens and wait for completion
       await Promise.all([
         tokenStore.loadTokens(),
-        fetchTokens()
       ]);
 
       // If wallet is connected, load balances

@@ -55,20 +55,14 @@
         <nav class="nav-tabs">
           {#each tabs as tab}
             <a
-              href="#{tab}"
+              href="/{tab}"
+              data-sveltekit-preload-data
               class="nav-link {activeTab === tab ? 'active' : ''}"
-              on:click|preventDefault={() => onTabChange(tab)}
+              on:click={() => onTabChange(tab)}
             >
               {tab.toUpperCase()}
             </a>
           {/each}
-          <a
-            href="#stats"
-            class="nav-link {activeTab === 'stats' ? 'active' : ''}"
-            on:click|preventDefault={() => onTabChange("stats")}
-          >
-            STATS
-          </a>
         </nav>
       </div>
     {/if}
@@ -201,7 +195,9 @@
 
       <nav class="mobile-nav">
         {#each tabs as tab}
-          <button
+          <a
+            href="/{tab}"
+            data-sveltekit-preload-data
             class="mobile-nav-btn {activeTab === tab ? 'active' : ''}"
             on:click={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -235,10 +231,12 @@
             >
               <path d="M9 18l6-6-6-6" />
             </svg>
-          </button>
+          </a>
         {/each}
 
-        <button
+        <a
+          href="/settings"
+          data-sveltekit-preload-data
           class="mobile-nav-btn"
           on:click={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -272,7 +270,7 @@
           >
             <path d="M9 18l6-6-6-6" />
           </svg>
-        </button>
+        </a>
       </nav>
 
       <div class="mobile-menu-footer">
@@ -293,7 +291,7 @@
 
 <style>
   @font-face {
-    font-family: "Alumni Sans";
+    font-family: "Space Grotesk";
     src: url("/fonts/Alumni-Sans-Latin.woff2") format("woff2");
     font-weight: normal;
     font-style: normal;

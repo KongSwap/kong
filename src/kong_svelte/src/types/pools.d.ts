@@ -41,6 +41,8 @@ declare global {
       lp_fee_bps: number;
       on_kong: boolean;
       tvl?: number;
+      volume_24h?: string;
+      apr?: number;
     }
   }
 }

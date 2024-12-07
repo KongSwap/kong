@@ -4,7 +4,6 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { onMount } from "svelte";
-  import { createEventDispatcher } from "svelte";
   import { poolStore } from "$lib/services/pools";
   import { swapState } from "$lib/services/swap/SwapStateService";
 

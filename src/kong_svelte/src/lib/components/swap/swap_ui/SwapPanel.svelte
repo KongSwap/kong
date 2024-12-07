@@ -13,7 +13,6 @@
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import { fade } from 'svelte/transition';
 
   // Props with proper TypeScript types
   export let title: string;
@@ -38,11 +37,8 @@
   // State management
   let inputElement: HTMLInputElement | null = null;
   let inputFocused = false;
-  let isAnimating = false;
   let formattedUsdValue = "0.00";
   let calculatedUsdValue = 0;
-  let pendingAnimation: any = null;
-  let displayValue = "0";
   let previousValue = "0";
 
   // Animated values
@@ -142,12 +138,6 @@
 
   // Animation and value updates
   $: {
-    const balance =
-      $tokenStore.balances[tokenInfo?.canister_id || ""]?.in_tokens || 0n;
-    formattedUsdValue =
-      $tokenStore.balances[tokenInfo?.canister_id || ""]?.in_usd || "0";
-    calculatedUsdValue = parseFloat(formattedUsdValue);
-
     if (amount === "0") {
       updateAnimatedValues(0);
     } else {
@@ -286,16 +276,6 @@
       );
     }
   }
-
-  function handleClose() {
-    swapState.update(s => ({
-      ...s,
-      showPayTokenSelector: false,
-      showReceiveTokenSelector: false
-    }));
-  }
-
-  $: isOpen = panelType === "pay" ? $swapState.showPayTokenSelector : $swapState.showReceiveTokenSelector;
 
   // Display calculations
   $: displayAmount = formatDisplayValue(amount || "0");

@@ -203,7 +203,7 @@ function createTokenStore() {
       total_24h_volume: BigInt(pools
         .filter(p => p.address_0 === token.canister_id || p.address_1 === token.canister_id)
         .reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)
-      ),
+      ).toString(),
     }));
 
     // Update tokens and trigger a price refresh

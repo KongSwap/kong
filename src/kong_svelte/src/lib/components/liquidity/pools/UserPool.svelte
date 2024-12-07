@@ -6,6 +6,7 @@
     import { tokenStore } from '$lib/services/tokens/tokenStore';
     import { PoolService } from '$lib/services/pools';
     import { poolsList } from "$lib/services/pools/poolStore";
+    import { auth } from '$lib/services/auth';
 
     const dispatch = createEventDispatcher();
 
@@ -165,6 +166,12 @@
                 token1: pool.symbol_1,
                 lpTokenAmount: lpTokenBigInt
             });
+
+            await Promise.all([
+                tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
+                tokenStore.loadBalance(token1, auth.pnp.account.principalId, true)
+            ])
+            handleClose();
 
             dispatch('liquidityRemoved');
             resetState();
@@ -351,10 +358,10 @@
             {:else}
                 <div class="remove-liquidity-section">
                     <div class="input-container">
-                        <label class="input-label mb-2">
+                        <label class="input-label">
                             Remove Liquidity Amount (LP Tokens)
                         </label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper pt-2">
                             <input
                                 type="number"
                                 bind:value={removeLiquidityAmount}
@@ -382,7 +389,7 @@
                                 <span class="returns-label">You will receive:</span>
                                 <div class="returns-divider" />
                             </div>
-                            <div class="return-amounts">
+                            <div class="return-amounts flex flex-col gap-y-2 pt-2">
                                 <div class="token-return">
                                     <div class="token-info">
                                         <TokenImages tokens={[token0]} size={20} />

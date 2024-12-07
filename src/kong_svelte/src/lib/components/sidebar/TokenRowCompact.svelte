@@ -17,7 +17,7 @@
     tokenStore.toggleFavorite(token.canister_id);
   }
 
-  $: isFavorite = tokenStore.isFavorite(token.canister_id);
+  let isFavorite = $derived(tokenStore.isFavorite(token.canister_id));
 </script>
 
 {#if token}

@@ -1,12 +1,16 @@
 <script lang="ts">
-
   export let tokens: FE.Token[] = [];
   export let size: number = 44; // default 44px (h-11 = 44px)
-  export let overlap: number = 16; // default 16px of overlap
+  export let overlap: number = 12; // default 16px of overlap
   export let containerClass: string = "";
 
-  // Filter out any undefined tokens
-  $: validTokens = tokens.filter((token): token is FE.Token => token !== undefined && token !== null);
+  // Filter out any undefined tokens and log for debugging
+  $: validTokens = tokens.filter((token): token is FE.Token => {
+    if (!token?.logo_url) {
+      console.warn('Token missing logo_url:', token);
+    }
+    return token !== undefined && token !== null;
+  });
 </script>
 
 <div 

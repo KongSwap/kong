@@ -182,8 +182,8 @@
             bValue = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, '')) || 0;
             break;
           case 'marketCap':
-            aValue = Number(a?.metrics?.market_cap?.replace(/[^0-9.-]+/g, '')) || 0;
-            bValue = Number(b?.metrics?.market_cap?.replace(/[^0-9.-]+/g, '')) || 0;
+            aValue = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, '')) || 0;
+            bValue = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, '')) || 0;
             break;
           case 'name':
             return $sortDirection === 'asc' 
@@ -206,8 +206,8 @@
 
 </script>
 
-<section class="flex justify-center w-full px-4">
-  <div class="z-10 flex justify-center w-full max-w-[1300px] mx-auto">
+<section class="flex justify-center w-full px-4 max-w-[1200px] mx-auto mt-2">
+  <div class="z-10 flex justify-center w-full">
     <div class="flex flex-col w-full">
       <!-- Market Overview Panel -->
       <div class="earn-cards">

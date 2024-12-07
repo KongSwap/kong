@@ -12,6 +12,9 @@
     import { cubicOut } from "svelte/easing";
     import BigNumber from "bignumber.js";
     import { toastStore } from "$lib/stores/toastStore";
+    import { auth } from '$lib/services/auth';
+    import { tokenStore } from '$lib/services/tokens';
+    import debounce from 'lodash-es/debounce';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -198,12 +201,6 @@
     $: formattedDisplayAmount0 = formatWithCommas(displayAmount0);
     $: formattedDisplayAmount1 = formatWithCommas(displayAmount1);
 
-    function getUsdValue(amount: string, token: FE.Token | null): string {
-        if (!amount || !token) return "0.00";
-        const price = token.metrics.price;
-        return (price * Number(amount)).toFixed(2);
-    }
-
     function openTokenSelector(index: 0 | 1) {
         if (index === 0) {
             showToken0Selector = true;
@@ -263,8 +260,42 @@
     }
 
     async function handleConfirmAdd() {
-        await onSubmit();
-        showConfirmation = false;
+        if (loading) return;
+        
+        try {
+            await onSubmit();
+        } catch (error) {
+            console.error("Error during confirmation:", error);
+        } finally {
+            // Always close the confirmation modal
+            showConfirmation = false;
+            // Reset form state
+            amount0 = "0";
+            amount1 = "0";
+            if (input0Element) input0Element.value = "0";
+            if (input1Element) input1Element.value = "0";
+        }
+    }
+
+    // Debounce the balance updates
+    const debouncedBalanceUpdate = debounce(async () => {
+        if (!token0 || !token1 || !$auth?.account?.owner) return;
+        
+        try {
+            await Promise.all([
+                tokenStore.loadBalance(token0, $auth.account.owner.toString(), true),
+                tokenStore.loadBalance(token1, $auth.account.owner.toString(), true)
+            ]);
+        } catch (error) {
+            console.error("Error updating balances:", error);
+        }
+    }, 1000);
+
+    // Update balances when tokens change
+    $: {
+        if (token0 || token1) {
+            debouncedBalanceUpdate();
+        }
     }
 </script>
 
@@ -469,15 +500,24 @@
 {/if}
 
 {#if showConfirmation}
-    <AddLiquidityConfirmation
-        {token0}
-        {token1}
-        {amount0}
-        {amount1}
-        {pool}
-        onClose={() => showConfirmation = false}
-        onConfirm={handleConfirmAdd}
-    />
+    <Portal target="body">
+        <AddLiquidityConfirmation
+            {token0}
+            {token1}
+            {amount0}
+            {amount1}
+            {pool}
+            onClose={() => {
+                showConfirmation = false;
+                // Reset form state on close
+                amount0 = "0";
+                amount1 = "0";
+                if (input0Element) input0Element.value = "0";
+                if (input1Element) input1Element.value = "0";
+            }}
+            onConfirm={handleConfirmAdd}
+        />
+    </Portal>
 {/if}
 
 <style lang="postcss">
@@ -527,7 +567,7 @@
 
     .balance-info {
         @apply flex justify-between mt-2;
-        @apply text-[clamp(0.75rem,2vw,0.875rem)] text-white/50;
+        @apply text-[clamp(0.8rem,2vw,0.875rem)] text-white/50;
     }
 
     .plus-icon {

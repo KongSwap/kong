@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { INDEXER_URL } from '$lib/constants/canisterConstants';
     import Modal from "$lib/components/common/Modal.svelte";
     import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import TokenImages from "$lib/components/common/TokenImages.svelte";
+    import { onDestroy } from 'svelte';
 
     export let token0: FE.Token;
     export let token1: FE.Token;
@@ -13,6 +15,11 @@
 
     let isLoading = false;
     let error: string | null = null;
+    let mounted = true;
+    
+    onDestroy(() => {
+        mounted = false;
+    });
 
     async function handleConfirm() {
         if (isLoading) return;
@@ -21,12 +28,19 @@
         error = null;
         
         try {
+            console.log("Starting confirmation...");
             await onConfirm();
-            onClose();
+            console.log("Confirmation completed successfully");
         } catch (err) {
-            error = err instanceof Error ? err.message : "Failed to add liquidity";
+            console.error("Confirmation error:", err);
+            if (mounted) {
+                error = err instanceof Error ? err.message : "Failed to add liquidity";
+            }
         } finally {
-            isLoading = false;
+            if (mounted) {
+                isLoading = false;
+                onClose();
+            }
         }
     }
 

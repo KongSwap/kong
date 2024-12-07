@@ -135,19 +135,6 @@
     }
   }
 
-  const textAnimation = (node, { duration = 2000 }) => {
-    return {
-      duration,
-      css: (t) => {
-        const eased = Math.pow(t, 2);
-        return `
-          transform: scale(${eased});
-          opacity: ${t};
-        `;
-      }
-    };
-  };
-
   async function handleSwapClick() {
     if (!$auth.isConnected) {
       // Open sidebar if wallet is not connected
@@ -269,9 +256,9 @@
     
     // Set the new pay amount
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
-      await swapState.setPayAmount(tempReceiveAmount);
+      swapState.setPayAmount(tempReceiveAmount);
     } else if (tempPayAmount) {
-      await swapState.setPayAmount(tempPayAmount);
+      swapState.setPayAmount(tempPayAmount);
     }
     
     // Update quote with reversed tokens
@@ -294,21 +281,6 @@
     replaceState(url.toString(), {});
   }
 
-  const debouncedGetQuote = debounce(
-    async (amount: string) => {
-      if ($swapState.payToken && $swapState.receiveToken) {
-        await SwapService.getSwapQuote($swapState.payToken, $swapState.receiveToken, amount);
-      }
-    },
-    500,
-    {
-      leading: false,
-      trailing: true,
-      maxWait: 1000,
-    },
-  );
-
-  let isModalOpen = false;
   let isSettingsModalOpen = false;
 
   async function handleButtonAction() {
@@ -348,7 +320,6 @@
   }
 
   // Constants for dropdown positioning
-  const DROPDOWN_HEIGHT = 400; // Approximate max height of dropdown
   const DROPDOWN_WIDTH = 360;  // Width of dropdown
   const MARGIN = 16;          // Margin from edges
 
@@ -371,21 +342,6 @@
 
     return { top, left };
   }
-
-  // Update arrow configurations
-  const ModernArrow = {
-    viewBox: "0 0 48 48",
-    paths: [
-      "M24 44c11.046 0 20-8.954 20-20S35.046 4 24 4 4 12.954 4 24s8.954 20 20 20z",
-      // Inner design - arrows
-      "M24 16l8 8H16l8-8z M24 32l-8-8h16l-8 8z"
-    ]
-  };
-
-  const PixelArrow = {
-    viewBox: "0 0 35 42",
-    path: "M0.5 26.8824V27.3824H1H2.85294V29.2353V29.7353H3.35294H5.20588V31.5882V32.0882H5.70588H7.55882V33.9412V34.4412H8.05882H9.91177V36.2941V36.7941H10.4118H12.2647V38.6471V39.1471H12.7647H14.6176V41V41.5H15.1176H19.8235H20.3235V41V39.1471H22.1765H22.6765V38.6471V36.7941H24.5294H25.0294V36.2941V34.4412H26.8824H27.3824V33.9412V32.0882H29.2353H29.7353V31.5882V29.7353H31.5882H32.0882V29.2353V27.3824H33.9412H34.4412V26.8824V24.5294V24.0294H33.9412H25.0294V3.35294V2.85294H24.5294H22.6765V1V0.5H22.1765H12.7647H12.2647V1V2.85294H10.4118H9.91177V3.35294V24.0294H1H0.5V24.5294V26.8824Z"
-  };
 
   // Add a new state for quote loading
   let isQuoteLoading = false;
@@ -691,6 +647,7 @@
   }
 
   .mode-text {
+    @apply text-lg;
     position: relative;
     z-index: 2;
     transition: transform 0.2s ease, color 0.2s ease;
@@ -716,18 +673,6 @@
     gap: 8px;
     position: relative;
     z-index: 1;
-  }
-
-  .button-text {
-    @apply text-white font-semibold text-xl;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    justify-content: center;
-    min-width: 140px;
-    text-align: center;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   .swap-button {
@@ -811,7 +756,7 @@
   }
 
   .button-text {
-    @apply text-white font-semibold;
+    @apply text-white font-semibold text-lg;
     font-size: 1.125rem;
     letter-spacing: 0.01em;
     display: flex;
@@ -950,7 +895,7 @@
 
   /* Add these new styles for enhanced button text */
   .button-text {
-    @apply text-white font-semibold text-base;
+    @apply text-white font-semibold text-lg;
     letter-spacing: 0.01em;
     display: flex;
     align-items: center;

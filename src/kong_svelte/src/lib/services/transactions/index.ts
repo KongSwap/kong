@@ -17,7 +17,7 @@ export interface Transaction {
 
 export async function fetchTransactions(poolId: number, page: number = 1, limit: number = 20): Promise<Transaction[]> {
   try {
-    const response = await fetch(`${INDEXER_URL}/pools/${poolId}/transactions?page=${page}&limit=${limit}`);
+    const response = await fetch(`${INDEXER_URL}/api/pools/${poolId}/transactions?page=${page}&limit=${limit}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

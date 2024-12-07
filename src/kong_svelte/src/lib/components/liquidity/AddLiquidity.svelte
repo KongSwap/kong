@@ -8,6 +8,8 @@
     import LiquidityPanel from "./LiquidityPanel.svelte";
     import { addLiquidityStore } from '$lib/services/pools/addLiquidityStore';
     import { goto } from "$app/navigation";
+    import { tokenStore } from "$lib/services/tokens";
+    import { auth } from "$lib/services/auth";
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -156,13 +158,22 @@
             };
 
             const result = await PoolService.addLiquidity(addLiquidityArgs);
+
+            await Promise.all([
+                tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
+                tokenStore.loadBalance(token1, auth.pnp.account.principalId, true)
+            ]);
             
-            if (result.Ok) {
+            if (typeof result === 'bigint') {
+                // Reset state before navigation
                 amount0 = "0";
                 amount1 = "0";
+                addLiquidityStore.reset();
+                // Add a small delay to ensure UI updates before navigation
+                await new Promise(resolve => setTimeout(resolve, 100));
                 goto("/earn");
-            } else if (result.Err) {
-                error = result.Err;
+            } else {
+                error = result;
             }
         } catch (err) {
             console.error('Error submitting liquidity:', err);

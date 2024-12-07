@@ -9,14 +9,9 @@
   import { poolStore, type Pool } from "$lib/services/pools";
   import { formatDistance } from "date-fns";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import type { FE } from "$lib/types";
   import { userPoolBalances } from "$lib/services/pools/poolStore";
-  import {
-    fetchTransactions,
-    type Transaction,
-  } from "$lib/services/transactions";
+  import { type Transaction } from "$lib/services/transactions";
   import Panel from "$lib/components/common/Panel.svelte";
-  import { derived } from "svelte/store";
   import { fetchChartData, type CandleData } from "$lib/services/indexer/api";
   import { onMount } from "svelte";
 
@@ -26,13 +21,11 @@
   }
 
   // Declare our state variables
-  let token = $state<FE.Token | undefined>();
+  let token = $state<FE.Token | undefined>(undefined);
   let transactions = $state<Transaction[]>([]);
   let isLoadingTxns = $state(false);
   let error = $state<string | null>(null);
   const tokenAddress = $page.params.id;
-  let currentPoolPage = $state(1);
-  const poolsPerPage = 10;
   let refreshInterval: number;
 
   // Add state for tracking new transactions
@@ -75,21 +68,14 @@
         isLoadingTxns = true;
       }
 
-      const url = `${INDEXER_URL}/tokens/${token.token_id}/transactions?page=${page}&limit=${pageSize}`;
-      console.log("Fetching transactions:", {
-        url,
-        token_id: token.token_id,
-        symbol: token.symbol,
-        page,
-        pageSize,
-      });
-
+      const url = `${INDEXER_URL}/api/tokens/${token.token_id}/transactions?page=${page}&limit=${pageSize}`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Response:', data);
       const newTransactions = data.transactions || [];
 
       if (isRefresh) {
@@ -159,22 +145,29 @@
   let totalTransactions = $state(0);
 
   // Derived values
-  let ckusdtToken = $derived(
-    $formattedTokens?.find((t) => t.symbol === "ckUSDT"),
-  );
+  let ckusdtToken = $state<FE.Token | undefined>(undefined);
+  $effect(() => {
+    const found = $formattedTokens?.find((t) => t.symbol === "ckUSDT");
+    if (found) {
+      ckusdtToken = convertToken(found) as unknown as FE.Token;
+    }
+  });
 
   $effect(() => {
-    token = $formattedTokens?.find(
+    const found = $formattedTokens?.find(
       (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
     );
+    if (found) {
+      token = convertToken(found) as unknown as FE.Token;
+    }
   });
 
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
-  let selectedPool = $derived(
-    $poolStore?.pools?.find((p) => {
+  let selectedPool = $state<Pool | undefined>(undefined);
+  $effect(() => {
+    const foundPool = $poolStore?.pools?.find((p) => {
       if (!token?.canister_id || !ckusdtToken?.canister_id) return false;
-
-      // Check if this pool contains both our token and CKUSDT and has TVL
+      
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
       const hasUSDT =
@@ -183,37 +176,30 @@
       const hasTVL = Number(p.tvl) > 0;
 
       return hasToken && hasUSDT && hasTVL;
-    }) ||
-      $poolStore?.pools
-        ?.filter((p) => {
-          const hasToken =
-            p.address_0 === token?.canister_id ||
-            p.address_1 === token?.canister_id;
-          const hasTVL = Number(p.tvl) > 200;
-          return hasToken && hasTVL;
-        })
-        ?.sort((a, b) => Number(b.tvl) - Number(a.tvl))[0],
-  );
+    });
+
+    if (foundPool) {
+      selectedPool = {
+        ...foundPool,
+        pool_id: String(foundPool.pool_id),
+        tvl: String(foundPool.tvl),
+        lp_token_supply: String(foundPool.lp_token_supply)
+      } as unknown as Pool;
+    }
+  });
 
   let isLoadingMore = $state(false);
   let hasMore = $state(true);
   let observer: IntersectionObserver;
-  let loadMoreTrigger: HTMLElement;
-
-  // Add a stable reference for the token ID
+  let loadMoreTrigger: HTMLElement = $state<HTMLElement | null>(null);
   let currentTokenId = $state<number | null>(null);
 
   // Watch for token changes
   $effect(() => {
     const newTokenId = token?.token_id ?? null;
     if (newTokenId !== currentTokenId) {
-      console.log("Token ID changed from", currentTokenId, "to", newTokenId);
       currentTokenId = newTokenId;
       if (newTokenId !== null) {
-        console.log("Loading transactions for token:", {
-          token_id: newTokenId,
-          symbol: token?.symbol,
-        });
         transactions = []; // Clear existing transactions
         currentPage = 1;
         hasMore = true;
@@ -290,8 +276,8 @@
   };
 
   // Function to get paginated pools
-  function getPaginatedPools(pools: Pool[]) {
-    if (!token) return { pools: [], totalPages: 0 };
+  function getPaginatedPools(pools: BE.Pool[]): { pools: Pool[] } {
+    if (!token) return { pools: [] };
 
     const filteredPools = pools
       .filter(
@@ -299,16 +285,22 @@
           p.address_0 === token.canister_id ||
           p.address_1 === token.canister_id,
       )
-      .sort((a, b) => Number(b.tvl) - Number(a.tvl));
+      .sort((a, b) => Number(b.tvl) - Number(a.tvl))
+      .map(p => ({
+        ...p,
+        pool_id: String(p.pool_id),
+        tvl: String(p.tvl)
+      })) as unknown as Pool[];
 
     return {
       pools: filteredPools,
     };
   }
 
-  let isChartDataReady = $derived(
-    Boolean(selectedPool && token && ckusdtToken),
-  );
+  let isChartDataReady = $state(false);
+  $effect(() => {
+    isChartDataReady = Boolean(selectedPool && token && ckusdtToken);
+  });
 
   // Add helper function to calculate pool share
   function calculatePoolShare(
@@ -328,17 +320,30 @@
   }
 
   // Add derived value for user balances
-  let userBalances = $derived($userPoolBalances);
-
+  let userBalances = $state<FE.UserPoolBalance[]>([]);
+  $effect(() => {
+    userBalances = ($userPoolBalances || []).map(balance => ({
+      ...balance,
+      balance: String(balance.balance)
+    }));
+  });
 
   // Add derived store for market cap rank
-  const marketCapRank = derived([formattedTokens, page], ([$formattedTokens, $page]) => {
-    const tokenAddress = $page.params.id;
-    const token = $formattedTokens?.find(t => t.address === tokenAddress || t.canister_id === tokenAddress);
-    if (!token) return null;
-    const sortedTokens = [...$formattedTokens].sort((a, b) => (b.metrics.market_cap || 0) - (a.metrics.market_cap || 0));
-    const rank = sortedTokens.findIndex(t => t.canister_id === token.canister_id);
-    return rank !== -1 ? rank + 1 : null; // Return rank as a number or null if not found
+  let marketCapRank = $state<number | null>(null);
+  $effect(() => {
+    if (!$formattedTokens) return;
+    const foundToken = $formattedTokens.find(t => 
+      t.address === $page.params.id || t.canister_id === $page.params.id
+    );
+    if (!foundToken) {
+      marketCapRank = null;
+      return;
+    }
+    const sortedTokens = [...$formattedTokens].sort(
+      (a, b) => (b.metrics.market_cap || 0) - (a.metrics.market_cap || 0)
+    );
+    const rank = sortedTokens.findIndex(t => t.canister_id === foundToken.canister_id);
+    marketCapRank = rank !== -1 ? rank + 1 : null;
   });
 
   // Add helper function to calculate 24h volume percentage
@@ -354,9 +359,8 @@
   onMount(async () => {
     try {
       const now = Math.floor(Date.now() / 1000);
-      const startTime = now - (10 * 24 * 60 * 60); // 1 week ago
+      const startTime = now - (10 * 24 * 60 * 60); // 10 days ago
 
-      // Replace with actual token IDs
       const payTokenId = token?.token_id || 1;
       const receiveTokenId = ckusdtToken?.token_id || 10;
 
@@ -368,13 +372,8 @@
         'D' // Daily data
       );
 
-      console.log('Raw candle data:', data);
       lineChartPath = generateLineChartPath(data);
-
-      // Use the close_price for the line chart
       candleData = data.filter(d => d.close_price !== undefined && d.close_price !== null);
-
-      console.log('Filtered candle data:', candleData);
     } catch (error) {
       console.error('Failed to fetch candle data:', error);
     }
@@ -385,19 +384,67 @@
   const priceRange = $state(maxPrice - minPrice || 1); // Avoid division by zero
 
 
-  // Function to generate SVG path for the line chart
-  function generateLineChartPath(data) {
+  // Fix SVG path generation
+  function generateLineChartPath(data: CandleData[]) {
     if (!data || data.length === 0) return '';
 
-    const maxPrice = Math.max(...data.map(d => d.close_price));
-    const minPrice = Math.min(...data.map(d => d.close_price));
+    const validData = data.filter(d => 
+      typeof d.close_price === 'number' && 
+      !isNaN(d.close_price) && 
+      d.close_price !== null
+    );
+
+    if (validData.length === 0) return '';
+
+    const maxPrice = Math.max(...validData.map(d => Number(d.close_price)));
+    const minPrice = Math.min(...validData.map(d => Number(d.close_price)));
     const priceRange = maxPrice - minPrice || 1; // Avoid division by zero
 
-    return data.map((d, i) => {
-      const x = (i / (data.length - 1)) * 100;
-      const y = 30 - ((d.close_price - minPrice) / priceRange) * 30; // Invert y-axis
-      return `${i === 0 ? 'M' : 'L'}${x} ${y}`;
+    return validData.map((d, i) => {
+      const x = (i / (validData.length - 1)) * 100;
+      const y = 30 - ((Number(d.close_price) - minPrice) / priceRange) * 30;
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
     }).join(' ');
+  }
+
+  // Update convertToken function to handle the type conversion correctly
+  function convertToken(token: FE.Token | null): FE.Token | null {
+    if (!token) return null;
+
+    const converted = {
+      ...token,
+      price: Number(token.price || 0),
+      metrics: {
+        ...token.metrics,
+        price: Number(token.metrics?.price || 0),
+        market_cap: Number(token.metrics?.market_cap || 0),
+        volume_24h: String(token.metrics?.volume_24h || '0')
+      }
+    };
+
+    return converted as unknown as FE.Token;
+  }
+
+  // Update the formatTimestamp function to handle UTC dates correctly
+  function formatTimestamp(timestamp: string): string {
+    if (!timestamp) {
+      console.log('formatTimestamp: No timestamp provided');
+      return "N/A";
+    }
+    
+    try {
+      // Parse timestamp as UTC and adjust year if needed
+      const txDate = new Date(timestamp + 'Z'); // Force UTC interpretation
+      const now = new Date();
+
+      return formatDistance(txDate, now, { 
+        addSuffix: true,
+        includeSeconds: true
+      });
+    } catch (e) {
+      console.error('Error formatting timestamp:', e);
+      return "N/A";
+    }
   }
 </script>
 
@@ -410,7 +457,11 @@
     <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
       <!-- Token Header -->
       <div class="flex items-center gap-4 px-2">
-        <TokenImages tokens={[token]} size={48} overlap={0} />
+        <TokenImages 
+          tokens={token ? [convertToken(token)] : []} 
+          size={48} 
+          overlap={0} 
+        />
         <div>
           <h1 class="text-2xl font-bold text-white">{token.name}</h1>
           <div class="text-slate-400">{token.symbol}</div>
@@ -424,12 +475,8 @@
           <div class="absolute inset-0">
             <svg class="w-full h-full opacity-40" viewBox="0 0 100 30" preserveAspectRatio="none">
               <path 
-                d={`M0 30 L0 ${30 - ((Number(candleData[0]?.close_price) - minPrice) / priceRange) * 30} ` +
-                   candleData.map((d, i) => {
-                     const x = (i / (candleData.length - 1)) * 100;
-                     const y = 30 - ((Number(d.close_price) - minPrice) / priceRange) * 30;
-                     return `${i === 0 ? '' : 'L'}${x} ${y}`;
-                   }).join(' ') +
+                d={`M0 30 L0 ${candleData.length > 0 ? 30 - ((Number(candleData[0]?.close_price) - minPrice) / priceRange) * 30 : 30} ` +
+                   lineChartPath +
                    ` L100 30 Z`}
                 class="fill-purple-500/20"
               />
@@ -519,7 +566,7 @@
               {formatUsdValue(token?.metrics?.market_cap)}
             </div>
             <div class="text-sm text-slate-400 mt-1">
-              Rank #{$marketCapRank !== null ? $marketCapRank : "N/A"}
+              Rank #{marketCapRank !== null ? marketCapRank : "N/A"}
             </div>
           </div>
         </Panel>
@@ -568,20 +615,20 @@
         <div class="h-[400px] md:h-[calc(100vh-500px)] w-full">
           {#if isChartDataReady}
             <TradingViewChart
-              poolId={Number(selectedPool.pool_id)}
-              symbol={`${token.symbol}/${
+              poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+              symbol={token ? `${token.symbol}/${
                 token.symbol === "ckUSDT"
                   ? $formattedTokens?.find(
                       (t) =>
                         t.canister_id ===
-                        (selectedPool.address_0 === token.canister_id
-                          ? selectedPool.address_1
-                          : selectedPool.address_0),
+                        (selectedPool?.address_0 === token.canister_id
+                          ? selectedPool?.address_1
+                          : selectedPool?.address_0),
                     )?.symbol || "Unknown"
                   : "ckUSDT"
-              }`}
-              toToken={token}
-              fromToken={ckusdtToken}
+              }` : ''}
+              toToken={token ? convertToken(token) : null}
+              fromToken={ckusdtToken ? convertToken(ckusdtToken) : null}
             />
           {:else}
             <div class="flex items-center justify-center h-full">
@@ -758,34 +805,26 @@
                                   <span class="text-red-500">Sold</span>
                                   {formatToNonZeroDecimal(tx.pay_amount)}
                                   <TokenImages
-                                    tokens={[token]}
+                                    tokens={[convertToken(token)]}
                                     size={16}
                                     overlap={0}
                                   />
                                   for
                                   {formatToNonZeroDecimal(tx.receive_amount)}
                                   <TokenImages
-                                    tokens={[
-                                      $formattedTokens?.find(
-                                        (t) =>
-                                          t.token_id === tx.receive_token_id,
-                                      ),
-                                    ]}
+                                    tokens={[$formattedTokens?.find(
+                                      (t) =>
+                                        t.token_id === tx.receive_token_id,
+                                    )].filter(Boolean).map(convertToken)}
                                     size={16}
                                     overlap={0}
                                   />
                                   <span class="whitespace-nowrap"
                                     >worth {calculateTotalUsdValue(tx)}</span
                                   >
-                                  <span class="text-slate-400 text-xs"
-                                    >{tx.timestamp
-                                      ? formatDistance(
-                                          new Date(tx.timestamp),
-                                          new Date(),
-                                          { addSuffix: true },
-                                        )
-                                      : "N/A"}</span
-                                  >
+                                  <span class="text-slate-400 text-xs">
+                                    {formatTimestamp(tx.timestamp)}
+                                  </span>
                                 </span>
                               {:else}
                                 <span
@@ -794,33 +833,25 @@
                                   <span class="text-green-500">Bought</span>
                                   {formatToNonZeroDecimal(tx.receive_amount)}
                                   <TokenImages
-                                    tokens={[token]}
+                                    tokens={[convertToken(token)]}
                                     size={16}
                                     overlap={0}
                                   />
                                   for
                                   {formatToNonZeroDecimal(tx.pay_amount)}
                                   <TokenImages
-                                    tokens={[
-                                      $formattedTokens?.find(
-                                        (t) => t.token_id === tx.pay_token_id,
-                                      ),
-                                    ]}
+                                    tokens={[$formattedTokens?.find(
+                                      (t) => t.token_id === tx.pay_token_id,
+                                    )].filter(Boolean).map(convertToken)}
                                     size={16}
                                     overlap={0}
                                   />
                                   <span class="whitespace-nowrap"
                                     >worth {calculateTotalUsdValue(tx)}</span
                                   >
-                                  <span class="text-slate-400 text-xs"
-                                    >{tx.timestamp
-                                      ? formatDistance(
-                                          new Date(tx.timestamp),
-                                          new Date(),
-                                          { addSuffix: true },
-                                        )
-                                      : "N/A"}</span
-                                  >
+                                  <span class="text-slate-400 text-xs">
+                                    {formatTimestamp(tx.timestamp)}
+                                  </span>
                                 </span>
                               {/if}
                             </div>

@@ -206,7 +206,7 @@
   }
 
   .modal-title {
-    font-family: "Alumni Sans", sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     font-size: 2rem;
     font-weight: 500;
     color: white;

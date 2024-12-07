@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        alumni: ['Alumni Sans', "sans-serif"],
+        alumni: ['Space Grotesk', "sans-serif"],
         play: ["Press Start 2P", "monospace"]
       },
       colors: {

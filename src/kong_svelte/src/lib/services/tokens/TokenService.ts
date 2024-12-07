@@ -658,7 +658,6 @@ export class TokenService {
   public static async fetchUserTransactions(): Promise<any> {
     const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: false, requiresSigning: false }); 
     const txs = await actor.txs([true]);
-    console.log("TXS", txs);
     return txs;
   }
 

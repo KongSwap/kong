@@ -200,6 +200,7 @@ export class PoolService {
     try {
       const actor =  await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {anon: false, requiresSigning: false});
       const result = await actor.requests([requestId]);
+      console.log('Request status:', result);
       
       if (!result.Ok || result.Ok.length === 0) {
         throw new Error('Failed to get request status');

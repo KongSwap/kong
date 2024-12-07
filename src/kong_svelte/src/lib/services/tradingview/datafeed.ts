@@ -1,4 +1,6 @@
 import { INDEXER_URL } from '$lib/constants/canisterConstants';
+import { fetchChartData } from '$lib/services/indexer/api';
+import type { CandleData } from "$lib/services/indexer/api";
 
 // Configuration for the datafeed
 const configurationData = {
@@ -19,23 +21,35 @@ const configurationData = {
   has_weekly_and_monthly: true
 };
 
-export class KongDatafeed {
-  private payTokenId: number;
-  private receiveTokenId: number;
-  private lastBar: any = null;
-  private lastError: Error | null = null;
-  private errorRetryCount: number = 0;
-  private readonly MAX_RETRIES = 3;
+interface Bar {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
 
-  constructor(payTokenId: number, receiveTokenId: number) {
-    this.payTokenId = payTokenId;
-    this.receiveTokenId = receiveTokenId;
-    console.log('KongDatafeed initialized with tokens:', { payTokenId, receiveTokenId });
+export class KongDatafeed {
+  private fromTokenId: number;
+  private toTokenId: number;
+  private lastBar: Bar | null = null;
+
+  constructor(fromTokenId: number, toTokenId: number) {
+    this.fromTokenId = fromTokenId;
+    this.toTokenId = toTokenId;
+    console.log('KongDatafeed initialized with:', { fromTokenId, toTokenId });
   }
 
   onReady(callback: (configuration: any) => void): void {
-    console.log('[onReady]: Method call');
-    setTimeout(() => callback(configurationData));
+    console.log('KongDatafeed.onReady called');
+    setTimeout(() => callback({
+      supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D', '1W', '1M'],
+      symbols_types: [{
+        name: 'crypto',
+        value: 'crypto'
+      }]
+    }), 0);
   }
 
   searchSymbols(userInput: string, exchange: string, symbolType: string, onResult: (result: any[]) => void): void {
@@ -76,107 +90,61 @@ export class KongDatafeed {
   async getBars(
     symbolInfo: any,
     resolution: string,
-    periodParams: {
-      from: number;
-      to: number;
-      countBack: number;
-      firstDataRequest: boolean;
-    },
-    onHistoryCallback: (bars: any[], meta: { noData?: boolean }) => void,
+    periodParams: any,
+    onHistoryCallback: (bars: Bar[], meta: { noData: boolean }) => void,
     onErrorCallback: (error: string) => void
   ): Promise<void> {
     try {
-      if (!this.payTokenId || !this.receiveTokenId) {
+      console.log('KongDatafeed.getBars called with:', { 
+        symbolInfo, 
+        resolution, 
+        periodParams,
+        fromTokenId: this.fromTokenId,
+        toTokenId: this.toTokenId
+      });
+
+      const data = await fetchChartData(
+        this.fromTokenId,
+        this.toTokenId,
+        periodParams.from,
+        periodParams.to,
+        resolution
+      );
+
+      console.log('Received bar data:', { count: data.length, firstBar: data[0], lastBar: data[data.length - 1] });
+
+      if (!data || data.length === 0) {
         onHistoryCallback([], { noData: true });
         return;
       }
 
-      // Convert timestamps to ISO format
-      const startTime = new Date(periodParams.from * 1000).toISOString();
-      const endTime = new Date(periodParams.to * 1000).toISOString();
+      const bars = data.map(candle => ({
+        time: new Date(candle.candle_start).getTime(),
+        open: Number(candle.open_price),
+        high: Number(candle.high_price),
+        low: Number(candle.low_price),
+        close: Number(candle.close_price),
+        volume: Number(candle.volume)
+      }));
 
-      // Convert resolution to interval format
-      const intervalMap: Record<string, string> = {
-        '1': '1m',
-        '5': '5m',
-        '15': '15m',
-        '30': '30m',
-        '60': '1h',
-        '240': '4h',
-        '1D': '1d',
-        'D': '1d',
-        '1W': '1w',
-        'W': '1w'
-      };
-      const interval = intervalMap[resolution] || '1d';
-      
-      const url = `${INDEXER_URL}/swaps/ohlc?pay_token_id=${this.payTokenId}&receive_token_id=${this.receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
-      console.log('Fetching chart data from URL:', url);
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        console.log('[getBars]: No data');
-        onHistoryCallback([], { noData: true });
-        return;
-      }
-
-      const bars = data.map(bar => ({
-        time: Math.floor(new Date(bar.candle_start).getTime()),
-        open: bar.open_price,
-        high: bar.high_price,
-        low: bar.low_price,
-        close: bar.close_price,
-        volume: bar.volume
-      }))
-      .filter(bar => {
-        // Validate bar data
-        return !isNaN(bar.time) && 
-               !isNaN(bar.open) && 
-               !isNaN(bar.high) && 
-               !isNaN(bar.low) && 
-               !isNaN(bar.close) && 
-               !isNaN(bar.volume) &&
-               bar.time >= periodParams.from * 1000 && 
-               bar.time <= periodParams.to * 1000;
-      })
-      .sort((a, b) => a.time - b.time);
-      
       if (bars.length > 0) {
         this.lastBar = bars[bars.length - 1];
-        this.lastError = null;
-        this.errorRetryCount = 0;
       }
-      
-      onHistoryCallback(bars, { noData: bars.length === 0 });
+
+      onHistoryCallback(bars, { noData: false });
     } catch (error) {
-      console.error('[getBars]: Error', error);
-      this.lastError = error as Error;
-      this.errorRetryCount++;
-      
-      if (this.errorRetryCount <= this.MAX_RETRIES) {
-        console.log(`[getBars]: Retrying (${this.errorRetryCount}/${this.MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await this.getBars(symbolInfo, resolution, periodParams, onHistoryCallback, onErrorCallback);
-      } else {
-        onErrorCallback(error instanceof Error ? error.message : 'Unknown error');
-      }
+      console.error('Error fetching bars:', error);
+      onErrorCallback(error.toString());
     }
   }
 
   subscribeBars(
     symbolInfo: any,
     resolution: string,
-    onRealtimeCallback: (bar: any) => void,
+    onRealtimeCallback: (bar: Bar) => void,
     subscriberUID: string
   ): void {
-    if (!this.payTokenId || !this.receiveTokenId) {
+    if (!this.fromTokenId || !this.toTokenId) {
       console.log('[subscribeBars]: No token IDs available');
       return;
     }
@@ -191,7 +159,7 @@ export class KongDatafeed {
         const startTime = new Date(this.lastBar.time).toISOString();
         const interval = resolution === '60' ? '1h' : '1d';
 
-        const url = `${INDEXER_URL}/swaps/ohlc?pay_token_id=${this.payTokenId}&receive_token_id=${this.receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+        const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${this.fromTokenId}&receive_token_id=${this.toTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
 
         const response = await fetch(url);
 

@@ -2,7 +2,6 @@
   import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { fade, scale, fly } from "svelte/transition";
   import { backOut } from "svelte/easing";
-  import BananaRain from "$lib/components/common/BananaRain.svelte";
   import { onDestroy } from "svelte";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";

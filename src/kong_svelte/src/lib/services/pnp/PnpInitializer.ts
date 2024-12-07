@@ -42,7 +42,7 @@ export function initializePNP(principals?: Principal[]): PNP {
       verifyQuerySignatures: process.env.DFX_NETWORK === "ic",
       identityProvider: process.env.DFX_NETWORK !== "ic" ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943" : "https://identity.ic0.app",
       persistSession: true,
-      delegationTimeout: BigInt(Date.now()) + BigInt(1000 * 60 * 60 * 24 * 30), // 24 hour delegation timeout
+      delegationTimeout: BigInt(Date.now()) + BigInt(1000 * 60 * 60 * 24 * 30) * BigInt(1000), // 24 hour delegation timeout
       delegationTargets,
     });
 

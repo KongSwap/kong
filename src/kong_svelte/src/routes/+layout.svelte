@@ -18,7 +18,7 @@
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
-  let { children, data } = $props();
+  let { children } = $props();
   let currentPath = $state($page.url.pathname);
   let initialLoad = $state(true);
   let isInitialized = false;
@@ -87,7 +87,6 @@
 {/if}
 
 <style scoped lang="postcss">
-
 :global(body) {
   width: 100%;
   height: 100%;

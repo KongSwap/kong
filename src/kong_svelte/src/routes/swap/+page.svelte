@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '$lib/services/translations';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
   import SwapPro from '$lib/components/swap/SwapPro.svelte';

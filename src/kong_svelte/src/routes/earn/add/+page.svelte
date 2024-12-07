@@ -1,10 +1,8 @@
 <script lang="ts">
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
-  import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import { get } from "svelte/store";
   import { PoolService } from "$lib/services/pools/PoolService";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
@@ -70,56 +68,14 @@
     if (token0Address && $formattedTokens) {
         const selectedToken = $formattedTokens.find((t) => t.canister_id === token0Address);
         if (selectedToken && (!token0 || token0.canister_id !== token0Address)) {
-            token0 = {
-                canister_id: selectedToken.canister_id,
-                address: selectedToken.canister_id,
-                name: selectedToken.name,
-                symbol: selectedToken.symbol,
-                decimals: selectedToken.decimals,
-                fee: Number(selectedToken.fee_fixed.replace("_", "")),
-                fee_fixed: selectedToken.fee_fixed.replace("_", ""),
-                balance: (selectedToken.balance || '0'),
-                total_24h_volume: (selectedToken.total_24h_volume || '0'),
-                logo_url: selectedToken.logo_url,
-                price: selectedToken.price,
-                token: selectedToken.canister_id,
-                token_id: parseInt(selectedToken.canister_id) || 0,
-                chain: 'ICP',
-                icrc1: true,
-                icrc2: true,
-                icrc3: false,
-                on_kong: true,
-                pool_symbol: selectedToken.symbol,
-                pools: []
-            };
+            token0 = selectedToken;
         }
     }
 
     if (token1Address && $formattedTokens) {
         const selectedToken = $formattedTokens.find((t) => t.canister_id === token1Address);
         if (selectedToken && (!token1 || token1.canister_id !== token1Address)) {
-            token1 = {
-                canister_id: selectedToken.canister_id,
-                address: selectedToken.canister_id,
-                name: selectedToken.name,
-                symbol: selectedToken.symbol,
-                decimals: selectedToken.decimals,
-                fee: Number(selectedToken.fee_fixed.replace("_", "")),
-                fee_fixed: selectedToken.fee_fixed.replace("_", ""),
-                balance: (selectedToken.balance || '0'),
-                total_24h_volume: (selectedToken.total_24h_volume || '0'),
-                logo_url: selectedToken.logo_url,
-                price: selectedToken.price,
-                token: selectedToken.canister_id,
-                token_id: parseInt(selectedToken.canister_id) || 0,
-                chain: 'ICP',
-                icrc1: true,
-                icrc2: true,
-                icrc3: false,
-                on_kong: true,
-                pool_symbol: selectedToken.symbol,
-                pools: []
-            };
+            token1 = selectedToken;
         }
     }
   }
@@ -178,7 +134,12 @@
 
         // Let PoolService handle the authentication
         const requestId = await PoolService.addLiquidity(params);
-        
+
+        await Promise.all([
+            tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
+            tokenStore.loadBalance(token1, auth.pnp.account.principalId, true)
+        ])
+      
         // Poll for status
         const pollStatus = async () => {
             try {

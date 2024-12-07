@@ -3,7 +3,7 @@
 import * as Comlink from 'comlink';
 import { get } from 'svelte/store';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
-import { DEFAULT_LOGOS, fetchTokenLogo, tokenLogoStore, IMAGE_CACHE_DURATION } from '$lib/services/tokens/tokenLogos';
+import { DEFAULT_LOGOS } from '$lib/services/tokens/tokenLogos';
 import { kongDB } from '$lib/services/db';
 import type { KongImage } from '$lib/services/tokens/types';
 
@@ -338,12 +338,8 @@ class WorkerImpl implements WorkerApi {
     }
 
     try {
-      const response = await this.fetchWithRetry(url);
-      const blob = await this.verifyAssetResponse(response, url);
-      const objectURL = URL.createObjectURL(blob);
-      this.objectUrls.add(objectURL); // Track for cleanup
-      this.preloadedAssets.add(url);
-      return objectURL;
+   
+      return url;
     } catch (error) {
       console.error(`Worker: Failed to load ${url}:`, error);
       return url; // Return original URL as fallback
@@ -359,56 +355,10 @@ class WorkerImpl implements WorkerApi {
       this.startSwapActivityUpdates();
       this.startPriceUpdates();
 
-      // Start logo maintenance intervals
-      this.startLogoCleanup();
-      this.startLogoRefresh();
-
     } catch (error) {
       console.error('Worker: Error starting updates:', error);
       throw error;
     }
-  }
-
-  private startLogoCleanup(): void {
-    if (this.logoCleanupInterval) return;
-    this.logoCleanupInterval = self.setInterval(async () => {
-      try {
-        const expirationTime = Date.now() - IMAGE_CACHE_DURATION;
-        await kongDB.images
-          .where('timestamp')
-          .below(expirationTime)
-          .delete();
-      } catch (error) {
-        console.error('Worker: Error during logo cleanup:', error);
-      }
-    }, this.INTERVALS.LOGO_CLEANUP);
-  }
-
-  private startLogoRefresh(): void {
-    if (this.logoRefreshInterval) return;
-    this.logoRefreshInterval = self.setInterval(async () => {
-      try {
-        const refreshThreshold = Date.now() - (IMAGE_CACHE_DURATION * 0.9); // Refresh logos that are 75% through their lifetime
-        const agingLogos = await kongDB.images
-          .where('timestamp')
-          .below(refreshThreshold)
-          .toArray();
-
-        for (const logo of agingLogos) {
-          if (!logo.canister_id) continue;
-          try {
-            const token = this.tokens.find(t => t.canister_id === logo.canister_id);
-            if (token) {
-              await fetchTokenLogo(token.canister_id);
-            }
-          } catch (error) {
-            console.error(`Worker: Error refreshing logo for ${logo.canister_id}:`, error);
-          }
-        }
-      } catch (error) {
-        console.error('Worker: Error during logo refresh:', error);
-      }
-    }, this.INTERVALS.LOGO_REFRESH);
   }
 
   private startTokenUpdates(): void {

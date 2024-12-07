@@ -155,17 +155,17 @@
           const requiredAmount1 = requiredAmount.Ok.amount_1;
 
           // Check if token1 amount exceeds balance
-          if (balance1.in_tokens - token1.fee_fixed < requiredAmount1) {
+          if (balance1.in_tokens - BigInt(token1.fee_fixed) < requiredAmount1) {
             // If it exceeds, calculate backwards from token1's max balance
             const reverseAmount = await PoolService.addLiquidityAmounts(
               token1.token,
-              balance1.in_tokens - token1.fee_fixed,
+              balance1.in_tokens - BigInt(token1.fee_fixed),
               token0.token,
             );
             amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals).toString();
-            amount1 = formatTokenAmount((balance1.in_tokens - token1.fee_fixed).toString(), token1.decimals).toString();
+            amount1 = formatTokenAmount((balance1.in_tokens - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
           } else {
-            amount1 = formatTokenAmount((requiredAmount1 - token1.fee_fixed).toString(), token1.decimals).toString();
+            amount1 = formatTokenAmount((requiredAmount1 - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
           }
         } else {
           const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -177,17 +177,17 @@
           const requiredAmount0 = requiredAmount.Ok.amount_1;
 
           // Check if token0 amount exceeds balance
-          if (balance0.in_tokens - token0.fee_fixed < requiredAmount0) {
+          if (balance0.in_tokens - BigInt(token0.fee_fixed) < requiredAmount0) {
             // If it exceeds, calculate backwards from token0's max balance
             const reverseAmount = await PoolService.addLiquidityAmounts(
               token0.token,
-              balance0.in_tokens - token0.fee_fixed,
+              balance0.in_tokens - BigInt(token0.fee_fixed),
               token1.token,
             );
-            amount0 = formatTokenAmount((balance0.in_tokens - token0.fee_fixed).toString(), token0.decimals).toString();
+            amount0 = formatTokenAmount((balance0.in_tokens - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
             amount1 = formatTokenAmount(reverseAmount.Ok.amount_1, token1.decimals).toString();
           } else {
-            amount0 = formatTokenAmount((requiredAmount0 - token0.fee_fixed).toString(), token0.decimals).toString();
+            amount0 = formatTokenAmount((requiredAmount0 - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
           }
         }
       } catch (err) {
@@ -223,6 +223,11 @@
           };
 
           const requestId = await PoolService.addLiquidity(params);
+
+          await Promise.all([
+            tokenStore.loadBalance(token0, $auth?.account?.owner?.toString(), true),
+            tokenStore.loadBalance(token1, $auth?.account?.owner?.toString(), true)
+          ])
 
           // Poll for request status
           const checkStatus = async () => {
