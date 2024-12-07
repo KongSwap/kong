@@ -7,8 +7,8 @@ use crate::stable_memory::TX_MAP;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_map;
-use crate::stable_update::stable_update::{StableMemory, StableUpdate};
-use crate::stable_update::update_map;
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 use crate::txs::txs_reply::TxsReply;
 use crate::txs::txs_reply_helpers::to_txs_reply;
 
@@ -64,12 +64,12 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
 
     // add to UpdateMap for archiving to database
     let ts = get_time();
-    let update = StableUpdate {
+    let update = StableDBUpdate {
         update_id: 0,
         stable_memory: StableMemory::TxMap(tx),
         ts,
     };
-    update_map::insert(&update);
+    db_update_map::insert(&update);
 
     Ok("Tx updated".to_string())
 }

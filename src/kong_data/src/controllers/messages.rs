@@ -5,8 +5,8 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::MESSAGE_MAP;
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
-use crate::stable_update::stable_update::{StableMemory, StableUpdate};
-use crate::stable_update::update_map;
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 
 const MAX_MESSAGE: usize = 1_000;
 
@@ -62,12 +62,12 @@ fn update_message(stable_message_json: String) -> Result<String, String> {
 
     // add to UpdateMap for archiving to database
     let ts = get_time();
-    let update = StableUpdate {
+    let update = StableDBUpdate {
         update_id: 0,
         stable_memory: StableMemory::MessageMap(message),
         ts,
     };
-    update_map::insert(&update);
+    db_update_map::insert(&update);
 
     Ok("Message updated".to_string())
 }

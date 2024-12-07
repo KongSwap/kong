@@ -33,10 +33,21 @@ impl KongData {
     }
 
     #[allow(dead_code)]
-    pub async fn backup_updates(&self, update_id: Option<u64>) -> Result<String> {
+    pub async fn backup_db_updates(&self, update_id: Option<u64>) -> Result<String> {
         let result = self
             .agent
-            .query(&self.canister_id, "backup_updates")
+            .query(&self.canister_id, "backup_db_updates")
+            .with_arg(Encode!(&update_id)?)
+            .await?;
+        let call_result = Decode!(result.as_slice(), Result<String, String>)?;
+        call_result.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    #[allow(dead_code)]
+    pub async fn remove_db_updates(&self, update_id: u64) -> Result<String> {
+        let result = self
+            .agent
+            .update(&self.canister_id, "remove_db_updates")
             .with_arg(Encode!(&update_id)?)
             .await?;
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;

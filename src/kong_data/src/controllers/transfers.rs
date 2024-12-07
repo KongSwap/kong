@@ -5,8 +5,8 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TRANSFER_MAP;
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-use crate::stable_update::stable_update::{StableMemory, StableUpdate};
-use crate::stable_update::update_map;
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 
 const MAX_TRANSFERS: usize = 1_000;
 
@@ -62,12 +62,12 @@ fn update_transfer(stable_transfer_json: String) -> Result<String, String> {
 
     // add to UpdateMap for archiving to database
     let ts = get_time();
-    let update = StableUpdate {
+    let update = StableDBUpdate {
         update_id: 0,
         stable_memory: StableMemory::TransferMap(transfer),
         ts,
     };
-    update_map::insert(&update);
+    db_update_map::insert(&update);
 
     Ok("Transfer updated".to_string())
 }

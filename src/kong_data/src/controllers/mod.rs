@@ -1,4 +1,5 @@
 mod claims;
+mod db_updates;
 mod kong_settings;
 mod lp_tokens;
 mod messages;
@@ -8,5 +9,4 @@ mod status;
 mod tokens;
 mod transfers;
 mod txs;
-mod updates;
 mod users;

@@ -10,9 +10,9 @@ use crate::{
 };
 
 #[derive(CandidType, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct StableUpdateId(pub u64);
+pub struct StableDBUpdateId(pub u64);
 
-impl Storable for StableUpdateId {
+impl Storable for StableDBUpdateId {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
@@ -39,13 +39,13 @@ pub enum StableMemory {
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
-pub struct StableUpdate {
+pub struct StableDBUpdate {
     pub update_id: u64,
     pub stable_memory: StableMemory,
     pub ts: u64,
 }
 
-impl Storable for StableUpdate {
+impl Storable for StableDBUpdate {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         serde_cbor::to_vec(self).unwrap().into()
     }
