@@ -20,14 +20,13 @@ pub async fn get_db_updates(
     tokens_map: &BTreeMap<u32, u8>,
     pools_map: &BTreeMap<u32, (u32, u32)>,
 ) -> Result<u64, Box<dyn std::error::Error>> {
-    let json = kong_data.backup_updates(update_id).await?;
-    let updates: Vec<StableUpdate> = serde_json::from_str(&json)?;
+    let json = kong_data.backup_db_updates(update_id).await?;
+    let db_updates: Vec<StableUpdate> = serde_json::from_str(&json)?;
 
     let mut last_update_id = 0;
-    for update in updates.iter() {
-        last_update_id = update.update_id;
-        let stable_memory = &update.stable_memory;
-
+    for db_update in db_updates.iter() {
+        last_update_id = db_update.update_id;
+        let stable_memory = &db_update.stable_memory;
         match stable_memory {
             StableMemory::KongSettings(_) => (),
             StableMemory::UserMap(user) => insert_user_on_database(user, db_client).await?,
@@ -40,6 +39,10 @@ pub async fn get_db_updates(
             StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, tokens_map).await?,
             StableMemory::MessageMap(message) => (),
         }
+    }
+
+    if last_update_id > 0 {
+        _ = kong_data.remove_db_updates(last_update_id).await?;
     }
 
     Ok(last_update_id)

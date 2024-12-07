@@ -13,7 +13,6 @@ pub struct Database {
 pub struct Settings {
     pub dfx_pem_file: String,
     pub database: Database,
-    pub last_update_id: u64,
 }
 
 pub fn read_settings() -> Result<Settings, Box<dyn std::error::Error>> {

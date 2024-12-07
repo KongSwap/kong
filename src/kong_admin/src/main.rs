@@ -63,12 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pools_map = pools::load_pools_from_database(&db_client).await?;
 
     if args.contains(&"--updates".to_string()) {
-        let last_update_id = get_db_updates(Some(config.last_update_id), &kong_data, &db_client, &tokens_map, &pools_map).await?;
-        let update_settings = Settings {
-            last_update_id,
-            ..config.clone()
-        };
-        write_settings(&update_settings)?;
+        get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
     } else if args.contains(&"--backup".to_string()) {
         // Dump to database
         users::update_users_on_database(&db_client).await?;

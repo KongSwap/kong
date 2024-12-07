@@ -4,8 +4,8 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_memory::KONG_SETTINGS;
-use crate::stable_update::stable_update::{StableMemory, StableUpdate};
-use crate::stable_update::update_map;
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_kong_settings() -> Result<String, String> {
@@ -26,12 +26,12 @@ fn update_kong_settings(kong_settings: String) -> Result<String, String> {
 
     // add to UpdateMap for archiving to database
     let ts = get_time();
-    let update = StableUpdate {
+    let update = StableDBUpdate {
         update_id: 0,
         stable_memory: StableMemory::KongSettings(kong_settings),
         ts,
     };
-    update_map::insert(&update);
+    db_update_map::insert(&update);
 
     Ok("Kong settings updated".to_string())
 }

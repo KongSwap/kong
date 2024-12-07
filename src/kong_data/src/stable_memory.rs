@@ -3,6 +3,7 @@ use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
 use std::cell::RefCell;
 
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableDBUpdateId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_message::stable_message::{StableMessage, StableMessageId};
@@ -11,7 +12,6 @@ use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
-use crate::stable_update::stable_update::{StableUpdate, StableUpdateId};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
@@ -27,7 +27,7 @@ pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(7);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(8);
 pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
 
-pub const UPDATE_MEMORY_ID: MemoryId = MemoryId::new(50);
+pub const DB_UPDATE_MEMORY_ID: MemoryId = MemoryId::new(50);
 
 thread_local! {
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
@@ -86,8 +86,8 @@ thread_local! {
     });
 
     // stable memory for storing stable memory updates
-    pub static UPDATE_MAP: RefCell<StableBTreeMap<StableUpdateId, StableUpdate, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(UPDATE_MEMORY_ID)))
+    pub static DB_UPDATE_MAP: RefCell<StableBTreeMap<StableDBUpdateId, StableDBUpdate, Memory>> = with_memory_manager(|memory_manager| {
+        RefCell::new(StableBTreeMap::init(memory_manager.get(DB_UPDATE_MEMORY_ID)))
     });
 }
 
