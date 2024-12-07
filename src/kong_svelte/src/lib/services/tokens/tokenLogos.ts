@@ -1,25 +1,57 @@
+// Canister IDs for major tokens
+import {
+  ICP_CANISTER_ID,
+} from "$lib/constants/canisterConstants";
+
+// Canister IDs for community tokens
+import {
+  GHOST_CANISTER_ID,
+  KINIC_CANISTER_ID,
+  CHAT_CANISTER_ID,
+  CTZ_CANISTER_ID,
+  DOLR_CANISTER_ID,
+} from "$lib/constants/canisterConstants";
+
+// System and configuration constants
+import {
+  INDEXER_URL,
+  KONG_BACKEND_PRINCIPAL,
+  DFX_VERSION,
+  DFX_NETWORK,
+  KONG_FRONTEND_CANISTER_ID,
+  KONG_SVELTE_CANISTER_ID,
+  KONG_BACKEND_CANISTER_ID,
+} from "$lib/constants/canisterConstants";
+
 import { kongDB } from '../db';
-import { ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 import { getTokenMetadata } from './tokenUtils';
 
+// The cache duration for images.
 export const IMAGE_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-// Define a type for logo URLs
-export type TokenLogoUrl = string;
+// The static assets URL.
+const STATIC_ASSETS_URL = `${INDEXER_URL}`;
 
+// We are adding the yral token's logo to the DEFAULT_LOGOS map. 
+// This token's name is "yral" and ticker is "DOLR", and we know its canister ID is DOLR_CANISTER_ID.
+// We map DOLR_CANISTER_ID to the yral_logo.png image.
 export const DEFAULT_LOGOS = {
   [ICP_CANISTER_ID]: '/tokens/icp.webp',
+  [GHOST_CANISTER_ID]: '/tokens/ghost_logo.png',
+  [KINIC_CANISTER_ID]: '/tokens/kinic_logo.png',
+  [CHAT_CANISTER_ID]: '/tokens/openchat_logo.png',
+  [CTZ_CANISTER_ID]: '/tokens/catalyze_logo.png',
+  [DOLR_CANISTER_ID]: '/tokens/yral_logo.png', // The yral token with DOLR as ticker
   DEFAULT: '/tokens/not_verified.webp'
 } as const;
 
-export const tokenLogoStore = writable<Record<string, TokenLogoUrl>>({
+// Initialize the tokenLogoStore with the default logos.
+export const tokenLogoStore = writable<Record<string, string>>({
   ...DEFAULT_LOGOS
 });
 
 let loadingPromises: Record<string, Promise<string>> = {};
-
-// Add a cache for failed logo attempts
 const failedLogoAttempts = new Set<string>();
 
 export async function saveTokenLogo(canister_id: string, image_url: string): Promise<void> {
@@ -36,12 +68,11 @@ export async function saveTokenLogo(canister_id: string, image_url: string): Pro
 
 export async function getTokenLogo(canister_id: string): Promise<string> {
   try {    
-    // First check if it's a default logo
+    // Check if it is a default logo, including the new yral token.
     if (canister_id in DEFAULT_LOGOS) {
       return DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS];
     }
 
-    // Query by canister_id using equals instead of get
     const image = await kongDB.images
       .where('canister_id')
       .equals(canister_id)
@@ -51,11 +82,9 @@ export async function getTokenLogo(canister_id: string): Promise<string> {
       return await fetchTokenLogo(canister_id);
     }
 
-    // Check if the logo is older than 24 hours
     const ONE_DAY = 24 * 60 * 60 * 1000;
     if (!image.timestamp || Date.now() - image.timestamp > ONE_DAY) {
       console.log('Logo expired for:', canister_id);
-      // Logo is too old, delete it and refetch
       await kongDB.images
         .where('canister_id')
         .equals(canister_id)
@@ -115,13 +144,11 @@ export async function getMultipleTokenLogos(canister_ids: string[]): Promise<Rec
       result[img.canister_id] = img.image_url;
     });
 
-    // Update store with all valid images
     tokenLogoStore.update(logos => ({
       ...logos,
       ...result
     }));
 
-    // Clean up expired entries
     const foundIds = new Set(validImages.map(img => img.canister_id));
     const expiredIds = canister_ids.filter(id => !foundIds.has(id));
     
@@ -142,17 +169,13 @@ export async function getMultipleTokenLogos(canister_ids: string[]): Promise<Rec
 export async function getAllTokenLogos(tokens: any[]): Promise<any[]> {
   try {
     const currentTime = Date.now();
-    
-    // First get all cached images
     const cachedImages = await kongDB.images
       .where('timestamp')
       .above(currentTime - IMAGE_CACHE_DURATION)
       .toArray();
-    
-    // Create a map of cached canister IDs
+
     const cachedCanisterIds = new Set(cachedImages.map(img => img.canister_id));
-    
-    // For tokens without cached logos, fetch them
+
     const fetchPromises = tokens
       .filter(token => !cachedCanisterIds.has(token.canister_id))
       .map(async token => {
@@ -204,7 +227,7 @@ export async function updateTokenLogo(
     const updatedImage = {
       ...image,
       ...updates,
-      timestamp: Date.now(), // Reset timestamp on update
+      timestamp: Date.now()
     };
 
     return await kongDB.images.put(updatedImage);
@@ -228,25 +251,22 @@ export async function cleanupExpiredTokenLogos(): Promise<void> {
   }
 }
 
-export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl> {  
+export async function fetchTokenLogo(canister_id: string): Promise<string> {
   try {
     if (!canister_id) {
       console.debug('No canister_id provided');
       return DEFAULT_LOGOS.DEFAULT;
     }
 
-    // Check if we already have a loading promise for this canister
     if (loadingPromises[canister_id]) {
       try {
         return await loadingPromises[canister_id];
       } catch (error) {
-        // If the existing promise fails, we'll create a new one below
         console.warn('Existing promise failed, creating new one:', error);
         delete loadingPromises[canister_id];
       }
     }
 
-    // Create new loading promise with proper cleanup
     const promise = (async () => {
       try {
         const metadata = await getTokenMetadata(canister_id);
@@ -263,20 +283,19 @@ export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl>
         }
 
         if (!logoEntry) {
-          return DEFAULT_LOGOS.DEFAULT;
+          return canister_id in DEFAULT_LOGOS ? DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS] : DEFAULT_LOGOS.DEFAULT;
         }
 
         const [_, value] = logoEntry;
-        let logoUrl: TokenLogoUrl = DEFAULT_LOGOS.DEFAULT;
+        let logoUrl: string = DEFAULT_LOGOS.DEFAULT;
 
         if ('Text' in value && value.Text) {
-          logoUrl = value.Text as TokenLogoUrl;
+          logoUrl = value.Text;
         } else if ('Blob' in value && value.Blob) {
           const base64 = btoa(String.fromCharCode(...value.Blob));
-          logoUrl = `data:image/png;base64,${base64}` as TokenLogoUrl;
+          logoUrl = `data:image/png;base64,${base64}`;
         }
 
-        // Save to DB and store
         await saveTokenLogo(canister_id, logoUrl);
         tokenLogoStore.update(logos => ({
           ...logos,
@@ -286,23 +305,100 @@ export async function fetchTokenLogo(canister_id: string): Promise<TokenLogoUrl>
         return logoUrl;
       } catch (error) {
         console.error('Error in fetchTokenLogo:', error);
-        return DEFAULT_LOGOS.DEFAULT;
+        return canister_id in DEFAULT_LOGOS ? DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS] : DEFAULT_LOGOS.DEFAULT;
       }
     })();
 
-    // Store the promise and ensure cleanup
     loadingPromises[canister_id] = promise;
     
     try {
       return await promise;
     } finally {
-      // Only cleanup if this is still our promise
       if (loadingPromises[canister_id] === promise) {
         delete loadingPromises[canister_id];
       }
     }
   } catch (error) {
     console.error('Error in fetchTokenLogo:', error);
-    return DEFAULT_LOGOS.DEFAULT;
+    return canister_id in DEFAULT_LOGOS ? DEFAULT_LOGOS[canister_id as keyof typeof DEFAULT_LOGOS] : DEFAULT_LOGOS.DEFAULT;
   }
 }
+
+// The parseTokens function now ensures that if the token is the yral token (with DOLR ticker)
+// we apply the fallback logic just as we do for ICP and other known hardcoded tokens.
+export const parseTokens = (
+  data: FE.Token[],
+): FE.Token[] => {
+  try {
+    const icTokens: FE.Token[] = data.map((token) => {
+      let logoUrl = token?.logo_url 
+        ? `${STATIC_ASSETS_URL}${token.logo_url}`
+        : DEFAULT_LOGOS.DEFAULT;
+
+      // If the token is ICP
+      if (token.canister_id === ICP_CANISTER_ID) {
+        logoUrl = DEFAULT_LOGOS[ICP_CANISTER_ID];
+      }
+      // If the token is Ghost
+      else if (token.canister_id === GHOST_CANISTER_ID) {
+        logoUrl = DEFAULT_LOGOS[GHOST_CANISTER_ID];
+      }
+      // If the token is Kinic
+      else if (token.canister_id === KINIC_CANISTER_ID) {
+        logoUrl = DEFAULT_LOGOS[KINIC_CANISTER_ID];
+      }
+      // If the token is Openchat
+      else if (token.canister_id === CHAT_CANISTER_ID) {
+        logoUrl = DEFAULT_LOGOS[CHAT_CANISTER_ID];
+      }
+      // If the token is Catalyze
+      else if (token.canister_id === CTZ_CANISTER_ID) {
+        logoUrl = DEFAULT_LOGOS[CTZ_CANISTER_ID];
+      }
+      // If the token is yral with DOLR as ticker
+      else if (token.canister_id === DOLR_CANISTER_ID) {
+        logoUrl = DEFAULT_LOGOS[DOLR_CANISTER_ID];
+      }
+
+      const result: FE.Token = {
+        canister_id: token.canister_id,
+        address: token.address || token.canister_id,
+        name: token.name,   // should be "yral" for this token
+        symbol: token.symbol, // should be "DOLR" for this token
+        fee: token.fee,
+        fee_fixed: token.fee_fixed.replace("_", ""),
+        decimals: token.decimals,
+        token: token.token_type || '',
+        token_type: token.token_type || '',
+        token_id: token.token_id,
+        chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
+        icrc1: token.icrc1,
+        icrc2: token.icrc2,
+        icrc3: token.icrc3,
+        on_kong: token.on_kong,
+        pool_symbol: token.pool_symbol ?? "Pool not found",
+        pools: [],
+        metrics: {
+          total_supply: token.metrics?.total_supply?.toString() || "0",
+          price: token.metrics?.price || "0",
+          price_change_24h: token.metrics?.price_change_24h || "0",
+          volume_24h: "0",
+          market_cap: token.metrics?.market_cap || "0",
+          updated_at: token.metrics?.updated_at || "",
+        },
+        logo_url: logoUrl,
+        total_24h_volume: "0",
+        price: Number(token.metrics?.price || 0),
+        tvl: 0,
+        balance: "0",
+      };
+
+      return result;
+    });
+
+    return icTokens;
+  } catch (error) {
+    console.error('Error parsing tokens:', error);
+    return [];
+  }
+};
