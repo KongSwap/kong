@@ -3,6 +3,11 @@ name = "kong_admin"
 version = "0.0.13"
 edition = "2021"
 
+[profile.release]
+ltp = true
+codegen-units = 1
+panic = 'abort'
+
 [dependencies]
 kong_lib = { path = "../kong_lib" }
 tokio = { version = "1.40.0", features = ["full"] }
