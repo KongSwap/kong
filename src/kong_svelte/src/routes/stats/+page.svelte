@@ -58,15 +58,21 @@
   // Enhanced loading state with type safety
   const tokensLoading = derived(
     [formattedTokens, poolStore],
-    ([$formattedTokens, $poolStore]): boolean =>
-      $formattedTokens.isLoading || $poolStore.isLoading,
+    ([$formattedTokens, $poolStore]): boolean => {
+      const formattedTokensLoading = $formattedTokens && typeof $formattedTokens === 'object' && 'isLoading' in $formattedTokens ? $formattedTokens.isLoading : false;
+      const poolStoreLoading = $poolStore && typeof $poolStore === 'object' && 'isLoading' in $poolStore ? $poolStore.isLoading : false;
+      return formattedTokensLoading || poolStoreLoading;
+    }
   );
 
   // Improved error handling with null checks
   const tokensError = derived(
     [formattedTokens, poolStore],
-    ([$formattedTokens, $poolStore]): string | null =>
-      $formattedTokens.error || $poolStore.error || null,
+    ([$formattedTokens, $poolStore]): string | null => {
+      const formattedTokensError = $formattedTokens && typeof $formattedTokens === 'object' && 'error' in $formattedTokens ? $formattedTokens.error as string : null;
+      const poolStoreError = $poolStore && typeof $poolStore === 'object' && 'error' in $poolStore ? $poolStore.error as string : null;
+      return formattedTokensError || poolStoreError || null;
+    }
   );
 
   // Enhanced clipboard functionality with better error handling
@@ -364,13 +370,19 @@
               </thead>
               <tbody class="text-base">
                 {#each $filteredTokens as token (token.canister_id)}
-                  {@const enrichedToken = token as FE.Token}
+                  {@const enrichedToken = {
+                    ...token,
+                    metrics: {
+                      ...token.metrics,
+                      price: token.metrics.price.toString()
+                    }
+                  } as unknown as FE.Token}
                   {@const priceChangeClass =
-                    Number(enrichedToken?.metrics?.price_change_24h) > 0
-                      ? "positive"
-                      : Number(enrichedToken?.metrics?.price_change_24h) < 0
-                        ? "negative"
-                        : ""}
+                    enrichedToken?.metrics?.price_change_24h ? 
+                      Number(enrichedToken.metrics.price_change_24h) > 0 
+                        ? "positive" 
+                        : "negative"
+                      : ""}
                   <tr
                     class="token-row"
                     on:click={() => goto(`/stats/${enrichedToken.canister_id}`)}

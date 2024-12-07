@@ -9,7 +9,6 @@
   import { t } from "$lib/services/translations";
   import { appLoader } from "$lib/services/appLoader";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
-  import LoadingScreen from "$lib/components/common/LoadingScreen.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
   import { auth } from "$lib/services/auth";
 
@@ -62,7 +61,7 @@
 </svelte:head>
 
 {#if showLoadingScreen && initialLoad}
-  <LoadingScreen on:outroend={handleLoadingScreenEnd} />
+
 {:else}
   <div 
     class="tv-wrapper app-container"

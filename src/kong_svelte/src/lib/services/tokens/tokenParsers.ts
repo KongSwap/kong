@@ -1,7 +1,7 @@
 import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, INDEXER_URL } from "$lib/constants/canisterConstants";
 import { DEFAULT_LOGOS } from "./tokenLogos";
 
-const STATIC_ASSETS_URL = `${INDEXER_URL}/static`;
+const STATIC_ASSETS_URL = `${INDEXER_URL}`;
 
 export const parseTokens = (
   data: FE.Token[],
@@ -10,10 +10,10 @@ export const parseTokens = (
   try {
     // Extract IC tokens and map them to FE.Token[]
     const icTokens: FE.Token[] = data.map((token) => {
-      console.log("LOGO URL", token);
       const logoUrl = token?.logo_url 
         ? `${STATIC_ASSETS_URL}${token.logo_url}`
         : "/tokens/not_verified.webp";
+
       const result: FE.Token = {
         canister_id: token.canister_id,
         address: token.address || token.canister_id,
@@ -35,6 +35,7 @@ export const parseTokens = (
         metrics: {
           total_supply: token.metrics?.total_supply?.toString() || "0",
           price: token.metrics?.price || "0",
+          price_change_24h: token.metrics?.price_change_24h || "0",
           volume_24h: "0",
           market_cap: token.metrics?.market_cap || "0",
           updated_at: token.metrics?.updated_at || "",

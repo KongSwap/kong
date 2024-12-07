@@ -26,6 +26,8 @@ class AssetCacheService {
   private CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
   private dbInitPromise: Promise<void> | null = null;
   private cache: Map<string, string> = new Map();
+  private initRetries = 0;
+  private readonly MAX_RETRIES = 3;
 
   private constructor() {
     if (browser) {
@@ -41,19 +43,66 @@ class AssetCacheService {
   }
 
   private async initializeDb(): Promise<void> {
+    if (!browser) return;
+
     try {
+      // Chrome workaround: Delete database if it exists and we're retrying
+      if (this.initRetries > 0) {
+        try {
+          await Dexie.delete('AssetCache');
+          console.log('Successfully deleted corrupted database');
+        } catch (deleteError) {
+          console.warn('Failed to delete database:', deleteError);
+        }
+      }
+
+      // Create and open database
       this.db = new AssetCacheDatabase();
+      
+      // Chrome workaround: Catch UnknownError specifically
+      try {
+        await this.db.open();
+      } catch (error: any) {
+        if (error?.name === 'UnknownError' && this.initRetries < this.MAX_RETRIES) {
+          this.initRetries++;
+          console.log(`Retrying database initialization (attempt ${this.initRetries}/${this.MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, 100)); // Small delay before retry
+          return this.initializeDb();
+        }
+        throw error; // Re-throw if not UnknownError or max retries reached
+      }
+
+      // Verify database is working
       await this.db.assets.count();
+      this.initRetries = 0; // Reset retries on success
+      console.log('Successfully initialized IndexedDB');
     } catch (error) {
       console.error('Failed to initialize IndexedDB:', error);
       this.db = null;
+      
+      if (this.initRetries < this.MAX_RETRIES) {
+        this.initRetries++;
+        console.log(`Retrying database initialization (attempt ${this.initRetries}/${this.MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Longer delay for other errors
+        return this.initializeDb();
+      } else {
+        console.warn('Max retries reached for IndexedDB initialization, falling back to memory cache');
+      }
     }
   }
 
-  private async ensureDbReady(): Promise<void> {
+  public async ensureDbReady(): Promise<void> {
     if (browser && this.dbInitPromise) {
-      await this.dbInitPromise;
+      try {
+        await this.dbInitPromise;
+      } catch (error) {
+        console.warn('Failed to initialize IndexedDB, falling back to memory cache:', error);
+      }
     }
+  }
+
+  public isDbInitialized(): boolean {
+    return this.db !== null && this.db.isOpen();
   }
 
   private isBase64Image(url: string): boolean {

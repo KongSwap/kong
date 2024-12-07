@@ -29,6 +29,7 @@ declare global {
         volume_24h: string;
         market_cap: string;
         updated_at: string;
+        price_change_24h?: string;
       };
       logo_url: string;
       total_24h_volume: string;

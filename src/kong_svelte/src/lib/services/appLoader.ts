@@ -163,39 +163,34 @@ export class AppLoader {
       });
 
       // Initialize core services first
-      await this.initializeTokens()
+      await this.initializeTokens();
 
-      // Initialize worker and wait for initial data
-      const workerInitialized = await updateWorkerService.initialize();
-      if (!workerInitialized) {
-        console.warn('Worker initialization failed, continuing with fallback updates');
-      }
-
-      // Initialize remaining services
+      // Initialize remaining services in parallel
       await Promise.all([
         this.preloadAssets(),
         tokenStore.loadPrices(),
-        this.initializeSettings()
+        this.initializeSettings(),
+        // Initialize worker but don't wait for it to be fully ready
+        updateWorkerService.initialize().catch(error => {
+          console.warn('Worker initialization failed, continuing with fallback updates:', error);
+        })
       ]);
  
       // Set initialization flag
       this.isInitialized = true;
+
+      // Close loading screen
+      this.updateLoadingState({
+        isLoading: false,
+        errors: [],
+      });
     } catch (error) {
       console.error("Failed to initialize app:", error);
       initError = error;
-    } finally {
-      // Only close loading screen if worker is ready or fallback is active
-      if (updateWorkerService.getIsInitialized() || initError) {
-        this.updateLoadingState({
-          isLoading: false,
-          errors: initError
-            ? [
-                ...get(this._loadingState).errors,
-                initError.message || "Failed to initialize app",
-              ]
-            : [],
-        });
-      }
+      this.updateLoadingState({
+        isLoading: false,
+        errors: [error.message || "Failed to initialize app"],
+      });
     }
   }
 
