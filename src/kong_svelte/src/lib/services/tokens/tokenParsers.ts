@@ -1,7 +1,7 @@
 import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, INDEXER_URL } from "$lib/constants/canisterConstants";
 import { DEFAULT_LOGOS } from "./tokenLogos";
 
-const STATIC_ASSETS_URL = `${INDEXER_URL}/static`;
+const STATIC_ASSETS_URL = `${INDEXER_URL}`;
 
 export const parseTokens = (
   data: FE.Token[],
