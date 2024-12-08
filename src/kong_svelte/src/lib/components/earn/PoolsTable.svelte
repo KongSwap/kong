@@ -13,9 +13,6 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import PoolList from "$lib/components/sidebar/PoolList.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { fetchChartData } from "$lib/services/indexer/api";
-  import type { CandleData } from "$lib/services/indexer/api";
-  import { onMount } from "svelte";
 
   export let isMobile: boolean;
 
@@ -34,52 +31,6 @@
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
-
-  // Store for price changes
-  const priceChanges = writable<Map<string, number>>(new Map());
-
-  // Function to calculate price change
-  async function fetchPriceChange(pool: BE.Pool) {
-    const now = Math.floor(Date.now() / 1000);
-    const startTime = now - (24 * 60 * 60); // 24 hours ago
-
-    try {
-      const token0 = $formattedTokens?.find(t => t.canister_id === pool.address_0);
-      const token1 = $formattedTokens?.find(t => t.canister_id === pool.address_1);
-
-      if (!token0?.token_id || !token1?.token_id) {
-        console.error('Could not find token IDs for pool:', pool);
-        return;
-      }
-
-      const data = await fetchChartData(
-        Number(token0.token_id),
-        Number(token1.token_id),
-        startTime,
-        now,
-        '1D' // Daily data
-      );
-
-      if (data.length >= 2) {
-        const oldPrice = Number(data[0].close_price);
-        const newPrice = Number(data[data.length - 1].close_price);
-        const change = oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice) * 100 : 0;
-        priceChanges.update(map => {
-          map.set(`${pool.address_0}-${pool.address_1}`, change);
-          return map;
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch price change:', error);
-    }
-  }
-
-  // Watch for pools list changes and fetch price changes
-  $: if ($poolsList) {
-    $poolsList.forEach(pool => {
-      fetchPriceChange(pool);
-    });
-  }
 
   // Memoize token map
   const tokenMap = derived(formattedTokens, ($tokens) => {
@@ -343,11 +294,6 @@
                           ? Number(pool.price).toFixed(6)
                           : Number(pool.price).toFixed(2)}
                       </div>
-                      {#if $priceChanges.has(`${pool.address_0}-${pool.address_1}`)}
-                        <div class="text-sm {getPriceChangeClass($priceChanges.get(`${pool.address_0}-${pool.address_1}`))}">
-                          {$priceChanges.get(`${pool.address_0}-${pool.address_1}`).toFixed(2)}%
-                        </div>
-                      {/if}
                     </div>
                   </div>
                   <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
