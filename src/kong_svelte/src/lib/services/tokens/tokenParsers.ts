@@ -27,7 +27,7 @@ export const parseTokens = (
         address: token.address || token.canister_id,
         name: token.name,
         symbol: token.symbol,
-        fee: token.fee,
+        fee: Number(token.fee.toString().replace("_", "")),
         fee_fixed: token.fee_fixed.replace("_", ""),
         decimals: token.decimals,
         token: token.token_type || '',

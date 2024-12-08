@@ -15,8 +15,8 @@
     const fromCanisterId = $page.url.searchParams.get('from');
     const toCanisterId = $page.url.searchParams.get('to');
     
-    fromToken = fromCanisterId ? tokenStore.getToken(fromCanisterId) : null;
-    toToken = toCanisterId ? tokenStore.getToken(toCanisterId) : null;
+    fromToken = fromCanisterId ? $tokenStore.tokens.find(t => t.canister_id === fromCanisterId) || null : null;
+    toToken = toCanisterId ? $tokenStore.tokens.find(t => t.canister_id === toCanisterId) || null : null;
   }
 
   const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {

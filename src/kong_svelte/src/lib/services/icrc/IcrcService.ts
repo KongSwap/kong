@@ -119,7 +119,21 @@ export class IcrcService {
       let retries = 3;
       const expiresAt =
         BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
-      const totalAmount = BigInt(payAmount) + BigInt(token.fee);
+
+      console.log(`[IcrcService] Checking allowances for token ${token.symbol}:`);
+      console.log(`  Pay amount: ${payAmount} (type: ${typeof payAmount})`);
+      console.log(`  Token fee: ${token.fee} (type: ${typeof token.fee})`);
+      
+      const totalAmount = BigInt(payAmount) + BigInt(token.fee.toString().replace('_', ''));
+      try {
+        console.log(`  Total amount (including fee): ${totalAmount} (type: ${typeof totalAmount})`);
+      } catch (error) {
+        console.error(`  Error calculating total amount:`, error);
+        console.log(`  Raw values for debugging:`);
+        console.log(`    payAmount: ${JSON.stringify(payAmount)}`);
+        console.log(`    token.fee: ${JSON.stringify(token.fee)}`);
+        throw error;
+      }
 
       // First check if we already have sufficient allowance
       const currentAllowance = await this.checkIcrc2Allowance(

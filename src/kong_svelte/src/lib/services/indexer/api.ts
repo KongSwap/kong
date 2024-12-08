@@ -1,11 +1,13 @@
 import { INDEXER_URL } from "$lib/constants/canisterConstants";
 import { kongDB } from "../db";
+import { parseTokens } from "../tokens/tokenParsers";
 
 
 export const fetchTokens = async (): Promise<FE.Token[]> => {
   const response = await fetch(`${INDEXER_URL}/api/tokens`);
   const data = await response.json();
-  kongDB.indexedTokens.bulkPut(data);
+  const parsed = parseTokens(data);
+  kongDB.tokens.bulkPut(parsed);
   return data;
 };
 

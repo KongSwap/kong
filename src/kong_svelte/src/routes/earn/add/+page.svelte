@@ -7,6 +7,7 @@
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
   import { auth } from "$lib/services/auth";
+    import { browser } from "$app/environment";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -61,6 +62,8 @@
   }
 
   async function initializeFromParams() {
+    if(!browser) return;
+
     const searchParams = $page.url.searchParams;
     const token0Address = searchParams.get("token0");
     const token1Address = searchParams.get("token1");

@@ -69,9 +69,21 @@
 
   $: userMaxSlippage = $settingsStore.max_slippage;
 
+  let isInitialized = false;
+
+  // Subscribe to token store changes
+  $: if ($tokenStore.tokens.length > 0 && !isInitialized) {
+    isInitialized = true;
+    swapState.initializeTokens(initialFromToken, initialToToken);
+  }
+
   onMount(() => {
     const init = async () => {
-      swapState.initializeTokens(initialFromToken, initialToToken);
+      // Wait for tokens to be loaded first
+      const tokens = get(tokenStore);
+      if (!tokens.tokens.length) {
+        await tokenStore.loadTokens();
+      }
     };
     init();
 

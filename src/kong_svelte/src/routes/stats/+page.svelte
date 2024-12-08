@@ -113,7 +113,7 @@
   const activeTabStore = writable<"all" | "favorites">("all");
 
   // Initialize activeTab from URL query param
-  $: activeTabStore.set($page.url.searchParams.get("tab") === "favorites" ? "favorites" : "all");
+  $: browser && activeTabStore.set($page.url.searchParams.get("tab") === "favorites" ? "favorites" : "all");
 
   // Update URL when tab changes
   $: {

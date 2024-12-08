@@ -5,7 +5,7 @@ import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { getTokenDecimals } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -103,11 +103,37 @@ function createSwapStore(): SwapStore {
     isInputExceedingBalance,
 
     initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      update(state => ({
-        ...state,
-        payToken: initialFromToken || tokenStore.getToken(ICP_CANISTER_ID) || null,
-        receiveToken: initialToToken || tokenStore.getToken(CKUSDT_CANISTER_ID) || null
-      }));
+      const tokens = get(tokenStore);
+      
+      // If we have initial tokens, use them directly
+      if (initialFromToken && initialToToken) {
+        update(state => ({
+          ...state,
+          payToken: initialFromToken,
+          receiveToken: initialToToken,
+          manuallySelectedTokens: {
+            pay: true,
+            receive: true
+          }
+        }));
+        return;
+      }
+
+      // If we have tokens loaded, set defaults
+      if (tokens.tokens.length > 0) {
+        const defaultPayToken = tokens.tokens.find(t => t.canister_id === ICP_CANISTER_ID);
+        const defaultReceiveToken = tokens.tokens.find(t => t.canister_id === KONG_CANISTER_ID);
+
+        update(state => ({
+          ...state,
+          payToken: initialFromToken || defaultPayToken || null,
+          receiveToken: initialToToken || defaultReceiveToken || null,
+          manuallySelectedTokens: {
+            pay: !!initialFromToken,
+            receive: !!initialToToken
+          }
+        }));
+      }
     },
 
     async setPayAmount(amount: string) {

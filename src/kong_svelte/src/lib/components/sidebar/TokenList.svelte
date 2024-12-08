@@ -6,7 +6,6 @@
   import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
   import { favoriteStore, currentWalletFavorites } from "$lib/services/tokens/favoriteStore";
 
-
   type ProcessedToken = FE.Token & {
     isFavorite?: boolean;
     balances: string;
@@ -37,37 +36,6 @@
     }
   }
 
-  // Make sure processedTokens updates when either tokens or storeBalances change
-  $: processedTokens = tokens
-    .filter(token => token)
-    .map((token): ProcessedToken => {
-      const formattedToken = $formattedTokens?.find((t) => t.canister_id === token.canister_id);
-      const balanceInfo = storeBalances[token.canister_id] || { in_tokens: 0n, in_usd: '0' };
-      const logoUrl = token?.logo_url || DEFAULT_LOGOS.DEFAULT;
-      
-      const balance = balanceInfo.in_tokens;
-      const decimals = token.decimals || 0;
-      
-      const divisor = BigInt(10) ** BigInt(decimals);
-      const normalizedBalance = Number(balance) / Number(divisor);
-      
-      return {
-        ...token,
-        ...(formattedToken || {}),
-        isFavorite: $currentWalletFavorites.includes(token.canister_id),
-        balance: balance,
-      };
-    })
-    .filter(token => token && token.canister_id)
-    .sort((a, b) => {
-      // Sort by favorites first
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      
-      // Then sort by USD value
-      return sortDirection === 'desc' ? Number(storeBalances[b.canister_id]?.in_usd) - Number(storeBalances[a.canister_id]?.in_usd) : Number(storeBalances[a.canister_id]?.in_usd) - Number(storeBalances[b.canister_id]?.in_usd);
-    });
-
   // Debounce search input
   $: {
     clearTimeout(searchDebounceTimer);
@@ -86,53 +54,62 @@
   // Add to script section
   let searchMatches: Record<string, SearchMatch> = {};
 
-  // Update the filter tokens logic
-  $: filteredTokens = processedTokens.filter(token => {
-    // First check zero balances if enabled
-    if (hideZeroBalances && token.balance <= 0) {
+  // Filtered tokens using formattedTokens
+  $: filteredTokens = $formattedTokens
+    .filter(token => {
+      // First check zero balances if enabled
+      if (hideZeroBalances && (!token.balance || BigInt(token.balance) <= 0n)) {
+        return false;
+      }
+      
+      if (!debouncedSearchQuery) {
+        searchMatches[token.canister_id] = { type: null, query: '' };
+        return true;
+      }
+      
+      const query = debouncedSearchQuery.trim().toLowerCase();
+      
+      // Check canister ID first
+      const canisterId = token.canister_id;
+      if (canisterId.toLowerCase().includes(query)) {
+        searchMatches[token.canister_id] = {
+          type: 'canister',
+          query,
+          matchedText: canisterId
+        };
+        return true;
+      }
+      
+      // Check name
+      if (token.name?.toLowerCase().includes(query)) {
+        searchMatches[token.canister_id] = {
+          type: 'name',
+          query,
+          matchedText: token.name
+        };
+        return true;
+      }
+      
+      // Check symbol
+      if (token.symbol?.toLowerCase().includes(query)) {
+        searchMatches[token.canister_id] = {
+          type: 'symbol',
+          query,
+          matchedText: token.symbol
+        };
+        return true;
+      }
+      
       return false;
-    }
-    
-    if (!debouncedSearchQuery) {
-      searchMatches[token.canister_id] = { type: null, query: '' };
-      return true;
-    }
-    
-    const query = debouncedSearchQuery.trim().toLowerCase();
-    
-    // Check canister ID first
-    const canisterId = token.canister_id;
-    if (canisterId.toLowerCase().includes(query)) {
-      searchMatches[token.canister_id] = {
-        type: 'canister',
-        query,
-        matchedText: canisterId
-      };
-      return true;
-    }
-    
-    // Check name
-    if (token.name?.toLowerCase().includes(query)) {
-      searchMatches[token.canister_id] = {
-        type: 'name',
-        query,
-        matchedText: token.name
-      };
-      return true;
-    }
-    
-    // Check symbol
-    if (token.symbol?.toLowerCase().includes(query)) {
-      searchMatches[token.canister_id] = {
-        type: 'symbol',
-        query,
-        matchedText: token.symbol
-      };
-      return true;
-    }
-    
-    return false;
-  });
+    })
+    .sort((a, b) => {
+      if (a.isFavorite !== b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+      const aValue = Number(a.formattedUsdValue || '0');
+      const bValue = Number(b.formattedUsdValue || '0');
+      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+    });
 
   function handleAddLiquidity() {
     console.log('Add liquidity clicked');
@@ -152,12 +129,6 @@
       searchInput.focus();
     }
   }
-
-  // Calculate total portfolio value using token balances and USD values
-  $: totalPortfolioValue = processedTokens.reduce((total, token) => {
-    const tokenValue = (Number(token.balance || 0)) * (Number(token.metrics?.price || 0));
-    return total + tokenValue;
-  }, 0);
 
   // Update the helper function for match display
   function getMatchDisplay(match: SearchMatch): string {
@@ -250,7 +221,7 @@
             on:toggleFavorite={async ({ detail }) => {
               await favoriteStore.toggleFavorite(detail.canisterId);
               // Force a recalculation of processedTokens
-              processedTokens = [...processedTokens];
+              filteredTokens = [...filteredTokens];
             }}
           />
           {#if searchQuery && searchMatches[token.canister_id]?.type === 'canister'}

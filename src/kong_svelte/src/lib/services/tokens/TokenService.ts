@@ -47,7 +47,11 @@ export class TokenService {
         return cachedTokens as FE.Token[];
       }
 
-      return await this.fetchFromNetwork();
+      const tokens = await this.fetchFromNetwork();
+
+      // Cache the fetched tokens
+      kongDB.tokens.bulkPut(tokens);
+      return tokens;
     } catch (error) {
       console.error("Error fetching tokens:", error);
       return [];

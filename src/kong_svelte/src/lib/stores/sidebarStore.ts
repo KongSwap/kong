@@ -49,15 +49,21 @@ function createSidebarStore() {
         setFilterText: (filterText: string) => {
             update(state => ({ ...state, filterText }));
         },
+        open: () => {
+            update(state => ({ ...state, isOpen: true }));
+        },
+        close: () => {
+            update(state => ({ ...state, isOpen: false }));
+        },
+        toggleOpen: () => {
+            update(state => ({ ...state, isOpen: !state.isOpen }));
+        },
         collapse: async () => {
             update(state => ({ ...state, isExpanded: false, width: 527 }));
             // Wait for animations to complete
             await new Promise(resolve => setTimeout(resolve, 200));
             // Close the sidebar
             update(state => ({ ...state, isOpen: false }));
-        },
-        open: () => {
-            update(state => ({ ...state, isOpen: true }));
         }
     };
 }

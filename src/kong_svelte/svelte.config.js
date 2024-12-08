@@ -6,14 +6,11 @@ import autoprefixer from 'autoprefixer';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   kit: {
-    prerender: {
-      enabled: false,
-    },
     adapter: adapter({
       pages: "dist",
       assets: "dist",
       fallback: "index.html",
-      precompress: true,
+      precompress: false,
       strict: true,
     }),
     files: {
@@ -35,7 +32,16 @@ const config = {
         // otherwise fail the build
         throw new Error(message);
       },
-      handleMissingId: 'ignore'
+      handleMissingId: ({ id, path, referrers }) => {
+        // Ignore missing hash links for specific routes
+        if (id === 'swap' || id === 'pools' || id === 'stats' || id === 'earn') {
+          return;
+        }
+        // Otherwise, fail the build
+        throw new Error(
+          `Missing ID "${id}" for link in ${referrers.join(', ')} pointing to ${path}`
+        );
+      }
     },
   },
   preprocess: vitePreprocess({
@@ -47,7 +53,7 @@ const config = {
       ],
     },
   }),
-  onwarn: (warning, handler) => {    
+  onwarn: (warning, handler) => {
     if (warning.code.startsWith('a11y_')) {
       return;
     }

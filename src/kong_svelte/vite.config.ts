@@ -47,6 +47,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           drop_console: false,
         },
       },
+      modulePreload: false 
     },
     optimizeDeps: {
       esbuildOptions: {
@@ -105,20 +106,20 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           ]
         }
       }),
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 5200,
-        algorithm: 'gzip',
-        ext: '.gz',
-      }),
-      viteCompression({
-        verbose: true,
-        disable: false,
-        threshold: 5200,
-        algorithm: 'brotliCompress',
-        ext: '.br',
-      }),
+      // viteCompression({
+      //   verbose: true,
+      //   disable: false,
+      //   threshold: 5200,
+      //   algorithm: 'gzip',
+      //   ext: '.gz',
+      // }),
+      // viteCompression({
+      //   verbose: true,
+      //   disable: false,
+      //   threshold: 5200,
+      //   algorithm: 'brotliCompress',
+      //   ext: '.br',
+      // }),
     ],
     resolve: {
       alias: [
