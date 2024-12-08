@@ -32,18 +32,6 @@
     }
   }
 
-  function handleSendClick(e: MouseEvent) {
-    e.stopPropagation();
-    showMenu = false;
-    dispatch('send', { token });
-  }
-
-  function handleReceiveClick(e: MouseEvent) {
-    e.stopPropagation();
-    showMenu = false;
-    dispatch('receive', { token });
-  }
-
   function toggleMenu(e: MouseEvent) {
     e.stopPropagation();
     showDetails = true;

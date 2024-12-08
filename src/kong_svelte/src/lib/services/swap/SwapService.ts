@@ -344,10 +344,22 @@ export class SwapService {
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
       `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
-      10000, // 10 seconds for swap confirmation messages
+      10000,
     );
 
     this.pollingInterval = setInterval(async () => {
+      if (attempts >= this.MAX_ATTEMPTS) {
+        this.stopPolling();
+        swapStatusStore.updateSwap(swapId, {
+          status: "Timeout",
+          isProcessing: false,
+          error: "Swap timed out",
+        });
+        toastStore.error("Swap timed out");
+        toastStore.dismiss(toastId);
+        return;
+      }
+
       console.log(`SWAP MONITORING - POLLING ATTEMPT ${attempts}`);
       try {
         const status: RequestResponse = await this.requests([requestId]);
@@ -365,8 +377,9 @@ export class SwapService {
             toastStore.error(
               res.statuses.find((s) => s.includes("Failed")),
               8000,
-            ); // 8 seconds for error messages
+            );
             toastStore.dismiss(toastId);
+            return;
           }
 
           if ("Swap" in res.reply) {
@@ -378,6 +391,7 @@ export class SwapService {
             });
 
             if (swapStatus.status === "Success") {
+              this.stopPolling();
               const formattedPayAmount = SwapService.fromBigInt(
                 swapStatus.pay_amount,
                 getTokenDecimals(swapStatus.pay_symbol),
@@ -415,6 +429,7 @@ export class SwapService {
 
               if (!payToken || !receiveToken || !walletId) {
                 console.error("Missing token or wallet info for balance update");
+                toastStore.dismiss(toastId);
                 return;
               }
 
@@ -439,6 +454,7 @@ export class SwapService {
               });
 
               toastStore.dismiss(toastId);
+              return;
             } else if (swapStatus.status === "Failed") {
               this.stopPolling();
               swapStatusStore.updateSwap(swapId, {
@@ -448,19 +464,9 @@ export class SwapService {
               });
               toastStore.error("Swap failed");
               toastStore.dismiss(toastId);
+              return;
             }
           }
-        }
-
-        if (attempts >= this.MAX_ATTEMPTS) {
-          this.stopPolling();
-          swapStatusStore.updateSwap(swapId, {
-            status: "Timeout",
-            isProcessing: false,
-            error: "Swap timed out",
-          });
-          toastStore.error("Swap timed out");
-          toastStore.dismiss(toastId);
         }
 
         attempts++;
@@ -474,6 +480,7 @@ export class SwapService {
         });
         toastStore.error("Failed to monitor swap status");
         toastStore.dismiss(toastId);
+        return;
       }
     }, this.POLLING_INTERVAL);
   }

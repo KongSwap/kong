@@ -156,6 +156,17 @@
       searchQuery = "";
     }
   
+    function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
+      // Prevent default behavior to avoid any double-tap issues
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (otherPanelToken?.canister_id !== token.canister_id) {
+        handleSelect(token);
+        onClose();
+      }
+    }
+
     function handleClickOutside(event: MouseEvent) {
       if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
         onClose();
@@ -301,11 +312,8 @@
                     class="token-item"
                     class:selected={currentToken?.canister_id === token.canister_id}
                     class:disabled={otherPanelToken?.canister_id === token.canister_id}
-                    on:click={() => {
-                      if (otherPanelToken?.canister_id !== token.canister_id) {
-                        handleSelect(token);
-                      }
-                    }}
+                    on:click={(e) => handleTokenClick(e, token)}
+                    on:touchend|preventDefault={(e) => handleTokenClick(e, token)}
                   >
                     <div class="token-info">
                       <img
