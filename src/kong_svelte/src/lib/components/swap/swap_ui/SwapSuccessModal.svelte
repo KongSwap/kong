@@ -7,17 +7,23 @@
   import { settingsStore } from "$lib/services/settings/settingsStore";
 
   export let show = false;
-  export let payAmount: string;
-  export let payToken: FE.Token;
-  export let receiveAmount: string;
-  export let receiveToken: FE.Token;
+  export let payAmount: string = "0";
+  export let payToken: FE.Token | null = null;
+  export let receiveAmount: string = "0";
+  export let receiveToken: FE.Token | null = null;
   export let onClose: () => void;
-  export let principalId: string;
+  export let principalId: string = "";
 
   let showCopiedToast = false;
 
+  // Validate tokens are defined
+  $: isValid = payToken && receiveToken && 
+               typeof payToken.decimals === 'number' && 
+               typeof receiveToken.decimals === 'number' &&
+               payAmount && receiveAmount;
+
   // Play sound effect when modal opens
-  $: if (show && $settingsStore.sound_enabled) {
+  $: if (show && isValid && $settingsStore.sound_enabled) {
     const audio = new Audio(coinReceivedSound);
     audio.play();
   }
@@ -27,6 +33,8 @@
   }
 
   async function copyTradeDetails() {
+    if (!isValid) return;
+
     const formattedPaidAmount = formatTokenAmount(payAmount, payToken.decimals).toString();
     const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
 
@@ -49,7 +57,7 @@
   });
 </script>
 
-{#if show}
+{#if show && isValid}
   <div
     class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center"
     transition:fade={{ duration: 300 }}

@@ -61,8 +61,8 @@ BigNumber.config({
 
 export class SwapService {
   private static pollingInterval: ReturnType<typeof setInterval> | null = null;
-  private static readonly POLLING_INTERVAL = 500; // 1 second
-  private static readonly MAX_ATTEMPTS = 30; // 1 minute maximum
+  private static readonly POLLING_INTERVAL = 350; // .3 second
+  private static readonly MAX_ATTEMPTS = 40; 
 
   public static toBigInt(amount: string, decimals: number): bigint {
     if (!amount || isNaN(Number(amount.replace(/_/g, '')))) return BigInt(0);
@@ -232,7 +232,6 @@ export class SwapService {
     try {
       await Promise.all([
         requireWalletConnection(),
-        tokenStore.loadBalances(auth?.pnp?.account?.owner),
       ]);
       const tokens = get(tokenStore).tokens;
       const payToken = tokens.find(
@@ -258,14 +257,13 @@ export class SwapService {
         "Processing transfer/approval for amount:",
         payAmount.toString(),
       );
+
+      let txId: bigint | false;
+      let approvalId: bigint | false;
       const toastId = toastStore.info(
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
         0,
       );
-
-      let txId: bigint | false;
-      let approvalId: bigint | false;
-
       if (payToken.icrc2) {
         const requiredAllowance = payAmount;
         console.log("CHECKING AND REQUESTING IC2 ALLOWANCES, REQUIRED ALLOWANCE", requiredAllowance);
@@ -325,20 +323,6 @@ export class SwapService {
         console.error("Swap error:", result.Err);
         return false;
       }
-
-      await Promise.all([
-        tokenStore.loadBalance(
-          tokens.find((t) => t.address === params.receiveToken.address),
-          auth?.pnp?.account?.owner?.toString(),
-          true,
-        ),
-        tokenStore.loadBalance(
-          tokens.find((t) => t.address === params.payToken.address),
-          auth?.pnp?.account?.owner?.toString(),
-          true,
-        ),
-      ]);
-
       return result.Ok;
     } catch (error) {
       swapStatusStore.updateSwap(swapId, {
@@ -394,14 +378,6 @@ export class SwapService {
             });
 
             if (swapStatus.status === "Success") {
-              swapStatusStore.updateSwap(swapId, {
-                status: "Success",
-                isProcessing: false,
-                shouldRefreshQuote: true,
-                lastQuote: null,
-              });
-              this.stopPolling();
-
               const formattedPayAmount = SwapService.fromBigInt(
                 swapStatus.pay_amount,
                 getTokenDecimals(swapStatus.pay_symbol),
@@ -416,20 +392,51 @@ export class SwapService {
               const token1 = get(tokenStore).tokens.find(
                 (t) => t.symbol === swapStatus.receive_symbol,
               );
-              toastStore.success(
-                `Successfully swapped ${formatTokenAmount(formattedPayAmount, token0?.decimals)} ${token0?.symbol} to ${formatTokenAmount(formattedReceiveAmount, token1?.decimals)} ${token1?.symbol}!`,
-              );
-              // Dispatch custom event with swap details
-              window.dispatchEvent(
-                new CustomEvent("swapSuccess", {
-                  detail: {
-                    payAmount: formattedPayAmount,
-                    payToken: swapStatus.pay_symbol,
-                    receiveAmount: formattedReceiveAmount,
-                    receiveToken: swapStatus.receive_symbol,
-                  },
-                }),
-              );
+
+              // Update swap status with complete details
+              swapStatusStore.updateSwap(swapId, {
+                status: "Success",
+                isProcessing: false,
+                shouldRefreshQuote: true,
+                lastQuote: null,
+                details: {
+                  payAmount: formattedPayAmount,
+                  payToken: token0,
+                  receiveAmount: formattedReceiveAmount,
+                  receiveToken: token1,
+                }
+              });
+
+              // Load updated balances immediately and after delays
+              const tokens = get(tokenStore).tokens;
+              const payToken = tokens.find((t) => t.symbol === swapStatus.pay_symbol);
+              const receiveToken = tokens.find((t) => t.symbol === swapStatus.receive_symbol);
+              const walletId = auth?.pnp?.account?.owner?.toString();
+
+              if (!payToken || !receiveToken || !walletId) {
+                console.error("Missing token or wallet info for balance update");
+                return;
+              }
+
+              const updateBalances = async () => {
+                try {
+                  await Promise.all([
+                    tokenStore.loadBalance(receiveToken, walletId, true),
+                    tokenStore.loadBalance(payToken, walletId, true)
+                  ]);
+                } catch (error) {
+                  console.error("Error updating balances:", error);
+                }
+              };
+
+              // Update immediately
+              await updateBalances();
+
+              // Schedule updates with increasing delays
+              const delays = [500, 1000, 2000, 3000, 5000];
+              delays.forEach(delay => {
+                setTimeout(updateBalances, delay);
+              });
 
               toastStore.dismiss(toastId);
             } else if (swapStatus.status === "Failed") {

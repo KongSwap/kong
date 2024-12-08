@@ -1,16 +1,11 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
-  import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
-  import { browser } from "$app/environment";
   import { t } from "$lib/services/translations";
   import { auth } from "$lib/services/auth";
   import { fade, slide } from "svelte/transition";
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
-  let isModalOpen: boolean;
   export let isMobile: boolean;
   export let onTabChange: (tab: "swap" | "earn" | "stats") => void;
   export let onConnect: () => void;
@@ -19,10 +14,16 @@
   let isSpinning = false;
   let navOpen = false;
   const tabs = ["swap", "earn", "stats"] as const;
-  type TabType = typeof tabs[number];
 
   function handleNavClose() {
     navOpen = false;
+  }
+
+  function handleSettingsClick() {
+    onOpenSettings();
+    if (isMobile) {
+      handleNavClose();
+    }
   }
 </script>
 
@@ -104,7 +105,7 @@
         <button
           class="nav-link settings-btn"
           class:spinning={isSpinning}
-          on:click={onOpenSettings}
+          on:click={handleSettingsClick}
           aria-label="Settings"
         >
           <div class="btn-content uppercase">
@@ -199,78 +200,24 @@
             href="/{tab}"
             data-sveltekit-preload-data
             class="mobile-nav-btn {activeTab === tab ? 'active' : ''}"
-            on:click={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              
-              const ripple = document.createElement('div');
-              ripple.style.left = `${x}px`;
-              ripple.style.top = `${y}px`;
-              ripple.className = 'ripple';
-              
-              e.currentTarget.appendChild(ripple);
-              
-              setTimeout(() => {
-                ripple.remove();
-                onTabChange(tab as TabType);
-                handleNavClose();
-              }, 600);
+            on:click={() => {
+              onTabChange(tab);
+              handleNavClose();
             }}
           >
             {tab.toUpperCase()}
-            <svg
-              class="mobile-nav-arrow"
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M9 18l6-6-6-6" />
-            </svg>
           </a>
         {/each}
 
-        <a
-          href="/settings"
-          data-sveltekit-preload-data
+        <button
           class="mobile-nav-btn"
-          on:click={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            const ripple = document.createElement('div');
-            ripple.style.left = `${x}px`;
-            ripple.style.top = `${y}px`;
-            ripple.className = 'ripple';
-            
-            e.currentTarget.appendChild(ripple);
-            
-            setTimeout(() => {
-              ripple.remove();
-              onOpenSettings();
-              handleNavClose();
-            }, 600);
+          on:click={() => {
+            onOpenSettings();
+            handleNavClose();
           }}
         >
           SETTINGS
-          <svg
-            class="mobile-nav-arrow"
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </a>
+        </button>
       </nav>
 
       <div class="mobile-menu-footer">
@@ -346,7 +293,7 @@
   }
   .right-section {
     justify-content: flex-end;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   /* Navigation */
@@ -445,7 +392,7 @@
   .right-section {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   @keyframes spin {
@@ -546,15 +493,18 @@
     color: white;
     border-radius: 0.75rem;
     transition: all 0.2s;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .mobile-icon-btn:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .mobile-icon-btn:active {
+    transform: translateY(0);
   }
 
   /* Mobile Menu */

@@ -6,7 +6,6 @@
   import ModalContainer from "$lib/components/common/ModalContainer.svelte";
   import AccountDetails from "$lib/components/sidebar/AccountDetails.svelte";
   import { browser } from "$app/environment";
-  import { updateWorkerService } from "$lib/services/updateWorkerService";
   import { fade } from "svelte/transition";
    
   let { page, children } = $props<{
@@ -18,8 +17,6 @@
   let scrollY = $state(0);
   let mouseX = $state(0);
   let mouseY = $state(0);
-  let skylineUrl = $state("");
-  let skylineError = $state(false);
 
   let background = $derived.by(() => {
     if ($themeStore === 'modern') {
@@ -42,14 +39,6 @@
   });
 
   onMount(async () => {
-    try {
-      skylineUrl = await updateWorkerService.preloadAsset("/backgrounds/skyline.svg");
-    } catch (error) {
-      console.error("Failed to preload skyline.svg in PageWrapper:", error);
-      skylineError = true;
-      skylineUrl = "/backgrounds/fallback-skyline.svg";
-    }
-
     if (browser) {
       window.addEventListener('scroll', () => {
         scrollY = window.scrollY;
@@ -104,16 +93,12 @@
     </div>
 
     <div class="skyline-wrapper">
-      {#if !skylineError}
         <img 
-          src={skylineUrl} 
+          src="/backgrounds/skyline.svg" 
           alt="Skyline" 
           class="skyline" 
           style="transform: translate({mouseX * 0.05}px, {mouseY * 0.05}px)"
         />
-      {:else}
-        <div class="skyline-placeholder"></div>
-      {/if}
     </div>
   {/if}
   

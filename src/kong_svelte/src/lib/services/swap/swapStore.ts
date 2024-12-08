@@ -35,6 +35,12 @@ interface SwapStatus {
     receive_symbol?: string;
     pay_amount?: bigint;
     receive_amount?: bigint;
+    details?: {
+        payAmount: string;
+        payToken: FE.Token;
+        receiveAmount: string;
+        receiveToken: FE.Token;
+    };
 }
 
 function createSwapStatusStore() {
@@ -108,6 +114,12 @@ function createSwapStatusStore() {
                 lp: string | number | BigNumber;
                 token?: string;
             };
+            details: {
+                payAmount: string;
+                payToken: FE.Token;
+                receiveAmount: string;
+                receiveToken: FE.Token;
+            };
         }>) => {
             update(swaps => {
                 const currentSwap = swaps[swapId];
@@ -148,6 +160,7 @@ function createSwapStatusStore() {
                 if (updates.receiveDecimals !== undefined) updatedSwap.receiveDecimals = updates.receiveDecimals;
                 if (updates.payAmount !== undefined) updatedSwap.lastPayAmount = new BigNumber(updates.payAmount);
                 if (updates.receiveAmount !== undefined) updatedSwap.expectedReceiveAmount = new BigNumber(updates.receiveAmount);
+                if (updates.details !== undefined) updatedSwap.details = updates.details;
 
                 return {
                     ...swaps,
@@ -203,4 +216,8 @@ function createSwapStatusStore() {
     };
 }
 
-export const swapStatusStore = createSwapStatusStore(); 
+// Create and export the store
+export const swapStatusStore = createSwapStatusStore();
+
+// Export types for use in other files
+export type { SwapStatus };

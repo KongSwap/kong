@@ -215,55 +215,6 @@ class AssetCacheService {
     }
   }
 
-  async preloadAssets(urls: string[]): Promise<void> {
-    if (!browser || !this.db) {
-      return;
-    }
-
-    await this.ensureDbReady();
-
-    try {
-      // Filter out base64 images, blob URLs, and duplicates
-      const uniqueUrls = [...new Set(urls.filter(url => !this.shouldSkipCaching(url)))];
-      const currentTime = Date.now();
-      const existingAssets = await this.db.assets
-        .where('id')
-        .anyOf(uniqueUrls)
-        .and(asset => currentTime - asset.timestamp < this.CACHE_DURATION)
-        .toArray();
-
-      const existingUrls = new Set(existingAssets.map(asset => asset.id));
-      const urlsToLoad = uniqueUrls.filter(url => !existingUrls.has(url));
-
-      if (urlsToLoad.length > 0) {
-        const loadPromises = urlsToLoad.map(async url => {
-          try {
-            const fullUrl = this.getFullUrl(url);
-            const response = await fetch(fullUrl);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch asset: ${fullUrl}`);
-            }
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            
-            await this.db!.assets.put({
-              id: url,
-              blob,
-              timestamp: Date.now(),
-              objectUrl
-            });
-          } catch (error) {
-            console.error('Error loading asset:', url, error);
-          }
-        });
-
-        await Promise.allSettled(loadPromises);
-      }
-    } catch (error) {
-      console.error('Error preloading assets:', error);
-    }
-  }
-
   async areAssetsCached(urls: string[]): Promise<boolean> {
     if (!browser || !this.db) {
       return false;

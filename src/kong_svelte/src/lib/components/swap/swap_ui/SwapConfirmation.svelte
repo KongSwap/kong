@@ -99,17 +99,71 @@
     if (isLoading || isCountingDown) return;
 
     isLoading = true;
+    isCountingDown = true;
     error = "";
-
+    countdown = 2;
+    
     try {
-      const success = await onConfirm();
-      if (!success) {
+      // Run countdown and swap execution in parallel
+      const [, success] = await Promise.all([
+        // Countdown Promise
+        new Promise<void>((resolve) => {
+          countdownInterval = setInterval(() => {
+            if (countdown > 0) {
+              countdown--;
+            } else {
+              clearInterval(countdownInterval);
+              countdownInterval = undefined;
+              isCountingDown = false;
+              swapState.update(state => ({
+                ...state,
+                showConfirmation: false
+              }));
+              onClose?.();
+              resolve();
+            }
+          }, 1000);
+        }),
+        // Swap execution Promise
+        onConfirm()
+      ]);
+      
+      if (success) {
+        swapState.update(state => ({
+          ...state,
+          isProcessing: false,
+          error: null,
+          showSuccessModal: true
+        }));
+      } else {
         error = "Swap failed";
+        swapState.update(state => ({
+          ...state,
+          isProcessing: false,
+          error: "Swap failed"
+        }));
       }
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Swap failed";
+    } catch (e) {
+      error = e.message || "An error occurred";
+      swapState.update(state => ({
+        ...state,
+        isProcessing: false,
+        error: e.message || "An error occurred"
+      }));
+    } finally {
       isLoading = false;
     }
+  }
+
+  function handleClose() {
+    cleanComponent();
+    swapState.update(state => ({
+      ...state,
+      isProcessing: false,
+      showConfirmation: false,
+      error: null
+    }));
+    onClose?.();
   }
 
   onDestroy(() => {
@@ -156,28 +210,14 @@
   }
 
   function cleanComponent() {
-    isLoading = false;
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = undefined;
+    }
     isCountingDown = false;
     countdown = 2;
-    initialQuoteLoaded = false;
-    initialQuoteData = {
-      routingPath: [],
-      gasFees: [],
-      lpFees: [],
-      payToken: payToken,
-      receiveToken: receiveToken,
-    };
-  }
-
-  function handleClose() {
-    cleanComponent();
-    swapState.update(state => ({
-      ...state,
-      isProcessing: false,
-      showConfirmation: false,
-      error: null
-    }));
-    onClose();
+    isLoading = false;
+    error = "";
   }
 </script>
 
@@ -206,8 +246,6 @@
           routingPath={initialQuoteData.routingPath}
           gasFees={initialQuoteData.gasFees}
           lpFees={initialQuoteData.lpFees}
-          payToken={initialQuoteData.payToken}
-          {receiveToken}
         />
         <FeesSection
           totalGasFee={totalGasFee}
@@ -226,7 +264,13 @@
         >
           <div class="button-content">
             <span class="button-text">
-              {isLoading ? "Processing..." : "Confirm Swap"}
+              {#if isCountingDown}
+                Confirming in {countdown}...
+              {:else if isLoading}
+                Processing...
+              {:else}
+                Confirm Swap
+              {/if}
             </span>
             {#if isLoading}
               <div class="loading-spinner"></div>

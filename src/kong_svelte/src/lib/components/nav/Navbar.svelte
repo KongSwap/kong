@@ -67,7 +67,6 @@
       <ModernNavbar
         {activeTab}
         {sidebarOpen}
-        {isModalOpen}
         {isMobile}
         onTabChange={handleTabChange}
         onConnect={handleConnect}

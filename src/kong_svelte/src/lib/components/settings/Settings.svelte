@@ -3,16 +3,14 @@
   import { settingsStore } from '$lib/services/settings/settingsStore';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
-  import { themeStore } from '$lib/stores/themeStore';
   import { kongDB } from '$lib/services/db';
-  import Dexie from 'dexie';
   import { assetCache } from '$lib/services/assetCache';
   import { onMount, onDestroy } from "svelte";
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
 
-  let activeTab: 'false' = 'settings';
+  let activeTab: 'settings' = 'settings';
   let soundEnabled = true;
   let settingsSubscription: () => void;
   let slippageValue: number = 2.0;

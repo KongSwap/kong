@@ -10,13 +10,12 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
   import { auth } from "$lib/services/auth";
+  import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
 
   let pageTitle = $state(
     process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]",
   );
   let { children } = $props();
-  let currentPath = $state($page.url.pathname);
-
   let initializationPromise: Promise<void> | null = null;
 
   async function init() {
@@ -46,23 +45,19 @@
     appLoader.destroy();
     updateWorkerService.destroy();
   });
-
-  $effect(() => {
-    currentPath = $page.url.pathname;
-  });
 </script>
 
 <svelte:head>
   <title>{pageTitle} - {$t("common.browserSubtitle")}</title>
 </svelte:head>
 
-<div class="tv-wrapper app-container">
-  <PageWrapper page={currentPath}>
+<div class="app-container">
+  <PageWrapper page={$page.url.pathname}>
     <div class="nav-container">
       <Navbar />
     </div>
     <main class="content-container">
-      {#key currentPath}
+      {#key $page.url.pathname}
         <div class="w-full h-full" in:fade={{ duration: 250 }}>
           {@render children?.()}
         </div>
@@ -70,6 +65,7 @@
     </main>
   </PageWrapper>
   <Toast />
+  <AddToHomeScreen />
 </div>
 
 <style scoped lang="postcss">
@@ -95,21 +91,8 @@
     width: 100%;
   }
 
-  .tv-wrapper {
-    position: relative;
-    width: 100%;
-    min-height: 100vh;
-    overflow: hidden;
-  }
-
   .app-container {
-    @apply flex flex-col min-h-screen;
+    @apply flex flex-col min-h-screen w-full;
     transform-origin: center;
-    will-change: transform;
-  }
-
-  .no-transition {
-    animation: none !important;
-    transition: none !important;
   }
 </style>

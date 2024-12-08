@@ -13,6 +13,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
+  import {onMount} from "svelte";
 
   // Props with proper TypeScript types
   export let title: string;
@@ -37,7 +38,6 @@
   // State management
   let inputElement: HTMLInputElement | null = null;
   let inputFocused = false;
-  let formattedUsdValue = "0.00";
   let calculatedUsdValue = 0;
   let previousValue = "0";
 
@@ -108,32 +108,45 @@
   }
 
   // Balance calculations
-  $: formattedBalance = calculateFormattedBalance();
+  let formattedBalance = "0";
+  let displayBalance = "0";
 
-  function calculateFormattedBalance() {
-    if (!tokenInfo) return "0";
+  // Watch for token and balance changes
+  $: {
+    if (tokenInfo) {
+      const balance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
+      if (balance !== undefined) {
+        displayBalance = formatWithCommas(formatTokenAmount(
+          balance.toString(),
+          decimals,
+        ));
+        formattedBalance = calculateAvailableBalance(balance);
+      } else {
+        // Load balance if not available
+        tokenStore.loadBalance(tokenInfo, "", true);
+      }
+    }
+  }
 
-    const balance =
-      $tokenStore.balances[tokenInfo?.canister_id]?.in_tokens ||
-      tokenStore.loadBalance(
-        tokenInfo,
-        "",
-        false,
+  function calculateAvailableBalance(balance: bigint): string {
+    if (!balance) return "0";
+
+    try {
+      const feesInTokens = tokenInfo?.fee
+        ? BigInt(tokenInfo.fee.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
+        : 0n;
+
+      return formatTokenAmount(
+        new BigNumber(balance.toString())
+          .minus(fromTokenDecimals(amount || "0", decimals))
+          .minus(feesInTokens.toString())
+          .toString(),
+        decimals,
       );
-
-    const feesInTokens = tokenInfo?.fee
-      ? BigInt(tokenInfo.fee.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
-      : 0n;
-
-    if (balance.toString() === "0") return "0";
-
-    return formatTokenAmount(
-      new BigNumber(balance.toString())
-        .minus(fromTokenDecimals(amount || "0", decimals))
-        .minus(feesInTokens.toString())
-        .toString(),
-      decimals,
-    );
+    } catch (error) {
+      console.error("Error calculating available balance:", error);
+      return "0";
+    }
   }
 
   // Animation and value updates
@@ -396,12 +409,7 @@
             class:clickable={title === "You Pay" && !disabled}
             on:click={handleMaxClick}
           >
-            {tokenInfo && formatWithCommas(formatTokenAmount(
-              $tokenStore.balances[
-                tokenInfo?.canister_id
-              ]?.in_tokens?.toString() || "0",
-              decimals,
-            ))}
+            {displayBalance}
             {token?.symbol}
           </button>
         </div>

@@ -21,8 +21,15 @@
     dispatch('toggleFavorite', { canisterId: token.canister_id });
   }
 
-  function handleRowClick() {
-    showDetails = true;
+  function handleRowClick(e: MouseEvent | TouchEvent) {
+    // For touch events, prevent the hover state
+    if (e.type === 'touchstart') {
+      isHovered = false;
+      showDetails = true;
+      e.preventDefault(); // Prevent mouse events from firing
+    } else if (e.type === 'click') {
+      showDetails = true;
+    }
   }
 
   function handleSendClick(e: MouseEvent) {
@@ -61,13 +68,14 @@
     in:fly={{ y: 20, duration: 400, delay: 200 }}
     out:fade={{ duration: 200 }}
     on:click={handleRowClick}
+    on:touchstart={handleRowClick}
     on:mouseenter={() => isHovered = true}
     on:mouseleave={() => isHovered = false}
     on:mousedown={() => isPressed = true}
     on:mouseup={() => isPressed = false}
     role="button"
     tabindex="0"
-    on:keydown={e => e.key === 'Enter' && handleRowClick()}
+    on:keydown={e => e.key === 'Enter' && handleRowClick(e)}
   >
     <div class="token-content">
       <div class="token-left">

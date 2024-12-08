@@ -33,14 +33,8 @@ export interface BatchPreloadResult {
 export type UpdateType = 'token' | 'pool' | 'swapActivity' | 'price';
 
 export interface WorkerApi {
-  preloadAsset(url: string): Promise<string>;
   startUpdates(): Promise<void>;
   stopUpdates(): Promise<void>;
-  preloadAssets(assets: string[]): Promise<{
-    loaded: number;
-    total: number;
-    errors: string[];
-  }>;
   setTokens(tokens: FE.Token[]): Promise<void>;
 }
 
@@ -93,7 +87,7 @@ class WorkerImpl implements WorkerApi {
         context: 'token_logos'
       });
 
-      const BATCH_SIZE = 20;
+      const BATCH_SIZE = 30;
       const batches = [];
       for (let i = 0; i < this.tokens.length; i += BATCH_SIZE) {
         batches.push(this.tokens.slice(i, i + BATCH_SIZE));
@@ -143,119 +137,6 @@ class WorkerImpl implements WorkerApi {
     } catch (error) {
       console.error('Worker: Error loading token logos:', error);
       return logoMap;
-    }
-  }
-
-  async preloadAssets(assets: string[]): Promise<{
-    loaded: number;
-    total: number;
-    errors: string[];
-  }> {    
-    // Reset loading state
-    this.loadingState = {
-      assetsLoaded: 0,
-      totalAssets: assets.length,
-      errors: []
-    };
-
-    // Filter out already loaded assets and invalid URLs
-    const assetsToLoad = assets.filter(url => 
-      !this.preloadedAssets.has(url) && 
-      !url.startsWith("data:") && 
-      !url.startsWith("blob:")
-    );
-
-    if (assetsToLoad.length === 0) {
-      self.postMessage({
-        type: 'LOADING_PROGRESS',
-        loaded: assets.length,
-        total: assets.length,
-        context: 'assets',
-        complete: true
-      });
-      return {
-        loaded: assets.length,
-        total: assets.length,
-        errors: []
-      };
-    }
-
-    const BATCH_SIZE = 3; // Reduced batch size for better reliability
-    const TIMEOUT = 15000; // Increased timeout
-    let completedAssets = 0;
-
-    try {
-      for (let i = 0; i < assetsToLoad.length; i += BATCH_SIZE) {
-        const batch = assetsToLoad.slice(i, i + BATCH_SIZE);
-        
-        await Promise.all(
-          batch.map(async (url) => {
-            try {
-              await Promise.race([
-                this.preloadAsset(url),
-                new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error('Timeout')), TIMEOUT)
-                )
-              ]);
-              
-              completedAssets++;
-              this.loadingState.assetsLoaded++;
-              
-              // Report progress
-              self.postMessage({
-                type: 'LOADING_PROGRESS',
-                loaded: completedAssets,
-                total: assetsToLoad.length,
-                context: 'assets',
-                complete: false
-              });
-            } catch (error) {
-              const errorMessage = `Failed to load ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-              console.error(`Worker: ${errorMessage}`);
-              this.loadingState.errors.push(errorMessage);
-              completedAssets++;
-            }
-          })
-        );
-      }
-
-      // Final progress update
-      self.postMessage({
-        type: 'LOADING_PROGRESS',
-        loaded: this.loadingState.assetsLoaded,
-        total: assetsToLoad.length,
-        context: 'assets',
-        complete: true
-      });
-
-      return {
-        loaded: this.loadingState.assetsLoaded,
-        total: assets.length,
-        errors: this.loadingState.errors
-      };
-
-    } catch (error) {
-      console.error('Worker: Asset preloading failed:', error);
-      throw error;
-    }
-  }
-
-  public async preloadAsset(url: string): Promise<string> {
-    if (this.preloadedAssets.has(url)) {
-      return url;
-    }
-
-    if (url.startsWith("data:") || url.startsWith("blob:")) {
-      this.preloadedAssets.add(url);
-      return url;
-    }
-
-    try {
-   
-      return url;
-    } catch (error) {
-      console.error(`Worker: Failed to load ${url}:`, error);
-      return url; // Return original URL as fallback
     }
   }
 
