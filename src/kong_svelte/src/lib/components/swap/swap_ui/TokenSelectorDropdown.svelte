@@ -157,8 +157,7 @@
     }
   
     function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
-      // Prevent default behavior to avoid any double-tap issues
-      e.preventDefault();
+      // Only stop propagation, don't prevent default to allow scrolling
       e.stopPropagation();
       
       if (otherPanelToken?.canister_id !== token.canister_id) {
@@ -313,7 +312,6 @@
                     class:selected={currentToken?.canister_id === token.canister_id}
                     class:disabled={otherPanelToken?.canister_id === token.canister_id}
                     on:click={(e) => handleTokenClick(e, token)}
-                    on:touchend|preventDefault={(e) => handleTokenClick(e, token)}
                   >
                     <div class="token-info">
                       <img
@@ -460,8 +458,9 @@
   .scrollable-section {
     flex: 1;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #2a2d3d transparent;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
   }
 
   .scrollable-section::-webkit-scrollbar {
@@ -640,16 +639,24 @@
   }
 
   .tokens-container {
-    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    touch-action: pan-y;
   }
 
   .token-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: var(--color-background-secondary);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    touch-action: pan-y;
+    user-select: none;
   }
 
   .token-item:hover {
