@@ -5,7 +5,6 @@ import { kongDB } from "../db";
 export const fetchTokens = async (): Promise<FE.Token[]> => {
   const response = await fetch(`${INDEXER_URL}/api/tokens`);
   const data = await response.json();
-  console.log("DATA", data);
   kongDB.indexedTokens.bulkPut(data);
   return data;
 };

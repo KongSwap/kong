@@ -6,6 +6,7 @@ interface SidebarState {
     sortBy: 'name' | 'balance' | 'value' | 'price';
     sortDirection: 'asc' | 'desc';
     filterText: string;
+    isOpen: boolean;
 }
 
 function createSidebarStore() {
@@ -14,7 +15,8 @@ function createSidebarStore() {
         width: 527,
         sortBy: 'value',
         sortDirection: 'desc',
-        filterText: ''
+        filterText: '',
+        isOpen: false
     });
 
     const isExpanded = derived(
@@ -47,8 +49,15 @@ function createSidebarStore() {
         setFilterText: (filterText: string) => {
             update(state => ({ ...state, filterText }));
         },
-        collapse: () => {
+        collapse: async () => {
             update(state => ({ ...state, isExpanded: false, width: 527 }));
+            // Wait for animations to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+            // Close the sidebar
+            update(state => ({ ...state, isOpen: false }));
+        },
+        open: () => {
+            update(state => ({ ...state, isOpen: true }));
         }
     };
 }

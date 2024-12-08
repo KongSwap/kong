@@ -1,11 +1,7 @@
 // Worker to handle periodic updates for tokens, pools, and swaps
 
 import * as Comlink from 'comlink';
-import { get } from 'svelte/store';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { DEFAULT_LOGOS } from '$lib/services/tokens/tokenLogos';
-import { kongDB } from '$lib/services/db';
-import type { KongImage } from '$lib/services/tokens/types';
 
 interface AssetLoadingState {
   assetsLoaded: number;
@@ -77,7 +73,6 @@ class WorkerImpl implements WorkerApi {
   private tokens: FE.Token[] = []; // Store tokens received from main thread
 
   constructor() {
-    console.log('Worker: Initializing WorkerImpl...');
   }
 
   async setTokens(tokens: FE.Token[]): Promise<void> {
@@ -88,7 +83,6 @@ class WorkerImpl implements WorkerApi {
     const logoMap: Record<string, string> = { ...DEFAULT_LOGOS };
     try {
       if (!this.tokens.length) {
-        console.log('Worker: No tokens available for logo loading');
         return logoMap;
       }
       // Post initial progress
@@ -99,7 +93,7 @@ class WorkerImpl implements WorkerApi {
         context: 'token_logos'
       });
 
-      const BATCH_SIZE = 5;
+      const BATCH_SIZE = 20;
       const batches = [];
       for (let i = 0; i < this.tokens.length; i += BATCH_SIZE) {
         batches.push(this.tokens.slice(i, i + BATCH_SIZE));
@@ -152,53 +146,11 @@ class WorkerImpl implements WorkerApi {
     }
   }
 
-  private async getCachedLogo(canisterId: string): Promise<string | null> {
-    // Implement caching logic here if needed
-    return kongDB.images.get({ canister_id: canisterId }).then((image) => {
-      if (image) {
-        return image.image_url;
-      }
-      return null;
-    });
-  }
-
-  private async cacheLogo(canisterId: string, logoUrl: string): Promise<void> {
-    // Implement caching logic here if needed
-    kongDB.images.put({ canister_id: canisterId, image_url: logoUrl } as KongImage);
-  }
-
-  private async waitForTokens(): Promise<void> {
-    const tokens = get(tokenStore);
-    if (tokens?.tokens?.length) {
-      console.log('Worker: Tokens already loaded:', tokens.tokens.length);
-      return;
-    }
-
-    console.log('Worker: Waiting for tokens to load...');
-    return new Promise<void>((resolve) => {
-      const unsubscribe = tokenStore.subscribe(value => {
-        if (value?.tokens?.length) {
-          console.log('Worker: Tokens loaded:', value.tokens.length);
-          unsubscribe();
-          resolve();
-        }
-      });
-    });
-  }
-
-  private async getTokens() {
-    await this.waitForTokens();
-    const tokens = get(tokenStore);
-    return tokens.tokens;
-  }
-
   async preloadAssets(assets: string[]): Promise<{
     loaded: number;
     total: number;
     errors: string[];
-  }> {
-    console.log(`Worker: Starting preload of ${assets.length} assets...`);
-    
+  }> {    
     // Reset loading state
     this.loadingState = {
       assetsLoaded: 0,
@@ -288,45 +240,6 @@ class WorkerImpl implements WorkerApi {
     }
   }
 
-  private async verifyAssetResponse(response: Response, url: string): Promise<Blob> {
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.statusText}`);
-    }
-    
-    const blob = await response.blob();
-    
-    // For SVGs, verify the content
-    if (url.endsWith('.svg')) {
-      const text = await blob.text();
-      if (!text.includes('<svg')) {
-        throw new Error('Invalid SVG content');
-      }
-      return blob;
-    }
-    
-    // For images, just verify the blob type
-    if (blob.type.startsWith('image/')) {
-      // In a worker we can't use Image, so we'll just verify the blob type
-      return blob;
-    }
-    
-    return blob;
-  }
-
-  private async fetchWithRetry(url: string, retries = 3): Promise<Response> {
-    for (let i = 0; i < retries; i++) {
-      try {
-        const response = await fetch(url);
-        if (response.ok) return response;
-      } catch (error) {
-        if (i === retries - 1) throw error;
-        // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-      }
-    }
-    throw new Error(`Failed to fetch after ${retries} retries`);
-  }
-
   public async preloadAsset(url: string): Promise<string> {
     if (this.preloadedAssets.has(url)) {
       return url;
@@ -347,7 +260,6 @@ class WorkerImpl implements WorkerApi {
   }
 
   async startUpdates(): Promise<void> {
-    console.log('Worker: Starting updates...');
     try {
       // Start existing update intervals
       this.startTokenUpdates();

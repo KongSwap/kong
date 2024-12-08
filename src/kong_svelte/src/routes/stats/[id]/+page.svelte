@@ -75,13 +75,13 @@
       }
 
       const data = await response.json();
-      console.log('Response:', data);
+      console.log("Response:", data);
       const newTransactions = data.transactions || [];
 
       if (isRefresh) {
         // Compare new transactions with existing ones and highlight differences
-        const existingIds = new Set(transactions.map(t => t.tx_id));
-        const updatedTransactions = newTransactions.map(tx => {
+        const existingIds = new Set(transactions.map((t) => t.tx_id));
+        const updatedTransactions = newTransactions.map((tx) => {
           if (!existingIds.has(tx.tx_id)) {
             newTransactionIds.add(tx.tx_id);
             clearTransactionHighlight(tx.tx_id);
@@ -167,7 +167,7 @@
   $effect(() => {
     const foundPool = $poolStore?.pools?.find((p) => {
       if (!token?.canister_id || !ckusdtToken?.canister_id) return false;
-      
+
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
       const hasUSDT =
@@ -183,7 +183,7 @@
         ...foundPool,
         pool_id: String(foundPool.pool_id),
         tvl: String(foundPool.tvl),
-        lp_token_supply: String(foundPool.lp_token_supply)
+        lp_token_supply: String(foundPool.lp_token_supply),
       } as unknown as Pool;
     }
   });
@@ -286,10 +286,10 @@
           p.address_1 === token.canister_id,
       )
       .sort((a, b) => Number(b.tvl) - Number(a.tvl))
-      .map(p => ({
+      .map((p) => ({
         ...p,
         pool_id: String(p.pool_id),
-        tvl: String(p.tvl)
+        tvl: String(p.tvl),
       })) as unknown as Pool[];
 
     return {
@@ -322,44 +322,46 @@
   // Add derived value for user balances
   let userBalances = $state<FE.UserPoolBalance[]>([]);
   $effect(() => {
-    userBalances = ($userPoolBalances || []).map(balance => ({
-      ...balance,
-      balance: String(balance.balance)
-    }));
+    userBalances = ($userPoolBalances || [])
   });
 
   // Add derived store for market cap rank
   let marketCapRank = $state<number | null>(null);
   $effect(() => {
     if (!$formattedTokens) return;
-    const foundToken = $formattedTokens.find(t => 
-      t.address === $page.params.id || t.canister_id === $page.params.id
+    const foundToken = $formattedTokens.find(
+      (t) => t.address === $page.params.id || t.canister_id === $page.params.id,
     );
     if (!foundToken) {
       marketCapRank = null;
       return;
     }
     const sortedTokens = [...$formattedTokens].sort(
-      (a, b) => (b.metrics.market_cap || 0) - (a.metrics.market_cap || 0)
+      (a, b) => (Number(b.metrics.market_cap) || 0) - (Number(a.metrics.market_cap) || 0),
     );
-    const rank = sortedTokens.findIndex(t => t.canister_id === foundToken.canister_id);
+    const rank = sortedTokens.findIndex(
+      (t) => t.canister_id === foundToken.canister_id,
+    );
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
 
   // Add helper function to calculate 24h volume percentage
-  function calculateVolumePercentage(volume: number, marketCap: number): string {
+  function calculateVolumePercentage(
+    volume: number,
+    marketCap: number,
+  ): string {
     if (!marketCap) return "0.00%";
     return ((volume / marketCap) * 100).toFixed(2) + "%";
   }
 
   let candleData: CandleData[] = $state([]);
-  let lineChartPath = $state('');
+  let lineChartPath = $state("");
 
   // Fetch candle data for the past week
   onMount(async () => {
     try {
       const now = Math.floor(Date.now() / 1000);
-      const startTime = now - (10 * 24 * 60 * 60); // 10 days ago
+      const startTime = now - 10 * 24 * 60 * 60; // 10 days ago
 
       const payTokenId = token?.token_id || 1;
       const receiveTokenId = ckusdtToken?.token_id || 10;
@@ -369,42 +371,50 @@
         receiveTokenId,
         startTime,
         now,
-        'D' // Daily data
+        "D", // Daily data
       );
 
       lineChartPath = generateLineChartPath(data);
-      candleData = data.filter(d => d.close_price !== undefined && d.close_price !== null);
+      candleData = data.filter(
+        (d) => d.close_price !== undefined && d.close_price !== null,
+      );
     } catch (error) {
-      console.error('Failed to fetch candle data:', error);
+      console.error("Failed to fetch candle data:", error);
     }
   });
 
-  const maxPrice = $state(Math.max(...candleData.map(d => Number(d.close_price))));
-  const minPrice = $state(Math.min(...candleData.map(d => Number(d.close_price))));
+  const maxPrice = $state(
+    Math.max(...candleData.map((d) => Number(d.close_price))),
+  );
+  const minPrice = $state(
+    Math.min(...candleData.map((d) => Number(d.close_price))),
+  );
   const priceRange = $state(maxPrice - minPrice || 1); // Avoid division by zero
-
 
   // Fix SVG path generation
   function generateLineChartPath(data: CandleData[]) {
-    if (!data || data.length === 0) return '';
+    if (!data || data.length === 0) return "";
 
-    const validData = data.filter(d => 
-      typeof d.close_price === 'number' && 
-      !isNaN(d.close_price) && 
-      d.close_price !== null
+    const validData = data.filter(
+      (d) =>
+        typeof d.close_price === "number" &&
+        !isNaN(d.close_price) &&
+        d.close_price !== null,
     );
 
-    if (validData.length === 0) return '';
+    if (validData.length === 0) return "";
 
-    const maxPrice = Math.max(...validData.map(d => Number(d.close_price)));
-    const minPrice = Math.min(...validData.map(d => Number(d.close_price)));
+    const maxPrice = Math.max(...validData.map((d) => Number(d.close_price)));
+    const minPrice = Math.min(...validData.map((d) => Number(d.close_price)));
     const priceRange = maxPrice - minPrice || 1; // Avoid division by zero
 
-    return validData.map((d, i) => {
-      const x = (i / (validData.length - 1)) * 100;
-      const y = 30 - ((Number(d.close_price) - minPrice) / priceRange) * 30;
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
-    }).join(' ');
+    return validData
+      .map((d, i) => {
+        const x = (i / (validData.length - 1)) * 100;
+        const y = 30 - ((Number(d.close_price) - minPrice) / priceRange) * 30;
+        return `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(" ");
   }
 
   // Update convertToken function to handle the type conversion correctly
@@ -416,10 +426,10 @@
       price: Number(token.price || 0),
       metrics: {
         ...token.metrics,
-        price: Number(token.metrics?.price || 0),
-        market_cap: Number(token.metrics?.market_cap || 0),
-        volume_24h: String(token.metrics?.volume_24h || '0')
-      }
+        price: token.metrics?.price || "0",
+        market_cap: token.metrics?.market_cap || "0",
+        volume_24h: token.metrics?.volume_24h || "0",
+      },
     };
 
     return converted as unknown as FE.Token;
@@ -428,21 +438,21 @@
   // Update the formatTimestamp function to handle UTC dates correctly
   function formatTimestamp(timestamp: string): string {
     if (!timestamp) {
-      console.log('formatTimestamp: No timestamp provided');
+      console.log("formatTimestamp: No timestamp provided");
       return "N/A";
     }
-    
+
     try {
       // Parse timestamp as UTC and adjust year if needed
-      const txDate = new Date(timestamp + 'Z'); // Force UTC interpretation
+      const txDate = new Date(timestamp + "Z"); // Force UTC interpretation
       const now = new Date();
 
-      return formatDistance(txDate, now, { 
+      return formatDistance(txDate, now, {
         addSuffix: true,
-        includeSeconds: true
+        includeSeconds: true,
       });
     } catch (e) {
-      console.error('Error formatting timestamp:', e);
+      console.error("Error formatting timestamp:", e);
       return "N/A";
     }
   }
@@ -457,10 +467,10 @@
     <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
       <!-- Token Header -->
       <div class="flex items-center gap-4 px-2">
-        <TokenImages 
-          tokens={token ? [convertToken(token)] : []} 
-          size={48} 
-          overlap={0} 
+        <TokenImages
+          tokens={token ? [convertToken(token)] : []}
+          size={48}
+          overlap={0}
         />
         <div>
           <h1 class="text-2xl font-bold text-white">{token.name}</h1>
@@ -471,17 +481,25 @@
       <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
         <!-- Price Panel -->
-        <Panel variant="blue" type="secondary" className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200">
+        <Panel
+          variant="blue"
+          type="secondary"
+          className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200"
+        >
           <div class="absolute inset-0">
-            <svg class="w-full h-full opacity-40" viewBox="0 0 100 30" preserveAspectRatio="none">
-              <path 
+            <svg
+              class="w-full h-full opacity-40"
+              viewBox="0 0 100 30"
+              preserveAspectRatio="none"
+            >
+              <path
                 d={`M0 30 L0 ${candleData.length > 0 ? 30 - ((Number(candleData[0]?.close_price) - minPrice) / priceRange) * 30 : 30} ` +
-                   lineChartPath +
-                   ` L100 30 Z`}
+                  lineChartPath +
+                  ` L100 30 Z`}
                 class="fill-purple-500/20"
               />
-              <path 
-                d={lineChartPath} 
+              <path
+                d={lineChartPath}
                 class="stroke-purple-500/40 fill-none"
                 stroke-width="0.5"
               />
@@ -493,8 +511,12 @@
               {formatUsdValue(token?.price || 0)}
             </div>
             <div class="text-sm mt-1">
-              <span class={`${Number(token?.metrics?.price_change_24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {Number(token?.metrics?.price_change_24h || 0) >= 0 ? "+" : ""}{token?.metrics?.price_change_24h}%
+              <span
+                class={`${Number(token?.metrics?.price_change_24h || 0) >= 0 ? "text-green-400" : "text-red-400"}`}
+              >
+                {Number(token?.metrics?.price_change_24h || 0) >= 0
+                  ? "+"
+                  : ""}{token?.metrics?.price_change_24h}%
               </span>
               <span class="text-slate-400 ml-1">24h</span>
             </div>
@@ -616,17 +638,19 @@
           {#if isChartDataReady}
             <TradingViewChart
               poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-              symbol={token ? `${token.symbol}/${
-                token.symbol === "ckUSDT"
-                  ? $formattedTokens?.find(
-                      (t) =>
-                        t.canister_id ===
-                        (selectedPool?.address_0 === token.canister_id
-                          ? selectedPool?.address_1
-                          : selectedPool?.address_0),
-                    )?.symbol || "Unknown"
-                  : "ckUSDT"
-              }` : ''}
+              symbol={token
+                ? `${token.symbol}/${
+                    token.symbol === "ckUSDT"
+                      ? $formattedTokens?.find(
+                          (t) =>
+                            t.canister_id ===
+                            (selectedPool?.address_0 === token.canister_id
+                              ? selectedPool?.address_1
+                              : selectedPool?.address_0),
+                        )?.symbol || "Unknown"
+                      : "ckUSDT"
+                  }`
+                : ""}
               toToken={token ? convertToken(token) : null}
               fromToken={ckusdtToken ? convertToken(ckusdtToken) : null}
             />
@@ -785,9 +809,11 @@
                   <table class="w-full text-left text-white/80">
                     <tbody>
                       {#each transactions as tx}
-                        <tr 
+                        <tr
                           class="border-b border-slate-700/70 transition-all duration-300"
-                          class:new-transaction={newTransactionIds.has(tx.tx_id || '')}
+                          class:new-transaction={newTransactionIds.has(
+                            tx.tx_id || "",
+                          )}
                         >
                           <td class="px-4 py-3">
                             <div
@@ -812,10 +838,14 @@
                                   for
                                   {formatToNonZeroDecimal(tx.receive_amount)}
                                   <TokenImages
-                                    tokens={[$formattedTokens?.find(
-                                      (t) =>
-                                        t.token_id === tx.receive_token_id,
-                                    )].filter(Boolean).map(convertToken)}
+                                    tokens={[
+                                      $formattedTokens?.find(
+                                        (t) =>
+                                          t.token_id === tx.receive_token_id,
+                                      ),
+                                    ]
+                                      .filter(Boolean)
+                                      .map(convertToken)}
                                     size={16}
                                     overlap={0}
                                   />
@@ -840,9 +870,13 @@
                                   for
                                   {formatToNonZeroDecimal(tx.pay_amount)}
                                   <TokenImages
-                                    tokens={[$formattedTokens?.find(
-                                      (t) => t.token_id === tx.pay_token_id,
-                                    )].filter(Boolean).map(convertToken)}
+                                    tokens={[
+                                      $formattedTokens?.find(
+                                        (t) => t.token_id === tx.pay_token_id,
+                                      ),
+                                    ]
+                                      .filter(Boolean)
+                                      .map(convertToken)}
                                     size={16}
                                     overlap={0}
                                   />

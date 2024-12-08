@@ -16,7 +16,6 @@
   import { SwapService } from "$lib/services/swap/SwapService";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
-  import debounce from "lodash-es/debounce";
   import { replaceState } from "$app/navigation";
   import { createEventDispatcher } from 'svelte';
   import Portal from 'svelte-portal';
@@ -346,7 +345,8 @@
   // Add a new state for quote loading
   let isQuoteLoading = false;
 
-  // Update the updateSwapQuote function
+  let quoteUpdateTimeout: NodeJS.Timeout;
+
   async function updateSwapQuote() {
     const state = get(swapState);
     
@@ -359,36 +359,60 @@
       return;
     }
 
-    try {
-      isQuoteLoading = true; // Use separate loading state for quotes
-      
-      const quote = await SwapService.getSwapQuote(
-        state.payToken,
-        state.receiveToken,
-        state.payAmount
-      );
-      
-      swapState.update(s => ({
-        ...s,
-        receiveAmount: quote.receiveAmount,
-        swapSlippage: quote.slippage,
-      }));
-    } catch (error) {
-      console.error("Error getting quote:", error);
-      swapState.update(s => ({
-        ...s,
-        receiveAmount: "0",
-        swapSlippage: 0,
-        error: "Failed to get quote"
-      }));
-    } finally {
-      isQuoteLoading = false;
+    // Clear any pending timeout
+    if (quoteUpdateTimeout) {
+      clearTimeout(quoteUpdateTimeout);
     }
+
+    // Debounce the quote update
+    quoteUpdateTimeout = setTimeout(async () => {
+      try {
+        isQuoteLoading = true;
+        
+        const quote = await SwapService.getSwapQuote(
+          state.payToken,
+          state.receiveToken,
+          state.payAmount
+        );
+        
+        swapState.update(s => ({
+          ...s,
+          receiveAmount: quote.receiveAmount,
+          swapSlippage: quote.slippage,
+        }));
+      } catch (error) {
+        console.error("Error getting quote:", error);
+        swapState.update(s => ({
+          ...s,
+          receiveAmount: "0",
+          swapSlippage: 0,
+          error: "Failed to get quote"
+        }));
+      } finally {
+        isQuoteLoading = false;
+      }
+    }, 300); // 300ms debounce
   }
 
-  // Add reactive statement to update quote when tokens change
-  $: if ($swapState.payToken && $swapState.receiveToken && $swapState.payAmount) {
-    updateSwapQuote();
+  let previousPayAmount = '';
+  let previousPayToken = null;
+  let previousReceiveToken = null;
+
+  $: {
+    // Only update quote if relevant values have actually changed
+    if ($swapState.payToken && 
+        $swapState.receiveToken && 
+        $swapState.payAmount && 
+        ($swapState.payAmount !== previousPayAmount ||
+         $swapState.payToken?.canister_id !== previousPayToken?.canister_id ||
+         $swapState.receiveToken?.canister_id !== previousReceiveToken?.canister_id)) {
+      
+      previousPayAmount = $swapState.payAmount;
+      previousPayToken = $swapState.payToken;
+      previousReceiveToken = $swapState.receiveToken;
+      
+      updateSwapQuote();
+    }
   }
 
   function handleSuccessModalClose() {

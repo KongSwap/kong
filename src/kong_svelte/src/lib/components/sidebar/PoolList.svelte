@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { fade, fly, slide } from "svelte/transition";
+  import { fade, slide } from "svelte/transition";
   import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -8,7 +8,8 @@
   import { createEventDispatcher } from "svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+    import { sidebarStore } from "$lib/stores/sidebarStore";
 
   const dispatch = createEventDispatcher();
   export let pools: any[] = [];
@@ -74,7 +75,7 @@
             amount_0: poolBalance.amount_0,
             amount_1: poolBalance.amount_1,
             usd_balance: poolBalance.usd_balance,
-            pool_id: poolBalance.pool_id,
+            pool_id: (poolBalance as any)?.pool_id,
             address_0: poolBalance.symbol_0,
             address_1: poolBalance.symbol_1,
             searchableText
@@ -168,7 +169,8 @@
     }
   }
 
-  function handleAddLiquidity() {
+  async function handleAddLiquidity() {
+    await sidebarStore.collapse();
     goto('/earn/add');
   }
 

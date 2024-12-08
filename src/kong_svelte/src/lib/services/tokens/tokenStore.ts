@@ -504,16 +504,16 @@ export const formattedTokens = derived(
           ...token,
           metrics: {
             ...token.metrics,
-            price: price || 0,
-            market_cap: price * (Number(token.metrics?.total_supply) / Math.pow(10, token.decimals)),
+            price: price.toString(),
+            market_cap: (Number(price) * (Number(token.metrics?.total_supply) / Math.pow(10, token.decimals))).toString(),
           },
           balance: balance.toString(),
-          formattedBalance: formattedBalance,
+          formattedBalance,
           formattedUsdValue: formatToNonZeroDecimal(usdValue.toString()),
-          total_24h_volume: token.metrics.volume_24h || 0n,
+          total_24h_volume: token.metrics.volume_24h || "0",
           usdValue: Number(usdValue),
           isFavorite
-        };
+        } as FE.Token;
       })
       .sort((a, b) => {
         // Sort by favorites first
@@ -521,7 +521,9 @@ export const formattedTokens = derived(
         if (!a.isFavorite && b.isFavorite) return 1;
         
         // Then sort by USD value
-        return b.usdValue - a.usdValue;
+        const aValue = a.usdValue ?? 0;
+        const bValue = b.usdValue ?? 0;
+        return bValue - aValue;
       });
   }
 );

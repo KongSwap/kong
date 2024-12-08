@@ -17,7 +17,8 @@ interface LoadingState {
 
 export class AppLoader {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
-  private isInitialized = false;
+  private initialized = false;
+  private initializationPromise: Promise<void> | null = null;
 
   // Create a writable store for loading state
   private _loadingState = writable<LoadingState>({
@@ -150,48 +151,32 @@ export class AppLoader {
   }
 
   public async initialize(): Promise<void> {
-    if (this.isInitialized || !browser) return;
-
-    let initError = null;
-    
-    try {
-      this._loadingState.set({
-        isLoading: true,
-        assetsLoaded: 0,
-        totalAssets: 0,
-        errors: [],
-      });
-
-      // Initialize core services first
-      await this.initializeTokens();
-
-      // Initialize remaining services in parallel
-      await Promise.all([
-        this.preloadAssets(),
-        tokenStore.loadPrices(),
-        this.initializeSettings(),
-        // Initialize worker but don't wait for it to be fully ready
-        updateWorkerService.initialize().catch(error => {
-          console.warn('Worker initialization failed, continuing with fallback updates:', error);
-        })
-      ]);
- 
-      // Set initialization flag
-      this.isInitialized = true;
-
-      // Close loading screen
-      this.updateLoadingState({
-        isLoading: false,
-        errors: [],
-      });
-    } catch (error) {
-      console.error("Failed to initialize app:", error);
-      initError = error;
-      this.updateLoadingState({
-        isLoading: false,
-        errors: [error.message || "Failed to initialize app"],
-      });
+    // If already initialized, return immediately
+    if (this.initialized) {
+      return;
     }
+
+    // If initialization is in progress, wait for it
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // Create new initialization promise
+    this.initializationPromise = (async () => {
+      try {
+        await this.initializeTokens();
+        await this.initializeUpdateWorker();
+        this.initialized = true;
+      } catch (error) {
+        console.error("AppLoader initialization error:", error);
+        // Reset initialization state on error
+        this.initialized = false;
+        this.initializationPromise = null;
+        throw error;
+      }
+    })();
+
+    return this.initializationPromise;
   }
 
   private async initializeTokens(): Promise<void> {
@@ -220,19 +205,14 @@ export class AppLoader {
     }
   }
 
-  private async initializeSettings(): Promise<void> {
+  private async initializeUpdateWorker(): Promise<void> {
     try {
-      console.log("Initializing settings...");
-      const kongBackendActor = await auth.getActor(
-        kongBackendCanisterId,
-        canisterIDLs.kong_backend,
-        { anon: true },
-      );
-      // Initialize settings using the actor
-      // Add your settings initialization logic here
-      console.log("Settings initialized successfully");
+      // Initialize worker but don't wait for it to be fully ready
+      await updateWorkerService.initialize().catch(error => {
+        console.warn('Worker initialization failed, continuing with fallback updates:', error);
+      });
     } catch (error) {
-      console.error("Settings initialization error:", error);
+      console.error("Failed to initialize worker:", error);
       throw error;
     }
   }

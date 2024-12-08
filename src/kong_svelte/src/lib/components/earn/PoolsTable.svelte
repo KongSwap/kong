@@ -14,8 +14,6 @@
   import PoolList from "$lib/components/sidebar/PoolList.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
 
-  export let isMobile: boolean;
-
   // Navigation state
   const activePoolView = writable("all"); // "all" or "user"
   

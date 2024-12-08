@@ -37,6 +37,10 @@ declare global {
       tvl: number;
       balance: string;
       timestamp?: number;
+      isFavorite?: boolean;
+      usdValue?: number;
+      formattedBalance?: string;
+      formattedUsdValue?: string;
     }
 
     interface UserPoolBalance {

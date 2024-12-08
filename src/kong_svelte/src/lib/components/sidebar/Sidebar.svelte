@@ -15,7 +15,6 @@
   import SocialSection from "./SocialSection.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";
   import PoolList from "./PoolList.svelte";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
 
   export let isOpen: boolean;
   export let onClose: () => void;
@@ -25,6 +24,8 @@
   let isMobile = false;
 
   // Subscribe to sidebar store
+  $: isOpen = $sidebarStore.isOpen;
+
   sidebarStore.subscribe(state => {
     isExpanded = state.isExpanded;
   });
@@ -41,9 +42,8 @@
     }
   });
 
-  function handleClose() {
-    sidebarStore.collapse();
-    onClose();
+  async function handleClose() {
+    await sidebarStore.collapse();
   }
 
   function setActiveTab(tab: "tokens" | "pools" | "history") {
@@ -68,9 +68,6 @@
     const dbTransactions = await kongDB.transactions.toArray();
     return dbTransactions;
   });
-
-  // Subscribe to token store for balances
-  $: storeBalances = $tokenStore.balances;
 </script>
 
 {#if isOpen}
@@ -111,7 +108,10 @@
               {:else if activeTab === "tokens"}
                 <TokenList tokens={$tokens || []} />
               {:else if activeTab === "pools"}
-                <PoolList pools={$pools || []} />
+                <PoolList 
+                    pools={$pools || []} 
+                    on:close={handleClose}
+                />
               {:else if activeTab === "history"}
                 <TransactionHistory transactions={$transactions || []} />
               {/if}

@@ -27,6 +27,7 @@
   } from "$lib/services/tokens/favoriteStore";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { page } from "$app/stores";
+  import { browser } from "$app/environment";
 
   // Constants
   const DEBOUNCE_DELAY = 300;
@@ -59,8 +60,16 @@
   const tokensLoading = derived(
     [formattedTokens, poolStore],
     ([$formattedTokens, $poolStore]): boolean => {
-      const formattedTokensLoading = $formattedTokens && typeof $formattedTokens === 'object' && 'isLoading' in $formattedTokens ? $formattedTokens.isLoading : false;
-      const poolStoreLoading = $poolStore && typeof $poolStore === 'object' && 'isLoading' in $poolStore ? $poolStore.isLoading : false;
+      const formattedTokensLoading = $formattedTokens && 
+        typeof $formattedTokens === 'object' && 
+        'isLoading' in $formattedTokens ? 
+        Boolean($formattedTokens.isLoading) : false;
+      
+      const poolStoreLoading = $poolStore && 
+        typeof $poolStore === 'object' && 
+        'isLoading' in $poolStore ? 
+        Boolean($poolStore.isLoading) : false;
+
       return formattedTokensLoading || poolStoreLoading;
     }
   );
@@ -109,13 +118,14 @@
   // Update URL when tab changes
   $: {
     const currentTab = $activeTabStore;
-    if (currentTab === "favorites") {
-      goto(`?tab=favorites`, { replaceState: true });
+    if (browser) {
+      if (currentTab === "favorites") {
+        goto(`?tab=favorites`, { replaceState: true });
     } else {
-      goto(`?`, { replaceState: true });
+        goto(`?`, { replaceState: true });
+      }
     }
   }
-
 
   // Update the getPriceChangeClass function to be more precise
   function getPriceChangeClass(

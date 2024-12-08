@@ -191,7 +191,10 @@ export class SwapService {
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
-      return await actor.swap_async(params);
+      console.log("SWAP_ASYNC ACTOR", actor);
+      const result = await actor.swap_async(params);
+      console.log("SWAP_ASYNC RESULT", result);
+      return result;
     } catch (error) {
       console.error("Error in swap_async:", error);
       throw error;
@@ -208,10 +211,10 @@ export class SwapService {
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
-      const result = await actor.requests(requestIds, {
-        anon: false,
-        requiresSigning: false,
-      });
+      console.log("REQUESTS ACTOR", actor);
+      console.log("REQUESTS REQUEST IDS", requestIds);
+      const result = await actor.requests(requestIds);
+      console.log("REQUESTS RESULT", result);
       return result;
     } catch (error) {
       console.error("Error getting request status:", error);
@@ -265,11 +268,13 @@ export class SwapService {
 
       if (payToken.icrc2) {
         const requiredAllowance = payAmount;
+        console.log("CHECKING AND REQUESTING IC2 ALLOWANCES, REQUIRED ALLOWANCE", requiredAllowance);
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
           payToken,
           requiredAllowance,
         );
       } else if (payToken.icrc1) {
+        console.log("ICRC1 PAY TOKEN DETECTED", payToken);
         const result = await IcrcService.icrc1Transfer(
           payToken,
           params.backendPrincipal,
@@ -310,7 +315,7 @@ export class SwapService {
         pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : [],
       };
 
-      console.log("SWAP PARAMS:", swapParams);
+      console.log("SWAP PARAMS", swapParams);
       const result = await SwapService.swap_async(swapParams);
 
       if (result.Ok) {
@@ -350,7 +355,7 @@ export class SwapService {
   public static async monitorTransaction(requestId: bigint, swapId: string) {
     this.stopPolling();
 
-    console.log("REQUEST ID:", requestId);
+    console.log("SWAP MONITORING - REQUEST ID:", requestId);
     let attempts = 0;
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
@@ -359,6 +364,7 @@ export class SwapService {
     );
 
     this.pollingInterval = setInterval(async () => {
+      console.log(`SWAP MONITORING - POLLING ATTEMPT ${attempts}`);
       try {
         const status: RequestResponse = await this.requests([requestId]);
 

@@ -1,8 +1,7 @@
-import { auth, type CanisterType } from "$lib/services/auth";
+import { auth } from "$lib/services/auth";
 import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
-import { get } from "svelte/store";
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -18,25 +17,81 @@ export class IcrcService {
     throw error;
   }
 
+  // Add a cache for balance requests
+  private static balanceCache: Map<string, {
+    balance: bigint;
+    timestamp: number;
+  }> = new Map();
+
+  private static CACHE_DURATION = 30000; // 30 seconds
+
   public static async getIcrc1Balance(
     token: FE.Token,
     principal: Principal,
   ): Promise<bigint> {
     try {
-      // Use ICRC-2 actor since it's a superset of ICRC-1
+      const cacheKey = `${token.canister_id}-${principal.toString()}`;
+      const now = Date.now();
+      const cached = this.balanceCache.get(cacheKey);
+
+      // Return cached value if still valid
+      if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
+        return cached.balance;
+      }
+
       const actor = await auth.getActor(
         token.canister_id,
         canisterIDLs["icrc2"],
         { anon: true, requiresSigning: false },
       );
-      return await actor.icrc1_balance_of({
+      
+      const balance = await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
       });
+
+      // Cache the result
+      this.balanceCache.set(cacheKey, {
+        balance,
+        timestamp: now
+      });
+
+      return balance;
     } catch (error) {
       console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
       return BigInt(0);
     }
+  }
+
+  // Add batch balance checking
+  public static async batchGetBalances(
+    tokens: FE.Token[],
+    principal: Principal
+  ): Promise<Map<string, bigint>> {
+    const results = new Map<string, bigint>();
+    
+    // Group tokens by subnet to minimize subnet key fetches
+    const tokensBySubnet = tokens.reduce((acc, token) => {
+      const subnet = token.canister_id.split('-')[1]; // Simple subnet grouping
+      if (!acc.has(subnet)) acc.set(subnet, []);
+      acc.get(subnet).push(token);
+      return acc;
+    }, new Map<string, FE.Token[]>());
+
+    // Fetch balances in parallel for each subnet group
+    await Promise.all(
+      Array.from(tokensBySubnet.values()).map(async (subnetTokens) => {
+        const balances = await Promise.all(
+          subnetTokens.map(token => this.getIcrc1Balance(token, principal))
+        );
+        
+        subnetTokens.forEach((token, i) => {
+          results.set(token.canister_id, balances[i]);
+        });
+      })
+    );
+
+    return results;
   }
 
   public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
@@ -91,6 +146,8 @@ export class IcrcService {
         },
       };
 
+      console.log("ICRC2_APPROVE ARGS", approveArgs);
+
       // Fetch balance with retries
       retries = 3;
       while (retries > 0) {
@@ -128,7 +185,10 @@ export class IcrcService {
             anon: false,
             requiresSigning: true,
           });
+          console.log("ICRC2_APPROVE ACTOR", approveActor);
+
           result = await approveActor.icrc2_approve(approveArgs);
+          console.log("ICRC2_APPROVE RESULT", result);
           break;
         } catch (error) {
           console.warn(
@@ -176,6 +236,7 @@ export class IcrcService {
         canisterIDLs.icrc2,
         { anon: true, requiresSigning: false },
       );
+      console.log("ICRC2_ALLOWANCE ACTOR", actor);
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
         spender: {
@@ -183,6 +244,7 @@ export class IcrcService {
           subaccount: [],
         },
       });
+      console.log("ICRC2_ALLOWANCE RESULT", result);
       return BigInt(result.allowance);
     } catch (error) {
       this.handleError("checkIcrc2Allowance", error);
@@ -203,8 +265,9 @@ export class IcrcService {
     try {
       const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
         anon: false,
-        requiresSigning: true,
+        requiresSigning: false,
       });
+      console.log("ICRC1_TRANSFER ACTOR", actor);
       const toPrincipal = typeof to === "string" ? Principal.fromText(to) : to;
 
       const transferArgs = {
@@ -218,55 +281,15 @@ export class IcrcService {
         from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
       };
-
+      console.log("ICRC1_TRANSFER ARGS", transferArgs);
       const result = await actor.icrc1_transfer(transferArgs);
+      console.log("ICRC1_TRANSFER RESULT", result);
       if ("Err" in result) {
         return { Err: result.Err };
       }
       return { Ok: result.Ok };
     } catch (error) {
       this.handleError("icrc1Transfer", error);
-    }
-  }
-
-  public static async icrc2TransferFrom(
-    canister_id: string,
-    from: Principal,
-    to: Principal,
-    amount: bigint,
-    opts: {
-      memo?: number[];
-      fee?: bigint;
-      fromSubaccount?: number[];
-      createdAtTime?: bigint;
-    } = {},
-  ): Promise<{ Ok?: bigint; Err?: any }> {
-    try {
-      const actor = await auth.getActor(canister_id, "icrc2");
-      const transferArgs = {
-        from: {
-          owner: from,
-          subaccount: [],
-        },
-        to: {
-          owner: to,
-          subaccount: [],
-        },
-        amount,
-        memo: opts.memo ? opts.memo : [],
-        fee: opts.fee_fixed ? [opts.fee_fixed] : [],
-        created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
-      };
-
-      const result = await actor.icrc2_transfer_from(transferArgs);
-      if ("Err" in result) {
-        throw new Error(
-          `ICRC2 transfer_from error: ${JSON.stringify(result.Err)}`,
-        );
-      }
-      return result;
-    } catch (error) {
-      this.handleError("icrc2TransferFrom", error);
     }
   }
 }

@@ -60,9 +60,6 @@
       transition:scale={{ duration: 400, easing: backOut }}
       on:click|stopPropagation
     >
-      <div class="stars" />
-      <div class="twinkling" />
-      
       <div class="text-center space-y-4 relative z-10" in:scale={{ delay: 200, duration: 400 }}>
         <div class="flex items-center justify-center">
           <img src="/stats/banana_dance.gif" class="w-24 opacity-90 hover:scale-110 transition-transform duration-300" alt="Success" />
@@ -128,30 +125,6 @@
   .modal-container {
     background: linear-gradient(to bottom right, rgba(13, 17, 23, 0.97), rgba(23, 27, 43, 0.97));
     box-shadow: 0 0 40px rgba(66, 153, 225, 0.1);
-  }
-
-  .stars {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: transparent url('/stars.png') repeat;
-    z-index: 0;
-    opacity: 0.5;
-    animation: move-stars 400s linear infinite;
-  }
-
-  .twinkling {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: transparent url('/twinkling.png') repeat;
-    z-index: 1;
-    opacity: 0.3;
-    animation: move-clouds 200s linear infinite;
   }
 
   .swap-button {

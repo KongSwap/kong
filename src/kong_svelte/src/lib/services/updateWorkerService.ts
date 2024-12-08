@@ -85,8 +85,6 @@ class UpdateWorkerService {
         case 'pool':
           this.updatePools();
           break;
-        case 'swapActivity':
-          this.updateSwapActivity();
           break;
         case 'price':
           if (!this.isInBackground) {
@@ -138,10 +136,6 @@ class UpdateWorkerService {
     }
   }
 
-  private async updateSwapActivity() {
-    // Swap activity update logic here
-  }
-
   private async updatePrices() {    
     try {
       const currentStore = get(tokenStore);
@@ -178,11 +172,9 @@ class UpdateWorkerService {
   private async waitForTokens(): Promise<void> {
     const tokens = get(tokenStore);
     if (tokens?.tokens?.length) {
-      console.log('Tokens already loaded:', tokens.tokens.length);
       return;
     }
 
-    console.log('Waiting for tokens to load...');
     return new Promise<void>((resolve) => {
       const unsubscribe = tokenStore.subscribe(value => {
         if (value?.tokens?.length) {
@@ -222,7 +214,6 @@ class UpdateWorkerService {
       await Promise.all([
         this.updateTokens(),
         this.updatePools(),
-        this.updateSwapActivity(),
         !this.isInBackground && this.updatePrices(),
       ].filter(Boolean));
 
@@ -241,7 +232,6 @@ class UpdateWorkerService {
       Promise.all([
         this.updateTokens(),
         this.updatePools(),
-        this.updateSwapActivity(),
         !this.isInBackground && this.updatePrices(),
       ].filter(Boolean));
     }, 10000); // Update every 10 seconds
@@ -250,7 +240,6 @@ class UpdateWorkerService {
     await Promise.all([
       this.updateTokens(),
       this.updatePools(),
-      this.updateSwapActivity(),
       !this.isInBackground && this.updatePrices(),
     ].filter(Boolean));
   }

@@ -49,7 +49,7 @@
 
   async function fetchPoolInfo() {
     try {
-      const pools = await PoolService.fetchPoolsData();
+      const pools = $poolStore.pools;
       pool = pools.pools.find(
         p => (p.address_0 === token0?.canister_id && p.address_1 === token1?.canister_id) ||
              (p.address_0 === token1?.canister_id && p.address_1 === token0?.canister_id)

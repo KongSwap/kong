@@ -42,7 +42,6 @@ export class TokenService {
         .toArray();
 
       if (cachedTokens.length > 0) {
-        console.log('Using cached tokens');
         // Refresh in background after returning cached data
         setTimeout(() => this.fetchFromNetwork(), 0);
         return cachedTokens as FE.Token[];
@@ -207,92 +206,24 @@ export class TokenService {
 
   public static async fetchBalances(
     tokens?: FE.Token[],
-    principalId: string = null,
-  ): Promise<Record<string, FE.TokenBalance>> {
-    if (!principalId) {
-      return {};
-    }
+    principalId?: string
+  ): Promise<Record<string, TokenBalance>> {
+    if (!tokens) tokens = get(tokenStore).tokens;
+    if (!principalId && !get(auth).isConnected) return {};
 
-    if(!tokens) {
-      tokens = get(tokenStore).tokens;
-    }
-
-    // Create an array of promises for all tokens
-    const balancePromises = tokens.map(async (token) => {
-      try {
-        let balance: bigint;
-
-        if (token.icrc1 && principalId) {
-          try {
-            balance = await IcrcService.getIcrc1Balance(
-              token,
-              Principal.fromText(principalId),
-            );
-          } catch (error) {
-            // Handle specific token errors more gracefully
-            console.warn(
-              `Unable to fetch balance for ${token.symbol} (${token.address}):`,
-              error.message
-            );
-            balance = BigInt(0);
-          }
-        } else {
-          balance = BigInt(0);
-        }
-
-        const actualBalance = formatTokenAmount(
-          balance.toString(),
-          token.decimals,
-        );
-        
-        let price = 0;
-        try {
-          price = await this.fetchPrice(token);
-        } catch (priceError) {
-          console.warn(`Failed to fetch price for ${token.symbol}:`, priceError.message);
-        }
-        const usdValue = parseFloat(actualBalance) * parseFloat(price.toString());
-        return {
-          canister_id: token.address,
-          balance: {
-            in_tokens: balance,
-            in_usd: formatToNonZeroDecimal(usdValue),
-            error: null
-          },
-        };
-      } catch (err) {
-        // Log detailed error information for debugging
-        console.error(`Error processing token ${token.symbol}:`, {
-          error: err,
-          type: err.constructor.name,
-          message: err.message,
-          code: err.code
-        });
-        
-        return {
-          canister_id: token.address,
-          balance: {
-            in_tokens: BigInt(0),
-            in_usd: formatToNonZeroDecimal(0),
-            error: err.message || 'Failed to fetch balance'
-          },
-        };
-      }
-    });
-
-    // Wait for all balance promises to resolve
-    const resolvedBalances = await Promise.allSettled(balancePromises);
-
-    // Convert the array of results into a record
-    const balances: Record<string, FE.TokenBalance> = {};
-    resolvedBalances.forEach((result) => {
-      if (result.status === "fulfilled") {
-        const { canister_id, balance } = result.value;
-        balances[canister_id] = balance;
-      }
-    });
-
-    return balances;
+    const principal = principalId ? Principal.fromText(principalId) : get(auth).account.owner;
+    
+    // Use batch balance fetching
+    const balances = await IcrcService.batchGetBalances(tokens, principal);
+    
+    return tokens.reduce((acc, token) => {
+      const balance = balances.get(token.canister_id) || BigInt(0);
+      acc[token.canister_id] = {
+        in_tokens: balance,
+        in_usd: '0' // Price calculation handled separately
+      };
+      return acc;
+    }, {} as Record<string, TokenBalance>);
   }
 
   public static async fetchBalance(

@@ -33,6 +33,41 @@ export const canisterIDLs = {
 // Add a constant for the storage key
 const LAST_WALLET_KEY = 'kongSelectedWallet';
 
+export class Auth {
+  private initialized = false;
+  private initializationPromise: Promise<void> | null = null;
+  private authStore: AuthStore;
+
+  constructor(authStore: AuthStore) {
+    this.authStore = authStore;
+  }
+
+  public async initialize() {
+    if (this.initialized) {
+      return;
+    }
+
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = (async () => {
+      try {
+        // Use the auth store's initialize method
+        await this.authStore.initialize();
+        this.initialized = true;
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        this.initialized = false;
+        this.initializationPromise = null;
+        throw error;
+      }
+    })();
+
+    return this.initializationPromise;
+  }
+}
+
 function createAuthStore(pnp: PNP) {
   const store = writable({
     isConnected: false,
@@ -186,8 +221,12 @@ function createAuthStore(pnp: PNP) {
 }
 
 export type AuthStore = ReturnType<typeof createAuthStore>;
-export const auth = createAuthStore(getPnpInstance());
 
+// Create the auth store instance
+const authStore = createAuthStore(getPnpInstance());
+
+// Create Auth class instance with the store
+export const auth = authStore;
 
 // Create a writable store for user data
 const userDataStore = writable<any>(null);
@@ -200,6 +239,8 @@ export const userStore = {
 export async function requireWalletConnection(): Promise<void> {
   const pnp = get(auth);
   const connected = pnp.isConnected;
+  console.log("REQUIRE WALLET CONNECTION - IS CONNECTED?", connected);
+  console.log("REQUIRE WALLET CONNECTION - ACCOUNT", pnp.account);
   if (!connected) {
     throw new Error('Wallet is not connected.');
   }

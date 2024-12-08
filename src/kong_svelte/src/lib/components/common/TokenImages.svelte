@@ -6,6 +6,7 @@
 
   // Filter out any undefined tokens and log for debugging
   $: validTokens = tokens.filter((token): token is FE.Token => {
+    if (!token) return false;
     if (!token?.logo_url) {
       console.warn('Token missing logo_url:', token);
     }
