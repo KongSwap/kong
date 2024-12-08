@@ -5,7 +5,7 @@
   import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
   import TokenDetails from '$lib/components/common/TokenDetails.svelte';
-  import { currentWalletFavorites } from '$lib/services/tokens/favoriteStore';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
 
   export let token: any;
   const dispatch = createEventDispatcher();
@@ -14,7 +14,7 @@
   let isPressed = false;
   let showMenu = false;
   
-  $: isFavorite = $currentWalletFavorites.includes(token.canister_id);
+  $: isFavorite = tokenStore.isFavorite(token.canister_id);
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
@@ -91,7 +91,7 @@
               on:click={handleFavoriteClick}
               title={isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
-              <Star size={16} fill={isFavorite ? "#ffd700" : "none"} />
+              <Star size={16} fill={isFavorite ? "#ffd700" : "none"} stroke={isFavorite ? "#ffd700" : "currentColor"} />
             </button>
             <span class="token-symbol">{token.symbol}</span>
           </div>

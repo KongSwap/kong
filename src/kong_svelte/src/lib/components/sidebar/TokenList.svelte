@@ -4,7 +4,6 @@
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from 'svelte';
   import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
-  import { favoriteStore, currentWalletFavorites } from "$lib/services/tokens/favoriteStore";
 
   type ProcessedToken = FE.Token & {
     isFavorite?: boolean;
@@ -21,9 +20,10 @@
 
   // Subscribe to token store updates
   $: storeBalances = $tokenStore.balances;
+  $: favorites = $tokenStore.favoriteTokens;
   
   onMount(async () => {
-    await favoriteStore.loadFavorites();
+    await tokenStore.loadFavorites();
   });
   
   // At the start of the component, add validation logging
@@ -103,9 +103,13 @@
       return false;
     })
     .sort((a, b) => {
-      if (a.isFavorite !== b.isFavorite) {
-        return a.isFavorite ? -1 : 1;
+      const aIsFavorite = tokenStore.isFavorite(a.canister_id);
+      const bIsFavorite = tokenStore.isFavorite(b.canister_id);
+      
+      if (aIsFavorite !== bIsFavorite) {
+        return aIsFavorite ? -1 : 1;
       }
+      
       const aValue = Number(a.formattedUsdValue || '0');
       const bValue = Number(b.formattedUsdValue || '0');
       return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
@@ -219,7 +223,7 @@
           <TokenRow
             {token}
             on:toggleFavorite={async ({ detail }) => {
-              await favoriteStore.toggleFavorite(detail.canisterId);
+              await tokenStore.toggleFavorite(detail.canisterId);
               // Force a recalculation of processedTokens
               filteredTokens = [...filteredTokens];
             }}

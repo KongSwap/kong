@@ -26,7 +26,7 @@
     let isMobile = $state(false);
     let sortDirection = $state('desc');
     let standardFilter = $state("all");
-    let favorites = $derived($tokenStore.getFavorites());
+    let favorites = $derived($tokenStore.favoriteTokens);
     let favoriteCount = $derived($formattedTokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
 
     // Check if we're on mobile
@@ -196,19 +196,19 @@
   <Portal target="body">
     <div 
       class="modal-backdrop"
-      on:click={() => onClose()}
+      on:click|self={() => onClose()}
       transition:fade={{ duration: 200 }}
     >
       <div
         class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
         bind:this={dropdownElement}
+        on:click|stopPropagation
         transition:scale={{
-          duration: 250,
+          duration: 200,
           start: 0.95,
           opacity: 0,
-          easing: cubicOut,
+          easing: cubicOut
         }}
-        on:click={(e) => e.stopPropagation()}
       >
         <div class="modal-content">
           <header class="modal-header">
@@ -301,8 +301,7 @@
                     class="token-item"
                     class:selected={currentToken?.canister_id === token.canister_id}
                     class:disabled={otherPanelToken?.canister_id === token.canister_id}
-                    on:click={(e) => {
-                      e.stopPropagation();
+                    on:click={() => {
                       if (otherPanelToken?.canister_id !== token.canister_id) {
                         handleSelect(token);
                       }
