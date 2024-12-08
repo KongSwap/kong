@@ -1,6 +1,6 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
     import { Plus } from "lucide-svelte";
-    import { fade } from "svelte/transition";
     import { formatTokenAmount, parseTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import { poolStore } from "$lib/services/pools/poolStore";
     import Portal from 'svelte-portal';
@@ -11,7 +11,6 @@
     import { tweened } from "svelte/motion";
     import { cubicOut } from "svelte/easing";
     import BigNumber from "bignumber.js";
-    import { toastStore } from "$lib/stores/toastStore";
     import { auth } from '$lib/services/auth';
     import { tokenStore } from '$lib/services/tokens';
     import debounce from 'lodash-es/debounce';
@@ -26,13 +25,12 @@
     export let token1Balance: string = "0";
     export let onTokenSelect: (index: 0 | 1) => void;
     export let onInput: (index: 0 | 1, value: string) => void;
-    export let onSubmit: () => void;
-    export let previewMode: boolean = false;
+    export let onSubmit: () => Promise<void>;
     export let pool: BE.Pool | null = null;
+    export let showConfirmation = false;
 
     let showToken0Selector = false;
     let showToken1Selector = false;
-    let showConfirmation = false;
 
     $: {
         if ($poolStore.userPoolBalances) {
@@ -99,15 +97,56 @@
         return regex.test(value);
     }
 
+    // Create debounced version of the input handler
+    const debouncedHandleInput = debounce(async (index: 0 | 1, value: string, currentToken: FE.Token, otherToken: FE.Token) => {
+        try {
+            loading = true;
+            error = null;
+            
+            const requiredAmount = await PoolService.addLiquidityAmounts(
+                currentToken.symbol,
+                parseTokenAmount(value, currentToken.decimals),
+                otherToken.symbol
+            );
+
+            if (index === 0) {
+                amount0 = value;
+                amount1 = formatTokenAmount(requiredAmount.Ok.amount_1, otherToken.decimals).toString();
+            } else {
+                amount0 = formatTokenAmount(requiredAmount.Ok.amount_1, otherToken.decimals).toString();
+                amount1 = value;
+            }
+
+            // Call the parent's onInput handler
+            onInput(index, value);
+        } catch (err) {
+            error = err.message;
+        } finally {
+            loading = false;
+        }
+    }, 400);
+
     // Enhanced input handling
     async function handleInput(index: 0 | 1, event: Event) {
-        const input = (event.target as HTMLInputElement).value;
+        const inputElement = event.target as HTMLInputElement;
+        if (!isValidNumber(inputElement.value)) {
+            inputElement.value = index === 0 ? previousValue0 : previousValue1;
+            return;
+        }
+
+        const input = inputElement.value;
         let value = input.replace(/,/g, '');
         const currentToken = index === 0 ? token0 : token1;
+        const otherToken = index === 0 ? token1 : token0;
+
+        if (!currentToken || !otherToken) {
+            error = "Please select both tokens.";
+            return;
+        }
 
         // Validate input
         if (!isValidNumber(value)) {
-            event.target.value = index === 0 ? previousValue0 : previousValue1;
+            inputElement.value = index === 0 ? previousValue0 : previousValue1;
             return;
         }
 
@@ -127,7 +166,7 @@
             value = "0";
         }
 
-        // Update previous value
+        // Update previous value and input display immediately
         if (index === 0) {
             previousValue0 = value;
             if (input0Element) {
@@ -140,8 +179,8 @@
             }
         }
 
-        // Call the parent's onInput handler
-        onInput(index, value);
+        // Call debounced handler for API request
+        debouncedHandleInput(index, value, currentToken, otherToken);
     }
 
     // Max button handler
@@ -157,8 +196,7 @@
             let maxAmount = balance.minus(totalFees);
 
             if (maxAmount.isLessThanOrEqualTo(0)) {
-                toastStore.error("Insufficient balance to cover the transaction fees");
-                return;
+                throw new Error("Insufficient balance to cover the transaction fees");
             }
 
             maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
@@ -179,7 +217,7 @@
 
         } catch (error) {
             console.error("Error in handleMaxClick:", error);
-            toastStore.error("Failed to set max amount");
+            throw error;
         }
     }
 
@@ -193,6 +231,16 @@
             const value = parseFloat(amount1) * token1.price;
             animatedUsdValue1.set(value);
         }
+    }
+
+    // Get pool when both tokens are selected
+    $: if (token0 && token1) {
+        pool = $poolStore.pools.find(p => 
+            (p.address_0 === token0.canister_id && p.address_1 === token1.canister_id) ||
+            (p.address_0 === token1.canister_id && p.address_1 === token0.canister_id)
+        ) || null;
+    } else {
+        pool = null;
     }
 
     // Format display amounts
@@ -249,32 +297,9 @@
         }).format(num);
     }
 
-    // Helper function to format ratio with 6 decimal places
-    function formatRatio(value: number): string {
-        return formatToNonZeroDecimal(value);
-    }
-
     function handleSubmit() {
         if (!isValid || loading) return;
         showConfirmation = true;
-    }
-
-    async function handleConfirmAdd() {
-        if (loading) return;
-        
-        try {
-            await onSubmit();
-        } catch (error) {
-            console.error("Error during confirmation:", error);
-        } finally {
-            // Always close the confirmation modal
-            showConfirmation = false;
-            // Reset form state
-            amount0 = "0";
-            amount1 = "0";
-            if (input0Element) input0Element.value = "0";
-            if (input1Element) input1Element.value = "0";
-        }
     }
 
     // Debounce the balance updates
@@ -297,6 +322,11 @@
             debouncedBalanceUpdate();
         }
     }
+
+    // Cleanup debounced function
+    onDestroy(() => {
+        debouncedHandleInput.cancel();
+    });
 </script>
 
 <Panel variant="green" width="auto" className="liquidity-panel w-full max-w-[690px]">
@@ -507,6 +537,7 @@
             {amount0}
             {amount1}
             {pool}
+            isOpen={showConfirmation}
             onClose={() => {
                 showConfirmation = false;
                 // Reset form state on close
@@ -515,7 +546,10 @@
                 if (input0Element) input0Element.value = "0";
                 if (input1Element) input1Element.value = "0";
             }}
-            onConfirm={handleConfirmAdd}
+            onConfirm={async () => {
+                showConfirmation = false;
+                await onSubmit();
+            }}
         />
     </Portal>
 {/if}

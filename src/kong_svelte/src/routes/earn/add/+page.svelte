@@ -4,10 +4,11 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { PoolService } from "$lib/services/pools/PoolService";
-  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
   import { auth } from "$lib/services/auth";
-    import { browser } from "$app/environment";
+  import { browser } from "$app/environment";
+    import { toastStore } from "$lib/stores/toastStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -19,6 +20,7 @@
   let token1Balance = "0";
   let pool: BE.Pool | null = null;
   let previewMode = false;
+  let showConfirmation = false;
 
   $: {
     if ($formattedTokens) {
@@ -51,12 +53,13 @@
   async function fetchPoolInfo() {
     try {
       const pools = $poolStore.pools;
-      pool = pools.pools.find(
+      pool = pools.find(
         p => (p.address_0 === token0?.canister_id && p.address_1 === token1?.canister_id) ||
              (p.address_0 === token1?.canister_id && p.address_1 === token0?.canister_id)
       ) || null;
     } catch (err) {
       console.error('Error fetching pool info:', err);
+      toastStore.error(err.message || "Failed to fetch pool info", 8000, "Error");
       pool = null;
     }
   }
@@ -94,31 +97,37 @@
     // Token selection is now handled in AddLiquidityForm
   }
 
-  function handleInput(index: 0 | 1, value: string) {
+  async function handleInput(index: 0 | 1, value: string) {
     if (index === 0) {
-      amount0 = value;
-      if (pool && value) {
-        // Calculate amount1 based on pool ratio
-        const parsedAmount0 = Number(parseTokenAmount(value, token0?.decimals || 8));
-        const ratio = Number(pool.balance_1) / Number(pool.balance_0);
-        const calculatedAmount1 = parsedAmount0 * ratio;
-        amount1 = (calculatedAmount1 / Math.pow(10, token1?.decimals || 8)).toString();
-      }
+        amount0 = value;
+        if (pool && value && token0 && token1) {
+            try {
+                const parsedAmount0 = parseTokenAmount(value, token0.decimals);
+                const result = await PoolService.calculateLiquidityAmounts(
+                    token0.symbol,
+                    BigInt(parsedAmount0),
+                    token1.symbol
+                );
+                if (result.Ok) {
+                    amount1 = formatTokenAmount(result.Ok.amount_1.toString(), token1.decimals);
+                }
+            } catch (err) {
+                console.error("Error calculating amounts:", err);
+                toastStore.error(err.message || "Failed to calculate amounts", 8000, "Error");
+            }
+        }
     } else {
-      amount1 = value;
-      if (pool && value) {
-        // Calculate amount0 based on pool ratio
-        const parsedAmount1 = Number(parseTokenAmount(value, token1?.decimals || 8));
-        const ratio = Number(pool.balance_0) / Number(pool.balance_1);
-        const calculatedAmount0 = parsedAmount1 * ratio;
-        amount0 = (calculatedAmount0 / Math.pow(10, token0?.decimals || 8)).toString();
-      }
+        amount1 = value;
+        // Similar calculation for amount0 when amount1 changes
+        // You'd need to modify calculateLiquidityAmounts to support calculating amount0
+        // based on amount1 input, or create a new method for this
     }
     error = null;
   }
 
   async function handleSubmit() {
     try {
+        console.log("Starting handleSubmit...");
         if (!token0 || !token1 || !amount0 || !amount1) {
             error = "Please fill in all fields";
             return;
@@ -126,7 +135,6 @@
 
         loading = true;
         error = null;
-        previewMode = true;
 
         const params = {
             token_0: token0,
@@ -135,43 +143,63 @@
             amount_1: parseTokenAmount(amount1, token1.decimals),
         };
 
-        // Let PoolService handle the authentication
+        toastStore.info("Adding liquidity...", 7000);
         const requestId = await PoolService.addLiquidity(params);
 
-        await Promise.all([
-            tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
-            tokenStore.loadBalance(token1, auth.pnp.account.principalId, true)
-        ])
-      
-        // Poll for status
-        const pollStatus = async () => {
-            try {
-                const status = await PoolService.pollRequestStatus(requestId);
-                
-                if (status.statuses.includes('Success')) {
-                    await poolStore.loadUserPoolBalances();
-                    goto("/earn");
-                } else if (status.statuses.some(s => 
-                    s.toLowerCase().includes('failed') || 
-                    s.toLowerCase().includes('error')
-                )) {
-                    throw new Error(status.statuses[status.statuses.length - 1]);
-                } else {
-                    // Continue polling
-                    setTimeout(pollStatus, 2000);
-                }
-            } catch (err) {
-                throw err;
-            }
-        };
-
-        await pollStatus();
+        // Start polling
+        console.log("Starting polling...");
+        pollStatus(requestId, 1);
 
     } catch (err) {
         console.error("Error adding liquidity:", err);
-        error = err.message;
+        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
         loading = false;
-        previewMode = false;
+        error = err.message;
+        showConfirmation = false;
+    }
+  }
+
+  async function pollStatus(requestId: bigint, attempt = 1) {
+    try {
+        console.log(`Polling for request status... (attempt ${attempt}/10)`);
+        const status = await PoolService.pollRequestStatus(requestId);
+        console.log('Request status:', status);
+        
+        if (status.statuses.includes('Success')) {
+            console.log('Success status found, showing toast');
+            toastStore.success("Successfully added liquidity to the pool", 5000, "Success");
+            await poolStore.loadUserPoolBalances();
+            showConfirmation = false;
+            loading = false;
+            goto("/earn");
+        } else if (status.statuses.some(s => 
+            s.toLowerCase().includes('failed') || 
+            s.toLowerCase().includes('error')
+        )) {
+            console.log('Error status found, throwing error');
+            const errorMsg = status.statuses[status.statuses.length - 1];
+            toastStore.error(errorMsg, 8000, "Error");
+            showConfirmation = false;
+            loading = false;
+            throw new Error(errorMsg);
+        } else if (attempt >= 10) {
+            console.log('Maximum polling attempts reached');
+            toastStore.error("Operation timed out after 10 attempts", 8000, "Error");
+            showConfirmation = false;
+            loading = false;
+            throw new Error("Operation timed out");
+        } else {
+            console.log('Still pending, polling again in .5s');
+            return new Promise((resolve) => {
+                setTimeout(() => resolve(pollStatus(requestId, attempt + 1)), 400);
+            });
+        }
+    } catch (err) {
+        console.error("Error during polling:", err);
+        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        showConfirmation = false;
+        loading = false;
+        throw err;
     }
   }
 
@@ -198,13 +226,13 @@
       bind:amount1
       bind:loading
       bind:error
-      {token0Balance}
-      {token1Balance}
+      bind:showConfirmation
+      token0Balance={token0Balance}
+      token1Balance={token1Balance}
       onTokenSelect={handleTokenSelect}
       onInput={handleInput}
       onSubmit={handleSubmit}
-      {previewMode}
-      {pool}
+      pool={pool}
     />
   </div>
 </div>

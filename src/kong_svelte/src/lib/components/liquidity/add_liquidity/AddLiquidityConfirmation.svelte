@@ -1,8 +1,6 @@
 <script lang="ts">
-	import { INDEXER_URL } from '$lib/constants/canisterConstants';
     import Modal from "$lib/components/common/Modal.svelte";
-    import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-    import TokenImages from "$lib/components/common/TokenImages.svelte";
+    import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import { onDestroy } from 'svelte';
 
     export let token0: FE.Token;
@@ -12,6 +10,7 @@
     export let pool: BE.Pool | null;
     export let onClose: () => void;
     export let onConfirm: () => Promise<void>;
+    export let isOpen: boolean;
 
     let isLoading = false;
     let error: string | null = null;
@@ -28,18 +27,15 @@
         error = null;
         
         try {
-            console.log("Starting confirmation...");
             await onConfirm();
-            console.log("Confirmation completed successfully");
-        } catch (err) {
-            console.error("Confirmation error:", err);
-            if (mounted) {
-                error = err instanceof Error ? err.message : "Failed to add liquidity";
-            }
-        } finally {
             if (mounted) {
                 isLoading = false;
-                onClose();
+            }
+        } catch (err) {
+            console.error("Error in confirmation:", err);
+            if (mounted) {
+                error = err instanceof Error ? err.message : "Failed to add liquidity";
+                isLoading = false;
             }
         }
     }
@@ -53,7 +49,7 @@
     $: poolRate = pool ? formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0)) : "0";
 </script>
 
-<Modal isOpen={true} title="Review Liquidity" {onClose} variant="green">
+<Modal isOpen={isOpen} title="Review Liquidity" onClose={onClose} variant="green">
     <div class="confirmation-container">
         {#if error}
             <div class="error-message">

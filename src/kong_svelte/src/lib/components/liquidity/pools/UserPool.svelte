@@ -7,6 +7,8 @@
     import { PoolService } from '$lib/services/pools';
     import { poolsList } from "$lib/services/pools/poolStore";
     import { auth } from '$lib/services/auth';
+    import { poolStore } from "$lib/services/pools/poolStore";
+    import { toastStore } from '$lib/stores/toastStore';
 
     const dispatch = createEventDispatcher();
 
@@ -150,6 +152,7 @@
         try {
             error = null;
             isRemoving = true;
+            toastStore.info('Removing liquidity...', 3000);
             const numericAmount = parseFloat(removeLiquidityAmount);
             
             console.log('Removing liquidity:', {
@@ -161,32 +164,83 @@
             // Convert to proper decimal places for backend
             const lpTokenBigInt = BigInt(Math.floor(numericAmount * 1e8));
             
-            await PoolService.removeLiquidity({
+            // Get the request ID from remove_liquidity_async
+            const requestId = await PoolService.removeLiquidity({
                 token0: pool.symbol_0,
                 token1: pool.symbol_1,
                 lpTokenAmount: lpTokenBigInt
             });
 
+            showModal = false;
+            
+            // Poll for request completion
+            let isComplete = false;
+            let attempts = 0;
+            const maxAttempts = 20; // 30 seconds timeout
+            
+            while (!isComplete && attempts < maxAttempts) {
+                const requestStatus = await PoolService.pollRequestStatus(BigInt(requestId));
+                console.log('Current status:', requestStatus);
+                
+                // Check for the complete success sequence
+                const expectedStatuses = [
+                    'Started',
+                    'Updating user LP token amount',
+                    'User LP token amount updated',
+                    'Updating liquidity pool',
+                    'Liquidity pool updated',
+                    'Receiving token 0',
+                    'Token 0 received',
+                    'Receiving token 1',
+                    'Token 1 received',
+                    'Success'
+                ];
+                
+                // Check if all expected statuses are present in order
+                const hasAllStatuses = expectedStatuses.every((status, index) => 
+                    requestStatus.statuses[index] === status
+                );
+
+                if (hasAllStatuses) {
+                    isComplete = true;
+                    toastStore.success('Successfully removed liquidity from the pool', 5000, 'Success');
+                    await Promise.all([
+                        tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
+                        tokenStore.loadBalance(token1, auth.pnp.account.principalId, true),
+                        poolStore.loadUserPoolBalances()
+                    ]);
+                    break;
+                } else if (requestStatus.reply?.Failed) {
+                    throw new Error(requestStatus.reply.Failed || 'Transaction failed');
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    attempts++;
+                }
+            }
+
+            if (!isComplete) {
+                throw new Error('Operation timed out');
+            }
+
+            // Refresh the balances
             await Promise.all([
                 tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
-                tokenStore.loadBalance(token1, auth.pnp.account.principalId, true)
-            ])
-            handleClose();
+                tokenStore.loadBalance(token1, auth.pnp.account.principalId, true),
+                poolStore.loadUserPoolBalances()
+            ]);
 
+            // Reset state and dispatch event
+            isRemoving = false;
+            error = null;
+            removeLiquidityAmount = '';
+            estimatedAmounts = { amount0: '0', amount1: '0' };
             dispatch('liquidityRemoved');
-            resetState();
-            showModal = false;
+
         } catch (err) {
             console.error('Error removing liquidity:', err);
             error = err.message;
-        } finally {
             isRemoving = false;
         }
-    }
-
-    function handleClose() {
-        showModal = false;
-        dispatch('close');
     }
 
     let activeTab: 'info' | 'remove' | 'earnings' = 'info';
@@ -225,9 +279,9 @@
 </script>
 
 <Modal
-    isOpen={showModal}
+    bind:isOpen={showModal}
     title="Pool Position"
-    onClose={handleClose}
+    onClose={() => showModal = false}
     width="600px"
     height="auto"
 >

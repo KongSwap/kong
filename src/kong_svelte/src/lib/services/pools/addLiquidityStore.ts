@@ -5,6 +5,7 @@ import { parseTokenAmount } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
 import debounce from 'lodash-es/debounce';
 import { auth } from '../auth';
+import { toastStore } from '$lib/stores/toastStore';
 
 interface AddLiquidityState {
   token0: FE.Token | null;
@@ -20,6 +21,9 @@ interface AddLiquidityState {
   showReview: boolean;
   previewMode: boolean;
   statusSteps: Array<{ label: string; completed: boolean; }>;
+  showToken0Selector: boolean;
+  showToken1Selector: boolean;
+  tokenSelectorPosition: { x: number; y: number } | null;
 }
 
 function createAddLiquidityStore() {
@@ -40,7 +44,10 @@ function createAddLiquidityStore() {
       { label: 'Sending Tokens', completed: false },
       { label: 'Updating LPs', completed: false },
       { label: 'Success', completed: false }
-    ]
+    ],
+    showToken0Selector: false,
+    showToken1Selector: false,
+    tokenSelectorPosition: null
   });
 
   const debouncedCalculate = debounce(async (amount: string, index: 0 | 1, state: AddLiquidityState) => {
@@ -115,25 +122,25 @@ function createAddLiquidityStore() {
   return {
     subscribe,
     setToken: (index: 0 | 1, token: FE.Token) => {
-      update(s => {
-        const newState = { 
-          ...s, 
-          [index === 0 ? 'token0' : 'token1']: token,
-          error: null 
-        };
-        updateBalances(newState);
-        return newState;
-      });
+      update(s => ({ ...s, [`token${index}`]: token }));
     },
-    handleInput: (index: 0 | 1, value: string) => {
-      update(s => {
-        const newState = { 
-          ...s, 
-          [index === 0 ? 'amount0' : 'amount1']: value 
-        };
-        debouncedCalculate(value, index, newState);
-        return newState;
-      });
+    setAmount: (index: 0 | 1, amount: string) => {
+      update(s => ({ ...s, [`amount${index}`]: amount }));
+    },
+    toggleTokenSelector: (index: 0 | 1, position: { x: number; y: number } | null = null) => {
+      update(s => ({
+        ...s,
+        [`showToken${index}Selector`]: !s[`showToken${index}Selector`],
+        tokenSelectorPosition: position
+      }));
+    },
+    closeTokenSelector: () => {
+      update(s => ({
+        ...s,
+        showToken0Selector: false,
+        showToken1Selector: false,
+        tokenSelectorPosition: null
+      }));
     },
     startReview: () => update(s => ({ ...s, showReview: true })),
     cancelReview: () => update(s => ({ ...s, showReview: false })),
@@ -157,35 +164,53 @@ function createAddLiquidityStore() {
         };
 
         const requestId = await PoolService.addLiquidity(params);
-        await PoolService.pollRequestStatus(requestId);
+        const requestStatus = await PoolService.pollRequestStatus(requestId);
+        
+        if (requestStatus.statuses.includes('Success')) {
+          update(s => ({
+            ...s,
+            loading: false,
+            previewMode: false,
+            showReview: false
+          }));
+          toastStore.success("Successfully added liquidity to the pool", 5000, "Success");
+        } else {
+          throw new Error('Transaction failed');
+        }
       } catch (err) {
         update(s => ({
           ...s,
           error: err.message,
           loading: false,
-          previewMode: false
+          previewMode: false,
+          showReview: false
         }));
       }
     },
-    reset: () => set({
-      token0: null,
-      token1: null,
-      amount0: "",
-      amount1: "",
-      loading: false,
-      error: null,
-      poolShare: "0",
-      token0Balance: "0",
-      token1Balance: "0",
-      isProcessingOutput: false,
-      showReview: false,
-      previewMode: false,
-      statusSteps: [
-        { label: 'Sending Tokens', completed: false },
-        { label: 'Updating LPs', completed: false },
-        { label: 'Success', completed: false }
-      ]
-    })
+    reset: () => {
+      set({
+        token0: null,
+        token1: null,
+        amount0: "",
+        amount1: "",
+        loading: false,
+        error: null,
+        poolShare: "0",
+        token0Balance: "0",
+        token1Balance: "0",
+        isProcessingOutput: false,
+        showReview: false,
+        previewMode: false,
+        statusSteps: [
+          { label: 'Sending Tokens', completed: false },
+          { label: 'Updating LPs', completed: false },
+          { label: 'Success', completed: false }
+        ],
+        showToken0Selector: false,
+        showToken1Selector: false,
+        tokenSelectorPosition: null
+      });
+    }
   };
 }
 

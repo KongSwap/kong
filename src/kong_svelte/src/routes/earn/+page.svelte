@@ -5,7 +5,6 @@
   import PoolsTable from "$lib/components/earn/PoolsTable.svelte";
   import { poolsList } from "$lib/services/pools/poolStore";
 
-  let isMobile = $state(false);
   let activeSection = $state("pools");
 
   // Calculate highest APR
@@ -14,22 +13,6 @@
     return Math.max(...$poolsList.map((pool) => Number(pool.rolling_24h_apy)));
   });
 
-  function handleResize() {
-    isMobile = window.innerWidth <= 768;
-  }
-
-  onMount(() => {
-    if (browser) {
-      handleResize();
-      window.addEventListener("resize", handleResize);
-    }
-
-    return () => {
-      if (browser) {
-        window.removeEventListener("resize", handleResize);
-      }
-    };
-  });
 </script>
 
 <div class="earn-container">
@@ -55,7 +38,7 @@
       isComingSoon={true}
     />
   </div>
-  <PoolsTable {isMobile} />
+  <PoolsTable />
 </div>
 
 <style>

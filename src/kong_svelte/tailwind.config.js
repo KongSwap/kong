@@ -31,6 +31,13 @@ export default {
         return acc;
       }, {});
       addUtilities(newUtilities, ['responsive', 'hover']);
+    },
+    function({ addComponents }) {
+      addComponents({
+        '.primary-button': {
+          '@apply px-3 sm:px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:bg-blue-600 w-full sm:w-auto': {}
+        }
+      });
     }
   ]
 };

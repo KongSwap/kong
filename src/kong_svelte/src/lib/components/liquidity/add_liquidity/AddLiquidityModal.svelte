@@ -258,6 +258,7 @@
                       loading = false;
                       setTimeout(() => {
                           previewMode = false;
+                          showReview = false;
                           goto('/pools');
                       }, 2000);
                   } else {
@@ -396,7 +397,6 @@
       onTokenSelect={handleTokenSelect}
       onInput={handleInput}
       onSubmit={handleConfirm}
-      previewMode={previewMode}
     />
 
   <style lang="postcss">

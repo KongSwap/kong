@@ -60,17 +60,20 @@
   const tokensLoading = derived(
     [formattedTokens, poolStore],
     ([$formattedTokens, $poolStore]): boolean => {
-      const formattedTokensLoading = $formattedTokens && 
+      // Only show loading on initial load when tokens array is empty
+      const formattedTokensInitialLoading = !$formattedTokens || 
+        ($formattedTokens && 
         typeof $formattedTokens === 'object' && 
-        'isLoading' in $formattedTokens ? 
-        Boolean($formattedTokens.isLoading) : false;
+        'isLoading' in $formattedTokens && 
+        (!Array.isArray($formattedTokens) || $formattedTokens.length === 0));
       
-      const poolStoreLoading = $poolStore && 
+      const poolStoreInitialLoading = !$poolStore || 
+        ($poolStore && 
         typeof $poolStore === 'object' && 
-        'isLoading' in $poolStore ? 
-        Boolean($poolStore.isLoading) : false;
+        'isLoading' in $poolStore && 
+        (!$poolStore.pools || $poolStore.pools.length === 0));
 
-      return formattedTokensLoading || poolStoreLoading;
+      return formattedTokensInitialLoading || poolStoreInitialLoading;
     }
   );
 
@@ -432,7 +435,6 @@
                       </div>
                     </td>
                     <td class="price-cell">
-                      {#key enrichedToken?.price}
                         <span class={getPriceChangeClass(enrichedToken, $previousPrices)}>
                           ${formatToNonZeroDecimal(enrichedToken?.price || enrichedToken?.metrics?.price)}
                           {#if getPriceChangeClass(enrichedToken, $previousPrices) === "price-up"}
@@ -445,24 +447,17 @@
                             </div>
                           {/if}
                         </span>
-                      {/key}
                     </td>
                     <td class="change-cell text-right {priceChangeClass}">
-                      {#key enrichedToken?.metrics?.price_change_24h}
                         <span>
                           {enrichedToken?.metrics?.price_change_24h}%
                         </span>
-                      {/key}
                     </td>
                     <td class="text-right">
-                      {#key enrichedToken?.metrics?.volume_24h}
                         <span>{formatUsdValue(enrichedToken?.metrics?.volume_24h)}</span>
-                      {/key}
                     </td>
                     <td class="text-right">
-                      {#key enrichedToken?.metrics?.market_cap}
                         <span>{formatUsdValue(enrichedToken?.metrics?.market_cap)}</span>
-                      {/key}
                     </td>
                     <td class="actions-cell">
                       <button

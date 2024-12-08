@@ -15,15 +15,29 @@
     export let token1: FE.Token | null = null;
     export let amount0: string = "0";
     export let amount1: string = "0";
-    export let token0Balance: string = "0";
-    export let token1Balance: string = "0";
+    export const token0Balance: string = "0";
+    export const token1Balance: string = "0";
 
     let loading = false;
     let error: string | null = null;
 
-    let panels = [
-        { id: "token0", type: "pay", title: "Token 1" },
-        { id: "token1", type: "receive", title: "Token 2" },
+    interface Panel {
+        id: 0 | 1;
+        type: "pay" | "receive";
+        title: string;
+    }
+
+    let panels: Panel[] = [
+        { 
+            id: 0, 
+            type: "pay", 
+            title: "Token 1"
+        },
+        { 
+            id: 1, 
+            type: "receive", 
+            title: "Token 2"
+        }
     ];
 
     // Monitor token props changes
@@ -105,29 +119,14 @@
         console.log("Final amounts after input:", { amount0, amount1 });
     }
 
-    function handleTokenSelect(index: 0 | 1, event: CustomEvent) {
-        console.log("AddLiquidity: Token select triggered", { index, event });
-        
-        const button = event.detail.button as HTMLElement;
-        if (!button) {
-            console.log("No button element found in event detail");
-            return;
-        }
-        
+    function handleTokenSelectorClick(event: CustomEvent<{button: HTMLElement}>, index: 0 | 1) {
+        const button = event.detail.button;
         const rect = button.getBoundingClientRect();
         const position = {
-            x: rect.right + 8,
-            y: rect.top,
-            height: rect.height,
-            windowHeight: window.innerHeight,
-            windowWidth: window.innerWidth
+            x: rect.left,
+            y: rect.bottom + window.scrollY
         };
-
-        console.log("Opening token selector with position:", position);
-        addLiquidityStore.toggleTokenSelector(
-            index === 0 ? 'token0' : 'token1',
-            position
-        );
+        addLiquidityStore.toggleTokenSelector(index, position);
     }
 
     function handleTokenSelected(token: FE.Token, index: 0 | 1) {
@@ -281,58 +280,43 @@
         </div>
 
         <div class="panels-container">
-            <div class="panels-wrapper">
+            {#each panels as panel (panel.id)}
                 <div class="panel">
                     <LiquidityPanel
-                        title={panels[0].title}
-                        token={token0}
-                        amount={amount0}
-                        on:amountChange={(e) => handleInput(0, e)}
-                        on:tokenSelect={(e) => handleTokenSelect(0, e)}
-                        showPrice={false}
-                        disabled={false}
-                        panelType="pay"
+                        title={panel.title}
+                        token={panel.id === 0 ? token0 : token1}
+                        amount={panel.id === 0 ? amount0 : amount1}
+                        panelType={panel.type}
+                        on:amountChange={(e) => handleInput(panel.id as 0 | 1, e)}
+                        on:tokenSelect={(e) => handleTokenSelectorClick(e, panel.id as 0 | 1)}
                     />
                 </div>
+            {/each}
+        </div>
 
-                <div class="panel">
-                    <LiquidityPanel
-                        title={panels[1].title}
-                        token={token1}
-                        amount={amount1}
-                        onAmountChange={(e) => handleInput(1, e)}
-                        on:tokenSelect={(e) => handleTokenSelect(1, e)}
-                        showPrice={false}
-                        disabled={false}
-                        panelType="receive"
-                    />
-                </div>
-            </div>
-
-            <div class="swap-footer">
-                <button
-                    class="swap-button"
-                    class:error={error}
-                    class:processing={loading}
-                    class:ready={!error}
-                    on:click={handleSubmit}
-                    disabled={!token0 || !token1 || parseFloat(amount0) <= 0 || parseFloat(amount1) <= 0 || loading}
-                >
-                    <div class="button-content">
-                        {#key buttonText}
-                            <span class="button-text" in:fade={{ duration: 200 }}>
-                                {buttonText}
-                            </span>
-                        {/key}
-                        {#if loading}
-                            <div class="loading-spinner"></div>
-                        {/if}
-                    </div>
-                    {#if !error}
-                        <div class="button-glow"></div>
+        <div class="swap-footer">
+            <button
+                class="swap-button"
+                class:error={error}
+                class:processing={loading}
+                class:ready={!error}
+                on:click={handleSubmit}
+                disabled={!token0 || !token1 || parseFloat(amount0) <= 0 || parseFloat(amount1) <= 0 || loading}
+            >
+                <div class="button-content">
+                    {#key buttonText}
+                        <span class="button-text" in:fade={{ duration: 200 }}>
+                            {buttonText}
+                        </span>
+                    {/key}
+                    {#if loading}
+                        <div class="loading-spinner"></div>
                     {/if}
-                </button>
-            </div>
+                </div>
+                {#if !error}
+                    <div class="button-glow"></div>
+                {/if}
+            </button>
         </div>
     </div>
 </div>
@@ -340,12 +324,10 @@
 {#if $addLiquidityStore.showToken0Selector}
     <Portal target="body">
         <TokenSelectorDropdown
-            show={true}
-            currentToken={token0}
-            otherPanelToken={token1}
+            tokens={$tokenStore.tokens}
             position={$addLiquidityStore.tokenSelectorPosition}
-            onSelect={(token) => handleTokenSelected(token, 0)}
             onClose={() => addLiquidityStore.closeTokenSelector()}
+            onSelect={(token) => handleTokenSelected(token, 0)}
         />
     </Portal>
 {/if}
@@ -353,12 +335,10 @@
 {#if $addLiquidityStore.showToken1Selector}
     <Portal target="body">
         <TokenSelectorDropdown
-            show={true}
-            currentToken={token1}
-            otherPanelToken={token0}
+            tokens={$tokenStore.tokens}
             position={$addLiquidityStore.tokenSelectorPosition}
-            onSelect={(token) => handleTokenSelected(token, 1)}
             onClose={() => addLiquidityStore.closeTokenSelector()}
+            onSelect={(token) => handleTokenSelected(token, 1)}
         />
     </Portal>
 {/if}
@@ -385,9 +365,8 @@
 
 <button
     class="switch-button"
-    class:disabled={loading}
     on:click={handleReverseTokens}
-    disabled={loading}
+    aria-label="Switch token positions"
 >
     <div class="switch-button-inner">
         <svg
