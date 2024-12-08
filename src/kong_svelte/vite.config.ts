@@ -13,11 +13,8 @@ dotenv.config({
   override: true 
 });
 
-const ENV = process.env.DFX_NETWORK || 'local';
-
 export default defineConfig(({ mode }: ConfigEnv) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const icHost = "https://icp-api.io";
 
   return {
     build: {
@@ -106,20 +103,20 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           ]
         }
       }),
-      // viteCompression({
-      //   verbose: true,
-      //   disable: false,
-      //   threshold: 5200,
-      //   algorithm: 'gzip',
-      //   ext: '.gz',
-      // }),
-      // viteCompression({
-      //   verbose: true,
-      //   disable: false,
-      //   threshold: 5200,
-      //   algorithm: 'brotliCompress',
-      //   ext: '.br',
-      // }),
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 5200,
+        algorithm: 'gzip',
+        ext: '.gz',
+      }),
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 5200,
+        algorithm: 'brotliCompress',
+        ext: '.br',
+      }),
     ],
     resolve: {
       alias: [

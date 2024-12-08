@@ -492,7 +492,10 @@
 
     .logo-wide {
       height: 2.5rem;
+      max-width: 100%;
       object-fit: contain;
+      -webkit-backface-visibility: hidden;
+      -webkit-transform: translateZ(0);
     }
   }
 
@@ -508,7 +511,6 @@
   }
 
   .logo-wide {
-    width: 100%;
     height: 3rem;
     filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
     transition: all 0.3s ease;

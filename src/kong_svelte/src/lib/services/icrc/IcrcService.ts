@@ -279,7 +279,7 @@ export class IcrcService {
     try {
       const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
         anon: false,
-        requiresSigning: false,
+        requiresSigning: ["nfid"].includes(auth.pnp.activeWallet.id.toLowerCase()) ? true : false,
       });
       console.log("ICRC1_TRANSFER ACTOR", actor);
       const toPrincipal = typeof to === "string" ? Principal.fromText(to) : to;

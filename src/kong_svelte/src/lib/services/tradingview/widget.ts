@@ -18,14 +18,23 @@ export async function loadTradingViewLibrary() {
 
     // Load the library
     const script = document.createElement('script');
-    script.src = '/charting_library/charting_library/charting_library.js';
+    // Use absolute path and add crossorigin attribute
+    script.src = window.location.origin + '/charting_library/charting_library/charting_library.js';
     script.type = 'text/javascript';
     script.async = true;
+    script.crossOrigin = 'anonymous';
 
     const loadPromise = new Promise((resolve, reject) => {
       script.onload = () => {
-        console.log('TradingView library loaded successfully');
-        resolve(true);
+        // Add a small delay to ensure the library is fully initialized
+        setTimeout(() => {
+          if (window.TradingView) {
+            console.log('TradingView library loaded and initialized successfully');
+            resolve(true);
+          } else {
+            reject(new Error('TradingView failed to initialize'));
+          }
+        }, 100);
       };
       script.onerror = (error) => {
         console.error('Failed to load TradingView library:', error);

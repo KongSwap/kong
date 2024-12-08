@@ -82,22 +82,31 @@ onDestroy(() => {
 
 // Handle resize
 function handleResize() {
-  if (chart && chart._ready) {
-    try {
-      const iframe = chartContainer.querySelector('iframe');
-      if (iframe) {
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-      }
-      
+  if (!chart || !chart._ready) return;
+
+  try {
+    // Force a reflow to ensure Safari updates properly
+    chartContainer.style.display = 'none';
+    void chartContainer.offsetHeight; // Force reflow
+    chartContainer.style.display = 'block';
+
+    const iframe = chartContainer.querySelector('iframe');
+    if (iframe) {
+      // Use explicit pixel values instead of percentages for Safari
+      iframe.style.width = `${containerWidth}px`;
+      iframe.style.height = `${containerHeight}px`;
+    }
+    
+    // Ensure chart resize is called after the iframe is properly sized
+    requestAnimationFrame(() => {
       if (chart._internal_widget) {
         chart._internal_widget.resize(containerWidth, containerHeight);
       } else if (typeof chart.resize === 'function') {
         chart.resize(containerWidth, containerHeight);
       }
-    } catch (e) {
-      console.warn('Error resizing chart:', e);
-    }
+    });
+  } catch (e) {
+    console.warn('Error resizing chart:', e);
   }
 }
 
