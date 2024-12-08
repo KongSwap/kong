@@ -12,7 +12,7 @@
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
 
-  let activeTab: 'settings' = 'settings';
+  let activeTab: 'false' = 'settings';
   let soundEnabled = true;
   let settingsSubscription: () => void;
   let slippageValue: number = 2.0;
