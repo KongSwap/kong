@@ -1,6 +1,11 @@
 use candid::{CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_timers::{clear_timer, set_timer_interval};
+use icrc_ledger_types::icrc21::errors::ErrorInfo;
+use icrc_ledger_types::icrc21::requests::DisplayMessageType::{GenericDisplay, LineDisplay};
+use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
+use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage, LineDisplayPage};
+use itertools::Itertools;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -168,6 +173,42 @@ fn icrc10_supported_standards() -> Vec<SupportedStandard> {
             name: "ICRC-28".to_string(),
         },
     ]
+}
+
+#[update]
+fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
+    let metadata = ConsentMessageMetadata {
+        language: "en".to_string(),
+        utc_offset_minutes: None,
+    };
+
+    match consent_msg_request.user_preferences.device_spec {
+        Some(LineDisplay {
+            #[allow(unused_variables)]
+            characters_per_line,
+            lines_per_page,
+        }) => {
+            let mut lines = vec![];
+            lines.push(format!("Approve canister to execute method {}", consent_msg_request.method));
+            let pages = lines
+                .into_iter()
+                .chunks(lines_per_page as usize)
+                .into_iter()
+                .map(|page| LineDisplayPage { lines: page.collect() })
+                .collect();
+            Ok(ConsentInfo {
+                metadata,
+                consent_message: ConsentMessage::LineDisplayMessage { pages },
+            })
+        }
+        Some(GenericDisplay) | None => Ok(ConsentInfo {
+            metadata,
+            consent_message: ConsentMessage::GenericDisplayMessage(format!(
+                "Approve canister to execute method {}",
+                consent_msg_request.method,
+            )),
+        }),
+    }
 }
 
 #[derive(CandidType, Clone, Debug, Deserialize)]

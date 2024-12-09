@@ -8,7 +8,6 @@ use super::swap_transfer_from::{swap_transfer_from, swap_transfer_from_async};
 use crate::ic::guards::not_in_maintenance_mode;
 
 /// Pay and Receive are from the user's perspective
-
 /// Swap tokens
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn swap(args: SwapArgs) -> Result<SwapReply, String> {
