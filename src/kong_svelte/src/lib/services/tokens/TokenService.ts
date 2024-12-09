@@ -70,18 +70,25 @@ export class TokenService {
         const enriched = await Promise.all(parsed.map(async (token) => {
           const price = await this.fetchPrice(token);
           let total24hVolume = 0;
-          const tokenPools = get(poolStore).pools.filter((p: BE.Pool) => p.address_0 === token.canister_id || p.address_1 === token.canister_id);
+          const tokenPools = get(poolStore).pools.filter((p: BE.Pool) => 
+            p.address_0 === token.canister_id || p.address_1 === token.canister_id
+          );
 
-          tokenPools.forEach(async (pool) => {
+          // Calculate total volume synchronously since the pool data is already loaded
+          total24hVolume = tokenPools.reduce((sum, pool) => {
             if (pool.rolling_24h_volume) {
-              total24hVolume += Number(pool.rolling_24h_volume.toString()) / (10 ** 6);
-            } 
-          });
+              return sum + Number(pool.rolling_24h_volume.toString()) / (10 ** 6);
+            }
+            return sum;
+          }, 0);
+
           const enrichedToken: FE.Token = {
             ...token,
             metrics: {
               ...token.metrics,
-              market_cap: token.canister_id === CKUSDT_CANISTER_ID ? (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : token.metrics.market_cap,
+              market_cap: token.canister_id === CKUSDT_CANISTER_ID ? 
+                (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : 
+                token.metrics.market_cap,
               volume_24h: total24hVolume.toString(),
             },
             price,

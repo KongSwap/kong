@@ -161,6 +161,7 @@
 
   async function pollStatus(requestId: bigint, attempt = 1) {
     try {
+        const MAX_ATTEMPTS = 50;
         console.log(`Polling for request status... (attempt ${attempt}/10)`);
         const status = await PoolService.pollRequestStatus(requestId);
         console.log('Request status:', status);
@@ -182,7 +183,7 @@
             showConfirmation = false;
             loading = false;
             throw new Error(errorMsg);
-        } else if (attempt >= 10) {
+        } else if (attempt >= MAX_ATTEMPTS) {
             console.log('Maximum polling attempts reached');
             toastStore.error("Operation timed out after 10 attempts", 8000, "Error");
             showConfirmation = false;

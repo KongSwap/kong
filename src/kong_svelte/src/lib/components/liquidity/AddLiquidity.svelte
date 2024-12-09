@@ -86,7 +86,7 @@
                 if (index === 0) {
                     const parsedAmount = parseTokenAmount(input, token0.decimals);
                     console.log("Calculating amount1 based on input:", parsedAmount.toString());
-                    const result = await PoolService.addLiquidityAmounts(
+                    const result = await PoolService.calculateLiquidityAmounts(
                         token0.token,
                         parsedAmount,
                         token1.token
@@ -95,25 +95,33 @@
                     if (result.Ok) {
                         amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
                         console.log("Updated amount1:", amount1);
+                    } else if (result.Err) {
+                        console.error("Error calculating liquidity:", result.Err);
+                        error = "Failed to calculate liquidity amounts";
                     }
                 } else {
                     const parsedAmount = parseTokenAmount(input, token1.decimals);
                     console.log("Calculating amount0 based on input:", parsedAmount.toString());
-                    const result = await PoolService.addLiquidityAmounts(
+                    const result = await PoolService.calculateLiquidityAmounts(
                         token1.token,
                         parsedAmount,
                         token0.token
                     );
                     
                     if (result.Ok) {
-                        amount0 = formatTokenAmount(result.Ok.amount_0, token0.decimals);
+                        amount0 = formatTokenAmount(result.Ok.amount_1, token0.decimals);
                         console.log("Updated amount0:", amount0);
+                    } else if (result.Err) {
+                        console.error("Error calculating liquidity:", result.Err);
+                        error = "Failed to calculate liquidity amounts";
                     }
                 }
             } catch (err) {
-                console.error("Error calculating liquidity amounts:", err);
-                error = err.message;
+                console.error("Error in handleInput:", err);
+                error = "Failed to calculate liquidity amounts";
             }
+        } else {
+            console.log("Skipping calculation - missing tokens or empty input");
         }
 
         console.log("Final amounts after input:", { amount0, amount1 });
@@ -250,7 +258,7 @@
     onMount(async () => {
         if (token0 && token1) {
             try {
-                const result = await PoolService.addLiquidityAmounts(
+                const result = await PoolService.calculateLiquidityAmounts(
                     token0.token,
                     parseTokenAmount("1", token0.decimals),
                     token1.token
@@ -259,6 +267,8 @@
                 if (result.Ok) {
                     amount0 = "1";
                     amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
+                } else if (result.Err) {
+                    console.error("Error calculating initial liquidity amounts:", result.Err);
                 }
             } catch (err) {
                 console.error("Error calculating initial liquidity amounts:", err);

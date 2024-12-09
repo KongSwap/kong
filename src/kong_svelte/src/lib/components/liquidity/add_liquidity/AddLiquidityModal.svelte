@@ -260,10 +260,10 @@
                           previewMode = false;
                           showReview = false;
                           goto('/pools');
-                      }, 2000);
+                      }, 1000);
                   } else {
                       // Continue polling
-                      setTimeout(checkStatus, 2000);
+                      setTimeout(checkStatus, 500);
                   }
               } catch (err) {
                   console.error("Error polling request status:", err);

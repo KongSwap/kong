@@ -2,7 +2,7 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import Modal from '$lib/components/common/Modal.svelte';
     import TokenImages from '$lib/components/common/TokenImages.svelte';
-    import { formatTokenAmount, formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
+    import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
     import { tokenStore } from '$lib/services/tokens/tokenStore';
     import { PoolService } from '$lib/services/pools';
     import { poolsList } from "$lib/services/pools/poolStore";
@@ -15,13 +15,6 @@
     export let pool: any;
     export let showModal: boolean = false;
     
-    // Debug logging for development
-    $: {
-        console.log("TokenStore state:", $tokenStore);
-        console.log("Pool data:", pool);
-        console.log("Estimated amounts:", estimatedAmounts);
-    }
-
     // Calculate USD value for tokens using proper price lookup
     function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
         console.log("Calculating USD value for:", {
@@ -176,7 +169,7 @@
             // Poll for request completion
             let isComplete = false;
             let attempts = 0;
-            const maxAttempts = 20; // 30 seconds timeout
+            const maxAttempts = 30; // 30 seconds timeout
             
             while (!isComplete && attempts < maxAttempts) {
                 const requestStatus = await PoolService.pollRequestStatus(BigInt(requestId));

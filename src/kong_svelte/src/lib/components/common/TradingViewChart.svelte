@@ -270,9 +270,9 @@
   });
 </script>
 
-<div class="chart-wrapper" bind:this={chartWrapper}>
+<div class="chart-wrapper h-full" bind:this={chartWrapper}>
   <div
-    class="chart-container relative w-full h-full !p-0"
+    class="chart-container"
     bind:this={chartContainer}
   >
     {#if hasNoData}
@@ -337,10 +337,10 @@
 
 <style lang="postcss">
   .chart-wrapper {
-    position: relative;
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
-    min-height: 400px;
     background: var(--bg-card);
     border-radius: 12px;
     overflow: hidden;
@@ -348,8 +348,7 @@
 
   .chart-container {
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
   }
@@ -396,11 +395,15 @@
   }
 
   :global(.tradingview-widget-container) {
+    position: absolute !important;
+    inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
   }
 
   :global(.tv-lightweight-charts) {
+    position: absolute !important;
+    inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
     font-family: inherit !important;

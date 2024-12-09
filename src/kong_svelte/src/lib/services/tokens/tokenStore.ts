@@ -197,14 +197,28 @@ function createTokenStore() {
   // Add pool update handler with debounce to prevent rapid updates
   const debouncedPoolUpdate = debounce(async (pools: BE.Pool[]) => {
     const currentStore = get(store);
-    const updatedTokens = currentStore.tokens.map(token => ({
-      ...token,
-      pools: pools.filter(p => p.address_0 === token.canister_id || p.address_1 === token.canister_id),
-      total_24h_volume: BigInt(pools
+    const updatedTokens = currentStore.tokens.map(token => {
+      const volume = pools
         .filter(p => p.address_0 === token.canister_id || p.address_1 === token.canister_id)
-        .reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)
-      ).toString(),
-    }));
+        .reduce((acc, p) => acc + (Number(p.rolling_24h_volume) / (10 ** 6)), 0);
+
+      const updatedToken = {
+        ...token,
+        pools: pools.filter(p => p.address_0 === token.canister_id || p.address_1 === token.canister_id),
+        metrics: {
+          ...token.metrics,
+          volume_24h: volume.toString()
+        }
+      };
+
+      // Update the token in the database to persist volume
+      kongDB.tokens.put({
+        ...updatedToken,
+        timestamp: Date.now()
+      });
+
+      return updatedToken;
+    });
 
     // Update tokens and trigger a price refresh
     store.update(state => ({
@@ -630,4 +644,3 @@ export const getTokenDecimals = (canister_id: string): number => {
   const token = tokenStore.getToken(canister_id);
   return token?.decimals || 0;
 };
-

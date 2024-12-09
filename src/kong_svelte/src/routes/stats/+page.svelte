@@ -60,18 +60,14 @@
   const tokensLoading = derived(
     [formattedTokens, poolStore],
     ([$formattedTokens, $poolStore]): boolean => {
-      // Only show loading on initial load when tokens array is empty
+      // Check if either store is not initialized or empty
       const formattedTokensInitialLoading = !$formattedTokens || 
-        ($formattedTokens && 
-        typeof $formattedTokens === 'object' && 
-        'isLoading' in $formattedTokens && 
-        (!Array.isArray($formattedTokens) || $formattedTokens.length === 0));
+        (!Array.isArray($formattedTokens) || $formattedTokens.length === 0);
       
       const poolStoreInitialLoading = !$poolStore || 
-        ($poolStore && 
-        typeof $poolStore === 'object' && 
-        'isLoading' in $poolStore && 
-        (!$poolStore.pools || $poolStore.pools.length === 0));
+        !$poolStore.pools || 
+        $poolStore.pools.length === 0 || 
+        $poolStore.isLoading;
 
       return formattedTokensInitialLoading || poolStoreInitialLoading;
     }
@@ -1138,4 +1134,3 @@
     }
   }
 </style>
-
