@@ -104,9 +104,7 @@
     countdown = 2;
     
     try {
-      // Run countdown and swap execution in parallel
       const [, success] = await Promise.all([
-        // Countdown Promise
         new Promise<void>((resolve) => {
           countdownInterval = setInterval(() => {
             if (countdown > 0) {
@@ -124,7 +122,6 @@
             }
           }, 1000);
         }),
-        // Swap execution Promise
         onConfirm()
       ]);
       
@@ -153,17 +150,6 @@
     } finally {
       isLoading = false;
     }
-  }
-
-  function handleClose() {
-    cleanComponent();
-    swapState.update(state => ({
-      ...state,
-      isProcessing: false,
-      showConfirmation: false,
-      error: null
-    }));
-    onClose?.();
   }
 
   onDestroy(() => {
@@ -245,8 +231,6 @@
           />
           <RouteSection
             routingPath={initialQuoteData.routingPath}
-            gasFees={initialQuoteData.gasFees}
-            lpFees={initialQuoteData.lpFees}
           />
           <FeesSection
             totalGasFee={totalGasFee}
@@ -304,7 +288,6 @@
   }
 
   .sections-wrapper {
-    background: rgba(17, 25, 40, 0.75);
     display: flex;
     flex-direction: column;
     gap: 16px;    
@@ -321,7 +304,7 @@
     transition: all 0.2s ease;
     width: 100%;
     box-sizing: border-box;
-  }s
+  }
 
   .button-container {
     padding-top: 16px;
@@ -371,6 +354,12 @@
     transform: translateY(0);
     transition: all 0.2s ease-out;
     overflow: hidden;
+    cursor: pointer;
+  }
+
+  .swap-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 
   .button-content {
@@ -437,47 +426,36 @@
   @media (max-width: 640px) {
     .confirmation-container {
       padding: 0;
-      min-height: 100%;
     }
 
     .content-wrapper {
-      padding: 12px 12px 16px 12px;
-      min-height: 100%;
+      padding: 0;
       justify-content: space-between;
     }
 
     .sections-wrapper {
       gap: 12px;
-      flex: 0 1 auto;
-    }
-
-    @media (min-height: 800px) {
-      .sections-wrapper {
-        gap: 16px;
-      }
-    }
-
-    @media (min-height: 900px) {
-      .content-wrapper {
-        padding: 16px 16px 20px 16px;
-      }
-
-      .sections-wrapper {
-        gap: 20px;
-      }
-
-      .sections-wrapper > :global(*) {
-        padding: 24px;
-      }
-    }
-
-    .sections-wrapper > :global(*) {
-      border-radius: 12px;
+      padding: 0;
     }
 
     .button-container {
-      padding: 12px 12px 0 12px;
-      margin-top: 12px;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .error-container {
+      padding: 0;
+      gap: 12px;
+    }
+
+    .error-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+    }
+
+    .error-message {
+      font-size: 14px;
     }
 
     .swap-button {
@@ -492,21 +470,6 @@
     .loading-spinner {
       width: 18px;
       height: 18px;
-    }
-
-    .error-container {
-      padding: 16px;
-      gap: 12px;
-    }
-
-    .error-icon {
-      width: 40px;
-      height: 40px;
-      font-size: 20px;
-    }
-
-    .error-message {
-      font-size: 14px;
     }
   }
 </style>

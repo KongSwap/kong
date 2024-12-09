@@ -1,10 +1,9 @@
 <script lang="ts">
   export let tokens: FE.Token[] = [];
-  export let size: number = 44; // default 44px (h-11 = 44px)
-  export let overlap: number = 12; // default 16px of overlap
+  export let size: number = 44;
+  export let overlap: number = 12; 
   export let containerClass: string = "";
 
-  // Filter out any undefined tokens and log for debugging
   $: validTokens = tokens.filter((token): token is FE.Token => {
     if (!token) return false;
     if (!token?.logo_url) {
@@ -24,7 +23,7 @@
       style="
         height: {size}px;
         width: {size}px;
-        z-index: {30 - (i * 10)};
+        z-index: 1;
         margin-left: {i === 0 ? 0 : -overlap}px;
       "
     >

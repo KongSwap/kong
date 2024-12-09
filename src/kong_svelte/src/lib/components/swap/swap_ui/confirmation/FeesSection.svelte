@@ -3,228 +3,157 @@
   export let totalLPFee: number;
   export let userMaxSlippage: number;
   export let receiveToken: FE.Token;
+
+  let showGasTooltip = false;
+  let showLpTooltip = false;
 </script>
 
-<div class="section">
-  <h3 class="section-title">Transaction Details</h3>
-  
-  <div class="fee-rows">
-    <div class="fee-row">
-      <div class="label-container">
-        <span class="label">Network Fee</span>
-        <div class="info-tooltip">
-          ℹ️
-          <span class="tooltip-text">Gas fee required by the network to process your transaction</span>
-        </div>
-      </div>
-      <div class="amount">
-        <span class="value">{totalGasFee.toFixed(6)}</span>
-        <span class="token">{receiveToken.symbol}</span>
-      </div>
+<div class="fees-container">
+  <div class="fee-row">
+    <span class="label">
+      Gas Fee
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <span class="info-icon" on:mouseenter={() => showGasTooltip = true} on:mouseleave={() => showGasTooltip = false}>?
+        {#if showGasTooltip}
+          <div class="tooltip">Gas Fee: A network fee required to execute the transaction.</div>
+        {/if}
+      </span>
+    </span>
+    <div class="amount">
+      <span class="value">{totalGasFee.toFixed(6)}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
-    
-    <div class="fee-row">
-      <div class="label-container">
-        <span class="label">Trading Fee</span>
-        <div class="info-tooltip">
-          ℹ️
-          <span class="tooltip-text">Fee paid to liquidity providers for facilitating the trade</span>
-        </div>
-      </div>
-      <div class="amount">
-        <span class="value">{totalLPFee.toFixed(6)}</span>
-        <span class="token">{receiveToken.symbol}</span>
-      </div>
+  </div>
+
+  <div class="fee-row">
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <span class="label">
+      LP Fee
+      <span class="info-icon" on:mouseenter={() => showLpTooltip = true} on:mouseleave={() => showLpTooltip = false}>?
+        {#if showLpTooltip}
+          <div class="tooltip">LP Fee: A fee paid to liquidity providers who enable the swap.</div>
+        {/if}
+      </span>
+    </span>
+    <div class="amount">
+      <span class="value">{totalLPFee.toFixed(6)}</span>
+      <span class="token">{receiveToken.symbol}</span>
     </div>
-    
-    <div class="fee-row slippage-row">
-      <div class="label-container">
-        <span class="label">Max Slippage</span>
-        <div class="info-tooltip">
-          ℹ️
-          <span class="tooltip-text">Maximum price movement you're willing to accept</span>
-        </div>
-      </div>
-      <div class="amount">
-        <span class="value {userMaxSlippage > 1 ? 'warning' : ''}">{userMaxSlippage}%</span>
-      </div>
+  </div>
+
+  <div class="fee-row">
+    <span class="label">Max Slippage</span>
+    <div class="amount">
+      <span class="value">{userMaxSlippage}</span>
+      <span class="token">%</span>
     </div>
   </div>
 </div>
 
 <style>
-  .section {
-    background: rgba(26, 27, 35, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .section-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0 0 16px 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .fee-rows {
+  .fees-container {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 8px;
+    padding: 16px;
+
   }
 
   .fee-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
     padding: 4px 0;
-    transition: background-color 0.2s ease;
-    flex-wrap: nowrap;
-    min-height: 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .label-container {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
+  .fee-row:last-child {
+    border-bottom: none;
   }
 
   .label {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .info-tooltip {
-    position: relative;
-    cursor: help;
-    font-size: 0.8rem;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-    flex-shrink: 0;
-  }
-
-  .info-tooltip:hover {
-    opacity: 1;
-  }
-
-  .tooltip-text {
-    visibility: hidden;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 100%;
-    margin-bottom: 8px;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    font-size: 0.8rem;
-    white-space: normal;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 10;
-    opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    max-width: 200px;
-    word-wrap: break-word;
-  }
-
-  .tooltip-text::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 100%;
-    transform: translateX(-50%);
-    border: 4px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
-  }
-
-  .info-tooltip:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .amount {
-    font-size: 0.95rem;
+    font-size: 16px;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 4px;
-    flex-shrink: 0;
+    color: white;
   }
 
-  .value {
-    color: rgba(255, 255, 255, 0.9);
-    font-feature-settings: "tnum";
-    font-variant-numeric: tabular-nums;
+  .info-icon {
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    position: relative;
   }
 
-  .token {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.85rem;
+  .info-icon:hover {
+    background: rgba(255, 255, 255, 0.25);
   }
 
-  .warning {
-    color: #fbbf24;
+  .tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    font-size: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    width: 180px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    line-height: 1.4;
+    z-index: 10;
   }
 
-  .slippage-row .value {
-    padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    font-size: 0.85rem;
+  .tooltip::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 10px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: transparent transparent rgba(0,0,0,0.85) transparent;
   }
 
   @media (max-width: 640px) {
-    .section {
-      padding: 12px 16px;
-    }
-
-    .section-title {
-      font-size: 0.85rem;
-      margin: 0 0 8px 0;
-      padding-bottom: 8px;
-    }
-
-    .fee-rows {
-      gap: 8px;
-    }
-
     .fee-row {
       padding: 2px 0;
-      min-height: 24px;
     }
 
     .label {
-      font-size: 0.8rem;
-    }
-
-    .info-tooltip {
-      font-size: 0.75rem;
+      font-size: 12px;
     }
 
     .amount {
-      font-size: 0.8rem;
+      font-size: 14px;
     }
 
-    .token {
-      font-size: 0.75rem;
+    .info-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 10px;
     }
 
-    .slippage-row .value {
-      padding: 2px 6px;
-      font-size: 0.8rem;
-    }
-
-    .tooltip-text {
-      display: none;
+    .tooltip {
+      font-size: 11px;
+      width: 150px;
     }
   }
 </style>

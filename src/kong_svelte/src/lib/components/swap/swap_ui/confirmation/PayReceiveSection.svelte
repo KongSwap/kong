@@ -60,12 +60,6 @@
     gap: 12px;
   }
 
-  .token-image {
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px;
-  }
-
   .token-details {
     display: flex;
     flex-direction: column;
@@ -86,7 +80,7 @@
 
   @media (max-width: 640px) {
     .section {
-      padding: 12px;
+      padding: 0.25rem 12px;
     }
 
     .token-section {
@@ -95,11 +89,6 @@
 
     .token-info {
       gap: 8px;
-    }
-
-    .token-image :global(img) {
-      width: 24px !important;
-      height: 24px !important;
     }
 
     .type {

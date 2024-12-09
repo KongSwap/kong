@@ -557,10 +557,10 @@ export const formattedTokens = derived(
         if (a.isFavorite && !b.isFavorite) return -1;
         if (!a.isFavorite && b.isFavorite) return 1;
         
-        // Then sort by USD value
-        const aValue = a.usdValue ?? 0;
-        const bValue = b.usdValue ?? 0;
-        return bValue - aValue;
+        // Then sort by 24h trading volume
+        const aVolume = Number(a.metrics.volume_24h || 0);
+        const bVolume = Number(b.metrics.volume_24h || 0);
+        return bVolume - aVolume;
       });
   }
 );
