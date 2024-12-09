@@ -160,6 +160,10 @@ fn icrc10_supported_standards() -> Vec<SupportedStandard> {
             name: "ICRC-10".to_string(),
         },
         SupportedStandard {
+            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md".to_string(),
+            name: "ICRC-21".to_string(),
+        },
+        SupportedStandard {
             url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/icrc_28_trusted_origins.md".to_string(),
             name: "ICRC-28".to_string(),
         },

@@ -23,7 +23,7 @@ pub async fn get_db_updates(
 ) -> Result<u64, Box<dyn std::error::Error>> {
     let current_time = Local::now();
     let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
-    println!("\nDB updates @ {}", formatted_time);
+    println!("\n--- DB updates @ {} ---", formatted_time);
 
     let json = kong_data.backup_db_updates(update_id).await?;
     let db_updates: Vec<StableUpdate> = serde_json::from_str(&json)?;
