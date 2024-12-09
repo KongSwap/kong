@@ -227,11 +227,20 @@ export class TokenService {
     // Use batch balance fetching
     const balances = await IcrcService.batchGetBalances(tokens, principal);
     
-    return tokens.reduce((acc, token) => {
+    // Fetch all prices in parallel
+    const prices = await Promise.all(
+      tokens.map(token => this.getCachedPrice(token))
+    );
+    
+    return tokens.reduce((acc, token, index) => {
       const balance = balances.get(token.canister_id) || BigInt(0);
+      const price = prices[index] || 0;
+      const tokenAmount = formatTokenAmount(balance.toString(), token.decimals);
+      const usdValue = parseFloat(tokenAmount) * price;
+      
       acc[token.canister_id] = {
         in_tokens: balance,
-        in_usd: '0' // Price calculation handled separately
+        in_usd: formatToNonZeroDecimal(usdValue)
       };
       return acc;
     }, {} as Record<string, TokenBalance>);

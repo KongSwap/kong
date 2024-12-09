@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { v4 as uuidv4 } from 'uuid';
+import hyperid from 'hyperid';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -11,6 +11,8 @@ export interface Toast {
     title?: string;
 }
 
+const generateId = hyperid();
+
 function createToastStore() {
     const { subscribe, update } = writable<Toast[]>([]);
 
@@ -20,7 +22,7 @@ function createToastStore() {
         duration: number = 5000,
         title?: string
     ): string => {
-        const id = uuidv4();
+        const id = generateId();
 
         if (type === 'error') {
             duration = duration || 8000;

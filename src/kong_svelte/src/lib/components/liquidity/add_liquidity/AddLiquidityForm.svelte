@@ -187,37 +187,31 @@
     async function handleMaxClick(index: 0 | 1) {
         const currentToken = index === 0 ? token0 : token1;
         const currentBalance = index === 0 ? token0Balance : token1Balance;
+        const otherToken = index === 0 ? token1 : token0;
         
-        if (!currentToken) return;
+        if (!currentToken || !otherToken) return;
 
         try {
-            const balance = new BigNumber(currentBalance);
-            const totalFees = new BigNumber(currentToken.fee_fixed.toString());
-            let maxAmount = balance.minus(totalFees);
-
-            if (maxAmount.isLessThanOrEqualTo(0)) {
-                throw new Error("Insufficient balance to cover the transaction fees");
-            }
-
-            maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
-            const formattedMax = formatTokenAmount(maxAmount.toString(), currentToken.decimals).replace(/,/g, '');
-
-            const inputElement = index === 0 ? input0Element : input1Element;
-            if (inputElement) {
-                inputElement.value = formatWithCommas(formattedMax);
-            }
-
+            const value = formatTokenAmount(currentBalance, currentToken.decimals);
+            
+            // Update the input display
             if (index === 0) {
-                previousValue0 = formattedMax;
+                if (input0Element) {
+                    input0Element.value = formatWithCommas(value);
+                }
+                previousValue0 = value;
             } else {
-                previousValue1 = formattedMax;
+                if (input1Element) {
+                    input1Element.value = formatWithCommas(value);
+                }
+                previousValue1 = value;
             }
 
-            onInput(index, formattedMax);
-
-        } catch (error) {
-            console.error("Error in handleMaxClick:", error);
-            throw error;
+            // Call the debounced handler to calculate the other amount
+            await debouncedHandleInput(index, value, currentToken, otherToken);
+        } catch (err) {
+            console.error("Error in handleMaxClick:", err);
+            error = err.message;
         }
     }
 

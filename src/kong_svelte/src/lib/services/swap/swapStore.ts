@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { v4 as uuidv4 } from 'uuid';
+import hyperid from 'hyperid';
 import BigNumber from 'bignumber.js';
 
 // Configure BigNumber
@@ -8,6 +8,9 @@ BigNumber.config({
   ROUNDING_MODE: BigNumber.ROUND_DOWN,
   EXPONENTIAL_AT: [-50, 50]
 });
+
+// Initialize hyperid instance
+const generateId = hyperid();
 
 interface SwapStatus {
     swapId: string;
@@ -64,7 +67,7 @@ function createSwapStatusStore() {
                 token?: string;
             };
         }) => {
-            const swapId = uuidv4();
+            const swapId = generateId();
             update(swaps => ({
                 ...swaps,
                 [swapId]: {

@@ -40,91 +40,73 @@
         }
     ];
 
-    // Monitor token props changes
-    $: {
-        console.log("AddLiquidity component tokens:", { token0, token1 });
-    }
-
-    $: {
-        console.log("Component state:", {
-            token0,
-            token1,
-            amount0,
-            amount1,
-            loading,
-            error,
-            buttonText
-        });
-    }
-
     async function handleInput(index: 0 | 1, event: CustomEvent) {
-        console.log("AddLiquidity handleInput:", { 
-            index, 
-            event,
-            eventDetail: event.detail,
-            value: event.detail?.value || event.detail?.detail?.value
-        });
+        console.log("handleInput called with:", { index, event, detail: event.detail });
         
-        const input = event.detail?.value || event.detail?.detail?.value;
+        const input = event.detail?.value;  
+        console.log("Got input value:", input);
+
         if (!input) {
-            console.log("No input value found");
+            if (index === 0) amount0 = "0";
+            else amount1 = "0";
             return;
         }
         
         // Update the amount immediately
         if (index === 0) {
             amount0 = input;
-            console.log("Updated amount0:", amount0);
+            console.log("Set amount0 to:", amount0);
         } else {
             amount1 = input;
-            console.log("Updated amount1:", amount1);
+            console.log("Set amount1 to:", amount1);
         }
 
-        // Only calculate other amount if we have both tokens and input is not empty
+        // Only calculate if we have both tokens and input is not empty
         if (token0 && token1 && input !== '') {
             try {
-                if (index === 0) {
-                    const parsedAmount = parseTokenAmount(input, token0.decimals);
-                    console.log("Calculating amount1 based on input:", parsedAmount.toString());
-                    const result = await PoolService.calculateLiquidityAmounts(
-                        token0.token,
-                        parsedAmount,
-                        token1.token
-                    );
+                console.log("Starting calculation with tokens:", { token0, token1 });
+                const parsedAmount = parseTokenAmount(input, index === 0 ? token0.decimals : token1.decimals);
+                console.log("Parsed amount:", parsedAmount.toString());
+
+                // Log which token we're calculating from/to
+                console.log("Calculating from:", index === 0 ? token0.token : token1.token);
+                console.log("Calculating to:", index === 0 ? token1.token : token0.token);
+
+                const result = await PoolService.calculateLiquidityAmounts(
+                    index === 0 ? token0.token : token1.token,
+                    parsedAmount,
+                    index === 0 ? token1.token : token0.token
+                );
+                
+                console.log("Got result:", result);
+
+                if (result.Ok) {
+                    console.log("Result amounts:", {
+                        amount_0: result.Ok.amount_0.toString(),
+                        amount_1: result.Ok.amount_1.toString()
+                    });
+
+                    // When index is 0 (top token), we want amount_1 for the bottom token
+                    // When index is 1 (bottom token), we want amount_0 for the top token
+                    const otherAmount = index === 0 ? result.Ok.amount_1 : result.Ok.amount_0;
+                    const otherDecimals = index === 0 ? token1.decimals : token0.decimals;
                     
-                    if (result.Ok) {
-                        amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
-                        console.log("Updated amount1:", amount1);
-                    } else if (result.Err) {
-                        console.error("Error calculating liquidity:", result.Err);
-                        error = "Failed to calculate liquidity amounts";
+                    if (index === 0) {
+                        amount1 = formatTokenAmount(otherAmount, otherDecimals);
+                        console.log("Updated amount1 to:", amount1);
+                    } else {
+                        amount0 = formatTokenAmount(otherAmount, otherDecimals);
+                        console.log("Updated amount0 to:", amount0);
                     }
-                } else {
-                    const parsedAmount = parseTokenAmount(input, token1.decimals);
-                    console.log("Calculating amount0 based on input:", parsedAmount.toString());
-                    const result = await PoolService.calculateLiquidityAmounts(
-                        token1.token,
-                        parsedAmount,
-                        token0.token
-                    );
-                    
-                    if (result.Ok) {
-                        amount0 = formatTokenAmount(result.Ok.amount_1, token0.decimals);
-                        console.log("Updated amount0:", amount0);
-                    } else if (result.Err) {
-                        console.error("Error calculating liquidity:", result.Err);
-                        error = "Failed to calculate liquidity amounts";
-                    }
+                } else if (result.Err) {
+                    console.error("Error calculating liquidity:", result.Err);
+                    error = "Failed to calculate liquidity amounts";
                 }
             } catch (err) {
                 console.error("Error in handleInput:", err);
                 error = "Failed to calculate liquidity amounts";
             }
-        } else {
-            console.log("Skipping calculation - missing tokens or empty input");
         }
-
-        console.log("Final amounts after input:", { amount0, amount1 });
     }
 
     function handleTokenSelectorClick(event: CustomEvent<{button: HTMLElement}>, index: 0 | 1) {
