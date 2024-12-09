@@ -235,51 +235,53 @@
     </div>
   {:else if payToken && receiveToken}
     <div class="confirmation-container">
-      <div class="sections-wrapper">
-        <PayReceiveSection
-          {payToken}
-          {payAmount}
-          {receiveToken}
-          {receiveAmount}
-        />
-        <RouteSection
-          routingPath={initialQuoteData.routingPath}
-          gasFees={initialQuoteData.gasFees}
-          lpFees={initialQuoteData.lpFees}
-        />
-        <FeesSection
-          totalGasFee={totalGasFee}
-          totalLPFee={totalLPFee}
-          {userMaxSlippage}
-          {receiveToken}
-        />
-      </div>
+      <div class="content-wrapper">
+        <div class="sections-wrapper">
+          <PayReceiveSection
+            {payToken}
+            {payAmount}
+            {receiveToken}
+            {receiveAmount}
+          />
+          <RouteSection
+            routingPath={initialQuoteData.routingPath}
+            gasFees={initialQuoteData.gasFees}
+            lpFees={initialQuoteData.lpFees}
+          />
+          <FeesSection
+            totalGasFee={totalGasFee}
+            totalLPFee={totalLPFee}
+            {userMaxSlippage}
+            {receiveToken}
+          />
+        </div>
 
-      <div class="button-container">
-        <button
-          class="swap-button"
-          class:processing={isLoading}
-          on:click={handleConfirm}
-          disabled={isLoading}
-        >
-          <div class="button-content">
-            <span class="button-text">
-              {#if isCountingDown}
-                Confirming in {countdown}...
-              {:else if isLoading}
-                Processing...
-              {:else}
-                Confirm Swap
+        <div class="button-container">
+          <button
+            class="swap-button"
+            class:processing={isLoading}
+            on:click={handleConfirm}
+            disabled={isLoading}
+          >
+            <div class="button-content">
+              <span class="button-text">
+                {#if isCountingDown}
+                  Confirming in {countdown}...
+                {:else if isLoading}
+                  Processing...
+                {:else}
+                  Confirm Swap
+                {/if}
+              </span>
+              {#if isLoading}
+                <div class="loading-spinner"></div>
               {/if}
-            </span>
-            {#if isLoading}
-              <div class="loading-spinner"></div>
+            </div>
+            {#if !isLoading}
+              <div class="button-glow"></div>
             {/if}
-          </div>
-          {#if !isLoading}
-            <div class="button-glow"></div>
-          {/if}
-        </button>
+          </button>
+        </div>
       </div>
     </div>
   {/if}
@@ -289,61 +291,41 @@
   .confirmation-container {
     display: flex;
     flex-direction: column;
-    min-height: 400px;
-    max-height: 80vh;
+    height: 100%;
+    backdrop-filter: blur(16px);
+    border-radius: 24px;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .content-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
   }
 
   .sections-wrapper {
+    background: rgba(17, 25, 40, 0.75);
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    overflow-y: auto;
-    margin-bottom: 16px;
+    gap: 16px;    
+    padding: 4px;
+    flex: 1;
+    border-radius: 24px;
   }
 
-  .sections-wrapper::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .sections-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .sections-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
+  .sections-wrapper > :global(*) {
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }s
 
   .button-container {
-    margin-top: auto;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .loading-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 300px;
-  }
-
-  .loading-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .spinner-ring {
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-top: 4px solid #60A5FA;
-    border-radius: 50%;
-  }
-
-  .loading-text {
-    color: rgba(255, 255, 255, 0.8);
-    margin-top: 16px;
+    margin-top: auto;
   }
 
   .error-container {
@@ -352,8 +334,7 @@
     align-items: center;
     justify-content: center;
     gap: 16px;
-    min-height: 200px;
-    padding: 32px;
+    padding: 24px;
     text-align: center;
   }
 
@@ -379,45 +360,17 @@
   .swap-button {
     position: relative;
     width: 100%;
-    padding: 16px 24px;
-    min-height: 64px;
+    padding: 16px;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: linear-gradient(135deg, 
       rgba(55, 114, 255, 0.95) 0%, 
-      rgba(69, 128, 255, 0.95) 100%
+      rgba(111, 66, 193, 0.95) 100%
     );
     box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
     transform: translateY(0);
     transition: all 0.2s ease-out;
     overflow: hidden;
-  }
-
-  .swap-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, 
-      rgba(85, 134, 255, 1) 0%, 
-      rgba(99, 148, 255, 1) 100%
-    );
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-    box-shadow: 
-      0 4px 12px rgba(55, 114, 255, 0.3),
-      0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-
-  .swap-button:active:not(:disabled) {
-    transform: translateY(0);
-    background: linear-gradient(135deg, 
-      rgba(45, 104, 255, 1) 0%, 
-      rgba(59, 118, 255, 1) 100%
-    );
-    box-shadow: 0 2px 4px rgba(55, 114, 255, 0.2);
-    transition-duration: 0.1s;
-  }
-
-  .swap-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 
   .button-content {
@@ -432,16 +385,14 @@
   .button-text {
     font-size: 1.125rem;
     font-weight: 600;
-    letter-spacing: 0.01em;
     color: white;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    min-width: 140px;
     text-align: center;
   }
 
   .loading-spinner {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: white;
     border-radius: 50%;
@@ -455,12 +406,12 @@
     right: 0;
     bottom: 0;
     background: radial-gradient(
-      circle at center,
-      rgba(255, 255, 255, 0.15),
+      circle at var(--x, 50%) var(--y, 50%),
+      rgba(255, 255, 255, 0.2),
       rgba(255, 255, 255, 0) 70%
     );
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.3s ease;
   }
 
   .swap-button:hover .button-glow {
@@ -468,7 +419,7 @@
   }
 
   .swap-button.processing {
-    animation: pulse 2s infinite ease-in-out;
+    animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @keyframes spin {
@@ -478,8 +429,84 @@
   }
 
   @keyframes pulse {
-    0% { opacity: 0.8; }
-    50% { opacity: 0.6; }
-    100% { opacity: 0.8; }
+    0% { opacity: 0.9; }
+    50% { opacity: 0.7; }
+    100% { opacity: 0.9; }
+  }
+
+  @media (max-width: 640px) {
+    .confirmation-container {
+      padding: 0;
+      min-height: 100%;
+    }
+
+    .content-wrapper {
+      padding: 12px 12px 16px 12px;
+      min-height: 100%;
+      justify-content: space-between;
+    }
+
+    .sections-wrapper {
+      gap: 12px;
+      flex: 0 1 auto;
+    }
+
+    @media (min-height: 800px) {
+      .sections-wrapper {
+        gap: 16px;
+      }
+    }
+
+    @media (min-height: 900px) {
+      .content-wrapper {
+        padding: 16px 16px 20px 16px;
+      }
+
+      .sections-wrapper {
+        gap: 20px;
+      }
+
+      .sections-wrapper > :global(*) {
+        padding: 24px;
+      }
+    }
+
+    .sections-wrapper > :global(*) {
+      border-radius: 12px;
+    }
+
+    .button-container {
+      padding: 12px 12px 0 12px;
+      margin-top: 12px;
+    }
+
+    .swap-button {
+      padding: 12px;
+      border-radius: 12px;
+    }
+
+    .button-text {
+      font-size: 1rem;
+    }
+
+    .loading-spinner {
+      width: 18px;
+      height: 18px;
+    }
+
+    .error-container {
+      padding: 16px;
+      gap: 12px;
+    }
+
+    .error-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+    }
+
+    .error-message {
+      font-size: 14px;
+    }
   }
 </style>

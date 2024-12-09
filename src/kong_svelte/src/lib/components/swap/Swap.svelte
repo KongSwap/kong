@@ -184,7 +184,7 @@
     if (highSlippage) return 'High Slippage - Click to Adjust';
     if (!isWalletConnected) return 'Click to Connect Wallet';
     if (!payAmount) return 'Enter Amount';
-    return 'Swap';
+    return 'SWAP';
   }
 
   function getButtonTooltip(owner: boolean | undefined, slippageTooHigh: boolean, error: string | null): string {
@@ -571,6 +571,7 @@
             class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage) || insufficientFunds}
             class:processing={$swapState.isProcessing}
             class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage && !insufficientFunds}
+            class:shine-animation={buttonText === 'SWAP'}
             on:click={handleButtonAction}
             title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
           >
@@ -578,11 +579,11 @@
               {#if $swapState.isProcessing}
                 <div class="loading-spinner" />
               {/if}
-              <span class="button-text" class:warning={insufficientFunds || $swapState.swapSlippage > userMaxSlippage}>
-                {buttonText}
-              </span>
+              <span class="swap-button-text">{buttonText}</span>
             </div>
             <div class="button-glow" />
+            <div class="shine-effect" />
+            <div class="ready-glow" />
           </button>
         </div>
       </div>
@@ -726,12 +727,10 @@
   }
 
   .button-content {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    position: relative;
-    z-index: 1;
   }
 
   .swap-button {
@@ -742,7 +741,7 @@
     margin-top: 4px;
     background: linear-gradient(135deg, 
       rgba(55, 114, 255, 0.95) 0%, 
-      rgba(69, 128, 255, 0.95) 100%
+      rgba(111, 66, 193, 0.95) 100%
     );
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
@@ -753,8 +752,8 @@
 
   .swap-button:hover:not(:disabled) {
     background: linear-gradient(135deg, 
-      rgba(85, 134, 255, 1) 0%, 
-      rgba(99, 148, 255, 1) 100%
+      rgba(75, 124, 255, 1) 0%, 
+      rgba(131, 86, 213, 1) 100%
     );
     border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
@@ -765,72 +764,18 @@
 
   .swap-button:active:not(:disabled) {
     transform: translateY(0);
-    background: linear-gradient(135deg, 
-      rgba(45, 104, 255, 1) 0%, 
-      rgba(59, 118, 255, 1) 100%
-    );
+    background: linear-gradient(135deg, rgba(45, 104, 255, 1) 0%, rgba(91, 46, 173, 1) 100%);
     box-shadow: 0 2px 4px rgba(55, 114, 255, 0.2);
     transition-duration: 0.1s;
   }
 
-  .button-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(
-      circle at center,
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0) 70%
-    );
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .swap-button:hover .button-glow {
-    opacity: 1;
-  }
-
-  .switch-button {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-    width: 44px;
-    height: 44px;
-    border: none;
-    border-radius: 50%;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #1C2333;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .switch-button:hover:not(.disabled) {
-    background: #252B3D;
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-
-  .switch-button:active:not(.disabled) {
-    transform: translate(-50%, -50%) scale(0.95);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  .switch-button.disabled {
+  .swap-button.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background: #1C2333;
   }
 
-  .switch-button-inner {
+  .swap-button-inner {
     width: 100%;
     height: 100%;
     display: flex;
@@ -839,7 +784,7 @@
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .switch-button.rotating .switch-button-inner {
+  .swap-button.rotating .swap-button-inner {
     transform: rotate(180deg);
   }
 
@@ -851,7 +796,7 @@
     color: currentColor;
   }
 
-  .switch-button:hover:not(.disabled) .switch-icon {
+  .swap-button:hover:not(.disabled) .switch-icon {
     transform: scale(1.1);
     opacity: 1;
   }
@@ -959,7 +904,11 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+    background: radial-gradient(
+      circle at var(--x, 50%) var(--y, 50%),
+      rgba(255, 255, 255, 0.2),
+      rgba(255, 255, 255, 0) 70%
+    );
     opacity: 0;
     transition: opacity 0.3s ease;
   }
@@ -1111,5 +1060,92 @@
 
   .button-text.warning {
     font-weight: 600;
+  }
+
+  .shine-effect {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transform: skewX(-20deg);
+    pointer-events: none;
+  }
+
+  .shine-animation .shine-effect {
+    animation: shine 3s infinite;
+  }
+
+  @keyframes shine {
+    0%, 100% {
+      left: -100%;
+    }
+    35%, 65% {
+      left: 200%;
+    }
+  }
+
+  .swap-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, 
+      rgba(75, 124, 255, 1) 0%, 
+      rgba(131, 86, 213, 1) 100%
+    );
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 
+      0 4px 12px rgba(55, 114, 255, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .ready-indicator {
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.8);
+    animation: float-arrow 2s ease-in-out infinite;
+    margin-left: -2px;
+  }
+
+  .ready-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 18px;
+    background: linear-gradient(135deg,
+      rgba(55, 114, 255, 0.5),
+      rgba(111, 66, 193, 0.5)
+    );
+    opacity: 0;
+    filter: blur(8px);
+    transition: opacity 0.3s ease;
+  }
+
+  .shine-animation .ready-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes float-arrow {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(3px);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.02);
+    }
   }
 </style>

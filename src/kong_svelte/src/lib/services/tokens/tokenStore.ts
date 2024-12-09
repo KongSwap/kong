@@ -114,6 +114,28 @@ function createTokenStore() {
     }
   };
 
+  const loadBalancesForTokens = async (tokens: FE.Token[], principal: Principal) => {
+    if (!principal) {
+      console.warn("No principal provided to loadBalancesForTokens");
+      return {};
+    }
+    try {
+      const balances = await TokenService.fetchBalances(tokens, principal.toString());
+      store.update((s) => ({
+        ...s,
+        balances: {
+          ...s.balances,
+          ...balances
+        },
+      }));
+      return balances;
+    } catch (error) {
+      console.error("Error loading balances:", error);
+      toastStore.error("Failed to load balances");
+      return {};
+    }
+  };
+
   eventBus.on('tokensFetched', async (fetchedTokens: FE.Token[]) => {
     try {
       // First try to get tokens with prices from kongDB
@@ -300,6 +322,7 @@ function createTokenStore() {
       return price;
     },
     loadBalances,
+    loadBalancesForTokens,
     loadBalance: debounce(
       async (
         token: FE.Token,

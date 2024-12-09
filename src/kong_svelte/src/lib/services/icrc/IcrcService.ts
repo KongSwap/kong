@@ -17,46 +17,21 @@ export class IcrcService {
     throw error;
   }
 
-  // Add a cache for balance requests
-  private static balanceCache: Map<string, {
-    balance: bigint;
-    timestamp: number;
-  }> = new Map();
-
-  private static CACHE_DURATION = 30000; // 30 seconds
-
   public static async getIcrc1Balance(
     token: FE.Token,
     principal: Principal,
   ): Promise<bigint> {
     try {
-      const cacheKey = `${token.canister_id}-${principal.toString()}`;
-      const now = Date.now();
-      const cached = this.balanceCache.get(cacheKey);
-
-      // Return cached value if still valid
-      if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
-        return cached.balance;
-      }
-
       const actor = await auth.getActor(
         token.canister_id,
         canisterIDLs["icrc2"],
         { anon: true, requiresSigning: false },
       );
       
-      const balance = await actor.icrc1_balance_of({
+      return await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
       });
-
-      // Cache the result
-      this.balanceCache.set(cacheKey, {
-        balance,
-        timestamp: now
-      });
-
-      return balance;
     } catch (error) {
       console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
       return BigInt(0);
@@ -141,6 +116,7 @@ export class IcrcService {
         auth.pnp.account.owner,
         Principal.fromText(kongBackendCanisterId),
       );
+      
 
       if (currentAllowance >= totalAmount) {
         return currentAllowance;

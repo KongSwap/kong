@@ -83,4 +83,35 @@
     color: white;
     letter-spacing: -0.01em;
   }
+
+  @media (max-width: 640px) {
+    .section {
+      padding: 12px;
+    }
+
+    .token-section {
+      padding: 4px 0;
+    }
+
+    .token-info {
+      gap: 8px;
+    }
+
+    .token-image :global(img) {
+      width: 24px !important;
+      height: 24px !important;
+    }
+
+    .type {
+      font-size: 12px;
+    }
+
+    .amount {
+      font-size: 14px;
+    }
+
+    .divider {
+      margin: 4px 0;
+    }
+  }
 </style>

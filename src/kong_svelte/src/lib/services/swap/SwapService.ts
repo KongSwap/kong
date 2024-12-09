@@ -433,12 +433,20 @@ export class SwapService {
                 return;
               }
 
+              console.log("Swap completed successfully, updating balances for tokens:", {
+                payToken: payToken?.symbol,
+                receiveToken: receiveToken?.symbol,
+                walletId
+              });
+
               const updateBalances = async () => {
                 try {
-                  await Promise.all([
-                    tokenStore.loadBalance(receiveToken, walletId, true),
-                    tokenStore.loadBalance(payToken, walletId, true)
-                  ]);
+                  console.log("Attempting to update balances...");
+                  await tokenStore.loadBalancesForTokens(
+                    [payToken, receiveToken],
+                    Principal.fromText(walletId)
+                  );
+                  console.log("Successfully updated balances");
                 } catch (error) {
                   console.error("Error updating balances:", error);
                 }
@@ -449,8 +457,12 @@ export class SwapService {
 
               // Schedule updates with increasing delays
               const delays = [500, 1000, 2000, 3000, 5000];
+              console.log("Scheduling delayed balance updates...");
               delays.forEach(delay => {
-                setTimeout(updateBalances, delay);
+                setTimeout(async () => {
+                  console.log(`Running delayed balance update after ${delay}ms`);
+                  await updateBalances();
+                }, delay);
               });
 
               toastStore.dismiss(toastId);

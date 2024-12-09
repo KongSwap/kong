@@ -46,7 +46,7 @@
     background: rgba(26, 27, 35, 0.6);
     border: 1px solid rgba(42, 45, 61, 1);
     border-radius: 12px;
-    padding: 16px;
+    padding: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -55,23 +55,25 @@
   .route-content {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
+    width: 100%;
   }
 
   .path {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
+    width: 100%;
   }
 
   .token {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .symbol {
@@ -82,5 +84,37 @@
   .arrow {
     color: #ffffff;
     opacity: 0.5;
+  }
+
+  @media (max-width: 640px) {
+    .section {
+      padding: 8px;
+    }
+
+    .route-content {
+      gap: 4px;
+    }
+
+    .path {
+      gap: 4px;
+    }
+
+    .token {
+      gap: 4px;
+    }
+
+    .token :global(img) {
+      width: 20px !important;
+      height: 20px !important;
+    }
+
+    .symbol {
+      font-size: 0.8rem;
+    }
+
+    .arrow {
+      font-size: 0.8rem;
+      margin: 0 -2px;
+    }
   }
 </style>
