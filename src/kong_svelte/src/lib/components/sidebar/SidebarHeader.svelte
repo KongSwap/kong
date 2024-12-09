@@ -51,7 +51,7 @@
   <div class="flex flex-col gap-2 py-2">
     {#if $auth.isConnected}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
-        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-96px)] md:max-w-[calc(100%-144px)]">
+        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-72px)]">
           <button
             class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-white font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
             on:click={() => accountStore.showAccountDetails()}
@@ -75,17 +75,6 @@
           </button>
         </div>
         <div class="flex gap-2">
-          <button
-            class="expand-btn border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
-            on:click={() => sidebarStore.toggleExpand()}
-            aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            {#if isExpanded}
-              <Minimize2 size={22} />
-            {:else}
-              <Maximize2 size={22} />
-            {/if}
-          </button>
           <button
             class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={handleDisconnect}
