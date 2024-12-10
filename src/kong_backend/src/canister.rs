@@ -1,6 +1,11 @@
 use candid::{CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_timers::{clear_timer, set_timer_interval};
+use icrc_ledger_types::icrc21::errors::ErrorInfo;
+use icrc_ledger_types::icrc21::requests::DisplayMessageType::{GenericDisplay, LineDisplay};
+use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
+use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage, LineDisplayPage};
+use itertools::Itertools;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -144,6 +149,66 @@ async fn post_upgrade() {
 #[query]
 fn icrc1_name() -> String {
     format!("{} {}", APP_NAME, APP_VERSION)
+}
+
+#[derive(CandidType, Deserialize, Eq, PartialEq, Debug)]
+pub struct SupportedStandard {
+    pub url: String,
+    pub name: String,
+}
+
+#[query]
+fn icrc10_supported_standards() -> Vec<SupportedStandard> {
+    vec![
+        SupportedStandard {
+            url: "https://github.com/dfinity/ICRC/blob/main/ICRCs/ICRC-10/ICRC-10.md".to_string(),
+            name: "ICRC-10".to_string(),
+        },
+        SupportedStandard {
+            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/ICRC-21/icrc_21_consent_msg.md".to_string(),
+            name: "ICRC-21".to_string(),
+        },
+        SupportedStandard {
+            url: "https://github.com/dfinity/wg-identity-authentication/blob/main/topics/icrc_28_trusted_origins.md".to_string(),
+            name: "ICRC-28".to_string(),
+        },
+    ]
+}
+
+#[update]
+fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageRequest) -> Result<ConsentInfo, ErrorInfo> {
+    let metadata = ConsentMessageMetadata {
+        language: "en".to_string(),
+        utc_offset_minutes: None,
+    };
+
+    match consent_msg_request.user_preferences.device_spec {
+        Some(LineDisplay {
+            #[allow(unused_variables)]
+            characters_per_line,
+            lines_per_page,
+        }) => {
+            let mut lines = vec![];
+            lines.push(format!("Approve canister to execute method {}", consent_msg_request.method));
+            let pages = lines
+                .into_iter()
+                .chunks(lines_per_page as usize)
+                .into_iter()
+                .map(|page| LineDisplayPage { lines: page.collect() })
+                .collect();
+            Ok(ConsentInfo {
+                metadata,
+                consent_message: ConsentMessage::LineDisplayMessage { pages },
+            })
+        }
+        Some(GenericDisplay) | None => Ok(ConsentInfo {
+            metadata,
+            consent_message: ConsentMessage::GenericDisplayMessage(format!(
+                "Approve canister to execute method {}",
+                consent_msg_request.method,
+            )),
+        }),
+    }
 }
 
 #[derive(CandidType, Clone, Debug, Deserialize)]

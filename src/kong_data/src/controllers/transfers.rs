@@ -1,9 +1,12 @@
-use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::get_time::get_time;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TRANSFER_MAP;
+use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 
 const MAX_TRANSFERS: usize = 1_000;
 
@@ -45,7 +48,7 @@ fn update_transfers(stable_transfers_json: String) -> Result<String, String> {
     Ok("Transfers updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
+#[update(hidden = true, guard = "caller_is_kong_backend")]
 fn update_transfer(stable_transfer_json: String) -> Result<String, String> {
     let transfer: StableTransfer = match serde_json::from_str(&stable_transfer_json) {
         Ok(transfer) => transfer,
@@ -54,8 +57,17 @@ fn update_transfer(stable_transfer_json: String) -> Result<String, String> {
 
     TRANSFER_MAP.with(|transfer_map| {
         let mut map = transfer_map.borrow_mut();
-        map.insert(StableTransferId(transfer.transfer_id), transfer);
+        map.insert(StableTransferId(transfer.transfer_id), transfer.clone());
     });
+
+    // add to UpdateMap for archiving to database
+    let ts = get_time();
+    let update = StableDBUpdate {
+        update_id: 0,
+        stable_memory: StableMemory::TransferMap(transfer),
+        ts,
+    };
+    db_update_map::insert(&update);
 
     Ok("Transfer updated".to_string())
 }

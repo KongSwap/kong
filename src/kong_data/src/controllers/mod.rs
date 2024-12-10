@@ -1,4 +1,5 @@
 mod claims;
+mod db_updates;
 mod kong_settings;
 mod lp_tokens;
 mod messages;

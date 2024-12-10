@@ -17,8 +17,10 @@ pub trait Token {
     fn symbol_with_chain(&self) -> String;
     fn decimals(&self) -> u8;
     fn fee(&self) -> Nat;
+    #[allow(dead_code)]
     fn is_icrc1(&self) -> bool;
     fn is_icrc2(&self) -> bool;
+    #[allow(dead_code)]
     fn is_icrc3(&self) -> bool;
     fn on_kong(&self) -> bool;
     fn set_on_kong(&mut self, on_kong: bool);

@@ -1,11 +1,14 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::get_time::get_time;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_memory::TX_MAP;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
 use crate::stable_tx::tx_map;
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 use crate::txs::txs_reply::TxsReply;
 use crate::txs::txs_reply_helpers::to_txs_reply;
 
@@ -47,7 +50,7 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
     Ok("Txs updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
+#[update(hidden = true, guard = "caller_is_kong_backend")]
 fn update_tx(stable_tx_json: String) -> Result<String, String> {
     let tx: StableTx = match serde_json::from_str(&stable_tx_json) {
         Ok(tx) => tx,
@@ -56,8 +59,17 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
 
     TX_MAP.with(|tx_map| {
         let mut map = tx_map.borrow_mut();
-        map.insert(StableTxId(tx.tx_id()), tx);
+        map.insert(StableTxId(tx.tx_id()), tx.clone());
     });
+
+    // add to UpdateMap for archiving to database
+    let ts = get_time();
+    let update = StableDBUpdate {
+        update_id: 0,
+        stable_memory: StableMemory::TxMap(tx),
+        ts,
+    };
+    db_update_map::insert(&update);
 
     Ok("Tx updated".to_string())
 }

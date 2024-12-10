@@ -66,7 +66,7 @@ async fn status() -> Result<String, String> {
             "Stable - Transfer Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_MEMORY_ID).size())),
             "Stable - Transfer Map Archive": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_ARCHIVE_MEMORY_ID).size())),
             "Stable - Claim Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(CLAIM_MEMORY_ID).size())),
-            "Stable - LP Token Ledger Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_MEMORY_ID).size())),
+            "Stable - LP Tokens Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_MEMORY_ID).size())),
             "Stable - Message Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(MESSAGE_MEMORY_ID).size())),
             "# of users": get_number_of_users(),
             "# of tokens": get_number_of_tokens(),

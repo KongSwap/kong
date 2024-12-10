@@ -1,12 +1,15 @@
 use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
-use crate::ic::guards::caller_is_kingkong;
+use crate::ic::get_time::get_time;
+use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::requests::request_reply::RequestReply;
 use crate::requests::request_reply_helpers::to_request_reply;
 use crate::stable_memory::REQUEST_MAP;
 use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
+use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
+use crate::stable_db_update::db_update_map;
 
 const MAX_REQUESTS: usize = 100;
 
@@ -47,7 +50,7 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
     Ok("Requests updated".to_string())
 }
 
-#[update(hidden = true, guard = "caller_is_kingkong")]
+#[update(hidden = true, guard = "caller_is_kong_backend")]
 fn update_request(stable_request_json: String) -> Result<String, String> {
     let request: StableRequest = match serde_json::from_str(&stable_request_json) {
         Ok(request) => request,
@@ -56,8 +59,17 @@ fn update_request(stable_request_json: String) -> Result<String, String> {
 
     REQUEST_MAP.with(|request_map| {
         let mut map = request_map.borrow_mut();
-        map.insert(StableRequestId(request.request_id), request);
+        map.insert(StableRequestId(request.request_id), request.clone());
     });
+
+    // add to UpdateMap for archiving to database
+    let ts = get_time();
+    let update = StableDBUpdate {
+        update_id: 0,
+        stable_memory: StableMemory::RequestMap(request),
+        ts,
+    };
+    db_update_map::insert(&update);
 
     Ok("Request updated".to_string())
 }

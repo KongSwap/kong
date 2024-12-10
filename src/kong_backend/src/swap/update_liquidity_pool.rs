@@ -44,8 +44,6 @@ pub fn update_liquidity_pool(
                     if let Ok(ckusdt_volume) = ckusdt_amount(&pool.token_1(), &swap.receive_amount) {
                         // update 24h stats
                         pool.rolling_24h_volume = nat_add(&pool.rolling_24h_volume, &ckusdt_volume);
-                        // update lifetime stats
-                        pool.total_volume = nat_add(&pool.total_volume, &ckusdt_volume);
                     }
                     // fees are in token_1. take out Kong's fee
                     // kong_fee_1 = lp_fee * kong_fee_bps / lp_fee_bps
@@ -57,7 +55,6 @@ pub fn update_liquidity_pool(
                     pool.kong_fee_1 = nat_add(&pool.kong_fee_1, &kong_fee_1);
                     if let Ok(ckusdt_lp_fee) = ckusdt_amount(&pool.token_1(), &lp_fee_1) {
                         pool.rolling_24h_lp_fee = nat_add(&pool.rolling_24h_lp_fee, &ckusdt_lp_fee);
-                        pool.total_lp_fee = nat_add(&pool.total_lp_fee, &ckusdt_lp_fee);
                     }
                 } else {
                     // user pays token_1 and receives token_0
@@ -65,7 +62,6 @@ pub fn update_liquidity_pool(
                     pool.balance_0 = nat_subtract(&pool.balance_0, &swap.receive_amount).unwrap_or(nat_zero()); // receive_amount is in token_0
                     if let Ok(ckusdt_volume) = ckusdt_amount(&pool.token_0(), &swap.receive_amount) {
                         pool.rolling_24h_volume = nat_add(&pool.rolling_24h_volume, &ckusdt_volume);
-                        pool.total_volume = nat_add(&pool.total_volume, &ckusdt_volume);
                     }
                     // fees are in token_0. take out Kong's fee
                     // kong_fee_0 = lp_fee * kong_fee_bps / lp_fee_bps
@@ -77,16 +73,15 @@ pub fn update_liquidity_pool(
                     pool.kong_fee_0 = nat_add(&pool.kong_fee_0, &kong_fee_0);
                     if let Ok(ckusdt_lp_fee) = ckusdt_amount(&pool.token_0(), &lp_fee_0) {
                         pool.rolling_24h_lp_fee = nat_add(&pool.rolling_24h_lp_fee, &ckusdt_lp_fee);
-                        pool.total_lp_fee = nat_add(&pool.total_lp_fee, &ckusdt_lp_fee);
                     }
                 }
+                pool.update_tvl();
                 pool.rolling_24h_num_swaps = nat_add(&pool.rolling_24h_num_swaps, &Nat::from(1_u128));
                 // APY = (total_fees / total_liquidity) * 365 * 100
                 pool.rolling_24h_apy = round_f64(
-                    nat_divide_as_f64(&pool.rolling_24h_lp_fee, &pool.get_balance()).unwrap_or(0_f64) * 365_f64 * 100_f64,
+                    nat_divide_as_f64(&pool.rolling_24h_lp_fee, &pool.tvl).unwrap_or(0_f64) * 365_f64 * 100_f64,
                     2,
                 );
-
                 pool_map::update(&pool);
             }
 

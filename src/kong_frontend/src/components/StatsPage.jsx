@@ -228,7 +228,7 @@ function StatsPage({ poolInfo, tokenDetails, tokenImages, poolsTotals }) {
   useEffect(() => {
     if (poolInfo && tokenDetails.length > 0) {
       const updatedPools = poolInfo.map((pool) => {
-        const balance = Number(pool.balance || 0);
+        const balance = Number(pool.tvl || 0);
         const decimals1 = getTokenDecimals(pool.symbol_1);
 
         const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);

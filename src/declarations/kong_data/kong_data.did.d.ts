@@ -67,6 +67,10 @@ export interface ICTransferReply {
   'amount' : bigint,
   'symbol' : string,
 }
+export interface Icrc10SupportedStandards { 'url' : string, 'name' : string }
+export interface Icrc28TrustedOriginsResponse {
+  'trusted_origins' : Array<string>,
+}
 export interface RemoveLiquidityArgs {
   'token_0' : string,
   'token_1' : string,
@@ -177,7 +181,12 @@ export interface _SERVICE {
     [[] | [bigint], [] | [bigint], [] | [number], [] | [number]],
     TxsResult
   >,
+  'icrc10_supported_standards' : ActorMethod<
+    [],
+    Array<Icrc10SupportedStandards>
+  >,
   'icrc1_name' : ActorMethod<[], string>,
+  'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
   'requests' : ActorMethod<[[] | [bigint], [] | [number]], RequestsResult>,
   'txs' : ActorMethod<
     [[] | [boolean], [] | [bigint], [] | [number], [] | [number]],
