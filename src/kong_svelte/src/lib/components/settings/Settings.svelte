@@ -306,12 +306,13 @@
   .custom-slippage-input {
     @apply flex items-center gap-2
            px-3 py-2 rounded-lg bg-gray-800 
-           border border-gray-700 transition-all duration-200
-           hover:bg-gray-700 hover:border-gray-600;
+           border-2 border-dashed border-gray-600 transition-all duration-200
+           hover:bg-gray-700 hover:border-gray-500;
   }
 
   .custom-slippage-input.active {
-    @apply border-blue-500 bg-blue-600;
+    @apply border-blue-500 bg-blue-600/80 border-solid
+           ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/20;
   }
 
   .slippage-input {
