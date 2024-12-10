@@ -1,10 +1,8 @@
 <script lang="ts">
-    import { fade } from 'svelte/transition';
     import Modal from '$lib/components/common/Modal.svelte';
-    import { tokenLogoStore } from "$lib/services/tokens/tokenLogos";
     import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
     import SendTokens from '$lib/components/sidebar/SendTokens.svelte';
-    import ReceiveTokens from '$lib/components/sidebar/ReceiveTokens.svelte';
+    import IdentityPanel from '$lib/components/sidebar/account/IdentityPanel.svelte';
     import { createEventDispatcher } from 'svelte';
 
     export let token: FE.Token;
@@ -72,9 +70,13 @@
         <!-- Tab Content -->
         <div class="tab-content">
             {#if activeTab === 'receive'}
-                <ReceiveTokens {token} />
+                {#if token.symbol === 'ICP' || token.name === 'Internet Computer'}
+                    <IdentityPanel display="account" />
+                {:else}
+                    <IdentityPanel display="principal" />
+                {/if}
             {:else}
-                <SendTokens {token} />
+                <SendTokens token={{ ...token, amount: token.balance ?? "0" }} />
             {/if}
         </div>
     </div>

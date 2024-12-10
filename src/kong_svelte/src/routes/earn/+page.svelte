@@ -11,7 +11,6 @@
   import { auth } from "$lib/services/auth";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import PoolList from "$lib/components/sidebar/PoolList.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
   import { toastStore } from "$lib/stores/toastStore";
 
   // Navigation state
@@ -200,7 +199,7 @@
 </script>
 
 <section class="flex flex-col w-full h-full px-4 pb-4 {isMobile ? 'pb-24' : ''}">
-  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px] px-4">
+  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if !isMobile}
       <div class="earn-cards">
         <div class="earn-card" class:active={$activeSection === 'pools'} on:click={() => activeSection.set('pools')}>
@@ -245,34 +244,62 @@
       <Panel className="flex-1">
         <div class="h-full overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button on the right -->
-          <div class="flex items-center justify-between mb-4">
-            <input
-              type="text"
-              placeholder="Search by token symbol, name, or address..."
-              bind:value={searchTerm}
-              class="flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2 mr-4"
-              disabled={$activePoolView === 'user'}
-            />
-            <button
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
-                     {$activePoolView === 'user'
-                       ? 'bg-[#60A5FA] text-white'
-                       : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
-              on:click={toggleUserPools}
-            >
-              My Pools
-              {#if $activePoolCount > 0 && $auth.isConnected}
-                <span class="ml-2 px-2 py-0.5 bg-[#2a2d3d] rounded-full text-xs">
-                  {$activePoolCount}
-                </span>
+          <div class="flex flex-col sticky top-0 z-20 } pb-2">
+            <div class="flex items-center justify-between">
+              {#if $activePoolView === 'all'}
+                <input
+                  type="text"
+                  placeholder="Search by token symbol, name, or address..."
+                  bind:value={searchTerm}
+                  class="flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2 mr-4"
+                />
+              {:else}
+                <div class="flex-1"></div>
               {/if}
-            </button>
+              <button
+                class="px-4 py-2 mb-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
+                       {$activePoolView === 'user'
+                         ? 'bg-[#60A5FA] text-white'
+                         : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
+                on:click={toggleUserPools}
+              >
+                My Pools
+                {#if $activePoolCount > 0 && $auth.isConnected}
+                  <span class="ml-2 px-2 py-0.5  rounded-full text-xs">
+                    {$activePoolCount}
+                  </span>
+                {/if}
+              </button>
+            </div>
+
+            <!-- Mobile Sort Controls -->
+            {#if isMobile && $activePoolView === 'all'}
+              <div class="flex items-center justify-between mt-2  py-1 rounded-lg">
+                <select 
+                  bind:value={$sortColumn}
+                  class="bg-transparent text-white text-sm focus:outline-none"
+                >
+                  <option value="rolling_24h_volume">Volume 24H</option>
+                  <option value="tvl">TVL</option>
+                  <option value="rolling_24h_apy">APY</option>
+                  <option value="price">Price</option>
+                </select>
+                
+                <button 
+                  on:click={() => sortDirection.update(d => d === "asc" ? "desc" : "asc")}
+                  class="flex items-center gap-1 text-[#60A5FA] text-sm"
+                >
+                  {$sortDirection === "asc" ? "Ascending" : "Descending"}
+                  <svelte:component this={$sortDirection === "asc" ? ArrowUp : ArrowDown} class="w-4 h-4" />
+                </button>
+              </div>
+            {/if}
           </div>
 
           <div class="overflow-auto flex-1 custom-scrollbar">
             {#if $activePoolView === 'all'}
               <!-- All Pools View -->
-              <div class="overflow-auto flex-1 max-h-[calc(100vh-22rem)] {isMobile ? 'max-h-[calc(100vh-18rem)]' : ''} custom-scrollbar">
+              <div class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {isMobile ? 'max-h-[calc(97vh-17rem)]' : ''} custom-scrollbar">
                 <!-- Desktop Table View -->
                 <table class="w-full hidden lg:table relative">
                   <thead class="sticky top-0 z-10">
@@ -312,38 +339,6 @@
 
                 <!-- Mobile/Tablet Card View -->
                 <div class="lg:hidden space-y-4">
-                  <!-- Sort Controls for Mobile -->
-                  <div class="flex flex-col gap-3 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4 custom-scrollbar">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm text-[#8890a4]">Sort by</span>
-                      <button 
-                        on:click={() => sortDirection.update(d => d === "asc" ? "desc" : "asc")}
-                        class="flex items-center gap-2 text-[#60A5FA] text-sm font-medium"
-                      >
-                        <span>{$sortDirection === "asc" ? "Ascending" : "Descending"}</span>
-                        <svelte:component this={$sortDirection === "asc" ? ArrowUp : ArrowDown} class="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {#each [
-                        { value: "rolling_24h_volume", label: "Volume 24H" },
-                        { value: "tvl", label: "TVL" },
-                        { value: "rolling_24h_apy", label: "APY" },
-                        { value: "price", label: "Price" }
-                      ] as option}
-                        <button
-                          class="px-3 py-2 rounded-lg text-sm text-center transition-all duration-200
-                                 {$sortColumn === option.value 
-                                   ? 'bg-[#60A5FA] text-white font-medium' 
-                                   : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
-                          on:click={() => sortColumn.set(option.value)}
-                        >
-                          {option.label}
-                        </button>
-                      {/each}
-                    </div>
-                  </div>
-
                   {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                     <div class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200">
                       <div class="flex items-center justify-between mb-4">
@@ -354,10 +349,9 @@
                               $tokenMap.get(pool.address_1)
                             ]}
                             size={32}
-                            overlap={12}
                           />
                           <div>
-                            <div class="font-medium text-white">{pool.symbol_0}/{pool.symbol_1}</div>
+                            <div class="text-xs text-white">{pool.symbol_0}/{pool.symbol_1}</div>
                             <div class="text-xs text-[#8890a4]">Pool Tokens</div>
                           </div>
                         </div>
@@ -476,21 +470,6 @@
   />
 {/if}
 
-{#if selectedUserPool}
-  <Modal
-    isOpen={!!selectedUserPool}
-    title={`${selectedUserPool.symbol_0}/${selectedUserPool.symbol_1} Pool Details`}
-    onClose={() => selectedUserPool = null}
-    width="max-w-2xl"
-  >
-    <UserPool
-      pool={selectedUserPool}
-      showModal={!!selectedUserPool}
-      on:close={() => selectedUserPool = null}
-    />
-  </Modal>
-{/if}
-
 <style>
   .earn-cards {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
@@ -525,7 +504,6 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: rgba(26, 27, 35, 0.9);
     border-top: 1px solid #2a2d3d;
     z-index: 50;
     backdrop-filter: blur(8px);

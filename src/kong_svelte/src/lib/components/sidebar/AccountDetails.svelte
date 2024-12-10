@@ -15,10 +15,22 @@
     activeTab = state.activeTab;
   });
 
-  const tabs = [
+  let isMobile = false;
+
+  // Check if mobile on mount and update on resize
+  const checkMobile = () => {
+    isMobile = window.innerWidth < 768;
+  };
+
+  if (typeof window !== 'undefined') {
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+  }
+
+  $: tabs = [
     { id: 'identity', label: 'Identity' },
     { id: 'wallet', label: 'Wallet Info' },
-    { id: 'connection', label: 'Connection' },
+    ...(isMobile ? [] : [{ id: 'connection', label: 'Connection' }]),
   ];
 </script>
 
@@ -27,7 +39,7 @@
   title="Account Details" 
   onClose={() => accountStore.hideAccountDetails()}
   height="min(700px, 90vh)"
-  width="min(600px, 95vw)"
+  width="min(700px, 95vw)"
 >
   <div class="account-details">
     <div class="tabs">
@@ -48,7 +60,7 @@
           <IdentityPanel />
         {:else if activeTab === 'wallet'}
           <WalletInfoPanel />
-        {:else if activeTab === 'connection'}
+        {:else if activeTab === 'connection' && !isMobile}
           <ConnectionPanel />
         {:else if activeTab === 'details'}
           <UserDetailsPanel />

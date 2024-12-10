@@ -467,19 +467,20 @@
     <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
       <!-- Token Header -->
       <div class="w-full">
-        <div class="max-w-[1300px] mx-auto flex items-center justify-between">
-          <!-- Left Section -->
-          <div class="flex items-center gap-6">
-            <a
-              href="/stats"
-              class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-[#2a2d3d] hover:bg-[#2a2d3d]/80 text-white/90 rounded-lg transition-colors duration-200"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-              </svg>
-              Back
-            </a>
+        <div class="max-w-[1300px] mx-auto flex flex-col gap-4">
+          <!-- Back Button -->
+          <a
+            href="/stats"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm bg-[#2a2d3d] hover:bg-[#2a2d3d]/80 text-white/90 rounded-lg transition-colors duration-200 w-fit"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+            </svg>
+            Back
+          </a>
 
+          <!-- Token Info -->
+          <div class="flex flex-col md:flex-row md:items-center gap-4">
             <div class="flex items-center gap-4">
               <TokenImages
                 tokens={token ? [convertToken(token)] : []}
@@ -491,26 +492,27 @@
                 <div class="text-[#8890a4]">{token.symbol}</div>
               </div>
             </div>
-          </div>
 
-          <!-- Right Section -->
-          <div class="flex items-center gap-3 bg-[#2a2d3d] px-4 py-2 rounded-lg min-w-0">
-            <div class="truncate">
-              <span class="text-[#8890a4] text-sm hidden sm:inline">{token.canister_id}</span>
-              <span class="text-[#8890a4] text-sm sm:hidden">{token.canister_id.slice(0, 8)}...</span>
+            <!-- Canister ID -->
+            <div class="flex-1 md:flex md:justify-end">
+              <div class="bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full md:w-auto">
+                <div class="truncate">
+                  <span class="text-[#8890a4] text-sm">{token.canister_id}</span>
+                </div>
+                <button
+                  class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
+                  on:click={() => {
+                    navigator.clipboard.writeText(token.canister_id);
+                    toastStore.success("Canister ID copied!", 2000);
+                  }}
+                  title="Copy canister ID"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#8890a4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            <button
-              class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
-              on:click={() => {
-                navigator.clipboard.writeText(token.canister_id);
-                toastStore.success("Canister ID copied!", 2000);
-              }}
-              title="Copy canister ID"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#8890a4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </button>
           </div>
         </div>
       </div>

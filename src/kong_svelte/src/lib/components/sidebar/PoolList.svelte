@@ -197,13 +197,13 @@
 <div class="pool-list-wrapper" on:keydown={handleKeydown}>
   <div class="controls-wrapper">
     {#if !pool}
-    <div class="search-section">
+    <div class="search-bar">
       <div class="search-input-wrapper">
         <input
           bind:this={searchInput}
           bind:value={searchQuery}
           type="text"
-          placeholder="Search pools by name, token, or canister ID"
+          placeholder="Search token symbol, name, or address..."
           class="search-input"
         />
         {#if searchQuery}
@@ -222,9 +222,7 @@
           </button>
         {/if}
       </div>
-    </div>
 
-    <div class="filter-bar">
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <div class="sort-toggle" on:click={() => {
         sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
@@ -351,16 +349,16 @@
     @apply flex flex-col border-b border-gray-800;
   }
 
-  .search-section {
-    @apply sticky top-0 z-10;
+  .search-bar {
+    @apply flex items-center justify-between py-3;
   }
 
   .search-input-wrapper {
-    @apply relative flex items-center;
+    @apply relative flex items-center flex-1 mr-4;
   }
 
   .search-input {
-    @apply w-full bg-transparent border-none py-3 text-white placeholder-gray-500
+    @apply w-full bg-transparent border-none py-2 text-white placeholder-gray-500
            focus:outline-none focus:ring-0;
   }
 
@@ -368,12 +366,8 @@
     @apply absolute right-0 text-gray-500 hover:text-white transition-colors;
   }
 
-  .filter-bar {
-    @apply py-3 border-t border-gray-800 flex justify-between items-center;
-  }
-
   .sort-toggle {
-    @apply flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors;
+    @apply flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors whitespace-nowrap;
   }
 
   .sort-arrow {

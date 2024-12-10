@@ -48,7 +48,7 @@
   const DEBOUNCE_DELAY = 300;
 
   const searchQuery = writable<string>("");
-  const sortColumnStore = writable<string>("volume_24h");
+  const sortColumnStore = writable<string>("marketCap"); // Changed default sort to marketCap
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const previousPrices = writable<{ [key: string]: number }>({});
 
@@ -249,9 +249,8 @@
   }
 </script>
 
-<section class="flex flex-col w-full h-full px-4 {isMobile ? 'pb-24' : ''}">
-  <!-- Added px-4 here for consistent padding -->
-  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px] px-4">
+<section class="flex flex-col w-full h-full">
+  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
 
     {#if isMobile && $activeStatsSection === 'marketStats'}
       <h2 class="text-xl font-semibold text-white mt-4 mb-2">Market Overview</h2>
@@ -300,7 +299,6 @@
     {#if (!isMobile) || (isMobile && $activeStatsSection === 'tokens')}
       <Panel variant="green" type="main" className="content-panel flex-1">
         <div class="h-full overflow-hidden flex flex-col">
-          <!-- Header: full-width search and "My Favorites" button on the right -->
           <div class="flex items-center justify-between mb-4">
             <input
               type="text"
@@ -342,7 +340,6 @@
             </div>
           {:else}
             {#if $filteredTokens.showFavoritesPrompt}
-              <!-- Prompt to connect when favorites toggled but not connected -->
               <div class="flex flex-col items-center justify-center h-64 text-center">
                 <p class="text-gray-400 mb-4">Connect your wallet to view your favorite tokens</p>
                 <button
@@ -355,14 +352,12 @@
                 </button>
               </div>
             {:else if $filteredTokens.noFavorites}
-              <!-- No favorites found message -->
               <div class="flex flex-col items-center justify-center h-64 text-center">
                 <p class="text-gray-400 mb-4">You have no favorite tokens yet. Mark some tokens as favorites to view them here.</p>
               </div>
             {:else}
-              <!-- Removed the -mx-4 and px-4 classes, replaced with a consistent container -->
               <div class="overflow-auto flex-1 custom-scrollbar">
-                <div class="overflow-auto flex-1 max-h-[calc(100vh-20.9rem)] custom-scrollbar">
+                <div class="overflow-auto flex-1 {isMobile ? 'max-h-[calc(100vh-17.9rem)]' : 'max-h-[calc(100vh-20.9rem)]'} custom-scrollbar">
                   {#if !isMobile}
                     <!-- Desktop table view -->
                     <table class="data-table">
@@ -482,72 +477,29 @@
                       </tbody>
                     </table>
                   {:else}
-                    <!-- Mobile Card View remains with standard layout -->
-                    <div class="lg:hidden space-y-4">
-                      {#each $filteredTokens.tokens as token, index}
-                        <div class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200"
+                    <!-- Mobile Card View -->
+                    <div class="flex items-center justify-between mb-4">
+                      <button 
+                        class="px-3 py-1.5 text-sm rounded bg-[#2a2d3d] text-white"
+                        on:click={() => toggleSort("marketCap")}
+                      >
+                        Sort by Market Cap
+                        <svelte:component this={getSortIcon("marketCap")} class="inline w-3.5 h-3.5 ml-1" />
+                      </button>
+                    </div>
+                    <div class="space-y-2">
+                      {#each $filteredTokens.tokens as token}
+                        <div class="flex items-center justify-between bg-[#1a1b23] border border-[#2a2d3d] rounded-lg h-14"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
-                          <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-2">
-                              <div class="text-[#8890a4] text-sm font-medium mr-2">#{token.marketCapRank}</div>
-                              {#if $auth.isConnected}
-                                <button
-                                  class="favorite-button w-8 h-8 rounded-lg hover:bg-white/10 transition-none"
-                                  on:click|stopPropagation={(e) => toggleFavorite(token, e)}
-                                >
-                                  {#if $currentWalletFavorites.includes(token.canister_id)}
-                                    <Star
-                                      class="star-icon filled"
-                                      size={16}
-                                      color="yellow"
-                                      fill="yellow"
-                                    />
-                                  {:else}
-                                    <Star class="star-icon" size={16} />
-                                  {/if}
-                                </button>
-                              {/if}
-                              <TokenImages tokens={[token]} size={32} />
-                              <div>
-                                <div class="font-medium text-white">{token.name}</div>
-                                <div class="text-xs text-[#8890a4]">{token.symbol}</div>
-                              </div>
-                            </div>
-                            <button
-                              class="px-4 py-2 text-sm bg-[#2a2d3d] text-white rounded-lg hover:bg-[#2a2d3d]/90 transition-colors duration-200"
-                              on:click|stopPropagation={() => goto(`/stats/${token.canister_id}`)}
-                            >
-                              Details
-                            </button>
+                          <div class="flex items-center">
+                            <span class="text-[#8890a4] text-sm w-10 text-center">#{token.marketCapRank}</span>
+                            <TokenImages tokens={[token]} size={24} />
+                            <span class="ml-2 font-medium">{token.name}</span>
                           </div>
-                          
-                          <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-[#2a2d3d]/50 p-3 rounded-lg text-right">
-                              <div class="text-sm text-[#8890a4] mb-1">Price</div>
-                              <div class="font-medium text-white">
-                                ${formatToNonZeroDecimal(token?.metrics?.price)}
-                              </div>
-                            </div>
-                            <div class="bg-[#2a2d3d]/50 p-3 rounded-lg text-right">
-                              <div class="text-sm text-[#8890a4] mb-1">Change (1D)</div>
-                              <div class={"font-medium " + (Number(token?.metrics?.price_change_24h) > 0 ? 'text-green-400' : 'text-red-400')}>
-                                {token?.metrics?.price_change_24h}%
-                              </div>
-                            </div>
-                            <div class="bg-[#2a2d3d]/50 p-3 rounded-lg text-right">
-                              <div class="text-sm text-[#8890a4] mb-1">Volume</div>
-                              <div class="font-medium text-white">
-                                {formatUsdValue(token?.metrics?.volume_24h)}
-                              </div>
-                            </div>
-                            <div class="bg-[#2a2d3d]/50 p-3 rounded-lg text-right">
-                              <div class="text-sm text-[#8890a4] mb-1">Market Cap</div>
-                              <div class="font-medium text-white">
-                                {formatUsdValue(token?.metrics?.market_cap)}
-                              </div>
-                            </div>
-                          </div>
+                          <div class="flex items-center">
+                            <span class="mr-4">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
+                        </div>
                         </div>
                       {/each}
                     </div>
@@ -563,7 +515,6 @@
 </section>
 
 {#if isMobile}
-  <!-- Mobile Bottom Nav for switching between Tokens and Market Stats -->
   <nav class="mobile-nav">
     <div class="mobile-nav-container">
       <button 
@@ -676,7 +627,6 @@
            min-w-[80px];
   }
 
-  /* Mobile navigation */
   .mobile-nav {
     @apply fixed bottom-0 left-0 right-0 bg-[#1a1b23]/90 border-t border-[#2a2d3d] z-50 backdrop-blur-md;
   }
@@ -709,7 +659,6 @@
     @apply flex justify-end px-4;
   }
 
-  /* Custom Scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
     height: 8px;
