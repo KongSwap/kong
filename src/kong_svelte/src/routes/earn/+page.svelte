@@ -201,43 +201,45 @@
 
 <section class="flex flex-col w-full h-full px-4 pb-4 {isMobile ? 'pb-24' : ''}">
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
-    <div class="earn-cards" class:hidden={isMobile}>
-      <div class="earn-card" class:active={$activeSection === 'pools'} on:click={() => activeSection.set('pools')}>
-        <div class="card-content">
-          <h3>Pools</h3>
-          <div class="apy">Up to {$highestApr.toFixed(2)}% APR</div>
-        </div>
-        <div class="stat-icon-wrapper">
-          <Droplets class="stat-icon" />
-        </div>
-      </div>
-
-      <div class="earn-card" disabled>
-        <div class="card-content">
-          <h3>Staking</h3>
-          <div class="coming-soon-label">
-            <span class="coming-soon-icon">🚀</span>
-            <span class="coming-soon-text">Coming Soon</span>
+    {#if !isMobile}
+      <div class="earn-cards">
+        <div class="earn-card" class:active={$activeSection === 'pools'} on:click={() => activeSection.set('pools')}>
+          <div class="card-content">
+            <h3>Pools</h3>
+            <div class="apy">Up to {$highestApr.toFixed(2)}% APR</div>
+          </div>
+          <div class="stat-icon-wrapper">
+            <Droplets class="stat-icon" />
           </div>
         </div>
-        <div class="stat-icon-wrapper">
-          <Lock class="stat-icon" />
-        </div>
-      </div>
 
-      <div class="earn-card" disabled>
-        <div class="card-content">
-          <h3>Lending</h3>
-          <div class="coming-soon-label">
-            <span class="coming-soon-icon">🚀</span>
-            <span class="coming-soon-text">Coming Soon</span>
+        <div class="earn-card" disabled>
+          <div class="card-content">
+            <h3>Staking</h3>
+            <div class="coming-soon-label">
+              <span class="coming-soon-icon">🚀</span>
+              <span class="coming-soon-text">Coming Soon</span>
+            </div>
+          </div>
+          <div class="stat-icon-wrapper">
+            <Lock class="stat-icon" />
           </div>
         </div>
-        <div class="stat-icon-wrapper">
-          <Wallet class="stat-icon" />
+
+        <div class="earn-card" disabled>
+          <div class="card-content">
+            <h3>Lending</h3>
+            <div class="coming-soon-label">
+              <span class="coming-soon-icon">🚀</span>
+              <span class="coming-soon-text">Coming Soon</span>
+            </div>
+          </div>
+          <div class="stat-icon-wrapper">
+            <Wallet class="stat-icon" />
+          </div>
         </div>
       </div>
-    </div>
+    {/if}
 
     {#if $activeSection === "pools"}
       <Panel className="flex-1 ">
@@ -270,7 +272,7 @@
           <div class="overflow-auto flex-1 -mx-4">
             {#if $activePoolView === 'all'}
               <!-- All Pools View -->
-              <div class="overflow-auto flex-1 max-h-[calc(100vh-22rem)] px-4">
+              <div class="overflow-auto flex-1 max-h-[calc(100vh-22rem)] {isMobile ? 'max-h-[calc(100vh-18rem)]' : ''} px-4">
                 <!-- Desktop Table View -->
                 <table class="w-full hidden lg:table relative">
                   <thead class="sticky top-0 z-10">
