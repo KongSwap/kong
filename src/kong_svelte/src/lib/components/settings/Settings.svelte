@@ -207,9 +207,6 @@
               {value}%
             </button>
           {/each}
-        </div>
-        <div class="custom-slippage-wrapper">
-          <span class="custom-slippage-label">Custom:</span>
           <div class="custom-slippage-input" class:active={isCustomSlippage}>
             <input
               type="text"
@@ -218,6 +215,7 @@
               on:input={handleSlippageInput}
               on:change={handleSlippageChange}
               on:blur={handleSlippageBlur}
+              placeholder="Custom"
             />
             <span class="percentage-symbol">%</span>
           </div>
@@ -289,11 +287,11 @@
   }
 
   .quick-slippage-buttons {
-    @apply grid grid-cols-5 gap-2;
+    @apply grid grid-cols-6 gap-2;
   }
 
   .quick-slippage-button {
-    @apply min-w-[80px] px-3 py-2.5 rounded-lg 
+    @apply px-3 py-2.5 rounded-lg 
            bg-gray-800 text-white/90 text-base font-medium
            border border-gray-700 transition-all duration-200
            hover:bg-gray-700 hover:border-gray-600
@@ -305,22 +303,15 @@
            ring-2 ring-blue-500/50;
   }
 
-  .custom-slippage-wrapper {
-    @apply flex items-center gap-4;
-  }
-
-  .custom-slippage-label {
-    @apply text-white/90 font-medium whitespace-nowrap;
-  }
-
   .custom-slippage-input {
-    @apply flex items-center gap-2 flex-1
-           px-4 py-3 rounded-lg bg-black/20 
-           border border-white/10 transition-all duration-200;
+    @apply flex items-center gap-2
+           px-3 py-2 rounded-lg bg-gray-800 
+           border border-gray-700 transition-all duration-200
+           hover:bg-gray-700 hover:border-gray-600;
   }
 
   .custom-slippage-input.active {
-    @apply border-yellow-500 bg-yellow-500/10;
+    @apply border-blue-500 bg-blue-600;
   }
 
   .slippage-input {
@@ -378,7 +369,7 @@
     }
     
     .quick-slippage-button {
-      @apply min-w-[60px] px-2 py-2 text-sm;
+      @apply px-2 py-2 text-sm;
     }
     
     .action-button {

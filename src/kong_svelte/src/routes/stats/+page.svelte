@@ -233,7 +233,7 @@
   }
 </script>
 
-<section class="flex flex-col w-full h-full">
+<section class="flex flex-col w-full h-full px-4">
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
 
     {#if isMobile && $activeStatsSection === 'marketStats'}
@@ -341,7 +341,7 @@
               </div>
             {:else}
               <div class="overflow-auto flex-1 custom-scrollbar">
-                <div class="overflow-auto flex-1 {isMobile ? 'max-h-[calc(100vh-17.9rem)]' : 'max-h-[calc(100vh-20.9rem)]'} custom-scrollbar">
+                <div class="overflow-auto flex-1 {isMobile ? 'max-h-[calc(100vh-15.9rem)]' : 'max-h-[calc(100vh-20.9rem)]'} custom-scrollbar">
                   {#if !isMobile}
                     <!-- Desktop table view -->
                     <table class="data-table">

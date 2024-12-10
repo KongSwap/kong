@@ -299,7 +299,7 @@
           <div class="overflow-auto flex-1 custom-scrollbar">
             {#if $activePoolView === 'all'}
               <!-- All Pools View -->
-              <div class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {isMobile ? 'max-h-[calc(97vh-17rem)]' : ''} custom-scrollbar">
+              <div class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {isMobile ? 'max-h-[calc(97vh-16rem)]' : ''} custom-scrollbar">
                 <!-- Desktop Table View -->
                 <table class="w-full hidden lg:table relative">
                   <thead class="sticky top-0 z-10">
@@ -508,6 +508,8 @@
     z-index: 50;
     backdrop-filter: blur(8px);
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-color: rgb(42 45 61 / var(--tw-border-opacity, 1));
+    background-color: rgb(26 27 35 / 0.9);
   }
 
   .mobile-nav-container {
