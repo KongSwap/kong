@@ -31,13 +31,13 @@ pub fn is_ckusdt(token: &str) -> bool {
     false
 }
 
-/// Calculate the ckusdt amount for a given pay token and amount
-pub fn ckusdt_amount(pay_token: &StableToken, pay_amount: &Nat) -> Result<Nat, String> {
+/// Calculate the ckusdt amount for a given token and amount
+pub fn ckusdt_amount(token: &StableToken, amount: &Nat) -> Result<Nat, String> {
     let ckusdt_token = token_map::get_ckusdt()?;
-    let mid_price = swap_mid_price(pay_token, &ckusdt_token)?;
-    let receive_amount = nat_multiply_f64(pay_amount, mid_price).ok_or("Failed to calculate ckUSDT amount")?;
-    let receieve_amount_ckusdt = nat_to_decimal_precision(&receive_amount, pay_token.decimals(), ckusdt_token.decimals());
-    Ok(receieve_amount_ckusdt)
+    let mid_price = swap_mid_price(token, &ckusdt_token)?;
+    let ckusdt_amount_token_decimal = nat_multiply_f64(amount, mid_price).ok_or("Failed to calculate ckUSDT amount")?;
+    let ckusdt_amount = nat_to_decimal_precision(&ckusdt_amount_token_decimal, token.decimals(), ckusdt_token.decimals());
+    Ok(ckusdt_amount)
 }
 
 /// Convert a Nat amount to a f64 with the correct number of decimals for ckUSDT

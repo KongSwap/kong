@@ -138,3 +138,4 @@ backups/
 ic-domains
 ii-alternative-origins
 settings.json
+*.pem

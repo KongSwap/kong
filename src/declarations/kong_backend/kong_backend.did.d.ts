@@ -129,6 +129,7 @@ export interface ICTransferReply {
   'amount' : bigint,
   'symbol' : string,
 }
+export interface Icrc10SupportedStandards { 'url' : string, 'name' : string }
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
@@ -160,9 +161,8 @@ export interface PoolExpectedBalance {
   'lp_fee' : bigint,
 }
 export interface PoolReply {
+  'tvl' : bigint,
   'lp_token_symbol' : string,
-  'balance' : bigint,
-  'total_lp_fee' : bigint,
   'name' : string,
   'lp_fee_0' : bigint,
   'lp_fee_1' : bigint,
@@ -175,7 +175,6 @@ export interface PoolReply {
   'rolling_24h_num_swaps' : bigint,
   'symbol_0' : string,
   'symbol_1' : string,
-  'total_volume' : bigint,
   'pool_id' : number,
   'price' : number,
   'chain_0' : string,
@@ -389,6 +388,44 @@ export type ValidateAddLiquidityResult = { 'Ok' : string } |
   { 'Err' : string };
 export type ValidateRemoveLiquidityResult = { 'Ok' : string } |
   { 'Err' : string };
+export interface icrc21_consent_info {
+  'metadata' : icrc21_consent_message_metadata,
+  'consent_message' : icrc21_consent_message,
+}
+export type icrc21_consent_message = {
+    'LineDisplayMessage' : { 'pages' : Array<{ 'lines' : Array<string> }> }
+  } |
+  { 'GenericDisplayMessage' : string };
+export interface icrc21_consent_message_metadata {
+  'utc_offset_minutes' : [] | [number],
+  'language' : string,
+}
+export interface icrc21_consent_message_request {
+  'arg' : Uint8Array | number[],
+  'method' : string,
+  'user_preferences' : icrc21_consent_message_spec,
+}
+export type icrc21_consent_message_response = { 'Ok' : icrc21_consent_info } |
+  { 'Err' : icrc21_error };
+export interface icrc21_consent_message_spec {
+  'metadata' : icrc21_consent_message_metadata,
+  'device_spec' : [] | [
+    { 'GenericDisplay' : null } |
+      {
+        'LineDisplay' : {
+          'characters_per_line' : number,
+          'lines_per_page' : number,
+        }
+      }
+  ],
+}
+export type icrc21_error = {
+    'GenericError' : { 'description' : string, 'error_code' : bigint }
+  } |
+  { 'InsufficientPayment' : icrc21_error_info } |
+  { 'UnsupportedCanisterCall' : icrc21_error_info } |
+  { 'ConsentMessageUnavailable' : icrc21_error_info };
+export interface icrc21_error_info { 'description' : string }
 export interface _SERVICE {
   'add_liquidity' : ActorMethod<[AddLiquidityArgs], AddLiquidityResult>,
   'add_liquidity_amounts' : ActorMethod<
@@ -410,7 +447,15 @@ export interface _SERVICE {
     TxsResult
   >,
   'get_user' : ActorMethod<[], UserResult>,
+  'icrc10_supported_standards' : ActorMethod<
+    [],
+    Array<Icrc10SupportedStandards>
+  >,
   'icrc1_name' : ActorMethod<[], string>,
+  'icrc21_canister_call_consent_message' : ActorMethod<
+    [icrc21_consent_message_request],
+    icrc21_consent_message_response
+  >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
   'messages' : ActorMethod<[[] | [bigint]], MessagesResult>,
   'pools' : ActorMethod<[[] | [string]], PoolsResult>,

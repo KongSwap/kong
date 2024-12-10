@@ -174,6 +174,13 @@ export const idlFactory = ({ IDL }) => {
     'RemoveLiquidity' : RemoveLiquidityReply,
   });
   const TxsResult = IDL.Variant({ 'Ok' : IDL.Vec(TxsReply), 'Err' : IDL.Text });
+  const Icrc10SupportedStandards = IDL.Record({
+    'url' : IDL.Text,
+    'name' : IDL.Text,
+  });
+  const Icrc28TrustedOriginsResponse = IDL.Record({
+    'trusted_origins' : IDL.Vec(IDL.Text),
+  });
   return IDL.Service({
     'get_requests' : IDL.Func(
         [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat32), IDL.Opt(IDL.Nat16)],
@@ -190,7 +197,13 @@ export const idlFactory = ({ IDL }) => {
         [TxsResult],
         ['query'],
       ),
+    'icrc10_supported_standards' : IDL.Func(
+        [],
+        [IDL.Vec(Icrc10SupportedStandards)],
+        ['query'],
+      ),
     'icrc1_name' : IDL.Func([], [IDL.Text], ['query']),
+    'icrc28_trusted_origins' : IDL.Func([], [Icrc28TrustedOriginsResponse], []),
     'requests' : IDL.Func(
         [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat16)],
         [RequestsResult],

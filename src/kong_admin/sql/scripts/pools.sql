@@ -12,11 +12,10 @@ CREATE TABLE pools (
     kong_fee_bps SMALLINT NOT NULL,
     lp_token_id INT REFERENCES tokens(token_id) NOT NULL,
     on_kong BOOLEAN NOT NULL,
+    tvl DOUBLE PRECISION NOT NULL,
     rolling_24h_volume DOUBLE PRECISION NOT NULL,
     rolling_24h_lp_fee DOUBLE PRECISION NOT NULL,
     rolling_24h_num_swaps INT NOT NULL,
     rolling_24h_apy DOUBLE PRECISION NOT NULL,
-    total_volume DOUBLE PRECISION NOT NULL,
-    total_lp_fee DOUBLE PRECISION NOT NULL,
     raw_json JSONB NOT NULL
 );

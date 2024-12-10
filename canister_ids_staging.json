@@ -2,6 +2,9 @@
   "kong_backend": {
     "ic": "l4lgk-raaaa-aaaar-qahpq-cai"
   },
+  "kong_data": {
+    "ic": "cbefx-hqaaa-aaaar-qakrq-cai"
+  },
   "kong_faucet": {
     "ic": "ohr23-xqaaa-aaaar-qahqq-cai"
   },

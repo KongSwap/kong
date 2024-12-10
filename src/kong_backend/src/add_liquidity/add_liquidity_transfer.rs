@@ -25,8 +25,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     // make sure user is registered, if not create a new user with referred_by if specified
     let user_id = user_map::insert(None)?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
         check_arguments(&args, request_id, ts).await.inspect_err(|e| {
@@ -57,7 +56,9 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
         },
     );
 
-    archive_to_kong_data(request);
+    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+        .first()
+        .map(archive_to_kong_data);
 
     result
 }
@@ -65,8 +66,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let user_id = user_map::insert(None)?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
         check_arguments(&args, request_id, ts).await.inspect_err(|e| {
@@ -92,7 +92,9 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        archive_to_kong_data(request);
+        request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+            .first()
+            .map(archive_to_kong_data);
     });
 
     Ok(request_id)
@@ -203,7 +205,6 @@ async fn process_add_liquidity(
 
     let caller_id = caller_id();
     let kong_backend = kong_settings_map::get().kong_backend_account;
-
     let mut transfer_ids = Vec::new();
 
     let mut transfer_0 = match transfer_id_0 {

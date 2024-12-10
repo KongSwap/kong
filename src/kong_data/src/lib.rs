@@ -11,6 +11,7 @@ mod remove_liquidity;
 mod requests;
 mod send;
 mod stable_claim;
+mod stable_db_update;
 mod stable_kong_settings;
 mod stable_lp_token;
 mod stable_memory;

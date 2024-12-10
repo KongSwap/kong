@@ -47,7 +47,7 @@ pub fn update_pool_stats() {
             pool.rolling_24h_lp_fee = lp_fee;
             // APY = (total_fees / total_liquidity) * 365 * 100
             pool.rolling_24h_apy = round_f64(
-                nat_divide_as_f64(&pool.rolling_24h_lp_fee, &pool.get_balance()).unwrap_or(0_f64) * 365_f64 * 100_f64,
+                nat_divide_as_f64(&pool.rolling_24h_lp_fee, &pool.tvl).unwrap_or(0_f64) * 365_f64 * 100_f64,
                 2,
             );
         } else {
@@ -56,7 +56,6 @@ pub fn update_pool_stats() {
             pool.rolling_24h_lp_fee = nat_zero();
             pool.rolling_24h_apy = 0_f64;
         }
-
         pool_map::update(&pool);
     }
 }

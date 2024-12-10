@@ -29,8 +29,7 @@ use crate::stable_user::user_map;
 pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLiquidityReply, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::AddLiquidity(args), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args), ts));
 
     let result = process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts)
         .await
@@ -45,7 +44,9 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
             },
         );
 
-    archive_to_kong_data(request);
+    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+        .first()
+        .map(archive_to_kong_data);
 
     result
 }
@@ -53,8 +54,7 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
 pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result<u64, String> {
     let (user_id, pool, add_amount_0, add_amount_1) = check_arguments(&args).await?;
     let ts = get_time();
-    let request = StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts);
-    let request_id = request_map::insert(&request);
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     ic_cdk::spawn(async move {
         match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
@@ -62,7 +62,9 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
             Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
         };
 
-        archive_to_kong_data(request);
+        request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+            .first()
+            .map(archive_to_kong_data);
     });
 
     Ok(request_id)
@@ -343,22 +345,21 @@ pub fn update_liquidity_pool(
 ) -> Result<(StablePool, Nat, Nat, Nat), String> {
     request_map::update_status(request_id, StatusCode::CalculatePoolAmounts, None);
 
-    let token_0_address_with_chain = pool.token_0().address_with_chain();
-    let token_1_address_with_chain = pool.token_1().address_with_chain();
+    let token_0 = pool.token_0().address_with_chain();
+    let token_1 = pool.token_1().address_with_chain();
     // re-calculate the amounts to be added to the pool with new state (after token_0 and token_1 transfers)
     // add_amount_0 and add_amount_1 are the transferred amounts from the initial calculations
     // amount_0, amount_1 and add_lp_token_amount will be the actual amounts to be added to the pool
-    match calculate_amounts(&token_0_address_with_chain, add_amount_0, &token_1_address_with_chain, add_amount_1) {
-        Ok((pool, amount_0, amount_1, add_lp_token_amount)) => {
+    match calculate_amounts(&token_0, add_amount_0, &token_1, add_amount_1) {
+        Ok((mut pool, amount_0, amount_1, add_lp_token_amount)) => {
             request_map::update_status(request_id, StatusCode::CalculatePoolAmountsSuccess, None);
 
             request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
-            let update_pool = StablePool {
-                balance_0: nat_add(&pool.balance_0, &amount_0),
-                balance_1: nat_add(&pool.balance_1, &amount_1),
-                ..pool.clone()
-            };
-            pool_map::update(&update_pool);
+
+            pool.balance_0 = nat_add(&pool.balance_0, &amount_0);
+            pool.balance_1 = nat_add(&pool.balance_1, &amount_1);
+            pool.update_tvl();
+            pool_map::update(&pool);
             request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 
             // update user's LP token amount
@@ -509,9 +510,9 @@ async fn return_token(
     }
 }
 
-pub fn archive_to_kong_data(request: StableRequest) {
+pub fn archive_to_kong_data(request: &StableRequest) {
     request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::AddLiquidity(reply) = request.reply {
+    if let Reply::AddLiquidity(reply) = &request.reply {
         for claim_id in reply.claim_ids.iter() {
             claim_map::archive_claim_to_kong_data(*claim_id);
         }

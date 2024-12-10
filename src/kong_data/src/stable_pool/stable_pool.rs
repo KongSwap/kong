@@ -2,6 +2,7 @@ use candid::{CandidType, Nat};
 use ic_stable_structures::{storable::Bound, Storable};
 use serde::{Deserialize, Serialize};
 
+use crate::helpers::nat_helpers::nat_zero;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -36,12 +37,16 @@ pub struct StablePool {
     pub kong_fee_bps: u8, // Kong's fee in basis points
     pub lp_token_id: u32, // token id of the LP token
     pub on_kong: bool,    // whether the pool is on Kong
+    #[serde(default = "default_tvl")]
+    pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
-    pub total_volume: Nat, // lifetime volume of the pool in token_1
-    pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
+}
+
+fn default_tvl() -> Nat {
+    nat_zero()
 }
 
 impl StablePool {

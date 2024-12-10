@@ -6,9 +6,9 @@ use crate::helpers::math_helpers::{bytes_to_megabytes, to_trillions};
 use crate::ic::guards::caller_is_kingkong;
 
 use crate::stable_memory::{
-    CLAIM_MAP, CLAIM_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID, MEMORY_MANAGER, MESSAGE_MAP, MESSAGE_MEMORY_ID,
-    POOL_MAP, POOL_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_MAP, TRANSFER_MEMORY_ID, TX_MAP,
-    TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
+    CLAIM_MAP, CLAIM_MEMORY_ID, DB_UPDATE_MAP, DB_UPDATE_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID,
+    MEMORY_MANAGER, MESSAGE_MAP, MESSAGE_MEMORY_ID, POOL_MAP, POOL_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID,
+    TRANSFER_MAP, TRANSFER_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -62,8 +62,9 @@ async fn status() -> Result<String, String> {
             "Stable - Request Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(REQUEST_MEMORY_ID).size())),
             "Stable - Transfer Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_MEMORY_ID).size())),
             "Stable - Claim Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(CLAIM_MEMORY_ID).size())),
-            "Stable - LP Token Ledger Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_MEMORY_ID).size())),
+            "Stable - LP Tokens Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_MEMORY_ID).size())),
             "Stable - Message Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(MESSAGE_MEMORY_ID).size())),
+            "Stable - DB Update Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(DB_UPDATE_MEMORY_ID).size())),
             "# of users": get_number_of_users(),
             "# of tokens": get_number_of_tokens(),
             "# of pools": get_number_of_pools(),
@@ -73,6 +74,7 @@ async fn status() -> Result<String, String> {
             "# of claims": get_number_of_claims(),
             "# of LP positions": get_number_of_lp_positions(),
             "# of messages": get_number_of_messages(),
+            "# of db updates": get_number_of_db_updates(),
         }
     })
     .map_err(|e| format!("Failed to serialize: {}", e))
@@ -112,4 +114,8 @@ pub fn get_number_of_lp_positions() -> u64 {
 
 pub fn get_number_of_messages() -> u64 {
     MESSAGE_MAP.with(|m| m.borrow().len())
+}
+
+pub fn get_number_of_db_updates() -> u64 {
+    DB_UPDATE_MAP.with(|m| m.borrow().len())
 }
