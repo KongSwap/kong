@@ -36,10 +36,55 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
+    let caller_id = caller_id();
 
     let result = process_remove_liquidity(
         request_id,
         user_id,
+        &caller_id,
+        &pool,
+        &remove_lp_token_amount,
+        &payout_amount_0,
+        &payout_lp_fee_0,
+        &payout_amount_1,
+        &payout_lp_fee_1,
+        ts,
+    )
+    .await
+    .map_or_else(
+        |e| {
+            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            Err(e)
+        },
+        |reply| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+            Ok(reply)
+        },
+    );
+
+    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
+        .first()
+        .map(archive_to_kong_data);
+
+    result
+}
+
+/// used by remove_lp_positions() to remove_liquidity for user_id and tokens returned to to_principal_id
+pub async fn remove_liquidity_from_pool(
+    args: RemoveLiquidityArgs,
+    user_id: u32,
+    to_principal_id: &Account,
+) -> Result<RemoveLiquidityReply, String> {
+    let (pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
+        check_arguments_without_user(&args).await?;
+    let ts = get_time();
+    let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
+    request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
+
+    let result = process_remove_liquidity(
+        request_id,
+        user_id,
+        to_principal_id,
         &pool,
         &remove_lp_token_amount,
         &payout_amount_0,
@@ -73,11 +118,13 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
         check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
+    let caller_id = caller_id();
 
     ic_cdk::spawn(async move {
         match process_remove_liquidity(
             request_id,
             user_id,
+            &caller_id,
             &pool,
             &remove_lp_token_amount,
             &payout_amount_0,
@@ -103,6 +150,25 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
 /// returns (user_id, pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1)
 #[allow(clippy::type_complexity)]
 async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool, Nat, Nat, Nat, Nat, Nat), String> {
+    let (pool, remove_lp_token_amount, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) =
+        check_arguments_without_user(args).await?;
+
+    // make sure user is registered, if not create a new user
+    let user_id = user_map::insert(None)?;
+
+    Ok((
+        user_id,
+        pool,
+        remove_lp_token_amount,
+        payout_amount_0,
+        payout_lp_fee_0,
+        payout_amount_1,
+        payout_lp_fee_1,
+    ))
+}
+
+#[allow(clippy::type_complexity)]
+async fn check_arguments_without_user(args: &RemoveLiquidityArgs) -> Result<(StablePool, Nat, Nat, Nat, Nat, Nat), String> {
     // Pool
     let pool = pool_map::get_by_tokens(&args.token_0, &args.token_1)?;
     // Token0
@@ -128,11 +194,7 @@ async fn check_arguments(args: &RemoveLiquidityArgs) -> Result<(u32, StablePool,
     // calculate the payout amounts.
     let (payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1) = calculate_amounts(&pool, &args.remove_lp_token_amount)?;
 
-    // make sure user is registered, if not create a new user
-    let user_id = user_map::insert(None)?;
-
     Ok((
-        user_id,
         pool,
         remove_lp_token_amount,
         payout_amount_0,
@@ -178,6 +240,7 @@ pub fn calculate_amounts(pool: &StablePool, remove_lp_token_amount: &Nat) -> Res
 async fn process_remove_liquidity(
     request_id: u64,
     user_id: u32,
+    to_principal_id: &Account,
     pool: &StablePool,
     remove_lp_token_amount: &Nat,
     payout_amount_0: &Nat,
@@ -209,6 +272,7 @@ async fn process_remove_liquidity(
     let reply = send_payout_tokens(
         request_id,
         user_id,
+        to_principal_id,
         pool,
         payout_amount_0,
         payout_lp_fee_0,
@@ -308,6 +372,7 @@ fn update_liquidity_pool(
 async fn send_payout_tokens(
     request_id: u64,
     user_id: u32,
+    to_principal_id: &Account,
     pool: &StablePool,
     payout_amount_0: &Nat,
     payout_lp_fee_0: &Nat,
@@ -321,7 +386,6 @@ async fn send_payout_tokens(
     // Token1
     let token_1 = pool.token_1();
 
-    let caller_id = caller_id();
     let mut transfer_ids = Vec::new();
     let mut claim_ids = Vec::new();
 
@@ -329,7 +393,7 @@ async fn send_payout_tokens(
     transfer_token(
         request_id,
         user_id,
-        &caller_id,
+        to_principal_id,
         TokenIndex::Token0,
         &token_0,
         payout_amount_0,
@@ -344,7 +408,7 @@ async fn send_payout_tokens(
     transfer_token(
         request_id,
         user_id,
-        &caller_id,
+        to_principal_id,
         TokenIndex::Token1,
         &token_1,
         payout_amount_1,

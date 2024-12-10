@@ -1,10 +1,18 @@
+use candid::Principal;
 use ic_cdk::{query, update};
+use icrc_ledger_types::icrc1::account::Account;
 use std::collections::BTreeMap;
 
+use crate::helpers::nat_helpers::nat_zero;
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::POOL_MAP;
+use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
+use crate::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
+use crate::stable_lp_token::lp_token_map;
+use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP, USER_MAP};
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
+use crate::stable_token::token::Token;
+use crate::stable_user::stable_user::StableUserId;
 
 const MAX_POOLS: usize = 1_000;
 
@@ -46,10 +54,72 @@ fn update_pools(tokens: String) -> Result<String, String> {
     Ok("Pools updated".to_string())
 }
 
+/// remove pool, LP token and all LP positions
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_pool(symbol: String) -> Result<String, String> {
     let pool = pool_map::get_by_token(&symbol)?;
+    let lp_token_id = pool.lp_token_id;
+    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
+    if lp_total_supply > nat_zero() {
+        return Err(format!("LP token total supply is still {}", lp_total_supply));
+    }
+
     pool_map::remove(pool.pool_id)?;
 
     Ok(format!("Pool {} removed", symbol))
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
+    let pool = pool_map::get_by_token(&symbol)?;
+    let lp_token_id = pool.lp_token_id;
+
+    // (lp token amount, user_id, principal_id)
+    let lp_users = USER_MAP.with(|u| {
+        let users = u.borrow();
+        LP_TOKEN_MAP.with(|m| {
+            m.borrow()
+                .iter()
+                .filter_map(|(_, v)| {
+                    if v.token_id == lp_token_id {
+                        let user = users.get(&StableUserId(v.user_id))?;
+                        Some((v.amount, user.user_id, user.principal_id))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+    });
+
+    let token_0 = pool.token_0().address_with_chain();
+    let token_1 = pool.token_1().address_with_chain();
+    let mut results = Vec::new();
+    for (remove_lp_token_amount, user_id, principal_id) in lp_users {
+        let args = RemoveLiquidityArgs {
+            token_0: token_0.clone(),
+            token_1: token_1.clone(),
+            remove_lp_token_amount,
+        };
+        match Principal::from_text(principal_id) {
+            Ok(principal) => {
+                let to_principal_id = Account::from(principal);
+                match remove_liquidity_from_pool(args, user_id, &to_principal_id).await {
+                    Ok(_) => {
+                        results.push(format!("Removed user_id {} LP positions", user_id));
+                    }
+                    Err(e) => {
+                        results.push(format!("Failed to remove user_id {} LP positions: {}", user_id, e));
+                    }
+                }
+            }
+            Err(e) => {
+                results.push(format!("Failed to parse user_id {} principal id: {}", user_id, e));
+            }
+        }
+    }
+    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
+    results.push(format!("Remaining LP token total supply {}", lp_total_supply));
+
+    serde_json::to_string(&results).map_err(|e| format!("Failed to serialize remove_liquidity: {}", e))
 }
