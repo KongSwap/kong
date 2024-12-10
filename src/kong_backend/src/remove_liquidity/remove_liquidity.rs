@@ -262,11 +262,7 @@ async fn process_remove_liquidity(
     }
 
     // update liquidity pool with new removed amounts
-    let update_liquidity_pool = update_liquidity_pool(request_id, pool, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1);
-    if update_liquidity_pool.is_err() {
-        return_tokens(request_id, pool, &transfer_lp_token, remove_lp_token_amount, ts);
-        return Err(format!("Req #{} failed. {}", request_id, update_liquidity_pool.unwrap_err()));
-    }
+    update_liquidity_pool(request_id, pool, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1);
 
     // successful, add tx and update request with reply
     let reply = send_payout_tokens(
@@ -341,26 +337,19 @@ fn return_lp_token(lp_token: &StableToken, remove_lp_token_amount: &Nat, ts: u64
     }
 }
 
-fn update_liquidity_pool(
-    request_id: u64,
-    pool: &StablePool,
-    payout_amount_0: &Nat,
-    payout_lp_fee_0: &Nat,
-    payout_amount_1: &Nat,
-    payout_lp_fee_1: &Nat,
-) -> Result<(), String> {
+fn update_liquidity_pool(request_id: u64, pool: &StablePool, amount_0: &Nat, lp_fee_0: &Nat, amount_1: &Nat, lp_fee_1: &Nat) {
     request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
-    let update_pool = StablePool {
-        balance_0: nat_subtract(&pool.balance_0, payout_amount_0).unwrap_or(nat_zero()),
-        lp_fee_0: nat_subtract(&pool.lp_fee_0, payout_lp_fee_0).unwrap_or(nat_zero()),
-        balance_1: nat_subtract(&pool.balance_1, payout_amount_1).unwrap_or(nat_zero()),
-        lp_fee_1: nat_subtract(&pool.lp_fee_1, payout_lp_fee_1).unwrap_or(nat_zero()),
+
+    let mut update_pool = StablePool {
+        balance_0: nat_subtract(&pool.balance_0, amount_0).unwrap_or(nat_zero()),
+        lp_fee_0: nat_subtract(&pool.lp_fee_0, lp_fee_0).unwrap_or(nat_zero()),
+        balance_1: nat_subtract(&pool.balance_1, amount_1).unwrap_or(nat_zero()),
+        lp_fee_1: nat_subtract(&pool.lp_fee_1, lp_fee_1).unwrap_or(nat_zero()),
         ..pool.clone()
     };
+    update_pool.update_tvl();
     pool_map::update(&update_pool);
     request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
-
-    Ok(())
 }
 
 // send payout tokens to user and final balance integrity checks

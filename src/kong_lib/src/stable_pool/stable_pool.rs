@@ -34,12 +34,11 @@ pub struct StablePool {
     pub kong_fee_bps: u8, // Kong's fee in basis points
     pub lp_token_id: u32, // token id of the LP token
     pub on_kong: bool,    // whether the pool is on Kong
+    pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
-    pub total_volume: Nat, // lifetime volume of the pool in token_1
-    pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
 }
 
 impl StablePool {
@@ -58,12 +57,11 @@ impl StablePool {
             kong_fee_bps,
             lp_token_id,
             on_kong,
+            tvl: nat_zero(),
             rolling_24h_volume: nat_zero(),
             rolling_24h_lp_fee: nat_zero(),
             rolling_24h_num_swaps: nat_zero(),
             rolling_24h_apy: 0_f64,
-            total_volume: nat_zero(),
-            total_lp_fee: nat_zero(),
         }
     }
 }

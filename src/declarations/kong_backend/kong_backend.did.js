@@ -288,9 +288,8 @@ export const idlFactory = ({ IDL }) => {
     'Err' : IDL.Text,
   });
   const PoolReply = IDL.Record({
+    'tvl' : IDL.Nat,
     'lp_token_symbol' : IDL.Text,
-    'balance' : IDL.Nat,
-    'total_lp_fee' : IDL.Nat,
     'name' : IDL.Text,
     'lp_fee_0' : IDL.Nat,
     'lp_fee_1' : IDL.Nat,
@@ -303,7 +302,6 @@ export const idlFactory = ({ IDL }) => {
     'rolling_24h_num_swaps' : IDL.Nat,
     'symbol_0' : IDL.Text,
     'symbol_1' : IDL.Text,
-    'total_volume' : IDL.Nat,
     'pool_id' : IDL.Nat32,
     'price' : IDL.Float64,
     'chain_0' : IDL.Text,
