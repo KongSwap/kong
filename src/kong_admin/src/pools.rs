@@ -26,12 +26,11 @@ pub fn serialize_pool(pool: &StablePool) -> serde_json::Value {
             "kong_fee_bps": pool.kong_fee_bps,
             "lp_token_id": pool.lp_token_id,
             "on_kong": pool.on_kong,
+            "tvl": pool.tvl.to_string(),
             "rolling_24h_volume": pool.rolling_24h_volume.to_string(),
             "rolling_24h_lp_fee": pool.rolling_24h_lp_fee.to_string(),
             "rolling_24h_num_swaps": pool.rolling_24h_num_swaps.to_string(),
             "rolling_24h_apy": pool.rolling_24h_apy,
-            "total_volume": pool.total_volume.to_string(),
-            "total_lp_fee": pool.total_lp_fee.to_string(),
         }
     })
 }
@@ -84,19 +83,18 @@ pub async fn insert_pool_on_database(
     let kong_fee_bps = v.kong_fee_bps as i16;
     let lp_token_id = v.lp_token_id as i32;
     let on_kong = v.on_kong;
+    let tvl = round_f64(v.tvl.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let rolling_24h_volume = round_f64(v.rolling_24h_volume.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let rolling_24h_lp_fee = round_f64(v.rolling_24h_lp_fee.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let rolling_24h_num_swaps = v.rolling_24h_num_swaps.0.to_i32();
     let rolling_24h_apy = v.rolling_24h_apy;
-    let total_volume = round_f64(v.total_volume.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
-    let total_lp_fee = round_f64(v.total_lp_fee.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let raw_json = serialize_pool(v);
 
     db_client
         .execute(
             "INSERT INTO pools 
-                (pool_id, token_id_0, balance_0, lp_fee_0, kong_fee_0, token_id_1, balance_1, lp_fee_1, kong_fee_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong, rolling_24h_volume, rolling_24h_lp_fee, rolling_24h_num_swaps, rolling_24h_apy, total_volume, total_lp_fee, raw_json)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                (pool_id, token_id_0, balance_0, lp_fee_0, kong_fee_0, token_id_1, balance_1, lp_fee_1, kong_fee_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong, tvl, rolling_24h_volume, rolling_24h_lp_fee, rolling_24h_num_swaps, rolling_24h_apy, raw_json)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
                 ON CONFLICT (pool_id) DO UPDATE SET
                     token_id_0 = $2,
                     balance_0 = $3,
@@ -110,14 +108,13 @@ pub async fn insert_pool_on_database(
                     kong_fee_bps = $11,
                     lp_token_id = $12,
                     on_kong = $13,
-                    rolling_24h_volume = $14,
-                    rolling_24h_lp_fee = $15,
-                    rolling_24h_num_swaps = $16,
-                    rolling_24h_apy = $17,
-                    total_volume = $18,
-                    total_lp_fee = $19,
-                    raw_json = $20",
-            &[&pool_id, &token_id_0, &balance_0, &lp_fee_0, &kong_fee_0, &token_id_1, &balance_1, &lp_fee_1, &kong_fee_1, &lp_fee_bps, &kong_fee_bps, &lp_token_id, &on_kong, &rolling_24h_volume, &rolling_24h_lp_fee, &rolling_24h_num_swaps, &rolling_24h_apy, &total_volume, &total_lp_fee, &raw_json],
+                    tvl = $14,
+                    rolling_24h_volume = $15,
+                    rolling_24h_lp_fee = $16,
+                    rolling_24h_num_swaps = $17,
+                    rolling_24h_apy = $18,
+                    raw_json = $19",
+            &[&pool_id, &token_id_0, &balance_0, &lp_fee_0, &kong_fee_0, &token_id_1, &balance_1, &lp_fee_1, &kong_fee_1, &lp_fee_bps, &kong_fee_bps, &lp_token_id, &on_kong, &tvl, &rolling_24h_volume, &rolling_24h_lp_fee, &rolling_24h_num_swaps, &rolling_24h_apy, &raw_json],
         )
         .await?;
 

@@ -507,11 +507,12 @@ fn update_liquidity_pool(
 ) {
     request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
 
-    let update_pool = StablePool {
+    let mut update_pool = StablePool {
         balance_0: nat_add(&pool.balance_0, amount_0),
         balance_1: nat_add(&pool.balance_1, amount_1),
         ..pool.clone()
     };
+    update_pool.update_tvl();
     pool_map::update(&update_pool);
     request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 

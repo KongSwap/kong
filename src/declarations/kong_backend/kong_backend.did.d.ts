@@ -161,9 +161,8 @@ export interface PoolExpectedBalance {
   'lp_fee' : bigint,
 }
 export interface PoolReply {
+  'tvl' : bigint,
   'lp_token_symbol' : string,
-  'balance' : bigint,
-  'total_lp_fee' : bigint,
   'name' : string,
   'lp_fee_0' : bigint,
   'lp_fee_1' : bigint,
@@ -176,7 +175,6 @@ export interface PoolReply {
   'rolling_24h_num_swaps' : bigint,
   'symbol_0' : string,
   'symbol_1' : string,
-  'total_volume' : bigint,
   'pool_id' : number,
   'price' : number,
   'chain_0' : string,

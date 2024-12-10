@@ -42,12 +42,16 @@ pub struct StablePool {
     pub kong_fee_bps: u8, // Kong's fee in basis points
     pub lp_token_id: u32, // token id of the LP token
     pub on_kong: bool,    // whether the pool is on Kong
+    #[serde(default = "default_tvl")]
+    pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
-    pub total_volume: Nat, // lifetime volume of the pool in token_1
-    pub total_lp_fee: Nat, // lifetime LP fee of the pool in token_1
+}
+
+fn default_tvl() -> Nat {
+    nat_zero()
 }
 
 impl StablePool {
@@ -66,12 +70,11 @@ impl StablePool {
             kong_fee_bps,
             lp_token_id,
             on_kong,
+            tvl: nat_zero(),
             rolling_24h_volume: nat_zero(),
             rolling_24h_lp_fee: nat_zero(),
             rolling_24h_num_swaps: nat_zero(),
             rolling_24h_apy: 0_f64,
-            total_volume: nat_zero(),
-            total_lp_fee: nat_zero(),
         }
     }
 
@@ -143,13 +146,16 @@ impl StablePool {
         price_rounded(&self.get_price()?)
     }
 
-    // returns total balance (balance_0 + balance_1) in ckusdt
-    pub fn get_balance(&self) -> Nat {
+    /// sets balance = balance_0 + balance_1 in ckUSDT
+    pub fn update_tvl(&mut self) {
         let token_0 = self.token_0();
         let token_1 = self.token_1();
-        let balance_0_ckusdt = ckusdt_amount(&token_0, &self.balance_0).unwrap_or(nat_zero());
-        let balance_1_ckusdt = ckusdt_amount(&token_1, &self.balance_1).unwrap_or(nat_zero());
-        nat_add(&balance_0_ckusdt, &balance_1_ckusdt)
+        // TVL_0 = balance_0 + lp_fee_0 + kong_fee_0
+        let tvl_0 = nat_add(&nat_add(&self.balance_0, &self.lp_fee_0), &self.kong_fee_0);
+        let tvl_1 = nat_add(&nat_add(&self.balance_1, &self.lp_fee_1), &self.kong_fee_1);
+        let tvl_0_ckusdt = ckusdt_amount(&token_0, &tvl_0).unwrap_or(nat_zero());
+        let tvl_1_ckusdt = ckusdt_amount(&token_1, &tvl_1).unwrap_or(nat_zero());
+        self.tvl = nat_add(&tvl_0_ckusdt, &tvl_1_ckusdt)
     }
 
     pub fn set_on_kong(&mut self, on_kong: bool) {

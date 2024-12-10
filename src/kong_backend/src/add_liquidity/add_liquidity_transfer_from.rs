@@ -345,22 +345,21 @@ pub fn update_liquidity_pool(
 ) -> Result<(StablePool, Nat, Nat, Nat), String> {
     request_map::update_status(request_id, StatusCode::CalculatePoolAmounts, None);
 
-    let token_0_address_with_chain = pool.token_0().address_with_chain();
-    let token_1_address_with_chain = pool.token_1().address_with_chain();
+    let token_0 = pool.token_0().address_with_chain();
+    let token_1 = pool.token_1().address_with_chain();
     // re-calculate the amounts to be added to the pool with new state (after token_0 and token_1 transfers)
     // add_amount_0 and add_amount_1 are the transferred amounts from the initial calculations
     // amount_0, amount_1 and add_lp_token_amount will be the actual amounts to be added to the pool
-    match calculate_amounts(&token_0_address_with_chain, add_amount_0, &token_1_address_with_chain, add_amount_1) {
-        Ok((pool, amount_0, amount_1, add_lp_token_amount)) => {
+    match calculate_amounts(&token_0, add_amount_0, &token_1, add_amount_1) {
+        Ok((mut pool, amount_0, amount_1, add_lp_token_amount)) => {
             request_map::update_status(request_id, StatusCode::CalculatePoolAmountsSuccess, None);
 
             request_map::update_status(request_id, StatusCode::UpdatePoolAmounts, None);
-            let update_pool = StablePool {
-                balance_0: nat_add(&pool.balance_0, &amount_0),
-                balance_1: nat_add(&pool.balance_1, &amount_1),
-                ..pool.clone()
-            };
-            pool_map::update(&update_pool);
+
+            pool.balance_0 = nat_add(&pool.balance_0, &amount_0);
+            pool.balance_1 = nat_add(&pool.balance_1, &amount_1);
+            pool.update_tvl();
+            pool_map::update(&pool);
             request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 
             // update user's LP token amount
