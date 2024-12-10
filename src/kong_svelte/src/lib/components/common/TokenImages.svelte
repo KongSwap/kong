@@ -1,7 +1,4 @@
 <script lang="ts">
-  // Type safety for event handling
-  import type { HTMLImgAttributes } from 'svelte/elements';
-
   export let tokens: FE.Token[] = [];
   export let size: number = 48;
   export let containerClass: string = "";
@@ -31,7 +28,7 @@
       class="inline-block"
     >
       <img
-        class="w-full h-full rounded"
+        class="w-full h-full rounded bg-transparent"
         src={token.logo_url || DEFAULT_IMAGE}
         alt={getTokenAlt(token)}
         loading="eager"
