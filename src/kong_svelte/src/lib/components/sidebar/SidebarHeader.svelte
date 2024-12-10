@@ -149,7 +149,7 @@
             aria-controls={`${tab}-panel`}
             id={`${tab}-tab`}
           >
-            <div class="flex items-center justify-center gap-2">
+            <div class="flex items-center justify-center gap-2 sm:text-base text-sm">
               {#if activeTab === tab}
               🍌
               {/if}
