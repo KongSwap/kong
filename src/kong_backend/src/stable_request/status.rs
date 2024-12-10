@@ -58,6 +58,7 @@ pub enum StatusCode {
     ReturnToken1Success,
     ReturnToken1Failed,
     // remove liquidity
+    RemoveLiquidityFromPool,
     ReturnUserLPTokenAmount,
     ReturnUserLPTokenAmountSuccess,
     ReturnUserLPTokenAmountFailed,
@@ -150,6 +151,7 @@ impl std::fmt::Display for StatusCode {
             StatusCode::ReturnToken1 => write!(f, "Returning token 1"),
             StatusCode::ReturnToken1Success => write!(f, "Token 1 returned"),
             StatusCode::ReturnToken1Failed => write!(f, "Failed sending token 1"),
+            StatusCode::RemoveLiquidityFromPool => write!(f, "Remove liquidity from pool"),
             StatusCode::ReturnUserLPTokenAmount => write!(f, "Returning user LP token amount"),
             StatusCode::ReturnUserLPTokenAmountSuccess => write!(f, "User LP token amount returned"),
             StatusCode::ReturnUserLPTokenAmountFailed => write!(f, "Failed returning user LP token amount"),

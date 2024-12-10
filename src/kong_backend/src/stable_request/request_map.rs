@@ -43,7 +43,7 @@ pub fn insert(request: &StableRequest) -> u64 {
             request_id,
             ..request.clone()
         };
-        map.insert(StableRequestId(request_id), insert_request.clone());
+        map.insert(StableRequestId(request_id), insert_request);
         request_id
     })
 }
