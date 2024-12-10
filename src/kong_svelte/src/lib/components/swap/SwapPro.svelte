@@ -1,11 +1,11 @@
 <script lang="ts">
   import Swap from "./Swap.svelte";
-  import TransactionHistory from "../sidebar/TransactionHistory.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { onMount } from "svelte";
   import { poolStore } from "$lib/services/pools";
   import { swapState } from "$lib/services/swap/SwapStateService";
+  import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
 
   export let initialFromToken: FE.Token | null = null;
   export let initialToToken: FE.Token | null = null;
@@ -111,39 +111,7 @@
         </div>
 
         <!-- Transaction History Section -->
-        <Panel variant="green" type="main" className="history-section">
-          <div class="history-header">
-            <div class="tab-navigation">
-              <button
-                class="tab-button"
-                class:active={activeHistoryTab === "my"}
-                on:click={() => (activeHistoryTab = "my")}
-              >
-                <div class="tab-content">
-                  <span>My Swaps</span>
-                  {#if activeHistoryTab === "my"}
-                    <img src="/stats/banana.webp" class="tab-icon" alt="" />
-                  {/if}
-                </div>
-              </button>
-              <button
-                class="tab-button"
-                class:active={activeHistoryTab === "pair"}
-                on:click={() => (activeHistoryTab = "pair")}
-              >
-                <div class="tab-content">
-                  <span>Market Swaps</span>
-                  {#if activeHistoryTab === "pair"}
-                    <img src="/stats/banana.webp" class="tab-icon" alt="" />
-                  {/if}
-                </div>
-              </button>
-            </div>
-          </div>
-          <div class="history-content">
-            <TransactionHistory />
-          </div>
-        </Panel>
+        <TransactionFeed token={toToken} />
       </div>
     </div>
   </div>

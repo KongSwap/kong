@@ -151,12 +151,9 @@
           >
             <div class="flex items-center justify-center gap-2">
               {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain hidden md:block" alt="" />
+              🍌
               {/if}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 object-contain hidden md:block" alt="" />
-              {/if}
             </div>
           </button>
         {/each}
