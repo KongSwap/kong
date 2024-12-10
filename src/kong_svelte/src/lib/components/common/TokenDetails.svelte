@@ -29,7 +29,7 @@
             <div class="token-info">
                 <div class="left-section">
                     <img
-                        src={$tokenLogoStore[token.canister_id] ?? "/tokens/not_verified.webp"}
+                        src={token?.logo_url ?? "/tokens/not_verified.webp"}
                         alt={token.symbol}
                         class="token-logo"
                     />

@@ -150,6 +150,31 @@
     
     return `${before}<span class="match-highlight">${highlighted}</span>${after}`;
   }
+
+  let touchStartY = 0;
+  let isSwiping = false;
+
+  function handleTouchStart(event: TouchEvent) {
+    touchStartY = event.touches[0].clientY;
+    isSwiping = false;
+  }
+
+  function handleTouchMove(event: TouchEvent) {
+    const touchY = event.touches[0].clientY;
+    const deltaY = Math.abs(touchY - touchStartY);
+    
+    if (deltaY > 10) {
+      isSwiping = true;
+    }
+  }
+
+  function handleTouchEnd(event: TouchEvent) {
+    if (isSwiping) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    isSwiping = false;
+  }
 </script>
 
 <div class="token-list" on:keydown={handleKeydown}>
@@ -217,14 +242,21 @@
   </div>
 
   <div class="tokens-content">
-    <div class="tokens-container">
+    <div 
+      class="tokens-container"
+      on:touchstart={handleTouchStart}
+      on:touchmove={handleTouchMove}
+      on:touchend={handleTouchEnd}
+    >
       {#each filteredTokens as token (token.canister_id)}
-        <div class="token-row-wrapper" transition:slide={{ duration: 200 }}>
+        <div 
+          class="token-row-wrapper" 
+          transition:slide={{ duration: 200 }}
+        >
           <TokenRow
             {token}
             on:toggleFavorite={async ({ detail }) => {
               await tokenStore.toggleFavorite(detail.canisterId);
-              // Force a recalculation of processedTokens
               filteredTokens = [...filteredTokens];
             }}
           />
@@ -390,6 +422,15 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .token-row-wrapper {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .tokens-container::-webkit-scrollbar {

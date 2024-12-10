@@ -5,7 +5,7 @@
   import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { createEventDispatcher } from 'svelte';
   import TokenDetails from '$lib/components/common/TokenDetails.svelte';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { currentWalletFavorites } from '$lib/services/tokens/favoriteStore';
 
   export let token: any;
   const dispatch = createEventDispatcher();
@@ -14,22 +14,30 @@
   let isPressed = false;
   let showMenu = false;
   
-  $: isFavorite = tokenStore.isFavorite(token.canister_id);
+  $: isFavorite = $currentWalletFavorites.includes(token.canister_id);
+
+  $: console.log("usdValue", token);
+
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
     dispatch('toggleFavorite', { canisterId: token.canister_id });
   }
 
-  function handleRowClick(e: MouseEvent | TouchEvent) {
-    // For touch events, prevent the hover state
-    if (e.type === 'touchstart') {
-      isHovered = false;
-      showDetails = true;
-      e.preventDefault(); // Prevent mouse events from firing
-    } else if (e.type === 'click') {
-      showDetails = true;
-    }
+  function handleRowClick() {
+    showDetails = true;
+  }
+
+  function handleSendClick(e: MouseEvent) {
+    e.stopPropagation();
+    showMenu = false;
+    dispatch('send', { token });
+  }
+
+  function handleReceiveClick(e: MouseEvent) {
+    e.stopPropagation();
+    showMenu = false;
+    dispatch('receive', { token });
   }
 
   function toggleMenu(e: MouseEvent) {
@@ -56,14 +64,13 @@
     in:fly={{ y: 20, duration: 400, delay: 200 }}
     out:fade={{ duration: 200 }}
     on:click={handleRowClick}
-    on:touchstart={handleRowClick}
     on:mouseenter={() => isHovered = true}
     on:mouseleave={() => isHovered = false}
     on:mousedown={() => isPressed = true}
     on:mouseup={() => isPressed = false}
     role="button"
     tabindex="0"
-    on:keydown={e => e.key === 'Enter' && handleRowClick(e)}
+    on:keydown={e => e.key === 'Enter' && handleRowClick()}
   >
     <div class="token-content">
       <div class="token-left">
@@ -79,7 +86,7 @@
               on:click={handleFavoriteClick}
               title={isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
-              <Star size={16} fill={isFavorite ? "#ffd700" : "none"} stroke={isFavorite ? "#ffd700" : "currentColor"} />
+              <Star size={16} fill={isFavorite ? "#ffd700" : "none"} />
             </button>
             <span class="token-symbol">{token.symbol}</span>
           </div>
