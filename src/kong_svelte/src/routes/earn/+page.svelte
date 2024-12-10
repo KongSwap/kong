@@ -299,7 +299,7 @@
           <div class="overflow-auto flex-1 custom-scrollbar">
             {#if $activePoolView === 'all'}
               <!-- All Pools View -->
-              <div class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {isMobile ? 'max-h-[calc(97vh-16rem)]' : ''} custom-scrollbar">
+              <div class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {isMobile ? 'max-h-[calc(97vh-16.5rem)]' : ''} custom-scrollbar">
                 <!-- Desktop Table View -->
                 <table class="w-full hidden lg:table relative">
                   <thead class="sticky top-0 z-10">
