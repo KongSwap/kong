@@ -116,7 +116,6 @@
     await favoriteStore.toggleFavorite(token.canister_id);
   }
 
-  // Derived store for filtering tokens by search and favorites
   const filteredTokens = derived(
     [
       formattedTokens,
@@ -251,7 +250,9 @@
 </script>
 
 <section class="flex flex-col w-full h-full px-4 {isMobile ? 'pb-24' : ''}">
-  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
+  <!-- Added px-4 here for consistent padding -->
+  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px] px-4">
+
     {#if isMobile && $activeStatsSection === 'marketStats'}
       <h2 class="text-xl font-semibold text-white mt-4 mb-2">Market Overview</h2>
     {/if}
@@ -359,8 +360,9 @@
                 <p class="text-gray-400 mb-4">You have no favorite tokens yet. Mark some tokens as favorites to view them here.</p>
               </div>
             {:else}
-              <div class="overflow-auto flex-1 -mx-4">
-                <div class="overflow-auto flex-1 max-h-[calc(100vh-20.9rem)] px-4">
+              <!-- Removed the -mx-4 and px-4 classes, replaced with a consistent container -->
+              <div class="overflow-auto flex-1 custom-scrollbar">
+                <div class="overflow-auto flex-1 max-h-[calc(100vh-20.9rem)] custom-scrollbar">
                   {#if !isMobile}
                     <!-- Desktop table view -->
                     <table class="data-table">
@@ -480,13 +482,9 @@
                       </tbody>
                     </table>
                   {:else}
-                    <!-- Mobile Card View can remain as is or adjusted as needed -->
+                    <!-- Mobile Card View remains with standard layout -->
                     <div class="lg:hidden space-y-4">
-                      <!-- Sorting for mobile if needed -->
-                      <!-- ... (Similar to all pools view) ... -->
-
                       {#each $filteredTokens.tokens as token, index}
-                        <!-- Mobile card layout for tokens -->
                         <div class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
@@ -709,5 +707,30 @@
 
   .actions-cell {
     @apply flex justify-end px-4;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1a1b23;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #60A5FA;
+    border-radius: 4px;
+    border: 2px solid #1a1b23;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #60A5FA #1a1b23;
   }
 </style>

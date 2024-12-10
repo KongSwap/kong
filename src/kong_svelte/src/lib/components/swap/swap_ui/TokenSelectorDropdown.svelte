@@ -8,6 +8,7 @@
     import { browser } from '$app/environment';
     import Portal from 'svelte-portal';
     import { Star } from 'lucide-svelte';
+    import TokenImages from '$lib/components/common/TokenImages.svelte';
   
     const props = $props();
     const { 
@@ -16,7 +17,8 @@
       onClose,
       currentToken,
       otherPanelToken = null,
-      expandDirection = 'down'
+      expandDirection = 'down',
+      allowedCanisterIds = []
     } = props;
   
     let searchQuery = $state("");
@@ -83,20 +85,19 @@
         });
       }
       
-      if (token.standard?.toLowerCase().includes(searchLower)) {
-        matches.push({
-          type: 'standard',
-          text: token.standard,
-          index: token.standard.toLowerCase().indexOf(searchLower)
-        });
-      }
-      
       return matches;
     }
 
-    // Filter tokens based on search and balance
+    // Filter tokens based on search, balance, and allowed canister IDs
     let filteredTokens = $derived(
       $formattedTokens
+        .filter(token => {
+          // First filter by allowed canister IDs if provided
+          if (allowedCanisterIds.length > 0) {
+            return allowedCanisterIds.includes(token.canister_id);
+          }
+          return true;
+        })
         .map((token): TokenMatch | null => {
           if (!token?.symbol || !token?.name) return null;
           
@@ -314,10 +315,10 @@
                     on:click={(e) => handleTokenClick(e, token)}
                   >
                     <div class="token-info">
-                      <img
-                        src={token?.logo_url}
-                        alt={token.symbol}
-                        class="token-logo"
+                      <TokenImages 
+                        tokens={[token]} 
+                        size={40}
+                        containerClass="token-logo-container"
                       />
                       <div class="token-details">
                         <div class="token-symbol-row">
@@ -695,12 +696,9 @@
     gap: 0.75rem;
   }
 
-  .token-logo {
+  .token-logo-container {
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: 9999px;
-    background-color: #2a2d3d;
-    padding: 0.125rem;
   }
 
   .token-details {

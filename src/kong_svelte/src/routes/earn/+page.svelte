@@ -105,7 +105,7 @@
     
     const searchMatches = [
       pool.symbol_0.toLowerCase(),
-      pool.symbol_1.toLowerCase(), 
+      pool.symbol_1.toLowerCase(),
       `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
       `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
       pool.address_0?.toLowerCase() || '',
@@ -186,7 +186,7 @@
       if (!$auth.isConnected) {
         toastStore.error(
           'Please connect your wallet to view your liquidity positions',
-          undefined, // use default duration
+          undefined,
           'Connect Wallet'
         );
         return; 
@@ -200,7 +200,7 @@
 </script>
 
 <section class="flex flex-col w-full h-full px-4 pb-4 {isMobile ? 'pb-24' : ''}">
-  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
+  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px] px-4">
     {#if !isMobile}
       <div class="earn-cards">
         <div class="earn-card" class:active={$activeSection === 'pools'} on:click={() => activeSection.set('pools')}>
@@ -242,7 +242,7 @@
     {/if}
 
     {#if $activeSection === "pools"}
-      <Panel className="flex-1 ">
+      <Panel className="flex-1">
         <div class="h-full overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button on the right -->
           <div class="flex items-center justify-between mb-4">
@@ -269,10 +269,10 @@
             </button>
           </div>
 
-          <div class="overflow-auto flex-1 -mx-4">
+          <div class="overflow-auto flex-1 custom-scrollbar">
             {#if $activePoolView === 'all'}
               <!-- All Pools View -->
-              <div class="overflow-auto flex-1 max-h-[calc(100vh-22rem)] {isMobile ? 'max-h-[calc(100vh-18rem)]' : ''} px-4">
+              <div class="overflow-auto flex-1 max-h-[calc(100vh-22rem)] {isMobile ? 'max-h-[calc(100vh-18rem)]' : ''} custom-scrollbar">
                 <!-- Desktop Table View -->
                 <table class="w-full hidden lg:table relative">
                   <thead class="sticky top-0 z-10">
@@ -313,7 +313,7 @@
                 <!-- Mobile/Tablet Card View -->
                 <div class="lg:hidden space-y-4">
                   <!-- Sort Controls for Mobile -->
-                  <div class="flex flex-col gap-3 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4">
+                  <div class="flex flex-col gap-3 bg-[#1a1b23] rounded-lg border border-[#2a2d3d] p-4 custom-scrollbar">
                     <div class="flex items-center justify-between">
                       <span class="text-sm text-[#8890a4]">Sort by</span>
                       <button 
@@ -406,7 +406,7 @@
             {:else if $activePoolView === 'user'}
               <!-- User Pools View -->
               {#if $auth.isConnected}
-                <div class="h-full">
+                <div class="h-full custom-scrollbar">
                   <PoolList on:poolClick={handlePoolClick} />
                 </div>
               {:else}
@@ -592,4 +592,33 @@
   .coming-soon-icon {
     @apply text-xl;
   }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1a1b23; /* Match the background color for a subtle look */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #60A5FA; /* Use the theme's accent blue */
+    border-radius: 4px;
+    border: 2px solid #1a1b23; /* Ensures the thumb stands out slightly */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6; /* A slightly darker shade when hovered */
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #60A5FA #1a1b23; 
+  }
+
+  /* For Firefox */
+  /* The above scrollbar-color property supports Firefox. The first color is the thumb, the second is the track. */
+
 </style>

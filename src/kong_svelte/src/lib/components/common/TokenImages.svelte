@@ -1,38 +1,41 @@
 <script lang="ts">
+  // Type safety for event handling
+  import type { HTMLImgAttributes } from 'svelte/elements';
+
   export let tokens: FE.Token[] = [];
-  export let size: number = 44;
-  export let overlap: number = 12; 
+  export let size: number = 48;
   export let containerClass: string = "";
 
+  const DEFAULT_IMAGE = '/tokens/not_verified.webp';
+
+  // Filter out invalid tokens and memoize result
   $: validTokens = tokens.filter((token): token is FE.Token => {
-    if (!token) return false;
-    if (!token?.logo_url) {
-      console.warn('Token missing logo_url:', token);
-    }
-    return token !== undefined && token !== null;
+    return token && typeof token === 'object' && !!(token.symbol || token.name);
   });
+
+  // Handle image error with proper typing
+  function handleImageError(e: Event & { currentTarget: EventTarget & HTMLImageElement }) {
+    e.currentTarget.src = DEFAULT_IMAGE;
+  }
+
+  // Helper to get token alt text
+  function getTokenAlt(token: FE.Token): string {
+    return token.symbol ?? token.name ?? 'Unknown Token';
+  }
 </script>
 
-<div 
-  class="isolate flex overflow-hidden {containerClass}"
-  style="width: {validTokens.length * (size - overlap) + overlap}px"
->
-  {#each validTokens as token, i}
+<div class="flex {containerClass}">
+  {#each validTokens as token}
     <div 
-      class="relative inline-block rounded-full bg-slate-800"
-      style="
-        height: {size}px;
-        width: {size}px;
-        z-index: 1;
-        margin-left: {i === 0 ? 0 : -overlap}px;
-      "
+      style="height: {size}px; width: {size}px;"
+      class="inline-block"
     >
       <img
-        class="w-full h-full rounded-full object-contain"
-        style="object-fit: contain;"
-        src={token?.logo_url ? token.logo_url : '/tokens/not_verified.webp'}
-        alt={token?.symbol ?? 'Unknown Token'}
+        class="w-full h-full rounded"
+        src={token.logo_url || DEFAULT_IMAGE}
+        alt={getTokenAlt(token)}
         loading="eager"
+        on:error={handleImageError}
       />
     </div>
   {/each}

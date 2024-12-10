@@ -13,8 +13,8 @@
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import {onMount} from "svelte";
-
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  
   // Props with proper TypeScript types
   export let title: string;
   export let token: FE.Token;
@@ -377,11 +377,7 @@
           >
             {#if token}
               <div class="token-info">
-                <img
-                  src={token?.logo_url}
-                  alt={token.symbol}
-                  class="token-logo"
-                />
+                <TokenImages tokens={[token]} size={32} />
                 <span class="token-symbol hide-on-mobile">{token.symbol}</span>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
@@ -471,14 +467,6 @@
     gap: 0.5rem;
   }
 
-  .token-logo {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 9999px;
-    background-color: rgba(255, 255, 255, 0.05);
-    object-fit: contain;
-  }
-
   .token-symbol {
     font-size: 15px;
     color: white;
@@ -513,11 +501,6 @@
     .token-selector-button {
       padding: 0.5rem 0.75rem;
       min-width: auto;
-    }
-
-    .token-logo {
-      width: 1.75rem;
-      height: 1.75rem;
     }
   }
 </style>
