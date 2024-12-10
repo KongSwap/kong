@@ -22,9 +22,6 @@
   let isDragging = false;
   let modalElement: HTMLDivElement;
 
-  // Hmm let me think about the slide logic...
-  // We need to track touch/mouse events and calculate distance moved
-  // If they slide more than threshold, we'll trigger close
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
 
   onMount(() => {

@@ -128,7 +128,6 @@
         </button>
 
         <a
-          href="#"
           class="nav-link wallet-btn"
           class:selected={sidebarOpen}
           on:click|preventDefault={onConnect}
@@ -253,7 +252,7 @@
 
   @media (max-width: 818px) {
     .nav-container-wrapper {
-      padding: 10px 0;
+      padding: 15px 0;
     }
   }
 

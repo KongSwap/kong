@@ -1,27 +1,29 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { fade, slide } from "svelte/transition";
+  import { fade, fly, slide } from "svelte/transition";
   import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
-  import { createEventDispatcher } from "svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { sidebarStore } from "$lib/stores/sidebarStore";
 
-  const dispatch = createEventDispatcher();
+  export const pools: any[] = [];
+  export let filterPair: {token0?: string, token1?: string} = {}; // Filter by specific token pair
+  export let filterToken: string = ''; // Filter by single token
+  export let initialSearch: string = ""; // Initial search term
   export let pool: any = null; // Single pool to display
-  export let searchTerm: string = ""; // External search term from parent
 
-  let searchInput: HTMLInputElement;
   let loading = true;
   let error: string | null = null;
-  let poolBalances: any[] = [];
   let processedPools: any[] = [];
   let selectedPool = null;
   let showUserPoolModal = false;
+  let searchQuery = initialSearch;
+  let searchInput: HTMLInputElement;
+  let searchDebounceTimer: NodeJS.Timeout;
+  let debouncedSearchQuery = '';
   let sortDirection = 'desc';
   let isSearching = false;
   let searchResultsReady = false;
@@ -31,7 +33,6 @@
   $: balances = $poolStore.userPoolBalances;
   $: {
     if (Array.isArray(balances)) {
-      poolBalances = balances;
       processedPools = balances
         .filter(poolBalance => Number(poolBalance.balance) > 0)
         .map(poolBalance => {
@@ -69,7 +70,6 @@
             amount_0: poolBalance.amount_0,
             amount_1: poolBalance.amount_1,
             usd_balance: poolBalance.usd_balance,
-            pool_id: (poolBalance as any)?.pool_id,
             address_0: poolBalance.symbol_0,
             address_1: poolBalance.symbol_1,
             searchableText
@@ -78,24 +78,52 @@
 
       // If we have a specific pool to display, immediately filter for it
       if (pool && !initialFilterApplied) {
+        searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
+        debouncedSearchQuery = searchQuery.toLowerCase();
         initialFilterApplied = true;
+        searchResultsReady = true;
+        isSearching = false;
       }
     } else {
-      poolBalances = [];
       processedPools = [];
     }
   }
 
-  // Filter pools based on external searchTerm
+  // Debounce search input only when user is actively searching
+  $: if (!initialFilterApplied || searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`) {
+    isSearching = true;
+    searchResultsReady = false;
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchQuery = searchQuery.toLowerCase();
+      setTimeout(() => {
+        searchResultsReady = true;
+        isSearching = false;
+      }, 100);
+    }, 150);
+  }
+
+  // Filter pools based on search, pair filter, and token filter
   $: filteredPools = processedPools
     .filter(poolItem => {
       if (pool) {
         return poolItem.symbol_0 === pool.symbol_0 && poolItem.symbol_1 === pool.symbol_1;
       }
       
-      if (!searchTerm) return true;
+      if (debouncedSearchQuery) {
+        return poolItem.searchableText.includes(debouncedSearchQuery);
+      }
       
-      return poolItem.searchableText.includes(searchTerm.toLowerCase());
+      if (filterPair.token0 && filterPair.token1) {
+        return (poolItem.symbol_0 === filterPair.token0 && poolItem.symbol_1 === filterPair.token1) ||
+               (poolItem.symbol_0 === filterPair.token1 && poolItem.symbol_1 === filterPair.token0);
+      }
+      
+      if (filterToken) {
+        return poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken;
+      }
+      
+      return true;
     })
     .sort((a, b) => sortDirection === 'desc' ? 
       Number(b.usd_balance) - Number(a.usd_balance) : 
@@ -115,11 +143,17 @@
         searchResultsReady = false;
       }
       
+      // If we have initial search or specific pool, apply filter immediately
+      if ((initialSearch || pool) && !initialFilterApplied) {
+        searchQuery = pool ? `${pool.symbol_0}/${pool.symbol_1}` : initialSearch;
+        debouncedSearchQuery = searchQuery.toLowerCase();
+        initialFilterApplied = true;
+      }
+      
       searchResultsReady = true;
     } catch (err) {
       console.error("Error loading pool balances:", err);
       error = err.message;
-      poolBalances = [];
       processedPools = [];
     } finally {
       loading = false;
@@ -127,8 +161,7 @@
     }
   }
 
-  async function handleAddLiquidity() {
-    await sidebarStore.collapse();
+  function handleAddLiquidity() {
     goto('/earn/add');
   }
 
@@ -138,8 +171,10 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && searchQuery) {
       event.preventDefault();
+      searchQuery = '';
+      searchInput.focus();
     }
     else if (event.key === '/' && document.activeElement !== searchInput) {
       event.preventDefault();
@@ -162,7 +197,94 @@
 <div class="pool-list-wrapper" on:keydown={handleKeydown}>
   <div class="controls-wrapper">
     {#if !pool}
-      <div class="pool-list">
+    <div class="search-section">
+      <div class="search-input-wrapper">
+        <input
+          bind:this={searchInput}
+          bind:value={searchQuery}
+          type="text"
+          placeholder="Search pools by name, token, or canister ID"
+          class="search-input"
+        />
+        {#if searchQuery}
+          <!-- svelte-ignore a11y_consider_explicit_label -->
+          <button 
+            class="clear-button"
+            on:click={() => {
+              searchQuery = '';
+              searchInput.focus();
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        {/if}
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <div class="sort-toggle" on:click={() => {
+        sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+      }}>
+        <span class="toggle-label">Sort by value</span>
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="16" 
+          height="16" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          stroke-width="2"
+          class="sort-arrow"
+          class:ascending={sortDirection === 'asc'}
+        >
+          <path d="M12 20V4M5 13l7 7 7-7"/>
+        </svg>
+      </div>
+    </div>
+    {/if}
+  </div>
+
+  <div class="pool-list-content">
+    <div class="pool-list">
+      {#if loading && processedPools.length === 0}
+        <div class="loading-state" in:fade>
+          <p>Loading positions...</p>
+        </div>
+      {:else if !pool && (isSearching || !searchResultsReady)}
+        <div class="loading-state" in:fade>
+          <p>Finding pools...</p>
+        </div>
+      {:else if error}
+        <div class="error-state" in:fade>
+          <p>{error}</p>
+        </div>
+      {:else if filteredPools.length === 0}
+        <div class="empty-state" in:fade>
+          {#if searchQuery && !pool}
+            <p>No pools found matching "{searchQuery}"</p>
+            <button 
+              class="clear-search-button"
+              on:click={() => {
+                searchQuery = '';
+                searchInput.focus();
+              }}
+            >
+              Clear Search
+            </button>
+          {:else if !pool}
+            <p>No active positions</p>
+            <button class="primary-button" on:click={handleAddLiquidity}>
+              Add Position
+            </button>
+          {:else}
+            <p>No matching pool found</p>
+          {/if}
+        </div>
+      {:else}
         {#each filteredPools as poolItem (poolItem.id)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div 
@@ -179,7 +301,7 @@
                     $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_0),
                     $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_1)
                   ]} 
-                  size={32}
+                  size={36}
                 />
                 <div class="pool-info">
                   <div class="pool-pair">{poolItem.symbol_0}/{poolItem.symbol_1}</div>
@@ -193,56 +315,19 @@
               </div>
               <div class="pool-right">
                 <div class="value-info">
-                  <span class="usd-value">
+                  <div class="usd-value">
                     ${formatToNonZeroDecimal(poolItem.usd_balance)}
-                  </span>
+                  </div>
                 </div>
-                <div class="chevron-wrapper">
-                  <svg xmlns="http://www.w3.org/2000/svg" 
-                       width="20" height="20" 
-                       viewBox="0 0 24 24" 
-                       fill="none" 
-                       stroke="currentColor" 
-                       stroke-width="2"
-                       class="chevron-right">
-                    <path d="M9 18l6-6-6-6"/>
-                  </svg>
+                <div class="view-details">
+                  View Details →
                 </div>
               </div>
             </div>
           </div>
         {/each}
-      </div>
-    {/if}
-  </div>
-
-  <div class="pool-list-content">
-    {#if loading && processedPools.length === 0}
-      <div class="loading-state" in:fade>
-        <p>Loading positions...</p>
-      </div>
-    {:else if !pool && (isSearching || !searchResultsReady)}
-      <div class="loading-state" in:fade>
-        <p>Finding pools...</p>
-      </div>
-    {:else if error}
-      <div class="error-state" in:fade>
-        <p>{error}</p>
-      </div>
-    {:else if filteredPools.length === 0}
-      <div class="empty-state" in:fade>
-        {#if searchTerm && !pool}
-          <p>No pools found matching "{searchTerm}"</p>
-        {:else if !pool}
-          <p>No active positions</p>
-          <button class="primary-button" on:click={handleAddLiquidity}>
-            Add Position
-          </button>
-        {:else}
-          <p>No matching pool found</p>
-        {/if}
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -257,13 +342,46 @@
   />
 {/if}
 
-<style scoped lang="postcss">
+<style lang="postcss">
   .pool-list-wrapper {
     @apply flex flex-col h-full overflow-hidden;
   }
 
   .controls-wrapper {
     @apply flex flex-col border-b border-gray-800;
+  }
+
+  .search-section {
+    @apply sticky top-0 z-10;
+  }
+
+  .search-input-wrapper {
+    @apply relative flex items-center;
+  }
+
+  .search-input {
+    @apply w-full bg-transparent border-none py-3 text-white placeholder-gray-500
+           focus:outline-none focus:ring-0;
+  }
+
+  .clear-button {
+    @apply absolute right-0 text-gray-500 hover:text-white transition-colors;
+  }
+
+  .filter-bar {
+    @apply py-3 border-t border-gray-800 flex justify-between items-center;
+  }
+
+  .sort-toggle {
+    @apply flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors;
+  }
+
+  .sort-arrow {
+    @apply transition-transform duration-200;
+  }
+
+  .sort-arrow.ascending {
+    @apply rotate-180;
   }
 
   .pool-list-content {
@@ -273,74 +391,68 @@
   }
 
   .pool-list {
-    @apply flex flex-col gap-1.5 sm:gap-2 mt-2;
+    @apply flex flex-col gap-2 mt-2;
   }
 
   .pool-item {
-    @apply bg-gray-800/50 rounded-lg p-3 sm:p-4 cursor-pointer 
+    @apply bg-gray-800/50 rounded-lg p-4 cursor-pointer 
            hover:bg-gray-800/70 transition-all duration-200
            border border-transparent hover:border-blue-500/30;
   }
 
   .pool-content {
-    @apply flex items-center justify-between w-full gap-2;
+    @apply flex justify-between items-center w-full;
   }
 
   .pool-left {
-    @apply flex items-center gap-2 sm:gap-4 flex-1 min-w-0;
+    @apply flex items-center gap-4;
   }
 
   .pool-info {
-    @apply flex flex-col gap-0.5 sm:gap-1 flex-1 min-w-0;
+    @apply flex flex-col gap-1;
   }
 
   .pool-pair {
-    @apply text-base sm:text-lg font-medium text-white/95 truncate;
+    @apply text-lg font-medium text-white/95;
   }
 
   .pool-balance {
-    @apply text-sm text-white/70 truncate;
+    @apply text-sm text-white/70;
   }
 
   .pool-right {
-    @apply flex items-center gap-3 sm:gap-4;
+    @apply flex items-center gap-4;
   }
 
   .value-info {
-    @apply flex items-center justify-end min-w-[100px] sm:min-w-[120px];
+    @apply flex flex-col items-end;
   }
 
   .usd-value {
-    @apply text-base sm:text-lg font-medium text-white/90 tabular-nums;
+    @apply text-base font-medium text-white/95;
   }
 
-  .chevron-wrapper {
-    @apply flex items-center justify-center w-6 sm:w-8;
+  .view-details {
+    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200 ml-4;
   }
 
-  .chevron-right {
-    @apply text-white/40 w-5 h-5 sm:w-6 sm:h-6;
-  }
-
-  /* Hide chevron on mobile if needed */
-  @media (max-width: 370px) {
-    .chevron-wrapper {
-      @apply hidden;
-    }
-    
-    .value-info {
-      @apply min-w-[80px];
-    }
-    
-    .usd-value {
-      @apply text-sm;
-    }
+  .pool-item:hover .view-details {
+    @apply opacity-100;
   }
 
   .loading-state, .error-state, .empty-state {
-    @apply flex flex-col items-center justify-center gap-2 sm:gap-3
-           min-h-[120px] sm:min-h-[160px] text-white/40 text-sm
-           px-4 text-center;
+    @apply flex flex-col items-center justify-center gap-3
+           min-h-[160px] text-white/40 text-sm;
+  }
+
+  .primary-button {
+    @apply px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-blue-600;
+  }
+
+  .clear-search-button {
+    @apply px-4 py-2 bg-gray-800 text-white/70 text-sm font-medium rounded-lg
+           transition-all duration-200 hover:bg-gray-700 hover:text-white;
   }
 
   .error-state {
@@ -350,17 +462,5 @@
   .loading-state {
     @apply flex flex-col items-center justify-center gap-3
            min-h-[160px] text-white/40 text-sm animate-pulse;
-  }
-
-  .pool-list-content::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-
-  .pool-list-content::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  .pool-list-content::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full;
   }
 </style>

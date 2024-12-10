@@ -80,10 +80,6 @@
     background-color: transparent;
   }
 
-  :global([data-theme="modern"]) .nav-container {
-    margin-bottom: 1rem;
-  }
-
   .content-container {
     display: flex;
     flex-direction: column;

@@ -70,12 +70,19 @@
 
   .swap-normal {
     background-color: transparent;
-    padding: 1rem 1rem 0;
+
   }
 
   @media (max-width: 640px) {
     .swap-normal {
       padding-top: 0.5rem;
+      padding: 1rem 1rem 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .swap-normal {
+      padding-top: 0.25rem;
     }
   }
 </style>

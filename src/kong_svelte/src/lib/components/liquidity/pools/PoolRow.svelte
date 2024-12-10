@@ -1,14 +1,10 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
     import {
-      formatTokenAmount,
       formatToNonZeroDecimal,
     } from "$lib/utils/numberFormatUtils";
     import TokenImages from "$lib/components/common/TokenImages.svelte";
-    import Button from "$lib/components/common/Button.svelte";
-    import { Flame, MoreVertical } from "lucide-svelte";
     import { onMount } from 'svelte';
-    import { formatTokenValue, formatUsdValue, fromRawAmount, toRawAmount } from "$lib/utils/tokenFormatters";
+    import { formatUsdValue, fromRawAmount, toRawAmount } from "$lib/utils/tokenFormatters";
   
     export let pool: BE.Pool & { tvl?: number };
     export let tokenMap: Map<string, any>;
@@ -17,14 +13,11 @@
     export let onShowDetails: () => void;
   
     let isMobile = false;
-    let isSmallMobile = false;
-    let isTableCompact = false;
     let showDetailsButton = true;
   
     onMount(() => {
       const checkMobile = () => {
         isMobile = window.innerWidth < 900;
-        isSmallMobile = window.innerWidth < 640;
         showDetailsButton = window.innerWidth >= 1150;
       };
       
@@ -40,12 +33,6 @@
       onAddLiquidity(pool.address_0, pool.address_1);
     }
   
-    $: apyColor =
-      pool.rolling_24h_apy > 100
-        ? "#FFD700"
-        : pool.rolling_24h_apy > 50
-          ? "#FFA500"
-          : "#FF8C00";
 </script>
 
 {#if !isMobile}
@@ -159,7 +146,8 @@
   .tvl-cell,
   .volume-cell,
   .apy-cell {
-    text-align: right;
+    width: 15%;
+    text-align: left;
   }
 
   .actions-cell {
@@ -204,8 +192,8 @@
   .volume-info,
   .apy-info {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   .price-value,
@@ -215,11 +203,6 @@
     color: white;
     font-weight: 500;
     font-size: 1rem;
-  }
-
-  .price-label {
-    font-size: 0.75rem;
-    color: #8890a4;
   }
 
   .actions {
@@ -248,18 +231,6 @@
     background-color: rgba(59, 130, 246, 0.3);
     border-color: rgba(59, 130, 246, 0.5);
     color: #93c5fd;
-  }
-
-  .swap {
-    background-color: rgba(107, 114, 128, 0.2);
-    color: #9ca3af;
-    border: 1px solid rgba(107, 114, 128, 0.3);
-  }
-
-  .swap:hover {
-    background-color: rgba(107, 114, 128, 0.3);
-    border-color: rgba(107, 114, 128, 0.5);
-    color: #d1d5db;
   }
 
   .details {
@@ -317,18 +288,6 @@
     height: 100%;
   }
 
-  .details-btn {
-    height: 100%;
-    padding: 0 0.75rem;
-    color: #8890a4;
-    transition: colors 150ms;
-  }
-
-  .details-btn:hover {
-    color: white;
-    background-color: #2a2d3d;
-  }
-
   @media (max-width: 640px) {
     .mobile-pool-card {
       padding: 0.625rem;
@@ -342,8 +301,5 @@
       font-size: 0.6875rem;
     }
 
-    .card-actions .add-lp {
-      display: none;
-    }
   }
 </style>
