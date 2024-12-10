@@ -66,12 +66,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
     } else if args.contains(&"--backup".to_string()) {
         // Dump to database
-        // users::update_users_on_database(&db_client).await?;
-        // let tokens_map = tokens::update_tokens_on_database(&db_client).await?;
-        // let pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
-        // lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
-        // requests::update_requests_on_database(&db_client).await?;
-        // claims::update_claims_on_database(&db_client, &tokens_map).await?;
+        users::update_users_on_database(&db_client).await?;
+        let tokens_map = tokens::update_tokens_on_database(&db_client).await?;
+        let pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
+        lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
+        requests::update_requests_on_database(&db_client).await?;
+        claims::update_claims_on_database(&db_client, &tokens_map).await?;
         transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
         txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
 
