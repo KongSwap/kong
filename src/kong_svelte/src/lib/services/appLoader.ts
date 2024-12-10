@@ -1,12 +1,8 @@
-import { browser } from "$app/environment";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { get, writable, type Readable } from "svelte/store";
-import { auth, canisterIDLs } from "$lib/services/auth";
-import { assetCache } from "$lib/services/assetCache";
-import { canisterId as kongBackendCanisterId } from "../../../../declarations/kong_backend";
+import { auth } from "$lib/services/auth";
 import { updateWorkerService } from "$lib/services/updateWorkerService";
-import { fetchTokens } from "./indexer/api";
 
 interface LoadingState {
   isLoading: boolean;
@@ -42,33 +38,6 @@ export class AppLoader {
       assetsLoaded: partial.assetsLoaded ?? current.assetsLoaded,
       totalAssets: partial.totalAssets ?? current.totalAssets,
     });
-  }
-
-  // Asset preloading with priority, batching, and tracking
-  private shouldSkipPreload(url: string): boolean {
-    return url.startsWith("data:image/") || url.startsWith("blob:");
-  }
-
-  /**
-   * Determines the type of asset based on its file extension.
-   * @param url The URL of the asset.
-   * @returns The asset type: "svg", "image", or "other".
-   */
-  private determineAssetType(url: string): "svg" | "image" | "other" {
-    const extension = url.split(".").pop()?.toLowerCase();
-    if (extension === "svg") return "svg";
-    const imageExtensions = [
-      "png",
-      "jpg",
-      "jpeg",
-      "webp",
-      "gif",
-      "bmp",
-      "ico",
-      "svg",
-    ];
-    if (extension && imageExtensions.includes(extension)) return "image";
-    return "other";
   }
 
   public async initialize(): Promise<void> {

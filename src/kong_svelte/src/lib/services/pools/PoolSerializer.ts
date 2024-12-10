@@ -87,7 +87,6 @@ export class PoolSerializer {
       pool_id: parsed.pool_id,
       name: parsed.name,
       symbol: parsed.symbol,
-      balance: parsed.balance,
       chain_0: parsed.chain_0,
       symbol_0: parsed.symbol_0,
       address_0: parsed.address_0,
@@ -105,8 +104,7 @@ export class PoolSerializer {
       rolling_24h_num_swaps: parsed.rolling_24h_num_swaps,
       rolling_24h_apy: parsed.rolling_24h_apy,
       lp_token_symbol: parsed.lp_token_symbol,
-      total_volume: parsed.total_volume,
-      total_lp_fee: parsed.total_lp_fee,
+      tvl: parsed.tvl,
       on_kong: parsed.on_kong,
       lp_token_supply: BigInt(0)
     };

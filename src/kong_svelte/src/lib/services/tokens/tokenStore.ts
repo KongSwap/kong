@@ -484,6 +484,70 @@ function createTokenStore() {
         }
       }));
     },
+    async updatePrices() {
+      try {
+        const currentStore = get(store);
+        if (!currentStore?.tokens) return;
+
+        const prices = await this.loadPrices();
+        const balances = { ...currentStore.balances };
+        const tokens = [...currentStore.tokens] as FE.Token[];
+        const ckusdtToken = tokens.find(t => t.symbol === "ckUSDT");
+
+        if (!ckusdtToken) {
+          console.warn('ckUSDT token not found for price calculations');
+          return;
+        }
+
+        // Update each token's price and get 24h changes
+        for (const token of tokens) {
+          const currentPrice = prices[token.canister_id] || 0;
+
+          // Get 24h price change from price service
+          const priceData = await fetchChartData(
+            ckusdtToken.token_id,
+            token.token_id,
+            Math.floor(Date.now()/1000) - 2 * 24 * 60 * 60,
+            Math.floor(Date.now()/1000),
+            "1D"
+          );
+
+          let priceChange24h = 0;
+          if (priceData.length >= 2) {
+            const sortedData = [...priceData].sort((a, b) => a.candle_start - b.candle_start);
+            const currentDayPrice = Number(sortedData[sortedData.length - 1].close_price);
+            const previousDayPrice = Number(sortedData[sortedData.length - 2].close_price);
+            
+            priceChange24h = previousDayPrice > 0
+              ? ((currentDayPrice - previousDayPrice) / previousDayPrice) * 100
+              : 0;
+          }
+
+          // Update token metrics
+          token.metrics = {
+            ...token.metrics,
+            price: currentPrice,
+            price_change_24h: priceChange24h.toFixed(2)
+          };
+
+          // Update balance in USD if exists
+          if (balances[token.canister_id]) {
+            const balance = balances[token.canister_id].in_tokens;
+            const amount = Number(formatTokenAmount(balance.toString(), token.decimals));
+            balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * currentPrice);
+          }
+        }
+
+        store.set({
+          ...currentStore as TokenState,
+          tokens,
+          balances
+        });
+
+      } catch (error) {
+        console.error('Error updating prices:', error);
+      }
+    },
   };
 }
 

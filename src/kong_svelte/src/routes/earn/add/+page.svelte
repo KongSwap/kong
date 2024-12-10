@@ -185,7 +185,7 @@
             throw new Error(errorMsg);
         } else if (attempt >= MAX_ATTEMPTS) {
             console.log('Maximum polling attempts reached');
-            toastStore.error("Operation timed out after 10 attempts", 8000, "Error");
+            toastStore.error(`Operation timed out after ${MAX_ATTEMPTS} attempts`, 8000, "Error");
             showConfirmation = false;
             loading = false;
             throw new Error("Operation timed out");

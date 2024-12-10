@@ -135,7 +135,7 @@ class UpdateWorkerService {
       const prices = (await Promise.race([
         tokenStore.loadPrices(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Price update timeout")), 5000),
+          setTimeout(() => reject(new Error("Price update timeout")), 30000),
         ),
       ])) as Record<string, number>;
 

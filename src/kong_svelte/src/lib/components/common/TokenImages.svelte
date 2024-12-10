@@ -2,6 +2,8 @@
   export let tokens: FE.Token[] = [];
   export let size: number = 48;
   export let containerClass: string = "";
+  export let imageWrapperClass: string = "";
+  export let overlap: boolean = false;
 
   const DEFAULT_IMAGE = '/tokens/not_verified.webp';
 
@@ -21,14 +23,14 @@
   }
 </script>
 
-<div class="flex {containerClass}">
-  {#each validTokens as token}
+<div class="flex items-center {containerClass}" style="margin-right: {overlap ? '10px' : '0'}">
+  {#each validTokens as token, index}
     <div 
-      style="height: {size}px; width: {size}px;"
-      class="inline-block"
+      style="height: {size}px; width: {size}px; z-index: {validTokens.length - index};"
+      class="inline-block rounded-full {imageWrapperClass} {overlap ? 'mr-[-10px]' : ''} relative"
     >
       <img
-        class="w-full h-full rounded bg-transparent"
+        class="w-full h-full rounded-full bg-transparent"
         src={token.logo_url || DEFAULT_IMAGE}
         alt={getTokenAlt(token)}
         loading="eager"

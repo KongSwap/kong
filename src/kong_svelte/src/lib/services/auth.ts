@@ -105,11 +105,7 @@ function createAuthStore(pnp: PNP) {
     // Add initialization function
     async initialize() {
       try {
-        const lastWallet = getLastWallet();
-        if (lastWallet) {
-          await this.connect(lastWallet, true);
-          await TokenService.fetchBalances()
-        }
+
       } catch (error) {
         console.warn('Auto-reconnect failed:', error);
       } finally {

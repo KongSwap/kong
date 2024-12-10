@@ -58,7 +58,6 @@ declare global {
       pool_id: number;
       name: string;
       symbol: string;
-      balance: bigint;
       chain_0: string;
       symbol_0: string;
       address_0: string;
@@ -76,8 +75,7 @@ declare global {
       rolling_24h_num_swaps: number;
       rolling_24h_apy: number;
       lp_token_symbol: string;
-      total_volume: bigint;
-      total_lp_fee: bigint;
+      tvl: bigint;
       on_kong: boolean;
   }
   

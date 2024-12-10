@@ -12,7 +12,7 @@ export const fetchTokens = async (): Promise<FE.Token[]> => {
 };
 
 export interface CandleData {
-  candle_start: string;
+  candle_start: number;
   open_price: string | number;
   high_price: string | number;
   low_price: string | number;
@@ -46,30 +46,33 @@ export const fetchChartData = async (
   const interval = intervalMap[resolution] || '1d';
 
   const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
-  console.log('Fetching chart data from URL:', url);
   
   try {
     const response = await fetch(url);
     const data = await response.json();
-    
-    console.log('Raw API response:', data);
     
     if (!response.ok) {
       console.error('API error:', data);
       return [];
     }
     
-    // Check if the data needs to be transformed
+    // Parse and transform the data
     if (Array.isArray(data)) {
-      console.log("data2", data);
-      return data.map(candle => ({
-        candle_start: candle.candle_start,
-        open_price: candle.open_price,
-        high_price: candle.high_price,
-        low_price: candle.low_price,
-        close_price: candle.close_price,
-        volume: candle.volume || 0
-      }));
+      return data.map(candle => {
+        // Parse the ISO string to UTC timestamp in milliseconds
+        const timestamp = Date.parse(candle.candle_start);
+        
+        return {
+          candle_start: timestamp, // Store as milliseconds timestamp
+          open_price: candle.open_price,
+          high_price: candle.high_price,
+          low_price: candle.low_price,
+          close_price: candle.close_price,
+          volume: candle.volume || 0
+        };
+      })
+      .filter(candle => !isNaN(candle.candle_start)) // Remove any invalid timestamps
+      .sort((a, b) => a.candle_start - b.candle_start); // Sort by timestamp
     }
     
     return [];

@@ -44,9 +44,9 @@ class WorkerImpl implements WorkerApi {
   private priceUpdateInterval: number | null = null;
 
   private readonly INTERVALS = {
-    TOKEN_UPDATE: 60000,      // 1 minute
-    POOL_UPDATE: 30000,       // 30 seconds
-    PRICE_UPDATE: 20000,      // 20 seconds
+    TOKEN_UPDATE: 300000,      // 5 minutes
+    POOL_UPDATE: 60000,       // 1 minute
+    PRICE_UPDATE: 15000,      // 15 seconds
   };
 
   private tokens: FE.Token[] = [];

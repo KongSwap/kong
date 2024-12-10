@@ -61,8 +61,8 @@ BigNumber.config({
 
 export class SwapService {
   private static pollingInterval: ReturnType<typeof setInterval> | null = null;
-  private static readonly POLLING_INTERVAL = 350; // .3 second
-  private static readonly MAX_ATTEMPTS = 40; 
+  private static readonly POLLING_INTERVAL = 300; // .3 second
+  private static readonly MAX_ATTEMPTS = 100; // 30 seconds
 
   public static toBigInt(amount: string, decimals: number): bigint {
     if (!amount || isNaN(Number(amount.replace(/_/g, '')))) return BigInt(0);
@@ -456,11 +456,10 @@ export class SwapService {
               await updateBalances();
 
               // Schedule updates with increasing delays
-              const delays = [500, 1000, 2000, 3000, 5000];
+              const delays = [1000, 2000, 3000, 4000, 5000];
               console.log("Scheduling delayed balance updates...");
               delays.forEach(delay => {
                 setTimeout(async () => {
-                  console.log(`Running delayed balance update after ${delay}ms`);
                   await updateBalances();
                 }, delay);
               });

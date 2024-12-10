@@ -118,20 +118,38 @@ export class KongDatafeed {
         return;
       }
 
-      const bars = data.map(candle => ({
-        time: new Date(candle.candle_start).getTime(),
-        open: Number(candle.open_price),
-        high: Number(candle.high_price),
-        low: Number(candle.low_price),
-        close: Number(candle.close_price),
-        volume: Number(candle.volume)
-      }));
+      // Convert and validate the bars
+      const bars = data
+        .map(candle => ({
+          time: candle.candle_start,
+          open: Number(candle.open_price),
+          high: Number(candle.high_price),
+          low: Number(candle.low_price),
+          close: Number(candle.close_price),
+          volume: Number(candle.volume)
+        }))
+        .filter((bar): bar is Bar => 
+          bar !== null && 
+          !isNaN(bar.open) && 
+          !isNaN(bar.high) && 
+          !isNaN(bar.low) && 
+          !isNaN(bar.close) && 
+          !isNaN(bar.volume)
+        )
+        // Sort bars by timestamp in ascending order
+        .sort((a, b) => a.time - b.time);
 
-      if (bars.length > 0) {
-        this.lastBar = bars[bars.length - 1];
+      // Validate time sequence
+      const validBars = bars.filter((bar, index) => {
+        if (index === 0) return true;
+        return bar.time > bars[index - 1].time;
+      });
+
+      if (validBars.length > 0) {
+        this.lastBar = validBars[validBars.length - 1];
       }
 
-      onHistoryCallback(bars, { noData: false });
+      onHistoryCallback(validBars, { noData: validBars.length === 0 });
     } catch (error) {
       console.error('Error fetching bars:', error);
       onErrorCallback(error.toString());
@@ -155,14 +173,19 @@ export class KongDatafeed {
       if (!this.lastBar) return;
 
       try {
-        const endTime = new Date().toISOString();
-        const startTime = new Date(this.lastBar.time).toISOString();
+        // Get current time in UTC
+        const now = new Date();
+        const endTime = now.toISOString();
+        
+        // Create UTC date from lastBar.time (which is in milliseconds)
+        const lastBarDate = new Date(this.lastBar.time);
+        const startTime = lastBarDate.toISOString();
+        
         const interval = resolution === '60' ? '1h' : '1d';
 
         const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${this.fromTokenId}&receive_token_id=${this.toTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
 
         const response = await fetch(url);
-
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -170,27 +193,39 @@ export class KongDatafeed {
         const data = await response.json();
         if (!data || !Array.isArray(data) || data.length === 0) return;
 
-        const bars = data.map(bar => ({
-          time: Math.floor(new Date(bar.candle_start).getTime()),
-          open: bar.open_price,
-          high: bar.high_price,
-          low: bar.low_price,
-          close: bar.close_price,
-          volume: bar.volume
-        }))
-        .filter(bar => {
-          return !isNaN(bar.time) && 
-                 !isNaN(bar.open) && 
-                 !isNaN(bar.high) && 
-                 !isNaN(bar.low) && 
-                 !isNaN(bar.close) && 
-                 !isNaN(bar.volume);
-        })
-        .sort((a, b) => a.time - b.time);
+        const bars = data
+          .map(bar => ({
+            time: bar.candle_start,
+            open: Number(bar.open_price),
+            high: Number(bar.high_price),
+            low: Number(bar.low_price),
+            close: Number(bar.close_price),
+            volume: Number(bar.volume)
+          }))
+          .filter((bar): bar is Bar => 
+            bar !== null && 
+            !isNaN(bar.open) && 
+            !isNaN(bar.high) && 
+            !isNaN(bar.low) && 
+            !isNaN(bar.close) && 
+            !isNaN(bar.volume)
+          )
+          .sort((a, b) => a.time - b.time);
 
-        if (bars.length > 0 && bars[bars.length - 1].time > this.lastBar.time) {
-          this.lastBar = bars[bars.length - 1];
-          onRealtimeCallback(this.lastBar);
+        // Add debug logging
+        if (bars.length > 0 && this.lastBar) {
+          const latestBar = bars[bars.length - 1];
+          console.log('Time comparison:', {
+            lastBarTime: new Date(this.lastBar.time).toISOString(),
+            newBarTime: new Date(latestBar.time).toISOString(),
+            lastBarTimestamp: this.lastBar.time,
+            newBarTimestamp: latestBar.time
+          });
+
+          if (latestBar.time > this.lastBar.time) {
+            this.lastBar = latestBar;
+            onRealtimeCallback(this.lastBar);
+          }
         }
       } catch (error) {
         console.error('[subscribeBars]: Error polling updates', error);

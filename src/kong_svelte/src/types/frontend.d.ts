@@ -41,6 +41,7 @@ declare global {
       usdValue?: number;
       formattedBalance?: string;
       formattedUsdValue?: string;
+      marketCapRank?: number;
     }
 
     interface UserPoolBalance {
@@ -57,13 +58,19 @@ declare global {
       usd_balance: number;
     }
 
-    interface Transaction {
-      type: 'send' | 'receive';
-      amount: string;
-      token: string;
-      to?: string;
-      from?: string;
-      date: string;
+    export interface Transaction {
+      mid_price: number;
+      pay_amount: number;
+      pay_token_id: number;
+      price: number;
+      receive_amount: number;
+      receive_token_id: number;
+      timestamp?: string;
+      ts?: string;
+      tx_id?: string;
+      user: {
+        principal_id: string;
+      };
     }
   }
 }

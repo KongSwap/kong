@@ -1,4 +1,5 @@
 import { formatToNonZeroDecimal } from "./numberFormatUtils";
+import type { Transaction } from "$lib/types/transaction";
 
 /**
  * Formats a raw token balance considering its decimals
@@ -31,6 +32,31 @@ export function formatBalance(rawBalance: string | undefined, decimals: number =
         maximumFractionDigits: 4
     }).replace(/\.?0+$/, '');
 }
+
+export function calculateTotalUsdValue(tx: Transaction, formattedTokens: FE.Token[]): string {
+    const payToken = formattedTokens?.find(
+      (t) => t.token_id === tx.pay_token_id,
+    );
+    const receiveToken = formattedTokens?.find(
+      (t) => t.token_id === tx.receive_token_id,
+    );
+    if (!payToken || !receiveToken) return "0.00";
+  
+    // Calculate USD value from pay side
+    const payUsdValue =
+      payToken.symbol === "ckUSDT"
+        ? tx.pay_amount
+        : tx.pay_amount * (payToken.price || 0);
+  
+    // Calculate USD value from receive side
+    const receiveUsdValue =
+      receiveToken.symbol === "ckUSDT"
+        ? tx.receive_amount
+        : tx.receive_amount * (receiveToken.price || 0);
+  
+    // Use the higher value
+    return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
+  }
 
 /**
  * Formats a USD value with appropriate decimal places and suffixes

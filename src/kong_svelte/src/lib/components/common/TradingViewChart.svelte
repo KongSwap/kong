@@ -7,22 +7,25 @@
   import { fetchChartData } from "$lib/services/indexer/api";
   import { poolStore } from "$lib/services/pools";
   import { debounce } from "lodash-es";
+  import { priceStore, formatPriceChange, getPriceChangeColor } from '$lib/services/price/priceService';
 
-  // Props
-  export let poolId: number | undefined;
-  export let symbol: string;
-  export let fromToken: FE.Token;
-  export let toToken: FE.Token;
+  // Convert props to runes syntax
+  const props = $props<{
+    poolId?: number;
+    symbol: string;
+    fromToken: FE.Token;
+    toToken: FE.Token;
+  }>();
 
   // Local state
   let chartContainer: HTMLElement;
-  let isLoading = true;
-  let hasNoData = false;
-  let selectedPoolId: number | undefined = undefined;
+  let isLoading = $state(true);
+  let hasNoData = $state(false);
+  let selectedPoolId: number | undefined = $state(undefined);
   let updateTimeout: NodeJS.Timeout;
-  let routingPath: string[] = [];
-  let previousFromTokenId: string | undefined;
-  let previousToTokenId: string | undefined;
+  let routingPath = $state<string[]>([]);
+  let previousFromTokenId = $state<string | undefined>(undefined);
+  let previousToTokenId = $state<string | undefined>(undefined);
   let chartWrapper: HTMLElement;
 
   // Create a store for the chart
@@ -35,28 +38,30 @@
   });
 
   // Watch for pool store changes and type the pools array
-  $: pools = ($poolStore?.pools || []) as BE.Pool[];
+  const pools = $derived(($poolStore?.pools || []) as BE.Pool[]);
 
   // Update selected pool and routing path when pools or selectedPoolId changes
-  $: selectedPool = pools.find((p) => Number(p.pool_id) === selectedPoolId) as
-    | BE.Pool
-    | undefined;
-  $: if (selectedPool) {
-    routingPath = [selectedPool.symbol_0, selectedPool.symbol_1];
-  }
+  const selectedPool = $derived(pools.find((p) => Number(p.pool_id) === selectedPoolId) as BE.Pool | undefined);
+
+  // Update routing path when selected pool changes
+  $effect(() => {
+    if (selectedPool) {
+      routingPath = [selectedPool.symbol_0, selectedPool.symbol_1];
+    }
+  });
 
   // Watch for token or pool changes and reinitialize chart
-  $: {
-    const currentFromId = fromToken?.canister_id;
-    const currentToId = toToken?.canister_id;
+  $effect(() => {
+    const currentFromId = props.fromToken?.canister_id;
+    const currentToId = props.toToken?.canister_id;
     const hasTokenChange =
       currentFromId !== previousFromTokenId ||
       currentToId !== previousToTokenId;
-    const hasPoolChange = poolId !== selectedPoolId;
+    const hasPoolChange = props.poolId !== selectedPoolId;
 
     if (
       (hasTokenChange || hasPoolChange) &&
-      ((fromToken && toToken) || poolId) &&
+      ((props.fromToken && props.toToken) || props.poolId) &&
       (!chart || (chart && hasTokenChange))
     ) {
       previousFromTokenId = currentFromId;
@@ -68,7 +73,7 @@
       }
       debouncedFetchData();
     }
-  }
+  });
 
   onDestroy(() => {
     if (updateTimeout) {
@@ -83,10 +88,11 @@
       }
     }
     debouncedFetchData.cancel();
+    priceStore.reset();
   });
 
   const initChart = async () => {
-    if (!chartContainer || !fromToken?.token_id || !toToken?.token_id) {
+    if (!chartContainer || !props.fromToken?.token_id || !props.toToken?.token_id) {
       isLoading = false;
       return;
     }
@@ -95,13 +101,13 @@
       await loadTradingViewLibrary();
 
       const isMobile = window.innerWidth < 768;
-      const datafeed = new KongDatafeed(fromToken.token_id, toToken.token_id);
+      const datafeed = new KongDatafeed(props.fromToken.token_id, props.toToken.token_id);
 
       // Get container dimensions
       const containerWidth = chartContainer.clientWidth;
       const containerHeight = chartContainer.clientHeight;
       const chartConfig = getChartConfig({
-        symbol: symbol || `${fromToken.symbol}/${toToken.symbol}`,
+        symbol: props.symbol || `${props.fromToken.symbol}/${props.toToken.symbol}`,
         datafeed,
         container: chartContainer,
         containerWidth,
@@ -130,17 +136,17 @@
 
   // Get the best pool for the token pair
   async function getBestPool() {
-    if (!fromToken || !toToken) {
+    if (!props.fromToken || !props.toToken) {
       return selectedPoolId ? { pool_id: selectedPoolId } : null;
     }
 
     try {
       const directPool = pools.find(
         (p) =>
-          (p.address_0 === fromToken.canister_id &&
-            p.address_1 === toToken.canister_id) ||
-          (p.address_1 === fromToken.canister_id &&
-            p.address_0 === toToken.canister_id),
+          (p.address_0 === props.fromToken.canister_id &&
+            p.address_1 === props.toToken.canister_id) ||
+          (p.address_1 === props.fromToken.canister_id &&
+            p.address_0 === props.toToken.canister_id),
       );
 
       if (directPool) {
@@ -150,10 +156,10 @@
 
       const relatedPool = pools.find(
         (p) =>
-          p.address_0 === fromToken.canister_id ||
-          p.address_1 === fromToken.canister_id ||
-          p.address_0 === toToken.canister_id ||
-          p.address_1 === toToken.canister_id,
+          p.address_0 === props.fromToken.canister_id ||
+          p.address_1 === props.fromToken.canister_id ||
+          p.address_0 === props.toToken.canister_id ||
+          p.address_1 === props.toToken.canister_id,
       );
 
       if (relatedPool) {
@@ -176,7 +182,7 @@
       hasNoData = false;
 
       const bestPool =
-        fromToken && toToken
+        props.fromToken && props.toToken
           ? await getBestPool()
           : { pool_id: selectedPoolId };
 
@@ -190,8 +196,8 @@
       const now = Math.floor(Date.now() / 1000);
       const startTime = now - 2 * 365 * 24 * 60 * 60;
 
-      const payTokenId = fromToken?.token_id || 1;
-      const receiveTokenId = toToken?.token_id || 10;
+      const payTokenId = props.fromToken?.token_id || 1;
+      const receiveTokenId = props.toToken?.token_id || 10;
 
       const candleData = await fetchChartData(
         payTokenId,
@@ -229,8 +235,11 @@
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        if (chart) {
-          chart.resize(width, height);
+        if (chart && chart._ready) {
+          chart.applyOptions({
+            width: width,
+            height: height
+          });
         }
       }
     });
@@ -238,7 +247,7 @@
     if (chartWrapper) {
       resizeObserver.observe(chartWrapper);
       // Initial data fetch when component mounts
-      if ((fromToken && toToken) || poolId) {
+      if ((props.fromToken && props.toToken) || props.poolId) {
         debouncedFetchData();
       }
     }

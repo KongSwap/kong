@@ -376,6 +376,7 @@
                               ...token.metrics,
                               price: token.metrics.price.toString(),
                             },
+                            marketCapRank: token.marketCapRank
                           } as unknown as FE.Token}
                           {@const priceChangeClass = enrichedToken?.metrics
                             ?.price_change_24h
