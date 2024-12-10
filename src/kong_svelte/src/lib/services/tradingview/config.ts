@@ -16,7 +16,7 @@ export function getChartConfig(params: {
     container,
     library_path: '/charting_library/charting_library/',
     width: containerWidth,
-    height: containerHeight,
+    height: isMobile ? 300 : containerHeight,
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,
@@ -36,7 +36,13 @@ export function getChartConfig(params: {
       ...(isMobile ? [
         'left_toolbar',
         'volume_force_overlay',
-        'create_volume_indicator_by_default'
+        'create_volume_indicator_by_default',
+        'legend_widget',
+        'border_around_the_chart',
+        'main_series_scale_menu',
+        'scales_date_format_button',
+        'display_market_status',
+        'control_bar',
       ] : [])
     ],
     enabled_features: [
@@ -66,8 +72,8 @@ export function getChartConfig(params: {
       // Chart background
       "paneProperties.background": "rgba(0,0,0,0)",
       "paneProperties.backgroundType": "solid",
-      "paneProperties.vertGridProperties.color": "rgba(30, 41, 59, 0.2)",
-      "paneProperties.horzGridProperties.color": "rgba(30, 41, 59, 0.2)",
+      "paneProperties.vertGridProperties.color": "rgba(30, 41, 59, 0.64)",
+      "paneProperties.horzGridProperties.color": "rgba(30, 41, 59, 0.64)",
       
       // Chart area
       "chartProperties.background": "rgba(0,0,0,0)",
@@ -95,7 +101,42 @@ export function getChartConfig(params: {
         'paneProperties.legendProperties.showStudyTitles': false,
         'scalesProperties.fontSize': 10,
         'timeScale.fontSize': 10
-      })
+      }),
+      ...(isMobile ? {
+        "paneProperties.topMargin": 5,
+        "paneProperties.bottomMargin": 5,
+        "paneProperties.leftAxisMargin": 5,
+        "paneProperties.rightAxisMargin": 5,
+        
+        "scalesProperties.fontSize": 10,
+        "scalesProperties.textColor": "#9ca3af",
+        "scalesProperties.lineColor": "rgba(255, 255, 255, 0.1)",
+        
+        "timeScale.fontSize": 10,
+        "timeScale.rightOffset": 3,
+        "timeScale.leftOffset": 3,
+        "timeScale.spacingPercentage": 0.4,
+        
+        "mainSeriesProperties.candleStyle.drawWick": true,
+        "mainSeriesProperties.candleStyle.drawBorder": true,
+        "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
+        "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
+        "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
+        "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+        
+        "paneProperties.legendProperties.showLegend": false,
+        "paneProperties.legendProperties.showStudyArguments": false,
+        "paneProperties.legendProperties.showStudyTitles": false,
+        
+        "volumePaneSize": "tiny",
+        
+        "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.1)",
+        "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.1)",
+        
+        "crossHairProperties.color": "#9ca3af",
+        "crossHairProperties.width": 0.5,
+        "crossHairProperties.style": 2,
+      } : {}),
     },
     studies_overrides: {
       "volume.volume.color.0": "#ef4444",

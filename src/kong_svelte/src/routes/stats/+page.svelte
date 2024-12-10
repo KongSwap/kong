@@ -25,7 +25,6 @@
     currentWalletFavorites,
   } from "$lib/services/tokens/favoriteStore";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { browser } from "$app/environment";
 
   let isMobile = false;
   onMount(() => {
@@ -41,12 +40,8 @@
 
   // Store for toggling between all tokens and favorites only
   const showFavoritesOnly = writable(false);
-
-  // Store for toggling stats section on mobile
   const activeStatsSection = writable<"tokens" | "marketStats">("tokens");
-
   const DEBOUNCE_DELAY = 300;
-
   const searchQuery = writable<string>("");
   const sortColumnStore = writable<string>("marketCap"); // Changed default sort to marketCap
   const sortDirectionStore = writable<"asc" | "desc">("desc");
@@ -55,17 +50,6 @@
   onMount(async () => {
     await tokenStore.loadFavorites();
   });
-
-  function handleSort({
-    column,
-    direction,
-  }: {
-    column: string;
-    direction: "asc" | "desc";
-  }) {
-    sortColumnStore.set(column);
-    sortDirectionStore.set(direction);
-  }
 
   const tokensLoading = derived(
     [formattedTokens, poolStore],

@@ -1,7 +1,4 @@
 <script lang="ts">
-  /// <reference path="../../../types/frontend.d.ts" />
-  /// <reference path="../../../types/pools.d.ts" />
-
   import { onMount, onDestroy } from "svelte";
   import { writable, get } from "svelte/store";
   import { KongDatafeed } from "$lib/services/tradingview/datafeed";
@@ -100,26 +97,16 @@
       const isMobile = window.innerWidth < 768;
       const datafeed = new KongDatafeed(fromToken.token_id, toToken.token_id);
 
-      // Add a callback to handle no data state
-      datafeed.onNoData = () => {
-        hasNoData = true;
-        isLoading = false;
-      };
-
+      // Get container dimensions
+      const containerWidth = chartContainer.clientWidth;
+      const containerHeight = chartContainer.clientHeight;
       const chartConfig = getChartConfig({
         symbol: symbol || `${fromToken.symbol}/${toToken.symbol}`,
         datafeed,
         container: chartContainer,
+        containerWidth,
+        containerHeight,
         isMobile,
-        autosize: true,
-        disabled_features: [
-          "header_widget",
-          "left_toolbar",
-          "context_menus",
-          "control_bar",
-          "timeframes_toolbar",
-        ],
-        enabled_features: ["hide_left_toolbar_by_default"],
       });
 
       const widget = new window.TradingView.widget(chartConfig);

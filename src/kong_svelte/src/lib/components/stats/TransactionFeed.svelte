@@ -1,0 +1,617 @@
+<script lang="ts">
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { page } from "$app/stores";
+  import { onDestroy } from "svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { INDEXER_URL } from "$lib/constants/canisterConstants";
+  import { poolStore, type Pool } from "$lib/services/pools";
+  import { formatDistance } from "date-fns";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { userPoolBalances } from "$lib/services/pools/poolStore";
+  import { type Transaction } from "$lib/services/transactions";
+  import Panel from "$lib/components/common/Panel.svelte";
+  import { fetchChartData, type CandleData } from "$lib/services/indexer/api";
+  import { onMount } from "svelte";
+
+  // Ensure formattedTokens and poolStore are initialized
+  if (!formattedTokens || !poolStore) {
+    throw new Error("Stores are not initialized");
+  }
+
+  // Declare our state variables
+  let { token } = $props<{ token: FE.Token }>();
+
+  let transactions = $state<Transaction[]>([]);
+  let isLoadingTxns = $state(false);
+  let error = $state<string | null>(null);
+  const tokenAddress = $page.params.id;
+  let refreshInterval: number;
+
+  // Add state for tracking new transactions
+  let newTransactionIds = $state<Set<string>>(new Set());
+
+  // Function to clear transaction highlight after animation
+  const clearTransactionHighlight = (txId: string) => {
+    setTimeout(() => {
+      newTransactionIds.delete(txId);
+      newTransactionIds = newTransactionIds; // Trigger reactivity
+    }, 1000); // Match this with CSS animation duration
+  };
+
+  // Update fetch function to handle new transactions
+  const loadTransactionData = async (
+    page: number = 1,
+    append: boolean = false,
+    isRefresh: boolean = false,
+  ) => {
+    if (!token?.token_id) {
+      console.log("No token ID available, skipping transaction load");
+      isLoadingTxns = false;
+      return;
+    }
+
+    if ((!append && !isRefresh && isLoadingTxns) || (append && isLoadingMore)) {
+      console.log("Already loading transactions, skipping");
+      return;
+    }
+
+    if (!hasMore && append) {
+      console.log("No more transactions to load");
+      return;
+    }
+
+    try {
+      if (append) {
+        isLoadingMore = true;
+      } else if (!isRefresh) {
+        isLoadingTxns = true;
+      }
+
+      const url = `${INDEXER_URL}/api/tokens/${token.token_id}/transactions?page=${page}&limit=${pageSize}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Response:", data);
+      const newTransactions = data.transactions || [];
+
+      if (isRefresh) {
+        // Compare new transactions with existing ones and highlight differences
+        const existingIds = new Set(transactions.map((t) => t.tx_id));
+        const updatedTransactions = newTransactions.map((tx) => {
+          if (!existingIds.has(tx.tx_id)) {
+            newTransactionIds.add(tx.tx_id);
+            clearTransactionHighlight(tx.tx_id);
+          }
+          return tx;
+        });
+        transactions = updatedTransactions;
+        newTransactionIds = newTransactionIds; // Trigger reactivity
+      } else if (append) {
+        transactions = [...transactions, ...newTransactions];
+      } else {
+        transactions = newTransactions;
+      }
+
+      hasMore = newTransactions.length === pageSize;
+      currentPage = page;
+      error = null;
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+      error =
+        error instanceof Error ? error.message : "Failed to load transactions";
+      hasMore = false;
+    } finally {
+      isLoadingMore = false;
+      isLoadingTxns = false;
+    }
+  };
+
+  // Set up auto-refresh interval
+  $effect(() => {
+    if (token?.token_id) {
+      // Clear existing interval if any
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+
+      // Set up new interval
+      refreshInterval = setInterval(() => {
+        loadTransactionData(1, false, true);
+      }, 10000) as unknown as number;
+
+      // Clean up on token change
+      return () => {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+        }
+      };
+    }
+  });
+
+  // Clean up interval on component destroy
+  onDestroy(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+  });
+
+  // Add pagination state
+  let currentPage = $state(1);
+  const pageSize = 20;
+  let totalTransactions = $state(0);
+
+  // Derived values
+  let ckusdtToken = $state<FE.Token | undefined>(undefined);
+  $effect(() => {
+    const found = $formattedTokens?.find((t) => t.symbol === "ckUSDT");
+    if (found) {
+      ckusdtToken = convertToken(found) as unknown as FE.Token;
+    }
+  });
+
+  $effect(() => {
+    const found = $formattedTokens?.find(
+      (t) => t.address === tokenAddress || t.canister_id === tokenAddress,
+    );
+    if (found) {
+      token = convertToken(found) as unknown as FE.Token;
+    }
+  });
+
+  // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
+  let selectedPool = $state<Pool | undefined>(undefined);
+  $effect(() => {
+    const foundPool = $poolStore?.pools?.find((p) => {
+      if (!token?.canister_id || !ckusdtToken?.canister_id) return false;
+
+      const hasToken =
+        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
+      const hasUSDT =
+        p.address_0 === ckusdtToken.canister_id ||
+        p.address_1 === ckusdtToken.canister_id;
+      const hasTVL = Number(p.tvl) > 0;
+
+      return hasToken && hasUSDT && hasTVL;
+    });
+
+    if (foundPool) {
+      selectedPool = {
+        ...foundPool,
+        pool_id: String(foundPool.pool_id),
+        tvl: String(foundPool.tvl),
+        lp_token_supply: String(foundPool.lp_token_supply),
+      } as unknown as Pool;
+    }
+  });
+
+  let isLoadingMore = $state(false);
+  let hasMore = $state(true);
+  let observer: IntersectionObserver;
+  let loadMoreTrigger: HTMLElement = $state<HTMLElement | null>(null);
+  let currentTokenId = $state<number | null>(null);
+
+  // Watch for token changes
+  $effect(() => {
+    const newTokenId = token?.token_id ?? null;
+    if (newTokenId !== currentTokenId) {
+      currentTokenId = newTokenId;
+      if (newTokenId !== null) {
+        transactions = []; // Clear existing transactions
+        currentPage = 1;
+        hasMore = true;
+        error = null;
+        loadTransactionData(1, false);
+      } else {
+        isLoadingTxns = false; // Clear loading state if no token
+      }
+    }
+  });
+
+  function setupIntersectionObserver(element: HTMLElement) {
+    if (observer) observer.disconnect();
+
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+          loadTransactionData(currentPage + 1, true);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      },
+    );
+
+    observer.observe(element);
+  }
+
+  onDestroy(() => {
+    if (observer) observer.disconnect();
+  });
+
+  // Add helper functions to handle the number formatting
+  interface ApiTransaction {
+    mid_price: number;
+    pay_amount: number;
+    pay_token_id: number;
+    price: number;
+    receive_amount: number;
+    receive_token_id: number;
+    timestamp?: string;
+    ts?: string;
+    tx_id?: string;
+    user: {
+      principal_id: string;
+    };
+  }
+
+  const calculateTotalUsdValue = (tx: ApiTransaction): string => {
+    const payToken = $formattedTokens?.find(
+      (t) => t.token_id === tx.pay_token_id,
+    );
+    const receiveToken = $formattedTokens?.find(
+      (t) => t.token_id === tx.receive_token_id,
+    );
+    if (!payToken || !receiveToken) return "0.00";
+
+    // Calculate USD value from pay side
+    const payUsdValue =
+      payToken.symbol === "ckUSDT"
+        ? tx.pay_amount
+        : tx.pay_amount * (payToken.price || 0);
+
+    // Calculate USD value from receive side
+    const receiveUsdValue =
+      receiveToken.symbol === "ckUSDT"
+        ? tx.receive_amount
+        : tx.receive_amount * (receiveToken.price || 0);
+
+    // Use the higher value
+    return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
+  };
+
+  // Function to get paginated pools
+  function getPaginatedPools(pools: BE.Pool[]): { pools: Pool[] } {
+    if (!token) return { pools: [] };
+
+    const filteredPools = pools
+      .filter(
+        (p) =>
+          p.address_0 === token.canister_id ||
+          p.address_1 === token.canister_id,
+      )
+      .sort((a, b) => Number(b.tvl) - Number(a.tvl))
+      .map((p) => ({
+        ...p,
+        pool_id: String(p.pool_id),
+        tvl: String(p.tvl),
+      })) as unknown as Pool[];
+
+    return {
+      pools: filteredPools,
+    };
+  }
+
+  let isChartDataReady = $state(false);
+  $effect(() => {
+    isChartDataReady = Boolean(selectedPool && token && ckusdtToken);
+  });
+
+  // Add helper function to calculate pool share
+  function calculatePoolShare(
+    pool: Pool,
+    userBalance: FE.UserPoolBalance | undefined,
+  ): string {
+    if (!userBalance || !pool.lp_token_supply) return "0%";
+
+    const userLPBalance = BigInt(userBalance.balance || 0);
+    const totalLPSupply = BigInt(pool.lp_token_supply);
+
+    if (totalLPSupply === 0n) return "0%";
+
+    const sharePercentage =
+      Number((userLPBalance * 10000n) / totalLPSupply) / 100;
+    return `${sharePercentage.toFixed(2)}%`;
+  }
+
+  // Add derived value for user balances
+  let userBalances = $state<FE.UserPoolBalance[]>([]);
+  $effect(() => {
+    userBalances = ($userPoolBalances || [])
+  });
+
+  // Add derived store for market cap rank
+  let marketCapRank = $state<number | null>(null);
+  $effect(() => {
+    if (!$formattedTokens) return;
+    const foundToken = $formattedTokens.find(
+      (t) => t.address === $page.params.id || t.canister_id === $page.params.id,
+    );
+    if (!foundToken) {
+      marketCapRank = null;
+      return;
+    }
+    const sortedTokens = [...$formattedTokens].sort(
+      (a, b) => (Number(b.metrics.market_cap) || 0) - (Number(a.metrics.market_cap) || 0),
+    );
+    const rank = sortedTokens.findIndex(
+      (t) => t.canister_id === foundToken.canister_id,
+    );
+    marketCapRank = rank !== -1 ? rank + 1 : null;
+  });
+
+  // Add helper function to calculate 24h volume percentage
+  function calculateVolumePercentage(
+    volume: number,
+    marketCap: number,
+  ): string {
+    if (!marketCap) return "0.00%";
+    return ((volume / marketCap) * 100).toFixed(2) + "%";
+  }
+
+  let candleData: CandleData[] = $state([]);
+  let lineChartPath = $state("");
+
+  // Fetch candle data for the past week
+  onMount(async () => {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const startTime = now - 10 * 24 * 60 * 60; // 10 days ago
+
+      const payTokenId = token?.token_id || 1;
+      const receiveTokenId = ckusdtToken?.token_id || 10;
+
+      const data = await fetchChartData(
+        payTokenId,
+        receiveTokenId,
+        startTime,
+        now,
+        "D", // Daily data
+      );
+
+      lineChartPath = generateLineChartPath(data);
+      candleData = data.filter(
+        (d) => d.close_price !== undefined && d.close_price !== null,
+      );
+    } catch (error) {
+      console.error("Failed to fetch candle data:", error);
+    }
+  });
+
+  const maxPrice = $state(
+    Math.max(...candleData.map((d) => Number(d.close_price))),
+  );
+  const minPrice = $state(
+    Math.min(...candleData.map((d) => Number(d.close_price))),
+  );
+  const priceRange = $state(maxPrice - minPrice || 1); // Avoid division by zero
+
+  // Fix SVG path generation
+  function generateLineChartPath(data: CandleData[]) {
+    if (!data || data.length === 0) return "";
+
+    const validData = data.filter(
+      (d) =>
+        typeof d.close_price === "number" &&
+        !isNaN(d.close_price) &&
+        d.close_price !== null,
+    );
+
+    if (validData.length === 0) return "";
+
+    const maxPrice = Math.max(...validData.map((d) => Number(d.close_price)));
+    const minPrice = Math.min(...validData.map((d) => Number(d.close_price)));
+    const priceRange = maxPrice - minPrice || 1; // Avoid division by zero
+
+    return validData
+      .map((d, i) => {
+        const x = (i / (validData.length - 1)) * 100;
+        const y = 30 - ((Number(d.close_price) - minPrice) / priceRange) * 30;
+        return `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(" ");
+  }
+
+  // Update convertToken function to handle the type conversion correctly
+  function convertToken(token: FE.Token | null): FE.Token | null {
+    if (!token) return null;
+
+    const converted = {
+      ...token,
+      price: Number(token.price || 0),
+      metrics: {
+        ...token.metrics,
+        price: token.metrics?.price || "0",
+        market_cap: token.metrics?.market_cap || "0",
+        volume_24h: token.metrics?.volume_24h || "0",
+      },
+    };
+
+    return converted as unknown as FE.Token;
+  }
+
+  // Update the formatTimestamp function to handle UTC dates correctly
+  function formatTimestamp(timestamp: string): string {
+    if (!timestamp) {
+      console.log("formatTimestamp: No timestamp provided");
+      return "N/A";
+    }
+
+    try {
+      // Parse timestamp as UTC and adjust year if needed
+      const txDate = new Date(timestamp + "Z"); // Force UTC interpretation
+      const now = new Date();
+
+      return formatDistance(txDate, now, {
+        addSuffix: true,
+        includeSeconds: true,
+      });
+    } catch (e) {
+      console.error("Error formatting timestamp:", e);
+      return "N/A";
+    }
+  }
+</script>
+
+<Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
+          <div class="flex flex-col h-[600px]">
+            <div class="p-4">
+              <h2 class="text-2xl font-semibold text-white/80">
+                Transaction Feed
+              </h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+              {#if isLoadingTxns && transactions.length === 0}
+                <div class="flex items-center justify-center h-full">
+                  <div class="loader"></div>
+                </div>
+              {:else if error}
+                <div class="text-red-400 text-center py-4">{error}</div>
+              {:else if transactions.length === 0}
+                <div class="text-white text-center py-4">
+                  No transactions found
+                </div>
+              {:else}
+                <div class="-mx-4">
+                  <table class="w-full text-left text-white/80">
+                    <tbody>
+                      {#each transactions as tx}
+                        <tr
+                          class="border-b border-slate-700/70 transition-all duration-300"
+                          class:new-transaction={newTransactionIds.has(
+                            tx.tx_id || "",
+                          )}
+                        >
+                          <td class="px-4 py-3">
+                            <div
+                              class="flex flex-col sm:flex-row items-start sm:items-center gap-2"
+                            >
+                              <span
+                                class="px-2 py-0.5 text-xs bg-slate-700 rounded-full whitespace-nowrap"
+                              >
+                                {tx.user?.principal_id?.slice(0, 8)}
+                              </span>
+                              {#if tx.pay_token_id === token.token_id}
+                                <span
+                                  class="text-white/80 flex flex-wrap items-center gap-1 text-sm"
+                                >
+                                  <span class="text-red-500">Sold</span>
+                                  {formatToNonZeroDecimal(tx.pay_amount)}
+                                  <TokenImages
+                                    tokens={[convertToken(token)]}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  for
+                                  {formatToNonZeroDecimal(tx.receive_amount)}
+                                  <TokenImages
+                                    tokens={[
+                                      $formattedTokens?.find(
+                                        (t) =>
+                                          t.token_id === tx.receive_token_id,
+                                      ),
+                                    ]
+                                      .filter(Boolean)
+                                      .map(convertToken)}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  <span class="whitespace-nowrap"
+                                    >worth {calculateTotalUsdValue(tx)}</span
+                                  >
+                                  <span class="text-slate-400 text-xs">
+                                    {formatTimestamp(tx.timestamp)}
+                                  </span>
+                                </span>
+                              {:else}
+                                <span
+                                  class="text-white/80 flex flex-wrap items-center gap-1 text-sm"
+                                >
+                                  <span class="text-green-500">Bought</span>
+                                  {formatToNonZeroDecimal(tx.receive_amount)}
+                                  <TokenImages
+                                    tokens={[convertToken(token)]}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  for
+                                  {formatToNonZeroDecimal(tx.pay_amount)}
+                                  <TokenImages
+                                    tokens={[
+                                      $formattedTokens?.find(
+                                        (t) => t.token_id === tx.pay_token_id,
+                                      ),
+                                    ]
+                                      .filter(Boolean)
+                                      .map(convertToken)}
+                                    size={16}
+                                    overlap={0}
+                                  />
+                                  <span class="whitespace-nowrap"
+                                    >worth {calculateTotalUsdValue(tx)}</span
+                                  >
+                                  <span class="text-slate-400 text-xs">
+                                    {formatTimestamp(tx.timestamp)}
+                                  </span>
+                                </span>
+                              {/if}
+                            </div>
+                          </td>
+                          <td class="px-4 py-3 text-right">
+                            {#if tx.tx_id}
+                              <a
+                                href={`https://explorer.sui.io/txblock/${tx.tx_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-blue-400 hover:text-blue-300"
+                                title="View transaction"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  class="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                    clip-rule="evenodd"
+                                  />
+                                </svg>
+                              </a>
+                            {:else}
+                              N/A
+                            {/if}
+                          </td>
+                        </tr>
+                      {/each}
+
+                      <!-- Loading more indicator -->
+                      <tr
+                        bind:this={loadMoreTrigger}
+                        use:setupIntersectionObserver
+                      >
+                        <td colspan="2" class="p-4 text-center">
+                          {#if isLoadingMore}
+                            <div class="flex justify-center">
+                              <div class="loader"></div>
+                            </div>
+                          {:else if !hasMore}
+                            <div class="text-slate-400 text-sm">
+                              No more transactions
+                            </div>
+                          {/if}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              {/if}
+            </div>
+          </div>
+        </Panel>

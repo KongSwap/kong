@@ -1,3 +1,5 @@
+// src/lib/services/worker/updateWorkerService.ts
+
 /// <reference types="@sveltejs/kit" />
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
@@ -8,9 +10,12 @@ import { poolStore } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
 import * as Comlink from "comlink";
-import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-import type { WorkerApi, UpdateType } from "$lib/workers/updateWorker";
-import { appLoader } from "$lib/services/appLoader"; // Import appLoader
+import {
+  formatTokenAmount,
+  formatToNonZeroDecimal,
+} from "$lib/utils/numberFormatUtils";
+import type { WorkerApi } from "$lib/workers/updateWorker";
+import { appLoader } from "$lib/services/appLoader";
 
 class UpdateWorkerService {
   private worker: Worker | null = null;
@@ -19,78 +24,77 @@ class UpdateWorkerService {
   private isInBackground = false;
   private updateInterval: number | null = null;
 
-  // Public getter for initialization status
   public getIsInitialized(): boolean {
     return this.isInitialized;
   }
 
   async initialize() {
     const INIT_TIMEOUT = 60000; // 60 seconds timeout
-    
     try {
       await Promise.race([
         this.initializeWorker(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Initialization timeout')), INIT_TIMEOUT)
-        )
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Initialization timeout")), INIT_TIMEOUT),
+        ),
       ]);
       return true;
     } catch (error) {
-      console.error('Failed to initialize update worker service:', error);
+      console.error("Failed to initialize update worker service:", error);
       // Start fallback updates if worker initialization fails
       this.startFallbackUpdates();
       return false;
     }
   }
 
-  private handleVisibilityChange() {
-    this.isInBackground = document.hidden;
-    if (document.hidden) {
-      // Pause updates when in background
-      if (this.worker) {
-        this.worker.postMessage({ type: 'pause' });
-      }
-    } else {
-      // Resume updates when back in foreground
-      if (this.worker) {
-        this.worker.postMessage({ type: 'resume' });
-        // Force an immediate update when coming back
-        this.forceUpdate();
-      }
+  destroy() {
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+      this.workerApi = null;
     }
   }
 
-  private handleWorkerMessage(event: MessageEvent) {
-    if (event.data.type === 'TOKEN_LOGOS_LOADED') {
+  // -------------------- Private Methods --------------------
+
+  private async initializeWorker(): Promise<void> {
+    console.log("Initializing update worker service...");
+
+    document.addEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
+
+    this.worker = new Worker(
+      new URL("../workers/updateWorker.ts", import.meta.url),
+      { type: "module" },
+    );
+
+    this.workerApi = Comlink.wrap<WorkerApi>(this.worker);
+
+    const tokens = get(tokenStore);
+    if (!tokens?.tokens?.length) {
+      await tokenStore.loadTokens();
+    }
+
+    await this.workerApi.setTokens(tokens.tokens);
+
+    const updateStarted = await this.startUpdates();
+    if (!updateStarted) {
+      console.warn("Failed to start worker updates, falling back to direct updates");
+      this.startFallbackUpdates();
       return;
     }
 
-    if (event.data.type === 'LOADING_PROGRESS' && event.data.context === 'token_logos') {
-      appLoader.updateLoadingState({
-        isLoading: event.data.loaded < event.data.total,
-        assetsLoaded: event.data.loaded,
-        totalAssets: event.data.total,
-      });
-      return;
-    }
+    this.isInitialized = true;
+  }
 
-    if (event.data.type === 'update') {
-      const updateType = event.data.updateType as UpdateType;
-      console.log('Received update message:', updateType);
-      
-      switch (updateType) {
-        case 'token':
-          this.updateTokens();
-          break;
-        case 'pool':
-          this.updatePools();
-          break;
-          break;
-        case 'price':
-          if (!this.isInBackground) {
-            this.updatePrices();
-          }
-          break;
+  private handleVisibilityChange() {
+    this.isInBackground = document.hidden;
+    if (document.hidden) {
+      if (this.worker) {
+        this.worker.postMessage({ type: "pause" });
+      }
+    } else {
+      if (this.worker) {
+        this.worker.postMessage({ type: "resume" });
+        this.forceUpdate();
       }
     }
   }
@@ -98,16 +102,16 @@ class UpdateWorkerService {
   private async forceUpdate() {
     const wallet = get(auth);
     const walletId = wallet?.account?.owner?.toString();
-    if (walletId) {
-      try {
-        await Promise.all([
-          tokenStore.loadBalances(walletId),
-          poolStore.loadPools(true),
-          this.updatePrices()
-        ]);
-      } catch (error) {
-        console.error('Error during force update:', error);
-      }
+    if (!walletId) return;
+
+    try {
+      await Promise.all([
+        tokenStore.loadBalances(walletId),
+        poolStore.loadPools(true),
+        this.updatePrices(),
+      ]);
+    } catch (error) {
+      console.error("Error during force update:", error);
     }
   }
 
@@ -115,41 +119,27 @@ class UpdateWorkerService {
     const wallet = get(auth);
     const walletId = wallet?.account?.owner?.toString();
     if (walletId) {
-      await Promise.all([
-        tokenStore.loadBalances(walletId),
-      ]);
+      await tokenStore.loadBalances(walletId);
     }
   }
 
   private async updatePools() {
-    const wallet = get(auth);
-    const walletId = wallet?.account?.owner?.toString();
-    if (walletId) {
-      await Promise.all([
-        poolStore.loadPools(),
-        poolStore.loadUserPoolBalances(),
-      ]);
-    } else {
-      await Promise.all([
-        poolStore.loadPools(),
-      ]);
-    }
+    await poolStore.loadPools();
   }
 
-  private async updatePrices() {    
+  private async updatePrices() {
     try {
       const currentStore = get(tokenStore);
       if (!currentStore.tokens) return;
 
-      const prices = await Promise.race([
+      const prices = (await Promise.race([
         tokenStore.loadPrices(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Price update timeout')), 5000)
-        )
-      ]) as Record<string, number>;
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Price update timeout")), 5000),
+        ),
+      ])) as Record<string, number>;
 
-      if (prices && typeof prices === 'object') {
-        // After prices are loaded, update USD values in balances
+      if (prices && typeof prices === "object") {
         const balances = { ...currentStore.balances };
         for (const token of currentStore.tokens) {
           if (balances[token.canister_id]) {
@@ -161,12 +151,8 @@ class UpdateWorkerService {
         }
       }
     } catch (error) {
-      console.error('Error during price update:', error);
+      console.error("Error during price update:", error);
     }
-  }
-
-  private isCanisterUrl(url: string): boolean {
-    return url.includes('.raw.icp0.io/d3?file_id=');
   }
 
   private async waitForTokens(): Promise<void> {
@@ -176,9 +162,9 @@ class UpdateWorkerService {
     }
 
     return new Promise<void>((resolve) => {
-      const unsubscribe = tokenStore.subscribe(value => {
+      const unsubscribe = tokenStore.subscribe((value) => {
         if (value?.tokens?.length) {
-          console.log('Tokens loaded:', value.tokens.length);
+          console.log("Tokens loaded:", value.tokens.length);
           unsubscribe();
           resolve();
         }
@@ -188,36 +174,31 @@ class UpdateWorkerService {
 
   private async startUpdates() {
     if (!this.workerApi) {
-      console.error('Worker API not available');
+      console.error("Worker API not available");
       return false;
     }
 
     try {
-      console.log('Starting worker updates...');
-      
-      // Wait for initial token data
+      console.log("Starting worker updates...");
       await this.waitForTokens();
-
-      // Start the worker's update intervals
       await this.workerApi.startUpdates();
-      
-      console.log('Worker updates started, triggering immediate updates...');
-      
-      // Update loading state for token logos
+      console.log("Worker updates started, triggering immediate updates...");
+
       appLoader.updateLoadingState({
         isLoading: true,
         assetsLoaded: 0,
         totalAssets: get(tokenStore).tokens?.length || 0,
       });
 
-      // Trigger immediate updates and wait for them to complete
-      await Promise.all([
-        this.updateTokens(),
-        this.updatePools(),
-        !this.isInBackground && this.updatePrices(),
-      ].filter(Boolean));
+      await Promise.all(
+        [
+          this.updateTokens(),
+          this.updatePools(),
+          !this.isInBackground && this.updatePrices(),
+        ].filter(Boolean),
+      );
 
-      console.log('Initial updates completed successfully');
+      console.log("Initial updates completed successfully");
       return true;
     } catch (error) {
       console.error("Failed to start worker updates:", error);
@@ -227,69 +208,24 @@ class UpdateWorkerService {
   }
 
   private async startFallbackUpdates() {
-    // Set up intervals for fallback updates
     this.updateInterval = window.setInterval(() => {
-      Promise.all([
+      Promise.all(
+        [
+          this.updateTokens(),
+          this.updatePools(),
+          !this.isInBackground && this.updatePrices(),
+        ].filter(Boolean),
+      );
+    }, 10000);
+
+    await Promise.all(
+      [
         this.updateTokens(),
         this.updatePools(),
         !this.isInBackground && this.updatePrices(),
-      ].filter(Boolean));
-    }, 10000); // Update every 10 seconds
-
-    // Trigger immediate updates
-    await Promise.all([
-      this.updateTokens(),
-      this.updatePools(),
-      !this.isInBackground && this.updatePrices(),
-    ].filter(Boolean));
-  }
-
-  destroy() {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-      this.workerApi = null;
-    }
-  }
-
-  // Add this private method to handle worker initialization
-  private async initializeWorker(): Promise<void> {
-    console.log('Initializing update worker service...');
-    
-    // Add visibility change listener
-    document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-    
-    this.worker = new Worker(
-      new URL("../workers/updateWorker.ts", import.meta.url),
-      { type: "module" },
+      ].filter(Boolean),
     );
-
-    // Set up message handler
-    this.worker.addEventListener('message', this.handleWorkerMessage.bind(this));
-
-    // Create proxy to worker with proper typing
-    this.workerApi = Comlink.wrap<WorkerApi>(this.worker);
-    
-    // First load tokens if they haven't been loaded yet
-    const tokens = get(tokenStore);
-    if (!tokens?.tokens?.length) {
-      await tokenStore.loadTokens();
-    }
-    
-    // Send tokens to the worker
-    await this.workerApi.setTokens(tokens.tokens);
-
-    // Start updates and wait for initial data
-    const updateStarted = await this.startUpdates();
-    if (!updateStarted) {
-      console.warn('Failed to start worker updates, falling back to direct updates');
-      this.startFallbackUpdates();
-      return;
-    }
-    
-    this.isInitialized = true;
   }
 }
 
 export const updateWorkerService = new UpdateWorkerService();
-

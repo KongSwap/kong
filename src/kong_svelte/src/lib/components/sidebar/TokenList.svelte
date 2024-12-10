@@ -17,10 +17,6 @@
   let sortDirection = 'desc';
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
-
-  // Subscribe to token store updates
-  $: storeBalances = $tokenStore.balances;
-  $: favorites = $tokenStore.favoriteTokens;
   
   onMount(async () => {
     await tokenStore.loadFavorites();
