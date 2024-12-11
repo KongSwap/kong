@@ -12,19 +12,22 @@ export const priceStore = writable<{[key: string]: number}>({});
 const requestCache = new Map<string, Promise<any>>();
 const tokenLocks = new Map<string, Promise<void>>();
 
-async function acquireTokenLock(tokenId: string): Promise<() => void> {
+async function acquireTokenLock(tokenId: string): Promise<void> {
   while (tokenLocks.has(tokenId)) {
     await tokenLocks.get(tokenId);
   }
   let releaseLock: () => void;
   const lockPromise = new Promise<void>((resolve) => {
-    releaseLock = () => {
-      resolve();
-      tokenLocks.delete(tokenId);
-    };
+    releaseLock = resolve;
   });
   tokenLocks.set(tokenId, lockPromise);
-  return releaseLock;
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+      releaseLock!();
+      tokenLocks.delete(tokenId);
+    }, 0);
+  });
 }
 
 async function fetchCandleData(payTokenId: number, receiveTokenId: number, startTime: number, endTime: number): Promise<any> {
@@ -73,8 +76,8 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
       payTokenId,
       receiveTokenId,
       timestamps: {
-        start: new Date(startTime * 1000).toISOString(),
-        end: new Date(endTime * 1000).toISOString()
+        start: new Date(startTime).toISOString(),
+        end: new Date(endTime).toISOString()
       }
     });
     return [];
@@ -82,7 +85,7 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
 }
 
 export async function calculate24hPriceChange(token: FE.Token): Promise<number | string> {
-  const releaseLock = await acquireTokenLock(token.canister_id);
+  await acquireTokenLock(token.canister_id);
   
   try {
     // Get current time and ensure UTC handling
@@ -135,17 +138,12 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
   } catch (error) {
     console.error(`Error calculating 24h price change for ${token.symbol}:`, error);
     return 0;
-  } finally {
-    // Release the lock
-    releaseLock();
   }
 }
 
 // Helper to validate and convert timestamps
 function ensureValidTimestamp(timestamp: number): number {
-  // If timestamp is 0 or negative, return current time
-  if (timestamp <= 0) return Math.floor(Date.now() / 1000);
-  // If timestamp is in milliseconds, convert to seconds
+  if (isNaN(timestamp) || timestamp <= 0) return Math.floor(Date.now() / 1000);
   if (timestamp > 1e10) return Math.floor(timestamp / 1000);
   return Math.floor(timestamp);
 }
