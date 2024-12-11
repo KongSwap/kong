@@ -13,11 +13,18 @@
   let isHovered = false;
   let isPressed = false;
   let showMenu = false;
+  let localFavorite = false; // Local state for immediate feedback
   
   $: isFavorite = $currentWalletFavorites.includes(token.canister_id);
+  $: {
+    // Sync local state with store when store changes
+    localFavorite = isFavorite;
+  }
 
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
+    // Toggle local state immediately for UI feedback
+    localFavorite = !localFavorite;
     dispatch('toggleFavorite', { canisterId: token.canister_id });
   }
 
@@ -79,11 +86,11 @@
           <div class="token-name-row">
             <button 
               class="favorite-button"
-              class:active={isFavorite}
+              class:active={localFavorite}
               on:click={handleFavoriteClick}
-              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              title={localFavorite ? "Remove from favorites" : "Add to favorites"}
             >
-              <Star size={16} fill={isFavorite ? "#ffd700" : "none"} />
+              <Star size={16} fill={localFavorite ? "#ffd700" : "none"} />
             </button>
             <span class="token-symbol">{token.symbol}</span>
           </div>

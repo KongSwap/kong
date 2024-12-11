@@ -166,6 +166,15 @@
                 <img src={identity.principalQR} alt="Principal ID QR Code" class="qr-code" />
               {/if}
             </div>
+            <div class="info-tooltip">
+              <p>Your Principal ID is your unique digital identity that:</p>
+              <ul>
+                <li>Is used for ICRC token transfers and DeFi operations</li>
+                <li>Acts as your universal username across IC applications</li>
+                <li>Controls access to your assets and data</li>
+                <li>Is required for interacting with most dapps</li>
+              </ul>
+            </div>
           </div>
         {/if}
         {#if (activeTab === 'account' || display === 'account') && (display !== 'principal')}
@@ -194,6 +203,15 @@
               {:else}
                 <img src={identity.accountQR} alt="Account ID QR Code" class="qr-code" />
               {/if}
+            </div>
+            <div class="info-tooltip">
+              <p>Your Account ID is a legacy address format that:</p>
+              <ul>
+                <li>Is primarily used for ICP token transfers</li>
+                <li>Works with NNS and Internet Identity</li>
+                <li>Is not compatible with most ICRC tokens</li>
+                <li>May be required for some older applications</li>
+              </ul>
             </div>
           </div>
         {/if}
@@ -367,5 +385,30 @@
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+
+  .info-tooltip {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .info-tooltip p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .info-tooltip ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+  }
+
+  .info-tooltip li {
+    margin: 0.25rem 0;
   }
 </style>

@@ -397,6 +397,12 @@
     <footer class="text-white text-[clamp(0.75rem,2vw,0.875rem)]">
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-2">
+          <span class="text-white/50 font-normal tracking-wide mobile-text">Value</span>
+          <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
+            ${formatToNonZeroDecimal(tradeUsdValue)}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
           <span class="text-white/50 font-normal tracking-wide mobile-text">
             Available:
           </span>
@@ -408,12 +414,6 @@
             {displayBalance}
             {token?.symbol}
           </button>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide mobile-text">Value</span>
-          <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
-            ${formatToNonZeroDecimal(tradeUsdValue)}
-          </span>
         </div>
       </div>
     </footer>
