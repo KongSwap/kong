@@ -7,7 +7,7 @@ export function formatTimestamp(timestamp: string): string {
   }
 
   try {
-    const txDate = new Date(timestamp + "Z"); // Force UTC interpretation
+    const txDate = new Date(timestamp.endsWith('Z') ? timestamp : timestamp + "Z");
     const now = new Date();
 
     return formatDistance(txDate, now, {

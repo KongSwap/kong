@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { writable, get } from "svelte/store";
+  import { writable } from "svelte/store";
   import { KongDatafeed } from "$lib/services/tradingview/datafeed";
   import { loadTradingViewLibrary } from "$lib/services/tradingview/widget";
   import { getChartConfig } from "$lib/services/tradingview/config";
   import { fetchChartData } from "$lib/services/indexer/api";
   import { poolStore } from "$lib/services/pools";
   import { debounce } from "lodash-es";
-  import { priceStore, formatPriceChange, getPriceChangeColor } from '$lib/services/price/priceService';
+  import { priceStore} from '$lib/services/price/priceService';
 
   // Convert props to runes syntax
   const props = $props<{
@@ -204,7 +204,7 @@
         receiveTokenId,
         startTime,
         now,
-        "240",
+        "60",
       );
 
       if (candleData.length === 0) {
@@ -332,20 +332,6 @@
 </div>
 
 <style lang="postcss">
-  :root {
-    --tv-color-platform-background: rgba(22, 16, 40, 1);
-    --tv-color-toolbar-bg: rgba(22, 16, 40, 1);
-    --tv-color-toolbar-button-background-hover: rgba(22, 16, 40, 1);
-    --tv-color-toolbar-button-background-expanded: rgba(22, 16, 40, 1);
-    --tv-color-toolbar-button-background-active: rgba(1, 1, 1, 1);
-    --tv-color-toolbar-button-background-active-hover: rgba(22, 16, 40, 0.9);
-    --tv-color-toolbar-button-text: rgba(255, 255, 255, 0.8);
-    --tv-color-toolbar-button-text-hover: #ffffff;
-    --tv-color-toolbar-button-text-active: #ffffff;
-    --tv-color-toolbar-button-text-active-hover: #ffffff;
-    --tv-color-toolbar-toggle-button-background-active: rgba(22, 16, 40, 1);
-    --tv-color-toolbar-toggle-button-background-active-hover: rgba(1, 1, 1, 1);
-  }
 
   .chart-wrapper {
     position: absolute;

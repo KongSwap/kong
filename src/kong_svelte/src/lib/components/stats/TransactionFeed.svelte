@@ -15,15 +15,10 @@
   let { token } = $props<{ token: FE.Token }>();
   let transactions = $state<FE.Transaction[]>([]);
   let isLoadingTxns = $state(false);
-  let isLoadingMore = $state(false);
   let error = $state<string | null>(null);
-  let currentPage = $state(1);
-  let hasMore = $state(true);
-  let pageSize = 20;
-  let newTransactionIds = $state<Set<string>>(new Set());
-  let allTransactions = $state<FE.Transaction[]>([]);  // Store for all transactions
   const tokenAddress = $page.params.id;
   let refreshInterval: number;
+  let newTransactionIds = $state<Set<string>>(new Set());
 
   // Function to clear transaction highlight after animation
   const clearTransactionHighlight = (txId: string) => {
@@ -69,36 +64,21 @@
       );
 
       if (isRefresh) {
-        // For refresh, just replace all transactions
-        allTransactions = newTransactions;
-      } else if (append) {
-        // For append, add to existing transactions
-        allTransactions = [...allTransactions, ...newTransactions];
-      } else {
-        // For initial load
-        allTransactions = newTransactions;
-      }
-
-      // Sort all transactions by timestamp
-      allTransactions.sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
-        return timeB - timeA;
-      });
-
-      // Update the displayed transactions
-      transactions = allTransactions;
-
-      // Handle new transaction highlighting
-      if (isRefresh) {
+        // Compare new transactions with existing ones and highlight differences
         const existingIds = new Set(transactions.map((t) => t.tx_id));
-        newTransactions.forEach(tx => {
+        const updatedTransactions = newTransactions.map((tx) => {
           if (!existingIds.has(tx.tx_id)) {
             newTransactionIds.add(tx.tx_id);
             clearTransactionHighlight(tx.tx_id);
           }
+          return tx;
         });
+        transactions = updatedTransactions;
         newTransactionIds = newTransactionIds; // Trigger reactivity
+      } else if (append) {
+        transactions = [...transactions, ...newTransactions];
+      } else {
+        transactions = newTransactions;
       }
 
       hasMore = newTransactions.length === pageSize;
@@ -144,6 +124,10 @@
     }
   });
 
+  // Add pagination state
+  let currentPage = $state(1);
+  const pageSize = 20;
+
   // Derived values
   let ckusdtToken = $state<FE.Token | undefined>(undefined);
   $effect(() => {
@@ -162,6 +146,8 @@
     }
   });
 
+  let isLoadingMore = $state(false);
+  let hasMore = $state(true);
   let observer: IntersectionObserver;
   let loadMoreTrigger: HTMLElement = $state<HTMLElement | null>(null);
   let currentTokenId = $state<number | null>(null);

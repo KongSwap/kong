@@ -31,60 +31,77 @@ async function acquireTokenLock(tokenId: string): Promise<void> {
 }
 
 async function fetchCandleData(payTokenId: number, receiveTokenId: number, startTime: number, endTime: number): Promise<any> {
-  const cacheKey = `${payTokenId}-${receiveTokenId}-${startTime}-${endTime}`;
-  
-  // Wait for any existing requests for this data to complete
-  if (requestCache.has(cacheKey)) {
-    return requestCache.get(cacheKey);
-  }
+  try {
+    // Ensure timestamps are valid and in seconds
+    startTime = ensureValidTimestamp(startTime);
+    endTime = ensureValidTimestamp(endTime);
 
-  // Get token info for logging
-  const tokens = await kongDB.tokens.toArray();
-  const payToken = tokens.find(t => Number(t.token_id) === payTokenId);
-  const receiveToken = tokens.find(t => Number(t.token_id) === receiveTokenId);
-  
-  // Convert timestamps to UTC ISO strings
-  const startTimeUTC = new Date(startTime * 1000).toISOString();
-  const endTimeUTC = new Date(endTime * 1000).toISOString();
-  
-  // Log URL if WTN is involved
-  if (payToken?.canister_id === WTN_CANISTER_ID || receiveToken?.canister_id === WTN_CANISTER_ID) {
-    console.log(`[WTN] Fetching candle data:`, {
-      payToken: payToken?.symbol,
-      receiveToken: receiveToken?.symbol,
-      startTime: startTimeUTC,
-      endTime: endTimeUTC,
-      url: `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTimeUTC}&end_time=${endTimeUTC}&interval=1d`
-    });
-  }
-  
-  const promise = fetchChartData(payTokenId, receiveTokenId, startTime, endTime, "1D")
-    .finally(() => {
-      // Only clear cache if this is still the active promise
-      if (requestCache.get(cacheKey) === promise) {
-        requestCache.delete(cacheKey);
+    // Convert to ISO strings
+    const startTimeUTC = new Date(startTime * 1000).toISOString();
+    const endTimeUTC = new Date(endTime * 1000).toISOString();
+
+    const cacheKey = `${payTokenId}-${receiveTokenId}-${startTime}-${endTime}`;
+    
+    // Wait for any existing requests for this data to complete
+    if (requestCache.has(cacheKey)) {
+      return requestCache.get(cacheKey);
+    }
+
+    // Get token info for logging
+    const tokens = await kongDB.tokens.toArray();
+    const payToken = tokens.find(t => Number(t.token_id) === payTokenId);
+    const receiveToken = tokens.find(t => Number(t.token_id) === receiveTokenId);
+    
+    // console.log(`[${payToken?.symbol || payTokenId}/${receiveToken?.symbol || receiveTokenId}] Fetching candle data:`, {
+    //   startTime: startTimeUTC,
+    //   endTime: endTimeUTC,
+    //   timestamps: {
+    //     startUnix: startTime,
+    //     endUnix: endTime
+    //   }
+    // });
+    
+    const promise = fetchChartData(payTokenId, receiveTokenId, startTime, endTime, "1D")
+      .finally(() => {
+        if (requestCache.get(cacheKey) === promise) {
+          requestCache.delete(cacheKey);
+        }
+      });
+    
+    requestCache.set(cacheKey, promise);
+    return promise;
+  } catch (error) {
+    console.error(`Error fetching candle data:`, {
+      error,
+      payTokenId,
+      receiveTokenId,
+      timestamps: {
+        start: new Date(startTime * 1000).toISOString(),
+        end: new Date(endTime * 1000).toISOString()
       }
     });
-  
-  requestCache.set(cacheKey, promise);
-  return promise;
+    return [];
+  }
 }
 
 export async function calculate24hPriceChange(token: FE.Token): Promise<number | string> {
-  // Acquire lock for this token to prevent parallel calculations
   await acquireTokenLock(token.canister_id);
   
   try {
     // Get current time and ensure UTC handling
-    const nowUTC = Math.floor(Date.now() / 1000); // Unix timestamp in UTC
+    const now = new Date();
+    const nowUTC = Math.floor(now.getTime() / 1000);
+    
+    // Calculate exactly 24 hours ago
     const yesterdayUTC = nowUTC - (24 * 60 * 60);
     
-    // Expand search window to ±24 hours in UTC
-    const searchWindowStartUTC = yesterdayUTC - (24 * 60 * 60);
-    const searchWindowEndUTC = yesterdayUTC + (24 * 60 * 60);
-    const tokenId = Number(token.token_id);
+    // Use a smaller window to ensure we get closer to the exact 24h ago price
+    const searchWindowStartUTC = yesterdayUTC - (4 * 60 * 60); // ±4 hours
+    const searchWindowEndUTC = yesterdayUTC + (4 * 60 * 60);
 
-    // console.log(`[${token.symbol}] Getting historical price for token_id ${tokenId}:`, {
+    // console.log(`[${token.symbol}] Time windows for price calculation:`, {
+    //   symbol: token.symbol,
+    //   currentTime: new Date(nowUTC * 1000).toISOString(),
     //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
     //   searchWindow: {
     //     start: new Date(searchWindowStartUTC * 1000).toISOString(),
@@ -94,31 +111,26 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
 
     const poolData = get(poolStore);
     if (!poolData?.pools?.length) {
-      // console.warn('No pools available for price calculation');
       return 0;
     }
 
-    // Get current price and 24h ago price
     const [currentPrice, price24hAgo] = await Promise.all([
       calculateTokenPrice(token, poolData.pools),
-      getHistoricalPrice(token)
+      getHistoricalPrice(token, yesterdayUTC, searchWindowStartUTC, searchWindowEndUTC)
     ]);
 
-    // console.log(`[${token.symbol}] Price calculation:`, {
+    // console.log(`[${token.symbol}] Price comparison:`, {
+    //   symbol: token.symbol,
     //   currentPrice,
     //   price24hAgo,
-    //   change: price24hAgo === 0 ? "No historical data" : ((currentPrice - price24hAgo) / price24hAgo) * 100
+    //   percentageChange: price24hAgo === 0 ? "NEW" : ((currentPrice - price24hAgo) / price24hAgo) * 100
     // });
 
-    // If we have no historical data, return "NEW" to indicate a new token
     if (price24hAgo === 0) {
-      // console.log(`[${token.symbol}] No historical price data available`);
       return "NEW";
     }
 
-    // If current price is 0, that's a real error
     if (currentPrice === 0) {
-      // console.error(`[${token.symbol}] Current price is 0`);
       return 0;
     }
 
@@ -127,6 +139,27 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
     console.error(`Error calculating 24h price change for ${token.symbol}:`, error);
     return 0;
   }
+}
+
+// Helper to validate and convert timestamps
+function ensureValidTimestamp(timestamp: number): number {
+  // If timestamp is 0 or negative, return current time
+  if (timestamp <= 0) return Math.floor(Date.now() / 1000);
+  // If timestamp is in milliseconds, convert to seconds
+  if (timestamp > 1e10) return Math.floor(timestamp / 1000);
+  return Math.floor(timestamp);
+}
+
+// Helper to convert API timestamp to Unix seconds
+function apiTimestampToUnix(timestamp: number | string): number {
+  if (typeof timestamp === 'string') {
+    return Math.floor(new Date(timestamp).getTime() / 1000);
+  }
+  // If timestamp is in milliseconds (>1e10), convert to seconds
+  if (timestamp > 1e10) {
+    return Math.floor(timestamp / 1000);
+  }
+  return Math.floor(timestamp);
 }
 
 async function calculateTokenPrice(token: FE.Token, pools: BE.Pool[]): Promise<number> {
@@ -254,134 +287,115 @@ async function calculateIcpPath(
   return { price, weight };
 }
 
-export async function getHistoricalPrice(token: FE.Token): Promise<number> {
+export async function getHistoricalPrice(
+  token: FE.Token, 
+  targetTime: number,
+  startTime: number,
+  endTime: number
+): Promise<number> {
   try {
-    // Special case for USDT
     if (token.canister_id === CKUSDT_CANISTER_ID) {
       return 1;
     }
 
-    // Get current time in UTC
-    const nowUTC = Math.floor(Date.now() / 1000); // Unix timestamp in UTC
-    const yesterdayUTC = nowUTC - (24 * 60 * 60);
-    // Expand search window to ±24 hours in UTC
-    const searchWindowStartUTC = yesterdayUTC - (24 * 60 * 60);
-    const searchWindowEndUTC = yesterdayUTC + (24 * 60 * 60);
+    // Ensure all timestamps are valid
+    targetTime = ensureValidTimestamp(targetTime);
+    startTime = ensureValidTimestamp(startTime);
+    endTime = ensureValidTimestamp(endTime);
+
     const tokenId = Number(token.token_id);
 
-    // console.log(`[${token.symbol}] Getting historical price for token_id ${tokenId}:`, {
-    //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
-    //   searchWindow: {
-    //     start: new Date(searchWindowStartUTC * 1000).toISOString(),
-    //     end: new Date(searchWindowEndUTC * 1000).toISOString()
-    //   }
-    // });
-
-    // Helper to get the closest price from candle data
+    // Log the exact candle we're using
     const getClosestPrice = (data: any[]) => {
-      if (!data?.length) {
-        // console.log(`[${token.symbol}] No candle data available`);
-        return 0;
-      }
+      if (!data?.length) return 0;
       
-      // Sort by time difference from target time (all timestamps in UTC)
       const sortedData = [...data].sort((a, b) => {
-        const aTime = new Date(a.candle_start).getTime() / 1000;
-        const bTime = new Date(b.candle_start).getTime() / 1000;
-        return Math.abs(aTime - yesterdayUTC) - Math.abs(bTime - yesterdayUTC);
+        // Convert API timestamps to Unix seconds
+        const aTime = apiTimestampToUnix(a.candle_start);
+        const bTime = apiTimestampToUnix(b.candle_start);
+        return Math.abs(aTime - targetTime) - Math.abs(bTime - targetTime);
       });
 
-      // Get the closest data point
       const closest = sortedData[0];
       if (!closest) return 0;
 
-      // Calculate time difference in hours for logging (all in UTC)
-      const closestTime = new Date(closest.candle_start).getTime() / 1000;
-      const hoursDiff = Math.abs(closestTime - yesterdayUTC) / 3600;
+      const closestTime = apiTimestampToUnix(closest.candle_start);
+      const hoursDiff = Math.abs(closestTime - targetTime) / 3600;
 
-      // console.log(`[${token.symbol}] Using candle from ${hoursDiff.toFixed(1)} hours ${closestTime > yesterdayUTC ? 'after' : 'before'} target:`, {
-      //   candleTime: closest.candle_start, // Already in ISO UTC from API
-      //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
-      //   candleData: closest
+      // console.log(`[${token.symbol}] Selected historical candle:`, {
+      //   symbol: token.symbol,
+      //   candleTime: new Date(closestTime * 1000).toISOString(),
+      //   targetTime: new Date(targetTime * 1000).toISOString(),
+      //   hoursDifference: hoursDiff,
+      //   candleData: {
+      //     ...closest,
+      //     candle_start: new Date(closestTime * 1000).toISOString()
+      //   }
       // });
 
-      // Use close price
       const price = Number(closest.close_price);
       return isNaN(price) ? 0 : price;
     };
 
     // Try direct USDT path first
-    const directUsdtData = await fetchCandleData(tokenId, 1, searchWindowStartUTC, searchWindowEndUTC);
-    // console.log(`[${token.symbol}] Direct USDT data:`, directUsdtData);
+    const directUsdtData = await fetchCandleData(tokenId, 1, startTime, endTime);
     let price = 0;
 
     if (directUsdtData.length > 0) {
-      // Check if token is pay_token or receive_token
       const isPayToken = directUsdtData[0].pay_token_id === tokenId;
       const rawPrice = getClosestPrice(directUsdtData);
-      // console.log(`[${token.symbol}] Direct USDT price calculation:`, {
-      //   rawPrice,
-      //   isPayToken,
-      //   finalPrice: isPayToken ? rawPrice : 1 / rawPrice
-      // });
 
       if (rawPrice > 0) {
-        // If token is pay_token, use raw price, otherwise invert
         price = isPayToken ? rawPrice : 1 / rawPrice;
       }
     }
 
+    // console.log(`[${token.symbol}] Historical price - Direct USDT path:`, {
+    //   symbol: token.symbol,
+    //   price,
+    //   rawData: directUsdtData
+    // });
+
     // If no direct USDT price, try via ICP
     if (price === 0) {
-      // Get token/ICP and ICP/USDT data
       const [tokenIcpData, icpUsdtData] = await Promise.all([
-        fetchCandleData(tokenId, 2, searchWindowStartUTC, searchWindowEndUTC),
-        fetchCandleData(2, 1, searchWindowStartUTC, searchWindowEndUTC)
+        fetchCandleData(tokenId, 2, startTime, endTime),
+        fetchCandleData(2, 1, startTime, endTime)
       ]);
-
-      // console.log(`[${token.symbol}] ICP path data:`, {
-      //   tokenIcpData,
-      //   icpUsdtData
-      // });
 
       if (tokenIcpData.length > 0 && icpUsdtData.length > 0) {
         const tokenIcpPrice = getClosestPrice(tokenIcpData);
         const icpUsdtPrice = getClosestPrice(icpUsdtData);
 
-        // console.log(`[${token.symbol}] ICP path raw prices:`, {
-        //   tokenIcpPrice,
-        //   icpUsdtPrice
-        // });
-
         if (tokenIcpPrice > 0 && icpUsdtPrice > 0) {
-          // Convert token/ICP price to USDT terms
           const tokenIsPayToken = tokenIcpData[0].pay_token_id === tokenId;
           const icpIsPayToken = icpUsdtData[0].pay_token_id === 2;
 
-          // Calculate token price in terms of ICP
           const tokenInIcp = tokenIsPayToken ? tokenIcpPrice : 1 / tokenIcpPrice;
-          // Calculate ICP price in terms of USDT
           const icpInUsdt = icpIsPayToken ? icpUsdtPrice : 1 / icpUsdtPrice;
           
-          // Final price is token's ICP price * ICP's USDT price
           price = tokenInIcp * icpInUsdt;
 
-          // console.log(`[${token.symbol}] ICP path price calculation:`, {
-          //   tokenIsPayToken,
-          //   icpIsPayToken,
-          //   tokenInIcp,
-          //   icpInUsdt,
-          //   finalPrice: price
-          // });
+          console.log(`[${token.symbol}] Historical price - ICP path:`, {
+            symbol: token.symbol,
+            price,
+            tokenIcpData,
+            icpUsdtData,
+            tokenIcpPrice,
+            icpUsdtPrice,
+            tokenInIcp,
+            icpInUsdt
+          });
         }
       }
     }
 
-    if (price === 0) {
-      // console.warn(`[${token.symbol}] No historical price data found for token ${token.canister_id}`);
-    } else {
-      // console.log(`[${token.symbol}] Final historical price:`, price);
-    }
+    // if (price === 0) {
+    //   console.log(`[${token.symbol}] No price found through any path for token:`, {
+    //     symbol: token.symbol,
+    //     canisterId: token.canister_id
+    //   });
+    // }
 
     return price;
   } catch (error) {

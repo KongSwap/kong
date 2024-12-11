@@ -1,18 +1,13 @@
 :root:not(.theme-dark),
 :root.theme-dark,
 .theme-dark:root {
-  --tv-color-platform-background: rgba(22, 16, 40, 1) !important;
-  --tv-color-pane-background: rgba(22, 16, 40, 1) !important;
-}
-
-.chart-page,
-.chart-page .chart-container {
-  background-color: rgba(22, 16, 40, 1) !important;
+  --tv-color-platform-background: rgba(8, 10, 19, 1) !important;
+  --tv-color-pane-background: rgba(8, 10, 19, 1) !important;
 }
 
 .chart-controls-bar,
 .chart-page .chart-container-border {
-  background-color: rgba(22, 16, 40, 1) !important;
+  background-color: rgba(8, 10, 19, 1) !important;
   border-color: transparent !important;
 }
 
@@ -20,17 +15,12 @@
 .group-2JyOhh7Z,
 .group-wWM3zP_M-,
 .chart-toolbar {
-  background-color: rgba(22, 16, 40, 1) !important;
+  background-color: rgba(8, 10, 19, 1) !important;
   border-color: transparent !important;
 }
 
 .toggleButton-3zv4iS2j,
 .button-2ioYhFEY,
 .button-2ioYhFEY.isInteractive-20uLObIc {
-  background-color: rgba(22, 16, 40, 1) !important;
-}
-
-.wrap-3tiHesTk,
-.background-Q1Fcmxly {
-  background-color: rgba(22, 16, 40, 1) !important;
+  background-color: rgba(8, 10, 19, 1) !important;
 }
