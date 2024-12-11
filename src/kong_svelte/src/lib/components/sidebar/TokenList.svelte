@@ -106,8 +106,21 @@
         return aIsFavorite ? -1 : 1;
       }
       
-      const aValue = Number(a.formattedUsdValue || '0');
-      const bValue = Number(b.formattedUsdValue || '0');
+      // Parse the values properly, handling 'k', 'M', etc.
+      const parseValue = (str: string) => {
+        if (!str) return 0;
+        const num = str.replace(/,/g, '');
+        if (num.endsWith('k')) {
+          return parseFloat(num) * 1000;
+        }
+        if (num.endsWith('M')) {
+          return parseFloat(num) * 1000000;
+        }
+        return parseFloat(num);
+      };
+      
+      const aValue = parseValue(a.formattedUsdValue || '0');
+      const bValue = parseValue(b.formattedUsdValue || '0');
       return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
     });
 
