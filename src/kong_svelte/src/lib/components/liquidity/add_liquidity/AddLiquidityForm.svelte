@@ -531,7 +531,7 @@
                 onTokenSelect(1);
             }}
             onClose={() => showToken1Selector = false}
-            restrictedTokens={['ICP', 'ckUSDT']}
+            restrictToSecondaryTokens={true}
         />
     </Portal>
 {/if}
