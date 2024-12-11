@@ -281,8 +281,8 @@
           color="purple"
         >
           <svelte:fragment slot="subtitle">
-            {#if token.metrics.price_change_24h === "NEW"}
-              <span class="text-purple-400">NEW</span>
+            {#if typeof token?.metrics?.price_change_24h !== "number"}
+              <span class="text-purple-400">0%</span>
             {:else if token.metrics.price_change_24h === null || Number(token.metrics.price_change_24h) === 0}
               <span class="text-slate-400">--</span>
             {:else}

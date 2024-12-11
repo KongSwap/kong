@@ -106,7 +106,7 @@ export function getChartConfig(params: {
       "scalesProperties.backgroundColor": "rgba(22, 16, 40, 1)",
       "scalesProperties.lineColor": "rgba(30, 41, 59, 0.2)",
       "scalesProperties.textColor": "#9ca3af",
-      "scalesProperties.fontSize": isMobile ? 10 : 12,
+      "scalesProperties.fontSize": isMobile ? 14 : 12,
       
       // Time axis
       "timeScale.backgroundColor": "rgba(22, 16, 40, 1)",
@@ -115,44 +115,38 @@ export function getChartConfig(params: {
       
       // Volume
       "volumePaneSize": "medium",
-      ...(isMobile && {
-        'paneProperties.legendProperties.showStudyArguments': true,
-        'paneProperties.legendProperties.showStudyTitles': true,
-        'scalesProperties.fontSize': 11,
-        'timeScale.fontSize': 11,
-        "scalesProperties.showLeftScale": false,
-        "scalesProperties.showRightScale": true,
-        "scalesProperties.seriesIgnoreTimeScale": true,
-        "priceScale.autoScale": true,
-        "priceScale.formatAmount": 3,
-        "priceScale.mode": 0,
-        "paneProperties.rightMargin": 8,
-        "paneProperties.leftMargin": 8,
-        "scalesProperties.textColor": "#9ca3af",
-        "scalesProperties.fontSize": 11,
-        "mainSeriesProperties.minTick": "0.0001",
-        "mainSeriesProperties.priceFormat.type": "price",
-        "mainSeriesProperties.priceFormat.minMove": 0.0001,
-        "mainSeriesProperties.priceFormat.maxMove": 0.0001,
-        "mainSeriesProperties.priceFormat.precision": 4,
-        "priceFormat.precision": 4,
-        "priceFormat.minMove": 0.0001,
-      }),
       ...(isMobile ? {
-        "paneProperties.topMargin": 8,
-        "paneProperties.bottomMargin": 8,
-        "paneProperties.leftAxisMargin": 8,
-        "paneProperties.rightAxisMargin": 8,
+        "paneProperties.topMargin": 12,
+        "paneProperties.bottomMargin": 12,
+        "paneProperties.leftAxisMargin": 12,
+        "paneProperties.rightAxisMargin": 12,
         
-        "scalesProperties.fontSize": 11,
+        // Price display settings
+        "scalesProperties.fontSize": 14,
         "scalesProperties.textColor": "#9ca3af",
         "scalesProperties.lineColor": "rgba(255, 255, 255, 0.1)",
+        "scalesProperties.showLeftScale": false,
+        "scalesProperties.showRightScale": true,
         
-        "timeScale.fontSize": 11,
+        // Price format settings
+        "priceScale.autoScale": true,
+        "priceScale.formatAmount": 6,
+        "priceFormat.type": "price",
+        "priceFormat.precision": 6,
+        "priceFormat.minMove": 0.000001,
+        
+        // Time scale settings
+        "timeScale.fontSize": 14,
         "timeScale.rightOffset": 5,
         "timeScale.leftOffset": 5,
-        "timeScale.spacingPercentage": 0.5,
         
+        // Other mobile-specific settings
+        "paneProperties.legendProperties.showLegend": true,
+        "paneProperties.legendProperties.showStudyArguments": true,
+        "paneProperties.legendProperties.showStudyTitles": true,
+        "volumePaneSize": "small",
+        
+        // Candle style settings
         "mainSeriesProperties.candleStyle.drawWick": true,
         "mainSeriesProperties.candleStyle.drawBorder": true,
         "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
@@ -160,15 +154,11 @@ export function getChartConfig(params: {
         "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
         "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
         
-        "paneProperties.legendProperties.showLegend": true,
-        "paneProperties.legendProperties.showStudyArguments": true,
-        "paneProperties.legendProperties.showStudyTitles": true,
-        
-        "volumePaneSize": "small",
-        
+        // Grid settings
         "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.15)",
         "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.15)",
         
+        // Crosshair settings
         "crossHairProperties.color": "#9ca3af",
         "crossHairProperties.width": 1,
         "crossHairProperties.style": 2,

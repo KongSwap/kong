@@ -127,7 +127,7 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
     // });
 
     if (price24hAgo === 0) {
-      return "NEW";
+      return "n/a";
     }
 
     if (currentPrice === 0) {
@@ -143,10 +143,18 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
 
 // Helper to validate and convert timestamps
 function ensureValidTimestamp(timestamp: number): number {
+  // Handle NaN or undefined timestamps
+  if (isNaN(timestamp) || timestamp == null) {
+    console.warn(`Invalid timestamp encountered: ${timestamp}. Using current time.`);
+    return Math.floor(Date.now() / 1000);
+  }
+
   // If timestamp is 0 or negative, return current time
   if (timestamp <= 0) return Math.floor(Date.now() / 1000);
+
   // If timestamp is in milliseconds, convert to seconds
   if (timestamp > 1e10) return Math.floor(timestamp / 1000);
+
   return Math.floor(timestamp);
 }
 
@@ -390,12 +398,12 @@ export async function getHistoricalPrice(
       }
     }
 
-    // if (price === 0) {
-    //   console.log(`[${token.symbol}] No price found through any path for token:`, {
-    //     symbol: token.symbol,
-    //     canisterId: token.canister_id
-    //   });
-    // }
+    if (price === 0) {
+      console.log(`[${token.symbol}] No price found through any path for token:`, {
+        symbol: token.symbol,
+        canisterId: token.canister_id
+      });
+    }
 
     return price;
   } catch (error) {
