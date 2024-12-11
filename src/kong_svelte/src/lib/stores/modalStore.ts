@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { v4 as uuidv4 } from 'uuid';
+import hyperid from 'hyperid';
 import type { ComponentType, SvelteComponent } from 'svelte';
 
 export interface ModalConfig {
@@ -10,6 +10,8 @@ export interface ModalConfig {
     closeOnClickOutside?: boolean;
     closeOnEscape?: boolean;
 }
+
+const generateId = hyperid({ urlSafe: true });
 
 function createModalStore() {
     const { subscribe, update } = writable<ModalConfig[]>([]);
@@ -23,7 +25,7 @@ function createModalStore() {
             closeOnEscape?: boolean;
         } = {}
     ): string => {
-        const id = uuidv4();
+        const id = generateId();
         const modal: ModalConfig = {
             id,
             component,

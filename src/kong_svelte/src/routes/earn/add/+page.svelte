@@ -1,432 +1,268 @@
 <script lang="ts">
-  import { TokenService } from "$lib/services/tokens/TokenService";
-  import { PoolService } from "$lib/services/pools/PoolService";
-  import { onMount } from "svelte";
-  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
-  import { get } from "svelte/store";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
-  import TokenSelectionModal from "$lib/components/liquidity/add_liquidity/TokenSelectionModal.svelte";
-  import { debounce } from "lodash-es";
-  import {
-    parseTokenAmount,
-    formatTokenAmount,
-  } from "$lib/utils/numberFormatUtils";
-  import { goto, replaceState } from "$app/navigation";
   import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
+  import { PoolService } from "$lib/services/pools/PoolService";
+  import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { poolStore } from "$lib/services/pools/poolStore";
   import { auth } from "$lib/services/auth";
+  import { browser } from "$app/environment";
+    import { toastStore } from "$lib/stores/toastStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
-  let amount0: string = "";
-  let amount1: string = "";
+  let amount0 = "";
+  let amount1 = "";
   let loading = false;
   let error: string | null = null;
-  let poolShare: string = "0";
-  let token0Balance: string = "0";
-  let token1Balance: string = "0";
-  let isProcessingOutput = false;
-
-  // Modal state variables
-  let statusSteps = [
-    { label: "Sending Tokens", completed: false },
-    { label: "Updating LPs", completed: false },
-    { label: "Success", completed: false },
-  ];
-
-  let showTokenModal = false;
-  let activeTokenIndex: 0 | 1 = 0;
-  let searchQuery = "";
-  let tokens: FE.Token[] = [];
-
-  let activeInput: 0 | 1 | null = null;
-  let statusMessage: string = "";
-
+  let token0Balance = "0";
+  let token1Balance = "0";
+  let pool: BE.Pool | null = null;
   let previewMode = false;
+  let showConfirmation = false;
 
-  // Add confirmation modal state
-  let showReview = false;
+  $: {
+    if ($formattedTokens) {
+      initializeFromParams();
+    }
+  }
 
-  // Handle URL parameters
-  async function initializeFromParams() {
-    const token0Id = $page.url.searchParams.get("token0");
-    const token1Id = $page.url.searchParams.get("token1");
+  $: {
+    // Update balances when tokens change
+    if (token0) {
+      token0Balance = $tokenStore.balances[token0.canister_id]?.in_tokens?.toString() || "0";
+    }
+    if (token1) {
+      token1Balance = $tokenStore.balances[token1.canister_id]?.in_tokens?.toString() || "0";
+    }
+  }
 
-    if (token0Id || token1Id) {
-      const allTokens = get(formattedTokens);
-
-      if (token0Id) {
-        const foundToken0 = allTokens.find((t) => t.canister_id === token0Id);
-        if (foundToken0) {
-          token0 = foundToken0;
-        }
-      }
-
-      if (token1Id) {
-        const foundToken1 = allTokens.find((t) => t.canister_id === token1Id);
-        if (foundToken1) {
-          token1 = foundToken1;
-        }
+  $: {
+    // When either token changes, try to fetch pool info and update URL
+    if (token0 || token1) {
+      updateURL();
+      if (token0 && token1) {
+        fetchPoolInfo();
+      } else {
+        pool = null;
       }
     }
   }
 
-  onMount(async () => {
+  async function fetchPoolInfo() {
     try {
-      await Promise.all([initializeFromParams()]);
-      tokens = get(formattedTokens);
+      const pools = $poolStore.pools;
+      pool = pools.find(
+        p => (p.address_0 === token0?.canister_id && p.address_1 === token1?.canister_id) ||
+             (p.address_0 === token1?.canister_id && p.address_1 === token0?.canister_id)
+      ) || null;
     } catch (err) {
-      console.error("Error initializing:", err);
-      error = "Failed to initialize tokens";
+      console.error('Error fetching pool info:', err);
+      toastStore.error(err.message || "Failed to fetch pool info", 8000, "Error");
+      pool = null;
     }
-  });
+  }
+
+  async function initializeFromParams() {
+    if(!browser) return;
+
+    const searchParams = $page.url.searchParams;
+    const token0Address = searchParams.get("token0");
+    const token1Address = searchParams.get("token1");
+
+    if (token0Address && $formattedTokens) {
+        const selectedToken = $formattedTokens.find((t) => t.canister_id === token0Address);
+        if (selectedToken && (!token0 || token0.canister_id !== token0Address)) {
+            token0 = selectedToken;
+        }
+    }
+
+    if (token1Address && $formattedTokens) {
+        const selectedToken = $formattedTokens.find((t) => t.canister_id === token1Address);
+        if (selectedToken && (!token1 || token1.canister_id !== token1Address)) {
+            token1 = selectedToken;
+        }
+    }
+  }
+
+  function updateURL() {
+    const searchParams = new URLSearchParams();
+    if (token0) searchParams.set("token0", token0.canister_id);
+    if (token1) searchParams.set("token1", token1.canister_id);
+    goto(`?${searchParams.toString()}`, { replaceState: true });
+  }
 
   function handleTokenSelect(index: 0 | 1) {
-    activeTokenIndex = index;
-    searchQuery = ""; // Reset search query
-    showTokenModal = true;
+    // Token selection is now handled in AddLiquidityForm
   }
 
-  function closeModal() {
-    showTokenModal = false;
-    searchQuery = ""; // Reset search query when closing
-  }
-
-  function selectToken(token: FE.Token) {
-    if (activeTokenIndex === 0) {
-      token0 = token;
-    } else {
-      token1 = token;
-    }
-    closeModal();
-    error = null;
-  }
-
-  // Debounced calculation to prevent excessive API calls
-  const debouncedCalculate = debounce(async (amount: string, index: 0 | 1) => {
-    if (!amount || isNaN(parseFloat(amount))) {
-      if (index === 0) amount1 = "";
-      else amount0 = "";
-      return;
-    }
-    await calculateLiquidityAmount(amount, index);
-  }, 300);
-
-  function handleInput(index: 0 | 1, value: string) {
+  async function handleInput(index: 0 | 1, value: string) {
     if (index === 0) {
-      amount0 = value;
+        amount0 = value;
+        if (pool && value && token0 && token1) {
+            try {
+                const parsedAmount0 = parseTokenAmount(value, token0.decimals);
+                const result = await PoolService.calculateLiquidityAmounts(
+                    token0.symbol,
+                    BigInt(parsedAmount0),
+                    token1.symbol
+                );
+                if (result.Ok) {
+                    amount1 = formatTokenAmount(result.Ok.amount_1.toString(), token1.decimals);
+                }
+            } catch (err) {
+                console.error("Error calculating amounts:", err);
+                toastStore.error(err.message || "Failed to calculate amounts", 8000, "Error");
+            }
+        }
     } else {
-      amount1 = value;
+        amount1 = value;
+        // Similar calculation for amount0 when amount1 changes
+        // You'd need to modify calculateLiquidityAmounts to support calculating amount0
+        // based on amount1 input, or create a new method for this
     }
-    activeInput = index;
-    debouncedCalculate(value, index);
-  }
-
-  async function calculateLiquidityAmount(amount: string, index: 0 | 1) {
-    if (!token0 || !token1) {
-      error = "Please select both tokens.";
-      return;
-    }
-
-    try {
-      loading = true;
-      error = null;
-      isProcessingOutput = true;
-
-      const balance0 = $tokenStore.balances[token0.canister_id];
-      const balance1 = $tokenStore.balances[token1.canister_id];
-
-      if (index === 0) {
-        const requiredAmount = await PoolService.addLiquidityAmounts(
-          token0.token,
-          parseTokenAmount(amount, token0.decimals),
-          token1.token,
-        );
-
-        const requiredAmount1 = requiredAmount.Ok.amount_1;
-
-        // Check if token1 amount exceeds balance
-        if (balance1.in_tokens - token1.fee < requiredAmount1) {
-          // If it exceeds, calculate backwards from token1's max balance
-          const reverseAmount = await PoolService.addLiquidityAmounts(
-            token1.token,
-            balance1.in_tokens - token1.fee,
-            token0.token,
-          );
-          amount0 = formatTokenAmount(
-            reverseAmount.Ok.amount_1,
-            token0.decimals,
-          ).toString();
-          amount1 = formatTokenAmount(
-            (balance1.in_tokens - token1.fee).toString(),
-            token1.decimals,
-          ).toString();
-        } else {
-          amount1 = formatTokenAmount(
-            (requiredAmount1 - token1.fee).toString(),
-            token1.decimals,
-          ).toString();
-        }
-      } else {
-        const requiredAmount = await PoolService.addLiquidityAmounts(
-          token1.token,
-          parseTokenAmount(amount, token1.decimals),
-          token0.token,
-        );
-
-        const requiredAmount0 = requiredAmount.Ok.amount_1;
-
-        // Check if token0 amount exceeds balance
-        if (balance0.in_tokens - token0.fee < requiredAmount0) {
-          // If it exceeds, calculate backwards from token0's max balance
-          const reverseAmount = await PoolService.addLiquidityAmounts(
-            token0.token,
-            balance0.in_tokens - token0.fee,
-            token1.token,
-          );
-          amount0 = formatTokenAmount(
-            (balance0.in_tokens - token0.fee).toString(),
-            token0.decimals,
-          ).toString();
-          amount1 = formatTokenAmount(
-            reverseAmount.Ok.amount_1,
-            token1.decimals,
-          ).toString();
-        } else {
-          amount0 = formatTokenAmount(
-            (requiredAmount0 - token0.fee).toString(),
-            token0.decimals,
-          ).toString();
-        }
-      }
-    } catch (err) {
-      error = err.message;
-    } finally {
-      loading = false;
-      isProcessingOutput = false;
-    }
+    error = null;
   }
 
   async function handleSubmit() {
-    showReview = true;
-  }
-
-  function handleCancel() {
-    showReview = false;
-  }
-
-  async function handleConfirm() {
-    showReview = false;
-    loading = true;
-    error = null;
-    previewMode = true;
-    statusMessage = "Submitting liquidity request...";
-    statusSteps = statusSteps.map((step) => ({ ...step, completed: false }));
-
     try {
-      const params = {
-        token_0: token0,
-        amount_0: parseTokenAmount(amount0, token0.decimals),
-        token_1: token1,
-        amount_1: parseTokenAmount(amount1, token1.decimals),
-      };
-
-      const requestId = await PoolService.addLiquidity(params);
-
-      // Poll for request status
-      const checkStatus = async () => {
-        try {
-          const requestStatus = await PoolService.pollRequestStatus(requestId);
-          updateStatusSteps(requestStatus.statuses);
-
-          // Check for failure states first
-          if (
-            requestStatus.statuses.some(
-              (s) =>
-                s.toLowerCase().includes("failed") ||
-                s.toLowerCase().includes("error"),
-            )
-          ) {
-            loading = false;
-            previewMode = false;
-            error = requestStatus.statuses[requestStatus.statuses.length - 2];
-            // Add failed status to steps
-            statusSteps = statusSteps.map((step) => ({
-              ...step,
-              completed: false,
-              failed: true,
-            }));
+        console.log("Starting handleSubmit...");
+        if (!token0 || !token1 || !amount0 || !amount1) {
+            error = "Please fill in all fields";
             return;
-          }
-
-          if (requestStatus.statuses.includes("Success")) {
-            loading = false;
-            setTimeout(() => {
-              previewMode = false;
-              goto("/pools");
-            }, 2000);
-          } else {
-            // Continue polling
-            setTimeout(checkStatus, 2000);
-          }
-        } catch (err) {
-          console.error("Error polling request status:", err);
-          statusMessage = "Error polling request status: " + err.message;
-          loading = false;
-          error = err.message;
-          previewMode = false;
-          // Mark all incomplete steps as failed
-          statusSteps = statusSteps.map((step) => ({
-            ...step,
-            failed: !step.completed,
-          }));
         }
-      };
 
-      checkStatus(); // Start polling
-    } catch (err) {
-      console.error("Error adding liquidity:", err);
-      error = err.message;
-      loading = false;
-      previewMode = false;
-      // Mark all steps as failed
-      statusSteps = statusSteps.map((step) => ({
-        ...step,
-        completed: false,
-        failed: true,
-      }));
-    }
-  }
+        loading = true;
+        error = null;
 
-  function updateStatusSteps(rawStatuses: string[]) {
-    const stepsToMatch = {
-      "Sending Tokens": [
-        "Sending token 0",
-        "Token 0 sent",
-        "Sending token 1",
-        "Token 1 sent",
-      ],
-      "Updating LPs": [
-        "Updating liquidity pool",
-        "Liquidity pool updated",
-        "Updating user LP token amount",
-        "User LP token amount updated",
-      ],
-      Success: ["Success"],
-    };
-
-    // Check for any failure states in the raw statuses
-    const hasFailure = rawStatuses.some(
-      (status) =>
-        status.toLowerCase().includes("failed") ||
-        status.toLowerCase().includes("error"),
-    );
-
-    // Update steps based on latest statuses
-    statusSteps = statusSteps.map((step) => {
-      const matches = stepsToMatch[step.label];
-      const isCompleted = matches.every((match) =>
-        rawStatuses.some((status) => status.includes(match)),
-      );
-
-      // Special case for "Sending Tokens"
-      if (step.label === "Sending Tokens") {
-        const token0Sent = rawStatuses.includes("Token 0 sent");
-        const token1Sent = rawStatuses.includes("Token 1 sent");
-        const token0Failed = rawStatuses.some(
-          (s) => s.includes("Token 0") && s.includes("failed"),
-        );
-        const token1Failed = rawStatuses.some(
-          (s) => s.includes("Token 1") && s.includes("failed"),
-        );
-
-        return {
-          ...step,
-          completed: token0Sent && token1Sent,
-          failed: token0Failed || token1Failed,
+        const params = {
+            token_0: token0,
+            amount_0: parseTokenAmount(amount0, token0.decimals),
+            token_1: token1,
+            amount_1: parseTokenAmount(amount1, token1.decimals),
         };
-      }
 
-      return {
-        ...step,
-        completed: isCompleted,
-        failed: hasFailure && !isCompleted,
-      };
-    });
-  }
+        toastStore.info("Adding liquidity...", 7000);
+        const requestId = await PoolService.addLiquidity(params);
 
-  async function updateBalances() {
-    if (!token0 || !token1) return;
+        // Start polling
+        console.log("Starting polling...");
+        pollStatus(requestId, 1);
 
-    try {
-      const balances = await TokenService.fetchBalances([token0, token1]);
-      if (token0) {
-        token0Balance =
-          balances[token0.canister_id]?.in_tokens.toString() || "0";
-      }
-      if (token1) {
-        token1Balance =
-          balances[token1.canister_id]?.in_tokens.toString() || "0";
-      }
     } catch (err) {
-      console.error("Error fetching balances:", err);
+        console.error("Error adding liquidity:", err);
+        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        loading = false;
+        error = err.message;
+        showConfirmation = false;
     }
   }
 
-  $: if (token0 || token1) {
-    const params = new URLSearchParams();
-    if (token0) params.set("token0", token0.canister_id);
-    if (token1) params.set("token1", token1.canister_id);
-    const newUrl = `/pools/add${params.toString() ? "?" + params.toString() : ""}`;
-    replaceState(newUrl, null);
-    updateBalances();
+  async function pollStatus(requestId: bigint, attempt = 1) {
+    try {
+        const MAX_ATTEMPTS = 50;
+        console.log(`Polling for request status... (attempt ${attempt}/10)`);
+        const status = await PoolService.pollRequestStatus(requestId);
+        console.log('Request status:', status);
+        
+        if (status.statuses.includes('Success')) {
+            console.log('Success status found, showing toast');
+            toastStore.success("Successfully added liquidity to the pool", 5000, "Success");
+            await poolStore.loadUserPoolBalances();
+            showConfirmation = false;
+            loading = false;
+            goto("/earn");
+        } else if (status.statuses.some(s => 
+            s.toLowerCase().includes('failed') || 
+            s.toLowerCase().includes('error')
+        )) {
+            console.log('Error status found, throwing error');
+            const errorMsg = status.statuses[status.statuses.length - 1];
+            toastStore.error(errorMsg, 8000, "Error");
+            showConfirmation = false;
+            loading = false;
+            throw new Error(errorMsg);
+        } else if (attempt >= MAX_ATTEMPTS) {
+            console.log('Maximum polling attempts reached');
+            toastStore.error(`Operation timed out after ${MAX_ATTEMPTS} attempts`, 8000, "Error");
+            showConfirmation = false;
+            loading = false;
+            throw new Error("Operation timed out");
+        } else {
+            console.log('Still pending, polling again in .5s');
+            return new Promise((resolve) => {
+                setTimeout(() => resolve(pollStatus(requestId, attempt + 1)), 400);
+            });
+        }
+    } catch (err) {
+        console.error("Error during polling:", err);
+        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        showConfirmation = false;
+        loading = false;
+        throw err;
+    }
   }
 
-  function getCurrentStep(): string {
-    const currentStep = statusSteps.find((step) => !step.completed);
-    return currentStep ? currentStep.label : "Success";
+  function handleBack() {
+    goto("/earn");
   }
 </script>
 
-<!-- Main content -->
-<div class="mx-auto p-4 max-w-3xl w-full">
-  <div
-    class="min-w-3xl w-full flex flex-col justify-center p-4 md:p-6 space-y-8 mt-32"
-  >
-    <div
-      class="bg-white dark:bg-emerald-900/70 dark:bg-opacity-80 dark:backdrop-blur-md rounded-2xl shadow-lg p-6 w-full"
-    >
-      <AddLiquidityForm
-        {token0}
-        {token1}
-        {amount0}
-        {amount1}
-        {loading}
-        {previewMode}
-        {error}
-        {statusSteps}
-        {showReview}
-        {token0Balance}
-        {token1Balance}
-        {getCurrentStep}
-        onTokenSelect={handleTokenSelect}
-        onInput={handleInput}
-        onSubmit={handleSubmit}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        {isProcessingOutput}
-      />
-    </div>
+<div class="container">
+  <div class="header">
+    <button class="back-button" on:click={handleBack}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      <span>Back to Pools</span>
+    </button>
+  </div>
+
+  <div class="form-container">
+    <AddLiquidityForm
+      bind:token0
+      bind:token1
+      bind:amount0
+      bind:amount1
+      bind:loading
+      bind:error
+      bind:showConfirmation
+      token0Balance={token0Balance}
+      token1Balance={token1Balance}
+      onTokenSelect={handleTokenSelect}
+      onInput={handleInput}
+      onSubmit={handleSubmit}
+      pool={pool}
+    />
   </div>
 </div>
 
-<!-- Token selection modal -->
-<TokenSelectionModal
-  show={showTokenModal}
-  {tokens}
-  helperText={activeTokenIndex === 1
-    ? "Only ICP and ckUSDT pairs are supported"
-    : ""}
-  bind:searchQuery
-  onClose={closeModal}
-  onSelect={selectToken}
-/>
+<style lang="postcss">
+  .container {
+    @apply max-w-2xl mx-auto px-4 py-6 w-full;
+  }
+
+  .header {
+    @apply mb-8 flex flex-col gap-4;
+  }
+
+  .back-button {
+    @apply flex items-center gap-2 text-white/60 hover:text-white 
+             transition-colors duration-200 w-fit;
+  }
+
+  h1 {
+    @apply text-2xl font-semibold text-white;
+  }
+
+  @media (max-width: 640px) {
+    .container {
+      @apply px-2 py-4;
+    }
+
+    .header {
+      @apply mb-4;
+    }
+  }
+</style>

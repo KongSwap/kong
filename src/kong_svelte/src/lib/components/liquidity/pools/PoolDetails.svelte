@@ -2,24 +2,32 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
-  import Button from "$lib/components/common/Button.svelte";
   import { goto } from "$app/navigation";
-  import type { Position } from "$lib/types";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import PoolList from "$lib/components/sidebar/PoolList.svelte";
 
   export let pool: BE.Pool;
   export let tokenMap: Map<string, any>;
   export let onClose: () => void;
-  export let positions: Position[] = [];
+  export let positions: BE.Position[] = [];
   export let showModal: boolean;
 
-  let activeTab: 'details' | 'add-liquidity' | 'positions' = 'details';
-  
-  const tabs = [
-    { id: 'details', label: 'Pool Details' },
-    { id: 'positions', label: 'Your Positions' },
-    { id: 'add-liquidity', label: 'Add Liquidity' }
-  ];
+  $: token0 = tokenMap.get(pool.address_0);
+  $: token1 = tokenMap.get(pool.address_1);
+  $: apyColor = pool.rolling_24h_apy > 100 ? "#FFD700" : 
+                pool.rolling_24h_apy > 50 ? "#FFA500" : "#FF8C00";
+
+  let activeTab = positions.length > 0 ? 'positions' : 'info';
+
+  // Helper function to format bigint values to USD
+  function formatBigIntToUSD(value: bigint): string {
+    return formatToNonZeroDecimal(Number(value) / 1e6);
+  }
+
+  function handleClose() {
+      showModal = false;
+      onClose();
+  }
 
   function handleSwap() {
     if (pool.address_0 && pool.address_1) {
@@ -27,19 +35,19 @@
     }
   }
 
-  $: token0 = tokenMap.get(pool.address_0);
-  $: token1 = tokenMap.get(pool.address_1);
-  $: apyColor = pool.rolling_24h_apy > 100 ? "#FFD700" : 
-                pool.rolling_24h_apy > 50 ? "#FFA500" : "#FF8C00";
-
-  function handleClose() {
-      showModal = false;
-      onClose();
+  function handleAddLiquidity() {
+    if (pool.address_0 && pool.address_1) {
+      goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
+    }
   }
+
+  let showPositions = false;
+
+  $: poolName = `${pool.symbol_0}/${pool.symbol_1}`;
 </script>
 
 <Modal
-  show={showModal}
+  isOpen={showModal}
   title="Pool Details"
   onClose={handleClose}
   variant="green"
@@ -47,125 +55,102 @@
 >
   <div class="pool-details">
     <div class="pool-header">
-      <div class="token-info">
-        <TokenImages tokens={[token0, token1]} overlap={12} />
-        <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
+      <div class="header-content">
+        <div class="token-info">
+          <TokenImages tokens={[token0, token1]} overlap={12} size={32} />
+          <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
+        </div>
       </div>
       
       <div class="quick-actions">
-        <Button variant="green" size="small" text="Swap" onClick={handleSwap} />
+        <button class="action-btn add-liquidity" on:click={handleAddLiquidity}>
+          Add Liquidity
+        </button>
+        <button class="action-btn swap" on:click={handleSwap}>
+          Swap
+        </button>
       </div>
     </div>
 
     <div class="tabs">
-      {#each tabs as tab}
-        <button
-          class="tab-btn {activeTab === tab.id ? 'active' : ''}"
-          on:click={() => activeTab = tab.id as any}
-        >
-          {tab.label}
-        </button>
-      {/each}
+      <button
+        class="tab-button"
+        class:active={!showPositions}
+        on:click={() => showPositions = false}
+      >
+        Info
+      </button>
+      <button
+        class="tab-button"
+        class:active={showPositions}
+        on:click={() => showPositions = true}
+      >
+        Your Positions
+      </button>
     </div>
 
-    {#if activeTab === 'details'}
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span class="stat-label">TVL</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.tvl)}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">24h Volume</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">APY</span>
-          <span class="stat-value apy" style="color: {apyColor}">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Fee</span>
-          <span class="stat-value">{pool.lp_fee_bps / 100}%</span>
-        </div>
-      </div>
+    <div class="tab-content">
+      {#if showPositions}
+        <PoolList initialSearch={poolName} />
+      {:else}
+        <div class="info-content">
+          <div class="stats-grid">
+            <div class="stat-item full-width">
+              <span class="stat-label">TVL</span>
+              <span class="stat-value">${formatUsdValue(Number(pool.tvl) / (10 ** 6))}</span>
+            </div>
+            <div class="stat-item full-width">
+              <span class="stat-label">24h Volume</span>
+              <span class="stat-value">${formatBigIntToUSD(pool.rolling_24h_volume)}</span>
+            </div>
+            <div class="stat-row">
+              <div class="stat-item flex-1">
+                <span class="stat-label">APY</span>
+                <span class="stat-value apy" style="color: {apyColor}">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
+              </div>
+              <div class="stat-item flex-1">
+                <span class="stat-label">Fee</span>
+                <span class="stat-value">{pool.lp_fee_bps / 100}%</span>
+              </div>
+            </div>
+          </div>
 
-      <div class="pool-reserves">
-        <h4>Pool Reserves</h4>
-        <div class="reserves-grid">
-          <div class="reserve-item">
-            <TokenImages tokens={[token0]} />
-            <div class="reserve-info">
-              <span class="token-symbol">{pool.symbol_0}</span>
-              <span class="token-amount">{formatTokenAmount(pool.balance_0, token0?.decimals || 8)}</span>
-            </div>
-          </div>
-          <div class="reserve-item">
-            <TokenImages tokens={[token1]} />
-            <div class="reserve-info">
-              <span class="token-symbol">{pool.symbol_1}</span>
-              <span class="token-amount">{formatTokenAmount(pool.balance_1, token1?.decimals || 8)}</span>
+          <div class="pool-reserves">
+            <h4>Pool Reserves</h4>
+            <div class="reserves-grid">
+              <div class="reserve-item">
+                <TokenImages tokens={[token0]} size={24} />
+                <div class="reserve-info">
+                  <span class="token-symbol">{pool.symbol_0}</span>
+                  <span class="token-amount">{formatTokenAmount(pool.balance_0.toString(), token0?.decimals || 8)}</span>
+                </div>
+              </div>
+              <div class="reserve-item">
+                <TokenImages tokens={[token1]} size={24} />
+                <div class="reserve-info">
+                  <span class="token-symbol">{pool.symbol_1}</span>
+                  <span class="token-amount">{formatTokenAmount(pool.balance_1.toString(), token1?.decimals || 8)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    {:else if activeTab === 'positions'}
-      <div class="positions-container">
-        {#if positions.length === 0}
-          <div class="empty-state">
-            <p>You don't have any positions in this pool yet.</p>
-            <Button 
-              variant="green" 
-              size="small" 
-              text="Add Liquidity" 
-              onClick={() => activeTab = 'add-liquidity'} 
-            />
-          </div>
-        {:else}
-          {#each positions as position}
-            <div class="position-item">
-              <div class="position-header">
-                <span class="position-label">Position #{position.id}</span>
-                <span class="position-value">${formatToNonZeroDecimal(position.value)}</span>
-              </div>
-              <div class="position-tokens">
-                <div class="token-amount">
-                  <TokenImages tokens={[token0]} />
-                  <span>{formatTokenAmount(position.amount0, token0?.decimals)} {pool.symbol_0}</span>
-                </div>
-                <div class="token-amount">
-                  <TokenImages tokens={[token1]} />
-                  <span>{formatTokenAmount(position.amount1, token1?.decimals)} {pool.symbol_1}</span>
-                </div>
-              </div>
-            </div>
-          {/each}
-        {/if}
-      </div>
-    {:else if activeTab === 'add-liquidity'}
-      <AddLiquidityForm
-        token0={token0}
-        token1={token1}
-        amount0=""
-        amount1=""
-        loading={false}
-        previewMode={false}
-        error={null}
-        token0Balance="0"
-        token1Balance="0"
-        onTokenSelect={() => {}}
-        onInput={() => {}}
-        onSubmit={() => {}}
-      />
-    {/if}
+      {/if}
+    </div>
   </div>
 </Modal>
 
 <style lang="postcss">
   .pool-details {
-    @apply flex flex-col gap-6;
+    @apply flex flex-col gap-4;
   }
 
   .pool-header {
-    @apply flex justify-between items-center;
+    @apply flex flex-col gap-4 mb-4;
+  }
+
+  .header-content {
+    @apply flex items-center justify-between;
   }
 
   .token-info {
@@ -173,62 +158,74 @@
   }
 
   .token-pair {
-    @apply text-xl font-semibold text-white m-0;
+    @apply text-xl font-medium text-white;
   }
 
-  .tabs {
-    @apply flex gap-8 mb-6 relative;
-    &::after {
-      content: '';
-      @apply absolute bottom-0 left-0 right-0 h-[1px] bg-white/20;
-    }
+  .quick-actions {
+    @apply flex gap-2 w-full;
   }
 
-  .tab-btn {
-    @apply px-2 py-3 text-white/60 relative cursor-pointer font-medium;
-    @apply bg-transparent border-none transition-colors;
-    @apply hover:text-white;
+  .action-btn {
+    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 flex-1;
+  }
 
-    &.active {
-      @apply text-white;
-      &::after {
-        content: '';
-        @apply absolute bottom-0 left-0 right-0 h-[2px] bg-white;
-        z-index: 1;
-      }
-    }
+  .action-btn.add-liquidity {
+    @apply bg-[#60A5FA]/20 text-[#60A5FA] border border-[#60A5FA]/30
+           hover:bg-[#60A5FA]/30 hover:border-[#60A5FA]/50;
+  }
+
+  .action-btn.swap {
+    @apply bg-white/10 text-white/70 border border-white/10
+           hover:bg-white/20 hover:border-white/20 hover:text-white;
   }
 
   .stats-grid {
-    @apply grid grid-cols-2 md:grid-cols-4 gap-4;
+    @apply flex flex-col gap-4 mb-4;
+  }
+
+  .stat-row {
+    @apply flex gap-4;
   }
 
   .stat-item {
-    @apply bg-emerald-900/50 rounded-lg p-4 flex flex-col;
+    @apply flex flex-col gap-1 p-3 rounded-lg bg-[#2a2d3d]/50;
+  }
+
+  .stat-item.full-width {
+    @apply w-full;
   }
 
   .stat-label {
-    @apply text-sm text-white/60;
+    @apply text-sm text-[#8890a4];
   }
 
   .stat-value {
     @apply text-lg font-medium text-white;
   }
 
-  .pool-reserves {
-    @apply mt-6;
+  .tabs {
+    @apply flex gap-2 p-1 bg-[#2a2d3d]/30 rounded-lg mb-4;
+  }
+
+  .tab-button {
+    @apply flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+           text-white/70 hover:text-white hover:bg-white/5;
+  }
+
+  .tab-button.active {
+    @apply bg-[#2a2d3d] text-white;
   }
 
   .pool-reserves h4 {
-    @apply text-lg font-medium text-white mb-4;
+    @apply text-sm text-[#8890a4] mb-3;
   }
 
   .reserves-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+    @apply flex flex-col gap-2;
   }
 
   .reserve-item {
-    @apply flex items-center gap-3 bg-emerald-900/30 rounded-lg p-4;
+    @apply flex items-center gap-3 p-3 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .reserve-info {
@@ -236,42 +233,37 @@
   }
 
   .token-symbol {
-    @apply text-sm text-white/80;
+    @apply text-sm text-[#8890a4];
   }
 
   .token-amount {
     @apply text-white font-medium;
   }
 
-  .positions-container {
-    @apply flex flex-col gap-4;
-  }
+  /* Desktop styles */
+  @media (min-width: 640px) {
+    .pool-header {
+      @apply flex-row justify-between items-center;
+    }
 
-  .empty-state {
-    @apply flex flex-col items-center gap-4 py-8 text-white/60;
-  }
+    .quick-actions {
+      @apply w-auto;
+    }
 
-  .position-item {
-    @apply bg-emerald-900/30 rounded-lg p-4 flex flex-col gap-3;
-  }
+    .action-btn {
+      @apply w-auto flex-initial min-w-[120px];
+    }
 
-  .position-header {
-    @apply flex justify-between items-center;
-  }
+    .stats-grid {
+      @apply grid grid-cols-2;
+    }
 
-  .position-label {
-    @apply text-white/60 text-sm;
-  }
+    .stat-item.full-width {
+      @apply col-span-1;
+    }
 
-  .position-value {
-    @apply text-white font-medium;
-  }
-
-  .position-tokens {
-    @apply flex flex-col gap-2;
-  }
-
-  .token-amount {
-    @apply flex items-center gap-2 text-white;
+    .stat-row {
+      @apply col-span-2;
+    }
   }
 </style>

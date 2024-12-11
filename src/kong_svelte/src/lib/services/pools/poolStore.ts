@@ -5,6 +5,7 @@ import { tokenStore } from '$lib/services/tokens/tokenStore';
 import BigNumber from 'bignumber.js';
 import { get } from 'svelte/store';
 import { auth } from '../auth';
+import { eventBus } from '$lib/services/tokens/eventBus';
 
 interface PoolState {
   pools: BE.Pool[];
@@ -72,15 +73,6 @@ function createPoolStore() {
           newPoolsMap.set(pool.id, pool);
         });
 
-        tokenStore.update(state => ({
-          ...state,
-          tokens: state.tokens.map(token => ({
-            ...token,
-            pools: pools.filter(p => p.address_0 === token.canister_id),
-            total_24h_volume: BigInt(pools.filter(p => p.address_0 === token.canister_id).reduce((acc, p) => acc + BigInt(p.rolling_24h_volume), 0n)),
-          }))
-        }));
-
         // Update the stable store first
         stablePoolsStore.set(pools);
 
@@ -103,6 +95,10 @@ function createPoolStore() {
         cache.lastFetch = Date.now();
         console.log('[PoolStore] Pools data updated successfully');
 
+        // Emit event for token store to update if needed
+        eventBus.emit('poolsUpdated', pools);
+
+        return pools;
       } catch (error) {
         console.error('[PoolStore] Error loading pools:', error);
         update(state => ({
@@ -110,6 +106,7 @@ function createPoolStore() {
           error: error instanceof Error ? error.message : 'Unknown error',
           isLoading: false
         }));
+        throw error;
       }
     },
 
@@ -138,9 +135,27 @@ function createPoolStore() {
       update(state => ({ ...state, isLoading: true, error: null }));
       const pnp = get(auth);
       const tokens = get(tokenStore);
+      
+      console.log('[PoolStore] Loading user pool balances...');
+      console.log('[PoolStore] Auth state:', { 
+        isConnected: pnp.isConnected, 
+        hasAccount: !!pnp.account,
+        accountOwner: pnp.account?.owner 
+      });
+
       try {
-        const [balances, tokenPrices] = await Promise.all([
-          pnp.isConnected ? PoolService.fetchUserPoolBalances() : [],
+        if (!pnp.isConnected) {
+          update(state => ({
+            ...state,
+            userPoolBalances: [],
+            isLoading: false,
+            error: null
+          }));
+          return;
+        }
+
+        const [balancesResponse, tokenPrices] = await Promise.all([
+          PoolService.fetchUserPoolBalances(),
           tokens.prices
         ]);
 
@@ -148,20 +163,52 @@ function createPoolStore() {
           throw new Error('Token prices are not available');
         }
 
+        // Process the response
+        const balances = Array.isArray(balancesResponse) ? balancesResponse : 
+                        balancesResponse && 'Ok' in balancesResponse ? balancesResponse.Ok : [];
+        
+        // Process each balance item
+        const processedBalances = balances.map(item => {
+          const lpData = item.LP || item;
+          // Find matching pool to get the pool ID
+          const matchingPool = get(poolsList).find(p => 
+            p.symbol_0 === lpData.symbol_0 && 
+            p.symbol_1 === lpData.symbol_1
+          );
+          
+          return {
+            name: lpData.name,
+            symbol: lpData.symbol || `${lpData.symbol_0}/${lpData.symbol_1}`,
+            symbol_0: lpData.symbol_0,
+            symbol_1: lpData.symbol_1,
+            balance: lpData.balance,
+            tvl: lpData.tvl,
+            amount_0: lpData.amount_0,
+            amount_1: lpData.amount_1,
+            usd_balance: lpData.usd_balance,
+            usd_amount_0: lpData.usd_amount_0,
+            usd_amount_1: lpData.usd_amount_1,
+            ts: lpData.ts,
+            pool_id: matchingPool?.pool_id
+          };
+        }).filter(Boolean);
+
         // Update the store with processed balances
         update(state => ({
           ...state,
-          userPoolBalances: balances || [],
+          userPoolBalances: processedBalances,
           isLoading: false,
           error: null
         }));
+
+        console.log('[PoolStore] Updated user pool balances:', processedBalances);
       } catch (error) {
-        console.error('Error loading user pool balances:', error);
+        console.error('[PoolStore] Error loading user pool balances:', error);
         update(state => ({
           ...state,
           userPoolBalances: [],
           isLoading: false,
-          error: 'Failed to load pool balances'
+          error: error instanceof Error ? error.message : 'Failed to load pool balances'
         }));
       }
     },
@@ -207,3 +254,10 @@ export const userPoolBalances: Readable<FE.UserPoolBalance[]> = derived(
   poolStore,
   ($store) => $store.userPoolBalances
 );
+
+export const displayPools = derived(poolsList, ($pools) => {
+  return $pools.map(pool => ({
+    ...pool,
+    displayTvl: Number(pool.tvl) / 1e6
+  }));
+});

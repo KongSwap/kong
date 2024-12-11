@@ -2,18 +2,11 @@
     import { fly, fade } from 'svelte/transition';
     import { toastStore, type Toast } from '$lib/stores/toastStore';
 
-    const colors = {
-        success: 'bg-green-500',
-        error: 'bg-red-500', 
-        warning: 'bg-amber-500',
-        info: 'bg-blue-500'
-    };
-
-    const textColors = {
-        success: 'text-white',
-        error: 'text-white',
-        warning: 'text-gray-900',
-        info: 'text-white'
+    const styles = {
+        success: 'bg-emerald-500/90 border-emerald-400',
+        error: 'bg-rose-500/90 border-rose-400',
+        warning: 'bg-amber-500/90 border-amber-400',
+        info: 'bg-blue-500/90 border-blue-400'
     };
 
     function dismissToast(id: string) {
@@ -21,57 +14,62 @@
     }
 </script>
 
-<div class="fixed top-20 right-4 z-[10000] flex flex-col items-end gap-3 max-w-lg">
+<div class="toast-wrapper">
     {#each $toastStore as toast (toast.id)}
         <div
-            class="toast-container cursor-pointer"
-            in:fly={{ x: 150, duration: 400 }}
-            out:fade={{ duration: 300 }}
+            class="w-full"
+            in:fly={{ x: 150, duration: 300 }}
+            out:fade={{ duration: 200 }}
             on:click={() => dismissToast(toast.id)}
         >
-            <div class="toast {colors[toast.type]}">
+            <div class="toast-container {styles[toast.type]}">
                 <div class="content">
                     {#if toast.title}
-                        <div class="title {textColors[toast.type]}">{toast.title}</div>
+                        <div class="title">{toast.title}</div>
                     {/if}
-                    <div class="message {textColors[toast.type]}">{toast.message}</div>
+                    <div class="message">{toast.message}</div>
                 </div>
             </div>
         </div>
     {/each}
 </div>
 
-<style>
-    .toast-container {
-        @apply pointer-events-auto overflow-hidden shadow-lg;
-        border: 2px solid #000;
-        border-radius: 0;
-        box-shadow: 3px 3px 0 #000;
+<style lang="postcss">
+    .toast-wrapper {
+        @apply fixed top-4 right-4 z-[999999] flex flex-col items-end gap-2 max-w-md;
+        isolation: isolate;
+        transform: translateZ(0);
+        will-change: transform;
+        pointer-events: none;
     }
 
-    .toast {
-        @apply flex items-start;
-        padding: 12px;
+    .toast-container {
+        @apply cursor-pointer rounded-lg border shadow-lg text-white;
+        @apply transition-all duration-200 hover:translate-y-[-2px] hover:shadow-xl;
+        @apply flex items-start p-4;
+        pointer-events: auto;
+        transform: translateZ(1px);
+        backface-visibility: hidden;
+        -webkit-font-smoothing: antialiased;
     }
 
     .content {
         @apply flex-1;
-        padding: 4px;
     }
 
     .title {
-        @apply text-sm font-bold uppercase tracking-wider;
-        margin-bottom: 4px;
+        @apply font-medium text-sm mb-1;
     }
 
     .message {
-        @apply text-sm;
+        @apply text-sm opacity-90;
         line-height: 1.4;
     }
 
-    .close-button {
-        @apply ml-4 flex-shrink-0 inline-flex;
-        padding: 4px;
-        border: 1px solid currentColor;
+    /* Mobile responsiveness */
+    @media (max-width: 640px) {
+        .toast-container {
+            @apply mx-2 p-3;
+        }
     }
 </style>

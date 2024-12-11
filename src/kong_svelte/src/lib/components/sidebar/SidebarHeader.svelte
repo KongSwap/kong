@@ -31,7 +31,7 @@
     if (!isRefreshing) {
       isRefreshing = true;
       try {
-        await tokenStore.loadBalances($auth?.account?.owner);
+        await tokenStore.loadBalances($auth?.account?.owner, true);
       } finally {
         isRefreshing = false;
       }
@@ -48,10 +48,10 @@
 <svelte:window bind:innerWidth={windowWidth} />
 
 <header class="min-w-[250px] backdrop-blur-md">
-  <div class="flex flex-col gap-3 p-1">
+  <div class="flex flex-col gap-2 py-2">
     {#if $auth.isConnected}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
-        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-144px)]">
+        <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-72px)]">
           <button
             class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-white font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
             on:click={() => accountStore.showAccountDetails()}
@@ -75,17 +75,6 @@
           </button>
         </div>
         <div class="flex gap-2">
-          <button
-            class="expand-btn border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
-            on:click={() => sidebarStore.toggleExpand()}
-            aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            {#if isExpanded}
-              <Minimize2 size={22} />
-            {:else}
-              <Maximize2 size={22} />
-            {/if}
-          </button>
           <button
             class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={handleDisconnect}
@@ -130,14 +119,14 @@
           </button>
         </div>
       </div>
-      <div class="portfolio-value mt-4">
+      <div class="portfolio-value">
         <button
           class="portfolio-refresh-button"
           on:click={handleReload}
           aria-label="Refresh Portfolio Value"
         >
-          <h3 class="text-xs uppercase font-semibold">Portfolio Value</h3>
-          <p class="text-3xl font-bold font-mono">
+          <h3 class="text-xs uppercase font-semibold">Total Value</h3>
+          <p class="text-2xl font-bold font-mono">
             {#if isRefreshing}
               <LoadingIndicator />
             {:else}
@@ -149,25 +138,23 @@
           </div>
         </button>
       </div>
-      <nav class="grid grid-cols-3 gap-2 p-1">
+      <nav class="grid grid-cols-3 rounded-lg overflow-hidden">
         {#each tabs as tab (tab)}
           <button
-            class="self-center text-center justify-center bg-transparent w-full flex items-center border-none p-2 text-gray-100 font-alumni text-xl font-semibold cursor-pointer transition-all duration-200 ease-in-out relative"
-            class:bg-black={activeTab === tab}
-            class:text-lime-300={activeTab === tab}
+            class="tab-button relative py-2.5 px-4 text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-white"
+            class:active-tab={activeTab === tab}
             on:click={() => setActiveTab(tab)}
             role="tab"
             aria-selected={activeTab === tab}
             aria-controls={`${tab}-panel`}
             id={`${tab}-tab`}
           >
-            {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 mr-1.5 object-contain" />
-            {/if}
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            <div class="flex items-center justify-center gap-2 sm:text-base text-sm">
               {#if activeTab === tab}
-                <img src={`/stats/banana.webp`} class="w-5 h-5 ml-1.5 object-contain" />
-            {/if}
+              🍌
+              {/if}
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </div>
           </button>
         {/each}
       </nav>
@@ -212,14 +199,6 @@
     text-align: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    transition: transform 0.2s ease;
-    :hover {
-      backdrop-filter: blur(10px);
-    }
-  }
-
-  .portfolio-value:hover {
-    transform: scale(1.02);
   }
 
   .portfolio-refresh-button {
@@ -229,7 +208,7 @@
     cursor: pointer;
     position: relative;
     overflow: hidden;
-    padding: 12px;
+    padding: 8px;
     border-radius: 6px;
     transition: all 0.2s ease;
     z-index: 0;
@@ -253,35 +232,73 @@
     color: white;
     gap: 8px;
     z-index: 1;
+    pointer-events: none;
   }
 
   .refresh-overlay :global(svg) {
     transition: transform 0.3s ease;
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
-    transform: rotate(180deg);
+  @media (hover: hover) {
+    .portfolio-refresh-button:hover .refresh-overlay {
+      opacity: 0.85;
+    }
+
+    .portfolio-refresh-button:hover .refresh-overlay :global(svg) {
+      transform: rotate(180deg);
+    }
   }
 
-  .portfolio-refresh-button:hover .refresh-overlay,
-  .portfolio-refresh-button:focus-visible .refresh-overlay {
-    opacity: 0.85;
-    backdrop-filter: blur(7px);
+  @media (hover: none) {
+    .portfolio-value {
+      background: rgba(255, 255, 255, 0.1);
+      transition: none;
+    }
+
+    .portfolio-refresh-button {
+      transition: none;
+    }
+
+    .refresh-overlay {
+      display: none;
+    }
+
+    .portfolio-refresh-button:active {
+      transform: none;
+    }
   }
 
+  .tab-button {
+    background: rgba(0, 0, 0, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .tab-button:last-child {
+    border-right: none;
+  }
+
+  .tab-button:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .active-tab {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: #3b82f6 !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  }
 
   @keyframes glow {
     0% {
-      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
-                  0 0 20px rgba(163, 230, 53, 0.2);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3),
+                  0 0 20px rgba(59, 130, 246, 0.2);
     }
     50% {
-      box-shadow: 0 0 20px rgba(163, 230, 53, 0.6),
-                  0 0 40px rgba(163, 230, 53, 0.4);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.6),
+                  0 0 40px rgba(59, 130, 246, 0.4);
     }
     100% {
-      box-shadow: 0 0 10px rgba(163, 230, 53, 0.3),
-                  0 0 20px rgba(163, 230, 53, 0.2);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3),
+                  0 0 20px rgba(59, 130, 246, 0.2);
     }
   }
 
@@ -289,14 +306,6 @@
     animation: glow 2s ease-in-out infinite;
     border-radius: 6px;
     z-index: 2;
-  }
-
-  .portfolio-refresh-button:hover .refresh-overlay {
-    opacity: 0.85;
-  }
-
-  .glow {
-    animation: glow-animation 2s infinite alternate;
   }
 
   @keyframes glow-animation {

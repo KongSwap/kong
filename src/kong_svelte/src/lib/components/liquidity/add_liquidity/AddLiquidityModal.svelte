@@ -5,7 +5,6 @@
     import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
     import { get } from "svelte/store";
     import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
-    import TokenSelectionModal from "$lib/components/liquidity/add_liquidity/TokenSelectionModal.svelte";
     import { debounce } from "lodash-es";
     import { parseTokenAmount, formatTokenAmount } from "$lib/utils/numberFormatUtils";
     import { goto, replaceState } from '$app/navigation';
@@ -156,17 +155,17 @@
           const requiredAmount1 = requiredAmount.Ok.amount_1;
 
           // Check if token1 amount exceeds balance
-          if (balance1.in_tokens - token1.fee < requiredAmount1) {
+          if (balance1.in_tokens - BigInt(token1.fee_fixed) < requiredAmount1) {
             // If it exceeds, calculate backwards from token1's max balance
             const reverseAmount = await PoolService.addLiquidityAmounts(
               token1.token,
-              balance1.in_tokens - token1.fee,
+              balance1.in_tokens - BigInt(token1.fee_fixed),
               token0.token,
             );
             amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals).toString();
-            amount1 = formatTokenAmount((balance1.in_tokens - token1.fee).toString(), token1.decimals).toString();
+            amount1 = formatTokenAmount((balance1.in_tokens - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
           } else {
-            amount1 = formatTokenAmount((requiredAmount1 - token1.fee).toString(), token1.decimals).toString();
+            amount1 = formatTokenAmount((requiredAmount1 - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
           }
         } else {
           const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -178,17 +177,17 @@
           const requiredAmount0 = requiredAmount.Ok.amount_1;
 
           // Check if token0 amount exceeds balance
-          if (balance0.in_tokens - token0.fee < requiredAmount0) {
+          if (balance0.in_tokens - BigInt(token0.fee_fixed) < requiredAmount0) {
             // If it exceeds, calculate backwards from token0's max balance
             const reverseAmount = await PoolService.addLiquidityAmounts(
               token0.token,
-              balance0.in_tokens - token0.fee,
+              balance0.in_tokens - BigInt(token0.fee_fixed),
               token1.token,
             );
-            amount0 = formatTokenAmount((balance0.in_tokens - token0.fee).toString(), token0.decimals).toString();
+            amount0 = formatTokenAmount((balance0.in_tokens - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
             amount1 = formatTokenAmount(reverseAmount.Ok.amount_1, token1.decimals).toString();
           } else {
-            amount0 = formatTokenAmount((requiredAmount0 - token0.fee).toString(), token0.decimals).toString();
+            amount0 = formatTokenAmount((requiredAmount0 - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
           }
         }
       } catch (err) {
@@ -225,6 +224,11 @@
 
           const requestId = await PoolService.addLiquidity(params);
 
+          await Promise.all([
+            tokenStore.loadBalance(token0, $auth?.account?.owner?.toString(), true),
+            tokenStore.loadBalance(token1, $auth?.account?.owner?.toString(), true)
+          ])
+
           // Poll for request status
           const checkStatus = async () => {
               try {
@@ -254,11 +258,12 @@
                       loading = false;
                       setTimeout(() => {
                           previewMode = false;
+                          showReview = false;
                           goto('/pools');
-                      }, 2000);
+                      }, 1000);
                   } else {
                       // Continue polling
-                      setTimeout(checkStatus, 2000);
+                      setTimeout(checkStatus, 500);
                   }
               } catch (err) {
                   console.error("Error polling request status:", err);
@@ -380,13 +385,6 @@
     }
   </script>
 
-  <Modal
-    isOpen={showModal}
-    onClose={onClose}
-    title="Add Liquidity"
-    variant="green"
-    width="600px"
-  >
     <AddLiquidityForm
       bind:token0
       bind:token1
@@ -399,21 +397,7 @@
       onTokenSelect={handleTokenSelect}
       onInput={handleInput}
       onSubmit={handleConfirm}
-      previewMode={previewMode}
     />
-  </Modal>
-
-  {#if showTokenModal}
-    <TokenSelectionModal
-      show={showTokenModal}
-      onSelect={selectToken}
-      onClose={closeModal}
-      currentToken={activeTokenIndex === 0 ? token1?.canister_id : token0?.canister_id}
-    />
-  {/if}
 
   <style lang="postcss">
-    :global(.modal-body) {
-      @apply p-0 flex flex-col;
-    }
   </style>

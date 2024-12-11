@@ -5,6 +5,7 @@ import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { getTokenDecimals } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
+import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -14,6 +15,8 @@ export interface SwapState {
   isCalculating: boolean;
   isProcessing: boolean;
   error: string | null;
+  tokenSelectorOpen: 'pay' | 'receive' | null;
+  tokenSelectorPosition: { x: number; y: number; windowWidth: number } | null;
   showPayTokenSelector: boolean;
   showReceiveTokenSelector: boolean;
   showConfirmation: boolean;
@@ -32,7 +35,8 @@ export interface SwapState {
     payToken: FE.Token | null;
     receiveAmount: string;
     receiveToken: FE.Token | null;
-  };
+    principalId: string;
+  } | null;
 }
 
 export interface SwapStore extends Writable<SwapState> {
@@ -48,6 +52,9 @@ export interface SwapStore extends Writable<SwapState> {
   setError(error: string | null): void;
   updateSuccessDetails(details: SwapState['successDetails']): void;
   reset(): void;
+  toggleTokenSelector(type: 'pay' | 'receive'): void;
+  closeTokenSelector(): void;
+  setToken(type: 'pay' | 'receive', token: FE.Token | null): void;
 }
 
 function createSwapStore(): SwapStore {
@@ -59,6 +66,8 @@ function createSwapStore(): SwapStore {
     isCalculating: false,
     isProcessing: false,
     error: null,
+    tokenSelectorOpen: null,
+    tokenSelectorPosition: null,
     showPayTokenSelector: false,
     showReceiveTokenSelector: false,
     showConfirmation: false,
@@ -72,12 +81,7 @@ function createSwapStore(): SwapStore {
       pay: false,
       receive: false
     },
-    successDetails: {
-      payAmount: '',
-      payToken: null,
-      receiveAmount: '',
-      receiveToken: null
-    }
+    successDetails: null
   };
 
   const { subscribe, set, update } = writable<SwapState>(initialState);
@@ -99,12 +103,37 @@ function createSwapStore(): SwapStore {
     isInputExceedingBalance,
 
     initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      const $tokenStore = get(tokenStore);
-      update(state => ({
-        ...state,
-        payToken: initialFromToken || $tokenStore.tokens.find(t => t.symbol === 'ICP') || null,
-        receiveToken: initialToToken || $tokenStore.tokens.find(t => t.symbol === 'ckBTC') || null
-      }));
+      const tokens = get(tokenStore);
+      
+      // If we have initial tokens, use them directly
+      if (initialFromToken && initialToToken) {
+        update(state => ({
+          ...state,
+          payToken: initialFromToken,
+          receiveToken: initialToToken,
+          manuallySelectedTokens: {
+            pay: true,
+            receive: true
+          }
+        }));
+        return;
+      }
+
+      // If we have tokens loaded, set defaults
+      if (tokens.tokens.length > 0) {
+        const defaultPayToken = tokens.tokens.find(t => t.canister_id === ICP_CANISTER_ID);
+        const defaultReceiveToken = tokens.tokens.find(t => t.canister_id === KONG_CANISTER_ID);
+
+        update(state => ({
+          ...state,
+          payToken: initialFromToken || defaultPayToken || null,
+          receiveToken: initialToToken || defaultReceiveToken || null,
+          manuallySelectedTokens: {
+            pay: !!initialFromToken,
+            receive: !!initialToToken
+          }
+        }));
+      }
     },
 
     async setPayAmount(amount: string) {
@@ -188,7 +217,29 @@ function createSwapStore(): SwapStore {
 
     reset() {
       set(initialState);
-    }
+    },
+
+    toggleTokenSelector(type: 'pay' | 'receive') {
+      update(state => ({
+        ...state,
+        tokenSelectorOpen: state.tokenSelectorOpen === type ? null : type
+      }));
+    },
+
+    closeTokenSelector() {
+      update(state => ({
+        ...state,
+        tokenSelectorOpen: null
+      }));
+    },
+
+    setToken(type: 'pay' | 'receive', token: FE.Token | null) {
+      if (type === 'pay') {
+        update(state => ({ ...state, payToken: token }));
+      } else {
+        update(state => ({ ...state, receiveToken: token }));
+      }
+    },
   };
 
   return store;

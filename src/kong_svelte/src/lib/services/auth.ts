@@ -12,9 +12,11 @@ import { idlFactory as icrc2idl } from "../../../../declarations/ckusdt_ledger";
 import { getPnpInstance } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+import { browser } from '$app/environment';
+import { TokenService } from "./tokens";
 
 // Export the list of available wallets
-export const availableWallets = walletsList;
+export const availableWallets = walletsList.filter(w => w.id !== 'oisy');
 
 // Create a store for the selected wallet ID
 export const selectedWalletId = writable<string | null>(null);
@@ -28,59 +30,131 @@ export const canisterIDLs = {
   icrc2: icrc2idl,
 };
 
-// Helper function to create anonymous actor
-// export const createAnonymousActorHelper = async (canisterId: string, idl: any) => {
-//   const agent = HttpAgent.createSync({
-//     host: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://icp0.io",
-//   });
+// Add a constant for the storage key
+const LAST_WALLET_KEY = 'kongSelectedWallet';
 
-//   // Always fetch root key in local development
-//   if (process.env.DFX_NETWORK !== "ic") {
-//     await agent.fetchRootKey().catch(console.error);
-//   }
+export class Auth {
+  private initialized = false;
+  private initializationPromise: Promise<void> | null = null;
+  private authStore: AuthStore;
 
-//   return Actor.createActor(idl as any, {
-//     agent,
-//     canisterId,
-//   });
-// };
+  constructor(authStore: AuthStore) {
+    this.authStore = authStore;
+  }
+
+  public async initialize() {
+    if (this.initialized) {
+      return;
+    }
+
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = (async () => {
+      try {
+        // Use the auth store's initialize method
+        await this.authStore.initialize();
+        this.initialized = true;
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        this.initialized = false;
+        this.initializationPromise = null;
+        throw error;
+      }
+    })();
+
+    return this.initializationPromise;
+  }
+}
 
 function createAuthStore(pnp: PNP) {
-  // Create a single source of truth for the store
   const store = writable({
     isConnected: false,
-    account: null
+    account: null,
+    isInitialized: false  // Add this flag to track initialization state
   });
 
-  const { subscribe, set } = store;
+  const { subscribe, set, update } = store;
+
+  // Add function to get last used wallet
+  const getLastWallet = () => {
+    if (!browser) return null;
+    try {
+      return localStorage.getItem(LAST_WALLET_KEY);
+    } catch (e) {
+      console.warn('Failed to read from localStorage:', e);
+      return null;
+    }
+  };
+
+  // Add function to save last used wallet
+  const saveLastWallet = (walletId: string) => {
+    if (!browser) return;
+    try {
+      localStorage.setItem(LAST_WALLET_KEY, walletId);
+    } catch (e) {
+      console.warn('Failed to write to localStorage:', e);
+    }
+  };
 
   return {
     subscribe,
     pnp,
-    async connect(walletId: string) {
+    
+    // Add initialization function
+    async initialize() {
+      try {
+
+      } catch (error) {
+        console.warn('Auto-reconnect failed:', error);
+      } finally {
+        update(s => ({ ...s, isInitialized: true }));
+      }
+    },
+
+    async connect(walletId: string, isAutoConnect = false) {
       try {
         const result = await pnp.connect(walletId);
         
-        // Check if we have a valid connection result with owner property
-        if (result && 'owner' in result) {
-          // Update the store state
+        if (result && 'owner' in result) {          
           const newState = { 
             isConnected: true,
-            account: result 
+            account: result,
+            isInitialized: true
           };
           set(newState);
 
-          // Force a refresh of the userStore by getting the user data
-          const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false });
-          const userData = await actor.get_user();
+          // Only save wallet if it's not an auto-connect
+          if (!isAutoConnect) {
+            saveLastWallet(walletId);
+          }
+
+          // Force a refresh of the userStore and token balances
+          const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false, requiresSigning: false });
+          
+          try {
+            const [_, balances] = await Promise.all([
+              actor.get_user(),
+              TokenService.fetchBalances(null, result.owner.toString())
+            ]);
+            tokenStore.updateBalances(balances);
+            return result;
+          } catch (error) {
+            console.error('Error fetching user data or balances:', error);
+            localStorage.removeItem("kongSelectedWallet");
+            throw error;
+          }
         } else {
           console.log("Invalid connection result:", result);
-          set({ isConnected: false, account: null });
+          set({ isConnected: false, account: null, isInitialized: true });
+          localStorage.removeItem("kongSelectedWallet");
+          return null;
         }
-        return result;
       } catch (error) {
         console.error('Connection error:', error);
-        set({ isConnected: false, account: null });
+        set({ isConnected: false, account: null, isInitialized: true });
+        localStorage.removeItem("kongSelectedWallet");
         throw error;
       }
     },
@@ -88,7 +162,20 @@ function createAuthStore(pnp: PNP) {
     async disconnect() {
       try {
         const result = await pnp.disconnect();
-        set({ isConnected: false, account: null });
+        set({ isConnected: false, account: null, isInitialized: true });
+        // zero out token balances
+        tokenStore.update(state => ({
+          ...state,
+          balances: Object.keys(state.balances).reduce((acc, key) => {
+            acc[key] = { in_tokens: 0n, in_usd: '0' };
+            return acc;
+          }, {} as Record<string, TokenBalance>),
+        }));
+        // Clear saved wallet on disconnect
+        if (browser) {
+          localStorage.removeItem(LAST_WALLET_KEY);
+        }
+        
         return result;
       } catch (error) {
         console.error('Disconnect error:', error);
@@ -130,7 +217,12 @@ function createAuthStore(pnp: PNP) {
 }
 
 export type AuthStore = ReturnType<typeof createAuthStore>;
-export const auth = createAuthStore(getPnpInstance());
+
+// Create the auth store instance
+const authStore = createAuthStore(getPnpInstance());
+
+// Create Auth class instance with the store
+export const auth = authStore;
 
 // Create a writable store for user data
 const userDataStore = writable<any>(null);
@@ -143,6 +235,8 @@ export const userStore = {
 export async function requireWalletConnection(): Promise<void> {
   const pnp = get(auth);
   const connected = pnp.isConnected;
+  console.log("REQUIRE WALLET CONNECTION - IS CONNECTED?", connected);
+  console.log("REQUIRE WALLET CONNECTION - ACCOUNT", pnp.account);
   if (!connected) {
     throw new Error('Wallet is not connected.');
   }

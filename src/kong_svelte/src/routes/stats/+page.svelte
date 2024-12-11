@@ -1,371 +1,615 @@
 <script lang="ts">
   import { writable, derived } from "svelte/store";
-  import { t } from "$lib/services/translations";
   import Panel from "$lib/components/common/Panel.svelte";
-  import TableHeader from "$lib/components/common/TableHeader.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import Clouds from "$lib/components/stats/Clouds.svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { poolStore } from "$lib/services/pools/poolStore";
-  import { auth } from "$lib/services/auth";
+  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { poolStore } from "$lib/services/pools";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { filterTokens, sortTableData } from "$lib/utils/statsUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
-  import { flip } from "svelte/animate";
   import debounce from "lodash-es/debounce";
-  import { ArrowUpDown, TrendingUp, Droplets, DollarSign, LineChart, BarChart, Coins } from 'lucide-svelte';
-  import { tokensTableHeaders } from "$lib/constants/statsConstants";
+  import {
+    Droplets,
+    DollarSign,
+    BarChart,
+    ArrowUp,
+    ArrowDown,
+    Star,
+    ArrowUpDown,
+  } from "lucide-svelte";
   import { onMount } from "svelte";
-  import { formatDate } from "$lib/utils/dateUtils";
   import { toastStore } from "$lib/stores/toastStore";
-  import Toast from "$lib/components/common/Toast.svelte";
-  import { modalStore } from "$lib/stores/modalStore";
-  import { swapState } from "$lib/services/swap/SwapStateService";
-  import TokenSelectorModal from "$lib/components/swap/swap_ui/TokenSelectorModal.svelte";
+  import { goto } from "$app/navigation";
+  import { auth } from "$lib/services/auth";
+  import {
+    favoriteStore,
+    currentWalletFavorites,
+  } from "$lib/services/tokens/favoriteStore";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
-  // Constants
-  const DEBOUNCE_DELAY = 300;
-  const COPY_TIMEOUT = 1000;
-  const ANIMATION_DURATION = 300;
-  const CHART_DAYS = 7;
-  const CHART_POINTS = 5;
-
-  // Store initialization with TypeScript types
-  interface CopyStates {
-    [key: string]: string;
-  }
-
-  interface MarketStats {
-    totalVolume: string;
-    totalLiquidity: string;
-    totalFees: string;
-  }
-
-  // Base stores
-  const searchQuery = writable<string>("");
-  const activeView = writable<"tokens" | "pools">("tokens");
-  const sortColumnStore = writable<string>("formattedUsdValue");
-  const sortDirectionStore = writable<"asc" | "desc">("desc");
-  const copyStates = writable<CopyStates>({});
-  const selectedTokenId = writable<string | null>(null);
-
-  // Enhanced loading state with type safety
-  const tokensLoading = derived(
-    [tokenStore, poolStore, formattedTokens],
-    ([$tokenStore, $poolStore, $formattedTokens]): boolean => 
-      $tokenStore.isLoading || 
-      $poolStore.isLoading || 
-      !$formattedTokens?.length
-  );
-
-  // Improved error handling with null checks
-  const tokensError = derived(
-    [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]): string | null => 
-      $tokenStore.error || $poolStore.error || null
-  );
-
-  // Enhanced market stats calculation
-  const marketStats = derived<[typeof tokenStore, typeof poolStore], MarketStats>(
-    [tokenStore, poolStore], 
-    ([$tokenStore, $poolStore]) => {
-      const calculateVolume = (pools: any[]): number => {
-        return pools.reduce((acc, pool) => {
-          const volume = Number(pool.rolling_24h_volume || 0n) / 1e8;
-          return acc + volume;
-        }, 0);
-      };
-
-      const calculateLiquidity = (pools: any[]): number => {
-        return pools.reduce((acc, pool) => {
-          const tvl = Number(pool.tvl || 0n) / 1e8;
-          return acc + tvl;
-        }, 0);
-      };
-
-      const calculateFees = (pools: any[]): number => {
-        return pools.reduce((acc, pool) => {
-          const fees = Number(pool.rolling_24h_lp_fee || 0n) / 1e8;
-          return acc + fees;
-        }, 0);
-      };
-
-      return {
-        totalVolume: formatToNonZeroDecimal(calculateVolume($poolStore.pools)),
-        totalLiquidity: formatToNonZeroDecimal(calculateLiquidity($poolStore.pools)),
-        totalFees: formatToNonZeroDecimal(calculateFees($poolStore.pools))
-      };
-    }
-  );
-
-  // Enhanced token stats with better type safety
-  const tokenStats = derived(tokenStore, ($tokenStore) => {
-    const calculateActiveTokens = (tokens: any[], balances: any): number => {
-      return tokens?.filter(token => 
-        balances[token.canister_id]?.in_tokens > 0n ||
-        token.total_24h_volume > 0n
-      ).length || 0;
+  let isMobile = false;
+  onMount(() => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 768;
     };
-
-    const calculateMarketCap = (tokens: any[], prices: any): number => {
-      return tokens?.reduce((acc, token) => {
-        const price = prices[token.canister_id] || 0;
-        const supply = Number(token.total_supply || 0) / Math.pow(10, token.decimals || 8);
-        return acc + (price * supply);
-      }, 0) || 0;
-    };
-
-    return {
-      totalTokens: $tokenStore.tokens?.length || 0,
-      activeTokens: calculateActiveTokens($tokenStore.tokens, $tokenStore.balances),
-      marketCap: formatToNonZeroDecimal(calculateMarketCap($tokenStore.tokens, $tokenStore.prices))
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
     };
   });
 
-  // Enhanced clipboard functionality with better error handling
-  async function copyToClipboard(tokenId: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(tokenId);
-      toastStore.success("Token ID copied to clipboard!", 2000);
-    } catch (error) {
-      console.error("Copy failed:", error);
-      toastStore.error("Failed to copy token ID", 2000);
-    }
-  }
+  // Store for toggling between all tokens and favorites only
+  const showFavoritesOnly = writable(false);
+  const activeStatsSection = writable<"tokens" | "marketStats">("tokens");
+  const DEBOUNCE_DELAY = 300;
+  const searchQuery = writable<string>("");
+  const sortColumnStore = writable<string>("marketCap"); // Changed default sort to marketCap
+  const sortDirectionStore = writable<"asc" | "desc">("desc");
+  const previousPrices = writable<{ [key: string]: number }>({});
 
-  // Debounced search with proper typing
+  onMount(async () => {
+    await tokenStore.loadFavorites();
+  });
+
+  const tokensLoading = derived(
+    [formattedTokens, poolStore],
+    ([$formattedTokens, $poolStore]): boolean => {
+      const formattedTokensInitialLoading =
+        !$formattedTokens ||
+        !Array.isArray($formattedTokens) ||
+        $formattedTokens.length === 0;
+
+      const poolStoreInitialLoading =
+        !$poolStore ||
+        !$poolStore.pools ||
+        $poolStore.pools.length === 0 ||
+        $poolStore.isLoading;
+
+      return formattedTokensInitialLoading || poolStoreInitialLoading;
+    },
+  );
+
+  const tokensError = derived(
+    [formattedTokens, poolStore],
+    ([$formattedTokens, $poolStore]): string | null => {
+      const formattedTokensError =
+        $formattedTokens &&
+        typeof $formattedTokens === "object" &&
+        "error" in $formattedTokens
+          ? ($formattedTokens.error as string)
+          : null;
+      const poolStoreError =
+        $poolStore && typeof $poolStore === "object" && "error" in $poolStore
+          ? ($poolStore.error as string)
+          : null;
+      return formattedTokensError || poolStoreError || null;
+    },
+  );
+
   const debouncedSearch = debounce((value: string) => {
     searchQuery.set(value);
   }, DEBOUNCE_DELAY);
 
-  // Derived store for filtered and sorted tokens with improved performance
-  const filteredSortedTokens = derived(
-    [formattedTokens, searchQuery, sortColumnStore, sortDirectionStore],
-    ([$formattedTokens, $searchQuery, $sortColumn, $sortDirection]) => {
-      if (!$formattedTokens) return [];
-      
-      const filtered = filterTokens($formattedTokens, $searchQuery);
-      return sortTableData(filtered, $sortColumn, $sortDirection);
-    }
+  function handleSearch(event: Event) {
+    const target = event.target as HTMLInputElement;
+    debouncedSearch(target.value);
+  }
+
+  async function toggleFavorite(token: FE.Token, event: MouseEvent) {
+    event.stopPropagation();
+    await favoriteStore.toggleFavorite(token.canister_id);
+  }
+
+  const filteredTokens = derived(
+    [
+      formattedTokens,
+      searchQuery,
+      sortColumnStore,
+      sortDirectionStore,
+      showFavoritesOnly,
+      currentWalletFavorites,
+      auth
+    ],
+    ([
+      $formattedTokens,
+      $searchQuery,
+      $sortColumn,
+      $sortDirection,
+      $showFavoritesOnly,
+      $currentWalletFavorites,
+      $auth
+    ]) => {
+      let tokens = $formattedTokens;
+
+      // If showing favorites only:
+      if ($showFavoritesOnly) {
+        // If not connected, no favorites to show
+        if (!$auth.isConnected) {
+          return { tokens: [], showFavoritesPrompt: true };
+        }
+
+        // Filter tokens by favorites
+        tokens = tokens.filter((token) =>
+          $currentWalletFavorites.includes(token.canister_id),
+        );
+
+        // If user has no favorites
+        if (tokens.length === 0) {
+          return { tokens: [], noFavorites: true };
+        }
+      } else {
+        // Show all tokens and apply search filter
+        if ($searchQuery) {
+          const query = $searchQuery.toLowerCase();
+          tokens = tokens.filter(
+            (token) =>
+              token.name.toLowerCase().includes(query) ||
+              token.symbol.toLowerCase().includes(query),
+          );
+        }
+      }
+
+      // Apply sorting
+      tokens = [...tokens].sort((a, b) => {
+        let aValue, bValue;
+
+        switch ($sortColumn) {
+          case "price":
+            aValue = Number(a?.metrics?.price) || 0;
+            bValue = Number(b?.metrics?.price) || 0;
+            break;
+          case "price_change_24h":
+            aValue = Number(a?.metrics?.price_change_24h) || 0;
+            bValue = Number(b?.metrics?.price_change_24h) || 0;
+            break;
+          case "volume_24h":
+            aValue = Number(a?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
+            bValue = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
+            break;
+          case "marketCap":
+            aValue = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+            bValue = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+            break;
+          case "name":
+            return $sortDirection === "asc"
+              ? a.name.localeCompare(b.name)
+              : b.name.localeCompare(a.name);
+          default:
+            aValue = a[$sortColumn] || 0;
+            bValue = b[$sortColumn] || 0;
+        }
+
+        return $sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+      });
+
+      // Sort by market cap again for ranking
+      const tokensByMarketCap = [...$formattedTokens].sort((a, b) => {
+        const aVal = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        const bVal = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        return bVal - aVal;
+      });
+      const marketCapRankings = new Map(
+        tokensByMarketCap.map((token, index) => [token.canister_id, index + 1])
+      );
+
+      tokens = tokens.map(token => ({
+        ...token,
+        marketCapRank: marketCapRankings.get(token.canister_id)
+      }));
+
+      return { tokens };
+    },
   );
 
-  // Mock data for volume chart only
-  const mockVolumeData = writable([
-    { date: '11/20', value: 1250000 },
-    { date: '11/21', value: 980000 },
-    { date: '11/22', value: 1450000 },
-    { date: '11/23', value: 2100000 },
-    { date: '11/24', value: 1680000 },
-    { date: '11/25', value: 1890000 },
-    { date: '11/26', value: 2350000 },
-  ]);
-
-  // Replace the existing volumeData with mock data
-  const volumeData = mockVolumeData;
-
-  function handleTokenSelect(token: FE.Token) {
-    swapState.setPayToken(token);
-    swapState.update(s => ({ ...s, showPayTokenSelector: true }));
+  function toggleSort(column: string) {
+    if ($sortColumnStore === column) {
+      sortDirectionStore.update(d => d === "asc" ? "desc" : "asc");
+    } else {
+      sortColumnStore.set(column);
+      sortDirectionStore.set("desc");
+    }
   }
 
-  function handleTokenSelectClose() {
-    swapState.update(s => ({ ...s, showPayTokenSelector: false }));
+  function getSortIcon(column: string) {
+    if ($sortColumnStore !== column) return ArrowUpDown;
+    return $sortDirectionStore === "asc" ? ArrowUp : ArrowDown;
   }
 
-  onMount(() => {
-    // fetchHistoricalData();
-  });
+  function getPriceChangeClass(
+    token: any,
+    $previousPrices: { [key: string]: number },
+  ): string {
+    const prevPrice = $previousPrices[token.canister_id];
+    const currentPrice = token.metrics.price;
+
+    if (prevPrice === undefined || currentPrice === prevPrice) {
+      return "";
+    }
+    return currentPrice > prevPrice ? "price-up" : "price-down";
+  }
+
+  function toggleShowFavorites() {
+    showFavoritesOnly.update(v => !v);
+  }
 </script>
 
-<section class="flex justify-center w-full px-4">
-  <div class="z-10 flex justify-center w-full max-w-[1300px] mx-auto">
-    <div class="flex flex-col w-full gap-6">
-      <!-- Market Overview Panel -->
-      <Panel variant="green" type="main" className="market-stats-panel">
-        <div class="market-stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon-wrapper">
-              <BarChart class="stat-icon" />
-            </div>
-            <div class="stat-content">
-              <h3>Total Volume (24h)</h3>
-              <p>${formatToNonZeroDecimal($marketStats.totalVolume)}</p>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon-wrapper">
-              <Droplets class="stat-icon" />
-            </div>
-            <div class="stat-content">
-              <h3>Total Liquidity</h3>
-              <p>${formatToNonZeroDecimal($marketStats.totalLiquidity)}</p>
+<section class="flex flex-col w-full h-full px-4">
+  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
+
+    {#if isMobile && $activeStatsSection === 'marketStats'}
+      <h2 class="text-xl font-semibold text-white mt-4 mb-2">Market Overview</h2>
+    {/if}
+
+    {#if (!isMobile) || (isMobile && $activeStatsSection === 'marketStats')}
+      <div class="earn-cards">
+        <div class="earn-card">
+          <div class="card-content">
+            <h3>Total Volume (24h)</h3>
+            <div class="apy">
+              ${formatToNonZeroDecimal($poolStore.totals.rolling_24h_volume)}
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon-wrapper">
-              <DollarSign class="stat-icon" />
-            </div>
-            <div class="stat-content">
-              <h3>Total Fees (24h)</h3>
-              <p>${formatToNonZeroDecimal($marketStats.totalFees)}</p>
-            </div>
+          <div class="stat-icon-wrapper">
+            <BarChart class="stat-icon" />
           </div>
         </div>
-      </Panel>
 
-      <!-- Tokens Panel -->
-      <Panel variant="green" type="main" className="content-panel">
-        <div class="flex justify-between items-center mb-4">
-          <div class="flex items-center gap-4">
-            <h3 class="text-white/80 font-medium">Tokens</h3>
-            {#if $tokenStats.totalTokens}
-              <span class="text-sm text-white/50">({$tokenStats.totalTokens} total)</span>
-            {/if}
+        <div class="earn-card">
+          <div class="card-content">
+            <h3>Total Liquidity</h3>
+            <div class="apy">
+              ${formatToNonZeroDecimal($poolStore.totals.tvl)}
+            </div>
           </div>
-          <div class="search-container">
+          <div class="stat-icon-wrapper">
+            <Droplets class="stat-icon" />
+          </div>
+        </div>
+
+        <div class="earn-card">
+          <div class="card-content">
+            <h3>Total Fees (24h)</h3>
+            <div class="apy">
+              ${formatToNonZeroDecimal($poolStore.totals.fees_24h)}
+            </div>
+          </div>
+          <div class="stat-icon-wrapper">
+            <DollarSign class="stat-icon" />
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {#if (!isMobile) || (isMobile && $activeStatsSection === 'tokens')}
+      <Panel variant="green" type="main" className="content-panel flex-1">
+        <div class="h-full overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between mb-4">
             <input
               type="text"
               placeholder="Search tokens..."
-              class="search-input"
-              on:input={(e) => debouncedSearch(e.target.value)}
+              class="flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2 mr-4 min-w-0"
+              on:input={handleSearch}
+              disabled={$showFavoritesOnly} 
             />
-          </div>
-        </div>
-
-        {#if $tokensLoading}
-          <LoadingIndicator />
-        {:else if $tokensError}
-          <div class="error-message">
-            <p>Error loading tokens: {$tokensError}</p>
-            <button 
-              class="retry-button"
-              on:click={() => {
-                tokenStore.loadTokens();
-                poolStore.loadPools();
-              }}
+            <button
+              class="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0
+                     {$showFavoritesOnly
+                       ? 'bg-[#60A5FA] text-white'
+                       : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
+              on:click={toggleShowFavorites}
             >
-              Retry
+              <span class="hidden sm:inline">My Favorites</span>
+              <span class="sm:hidden">Favorites</span>
+              {#if $auth.isConnected && $currentWalletFavorites.length > 0}
+                <span class="ml-1 sm:ml-2 px-2 py-0.5 bg-[#2a2d3d] rounded-full text-xs">
+                  {$currentWalletFavorites.length}
+                </span>
+              {/if}
             </button>
           </div>
-        {:else}
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th class="text-left">Token</th>
-                  <th class="text-right">Price</th>
-                  <th class="text-right">24h Change</th>
-                  <th class="text-right actions-header">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each $filteredSortedTokens as token (token.canister_id)}
-                  <tr 
-                    animate:flip={{ duration: ANIMATION_DURATION }}
-                    class="token-row cursor-pointer"
-                    on:click={() => handleTokenSelect(token)}
-                  >
-                    <td class="token-cell">
-                      <TokenImages 
-                        tokens={[token as FE.Token]} 
-                        containerClass="token-image" 
-                        size={32}
-                      />
-                      <div class="token-info">
-                        <span class="token-name">{token.name}</span>
-                        <span class="token-symbol">{token.symbol}</span>
-                      </div>
-                    </td>
-                    <td class="price-cell" title={formatToNonZeroDecimal(token.price)}>
-                      ${formatToNonZeroDecimal(token.price)}
-                    </td>
-                    <td class="price-change-cell" class:positive={token.price_change_24h > 0} class:negative={token.price_change_24h < 0}>
-                      {token.price_change_24h > 0 ? '+' : ''}{token.price_change_24h?.toFixed(2)}%
-                    </td>
-                    <td class="actions-cell">
-                      <button 
-                        class="copy-button" 
-                        on:click|stopPropagation={() => copyToClipboard(token.canister_id)}
-                        title="Copy token ID"
-                      >
-                        {$copyStates[token.canister_id] || "Copy ID"}
-                      </button>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </Panel>
 
-    </div>
+          {#if $tokensLoading}
+            <LoadingIndicator />
+          {:else if $tokensError}
+            <div class="error-message">
+              <p>Error loading tokens: {$tokensError}</p>
+              <button
+                class="retry-button"
+                on:click={() => {
+                  tokenStore.loadTokens();
+                  poolStore.loadPools();
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          {:else}
+            {#if $filteredTokens.showFavoritesPrompt}
+              <div class="flex flex-col items-center justify-center h-64 text-center">
+                <p class="text-gray-400 mb-4">Connect your wallet to view your favorite tokens</p>
+                <button
+                  class="px-6 py-2 bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                  on:click={() => {
+                    toastStore.info('Connect your wallet to view your favorite tokens', undefined, 'Connect Wallet');
+                  }}
+                >
+                  Connect Wallet
+                </button>
+              </div>
+            {:else if $filteredTokens.noFavorites}
+              <div class="flex flex-col items-center justify-center h-64 text-center">
+                <p class="text-gray-400 mb-4">You have no favorite tokens yet. Mark some tokens as favorites to view them here.</p>
+              </div>
+            {:else}
+              <div class="overflow-auto flex-1 custom-scrollbar">
+                <div class="overflow-auto flex-1 {isMobile ? 'max-h-[calc(100vh-15.9rem)]' : 'max-h-[calc(100vh-20.9rem)]'} custom-scrollbar">
+                  {#if !isMobile}
+                    <!-- Desktop table view -->
+                    <table class="data-table">
+                      <thead class="sticky top-0 bg-[#1a1b23] z-10">
+                        <tr class="h-10 border-b border-[#2a2d3d]">
+                          <th class="text-center px-4 py-2 text-sm font-medium text-[#8890a4] w-12">Rank</th>
+                          <th class="text-left px-4 py-2 text-sm font-medium text-[#8890a4] w-[200px]">Token</th>
+                          <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[120px]" on:click={() => toggleSort("price")}>
+                            Price
+                            <svelte:component this={getSortIcon("price")} class="inline w-3.5 h-3.5 ml-1" />
+                          </th>
+                          <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[100px]" on:click={() => toggleSort("price_change_24h")}>
+                            24h
+                            <svelte:component this={getSortIcon("price_change_24h")} class="inline w-3.5 h-3.5 ml-1" />
+                          </th>
+                          <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[120px]" on:click={() => toggleSort("volume_24h")}>
+                            Vol
+                            <svelte:component this={getSortIcon("volume_24h")} class="inline w-3.5 h-3.5 ml-1" />
+                          </th>
+                          <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[120px]" on:click={() => toggleSort("marketCap")}>
+                            MCap
+                            <svelte:component this={getSortIcon("marketCap")} class="inline w-3.5 h-3.5 ml-1" />
+                          </th>
+                          <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] w-[140px]">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody class="text-base">
+                        {#each $filteredTokens.tokens as token, index (token.canister_id)}
+                          {@const enrichedToken = {
+                            ...token,
+                            metrics: {
+                              ...token.metrics,
+                              price: token.metrics.price.toString(),
+                            },
+                            marketCapRank: token.marketCapRank
+                          } as unknown as FE.Token}
+                          {@const priceChangeClass = enrichedToken?.metrics
+                            ?.price_change_24h
+                            ? Number(enrichedToken.metrics.price_change_24h) > 0
+                              ? "positive"
+                              : "negative"
+                            : ""}
+                          <tr
+                            class="token-row"
+                            on:click={() => goto(`/stats/${enrichedToken.canister_id}`)}
+                          >
+                            <td class="text-center text-[#8890a4]">#{enrichedToken.marketCapRank}</td>
+                            <td class="token-cell">
+                              <div class="token-info flex items-center gap-2">
+                                {#if $auth.isConnected}
+                                  <button
+                                    class="favorite-button {$currentWalletFavorites.includes(enrichedToken.canister_id) ? 'active' : ''}"
+                                    on:click={(e) => toggleFavorite(enrichedToken, e)}
+                                  >
+                                    {#if $currentWalletFavorites.includes(enrichedToken.canister_id)}
+                                      <Star
+                                        class="star-icon filled"
+                                        size={16}
+                                        color="yellow"
+                                        fill="yellow"
+                                      />
+                                    {:else}
+                                      <Star class="star-icon" size={16} />
+                                    {/if}
+                                  </button>
+                                {/if}
+                                <TokenImages
+                                  tokens={[enrichedToken]}
+                                  containerClass="token-image"
+                                  size={24}
+                                />
+                                <span class="token-name">{enrichedToken.name}</span>
+                                <span class="token-symbol">{enrichedToken.symbol}</span>
+                              </div>
+                            </td>
+                            <td class="price-cell text-right">
+                              <span
+                                class={getPriceChangeClass(
+                                  enrichedToken,
+                                  $previousPrices,
+                                )}
+                              >
+                                ${formatToNonZeroDecimal(
+                                  enrichedToken?.price || enrichedToken?.metrics?.price,
+                                )}
+                                {#if getPriceChangeClass(enrichedToken, $previousPrices) === "price-up"}
+                                  <div>
+                                    <ArrowUp class="price-arrow up" size={14} />
+                                  </div>
+                                {:else if getPriceChangeClass(enrichedToken, $previousPrices) === "price-down"}
+                                  <div>
+                                    <ArrowDown class="price-arrow down" size={14} />
+                                  </div>
+                                {/if}
+                              </span>
+                            </td>
+                            <td class="change-cell text-right {priceChangeClass}">
+                              {#if enrichedToken?.metrics?.price_change_24h === null || enrichedToken?.metrics?.price_change_24h === "n/a"}
+                                <span class="text-purple-400">0%</span>
+                              {:else if Number(enrichedToken?.metrics?.price_change_24h) === 0}
+                                <span class="text-slate-400">--</span>
+                              {:else}
+                                <span>
+                                  {formatToNonZeroDecimal(enrichedToken?.metrics?.price_change_24h)}%
+                                </span>
+                              {/if}
+                            </td>
+                            <td class="text-right">
+                              <span>{formatUsdValue(enrichedToken?.metrics?.volume_24h)}</span>
+                            </td>
+                            <td class="text-right">
+                              <span>{formatUsdValue(enrichedToken?.metrics?.market_cap)}</span>
+                            </td>
+                            <td class="actions-cell text-right">
+                              <button
+                                class="action-button ml-auto"
+                                on:click|stopPropagation={() => goto(`/stats/${enrichedToken.canister_id}`)}
+                              >
+                                Details
+                              </button>
+                            </td>
+                          </tr>
+                        {/each}
+                      </tbody>
+                    </table>
+                  {:else}
+                    <!-- Mobile sorting options - Fixed at top -->
+                    <div class="flex items-center gap-2 mb-2 sticky top-0 bg-[#1a1b23] p-2 z-10 border-b border-[#2a2d3d]">
+                      <button 
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
+                        on:click={() => toggleSort("marketCap")}
+                      >
+                        MCap
+                        <svelte:component this={getSortIcon("marketCap")} class="inline w-3.5 h-3.5 ml-1" />
+                      </button>
+                      <button 
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'volume_24h' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
+                        on:click={() => toggleSort("volume_24h")}
+                      >
+                        Vol
+                        <svelte:component this={getSortIcon("volume_24h")} class="inline w-3.5 h-3.5 ml-1" />
+                      </button>
+                      <button 
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'price_change_24h' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
+                        on:click={() => toggleSort("price_change_24h")}
+                      >
+                        24h
+                        <svelte:component this={getSortIcon("price_change_24h")} class="inline w-3.5 h-3.5 ml-1" />
+                      </button>
+                    </div>
+
+                    <!-- Mobile token cards -->
+                    <div class="space-y-2">
+                      {#each $filteredTokens.tokens as token}
+                        <div 
+                          class="token-card"
+                          on:click={() => goto(`/stats/${token.canister_id}`)}
+                        >
+                          <span class="token-rank">#{token.marketCapRank}</span>
+                          <div class="token-card-main">
+                            <!-- Left section: Favorite, Token Icon, Symbol -->
+                            <div class="token-card-left">
+                              {#if $auth.isConnected}
+                                <button
+                                  class="favorite-button-mobile"
+                                  on:click={(e) => toggleFavorite(token, e)}
+                                >
+                                  {#if $currentWalletFavorites.includes(token.canister_id)}
+                                    <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
+                                  {:else}
+                                    <Star class="star-icon" size={14} />
+                                  {/if}
+                                </button>
+                              {/if}
+                              <TokenImages tokens={[token]} size={24} />
+                              <div class="token-info-mobile">
+                                <span class="token-symbol-mobile">{token.symbol}</span>
+                                <div class="token-metrics-row">
+                                  <span>MCap: {formatUsdValue(token?.metrics?.market_cap)}</span>
+                                  <span class="separator">|</span>
+                                  <span>Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="token-card-right">
+                              <span class="token-price">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
+                              {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
+                                <span class="token-change new">NEW</span>
+                              {:else if token?.metrics?.price_change_24h === 0}
+                                <span class="token-change neutral">--</span>
+                              {:else}
+                                <span class="token-change {Number(token?.metrics?.price_change_24h) > 0 ? 'positive' : 'negative'}">
+                                  {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
+                                </span>
+                              {/if}
+                            </div>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+          {/if}
+        </div>
+      </Panel>
+    {/if}
   </div>
 </section>
 
-{#if $swapState.showPayTokenSelector}
-  <TokenSelectorModal
-    show={$swapState.showPayTokenSelector}
-    onClose={handleTokenSelectClose}
-    onSelect={(token) => {
-      swapState.setPayToken(token);
-      handleTokenSelectClose();
-    }}
-  />
+{#if isMobile}
+  <nav class="mobile-nav">
+    <div class="mobile-nav-container">
+      <button 
+        class="mobile-nav-item"
+        class:active={$activeStatsSection === 'tokens'}
+        on:click={() => activeStatsSection.set('tokens')}
+      >
+        <span class="nav-icon">🪙</span>
+        <span class="nav-label">Tokens</span>
+      </button>
+
+      <button 
+        class="mobile-nav-item"
+        class:active={$activeStatsSection === 'marketStats'}
+        on:click={() => activeStatsSection.set('marketStats')}
+      >
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Market Stats</span>
+      </button>
+    </div>
+  </nav>
 {/if}
 
-<style lang="postcss">
-  /* Market Stats Section */
-  .market-stats-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3;
+<style scoped lang="postcss">
+  .earn-cards {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
   }
 
-  .stat-card {
-    @apply flex items-center gap-4 p-4 rounded-lg bg-black/20 
-           backdrop-blur-sm hover:bg-black/30 transition-all duration-200
-           border border-white/10;
+  .earn-card {
+    @apply relative flex items-center justify-between p-6 rounded-lg transition-all duration-200
+           bg-[#1a1b23]/60 border border-[#2a2d3d] text-left
+           hover:bg-[#1e1f2a]/80 hover:border-[#60A5FA]/30 
+           hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
+           backdrop-blur-sm;
+  }
+
+  .card-content h3 {
+    @apply text-[#8890a4] text-sm font-medium;
+  }
+
+  .apy {
+    @apply text-[#60A5FA] font-medium text-2xl mt-2;
   }
 
   .stat-icon-wrapper {
-    @apply p-3 rounded-lg bg-white/10 text-white/80;
+    @apply p-4 rounded-lg bg-[#2a2d3d] text-[#60A5FA];
   }
 
-  .stat-content {
-    @apply flex flex-col;
-  }
-
-  .stat-content h3 {
-    @apply text-sm text-white/60 font-medium;
-  }
-
-  .stat-content p {
-    @apply text-xl font-medium text-white;
-  }
-
-  /* Search Input */
-  .search-container {
-    @apply relative;
-  }
-
-  .search-input {
-    @apply w-64 px-4 py-2 rounded-lg bg-white/5 text-white 
-           placeholder-white/40 border border-white/10 
-           focus:border-white/20 focus:outline-none
-           transition-all duration-200;
-  }
-
-  /* Table Styling */
-  .table-container {
-    @apply overflow-x-auto rounded-lg;
+  .stat-icon {
+    @apply w-5 h-5;
   }
 
   .data-table {
-    @apply w-full border-collapse;
-  }
-
-  .data-table thead th {
-    @apply px-4 py-3 text-left text-sm font-medium text-white/60
-           border-b border-white/10 whitespace-nowrap;
+    @apply w-full border-collapse min-w-[800px] md:min-w-0;
   }
 
   .data-table tbody tr {
@@ -373,156 +617,177 @@
            transition-colors duration-200 cursor-pointer;
   }
 
-  .token-row {
-    @apply relative;
-  }
-
-  .token-row::after {
-    content: "Click to copy ID";
-    @apply absolute right-2 top-1/2 -translate-y-1/2 
-           text-xs text-white/40 opacity-0 transition-opacity duration-200
-           md:hidden;
-  }
-
-  .token-row:active::after {
-    @apply opacity-100;
-  }
-
   .data-table td {
-    @apply px-4 py-3 text-sm text-white/80;
+    @apply px-3 md:px-4 py-3 text-sm text-white/80;
   }
 
-  /* Token Cell Styling */
   .token-cell {
-    @apply flex items-center gap-3;
-    min-width: 180px;
-  }
-
-  @media (max-width: 640px) {
-    .token-cell {
-      min-width: 140px;
-    }
+    @apply flex items-center gap-2 md:gap-3 relative min-w-[180px];
   }
 
   .token-info {
-    @apply flex flex-col;
+    @apply flex-grow truncate;
   }
 
   .token-name {
-    @apply text-white font-medium;
+    @apply text-white font-medium truncate max-w-[120px] md:max-w-none;
   }
 
   .token-symbol {
-    @apply text-sm text-white/60;
+    @apply text-xs md:text-sm text-white/60 hidden sm:inline;
   }
 
-  /* Price Cells */
-  .price-cell {
-    @apply text-right text-white font-medium whitespace-nowrap
-           font-mono tracking-tight;
+  .price-arrow.up {
+    @apply text-green-400;
   }
 
-  .price-change-cell {
-    @apply text-right font-medium whitespace-nowrap;
-    &.positive { @apply text-green-400; }
-    &.negative { @apply text-red-400; }
+  .price-arrow.down {
+    @apply text-red-400;
+  }
+
+  .favorite-button {
+    @apply flex items-center justify-center w-6 h-6 rounded-lg hover:bg-white/10 transition-none;
+  }
+
+  .favorite-button-mobile {
+    @apply flex items-center justify-center w-6 h-6 rounded-lg 
+           hover:bg-white/5 active:bg-white/10 transition-colors duration-150;
+  }
+
+  .change-cell.positive {
+    @apply text-green-400;
+  }
+
+  .change-cell.negative {
+    @apply text-red-400;
+  }
+
+  .retry-button {
+    @apply px-4 py-2 bg-[#2a2d3d] text-white rounded-lg hover:bg-[#2a2d3d]/90 transition-colors duration-200;
+  }
+
+  .action-button {
+    @apply px-4 py-1.5 text-sm rounded
+           bg-white/5 text-white/60 hover:bg-white/10 hover:text-white
+           focus:outline-none focus:ring-2 focus:ring-white/20
+           min-w-[80px];
+  }
+
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-[#1a1b23]/90 border-t border-[#2a2d3d] z-50 backdrop-blur-md;
+  }
+
+  .mobile-nav-container {
+    @apply grid grid-cols-2 h-16;
+  }
+
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center gap-0.5 text-[#8890a4] transition-colors duration-200;
+  }
+
+  .mobile-nav-item.active {
+    @apply text-[#60A5FA];
+  }
+
+  .nav-icon {
+    @apply text-xl;
+  }
+
+  .nav-label {
+    @apply text-xs font-medium;
+  }
+
+  table th {
+    @apply font-medium;
   }
 
   .actions-cell {
-    @apply text-right;
+    @apply flex justify-end px-4;
   }
 
-  .copy-button {
-    @apply px-3 py-1.5 text-xs rounded bg-white/5 text-white/60
-           hover:bg-white/10 hover:text-white transition-all duration-200
-           focus:outline-none focus:ring-2 focus:ring-white/20;
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
 
-  @media (max-width: 768px) {
-    .actions-header,
-    .actions-cell {
-      @apply hidden;
-    }
-
-    .token-name {
-      @apply text-sm;
-    }
-
-    .token-symbol {
-      @apply text-xs;
-    }
-
-    .price-cell,
-    .price-change-cell {
-      @apply text-sm;
-    }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1a1b23;
   }
 
-  /* Responsive Adjustments */
-  @media (max-width: 768px) {
-    .market-stats-grid {
-      @apply grid-cols-1;
-    }
-
-    .search-input {
-      @apply w-full max-w-[200px];
-    }
-
-    .data-table {
-      @apply text-sm;
-    }
-
-    .token-name {
-      @apply text-sm;
-    }
-
-    .token-symbol {
-      @apply text-xs;
-    }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #60A5FA;
+    border-radius: 4px;
+    border: 2px solid #1a1b23;
   }
 
-  @media (max-width: 640px) {
-    .data-table td, 
-    .data-table th {
-      @apply px-2 py-2;
-    }
-
-    .copy-button {
-      @apply hidden;
-    }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
   }
 
-  /* Animations */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .stat-card {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-
-  /* Hover Effects */
-  .stat-card:hover .stat-icon-wrapper {
-    @apply bg-white/15;
-  }
-
-  /* Custom Scrollbar */
-  .table-container {
-    @apply overflow-x-auto;
+  .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: #60A5FA #1a1b23;
   }
 
-  .table-container::-webkit-scrollbar {
-    @apply h-1.5;
+  .token-card {
+    @apply bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-2.5
+           active:bg-[#2a2d3d]/50 transition-colors duration-150
+           hover:border-[#2a2d3d]/80 relative;
   }
 
-  .table-container::-webkit-scrollbar-track {
-    @apply bg-transparent;
+  .token-rank {
+    @apply absolute top-1 left-2 text-xs text-[#8890a4]/70;
   }
 
-  .table-container::-webkit-scrollbar-thumb {
-    @apply bg-white/20 rounded-full hover:bg-white/30;
+  .token-card-main {
+    @apply flex items-center justify-between w-full mt-2;
+  }
+
+  .token-card-left {
+    @apply flex items-center gap-2 flex-1 min-w-0;
+  }
+
+  .token-info-mobile {
+    @apply flex flex-col justify-center min-w-0;
+  }
+
+  .token-symbol-mobile {
+    @apply text-sm text-white font-medium;
+  }
+
+  .token-metrics-row {
+    @apply flex items-center gap-2 text-[10px] text-[#8890a4] mt-0.5;
+  }
+
+  .separator {
+    @apply text-[#8890a4]/50 mx-0.5;
+  }
+
+  .token-card-right {
+    @apply flex flex-col items-end justify-center ml-2;
+  }
+
+  .token-price {
+    @apply font-medium text-white text-sm;
+  }
+
+  .token-change {
+    @apply text-xs font-medium mt-0.5;
+  }
+
+  .token-change.positive {
+    @apply text-green-400;
+  }
+
+  .token-change.negative {
+    @apply text-red-400;
+  }
+
+  .token-change.new {
+    @apply text-purple-400;
+  }
+
+  .token-change.neutral {
+    @apply text-[#8890a4];
   }
 </style>

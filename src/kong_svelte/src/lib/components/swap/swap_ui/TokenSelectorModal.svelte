@@ -42,7 +42,7 @@
         case "ck":
           return token.symbol.toLowerCase().startsWith("ck");
         case "favorites":
-          return $tokenStore.favoriteTokens[walletId]?.includes(token.canister_id);
+          return tokenStore.isFavorite(token.canister_id);
         case "all":
         default:
           return true;
@@ -50,8 +50,20 @@
     })
     .map(token => ({
       ...token,
-      balance: BigInt(token.balance || '0')
+      balance: BigInt(token.balance || '0'),
+      isFavorite: tokenStore.isFavorite(token.canister_id)
     })) as FE.Token[]);
+
+  // Sort tokens to show favorites first
+  $effect(() => {
+    filteredTokens = filteredTokens.sort((a, b) => {
+      // Sort by favorites first
+      if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1;
+      
+      // Then sort by symbol
+      return a.symbol.localeCompare(b.symbol);
+    });
+  });
 
   // Load logos when filtered tokens change
   $effect(() => {

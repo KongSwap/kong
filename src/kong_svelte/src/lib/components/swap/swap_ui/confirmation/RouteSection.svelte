@@ -1,137 +1,168 @@
 <script lang="ts">
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatBalance, formatGasFee } from '$lib/utils/tokenFormatters';
+  import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { tokenStore } from "$lib/services/tokens/tokenStore";
 
   export let routingPath: string[] = [];
-  export let gasFees: string[] = [];
-  export let lpFees: string[] = [];
-  export let payToken: FE.Token;
-  export let receiveToken: FE.Token;
 
-  // Convert routing path to tokens
-  $: tokens = routingPath.map(symbol => 
-    $tokenStore.tokens.find(t => t.symbol === symbol)
-  ).filter((t): t is FE.Token => t !== undefined);
+  $: tokens = routingPath
+    .map(symbol => $tokenStore.tokens.find(t => t.symbol === symbol))
+    .filter((t): t is FE.Token => t !== undefined);
 
-  // Calculate gas fees per token
-  $: formattedGasFees = tokens.map((token, i) => ({
-    token,
-    amount: gasFees[i] || "0",
-  })).filter(fee => fee.amount !== "0");
-
-  // Calculate LP fees per token
-  $: formattedLpFees = tokens.map((token, i) => ({
-    token,
-    amount: lpFees[i] || "0",
-  })).filter(fee => fee.amount !== "0");
+  let selectedToken: FE.Token | null = null;
 </script>
 
-<div class="section">
-  <h3>Route</h3>
-  <div class="path">
-    {#each tokens as token, i}
-      <div class="token">
-        <TokenImages tokens={[token]} size={24} />
-        <span class="symbol">{token.symbol}</span>
-      </div>
-      {#if i < tokens.length - 1}
-        <span class="arrow">→</span>
-      {/if}
-    {/each}
-  </div>
-
-  {#if formattedGasFees.length > 0}
-    <div class="fees">
-      <h4>Network Fees</h4>
-      {#each formattedGasFees as fee}
-        <div class="fee-item">
-          <TokenImages tokens={[fee.token]} size={20} />
-          <span class="fee-amount">
-            {formatGasFee(fee.amount, fee.token.decimals)} {fee.token.symbol}
-          </span>
+<div class="route-container">
+  {#if tokens.length > 0}
+    <div class="route-header">Your Swap Route</div>
+    <div class="route-line">
+      {#each tokens as token, i}
+        <div class="token-group">
+          <div
+            class="token-block"
+            on:click={() => selectedToken = token}
+            role="button"
+            tabindex="0"
+          >
+            <div class="token-inner">
+              <div class="token-icon">
+                <TokenImages tokens={[token]} size={32} containerClass="token-image" />
+              </div>
+              <div class="token-symbol hide-mobile">{token.symbol}</div>
+            </div>
+          </div>
+          {#if i < tokens.length - 1}
+            <div class="arrow">→</div>
+          {/if}
         </div>
       {/each}
     </div>
-  {/if}
-
-  {#if formattedLpFees.length > 0}
-    <div class="fees">
-      <h4>LP Fees</h4>
-      {#each formattedLpFees as fee}
-        <div class="fee-item">
-          <TokenImages tokens={[fee.token]} size={20} />
-          <span class="fee-amount">
-            {formatBalance(fee.amount, fee.token.decimals)} {fee.token.symbol}
-          </span>
-        </div>
-      {/each}
-    </div>
+  {:else}
+    <div class="no-route">No route available</div>
   {/if}
 </div>
 
+{#if selectedToken}
+  <TokenDetails
+    token={selectedToken}
+    on:close={() => selectedToken = null}
+  />
+{/if}
+
 <style>
-  .section {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 12px;
+  .route-container {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
   }
 
-  h3 {
-    color: #ffd700;
-    font-size: 1rem;
+  .route-header {
+    text-align: center;
+    color: rgba(255,255,255,0.9);
+    font-size: 16px;
     font-weight: 500;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
   }
 
-  h4 {
-    color: #ffffff;
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin: 8px 0;
-    opacity: 0.8;
-  }
-
-  .path {
+  .route-line {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 4px 2px;
   }
 
-  .token {
+  .token-group {
     display: flex;
     align-items: center;
     gap: 4px;
   }
 
-  .symbol {
+  .token-block {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 80px
+  }
+
+  .token-block:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .token-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .token-symbol {
     color: #ffffff;
-    font-size: 0.9rem;
+    font-size: 14px;
+    font-weight: 500;
   }
 
   .arrow {
-    color: #ffffff;
-    opacity: 0.5;
+    color: rgba(255,255,255,0.6);
+    font-size: 18px;
+    padding: 0 2px;
   }
 
-  .fees {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  .no-route {
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+    padding: 12px;
   }
 
-  .fee-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin: 4px 0;
-  }
+  @media (max-width: 600px) {
+    .route-line {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    
+    .route-line::-webkit-scrollbar {
+      display: none;
+    }
 
-  .fee-amount {
-    color: #ffffff;
-    font-size: 0.9rem;
-    opacity: 0.8;
+    .token-block {
+      padding: 4px 8px;
+    }
+
+    .token-inner {
+      gap: 4px;
+    }
+
+    .token-symbol {
+      font-size: 12px;
+    }
+
+    .arrow {
+      font-size: 16px;
+      padding: 0 1px;
+    }
+
+    .hide-mobile {
+      display: none;
+    }
+
+    .token-block {
+      padding: 4px;
+    }
+
+    .token-inner {
+      gap: 0;
+    }
+
+    .arrow {
+      font-size: 16px;
+      padding: 0 2px;
+    }
   }
 </style>

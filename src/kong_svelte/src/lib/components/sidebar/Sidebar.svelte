@@ -1,4 +1,3 @@
-<!-- src/kong_svelte/src/lib/components/nav/Sidebar.svelte -->
 <script lang="ts">
   import { fly, fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
@@ -6,18 +5,18 @@
   import { browser } from "$app/environment";
   import Panel from "$lib/components/common/Panel.svelte";
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
-  import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
   import TokenList from "./TokenList.svelte";
-  import SocialSection from "./SocialSection.svelte";
-  import TransactionHistory from "./TransactionHistory.svelte";
-  import PoolList from "./PoolList.svelte";
   import { kongDB } from "$lib/services/db";
   import { liveQuery } from "dexie";
   import { auth } from "$lib/services/auth";
   import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+  import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
+  import SocialSection from "./SocialSection.svelte";
+  import TransactionHistory from "./TransactionHistory.svelte";
+  import PoolList from "./PoolList.svelte";
 
-  export let sidebarOpen: boolean;
+  export let isOpen: boolean;
   export let onClose: () => void;
 
   let activeTab: "tokens" | "pools" | "history" = "tokens";
@@ -25,6 +24,8 @@
   let isMobile = false;
 
   // Subscribe to sidebar store
+  $: isOpen = $sidebarStore.isOpen;
+
   sidebarStore.subscribe(state => {
     isExpanded = state.isExpanded;
   });
@@ -35,21 +36,14 @@
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
       };
-
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
       return () => window.removeEventListener("resize", updateDimensions);
     }
   });
 
-  // Live database subscriptions
-  const tokens = liveQuery(() => kongDB.tokens.toArray());
-  const pools = liveQuery(() => kongDB.pools.toArray());
-  const transactions = liveQuery(() => kongDB.transactions.toArray());
-
-  function handleClose() {
-    sidebarStore.collapse();
-    onClose();
+  async function handleClose() {
+    await sidebarStore.collapse();
   }
 
   function setActiveTab(tab: "tokens" | "pools" | "history") {
@@ -58,9 +52,25 @@
       localStorage.setItem("sidebarActiveTab", tab);
     }
   }
+
+  // Live database subscriptions with debug logging
+  const tokens = liveQuery(async () => {
+    const dbTokens = await kongDB.tokens.toArray();
+    return dbTokens;
+  });
+
+  const pools = liveQuery(async () => {
+    const dbPools = await kongDB.pools.toArray();
+    return dbPools;
+  });
+
+  const transactions = liveQuery(async () => {
+    const dbTransactions = await kongDB.transactions.toArray();
+    return dbTransactions;
+  });
 </script>
 
-{#if sidebarOpen}
+{#if isOpen}
   <div class="sidebar-root">
     <div 
       class="backdrop"
@@ -98,7 +108,10 @@
               {:else if activeTab === "tokens"}
                 <TokenList tokens={$tokens || []} />
               {:else if activeTab === "pools"}
-                <PoolList pools={$pools || []} />
+                <PoolList 
+                    pools={$pools || []} 
+                    on:close={handleClose}
+                />
               {:else if activeTab === "history"}
                 <TransactionHistory transactions={$transactions || []} />
               {/if}
@@ -114,7 +127,7 @@
   </div>
 {/if}
 
-<style>
+<style lang="postcss">
   .sidebar-root {
     position: fixed;
     inset: 0;
@@ -138,7 +151,6 @@
     inset: 0;
     z-index: 2;
     display: grid;
-    padding: 1rem;
     pointer-events: none;
   }
 
@@ -188,16 +200,8 @@
 
   .sidebar-footer {
     min-height: 0;
-    padding: 1rem;
+    padding-top: 1rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .overlay-close {
-    position: absolute;
-    inset: 0;
-    background: transparent;
-    border: none;
-    cursor: pointer;
   }
 
   @media (max-width: 768px) {

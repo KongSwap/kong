@@ -15,18 +15,31 @@
     activeTab = state.activeTab;
   });
 
-  const tabs = [
+  let isMobile = false;
+
+  // Check if mobile on mount and update on resize
+  const checkMobile = () => {
+    isMobile = window.innerWidth < 768;
+  };
+
+  if (typeof window !== 'undefined') {
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+  }
+
+  $: tabs = [
     { id: 'identity', label: 'Identity' },
     { id: 'wallet', label: 'Wallet Info' },
-    { id: 'connection', label: 'Connection' },
+    ...(isMobile ? [] : [{ id: 'connection', label: 'Connection' }]),
   ];
 </script>
 
 <Modal 
   isOpen={show} 
   title="Account Details" 
-  onClose={() => accountStore.hideAccountDetails()} 
-  variant="green"
+  onClose={() => accountStore.hideAccountDetails()}
+  height="min(700px, 90vh)"
+  width="min(700px, 95vw)"
 >
   <div class="account-details">
     <div class="tabs">
@@ -47,7 +60,7 @@
           <IdentityPanel />
         {:else if activeTab === 'wallet'}
           <WalletInfoPanel />
-        {:else if activeTab === 'connection'}
+        {:else if activeTab === 'connection' && !isMobile}
           <ConnectionPanel />
         {:else if activeTab === 'details'}
           <UserDetailsPanel />
@@ -62,6 +75,8 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-height: 500px;
+    height: 100%;
   }
 
   .content-wrapper {
@@ -69,6 +84,7 @@
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    min-height: 400px;
   }
 
   .content-wrapper::-webkit-scrollbar {

@@ -1,34 +1,24 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
     import {
-      formatTokenAmount,
       formatToNonZeroDecimal,
     } from "$lib/utils/numberFormatUtils";
     import TokenImages from "$lib/components/common/TokenImages.svelte";
-    import Button from "$lib/components/common/Button.svelte";
-    import Modal from "$lib/components/common/Modal.svelte";
-    import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
-    import { Flame } from "lucide-svelte";
-    import AddLiquidityModal from "$lib/components/liquidity/add_liquidity/AddLiquidityModal.svelte";
     import { onMount } from 'svelte';
+    import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   
     export let pool: BE.Pool & { tvl?: number };
     export let tokenMap: Map<string, any>;
     export let isEven: boolean;
     export let onAddLiquidity: (token0: string, token1: string) => void;
+    export let onShowDetails: () => void;
   
-    let showPoolDetails = false;
-    let showAddLiquidity = false;
     let isMobile = false;
-    let isSmallMobile = false;
-    let isTableCompact = false;
-    let hideSwap = false;
-    let showSwapButton = true;
+    let showDetailsButton = true;
   
     onMount(() => {
       const checkMobile = () => {
-        isMobile = window.innerWidth < 900;
-        showSwapButton = window.innerWidth >= 1150;
+        isMobile = window.innerWidth < 768;
+        showDetailsButton = window.innerWidth >= 1150;
       };
       
       checkMobile();
@@ -43,245 +33,273 @@
       onAddLiquidity(pool.address_0, pool.address_1);
     }
   
-    function handleAddLiquidityClose() {
-      showAddLiquidity = false;
-    }
-  
-    function handleSwap() {
-      if (pool.address_0 && pool.address_1) {
-        goto(`/swap?from=${pool.address_0}&to=${pool.address_1}`);
-      }
-    }
-  
-    function handleClose() {
-      showPoolDetails = false;
-    }
-  
-    function handleViewDetails() {
-      showPoolDetails = true;
-    }
-  
-    $: apyColor =
-      pool.rolling_24h_apy > 100
-        ? "#FFD700"
-        : pool.rolling_24h_apy > 50
-          ? "#FFA500"
-          : "#FF8C00";
 </script>
 
 {#if !isMobile}
   <!-- Desktop view (table row) -->
-  <tr class="pool-row {isEven ? 'even' : ''}">
-    <td class="w-[44px] pl-2 sm:pl-3.5">
-      <div class="token-info">
+  <tr class={isEven ? 'even' : ''}>
+    <td class="pool-cell">
+      <div class="pool-info">
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={isTableCompact ? 28 : 32}
-          overlap={isTableCompact ? 10 : 12}
+          size={24}
         />
-        <div class="flex flex-col">
-          <span class="token-pair text-xs sm:text-sm font-bold">{pool.symbol_0}/{pool.symbol_1}</span>
+        <div class="pool-details">
+          <div class="pool-name">
+            {pool.symbol_0}/{pool.symbol_1}
+          </div>
         </div>
       </div>
     </td>
-    <td class="value-cell">
-      ${formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}
-    </td>
-    <td class="value-cell">
-      ${formatToNonZeroDecimal(pool.tvl)}
-    </td>
-    <td class="value-cell">
-      ${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}
-    </td>
-    <td class="value-cell">
-      <div style="display: flex; justify-content: flex-end;">
-        <span class="apy-badge" style="background-color: {apyColor}">
-          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
-        </span>
+    <td class="price-cell">
+      <div class="price-info">
+        <div class="price-value">
+          ${formatToNonZeroDecimal(Number(tokenMap.get(pool.address_0)?.price) ?? 0)}
+        </div>
       </div>
     </td>
-    <td>
+    <td class="tvl-cell">
+      <div class="tvl-info">
+        <div class="tvl-value">
+          {formatUsdValue(Number(pool.tvl) / (10 ** 6))}
+        </div>
+      </div>
+    </td>
+    <td class="volume-cell">
+      <div class="volume-info">
+        <div class="volume-value">
+          {formatUsdValue(fromRawAmount(pool.rolling_24h_volume.toString(), 6))}
+        </div>
+      </div>
+    </td>
+    <td class="apy-cell">
+      <div class="apy-info">
+        <div class="apy-value">
+          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
+        </div>
+      </div>
+    </td>
+    <td class="actions-cell">
       <div class="actions">
-        <Button
-          variant="green"
-          size="small"
-          text="Add LP"
-          onClick={handleAddLiquidity}
-          className="action-button mr-1"
-        />
-        {#if showSwapButton}
-          <Button 
-            variant="green" 
-            size="small" 
-            text="Swap" 
-            onClick={handleSwap}
-            className="action-button mr-2"
-          />
+        <button
+          class="action-btn add-lp"
+          on:click={handleAddLiquidity}
+        >
+          Add LP
+        </button>
+        {#if showDetailsButton}
+          <button 
+            class="action-btn details"
+            on:click={onShowDetails}
+          >
+            Details
+          </button>
         {/if}
       </div>
     </td>
   </tr>
 {:else}
-  <!-- Mobile view (card) -->
+  <!-- Mobile view (simplified card) -->
   <div class="mobile-pool-card">
     <div class="card-header">
       <div class="token-info">
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={isSmallMobile ? 32 : 40}
-          overlap={isSmallMobile ? 12 : 16}
+          size={32}
+          overlap={true}
         />
-        <div class="token-info-text">
+        <div class="token-details">
           <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
-        </div>
-        <Button 
-          variant="green"
-          size="small"
-          text="Add LP"
-          onClick={handleAddLiquidity}
-          className="header-details-button ml-auto"
-        />
-      </div>
-    </div>
-
-    <div class="card-stats">
-      <div class="stat-row">
-        <div class="stat-item">
-          <span class="stat-label">Price</span>
-          <span class="stat-value">${formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">TVL</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.tvl)}</span>
+          <span class="tvl-badge">TVL: ${pool.tvl}</span>
         </div>
       </div>
-      
-      <div class="stat-row">
-        <div class="stat-item">
-          <span class="stat-label">Volume (24h)</span>
-          <span class="stat-value">${formatToNonZeroDecimal(pool.rolling_24h_volume.toString())}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">APY</span>
-          <span class="apy-badge" style="background-color: {apyColor}">
-            {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
-          </span>
-        </div>
+      <div class="card-actions">
+        <button
+          class="action-btn details"
+          on:click={onShowDetails}
+        >
+          Details
+        </button>
       </div>
     </div>
   </div>
 {/if}
 
-{#if showPoolDetails}
-  <PoolDetails 
-    showModal={showPoolDetails} 
-    onClose={handleClose}
-    {pool}
-    {tokenMap}
-  />
-{/if}
-
-<style lang="postcss">
-  .pool-row {
-    @apply border-b border-emerald-900/30 transition-colors duration-150;
+<style>
+  tr {
+    transition: colors 150ms;
   }
 
-  .pool-row:hover {
-    @apply bg-emerald-800/10;
+  tr:hover {
+    background-color: #1a1b23;
   }
 
-  .pool-row.even {
-    @apply bg-emerald-900/30;
+  td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    color: #8890a4;
+    border-bottom: 1px solid #2a2d3d;
+    height: 64px;
   }
 
-  .mobile-pool-card {
-    @apply bg-emerald-900/20 rounded-lg sm:rounded-xl flex flex-col border border-emerald-900/30 
-           shadow-lg mb-3 sm:mb-4 overflow-hidden;
-    width: 100%;
+  .price-cell,
+  .tvl-cell,
+  .volume-cell,
+  .apy-cell {
+    width: 15%;
+    text-align: left;
   }
 
-  .card-header {
-    @apply p-2 sm:p-3 md:p-4 border-b border-emerald-900/30 bg-emerald-900/10;
+  .actions-cell {
+    text-align: right;
   }
 
-  .token-info {
-    @apply flex items-center gap-1.5 sm:gap-3 w-full;
+  .pool-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .token-info-text {
-    @apply flex flex-col items-start gap-0.5 min-w-0 flex-1;
+  .pool-cell {
+    width: 30%;
   }
 
-  .token-pair {
-    @apply text-xs sm:text-sm font-bold text-white leading-tight truncate max-w-[120px] sm:max-w-[160px];
+  .price-cell,
+  .tvl-cell,
+  .volume-cell,
+  .apy-cell {
+    width: 15%;
+    text-align: right;
   }
 
-  .card-stats {
-    @apply flex flex-col gap-1.5 sm:gap-2 p-2 sm:p-3 md:p-4 border-b border-emerald-900/30;
-    min-width: 0;
+  .actions-cell {
+    width: 10%;
   }
 
-  .stat-row {
-    @apply grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-4;
-    min-width: 0;
+  .pool-details {
+    display: flex;
+    flex-direction: column;
   }
 
-  .stat-item {
-    @apply flex flex-col items-start text-left p-1.5 sm:p-2 rounded-lg bg-emerald-900/20;
-    min-width: 0;
+  .pool-name {
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
   }
 
-  .stat-label {
-    @apply text-xs text-emerald-300/70 font-medium;
+  .price-info,
+  .tvl-info,
+  .volume-info,
+  .apy-info {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
   }
 
-  .stat-value {
-    @apply text-white font-bold font-mono text-xs sm:text-sm md:text-base truncate w-full;
-    word-break: break-word;
-  }
-
-  .apy-badge {
-    @apply px-2 py-0.5 sm:px-2 sm:py-0.5 md:px-3 md:py-1 rounded-lg font-bold font-mono 
-           text-black text-xs shadow-sm;
-  }
-
-  .value-cell {
-    @apply px-2 sm:px-3 md:px-4 py-2 sm:py-2 md:py-3 text-right font-mono text-white font-medium text-xs sm:text-sm;
+  .price-value,
+  .tvl-value,
+  .volume-value,
+  .apy-value {
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
   }
 
   .actions {
-    @apply flex justify-end gap-2 sm:gap-3 px-2 sm:px-3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
 
-  @media (max-width: 374px) {
-    .token-pair {
-      @apply text-xs sm:text-sm;
-    }
-
-    .stat-value {
-      @apply text-xs;
-    }
-
-    .stat-label {
-      @apply text-[10px];
-    }
-
-    .stat-item {
-      @apply p-1;
-    }
+  .action-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    transition: all 150ms;
+    white-space: nowrap;
   }
 
-  @media (max-width: 480px) {
-    .card-stats {
-      @apply p-2;
+  .add-lp {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .add-lp:hover {
+    background-color: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
+  }
+
+  .details {
+    background-color: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+  }
+
+  .details:hover {
+    background-color: rgba(107, 114, 128, 0.3);
+    border-color: rgba(107, 114, 128, 0.5);
+    color: #d1d5db;
+  }
+
+  /* Mobile Card Styles */
+  .mobile-pool-card {
+    background-color: #1a1b23;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #2a2d3d;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .token-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .token-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .token-pair {
+    color: white;
+    font-weight: 500;
+  }
+
+  .tvl-badge {
+    font-size: 0.75rem;
+    color: #8890a4;
+  }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  @media (max-width: 640px) {
+    .mobile-pool-card {
+      padding: 0.625rem;
+    }
+    
+    .token-info {
+      gap: 0.5rem;
     }
 
-    .stat-row {
-      @apply gap-1;
+    .tvl-badge {
+      font-size: 0.6875rem;
     }
 
-    .stat-item {
-      @apply p-1;
-    }
   }
 </style>

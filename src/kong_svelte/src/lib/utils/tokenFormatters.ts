@@ -1,3 +1,6 @@
+import { formatToNonZeroDecimal } from "./numberFormatUtils";
+import type { Transaction } from "$lib/types/transaction";
+
 /**
  * Formats a raw token balance considering its decimals
  * @param rawBalance The raw balance as a string (big integer format)
@@ -13,51 +16,76 @@ export function formatBalance(rawBalance: string | undefined, decimals: number =
     // Format with appropriate decimal places
     if (value === 0) return "0";
     
-    // For very small values, show full precision up to 8 decimals
-    if (value < 0.00001) {
+    // For very small values (< 0.000001), show up to 8 decimals
+    if (value < 0.000001 && value > 0) {
         return value.toFixed(8).replace(/\.?0+$/, '');
     }
     
-    // For small values (under 1), show up to 6 decimals
-    if (value < 1) {
+    // For small values (< 0.01), show up to 6 decimals
+    if (value < 0.01) {
         return value.toFixed(6).replace(/\.?0+$/, '');
     }
     
-    // For larger numbers, use locale string but trim unnecessary decimals
-    const formatted = value.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
+    // For normal values, show up to 4 decimals
+    return value.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
         maximumFractionDigits: 4
-    });
-    
-    // Remove trailing zeros after decimal point
-    return formatted.replace(/\.?0+$/, '');
+    }).replace(/\.?0+$/, '');
 }
+
+export function calculateTotalUsdValue(tx: Transaction, formattedTokens: FE.Token[]): string {
+    const payToken = formattedTokens?.find(
+      (t) => t.token_id === tx.pay_token_id,
+    );
+    const receiveToken = formattedTokens?.find(
+      (t) => t.token_id === tx.receive_token_id,
+    );
+    if (!payToken || !receiveToken) return "0.00";
+  
+    // Calculate USD value from pay side
+    const payUsdValue =
+      payToken.symbol === "ckUSDT"
+        ? tx.pay_amount
+        : tx.pay_amount * (payToken.price || 0);
+  
+    // Calculate USD value from receive side
+    const receiveUsdValue =
+      receiveToken.symbol === "ckUSDT"
+        ? tx.receive_amount
+        : tx.receive_amount * (receiveToken.price || 0);
+  
+    // Use the higher value
+    return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
+  }
 
 /**
  * Formats a USD value with appropriate decimal places and suffixes
  * @param value The USD value to format
  * @returns Formatted USD string
  */
-export function formatUsdValue(value: number): string {
+export function formatUsdValue(value: number | string): string {
     if (!value) return "$0.00";
-    
+    const valueNumber = typeof value === 'string' ? Number(value.replace(/,/g, '')) : value;
+
     // For very small values, show up to 8 decimals
-    if (value < 0.00001) {
-        return `$${value.toFixed(8).replace(/\.?0+$/, '')}`;
+    if (valueNumber < 0.00001) {
+        return `$${formatToNonZeroDecimal(valueNumber).replace(/\.?0+$/, '')}`;
     }
     
     // For small values (under 1), show up to 6 decimals
-    if (value < 1) {
-        return `$${value.toFixed(6).replace(/\.?0+$/, '')}`;
+    if (valueNumber < 1) {
+        return `$${formatToNonZeroDecimal(valueNumber).replace(/\.?0+$/, '')}`;
     }
-    
-    if (value >= 1000000) {
-        return `$${(value / 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}M`;
+    if (valueNumber >= 1_000_000_000) {
+        return `$${(valueNumber / 1000000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}B`;
     }
-    if (value >= 1000) {
-        return `$${(value / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}K`;
+    if (valueNumber >= 1000000) {
+        return `$${(valueNumber / 1000000).toLocaleString(undefined, { maximumFractionDigits: 2 })}M`;
     }
-    return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (valueNumber >= 1000) {
+        return `$${(valueNumber / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })}K`;
+    }
+    return `$${valueNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**

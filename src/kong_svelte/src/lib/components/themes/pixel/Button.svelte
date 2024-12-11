@@ -149,7 +149,7 @@
   $: formattedWidth = formatDimension(width);
 </script>
 
-<a
+<button
   use:tooltip={{ text: tooltipText !== null ? tooltipText : null }}
   class={buttonClass}
   on:click={handleClick}
@@ -173,7 +173,7 @@
       <slot>{text}</slot>
     </span>
   </div>
-</a>
+</button>
 
 <style lang="postcss">
   .pixel-button {

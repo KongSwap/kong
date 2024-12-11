@@ -10,7 +10,7 @@ const config = {
       pages: "dist",
       assets: "dist",
       fallback: "index.html",
-      precompress: true,
+      precompress: false,
       strict: true,
     }),
     files: {
@@ -44,20 +44,16 @@ const config = {
       }
     },
   },
-  preprocess: [
-    vitePreprocess({
-      typescript: {
-        tsconfigFile: './tsconfig.json'
-      },
-      postcss: {
-        plugins: [
-          tailwindcss(),
-          autoprefixer(),
-        ],
-      },
-    })
-  ],
-  onwarn: (warning, handler) => {    
+  preprocess: vitePreprocess({
+    typescript: true,
+    postcss: {
+      plugins: [
+        tailwindcss(),
+        autoprefixer(),
+      ],
+    },
+  }),
+  onwarn: (warning, handler) => {
     if (warning.code.startsWith('a11y_')) {
       return;
     }

@@ -19,31 +19,6 @@ declare global {
       in_usd: string;
     }
 
-    interface Token {
-      canister_id: string;
-      name: string;
-      symbol: string;
-      fee: bigint;
-      decimals: number;
-      token: string;
-      token_id: number;
-      chain: string;
-      icrc1: boolean;
-      icrc2: boolean;
-      icrc3: boolean;
-      on_kong: boolean;
-      pool_symbol: string;
-      pools: BE.Pool[];
-      logo?: string;
-      total_24h_volume?: bigint;
-      price?: number;
-      tvl?: number;
-      balance?: bigint;
-      formattedBalance?: string;
-      formattedUsdValue?: string;
-      timestamp?: number;
-    }
-
     interface UserPoolBalance {
       amount_0: bigint;
       amount_1: bigint;
@@ -69,39 +44,6 @@ declare global {
   }
 
   namespace BE {
-    interface ICToken {
-      symbol: string;
-      fee: bigint;
-      decimals: number;
-      token: string;
-      token_id: number;
-      chain: string;
-      name: string;
-      canister_id: string;
-      icrc1: boolean;
-      icrc2: boolean;
-      icrc3: boolean;
-      pool_symbol: string;
-      on_kong: boolean;
-    }
-  
-    interface LPToken {
-      address: string;
-      chain: string;
-      decimals: number;
-      fee: bigint;
-      name: string;
-      on_kong: boolean;
-      pool_id_of: number;
-      pool_symbol: string;
-      symbol: string;
-      token: string;
-      token_id: number;
-      total_supply: bigint;
-    }
-  
-    type Token = { IC?: ICToken, LP?: LPToken };
-
     // Pool Types
   
    type PoolResponse = {
@@ -109,32 +51,31 @@ declare global {
       total_tvl: bigint;
       total_24h_volume: bigint;
       total_24h_lp_fee: bigint;
+      total_24h_num_swaps: number;
   }
   
    interface Pool {
-      id: string;
-      lp_token_symbol: string;
-      balance: bigint;
-      total_lp_fee: bigint;
-      name: string;
-      lp_fee_0: bigint;
-      lp_fee_1: bigint;
-      balance_0: bigint;
-      balance_1: bigint;
-      rolling_24h_volume: bigint;
-      rolling_24h_apy: number;
-      address_0: string;
-      address_1: string;
-      symbol_0: string;
-      symbol_1: string;
-      total_volume: bigint;
       pool_id: number;
-      price: number;
-      chain_0: string;
-      chain_1: string;
-      lp_token_supply: bigint;
+      name: string;
       symbol: string;
+      chain_0: string;
+      symbol_0: string;
+      address_0: string;
+      balance_0: bigint;
+      lp_fee_0: bigint;
+      chain_1: string;
+      symbol_1: string;
+      address_1: string;
+      balance_1: bigint;
+      lp_fee_1: bigint;
+      price: number;
       lp_fee_bps: number;
+      rolling_24h_volume: bigint;
+      rolling_24h_lp_fee: bigint;
+      rolling_24h_num_swaps: number;
+      rolling_24h_apy: number;
+      lp_token_symbol: string;
+      tvl: bigint;
       on_kong: boolean;
   }
   

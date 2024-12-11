@@ -42,7 +42,7 @@ function getInitialLocale(): SupportedLocale {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  sound_enabled: true,
+  sound_enabled: false,
   default_language: getInitialLocale(),
   max_slippage: 2.0,
   timestamp: Date.now(),

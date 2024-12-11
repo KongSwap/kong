@@ -3,6 +3,7 @@ import { auth } from '../auth';
 import { get } from 'svelte/store';
 import { Actor } from '@dfinity/agent';
 import { idlFactory as kongIdl, canisterId as kongCanisterId } from '../../../../../declarations/kong_backend';
+import { tokenStore } from "$lib/services/tokens/tokenStore";
 
 export class WalletService {
   protected static instance: WalletService;
@@ -20,7 +21,7 @@ export class WalletService {
       return null;
     }
     try {
-      const actor = await auth.getActor(KONG_BACKEND_PRINCIPAL, 'kong_backend', {anon: true});
+      const actor = await auth.getActor(KONG_BACKEND_PRINCIPAL, 'kong_backend', {anon: false, requiresSigning: false});
       if (!actor) {
         console.warn('No actor available for get_user call');
         return null;

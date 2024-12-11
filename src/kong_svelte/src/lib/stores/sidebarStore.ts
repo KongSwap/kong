@@ -6,15 +6,17 @@ interface SidebarState {
     sortBy: 'name' | 'balance' | 'value' | 'price';
     sortDirection: 'asc' | 'desc';
     filterText: string;
+    isOpen: boolean;
 }
 
 function createSidebarStore() {
     const { subscribe, update, set } = writable<SidebarState>({
-        isExpanded: false,
+        isExpanded: false,  // Always start collapsed
         width: 527,
         sortBy: 'value',
         sortDirection: 'desc',
-        filterText: ''
+        filterText: '',
+        isOpen: false
     });
 
     const isExpanded = derived(
@@ -28,18 +30,17 @@ function createSidebarStore() {
         toggleExpand: () => {
             update(state => ({
                 ...state,
-                isExpanded: !state.isExpanded,
-                width: state.isExpanded ? 527 : window.innerWidth - 32 // 1rem margin on each side (16px * 2)
+                isExpanded: false,  // Always collapse when toggling
+                width: 527  // Keep consistent width
             }));
         },
         setWidth: (width: number) => {
-            update(state => ({ ...state, width }));
+            update(state => ({ ...state, width: Math.min(width, 527) }));  // Never allow width larger than 527
         },
         setSortBy: (sortBy: 'name' | 'balance' | 'value' | 'price') => {
             update(state => ({
                 ...state,
                 sortBy,
-                // If clicking the same sort option, toggle direction
                 sortDirection: state.sortBy === sortBy 
                     ? (state.sortDirection === 'asc' ? 'desc' : 'asc')
                     : 'desc'
@@ -48,8 +49,21 @@ function createSidebarStore() {
         setFilterText: (filterText: string) => {
             update(state => ({ ...state, filterText }));
         },
-        collapse: () => {
+        open: () => {
+            update(state => ({ ...state, isOpen: true }));
+        },
+        close: () => {
+            update(state => ({ ...state, isOpen: false }));
+        },
+        toggleOpen: () => {
+            update(state => ({ ...state, isOpen: !state.isOpen }));
+        },
+        collapse: async () => {
             update(state => ({ ...state, isExpanded: false, width: 527 }));
+            // Wait for animations to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+            // Close the sidebar
+            update(state => ({ ...state, isOpen: false }));
         }
     };
 }

@@ -1,31 +1,41 @@
 <script lang="ts">
-  import { tokenLogoStore } from '$lib/services/tokens/tokenLogos';
-
   export let tokens: FE.Token[] = [];
-  export let size: number = 44; // default 44px (h-11 = 44px)
-  export let overlap: number = 16; // default 16px of overlap
+  export let size: number = 48;
   export let containerClass: string = "";
+  export let imageWrapperClass: string = "";
+  export let overlap: boolean = false;
 
-  // Filter out any undefined tokens
-  $: validTokens = tokens.filter((token): token is FE.Token => token !== undefined && token !== null);
+  const DEFAULT_IMAGE = '/tokens/not_verified.webp';
+
+  // Filter out invalid tokens and memoize result
+  $: validTokens = tokens.filter((token): token is FE.Token => {
+    return token && typeof token === 'object' && !!(token.symbol || token.name);
+  });
+
+  // Handle image error with proper typing
+  function handleImageError(e: Event & { currentTarget: EventTarget & HTMLImageElement }) {
+    e.currentTarget.src = DEFAULT_IMAGE;
+  }
+
+  // Helper to get token alt text
+  function getTokenAlt(token: FE.Token): string {
+    return token.symbol ?? token.name ?? 'Unknown Token';
+  }
 </script>
 
-<div 
-  class="isolate flex overflow-hidden {containerClass}"
-  style="width: {validTokens.length * (size - overlap) + overlap}px"
->
-  {#each validTokens as token, i}
-    <img
-      class="relative inline-block rounded-full ring-0 ring-black bg-white object-cover"
-      style="
-        height: {size}px;
-        width: {size}px;
-        z-index: {30 - (i * 10)};
-        margin-left: {i === 0 ? 0 : -overlap}px;
-      "
-      src={token?.canister_id ? ($tokenLogoStore[token.canister_id] ?? '/tokens/not_verified.webp') : '/tokens/not_verified.webp'}
-      alt={token?.symbol ?? 'Unknown Token'}
-      loading="eager"
-    />
+<div class="flex items-center {containerClass}" style="margin-right: {overlap ? '10px' : '0'}">
+  {#each validTokens as token, index}
+    <div 
+      style="height: {size}px; width: {size}px; z-index: {validTokens.length - index};"
+      class="inline-block rounded-full {imageWrapperClass} {overlap ? 'mr-[-10px]' : ''} relative"
+    >
+      <img
+        class="w-full h-full rounded-full bg-transparent"
+        src={token.logo_url || DEFAULT_IMAGE}
+        alt={getTokenAlt(token)}
+        loading="eager"
+        on:error={handleImageError}
+      />
+    </div>
   {/each}
 </div>

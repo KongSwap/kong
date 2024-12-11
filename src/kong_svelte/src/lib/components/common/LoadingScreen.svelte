@@ -12,22 +12,12 @@
   import gorillaRight from "$lib/assets/gorilla-facing-right.svg";
 
   let currentLogo = kongLogo;
-  let currentMessage = "Loading...";
   let dominantColor = "#4F46E5";
   let isShuttingDown = false;
   let glitchActive = false;
   let glitchOutActive = false;
   let nextImageIndex = 0;
   let frozenProgress = 0;
-  let messages = [
-    "Fetching tokens...",
-    "Filling pools...",
-    "Loading wallet...",
-    "Fetching data...",
-    "Connecting to network...",
-    "Almost there...",
-    "Just a moment...",
-  ];
   let availableLogos: string[] = [];
 
   const appLoadingState = appLoader.loadingState;
@@ -58,7 +48,6 @@
     return availableLogos[nextImageIndex];
   }
 
-  let messageIndex = 0;
   async function cycleContent() {
     const CYCLE_INTERVAL = 800; // Reduced from 1000ms to 800ms
     const TRANSITION_TIME = 200; // Reduced from 300ms to 200ms
@@ -82,8 +71,6 @@
         glitchOutActive = false;
         currentLogo = nextLogo;
         dominantColor = nextColor;
-        currentMessage = messages[messageIndex % messages.length];
-        messageIndex++;
         
         await new Promise(resolve => setTimeout(resolve, colorCalcTime));
         
@@ -164,56 +151,6 @@
     });
   }
 
-  function handleOutro(node: HTMLElement) {
-    isShuttingDown = true;
-    const progressFill = node.querySelector('.progress-fill') as HTMLElement;
-    if (progressFill) {
-      const currentWidth = progressFill.style.width;
-      progressFill.style.transition = 'none';
-      progressFill.style.width = currentWidth;
-    }
-    return {
-      duration: 800,
-      css: (t: number, u: number) => {
-        const phase = u * 2;
-        let scaleX = 1;
-        let scaleY = 1;
-        
-        if (phase <= 1) {
-          const compress = 1 - (Math.pow(phase, 3) * 0.95);
-          scaleX = compress;
-          scaleY = compress;
-        } else {
-          const stretchPhase = phase - 1;
-          scaleX = 0.05 + (Math.pow(stretchPhase, 0.5) * 3);
-          scaleY = Math.max(0.05 - (stretchPhase * 0.05), 0.001);
-        }
-
-        // Calculate opacity with fade and final flash
-        let opacity;
-        if (phase <= 1) {
-          // Fade out during compression
-          opacity = 1 - (Math.pow(phase, 2) * 0.7);
-        } else {
-          // Regain some opacity for final flash
-          const endPhase = Math.max(0, (phase - 1.7) / 0.3);
-          opacity = 0.3 + (Math.sin(endPhase * Math.PI) * 0.7);
-        }
-
-        // Flash effect peaks at the end
-        const flashPoint = Math.max(0, (phase - 1.7) / 0.3);
-        const flash = Math.sin(flashPoint * Math.PI);
-        
-        return `
-          transform: scale(${scaleX}, ${scaleY});
-          opacity: ${opacity};
-          filter: brightness(${1 + flash * 5}) contrast(${1 + flash * 3});
-        `;
-      }
-    };
-  }
-
-  $: showLoadingScreen = $loadingState.isLoading;
   $: containerStyle = `--glow-color: ${dominantColor};`;
 
   // Freeze progress when shutting down
@@ -226,76 +163,43 @@
     isShuttingDown = true;
     setTimeout(() => {
       loadingState.update(state => ({ ...state, isLoading: false }));
-    }, 500);
+    }, 200);
   }
 </script>
 
-{#if showLoadingScreen}
+{#if $loadingState.isLoading}
   <div
-    class="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
-    out:handleOutro
-    on:outroend
+    class="h-screen top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-gray-900 will-change-transform loading-screen"
+    out:fade={{ duration: 400 }}
   >
-    <div class="screen-curve animation"></div>
-    <div class="crt-content">
+    <div class="screen-curve animation min-h-screen"></div>
+    <div class="crt-content min-h-screen">
+      <img src={gorillaRight} alt="Kong Logo" class="absolute bottom-0 opacity-[8%] w-[600px] filter brightness-0 invert" />
+
       <div class="flex flex-col items-center">
         <div class="logo-wrapper mb-8">
           {#key currentLogo}
             <div 
               class="logo-container chrome-frame absolute-center"
               style={containerStyle}
-              in:scale|local={{ duration: 400, delay: 200, easing: cubicOut, start: 0.3 }}
-              class:tv-off={isShuttingDown}
-              class:glitching={glitchActive}
-              class:glitching-out={glitchOutActive}
-              out:scale|local={{ duration: 200, start: 1 }}
+              in:scale|local={{ duration: 400, delay: 200, easing: cubicOut, start: 0.2 }}
+              out:scale|local={{ duration: 200, start: 0.8 }}
             >
               <div class="logo-inner !p-0 object-cover">
-                <div class="glitch-wrappe object-cover">
-                  <div class="glitch-comp object-cover"
-                  >
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-base"
-                    />
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-layer glitch-r"
-                    />
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-layer glitch-g"
-                    />
-                    <img
-                      src={currentLogo}
-                      alt="Current Logo"
-                      class="logo-image pixelated !rounded-full !p-0 object-cover glitch-layer glitch-b"
-                    />
-                  </div>
-                </div>
+                <img
+                  src={currentLogo}
+                  alt="Current Logo"
+                  class="logo-image pixelated !rounded-full !p-0 object-cover"
+                />
               </div>
             </div>
           {/key}
         </div>
         <h2 class="relative !text-7xl font-bold mb-2 uppercase font-alumni neon-text mt-10 flex justify-center flex-col gap-x-2 items-center">
-          <img src={gorillaRight} alt="Kong Logo" class="absolute w-32 h-32 pb-1 filter brightness-0 invert" />
           <span class="h-[10] text-outline-1">KongSwap</span>
         </h2>
-        <div class="message-container h-8 flex items-center justify-center mb-4 progress-text mt-4">
-          {#key currentMessage}
-            <p
-            in:fade|local={{ duration: 200 }}
-              class="text-gray-400 text-lg"
-            >
-              {currentMessage}
-            </p>
-          {/key}
-        </div>
         <div class="progress-container mt-4">
-          <div class="progress-bar">
+          <div class="progress-bar rounded-lg">
             <div 
               class="progress-fill"
               style:width={(isShuttingDown ? frozenProgress : $loadingProgress) + "%"}
@@ -306,9 +210,9 @@
 
         <p class="progress-text text-sm mt-4">
           {#if $appLoadingState.totalAssets > 0}
-            <span class="blink">></span> LOADING ASSETS: {isShuttingDown ? frozenProgress : $loadingProgress}%
+            LOADING ASSETS: {isShuttingDown ? frozenProgress : $loadingProgress}%
           {:else}
-            <span class="blink">></span> LOADING...
+            LOADING...
           {/if}
         </p>
 
@@ -669,234 +573,11 @@
     }
   }
 
-  @keyframes tv-compress-in {
-    0% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: scaleY(0.8) translateY(10%);
-      filter: brightness(0.7) contrast(1.2);
-    }
-    20% {
-      clip-path: polygon(0 20%, 100% 20%, 100% 90%, 0 90%);
-      transform: scaleY(0.85) translateY(5%) skewX(-2deg);
-      filter: brightness(0.8) contrast(1.3);
-    }
-    40% {
-      clip-path: polygon(0 10%, 100% 10%, 100% 80%, 0 80%);
-      transform: scaleY(0.9) translateY(2%) skewX(2deg);
-      filter: brightness(0.9) contrast(1.4);
-    }
-    60% {
-      clip-path: polygon(0 5%, 100% 5%, 100% 95%, 0 95%);
-      transform: scaleY(0.95) translateY(0) skewX(-1deg);
-      filter: brightness(1) contrast(1.2);
-    }
-    80% {
-      clip-path: polygon(0 2%, 100% 2%, 100% 98%, 0 98%);
-      transform: scaleY(0.98) translateY(0) skewX(1deg);
-      filter: brightness(1.1) contrast(1.1);
-    }
-    100% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: scaleY(1) translateY(0);
-      filter: brightness(1) contrast(1);
-    }
-  }
-
-  @keyframes tv-compress-out {
-    0% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: scaleY(1) translateY(0);
-      filter: brightness(1) contrast(1);
-    }
-    20% {
-      clip-path: polygon(0 2%, 100% 2%, 100% 98%, 0 98%);
-      transform: scaleY(0.98) translateY(0) skewX(-1deg);
-      filter: brightness(1.1) contrast(1.1);
-    }
-    40% {
-      clip-path: polygon(0 5%, 100% 5%, 100% 95%, 0 95%);
-      transform: scaleY(0.95) translateY(2%) skewX(1deg);
-      filter: brightness(1) contrast(1.2);
-    }
-    60% {
-      clip-path: polygon(0 10%, 100% 10%, 100% 80%, 0 80%);
-      transform: scaleY(0.9) translateY(5%) skewX(-2deg);
-      filter: brightness(0.9) contrast(1.3);
-    }
-    80% {
-      clip-path: polygon(0 20%, 100% 20%, 100% 90%, 0 90%);
-      transform: scaleY(0.85) translateY(8%) skewX(2deg);
-      filter: brightness(0.8) contrast(1.4);
-    }
-    100% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: scaleY(0.8) translateY(10%);
-      filter: brightness(0.7) contrast(1.2);
-    }
-  }
-
-  .glitch-comp {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    transform-origin: center;
-
-    &.tv-off {
-      animation: tvShutdown 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-      
-      &::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        width: 100%;
-        background: white;
-        animation: tvLine 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-        z-index: 10;
-      }
-    }
-
-    &.glitching {
-      .glitch-base {
-        animation: glitch-anim 0.4s cubic-bezier(.25, .46, .45, .94) both;
-      }
-
-      .glitch-r {
-        animation: glitch-anim 0.4s cubic-bezier(.25, .46, .45, .94) both;
-        animation-delay: 0.05s;
-      }
-
-      .glitch-g {
-        animation: glitch-anim 0.4s cubic-bezier(.25, .46, .45, .94) both;
-        animation-delay: 0.1s;
-      }
-
-      .glitch-b {
-        animation: glitch-anim 0.4s cubic-bezier(.25, .46, .45, .94) both;
-        animation-delay: 0.15s;
-      }
-    }
-
-    &.glitching-out {
-      .glitch-base {
-        animation: glitch-anim-out 0.4s cubic-bezier(.25, .46, .45, .94) both;
-      }
-
-      .glitch-r {
-        animation: glitch-anim-out 0.4s cubic-bezier(.25, .46, .45, .94) both;
-        animation-delay: 0.05s;
-      }
-
-      .glitch-g {
-        animation: glitch-anim-out 0.4s cubic-bezier(.25, .46, .45, .94) both;
-        animation-delay: 0.1s;
-      }
-
-      .glitch-b {
-        animation: glitch-anim-out 0.4s cubic-bezier(.25, .46, .45, .94) both;
-        animation-delay: 0.15s;
-      }
-    }
-  }
-
-  @keyframes glitch-anim {
-    0% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: translate(0) scale(0.95);
-      filter: brightness(0.8);
-    }
-    20% {
-      clip-path: polygon(0 15%, 100% 15%, 100% 85%, 0 85%);
-      transform: translate(-2px, 2px) scale(0.97);
-      filter: brightness(1.1);
-    }
-    40% {
-      clip-path: polygon(0 40%, 100% 40%, 100% 60%, 0 60%);
-      transform: translate(2px, -2px) scale(1);
-      filter: brightness(1.2);
-    }
-    60% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: translate(0) scale(1);
-      filter: brightness(1);
-    }
-    80% {
-      clip-path: polygon(0 60%, 100% 60%, 100% 40%, 0 40%);
-      transform: translate(-2px, 2px) scale(1);
-      filter: brightness(1.1);
-    }
-    100% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: translate(0) scale(1);
-      filter: brightness(1);
-    }
-  }
-
-  @keyframes glitch-anim-out {
-    0% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: translate(0) scale(1);
-      filter: brightness(1);
-    }
-    20% {
-      clip-path: polygon(0 15%, 100% 15%, 100% 85%, 0 85%);
-      transform: translate(2px, -2px) scale(1);
-      filter: brightness(1.1);
-    }
-    40% {
-      clip-path: polygon(0 40%, 100% 40%, 100% 60%, 0 60%);
-      transform: translate(-2px, 2px) scale(0.98);
-      filter: brightness(1.2);
-    }
-    60% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: translate(0) scale(0.97);
-      filter: brightness(0.9);
-    }
-    80% {
-      clip-path: polygon(0 60%, 100% 60%, 100% 40%, 0 40%);
-      transform: translate(2px, -2px) scale(0.95);
-      filter: brightness(0.8);
-    }
-    100% {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      transform: translate(0) scale(0.95);
-      filter: brightness(0.7);
-    }
-  }
-
   .glitch-wrapper {
     position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
-  }
-
-  @keyframes glitchAnim {
-    0%, 100% { 
-      clip-path: inset(0 0 0 0);
-      transform: translate(0);
-    }
-    10% { 
-      clip-path: inset(20% -6px 60% 0);
-      transform: translate(-4px);
-    }
-    20% { 
-      clip-path: inset(40% 0 40% -6px);
-      transform: translate(4px);
-    }
-    30% { 
-      clip-path: inset(60% -6px 20% 0);
-      transform: translate(-4px);
-    }
-    40% { 
-      clip-path: inset(10% 0 70% -6px);
-      transform: translate(4px);
-    }
-    50% { 
-      clip-path: inset(30% -6px 50% 0);
-      transform: translate(-4px);
-    }
   }
 
   .logo-image {
@@ -984,37 +665,6 @@
   @keyframes blink {
     50% {
       opacity: 0;
-    }
-  }
-
-  @keyframes tvShutdown {
-    0% {
-      transform: scale(1) translateY(0);
-      filter: brightness(1);
-    }
-    10% {
-      transform: scale(1) translateY(0);
-      filter: brightness(2);
-    }
-    25% {
-      transform: scale(1) translateY(0);
-      filter: brightness(0.8);
-    }
-    50% {
-      transform: scaleY(0.005) translateY(0);
-      filter: brightness(0.4);
-    }
-    51% {
-      transform: scaleY(0.002) translateY(0);
-      filter: brightness(0.3);
-    }
-    75% {
-      transform: scaleY(0.001) translateY(0);
-      filter: brightness(0.2);
-    }
-    100% {
-      transform: scaleY(0) translateY(0);
-      filter: brightness(0);
     }
   }
 

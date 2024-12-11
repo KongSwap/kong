@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '$lib/services/translations';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
   import SwapPro from '$lib/components/swap/SwapPro.svelte';
@@ -11,13 +11,13 @@
   let toToken: FE.Token | null = null;
   let currentMode: 'normal' | 'pro' = 'normal';
 
-  onMount(() => {
-    const unsubscribe = page.subscribe(($page) => {
-      fromToken = tokenStore.getToken($page.url.searchParams.get('from') || '');
-      toToken = tokenStore.getToken($page.url.searchParams.get('to') || '');
-    });
-    return () => unsubscribe();
-  });
+  $: if ($tokenStore.tokens && $tokenStore.tokens.length > 0) {
+    const fromCanisterId = $page.url.searchParams.get('from');
+    const toCanisterId = $page.url.searchParams.get('to');
+    
+    fromToken = fromCanisterId ? $tokenStore.tokens.find(t => t.canister_id === fromCanisterId) || null : null;
+    toToken = toCanisterId ? $tokenStore.tokens.find(t => t.canister_id === toCanisterId) || null : null;
+  }
 
   const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
     currentMode = event.detail.mode;
@@ -70,12 +70,19 @@
 
   .swap-normal {
     background-color: transparent;
-    padding: 2rem 1rem 0;
+
   }
 
   @media (max-width: 640px) {
     .swap-normal {
       padding-top: 0.5rem;
+      padding: 1rem 1rem 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .swap-normal {
+      padding-top: 0.25rem;
     }
   }
 </style>
