@@ -1,24 +1,17 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
-  import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
+  import {
+    tokenStore,
+    getTokenDecimals,
+  } from "$lib/services/tokens/tokenStore";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { swapState } from "$lib/services/swap/SwapStateService";
-  import { swapStatusStore } from "$lib/services/swap/swapStore";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { onMount, onDestroy } from "svelte";
-  import { formatTokenValue } from "$lib/utils/tokenFormatters";
+  import { formatTokenValue } from '$lib/utils/tokenFormatters';
 
-  /**
-   * This component presents a confirmation modal for a token swap.
-   * It calculates and displays the routing path, fees, and final amounts.
-   * After the user confirms the swap, it listens for the actual completion
-   * status from the backend through the swapStatusStore to ensure that the
-   * modal only closes and shows success once the swap is truly completed.
-   */
-
-  // Props provided from the parent:
   export let payToken: FE.Token;
   export let payAmount: string;
   export let receiveToken: FE.Token;
@@ -29,31 +22,12 @@
   export let onConfirm: () => Promise<boolean>;
   export let gasFees: string[] = [];
   export let lpFees: string[] = [];
-  // A unique identifier for the swap, needed to monitor its final completion status
-  export let swapId: string;
 
-  // Internal state variables:
   let isLoading = false;
-  let isWaitingForCompletion = false;
-  let errorMessage = "";
-  let progress = 0;
-  let currentStatusMessage = "";
-
-  // These messages will be shown during the waiting period for swap completion
-  // to provide a more engaging and entertaining user experience.
-  const statusMessages = [
-    "Exploring the KONG SWAP jungle for liquidity pools...",
-    "Bribing gorillas with bananas to speed up the swap...",
-    "Swinging across vines of complex blockchain data...",
-    "Consulting the ancient DEFI banana oracle...",
-    "Convincing monkeys to index the ledger faster...",
-    "Humming at validators to decode cryptic runes...",
-    "Juggling bananas to impress the blockchain gods...",
-    "Digging through banana peels of transaction history...",
-    "Channeling the spirit of KONG to finalize the swap...",
-    "Embracing the DEFI wilderness and emerging victorious!"
-  ];
-
+  let isCountingDown = false;
+  let error = "";
+  let countdown = 2;
+  let countdownInterval: NodeJS.Timeout;
   let initialQuoteLoaded = false;
   let initialQuoteData = {
     routingPath: [],
@@ -63,38 +37,11 @@
     receiveToken: receiveToken,
   };
 
-  // Reactive values:
   $: payUsdValue = formatTokenValue(payAmount.toString(), payToken?.price, payToken?.decimals);
   $: receiveUsdValue = formatTokenValue(receiveAmount.toString(), receiveToken?.price, receiveToken?.decimals);
-  $: modalTitle = errorMessage
-    ? "Swap Error"
-    : isWaitingForCompletion
-      ? "Swap In Progress..."
-      : isLoading
-        ? "Initiating Swap..."
-        : "Confirm Swap";
-
-  // Subscription handle for tracking swap status
-  let unsubscribeFromSwapStatus: () => void;
 
   onMount(async () => {
     cleanComponent();
-    // Subscribe to swapStatusStore to detect when the swap actually finishes.
-    unsubscribeFromSwapStatus = swapStatusStore.subscribe((store) => {
-      const swapStatus = store[swapId];
-      // Only proceed if we have a valid swapStatus and we are currently waiting for completion.
-      if (swapStatus && isWaitingForCompletion) {
-        if (swapStatus.status === "Success") {
-          // The swap is now fully completed according to the backend polling.
-          completeSwapUIFlow(true);
-          onClose(); // Close modal when swap is successful
-        } else if (swapStatus.status === "Failed" || swapStatus.status === "Error" || swapStatus.status === "Timeout") {
-          // The swap has definitively failed.
-          completeSwapUIFlow(false, swapStatus.error || "Swap failed");
-        }
-      }
-    });
-
     try {
       const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
@@ -121,16 +68,15 @@
           gasFees = [];
           lpFees = [];
 
-          quote.Ok.txs.forEach((transaction) => {
-            const transactionDecimals = getTokenDecimals(transaction.receive_symbol);
+          quote.Ok.txs.forEach((tx) => {
+            const receiveDecimals = getTokenDecimals(tx.receive_symbol);
             gasFees.push(
-              SwapService.fromBigInt(transaction.gas_fee, receiveToken.decimals),
+              SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals),
             );
             lpFees.push(
-              SwapService.fromBigInt(transaction.lp_fee, receiveToken.decimals),
+              SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals),
             );
           });
-
           initialQuoteData = {
             routingPath: routingPath,
             gasFees: gasFees,
@@ -140,125 +86,78 @@
           };
         }
       } else {
-        errorMessage = quote.Err;
-        // In case of initial quote error, allow the user to see the error and close manually.
-        // No automatic closing.
+        error = quote.Err;
+        setTimeout(() => onClose(), 2000);
       }
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : "Failed to get quote";
-      // Show the error and let the user close the modal.
-    }
-  });
-
-  onDestroy(() => {
-    cleanComponent();
-    if (unsubscribeFromSwapStatus) {
-      unsubscribeFromSwapStatus();
+      error = err instanceof Error ? err.message : "Failed to get quote";
+      setTimeout(() => onClose(), 2000);
     }
   });
 
   async function handleConfirm() {
-    if (isLoading || isWaitingForCompletion) return;
+    if (isLoading || isCountingDown) return;
 
-    // Reset state and start loading
     isLoading = true;
-    errorMessage = "";
-    progress = 0;
-    currentStatusMessage = "";
-    isWaitingForCompletion = false;
-
+    isCountingDown = true;
+    error = "";
+    countdown = 2;
+    
     try {
-      // The onConfirm function presumably initiates the swap execution.
-      // It returns true or false depending on immediate request success,
-      // not the final on-chain confirmation.
-      const immediateSuccess = await onConfirm();
-
-      if (immediateSuccess) {
-        // If immediate request succeeded, we now wait for the backend to report actual completion.
-        // Start showing progress and fun status messages.
-        startProgressAnimation();
-        isWaitingForCompletion = true;
-        isLoading = false;
-
-        // We do NOT close the modal here. We rely on swapStatusStore updates to finalize.
-        // When swapStatusStore signals success or failure, completeSwapUIFlow will be called.
-      } else {
-        // If the immediate request failed, show error message.
-        errorMessage = "Swap request could not be initiated.";
+      const [, success] = await Promise.all([
+        new Promise<void>((resolve) => {
+          countdownInterval = setInterval(() => {
+            if (countdown > 0) {
+              countdown--;
+            } else {
+              clearInterval(countdownInterval);
+              countdownInterval = undefined;
+              isCountingDown = false;
+              swapState.update(state => ({
+                ...state,
+                showConfirmation: false
+              }));
+              onClose?.();
+              resolve();
+            }
+          }, 1000);
+        }),
+        onConfirm()
+      ]);
+      
+      if (success) {
         swapState.update(state => ({
           ...state,
           isProcessing: false,
-          error: "Swap request failed"
+          error: null,
+          showSuccessModal: true
         }));
-        isLoading = false;
+      } else {
+        error = "Swap failed";
+        swapState.update(state => ({
+          ...state,
+          isProcessing: false,
+          error: "Swap failed"
+        }));
       }
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : "An error occurred";
-      errorMessage = errMsg;
+      error = e.message || "An error occurred";
       swapState.update(state => ({
         ...state,
         isProcessing: false,
-        error: errMsg
+        error: e.message || "An error occurred"
       }));
+    } finally {
       isLoading = false;
     }
   }
 
-  function completeSwapUIFlow(success: boolean, failureMessage?: string) {
-    stopProgressAnimation();
-    isWaitingForCompletion = false;
-
-    if (success) {
-      // Close immediately on success and show success modal
-      swapState.update(state => ({
-        ...state,
-        isProcessing: false,
-        error: null,
-        showSuccessModal: true,
-        showConfirmation: false
-      }));
-      onClose?.();
-    } else {
-      // Show the error message and do not close automatically
-      errorMessage = failureMessage || "Swap failed";
-      swapState.update(state => ({
-        ...state,
-        isProcessing: false,
-        error: errorMessage
-      }));
+  onDestroy(() => {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
     }
-  }
-
-  // Handle a periodic update of the progress bar and status messages while waiting.
-  let progressInterval: NodeJS.Timeout | undefined;
-
-  function startProgressAnimation() {
-    stopProgressAnimation();
-    let stepCount = 0;
-    progressInterval = setInterval(() => {
-      stepCount += 1;
-
-      // Increase progress slowly until 90% to indicate ongoing waiting,
-      // final confirmation will jump to 100% when done.
-      if (progress < 90) {
-        progress += 2;
-      }
-
-      // Update the status message from the array based on progress
-      const messageIndex = Math.floor((statusMessages.length * progress) / 100);
-      if (messageIndex >= 0 && messageIndex < statusMessages.length) {
-        currentStatusMessage = statusMessages[messageIndex];
-      }
-
-    }, 500);
-  }
-
-  function stopProgressAnimation() {
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = undefined;
-    }
-  }
+    cleanComponent();
+  });
 
   $: totalGasFee = calculateTotalFee(initialQuoteData.gasFees);
   $: totalLPFee = calculateTotalFee(initialQuoteData.lpFees);
@@ -266,9 +165,11 @@
   function calculateTotalFee(fees: string[]): number {
     if (!routingPath.length || !fees.length) return 0;
 
-    return routingPath.slice(1).reduce((accumulator, _, i) => {
-      const token = $tokenStore.tokens.find((t) => t.symbol === routingPath[i + 1]);
-      if (!token) return accumulator;
+    return routingPath.slice(1).reduce((acc, _, i) => {
+      const token = $tokenStore.tokens.find(
+        (t) => t.symbol === routingPath[i + 1],
+      );
+      if (!token) return acc;
 
       const decimals = token.decimals || 8;
       const feeValue = parseFloat(fees[i]) || 0;
@@ -278,58 +179,47 @@
           scaleDecimalToBigInt(feeValue, decimals),
           decimals,
         );
-        return accumulator + (Number(stepFee) || 0);
-      } catch (calculationError) {
-        console.error("Error calculating fee:", calculationError);
-        return accumulator;
+        return acc + (Number(stepFee) || 0);
+      } catch (error) {
+        console.error("Error calculating fee:", error);
+        return acc;
       }
     }, 0);
   }
 
-  function scaleDecimalToBigInt(decimalValue: number, decimals: number): bigint {
-    if (isNaN(decimalValue) || !isFinite(decimalValue)) return 0n;
+  function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
+    if (isNaN(decimal) || !isFinite(decimal)) return 0n;
 
     const scaleFactor = 10n ** BigInt(decimals);
-    const scaledValue = decimalValue * Number(scaleFactor);
+    const scaledValue = decimal * Number(scaleFactor);
     return BigInt(Math.floor(Math.max(0, scaledValue)));
   }
 
   function cleanComponent() {
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = undefined;
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = undefined;
     }
+    isCountingDown = false;
+    countdown = 2;
     isLoading = false;
-    isWaitingForCompletion = false;
-    progress = 0;
-    currentStatusMessage = "";
-    errorMessage = "";
+    error = "";
   }
 </script>
 
 <Modal
   isOpen={true}
-  title={modalTitle}
+  title="Review Swap"
   {onClose}
-  variant={errorMessage ? 'yellow' : isWaitingForCompletion || isLoading ? 'yellow' : 'green'}
+  variant="green"
   height="auto"
-  minHeight="350px"
 >
-  {#if errorMessage}
-    <!-- Show error state -->
+  {#if error}
     <div class="error-container">
       <div class="error-icon">!</div>
-      <p class="error-message">{errorMessage}</p>
+      <p class="error-message">{error}</p>
     </div>
-
-  {:else if isWaitingForCompletion || isLoading}
-    <!-- Loading state -->
-    <div class="loading-container">
-      <p class="status-message">Processing your swap...</p>
-    </div>
-
   {:else if payToken && receiveToken}
-    <!-- Default confirmation view before swap initiation -->
     <div class="confirmation-container">
       <div class="content-wrapper">
         <div class="sections-wrapper">
@@ -359,7 +249,9 @@
           >
             <div class="button-content">
               <span class="button-text">
-                {#if isLoading}
+                {#if isCountingDown}
+                  Confirming in {countdown}...
+                {:else if isLoading}
                   Processing...
                 {:else}
                   Confirm Swap
@@ -579,25 +471,5 @@
       width: 18px;
       height: 18px;
     }
-  }
-
-  .loading-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 250px;
-    padding: 24px;
-  }
-
-  .status-message {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.9);
-    text-align: center;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.07);
-    border-radius: 12px;
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 </style>
