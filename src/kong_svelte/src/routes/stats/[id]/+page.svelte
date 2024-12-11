@@ -329,17 +329,25 @@
             <TradingViewChart
               poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
               symbol={token
-                ? `${token.symbol}/${
-                    selectedPool?.address_0 === token.canister_id
-                      ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)?.symbol
-                      : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)?.symbol
-                  }`
+                ? `${
+                    selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
+                      ? "ckUSDT"
+                      : selectedPool?.address_0 === token.canister_id
+                        ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)?.symbol
+                        : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)?.symbol
+                  }/${token.symbol}`
                 : ""}
-              fromToken={token}
+              fromToken={
+                selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
+                  ? ckusdtToken
+                  : selectedPool?.address_0 === token?.canister_id
+                    ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)
+                    : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)
+              }
               toToken={
-                selectedPool?.address_0 === token?.canister_id
-                  ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)
-                  : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)
+                selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
+                  ? token
+                  : token
               }
             />
           {:else}
