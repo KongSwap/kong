@@ -223,6 +223,7 @@
 <style>
   .tab-panel {
     animation: fadeIn 0.3s ease;
+    padding-bottom: 4rem;
   }
 
   .detail-section {
