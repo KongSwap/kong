@@ -191,56 +191,93 @@
   });
 </script>
 
-<div class="p-4">
+<div class="p-4 pt-0 -mt-2">
   {#if !$formattedTokens || !$poolStore?.pools}
     <div class="text-white">Loading token data...</div>
   {:else if !token}
     <div class="text-white">Token not found: {$page.params.id}</div>
   {:else}
     <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
-      <!-- Token Header -->
-      <div class="w-full">
-        <div class="max-w-[1300px] mx-auto flex flex-col gap-4">
-          <!-- Token Info -->
-          <div class="flex flex-col md:flex-row md:items-center gap-4 h-12">
-            <div class="flex flex-row-reverse justify-between md:flex-row md:items-center gap-4 h-full">
-              <!-- Back Button -->
-              <button
-                title="Back"
-                aria-label="Back"
-                onclick={() => goto("/stats")}
-                class="flex min-h-full flex-col items-center justify-center gap-2 px-2.5 h-full text-sm bg-[#2a2d3d]/60 hover:bg-[#2a2d3d]/80 text-white/70 rounded-lg transition-colors duration-200 w-fit"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
+      <!-- Token Header - Non-fixed with border radius -->
+      <div class="bg-[#1a1d29] border-b border-white/5 rounded-2xl">
+        <div class="p-4">
+          <div class="max-w-[1300px] mx-auto">
+            <!-- Token Info Container -->
+            <div class="flex flex-col md:flex-row md:items-center gap-4">
+              <div class="flex flex-row md:flex-row md:items-center gap-4">
+                <!-- Back Button -->
+                <button
+                  title="Back"
+                  aria-label="Back"
+                  onclick={() => goto("/stats")}
+                  class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 px-2.5 text-sm bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] text-white/70 rounded-lg transition-colors duration-200 w-fit"
                 >
-                  <path
-                    fill-rule="evenodd"
-                    d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-3.5 w-3.5 md:h-4 md:w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </button>
 
-              <div class="flex items-center gap-4">
-                <TokenImages tokens={token ? [token] : []} size={48} />
-                <div>
-                  <h1 class="text-2xl font-bold text-white">{token.name}</h1>
-                  <div class="text-[#8890a4]">{token.symbol}</div>
+                <div class="flex items-center gap-3 md:gap-4">
+                  <TokenImages tokens={token ? [token] : []} size={36} class="md:w-12 md:h-12" />
+                  <div class="flex items-center gap-2">
+                    <h1 class="text-lg md:text-2xl font-bold text-white">{token.name}</h1>
+                    <div class="text-sm md:text-base text-[#8890a4]">({token.symbol})</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Canister ID - Hidden on mobile -->
+              <div class="hidden md:flex md:flex-1 md:justify-end">
+                <div
+                  class="bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full md:w-auto transition-colors duration-200"
+                >
+                  <div class="truncate">
+                    <span class="text-[#8890a4] text-sm">{token.canister_id}</span>
+                  </div>
+                  <button
+                    class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
+                    aria-label="Copy canister ID"
+                    onclick={() => {
+                      navigator.clipboard.writeText(token.canister_id);
+                      toastStore.success("Canister ID copied!", 2000);
+                    }}
+                    title="Copy canister ID"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 text-[#8890a4]"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
-            <!-- Canister ID -->
-            <div class="flex-1 md:flex md:justify-end">
+
+            <!-- Mobile Canister ID -->
+            <div class="md:hidden mt-4">
               <div
-                class="bg-[#2a2d3d]/60 px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full md:w-auto"
+                class="bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full transition-colors duration-200"
               >
                 <div class="truncate">
-                  <span class="text-[#8890a4] text-sm">{token.canister_id}</span
-                  >
+                  <span class="text-[#8890a4] text-sm">{token.canister_id}</span>
                 </div>
                 <button
                   class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
@@ -427,22 +464,38 @@
     }
   }
 
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+  /* Global scrollbar styles */
+  :global(::-webkit-scrollbar) {
+    width: 6px;
+    height: 6px;
   }
 
-  ::-webkit-scrollbar-track {
+  :global(::-webkit-scrollbar-track) {
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 2px;
+    border-radius: 3px;
   }
 
-  ::-webkit-scrollbar-thumb {
+  :global(::-webkit-scrollbar-thumb) {
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 2px;
+    border-radius: 3px;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
+  :global(::-webkit-scrollbar-thumb:hover) {
     background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Make back button more square */
+  :global(button[title="Back"]) {
+    aspect-ratio: 1;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+  }
+
+  @media (min-width: 768px) {
+    :global(button[title="Back"]) {
+      width: 48px;
+      height: 48px;
+    }
   }
 </style>

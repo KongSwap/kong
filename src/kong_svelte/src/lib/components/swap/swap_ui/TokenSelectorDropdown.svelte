@@ -18,7 +18,8 @@
       currentToken,
       otherPanelToken = null,
       expandDirection = 'down',
-      allowedCanisterIds = []
+      allowedCanisterIds = [],
+      restrictToSecondaryTokens = false
     } = props;
   
     let searchQuery = $state("");
@@ -30,6 +31,11 @@
     let standardFilter = $state("all");
     let favorites = $derived($tokenStore.favoriteTokens);
     let favoriteCount = $derived($formattedTokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
+
+    const SECONDARY_TOKEN_IDS = [
+      'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
+      'cngnf-vqaaa-aaaar-qag4q-cai'  // ckUSDT
+    ];
 
     // Check if we're on mobile
     $effect(() => {
@@ -92,7 +98,12 @@
     let filteredTokens = $derived(
       $formattedTokens
         .filter(token => {
-          // First filter by allowed canister IDs if provided
+          // First check if we should restrict to secondary tokens
+          if (restrictToSecondaryTokens) {
+            return SECONDARY_TOKEN_IDS.includes(token.canister_id);
+          }
+          
+          // Then check allowed canister IDs if provided
           if (allowedCanisterIds.length > 0) {
             return allowedCanisterIds.includes(token.canister_id);
           }

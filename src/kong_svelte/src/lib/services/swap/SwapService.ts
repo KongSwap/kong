@@ -60,7 +60,11 @@ BigNumber.config({
 });
 
 export class SwapService {
-  private static pollingInterval: ReturnType<typeof setInterval> | null = null;
+  private static INITIAL_POLLING_INTERVAL = 500; // 500ms initially
+  private static FAST_POLLING_INTERVAL = 100;    // 100ms after 5 seconds
+  private static FAST_POLLING_DELAY = 5000;      // 5 seconds before switching to fast polling
+  private static pollingInterval: NodeJS.Timeout | null = null;
+  private static startTime: number;
   private static readonly POLLING_INTERVAL = 300; // .3 second
   private static readonly MAX_ATTEMPTS = 100; // 30 seconds
 
@@ -338,16 +342,17 @@ export class SwapService {
 
   public static async monitorTransaction(requestId: bigint, swapId: string) {
     this.stopPolling();
-
+    this.startTime = Date.now();
     console.log("SWAP MONITORING - REQUEST ID:", requestId);
     let attempts = 0;
+    let lastStatus = ''; // Track the last status
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
       `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
       10000,
     );
 
-    this.pollingInterval = setInterval(async () => {
+    const poll = async () => {
       if (attempts >= this.MAX_ATTEMPTS) {
         this.stopPolling();
         swapStatusStore.updateSwap(swapId, {
@@ -360,12 +365,20 @@ export class SwapService {
         return;
       }
 
-      console.log(`SWAP MONITORING - POLLING ATTEMPT ${attempts}`);
       try {
         const status: RequestResponse = await this.requests([requestId]);
 
         if (status.Ok?.[0]?.reply) {
           const res: RequestStatus = status.Ok[0];
+
+          // Only show toast for new status updates
+          if (res.statuses && res.statuses.length > 0) {
+            const latestStatus = res.statuses[res.statuses.length - 1];
+            if (latestStatus !== lastStatus) {
+              lastStatus = latestStatus;
+              toastStore.info(`Swap Status: ${latestStatus}`, 3000);
+            }
+          }
 
           if (res.statuses.find((s) => s.includes("Failed"))) {
             this.stopPolling();
@@ -481,6 +494,15 @@ export class SwapService {
         }
 
         attempts++;
+        
+        // Calculate next polling interval
+        const elapsedTime = Date.now() - this.startTime;
+        const nextInterval = elapsedTime >= this.FAST_POLLING_DELAY 
+          ? this.FAST_POLLING_INTERVAL 
+          : this.INITIAL_POLLING_INTERVAL;
+
+        // Schedule next poll
+        this.pollingInterval = setTimeout(poll, nextInterval);
       } catch (error) {
         console.error("Error monitoring swap:", error);
         this.stopPolling();
@@ -493,12 +515,15 @@ export class SwapService {
         toastStore.dismiss(toastId);
         return;
       }
-    }, this.POLLING_INTERVAL);
+    };
+
+    // Start polling
+    poll();
   }
 
   private static stopPolling() {
     if (this.pollingInterval) {
-      clearInterval(this.pollingInterval as any);
+      clearTimeout(this.pollingInterval);
       this.pollingInterval = null;
     }
   }

@@ -12,6 +12,7 @@
     export let onSelect: (token: FE.Token) => void;
 
     let standardFilter = $state("all");
+    
     let favoriteCount = $derived(tokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
 
     $: filteredTokens = tokens

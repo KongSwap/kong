@@ -19,7 +19,6 @@
     let errorMessage = '';
     $: maxAmount = parseFloat(formatTokenAmount(token.balance, token.decimals));
     let addressType: 'principal' | 'account' | null = null;
-    let showHelp = false;
     let showConfirmation = false;
 
     function isValidHex(str: string): boolean {
@@ -30,17 +29,16 @@
     function detectAddressType(address: string): 'principal' | 'account' | null {
         if (!address) return null;
 
-        // Principal validation
+        // Check for Account ID (64 character hex string)
+        if (address.length === 64 && isValidHex(address)) {
+            return 'account';
+        }
+
+        // Check for Principal ID
         try {
             Principal.fromText(address);
             return 'principal';
         } catch {
-            // Account validation
-            // Remove any whitespace and check if it's exactly 64 characters
-            const cleanAddress = address.replace(/\s/g, '');
-            if (cleanAddress.length === 64 && isValidHex(cleanAddress)) {
-                return 'account';
-            }
             return null;
         }
     }
@@ -48,10 +46,8 @@
     function validateAddress(address: string): boolean {
         if (!address) return false;
 
-        // Remove any whitespace for validation
         const cleanAddress = address.trim();
         
-        // Basic format checks
         if (cleanAddress.length === 0) {
             errorMessage = 'Address cannot be empty';
             return false;
@@ -59,29 +55,26 @@
 
         addressType = detectAddressType(cleanAddress);
 
-        if (addressType === null) {
-            if (cleanAddress.length === 64 && !isValidHex(cleanAddress)) {
-                errorMessage = 'Account ID must be a valid hexadecimal string';
-            } else if (cleanAddress.length === 64) {
-                errorMessage = 'Invalid Account ID format';
-            } else {
-                errorMessage = 'Invalid address format - must be a Principal ID or Account ID';
-            }
+        if (addressType === 'account') {
+            errorMessage = 'Only Principal IDs are currently supported. Account ID support coming soon!';
             return false;
         }
 
-        // Additional Principal-specific validation
-        if (addressType === 'principal') {
-            try {
-                const principal = Principal.fromText(cleanAddress);
-                if (principal.isAnonymous()) {
-                    errorMessage = 'Cannot send to anonymous principal';
-                    return false;
-                }
-            } catch (err) {
-                errorMessage = 'Invalid Principal ID format';
+        if (addressType === null) {
+            errorMessage = 'Invalid address format';
+            return false;
+        }
+
+        // Principal-specific validation
+        try {
+            const principal = Principal.fromText(cleanAddress);
+            if (principal.isAnonymous()) {
+                errorMessage = 'Cannot send to anonymous principal';
                 return false;
             }
+        } catch (err) {
+            errorMessage = 'Invalid Principal ID format';
+            return false;
         }
 
         errorMessage = '';
@@ -172,10 +165,10 @@
     }
 
     $: validationMessage = (() => {
-        if (!recipientAddress) return { type: 'info', text: 'Enter a Principal ID or Account ID' };
+        if (!recipientAddress) return { type: 'info', text: 'Enter a Principal ID (sending to Account IDs coming soon)' };
         if (errorMessage) return { type: 'error', text: errorMessage };
         if (addressType === 'principal') return { type: 'success', text: 'Valid Principal ID' };
-        if (addressType === 'account') return { type: 'success', text: 'Valid Account ID' };
+        if (addressType === 'account') return { type: 'error', text: 'Currently only sending to Principal IDs is supported' };
         return { type: 'error', text: 'Invalid address format' };
     })();
 
@@ -194,9 +187,6 @@
         <div class="id-card">
             <div class="id-header">
                 <span>Recipient Address</span>
-                <button type="button" class="help-btn" on:click={() => showHelp = true}>
-                    <span>💡</span>
-                </button>
             </div>
 
             <div class="input-group">
@@ -205,8 +195,8 @@
                         type="text"
                         bind:value={recipientAddress}
                         placeholder="Paste address or enter manually"
-                        class:error={addressType === null && recipientAddress}
-                        class:valid={addressType !== null}
+                        class:error={errorMessage && recipientAddress}
+                        class:valid={addressType === 'principal' && !errorMessage}
                     />
                     <button 
                         type="button"
@@ -218,7 +208,11 @@
                 </div>
                 
                 {#if recipientAddress}
-                    <div class="validation-status" class:success={addressType !== null} class:error={addressType === null}>
+                    <div 
+                        class="validation-status" 
+                        class:success={validationMessage.type === 'success'} 
+                        class:error={validationMessage.type === 'error'}
+                    >
                         <span class="status-text">{validationMessage.text}</span>
                     </div>
                 {/if}
@@ -255,111 +249,15 @@
         <button 
             type="submit" 
             class="send-btn"
-            disabled={isValidating || !amount || !recipientAddress}
+            disabled={isValidating || !amount || !recipientAddress || addressType === 'account'}
         >
-            Send Tokens
+            {#if addressType === 'account'}
+                Sending to Account IDs coming soon
+            {:else}
+                Send Tokens
+            {/if}
         </button>
     </form>
-
-    {#if showHelp}
-        <Modal
-            isOpen={showHelp}
-            onClose={() => showHelp = false}
-            title="How to Send Tokens"
-            width="min(600px, 95vw)"
-            height="auto"
-        >
-            <div class="help-content">
-                <div class="help-section">
-                    <h3>Supported Address Types</h3>
-                    <div class="address-types">
-                        <div class="address-type">
-                            <span class="icon">🔑</span>
-                            <div>
-                                <h4>Principal ID</h4>
-                                <p>The native identifier for Internet Computer users and canisters.</p>
-                                <code class="example">
-                                    2vxsx-fae3i-kkp2w-yxca6-g44zk-<wbr>
-                                    o3br2-xjqyl-cmxgg-4kew2-2y7mh-pae
-                                </code>
-                                <ul class="features">
-                                    <li>Length: 27-29 characters with dashes</li>
-                                    <li>Used for direct canister interactions</li>
-                                    <li>Common within ecosystem</li>
-                                </ul>
-                            </div>
-                        </div>
-                        
-                        <div class="divider"></div>
-                        
-                        <div class="address-type">
-                            <span class="icon">📝</span>
-                            <div>
-                                <h4>Account ID</h4>
-                                <p>A derived address used specifically for token transactions.</p>
-                                <code class="example">
-                                    03e3d86f29a069c6f2c5c48e01bc084e<wbr>
-                                    4ea18ad02b0eec8fccadf4487183c223
-                                </code>
-                                <ul class="features">
-                                    <li>Always 64 characters (hexadecimal)</li>
-                                    <li>Derived from Principal ID</li>
-                                    <li>Used by most wallet apps (Plug, Stoic, AstroX)</li>
-                                    <li>More secure for token operations</li>
-                                    <li>Common for CEXs</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div class="help-section">
-                    <h3>Which One Should I Use?</h3>
-                    <div class="guidance">
-                        <div class="choice-section">
-                            <h4>Use Account ID for:</h4>
-                            <ul>
-                                <li>Sending to wallet apps (NFID, NNS, Oisy)</li>
-                                <li>When you see a 64-character hex address</li>
-                                <li>Most token transfers (safer option)</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="choice-divider"></div>
-                        
-                        <div class="choice-section">
-                            <h4>Use Principal ID for:</h4>
-                            <ul>
-                                <li>Sending to canisters directly</li>
-                                <li>When you see a dashed format address</li>
-                                <li>Developer interactions</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div class="warning-box">
-                    <span class="warning-icon">⚠️</span>
-                    <div class="warning-content">
-                        <h4>Important Safety Tips</h4>
-                        <ul>
-                            <li>Always double-check addresses before sending</li>
-                            <li>Start with small test amounts for new recipients</li>
-                            <li>Transfers cannot be reversed once confirmed</li>
-                            <li>Keep your Principal ID private if using it for authentication</li>
-                        </ul>
-                        <a href="https://internetcomputer.org/docs/current/developer-docs/defi/wallets/overview" target="_blank" rel="noopener" class="learn-more">
-                            Learn more about IC wallets →
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </Modal>
-    {/if}
 
     {#if showConfirmation}
         <Modal
@@ -432,7 +330,7 @@
         @apply flex justify-between items-center mb-2 text-white/70 text-sm;
     }
 
-    .help-btn, .max-btn {
+    .max-btn {
         @apply px-3 py-1 bg-white/10 rounded-lg hover:bg-white/20 text-white;
     }
 
@@ -472,117 +370,6 @@
 
     .balance-info {
         @apply text-right mt-1 text-sm text-white/60;
-    }
-
-    .help-content {
-        @apply p-6 space-y-6;
-        
-        a {
-            @apply text-indigo-400 hover:text-indigo-300 hover:underline;
-        }
-
-        .example {
-            @apply block p-2 my-2 bg-black/20 rounded font-mono text-xs md:text-sm 
-                   text-indigo-300 break-all leading-relaxed;
-            
-            wbr {
-                @apply select-none;
-            }
-        }
-
-        .guidance {
-            @apply space-y-6;
-
-            .choice-section {
-                @apply bg-white/5 rounded-lg p-4;
-
-                h4 {
-                    @apply text-sm font-medium text-indigo-300 mb-3;
-                }
-
-                ul {
-                    @apply space-y-2;
-                    li {
-                        @apply flex items-center gap-2 text-sm text-white/70
-                               before:content-['•'] before:text-indigo-400;
-                    }
-                }
-            }
-
-            .choice-divider {
-                @apply border-t border-white/10 my-2;
-            }
-        }
-
-        .learn-more {
-            @apply block mt-4 text-sm font-medium;
-        }
-
-        .help-section {
-            @apply space-y-4;
-            
-            h3 {
-                @apply text-xl font-medium text-white/90 mb-4;
-            }
-        }
-
-        .divider {
-            @apply my-6 border-t border-white/10;
-        }
-
-        .address-types {
-            @apply space-y-6;
-        }
-
-        .address-type {
-            @apply flex items-start gap-4 p-5 rounded-lg bg-white/5;
-
-            .icon {
-                @apply text-2xl;
-            }
-
-            h4 {
-                @apply font-medium text-lg text-white/90 mb-2;
-            }
-
-            p {
-                @apply text-sm text-white/70 mb-2;
-            }
-
-            .example {
-                @apply block p-2 my-2 bg-black/20 rounded font-mono text-sm text-indigo-300;
-            }
-
-            .features {
-                @apply mt-3 space-y-1 text-sm text-white/70;
-                li {
-                    @apply flex items-center gap-2 before:content-['•'] before:text-indigo-400;
-                }
-            }
-        }
-
-        .warning-box {
-            @apply flex items-start gap-4 p-5 rounded-lg bg-yellow-500/10 border border-yellow-500/20;
-            
-            .warning-icon {
-                @apply text-xl;
-            }
-
-            .warning-content {
-                @apply flex-1;
-                
-                h4 {
-                    @apply font-medium text-yellow-200/90 mb-2;
-                }
-
-                ul {
-                    @apply space-y-1 text-sm text-yellow-100/80;
-                    li {
-                        @apply flex items-center gap-2 before:content-['•'] before:text-yellow-500;
-                    }
-                }
-            }
-        }
     }
 
     .confirm-box {

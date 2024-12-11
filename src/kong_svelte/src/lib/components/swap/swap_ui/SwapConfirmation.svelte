@@ -11,6 +11,7 @@
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { onMount, onDestroy } from "svelte";
   import { formatTokenValue } from '$lib/utils/tokenFormatters';
+  import { toastStore } from "$lib/stores/toastStore";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -24,10 +25,7 @@
   export let lpFees: string[] = [];
 
   let isLoading = false;
-  let isCountingDown = false;
   let error = "";
-  let countdown = 2;
-  let countdownInterval: NodeJS.Timeout;
   let initialQuoteLoaded = false;
   let initialQuoteData = {
     routingPath: [],
@@ -87,53 +85,37 @@
         }
       } else {
         error = quote.Err;
+        toastStore.error(error);
         setTimeout(() => onClose(), 2000);
       }
     } catch (err) {
       error = err instanceof Error ? err.message : "Failed to get quote";
+      toastStore.error(error);
       setTimeout(() => onClose(), 2000);
     }
   });
 
   async function handleConfirm() {
-    if (isLoading || isCountingDown) return;
+    if (isLoading) return;
 
     isLoading = true;
-    isCountingDown = true;
     error = "";
-    countdown = 2;
     
     try {
-      const [, success] = await Promise.all([
-        new Promise<void>((resolve) => {
-          countdownInterval = setInterval(() => {
-            if (countdown > 0) {
-              countdown--;
-            } else {
-              clearInterval(countdownInterval);
-              countdownInterval = undefined;
-              isCountingDown = false;
-              swapState.update(state => ({
-                ...state,
-                showConfirmation: false
-              }));
-              onClose?.();
-              resolve();
-            }
-          }, 1000);
-        }),
-        onConfirm()
-      ]);
+      const success = await onConfirm();
       
       if (success) {
         swapState.update(state => ({
           ...state,
+          showConfirmation: false,
           isProcessing: false,
           error: null,
           showSuccessModal: true
         }));
+        onClose?.();
       } else {
         error = "Swap failed";
+        toastStore.error(error);
         swapState.update(state => ({
           ...state,
           isProcessing: false,
@@ -142,6 +124,7 @@
       }
     } catch (e) {
       error = e.message || "An error occurred";
+      toastStore.error(error);
       swapState.update(state => ({
         ...state,
         isProcessing: false,
@@ -153,9 +136,6 @@
   }
 
   onDestroy(() => {
-    if (countdownInterval) {
-      clearInterval(countdownInterval);
-    }
     cleanComponent();
   });
 
@@ -182,6 +162,7 @@
         return acc + (Number(stepFee) || 0);
       } catch (error) {
         console.error("Error calculating fee:", error);
+        toastStore.error("Error calculating fee");
         return acc;
       }
     }, 0);
@@ -196,12 +177,6 @@
   }
 
   function cleanComponent() {
-    if (countdownInterval) {
-      clearInterval(countdownInterval);
-      countdownInterval = undefined;
-    }
-    isCountingDown = false;
-    countdown = 2;
     isLoading = false;
     error = "";
   }
@@ -249,9 +224,7 @@
           >
             <div class="button-content">
               <span class="button-text">
-                {#if isCountingDown}
-                  Confirming in {countdown}...
-                {:else if isLoading}
+                {#if isLoading}
                   Processing...
                 {:else}
                   Confirm Swap

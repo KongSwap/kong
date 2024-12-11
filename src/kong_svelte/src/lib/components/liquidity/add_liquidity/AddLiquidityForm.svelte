@@ -31,6 +31,7 @@
 
     let showToken0Selector = false;
     let showToken1Selector = false;
+    let loadingState = '';
 
     $: {
         if ($poolStore.userPoolBalances) {
@@ -102,6 +103,7 @@
         try {
             loading = true;
             error = null;
+            loadingState = `Calculating required ${otherToken.symbol} amount...`;
             
             const requiredAmount = await PoolService.addLiquidityAmounts(
                 currentToken.symbol,
@@ -123,6 +125,7 @@
             error = err.message;
         } finally {
             loading = false;
+            loadingState = '';
         }
     }, 400);
 
@@ -277,7 +280,7 @@
         : !pool
         ? "No Pool Found"
         : loading
-        ? "Loading..."
+        ? loadingState || "Loading..."
         : "Review Transaction";
 
     $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance() && pool !== null;
@@ -291,7 +294,7 @@
         }).format(num);
     }
 
-    function handleSubmit() {
+    async function handleSubmit() {
         if (!isValid || loading) return;
         showConfirmation = true;
     }
@@ -301,12 +304,15 @@
         if (!token0 || !token1 || !$auth?.account?.owner) return;
         
         try {
+            loadingState = 'Fetching token balances...';
             await Promise.all([
                 tokenStore.loadBalance(token0, $auth.account.owner.toString(), true),
                 tokenStore.loadBalance(token1, $auth.account.owner.toString(), true)
             ]);
         } catch (error) {
             console.error("Error updating balances:", error);
+        } finally {
+            loadingState = '';
         }
     }, 1000);
 
@@ -454,7 +460,14 @@
             disabled={!isValid || loading}
             on:click={handleSubmit}
         >
-            {buttonText}
+            {#if loading}
+                <div class="loading-state">
+                    <span class="loading-spinner"></span>
+                    <span>{loadingState}</span>
+                </div>
+            {:else}
+                {buttonText}
+            {/if}
         </button>
 
         {#if token0 && token1}
@@ -518,7 +531,7 @@
                 onTokenSelect(1);
             }}
             onClose={() => showToken1Selector = false}
-            restrictedTokens={['ICP', 'ckUSDT']}
+            restrictToSecondaryTokens={true}
         />
     </Portal>
 {/if}
@@ -608,6 +621,14 @@
         @apply disabled:opacity-50 disabled:cursor-not-allowed;
         @apply hover:bg-blue-700 transition-colors duration-200;
         @apply mt-4;
+    }
+
+    .loading-state {
+        @apply flex items-center justify-center gap-2;
+    }
+
+    .loading-spinner {
+        @apply w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin;
     }
 
     .chevron {

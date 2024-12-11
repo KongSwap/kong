@@ -152,7 +152,7 @@
     if (confirm('Are you sure you want to clear your favorite tokens?')) {
       await tokenStore.clearUserData();
       await tokenStore.loadTokens(true);
-      toastStore.success('Favorites cleared successfully');
+      toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
     }
   }
 

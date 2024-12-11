@@ -287,20 +287,21 @@
             <input
               type="text"
               placeholder="Search tokens..."
-              class="flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2 mr-4"
+              class="flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2 mr-4 min-w-0"
               on:input={handleSearch}
               disabled={$showFavoritesOnly} 
             />
             <button
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
+              class="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0
                      {$showFavoritesOnly
                        ? 'bg-[#60A5FA] text-white'
                        : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
               on:click={toggleShowFavorites}
             >
-              My Favorites
+              <span class="hidden sm:inline">My Favorites</span>
+              <span class="sm:hidden">Favorites</span>
               {#if $auth.isConnected && $currentWalletFavorites.length > 0}
-                <span class="ml-2 px-2 py-0.5 bg-[#2a2d3d] rounded-full text-xs">
+                <span class="ml-1 sm:ml-2 px-2 py-0.5 bg-[#2a2d3d] rounded-full text-xs">
                   {$currentWalletFavorites.length}
                 </span>
               {/if}
@@ -358,11 +359,11 @@
                             <svelte:component this={getSortIcon("price_change_24h")} class="inline w-3.5 h-3.5 ml-1" />
                           </th>
                           <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[120px]" on:click={() => toggleSort("volume_24h")}>
-                            Volume
+                            Vol
                             <svelte:component this={getSortIcon("volume_24h")} class="inline w-3.5 h-3.5 ml-1" />
                           </th>
                           <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[120px]" on:click={() => toggleSort("marketCap")}>
-                            Market Cap
+                            MCap
                             <svelte:component this={getSortIcon("marketCap")} class="inline w-3.5 h-3.5 ml-1" />
                           </th>
                           <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] w-[140px]">Actions</th>
@@ -468,29 +469,78 @@
                       </tbody>
                     </table>
                   {:else}
-                    <!-- Mobile Card View -->
-                    <div class="flex items-center justify-between mb-4">
+                    <!-- Mobile sorting options - Fixed at top -->
+                    <div class="flex items-center gap-2 mb-2 sticky top-0 bg-[#1a1b23] p-2 z-10 border-b border-[#2a2d3d]">
                       <button 
-                        class="px-3 py-1.5 text-sm rounded bg-[#2a2d3d] text-white"
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
                         on:click={() => toggleSort("marketCap")}
                       >
-                        Sort by Market Cap
+                        MCap
                         <svelte:component this={getSortIcon("marketCap")} class="inline w-3.5 h-3.5 ml-1" />
                       </button>
+                      <button 
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'volume_24h' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
+                        on:click={() => toggleSort("volume_24h")}
+                      >
+                        Vol
+                        <svelte:component this={getSortIcon("volume_24h")} class="inline w-3.5 h-3.5 ml-1" />
+                      </button>
+                      <button 
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'price_change_24h' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
+                        on:click={() => toggleSort("price_change_24h")}
+                      >
+                        24h
+                        <svelte:component this={getSortIcon("price_change_24h")} class="inline w-3.5 h-3.5 ml-1" />
+                      </button>
                     </div>
+
+                    <!-- Mobile token cards -->
                     <div class="space-y-2">
                       {#each $filteredTokens.tokens as token}
-                        <div class="flex items-center justify-between bg-[#1a1b23] border border-[#2a2d3d] rounded-lg h-14"
+                        <div 
+                          class="token-card"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
-                          <div class="flex items-center">
-                            <span class="text-[#8890a4] text-sm w-10 text-center">#{token.marketCapRank}</span>
-                            <TokenImages tokens={[token]} size={24} />
-                            <span class="ml-2 font-medium">{token.name}</span>
+                          <span class="token-rank">#{token.marketCapRank}</span>
+                          <div class="token-card-main">
+                            <!-- Left section: Favorite, Token Icon, Symbol -->
+                            <div class="token-card-left">
+                              {#if $auth.isConnected}
+                                <button
+                                  class="favorite-button-mobile"
+                                  on:click={(e) => toggleFavorite(token, e)}
+                                >
+                                  {#if $currentWalletFavorites.includes(token.canister_id)}
+                                    <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
+                                  {:else}
+                                    <Star class="star-icon" size={14} />
+                                  {/if}
+                                </button>
+                              {/if}
+                              <TokenImages tokens={[token]} size={24} />
+                              <div class="token-info-mobile">
+                                <span class="token-symbol-mobile">{token.symbol}</span>
+                                <div class="token-metrics-row">
+                                  <span>MCap: {formatUsdValue(token?.metrics?.market_cap)}</span>
+                                  <span class="separator">|</span>
+                                  <span>Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="token-card-right">
+                              <span class="token-price">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
+                              {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
+                                <span class="token-change new">NEW</span>
+                              {:else if token?.metrics?.price_change_24h === 0}
+                                <span class="token-change neutral">--</span>
+                              {:else}
+                                <span class="token-change {Number(token?.metrics?.price_change_24h) > 0 ? 'positive' : 'negative'}">
+                                  {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
+                                </span>
+                              {/if}
+                            </div>
                           </div>
-                          <div class="flex items-center">
-                            <span class="mr-4">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
-                        </div>
                         </div>
                       {/each}
                     </div>
@@ -596,7 +646,12 @@
   }
 
   .favorite-button {
-    @apply flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-none;
+    @apply flex items-center justify-center w-6 h-6 rounded-lg hover:bg-white/10 transition-none;
+  }
+
+  .favorite-button-mobile {
+    @apply flex items-center justify-center w-6 h-6 rounded-lg 
+           hover:bg-white/5 active:bg-white/10 transition-colors duration-150;
   }
 
   .change-cell.positive {
@@ -672,5 +727,67 @@
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: #60A5FA #1a1b23;
+  }
+
+  .token-card {
+    @apply bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-2.5
+           active:bg-[#2a2d3d]/50 transition-colors duration-150
+           hover:border-[#2a2d3d]/80 relative;
+  }
+
+  .token-rank {
+    @apply absolute top-1 left-2 text-xs text-[#8890a4]/70;
+  }
+
+  .token-card-main {
+    @apply flex items-center justify-between w-full mt-2;
+  }
+
+  .token-card-left {
+    @apply flex items-center gap-2 flex-1 min-w-0;
+  }
+
+  .token-info-mobile {
+    @apply flex flex-col justify-center min-w-0;
+  }
+
+  .token-symbol-mobile {
+    @apply text-sm text-white font-medium;
+  }
+
+  .token-metrics-row {
+    @apply flex items-center gap-2 text-[10px] text-[#8890a4] mt-0.5;
+  }
+
+  .separator {
+    @apply text-[#8890a4]/50 mx-0.5;
+  }
+
+  .token-card-right {
+    @apply flex flex-col items-end justify-center ml-2;
+  }
+
+  .token-price {
+    @apply font-medium text-white text-sm;
+  }
+
+  .token-change {
+    @apply text-xs font-medium mt-0.5;
+  }
+
+  .token-change.positive {
+    @apply text-green-400;
+  }
+
+  .token-change.negative {
+    @apply text-red-400;
+  }
+
+  .token-change.new {
+    @apply text-purple-400;
+  }
+
+  .token-change.neutral {
+    @apply text-[#8890a4];
   }
 </style>

@@ -13,6 +13,7 @@
   export let variant: "green" | "yellow" = "green";
   export let width = "600px";
   export let height = "80vh";
+  export let minHeight: string = "auto";
 
   let isMobile = false;
   let modalWidth = width;
@@ -125,7 +126,7 @@
           height={modalHeight}
           className="modal-panel"
         >
-          <div class="modal-content">
+          <div class="modal-content" style="height: {height}; min-height: {minHeight};">
             <header class="modal-header">
               <h2 id="modal-title" class="modal-title">{title}</h2>
               <button
@@ -191,6 +192,7 @@
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
+    min-height: var(--min-height, auto);
   }
 
   .modal-header {

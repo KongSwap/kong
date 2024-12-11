@@ -29,12 +29,23 @@
   let searchResultsReady = false;
   let initialFilterApplied = false;
 
+  const MIN_USD_VALUE = 0.01; // Minimum USD value threshold (1 cent)
+
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;
   $: {
     if (Array.isArray(balances)) {
       processedPools = balances
-        .filter(poolBalance => Number(poolBalance.balance) > 0)
+        .filter(poolBalance => {
+          const hasBalance = Number(poolBalance.balance) > 0;
+          const hasMinValue = Number(poolBalance.usd_balance) >= MIN_USD_VALUE;
+          console.log('Pool:', poolBalance.name, 
+            'Balance:', poolBalance.balance, 
+            'USD:', poolBalance.usd_balance,
+            'Passes Filter:', hasBalance && hasMinValue
+          );
+          return hasBalance && hasMinValue;
+        })
         .map(poolBalance => {
           const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);
           const token1 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_1);
@@ -203,7 +214,7 @@
           bind:this={searchInput}
           bind:value={searchQuery}
           type="text"
-          placeholder="Search token symbol, name, or address..."
+          placeholder="Search..."
           class="search-input"
         />
         {#if searchQuery}
@@ -247,6 +258,13 @@
   </div>
 
   <div class="pool-list-content">
+    {#if !pool}
+      <div class="add-liquidity-button-wrapper">
+        <button class="primary-button" on:click={handleAddLiquidity}>
+          Add Position
+        </button>
+      </div>
+    {/if}
     <div class="pool-list">
       {#if loading && processedPools.length === 0}
         <div class="loading-state" in:fade>
@@ -275,9 +293,6 @@
             </button>
           {:else if !pool}
             <p>No active positions</p>
-            <button class="primary-button" on:click={handleAddLiquidity}>
-              Add Position
-            </button>
           {:else}
             <p>No matching pool found</p>
           {/if}
@@ -318,7 +333,8 @@
                   </div>
                 </div>
                 <div class="view-details">
-                  View Details →
+                  <span class="details-text">View Details</span>
+                  <span class="details-arrow">→</span>
                 </div>
               </div>
             </div>
@@ -384,6 +400,10 @@
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
   }
 
+  .add-liquidity-button-wrapper {
+    @apply flex justify-end py-4;
+  }
+
   .pool-list {
     @apply flex flex-col gap-2 mt-2;
   }
@@ -415,7 +435,7 @@
   }
 
   .pool-right {
-    @apply flex items-center gap-4;
+    @apply flex items-center gap-1;
   }
 
   .value-info {
@@ -427,11 +447,26 @@
   }
 
   .view-details {
-    @apply text-sm text-blue-400 opacity-0 transition-opacity duration-200 ml-4;
+    @apply text-sm text-blue-400 ml-4 flex items-center gap-1;
+  }
+
+  .details-text {
+    @apply block;
+    @apply sm:block hidden;
+  }
+
+  .details-arrow {
+    @apply block;
+  }
+
+  /* Adjust margin on mobile */
+  @media (max-width: 640px) {
+    .view-details {
+      @apply ml-2;
+    }
   }
 
   .pool-item:hover .view-details {
-    @apply opacity-100;
   }
 
   .loading-state, .error-state, .empty-state {
