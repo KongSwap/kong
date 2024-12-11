@@ -4,11 +4,22 @@ import { parseTokens } from "../tokens/tokenParsers";
 
 
 export const fetchTokens = async (): Promise<FE.Token[]> => {
-  const response = await fetch(`${INDEXER_URL}/api/tokens`);
-  const data = await response.json();
-  const parsed = parseTokens(data);
-  kongDB.tokens.bulkPut(parsed);
-  return data;
+  try {
+    const response = await fetch(`${INDEXER_URL}/api/tokens`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch tokens: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    const parsed = parseTokens(data);
+    await kongDB.tokens.bulkPut(parsed.map(token => ({
+      ...token,
+      timestamp: Date.now()
+    })));
+    return parsed;
+  } catch (error) {
+    console.error('Error fetching tokens:', error);
+    throw error;
+  }
 };
 
 export interface CandleData {

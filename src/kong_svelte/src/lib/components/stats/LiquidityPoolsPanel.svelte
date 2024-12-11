@@ -1,6 +1,5 @@
 <script lang="ts">
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
   import type { Pool } from "$lib/services/pools";
@@ -124,7 +123,7 @@
                 <div>
                   <div class="text-slate-400 text-xs mb-1">TVL</div>
                   <div class="text-white font-medium">
-                    {formatUsdValue(Number(pool.tvl))}
+                    {formatUsdValue(Number(Number(pool.tvl) / 1e6))}
                   </div>
                 </div>
                 <div>

@@ -290,12 +290,25 @@ export async function fetchTokenLogo(canister_id: string): Promise<string> {
         let logoUrl: string = DEFAULT_LOGOS.DEFAULT;
 
         if ('Text' in value && value.Text) {
-          logoUrl = value.Text;
+          // Handle both relative and absolute URLs
+          const urlText = value.Text;
+          if (urlText.startsWith('http://') || urlText.startsWith('https://') || urlText.startsWith('data:')) {
+            // Absolute URL or data URL - use as is
+            logoUrl = urlText;
+          } else if (urlText.startsWith('/')) {
+            // Relative URL starting with / - prepend STATIC_ASSETS_URL
+            logoUrl = `${STATIC_ASSETS_URL}${urlText}`;
+          } else {
+            // Relative URL without leading / - prepend STATIC_ASSETS_URL with /
+            logoUrl = `${STATIC_ASSETS_URL}/${urlText}`;
+          }
         } else if ('Blob' in value && value.Blob) {
           const base64 = btoa(String.fromCharCode(...value.Blob));
           logoUrl = `data:image/png;base64,${base64}`;
         }
 
+        console.log(`Logo URL for ${canister_id}:`, logoUrl);
+        
         await saveTokenLogo(canister_id, logoUrl);
         tokenLogoStore.update(logos => ({
           ...logos,

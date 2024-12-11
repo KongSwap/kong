@@ -11,7 +11,7 @@ import { liveQuery } from "dexie";
 import { Principal } from "@dfinity/principal";
 import { AnonymousIdentity } from "@dfinity/agent";
 import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
-import { calculate24hPriceChange, getHistoricalPrice } from "$lib/price/priceService";
+import { getHistoricalPrice } from "$lib/price/priceService";
 import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
 
 BigNumber.config({
@@ -278,8 +278,18 @@ function createTokenStore() {
       store.update((s) => ({ ...s, isLoading: true }));
       try {
         const baseTokens = await TokenService.fetchTokens();
+        if (!baseTokens || baseTokens.length === 0) {
+          throw new Error('No tokens fetched from service');
+        }
 
         eventBus.emit('tokensFetched', baseTokens);
+        store.update((s) => ({
+          ...s,
+          isLoading: false,
+          error: null,
+          tokens: baseTokens,
+          lastTokensFetch: Date.now()
+        }));
 
         return baseTokens;
       } catch (error: any) {
@@ -288,10 +298,9 @@ function createTokenStore() {
           ...s,
           error: error.message,
           isLoading: false,
-          tokens: [],
+          tokens: s.tokens || [] // Keep existing tokens on error
         }));
-        toastStore.error("Failed to load tokens");
-        return [];
+        throw error;
       }
     },
     loadPrices: async () => {
@@ -516,31 +525,10 @@ function createTokenStore() {
         for (const token of tokens) {
           const currentPrice = prices[token.canister_id] || 0;
 
-          // Get 24h price change from price service
-          const priceData = await fetchChartData(
-            ckusdtToken.token_id,
-            token.token_id,
-            Math.floor(Date.now()/1000) - 2 * 24 * 60 * 60,
-            Math.floor(Date.now()/1000),
-            "1D"
-          );
-
-          let priceChange24h = 0;
-          if (priceData.length >= 2) {
-            const sortedData = [...priceData].sort((a, b) => a.candle_start - b.candle_start);
-            const currentDayPrice = Number(sortedData[sortedData.length - 1].close_price);
-            const previousDayPrice = Number(sortedData[sortedData.length - 2].close_price);
-            
-            priceChange24h = previousDayPrice > 0
-              ? ((currentDayPrice - previousDayPrice) / previousDayPrice) * 100
-              : 0;
-          }
-
           // Update token metrics
           token.metrics = {
             ...token.metrics,
             price: currentPrice,
-            price_change_24h: priceChange24h.toFixed(2)
           };
 
           // Update balance in USD if exists
@@ -614,8 +602,10 @@ export const formattedTokens = derived(
         const usdValue = amount.times(price);
         const isFavorite = favorites.includes(token.canister_id);
 
+        // Preserve all original token properties and add formatted ones
         return {
           ...token,
+          logo_url: token.logo_url, // Explicitly preserve logo_url
           metrics: {
             ...token.metrics,
             price: price.toString(),

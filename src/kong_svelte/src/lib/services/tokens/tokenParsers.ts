@@ -14,12 +14,15 @@ export const parseTokens = (
       if (token.canister_id in DEFAULT_LOGOS) {
         // For default logos, use the path directly without the INDEXER_URL prefix
         logoUrl = DEFAULT_LOGOS[token.canister_id as keyof typeof DEFAULT_LOGOS];
+        console.log(`Using default logo for ${token.symbol} (${token.canister_id}):`, logoUrl);
       } else if (token?.logo_url) {
         // For dynamic logos from the indexer, use the INDEXER_URL prefix
-        logoUrl = `${STATIC_ASSETS_URL}${token.logo_url}`;
+        const originalUrl = token.logo_url;
+        logoUrl = originalUrl.startsWith('http') ? originalUrl : `${STATIC_ASSETS_URL}${originalUrl.startsWith('/') ? '' : '/'}${originalUrl}`;
       } else {
         // For the default fallback logo, use the path directly
         logoUrl = DEFAULT_LOGOS.DEFAULT;
+        console.log(`Using fallback logo for ${token.symbol} (${token.canister_id}):`, logoUrl);
       }
 
       const result: FE.Token = {

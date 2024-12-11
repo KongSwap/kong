@@ -15,7 +15,6 @@
   let toToken = initialToToken;
   let isChartMinimized = false;
   let isMobile: boolean;
-  let activeHistoryTab: "my" | "pair" | "orders" = "my";
 
   // Initialize tokens from swapState immediately when component loads
   $: {
@@ -124,22 +123,25 @@
     display: flex;
     flex-direction: column;
     background: var(--color-background);
-    overflow: hidden;
     position: relative;
     padding: 0 1rem;
+    height: calc(100vh - 64px);
+    overflow-y: auto; /* Allow container to scroll */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   }
 
   .layout-container {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    flex: 1;
+    min-height: 0;
   }
 
   .main-content {
     display: flex;
     gap: 0.5rem;
     flex: 1;
-    overflow: hidden;
+    min-height: 0;
   }
 
   .chart-controls {
@@ -195,27 +197,20 @@
     transform: scale(1.1);
   }
 
+  .chart-area {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
   .chart-wrapper {
     position: relative;
     width: 100%;
     height: 100%;
-    min-height: 500px;
+    min-height: 0;
     transition: all 0.3s ease;
-  }
-
-  .chart-wrapper.fullscreen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 999;
-    background: var(--color-background);
-  }
-
-  .chart-wrapper.minimized {
-    opacity: 0;
-    pointer-events: none;
   }
 
   .chart-placeholder {
@@ -236,10 +231,12 @@
     display: flex;
     flex-direction: column;
     min-width: 500px;
-    flex: 1;
+    width: 500px;
+    flex: 0 0 auto;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
-    gap: 0.25rem; /* Gap between panels  pixel todo*/
+    gap: 0.25rem;
   }
 
   .swap-section {
@@ -325,33 +322,10 @@
   }
 
   /* Mobile styles */
-  .chart-area {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    min-height: 500px;
-  }
-
   .main-content.mobile {
     flex-direction: column;
-    height: auto;
-    max-height: none;
     gap: 1rem;
-  }
-
-  .main-content.mobile :global(.chart-area) {
-    height: 60vh !important;
-    min-height: 300px;
-    max-height: 500px;
-  }
-
-  .main-content.mobile .chart-wrapper {
-    height: 100%;
-    width: 100%;
-  }
-
-  .main-content.mobile .chart-placeholder {
-    height: 100%;
+    overflow-y: visible;
   }
 
   .right-panels.mobile {
@@ -359,6 +333,17 @@
     max-width: 100%;
     min-width: 0;
     flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .right-panels.mobile :global(.flex-1) {
+    height: 1200px !important; /* Double the height on mobile */
+  }
+
+  .main-content.mobile :global(.chart-area) {
+    height: 60vh;
+    min-height: 300px;
+    max-height: 500px;
   }
 
   @media (min-width: 1920px) {

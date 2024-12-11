@@ -14,7 +14,6 @@
   import LiquidityPoolsPanel from "$lib/components/stats/LiquidityPoolsPanel.svelte";
   import StatPanel from "$lib/components/stats/StatPanel.svelte";
   import { goto } from "$app/navigation";
-  import { calculate24hPriceChange } from '$lib/price/priceService';
   import { CKUSDC_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   // Ensure formattedTokens and poolStore are initialized
@@ -52,15 +51,19 @@
       return;
     }
 
-    const found = $formattedTokens.find(
+    const foundToken = $formattedTokens.find(
       (t) => t.address === pageId || t.canister_id === pageId,
     );
+    
+    console.log('Found token:', foundToken);
+    console.log('Token metrics:', foundToken?.metrics);
+    console.log('24h price change:', foundToken?.metrics?.price_change_24h);
 
-    if (found) {
-      const converted = found;
+    if (foundToken) {
+      const converted = foundToken;
       token = converted;
     } else {
-      console.log("[TokenPage] Token not found");
+      console.warn('Token not found:', $page.params.id);
       token = undefined;
     }
   });

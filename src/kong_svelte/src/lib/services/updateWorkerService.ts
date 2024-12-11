@@ -10,14 +10,11 @@ import { poolStore } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
 import * as Comlink from "comlink";
-import {
-  formatTokenAmount,
-  formatToNonZeroDecimal,
-} from "$lib/utils/numberFormatUtils";
 import type { WorkerApi } from "$lib/workers/updateWorker";
 import { appLoader } from "$lib/services/appLoader";
 import { calculate24hPriceChange, priceStore } from "$lib/price/priceService";
 import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { kongDB } from "./db";
 
 class UpdateWorkerService {
   private worker: Worker | null = null;
@@ -135,7 +132,7 @@ class UpdateWorkerService {
       if (!currentStore?.tokens?.length) return;
 
       // Create batches of tokens to process in parallel
-      const batchSize = 5; // Process 5 tokens at a time
+      const batchSize = 15; // Process 5 tokens at a time
       const tokens = currentStore.tokens;
       const batches = [];
       
@@ -152,6 +149,7 @@ class UpdateWorkerService {
               try {
                 // Skip USDT price change calculation
                 const priceChange = token.canister_id === CKUSDT_CANISTER_ID ? 0 : await calculate24hPriceChange(token);
+                await kongDB.tokens.update(token.canister_id, { ...token, metrics: { ...token.metrics, price_change_24h: priceChange } });
                 // console.log(`Price change for token ${token.canister_id}: ${priceChange}`);
                 return [token.canister_id, priceChange] as [string, number | string];
               } catch (error) {
@@ -185,27 +183,6 @@ class UpdateWorkerService {
           }))
         };
       });
-
-      // Update token balances with new prices
-      const prices = await tokenStore.loadPrices();
-      if (prices && typeof prices === "object") {
-        tokenStore.update(store => {
-          if (!store) return store;
-          const balances = { ...store.balances };
-          for (const token of store.tokens) {
-            if (balances[token.canister_id]) {
-              const price = prices[token.canister_id] || 0;
-              const balance = balances[token.canister_id].in_tokens;
-              const amount = Number(formatTokenAmount(balance.toString(), token.decimals));
-              balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
-            }
-          }
-          return {
-            ...store,
-            balances
-          };
-        });
-      }
     } catch (error) {
       console.error("Error updating prices:", error);
     }

@@ -43,14 +43,18 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
   const payToken = tokens.find(t => Number(t.token_id) === payTokenId);
   const receiveToken = tokens.find(t => Number(t.token_id) === receiveTokenId);
   
+  // Convert timestamps to UTC ISO strings
+  const startTimeUTC = new Date(startTime * 1000).toISOString();
+  const endTimeUTC = new Date(endTime * 1000).toISOString();
+  
   // Log URL if WTN is involved
   if (payToken?.canister_id === WTN_CANISTER_ID || receiveToken?.canister_id === WTN_CANISTER_ID) {
     console.log(`[WTN] Fetching candle data:`, {
       payToken: payToken?.symbol,
       receiveToken: receiveToken?.symbol,
-      startTime: new Date(startTime * 1000).toISOString(),
-      endTime: new Date(endTime * 1000).toISOString(),
-      url: `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${new Date(startTime * 1000).toISOString()}&end_time=${new Date(endTime * 1000).toISOString()}&interval=1d`
+      startTime: startTimeUTC,
+      endTime: endTimeUTC,
+      url: `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTimeUTC}&end_time=${endTimeUTC}&interval=1d`
     });
   }
   
@@ -71,19 +75,20 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
   await acquireTokenLock(token.canister_id);
   
   try {
-    // Get current time in UTC
-    const now = Math.floor(Date.now() / 1000); // Unix timestamp is already UTC
-    const yesterday = now - (24 * 60 * 60);
-    // Expand search window to ±24 hours to find more data points
-    const searchWindowStart = yesterday - (24 * 60 * 60);
-    const searchWindowEnd = yesterday + (24 * 60 * 60);
+    // Get current time and ensure UTC handling
+    const nowUTC = Math.floor(Date.now() / 1000); // Unix timestamp in UTC
+    const yesterdayUTC = nowUTC - (24 * 60 * 60);
+    
+    // Expand search window to ±24 hours in UTC
+    const searchWindowStartUTC = yesterdayUTC - (24 * 60 * 60);
+    const searchWindowEndUTC = yesterdayUTC + (24 * 60 * 60);
     const tokenId = Number(token.token_id);
 
     // console.log(`[${token.symbol}] Getting historical price for token_id ${tokenId}:`, {
-    //   targetTime: new Date(yesterday * 1000).toISOString(), // toISOString() returns UTC
+    //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
     //   searchWindow: {
-    //     start: new Date(searchWindowStart * 1000).toISOString(),
-    //     end: new Date(searchWindowEnd * 1000).toISOString()
+    //     start: new Date(searchWindowStartUTC * 1000).toISOString(),
+    //     end: new Date(searchWindowEndUTC * 1000).toISOString()
     //   }
     // });
 
@@ -257,18 +262,18 @@ export async function getHistoricalPrice(token: FE.Token): Promise<number> {
     }
 
     // Get current time in UTC
-    const now = Math.floor(Date.now() / 1000); // Unix timestamp is already UTC
-    const yesterday = now - (24 * 60 * 60);
-    // Expand search window to ±24 hours to find more data points
-    const searchWindowStart = yesterday - (24 * 60 * 60);
-    const searchWindowEnd = yesterday + (24 * 60 * 60);
+    const nowUTC = Math.floor(Date.now() / 1000); // Unix timestamp in UTC
+    const yesterdayUTC = nowUTC - (24 * 60 * 60);
+    // Expand search window to ±24 hours in UTC
+    const searchWindowStartUTC = yesterdayUTC - (24 * 60 * 60);
+    const searchWindowEndUTC = yesterdayUTC + (24 * 60 * 60);
     const tokenId = Number(token.token_id);
 
     // console.log(`[${token.symbol}] Getting historical price for token_id ${tokenId}:`, {
-    //   targetTime: new Date(yesterday * 1000).toISOString(), // toISOString() returns UTC
+    //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
     //   searchWindow: {
-    //     start: new Date(searchWindowStart * 1000).toISOString(),
-    //     end: new Date(searchWindowEnd * 1000).toISOString()
+    //     start: new Date(searchWindowStartUTC * 1000).toISOString(),
+    //     end: new Date(searchWindowEndUTC * 1000).toISOString()
     //   }
     // });
 
@@ -283,7 +288,7 @@ export async function getHistoricalPrice(token: FE.Token): Promise<number> {
       const sortedData = [...data].sort((a, b) => {
         const aTime = new Date(a.candle_start).getTime() / 1000;
         const bTime = new Date(b.candle_start).getTime() / 1000;
-        return Math.abs(aTime - yesterday) - Math.abs(bTime - yesterday);
+        return Math.abs(aTime - yesterdayUTC) - Math.abs(bTime - yesterdayUTC);
       });
 
       // Get the closest data point
@@ -292,11 +297,11 @@ export async function getHistoricalPrice(token: FE.Token): Promise<number> {
 
       // Calculate time difference in hours for logging (all in UTC)
       const closestTime = new Date(closest.candle_start).getTime() / 1000;
-      const hoursDiff = Math.abs(closestTime - yesterday) / 3600;
+      const hoursDiff = Math.abs(closestTime - yesterdayUTC) / 3600;
 
-      // console.log(`[${token.symbol}] Using candle from ${hoursDiff.toFixed(1)} hours ${closestTime > yesterday ? 'after' : 'before'} target:`, {
+      // console.log(`[${token.symbol}] Using candle from ${hoursDiff.toFixed(1)} hours ${closestTime > yesterdayUTC ? 'after' : 'before'} target:`, {
       //   candleTime: closest.candle_start, // Already in ISO UTC from API
-      //   targetTime: new Date(yesterday * 1000).toISOString(),
+      //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
       //   candleData: closest
       // });
 
@@ -306,7 +311,7 @@ export async function getHistoricalPrice(token: FE.Token): Promise<number> {
     };
 
     // Try direct USDT path first
-    const directUsdtData = await fetchCandleData(tokenId, 1, searchWindowStart, searchWindowEnd);
+    const directUsdtData = await fetchCandleData(tokenId, 1, searchWindowStartUTC, searchWindowEndUTC);
     // console.log(`[${token.symbol}] Direct USDT data:`, directUsdtData);
     let price = 0;
 
@@ -330,8 +335,8 @@ export async function getHistoricalPrice(token: FE.Token): Promise<number> {
     if (price === 0) {
       // Get token/ICP and ICP/USDT data
       const [tokenIcpData, icpUsdtData] = await Promise.all([
-        fetchCandleData(tokenId, 2, searchWindowStart, searchWindowEnd),
-        fetchCandleData(2, 1, searchWindowStart, searchWindowEnd)
+        fetchCandleData(tokenId, 2, searchWindowStartUTC, searchWindowEndUTC),
+        fetchCandleData(2, 1, searchWindowStartUTC, searchWindowEndUTC)
       ]);
 
       // console.log(`[${token.symbol}] ICP path data:`, {
