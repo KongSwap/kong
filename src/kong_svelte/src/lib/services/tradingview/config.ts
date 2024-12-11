@@ -30,7 +30,7 @@ export function getChartConfig(params: {
   return {
     symbol,
     datafeed,
-    interval: '240',
+    interval: '60',
     container,
     library_path: '/charting_library/charting_library/',
     width: containerWidth,
@@ -88,18 +88,19 @@ export function getChartConfig(params: {
       "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
       
       // Chart background
-      "paneProperties.background": "rgba(22, 16, 40, 1)",
-      "paneProperties.backgroundType": "solid",
       "paneProperties.vertGridProperties.color": "rgba(30, 41, 59, 0.64)",
       "paneProperties.horzGridProperties.color": "rgba(30, 41, 59, 0.64)",
+      "paneProperties.backgroundType": "gradient",
+      "paneProperties.backgroundGradientStartColor": "rgba(22, 16, 40, 0.9)",
+      "paneProperties.backgroundGradientEndColor": "rgba(1, 1, 1, 0.5)",
       
       // Chart area
       "chartProperties.background": "rgba(22, 16, 40, 1)",
       "chartProperties.backgroundType": "solid",
       
       // Price scale formatting
-      "mainSeriesProperties.priceFormat.precision": isMobile ? 3 : 4,
-      "mainSeriesProperties.priceFormat.minMove": isMobile ? 0.001 : 0.0001,
+      "mainSeriesProperties.priceFormat.precision": isMobile ? 6 : 4,
+      "mainSeriesProperties.priceFormat.minMove": isMobile ? 0.000001 : 0.0001,
       
       // Price axis
       "scalesProperties.backgroundColor": "rgba(22, 16, 40, 1)",

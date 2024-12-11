@@ -63,10 +63,10 @@
 
 <Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
   <div class="flex flex-col h-[600px] w-full">
-    <div class="p-4">
+    <div class="p-4 border-b border-slate-700/70">
       <h2 class="text-2xl font-semibold text-white/80">Token Pools</h2>
     </div>
-    <div class="flex-1 overflow-y-auto p-4">
+    <div class="flex-1 overflow-y-auto">
       {#if !props.pools}
         <div class="text-white">Loading pools...</div>
       {:else}
@@ -74,7 +74,7 @@
         <div class="flex-1 overflow-y-auto">
           {#each paginatedData.pools as pool}
             <div
-              class="border-b border-slate-700/70 hover:bg-slate-800/30 transition-colors duration-200 p-4"
+              class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors duration-200 p-4"
             >
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">

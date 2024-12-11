@@ -326,8 +326,8 @@
       </div>
 
       <!-- Chart Section -->
-      <Panel variant="blue" type="main" className="!p-0 flex-1">
-        <div class="h-[400px] md:h-[calc(100vh-500px)] min-h-[500px] w-full">
+      <Panel variant="blue" type="main" className="!p-0 flex-1 border-none">
+        <div class="h-[450px] min-h-[400px] w-full">
           {#if isChartDataReady}
             <TradingViewChart
               poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
