@@ -232,7 +232,7 @@
         >
           <div class="card-content">
             <h3>Pools</h3>
-            <div class="apy">Up to {$highestApr.toFixed(2)}% APR</div>
+            <div class="apy">Up to {$highestApr.toFixed(2)}% APY</div>
           </div>
           <div class="stat-icon-wrapper">
             <Droplets class="stat-icon" />
