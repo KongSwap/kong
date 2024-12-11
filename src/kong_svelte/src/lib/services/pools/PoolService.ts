@@ -274,7 +274,7 @@ export class PoolService {
    */
   public static async pollRequestStatus(requestId: bigint): Promise<any> {
     let attempts = 0;
-    const MAX_ATTEMPTS = 10;
+    const MAX_ATTEMPTS = 20;
     let lastStatus = '';
     
     const toastId = toastStore.info(

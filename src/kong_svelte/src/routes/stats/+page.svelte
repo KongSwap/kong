@@ -440,9 +440,9 @@
                               </span>
                             </td>
                             <td class="change-cell text-right {priceChangeClass}">
-                              {#if enrichedToken?.metrics?.price_change_24h === null || enrichedToken?.metrics?.price_change_24h === "NEW"}
-                                <span class="text-purple-400">NEW</span>
-                              {:else if enrichedToken?.metrics?.price_change_24h === 0}
+                              {#if enrichedToken?.metrics?.price_change_24h === null || enrichedToken?.metrics?.price_change_24h === "n/a"}
+                                <span class="text-purple-400">0%</span>
+                              {:else if Number(enrichedToken?.metrics?.price_change_24h) === 0}
                                 <span class="text-slate-400">--</span>
                               {:else}
                                 <span>
