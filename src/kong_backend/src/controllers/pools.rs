@@ -106,10 +106,10 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
                 let to_principal_id = Account::from(principal);
                 match remove_liquidity_from_pool(args, user_id, &to_principal_id).await {
                     Ok(_) => {
-                        results.push(format!("Removed user_id {} LP positions", user_id));
+                        results.push(format!("Removed user_id {} LP position", user_id));
                     }
                     Err(e) => {
-                        results.push(format!("Failed to remove user_id {} LP positions: {}", user_id, e));
+                        results.push(format!("Failed to remove user_id {} LP position: {}", user_id, e));
                     }
                 }
             }
@@ -122,15 +122,4 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
     results.push(format!("Remaining LP token total supply {}", lp_total_supply));
 
     serde_json::to_string(&results).map_err(|e| format!("Failed to serialize remove_liquidity: {}", e))
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn update_tvl() -> Result<String, String> {
-    let pools = pool_map::get();
-    for mut pool in pools {
-        pool.update_tvl();
-        pool_map::update(&pool);
-    }
-
-    Ok("TVL's updated".to_string())
 }
