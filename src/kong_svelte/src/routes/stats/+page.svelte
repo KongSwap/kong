@@ -439,9 +439,15 @@
                               </span>
                             </td>
                             <td class="change-cell text-right {priceChangeClass}">
-                              <span>
-                                {enrichedToken?.metrics?.price_change_24h}%
-                              </span>
+                              {#if enrichedToken?.metrics?.price_change_24h === null || enrichedToken?.metrics?.price_change_24h === "NEW"}
+                                <span class="text-purple-400">NEW</span>
+                              {:else if enrichedToken?.metrics?.price_change_24h === 0}
+                                <span class="text-slate-400">--</span>
+                              {:else}
+                                <span>
+                                  {formatToNonZeroDecimal(enrichedToken?.metrics?.price_change_24h)}%
+                                </span>
+                              {/if}
                             </td>
                             <td class="text-right">
                               <span>{formatUsdValue(enrichedToken?.metrics?.volume_24h)}</span>

@@ -51,7 +51,6 @@ class PriceService {
       const now = Math.floor(Date.now() / 1000);
       const startTime = now - 2 * 24 * 60 * 60; // 48 hours ago
 
-      // For ICP/USDT price, we want receiveTokenId (USDT) / payTokenId (ICP)
       const data = await fetchChartData(
         this.config.receiveTokenId, // USDT
         this.config.payTokenId,     // ICP

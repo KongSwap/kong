@@ -4,7 +4,7 @@
     } from "$lib/utils/numberFormatUtils";
     import TokenImages from "$lib/components/common/TokenImages.svelte";
     import { onMount } from 'svelte';
-    import { formatUsdValue, fromRawAmount, toRawAmount } from "$lib/utils/tokenFormatters";
+    import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   
     export let pool: BE.Pool & { tvl?: number };
     export let tokenMap: Map<string, any>;
@@ -54,14 +54,14 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatToNonZeroDecimal(tokenMap.get(pool.address_0)?.price ?? 0)}
+          ${formatToNonZeroDecimal(Number(tokenMap.get(pool.address_0)?.price) ?? 0)}
         </div>
       </div>
     </td>
     <td class="tvl-cell">
       <div class="tvl-info">
         <div class="tvl-value">
-          {formatUsdValue(pool.tvl)}
+          {formatUsdValue(Number(pool.tvl) / (10 ** 6))}
         </div>
       </div>
     </td>
@@ -106,7 +106,7 @@
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
           size={32}
-          overlap={12}
+          overlap={true}
         />
         <div class="token-details">
           <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>

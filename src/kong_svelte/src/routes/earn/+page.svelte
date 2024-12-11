@@ -1,6 +1,6 @@
 <script lang="ts">
   import { writable, derived } from "svelte/store";
-  import { poolsList, poolStore, userPoolBalances } from "$lib/services/pools/poolStore";
+  import { poolsList, poolStore, userPoolBalances, displayPools } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
@@ -94,7 +94,7 @@
   }
 
   // Filter pools by search (only when viewing all pools)
-  $: filteredPools = $poolsList.filter(pool => {
+  $: filteredPools = $displayPools.filter(pool => {
     if ($activePoolView !== "all") return true; // no filtering when on user view
 
     if (!debouncedSearchTerm) return true;
@@ -140,7 +140,7 @@
       return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
     }
     if (column === "tvl") {
-      return direction * ((a.tvl || 0) - (b.tvl || 0));
+      return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
     }
     if (column === "rolling_24h_apy") {
       return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));

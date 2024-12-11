@@ -97,7 +97,7 @@
           <div class="stats-grid">
             <div class="stat-item full-width">
               <span class="stat-label">TVL</span>
-              <span class="stat-value">${formatBigIntToUSD(pool.balance)}</span>
+              <span class="stat-value">${formatUsdValue(Number(pool.tvl) / (10 ** 6))}</span>
             </div>
             <div class="stat-item full-width">
               <span class="stat-label">24h Volume</span>

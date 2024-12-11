@@ -319,7 +319,7 @@ export class TokenService {
     // Ensure pools are loaded first
     const poolData = await PoolService.fetchPoolsData();
     if (!poolData?.pools?.length) {
-      console.warn('No pools available for price calculation');
+      // console.warn('No pools available for price calculation');
       return tokens.reduce((acc, token) => {
         if (token.canister_id) {
           acc[token.canister_id] = 0;

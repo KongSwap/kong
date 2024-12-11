@@ -101,15 +101,12 @@ export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
 
   return pools.map((pool, index) => {
     const decimals1 = 6;
-    const balance = pool.balance || 0;
     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
-    const tvl = new BigNumber(balance.toString()).div(10 ** decimals1);
 
     return {
       ...pool,
       id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
       apy,
-      tvl,
     };
   });
 }

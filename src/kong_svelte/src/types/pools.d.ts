@@ -18,8 +18,6 @@ declare global {
     interface Pool {
       id: string;
       lp_token_symbol: string;
-      balance: bigint;
-      total_lp_fee: bigint;
       name: string;
       lp_fee_0: bigint;
       lp_fee_1: bigint;
@@ -31,7 +29,7 @@ declare global {
       address_1: string;
       symbol_0: string;
       symbol_1: string;
-      total_volume: bigint;
+      tvl: bigint;
       pool_id: number;
       price: number;
       chain_0: string;
@@ -40,7 +38,7 @@ declare global {
       symbol: string;
       lp_fee_bps: number;
       on_kong: boolean;
-      tvl?: number;
+      tvl?: bigint;
       volume_24h?: string;
       apr?: number;
     }

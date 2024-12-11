@@ -145,7 +145,6 @@ function createPoolStore() {
 
       try {
         if (!pnp.isConnected) {
-          console.log('[PoolStore] User not connected, returning empty balances');
           update(state => ({
             ...state,
             userPoolBalances: [],
@@ -159,9 +158,6 @@ function createPoolStore() {
           PoolService.fetchUserPoolBalances(),
           tokens.prices
         ]);
-
-        console.log('[PoolStore] Fetched balances:', balancesResponse);
-        console.log('[PoolStore] Token prices:', tokenPrices);
 
         if (!tokenPrices) {
           throw new Error('Token prices are not available');
@@ -185,7 +181,7 @@ function createPoolStore() {
             symbol: lpData.symbol || `${lpData.symbol_0}/${lpData.symbol_1}`,
             symbol_0: lpData.symbol_0,
             symbol_1: lpData.symbol_1,
-            balance: lpData.balance,
+            tvl: lpData.tvl,
             amount_0: lpData.amount_0,
             amount_1: lpData.amount_1,
             usd_balance: lpData.usd_balance,
@@ -257,3 +253,10 @@ export const userPoolBalances: Readable<FE.UserPoolBalance[]> = derived(
   poolStore,
   ($store) => $store.userPoolBalances
 );
+
+export const displayPools = derived(poolsList, ($pools) => {
+  return $pools.map(pool => ({
+    ...pool,
+    displayTvl: Number(pool.tvl) / 1e6
+  }));
+});

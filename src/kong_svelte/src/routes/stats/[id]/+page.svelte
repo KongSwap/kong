@@ -14,7 +14,7 @@
   import LiquidityPoolsPanel from "$lib/components/stats/LiquidityPoolsPanel.svelte";
   import StatPanel from "$lib/components/stats/StatPanel.svelte";
   import { goto } from "$app/navigation";
-  import { priceStore, formatPriceChange, getPriceChangeColor } from '$lib/services/price/priceService';
+  import { calculate24hPriceChange } from '$lib/price/priceService';
 
   // Ensure formattedTokens and poolStore are initialized
   if (!formattedTokens || !poolStore) {
@@ -122,32 +122,6 @@
     return ((volume / marketCap) * 100).toFixed(2) + "%";
   }
 
-  let priceState = $state({
-    currentPrice: null,
-    price24hAgo: null,
-    priceChange24h: null,
-    lastUpdated: null
-  });
-
-  // Initialize price service when tokens are ready
-  $effect(() => {
-    if (!token?.token_id || !ckusdtToken?.token_id) return;
-
-    const unsubscribe = priceStore.subscribe((state) => {
-      priceState = state;
-    });
-
-    priceStore.initialize({
-      payTokenId: token.token_id,
-      receiveTokenId: ckusdtToken.token_id
-    });
-
-    return () => {
-      unsubscribe();
-      priceStore.reset();
-    };
-  });
-
   // Add back the isChartDataReady state and effect
   let isChartDataReady = $state(false);
   $effect(() => {
@@ -245,9 +219,15 @@
           color="purple"
         >
           <svelte:fragment slot="subtitle">
-            <span class={getPriceChangeColor(priceState.priceChange24h)}>
-              {formatPriceChange(priceState.priceChange24h)}
-            </span>
+            {#if token.metrics.price_change_24h === "NEW"}
+              <span class="text-purple-400">NEW</span>
+            {:else if token.metrics.price_change_24h === null || Number(token.metrics.price_change_24h) === 0}
+              <span class="text-slate-400">--</span>
+            {:else}
+              <span class={Number(token.metrics.price_change_24h) > 0 ? "text-green-500" : "text-red-500"}>
+                {Number(token.metrics.price_change_24h) > 0 ? "+" : ""}{Number(token.metrics.price_change_24h).toFixed(2)}%
+              </span>
+            {/if}
             <span class="text-slate-400 ml-1">24h</span>
           </svelte:fragment>
         </StatPanel>

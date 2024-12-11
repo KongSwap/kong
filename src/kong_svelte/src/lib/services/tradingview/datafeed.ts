@@ -215,12 +215,6 @@ export class KongDatafeed {
         // Add debug logging
         if (bars.length > 0 && this.lastBar) {
           const latestBar = bars[bars.length - 1];
-          console.log('Time comparison:', {
-            lastBarTime: new Date(this.lastBar.time).toISOString(),
-            newBarTime: new Date(latestBar.time).toISOString(),
-            lastBarTimestamp: this.lastBar.time,
-            newBarTimestamp: latestBar.time
-          });
 
           if (latestBar.time > this.lastBar.time) {
             this.lastBar = latestBar;

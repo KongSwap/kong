@@ -3,8 +3,6 @@ import { z } from 'zod';
 // Define a schema for a pool
 export const PoolSchema = z.object({
   lp_token_symbol: z.string().optional(),
-  balance: z.bigint(),
-  total_lp_fee: z.bigint(),
   name: z.string(),
   lp_fee_0: z.bigint(),
   lp_fee_1: z.bigint(),
@@ -16,7 +14,7 @@ export const PoolSchema = z.object({
   address_1: z.string(),
   symbol_0: z.string(),
   symbol_1: z.string(),
-  total_volume: z.bigint(),
+  tvl: z.bigint(),
   pool_id: z.number(),
   price: z.number(),
   chain_0: z.string(),
@@ -27,7 +25,6 @@ export const PoolSchema = z.object({
   on_kong: z.boolean(),
   logo: z.string().optional(),
   total_24h_volume: z.bigint().optional(),
-  tvl: z.number().optional(),
 });
 
 // Define a schema for user pool balance

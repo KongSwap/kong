@@ -16,6 +16,8 @@ import {
 } from "$lib/utils/numberFormatUtils";
 import type { WorkerApi } from "$lib/workers/updateWorker";
 import { appLoader } from "$lib/services/appLoader";
+import { calculate24hPriceChange, priceStore } from "$lib/price/priceService";
+import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
 
 class UpdateWorkerService {
   private worker: Worker | null = null;
@@ -130,28 +132,82 @@ class UpdateWorkerService {
   private async updatePrices() {
     try {
       const currentStore = get(tokenStore);
-      if (!currentStore.tokens) return;
+      if (!currentStore?.tokens?.length) return;
 
-      const prices = (await Promise.race([
-        tokenStore.loadPrices(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Price update timeout")), 30000),
-        ),
-      ])) as Record<string, number>;
+      // Create batches of tokens to process in parallel
+      const batchSize = 5; // Process 5 tokens at a time
+      const tokens = currentStore.tokens;
+      const batches = [];
+      
+      for (let i = 0; i < tokens.length; i += batchSize) {
+        batches.push(tokens.slice(i, i + batchSize));
+      }
 
+      // Process each batch in parallel
+      const results = await Promise.all(
+        batches.map(async (batch) => {
+          // Process tokens within each batch in parallel
+          const batchResults = await Promise.all(
+            batch.map(async (token) => {
+              try {
+                // Skip USDT price change calculation
+                const priceChange = token.canister_id === CKUSDT_CANISTER_ID ? 0 : await calculate24hPriceChange(token);
+                // console.log(`Price change for token ${token.canister_id}: ${priceChange}`);
+                return [token.canister_id, priceChange] as [string, number | string];
+              } catch (error) {
+                console.error(`Error calculating price change for token ${token.canister_id}:`, error);
+                return [token.canister_id, 0] as [string, number];
+              }
+            })
+          );
+          return batchResults;
+        })
+      );
+
+      // Flatten results and update stores
+      const priceChanges = results.flat();
+      const priceChangeMap = Object.fromEntries(priceChanges);
+      
+      // Update price store with new values
+      priceStore.set(priceChangeMap);
+
+      // Update token store
+      tokenStore.update((store) => {
+        if (!store) return store;
+        return {
+          ...store,
+          tokens: store.tokens.map((token) => ({
+            ...token,
+            metrics: {
+              ...token.metrics,
+              price_change_24h: priceChangeMap[token.canister_id] ?? token.metrics.price_change_24h
+            }
+          }))
+        };
+      });
+
+      // Update token balances with new prices
+      const prices = await tokenStore.loadPrices();
       if (prices && typeof prices === "object") {
-        const balances = { ...currentStore.balances };
-        for (const token of currentStore.tokens) {
-          if (balances[token.canister_id]) {
-            const price = prices[token.canister_id] || 0;
-            const balance = balances[token.canister_id].in_tokens;
-            const amount = Number(formatTokenAmount(balance.toString(), token.decimals));
-            balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
+        tokenStore.update(store => {
+          if (!store) return store;
+          const balances = { ...store.balances };
+          for (const token of store.tokens) {
+            if (balances[token.canister_id]) {
+              const price = prices[token.canister_id] || 0;
+              const balance = balances[token.canister_id].in_tokens;
+              const amount = Number(formatTokenAmount(balance.toString(), token.decimals));
+              balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
+            }
           }
-        }
+          return {
+            ...store,
+            balances
+          };
+        });
       }
     } catch (error) {
-      console.error("Error during price update:", error);
+      console.error("Error updating prices:", error);
     }
   }
 

@@ -11,6 +11,8 @@ import { liveQuery } from "dexie";
 import { Principal } from "@dfinity/principal";
 import { AnonymousIdentity } from "@dfinity/agent";
 import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
+import { calculate24hPriceChange, getHistoricalPrice } from "$lib/price/priceService";
+import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
 
 BigNumber.config({
   DECIMAL_PLACES: 36,
@@ -144,14 +146,28 @@ function createTokenStore() {
         .above(Date.now() - TokenService.TOKEN_CACHE_DURATION)
         .toArray();
 
-      const tokensWithPrices = fetchedTokens.map(token => {
+      const tokensWithPrices = await Promise.all(fetchedTokens.map(async token => {
         // Find cached token with price
         const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
+        
+        // Get historical price for 24h change
+        const historicalPrice = await getHistoricalPrice(token);
+        const currentPrice = Number(token.metrics?.price || 0);
+        
+        // Calculate price change
+        const priceChange = historicalPrice > 0 ? 
+          ((currentPrice - historicalPrice) / historicalPrice) * 100 : 
+          0;
+
         return {
           ...token,
-          price: cachedToken?.price || 0,
-        } as FE.Token;
-      });
+          metrics: {
+            ...token.metrics,
+            price_change_24h: priceChange.toFixed(2),
+            historical_price: historicalPrice
+          }
+        };
+      }));
 
       // Update store with initial tokens (with cached prices)
       store.update((s) => ({
@@ -171,9 +187,6 @@ function createTokenStore() {
       const tokensNeedingPrices = validTokens.filter(token => {
         const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
         const needsPrice = !cachedToken || (Date.now() - cachedToken.timestamp) > TokenService.TOKEN_CACHE_DURATION;
-        if (needsPrice) {
-          console.log(`Need to fetch new price for ${token.symbol}`);
-        }
         return needsPrice;
       });
 
@@ -607,6 +620,7 @@ export const formattedTokens = derived(
             ...token.metrics,
             price: price.toString(),
             market_cap: (Number(price) * (Number(token.metrics?.total_supply) / Math.pow(10, token.decimals))).toString(),
+            price_change_24h: token.canister_id === CKUSDT_CANISTER_ID ? 0 : token.metrics.price_change_24h
           },
           balance: balance.toString(),
           formattedBalance,

@@ -5,7 +5,6 @@ const poolSchema = z.object({
   pool_id: z.number(),
   name: z.string(),
   symbol: z.string(),
-  balance: z.string().or(z.bigint()).transform(val => BigInt(val)),
   chain_0: z.string(),
   symbol_0: z.string(),
   address_0: z.string(),
@@ -23,8 +22,7 @@ const poolSchema = z.object({
   rolling_24h_num_swaps: z.string().or(z.bigint()).transform(val => Number(val)),
   rolling_24h_apy: z.number(),
   lp_token_symbol: z.string(),
-  total_volume: z.string().or(z.bigint()).transform(val => BigInt(val)),
-  total_lp_fee: z.string().or(z.bigint()).transform(val => BigInt(val)),
+  tvl: z.string().or(z.bigint()).transform(val => BigInt(val)),
   on_kong: z.boolean()
 });
 
@@ -39,6 +37,7 @@ const poolResponseSchema = z.object({
 export class PoolSerializer {
   static serializePoolsResponse(response: unknown): BE.PoolResponse {
     try {
+      console.log('response', response);
       const parsed = poolResponseSchema.parse(response);
       return {
         pools: parsed.pools.map(pool => ({
@@ -46,7 +45,6 @@ export class PoolSerializer {
           pool_id: pool.pool_id,
           name: pool.name,
           symbol: pool.symbol,
-          balance: pool.balance,
           chain_0: pool.chain_0,
           symbol_0: pool.symbol_0,
           address_0: pool.address_0,
@@ -64,8 +62,7 @@ export class PoolSerializer {
           rolling_24h_num_swaps: pool.rolling_24h_num_swaps,
           rolling_24h_apy: pool.rolling_24h_apy,
           lp_token_symbol: pool.lp_token_symbol,
-          total_volume: pool.total_volume,
-          total_lp_fee: pool.total_lp_fee,
+          tvl: pool.tvl,
           on_kong: pool.on_kong,
           lp_token_supply: BigInt(0)
         })),
@@ -81,7 +78,9 @@ export class PoolSerializer {
   }
 
   static serializePool(rawPool: unknown): BE.Pool {
+    console.log('rawPool', rawPool);
     const parsed = poolSchema.parse(rawPool);
+    
     return {
       id: parsed.pool_id.toString(),
       pool_id: parsed.pool_id,
@@ -104,7 +103,7 @@ export class PoolSerializer {
       rolling_24h_num_swaps: parsed.rolling_24h_num_swaps,
       rolling_24h_apy: parsed.rolling_24h_apy,
       lp_token_symbol: parsed.lp_token_symbol,
-      tvl: parsed.tvl,
+      tvl: BigInt(parsed.tvl),
       on_kong: parsed.on_kong,
       lp_token_supply: BigInt(0)
     };
