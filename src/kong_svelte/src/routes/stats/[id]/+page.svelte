@@ -15,6 +15,7 @@
   import StatPanel from "$lib/components/stats/StatPanel.svelte";
   import { goto } from "$app/navigation";
   import { calculate24hPriceChange } from '$lib/price/priceService';
+  import { CKUSDC_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   // Ensure formattedTokens and poolStore are initialized
   if (!formattedTokens || !poolStore) {
@@ -31,6 +32,14 @@
     const found = $formattedTokens?.find((t) => t.symbol === "ckUSDT");
     if (found) {
       ckusdtToken = found;
+    }
+  });
+
+  let icpToken = $state<FE.Token | undefined>(undefined);
+  $effect(() => {
+    const found = $formattedTokens?.find((t) => t.canister_id === ICP_CANISTER_ID);
+    if (found) {
+      icpToken = found;
     }
   });
 
@@ -59,7 +68,30 @@
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
   let selectedPool = $state<Pool | undefined>(undefined);
   $effect(() => {
-    const foundPool = $poolStore?.pools?.find((p) => {
+    if (token?.canister_id === CKUSDT_CANISTER_ID) {
+      const foundPool = $poolStore?.pools?.find((p) => {
+        const hasToken =
+          p.address_0 === CKUSDT_CANISTER_ID || p.address_1 === CKUSDT_CANISTER_ID;
+        const hasUSDC =
+          p.address_0 === CKUSDC_CANISTER_ID || p.address_1 === CKUSDC_CANISTER_ID;
+        const hasTVL = Number(p.tvl) > 0;
+
+        return hasToken && hasUSDC && hasTVL;
+      });
+
+      if (foundPool) {
+        selectedPool = {
+          ...foundPool,
+          pool_id: String(foundPool.pool_id),
+          tvl: String(foundPool.tvl),
+          lp_token_supply: String(foundPool.lp_token_supply),
+        } as unknown as Pool;
+      }
+      return;
+    }
+
+    // Try to find CKUSDT pool first
+    const ckusdtPool = $poolStore?.pools?.find((p) => {
       if (!token?.canister_id || !ckusdtToken?.canister_id) return false;
 
       const hasToken =
@@ -72,12 +104,35 @@
       return hasToken && hasUSDT && hasTVL;
     });
 
-    if (foundPool) {
+    if (ckusdtPool) {
       selectedPool = {
-        ...foundPool,
-        pool_id: String(foundPool.pool_id),
-        tvl: String(foundPool.tvl),
-        lp_token_supply: String(foundPool.lp_token_supply),
+        ...ckusdtPool,
+        pool_id: String(ckusdtPool.pool_id),
+        tvl: String(ckusdtPool.tvl),
+        lp_token_supply: String(ckusdtPool.lp_token_supply),
+      } as unknown as Pool;
+      return;
+    }
+
+    // If no CKUSDT pool found, try ICP pool
+    const icpPool = $poolStore?.pools?.find((p) => {
+      if (!token?.canister_id) return false;
+
+      const hasToken =
+        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
+      const hasICP =
+        p.address_0 === ICP_CANISTER_ID || p.address_1 === ICP_CANISTER_ID;
+      const hasTVL = Number(p.tvl) > 0;
+
+      return hasToken && hasICP && hasTVL;
+    });
+
+    if (icpPool) {
+      selectedPool = {
+        ...icpPool,
+        pool_id: String(icpPool.pool_id),
+        tvl: String(icpPool.tvl),
+        lp_token_supply: String(icpPool.lp_token_supply),
       } as unknown as Pool;
     }
   });
@@ -125,7 +180,11 @@
   // Add back the isChartDataReady state and effect
   let isChartDataReady = $state(false);
   $effect(() => {
-    isChartDataReady = Boolean(selectedPool && token && ckusdtToken);
+    if (token?.canister_id === CKUSDT_CANISTER_ID) {
+      isChartDataReady = Boolean(selectedPool && token && $formattedTokens?.find(t => t.canister_id === CKUSDC_CANISTER_ID));
+    } else {
+      isChartDataReady = Boolean(selectedPool && token && (ckusdtToken || icpToken));
+    }
   });
 </script>
 
@@ -271,19 +330,17 @@
               poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
               symbol={token
                 ? `${token.symbol}/${
-                    token.symbol === "ckUSDT"
-                      ? $formattedTokens?.find(
-                          (t) =>
-                            t.canister_id ===
-                            (selectedPool?.address_0 === token.canister_id
-                              ? selectedPool?.address_1
-                              : selectedPool?.address_0),
-                        )?.symbol || "Unknown"
-                      : "ckUSDT"
+                    selectedPool?.address_0 === token.canister_id
+                      ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)?.symbol
+                      : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)?.symbol
                   }`
                 : ""}
-              toToken={token ? token : null}
-              fromToken={ckusdtToken ? ckusdtToken : null}
+              fromToken={token}
+              toToken={
+                selectedPool?.address_0 === token?.canister_id
+                  ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)
+                  : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)
+              }
             />
           {:else}
             <div class="flex items-center justify-center h-full">
