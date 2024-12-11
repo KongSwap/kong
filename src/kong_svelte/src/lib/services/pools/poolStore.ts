@@ -181,6 +181,7 @@ function createPoolStore() {
             symbol: lpData.symbol || `${lpData.symbol_0}/${lpData.symbol_1}`,
             symbol_0: lpData.symbol_0,
             symbol_1: lpData.symbol_1,
+            balance: lpData.balance,
             tvl: lpData.tvl,
             amount_0: lpData.amount_0,
             amount_1: lpData.amount_1,

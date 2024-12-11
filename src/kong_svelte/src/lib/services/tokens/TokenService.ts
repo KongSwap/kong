@@ -16,6 +16,7 @@ import { canisterId as kongBackendCanisterId } from "../../../../../declarations
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
+import { Pr } from "svelte-flags";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -217,13 +218,19 @@ export class TokenService {
 
   public static async fetchBalances(
     tokens?: FE.Token[],
-    principalId?: string
+    principalId?: string,
+    forceRefresh: boolean = false
   ): Promise<Record<string, TokenBalance>> {
     if (!tokens) tokens = get(tokenStore).tokens;
     if (!principalId && !get(auth).isConnected) return {};
 
     const principal = principalId ? Principal.fromText(principalId) : get(auth).account.owner;
     
+    if(forceRefresh) {
+      Promise.all(
+        tokens.map(token => this.fetchBalance(token, principalId, true))
+      );
+    }
     // Use batch balance fetching
     const balances = await IcrcService.batchGetBalances(tokens, principal);
     
@@ -272,7 +279,7 @@ export class TokenService {
       }
 
       // Check cache unless force refresh is requested
-      if (!forceRefresh) {
+      if (forceRefresh === false) {
         const now = Date.now();
         const lastUpdate = get(tokenStore).lastBalanceUpdate?.[token.address] || 0;
         const cachedBalance = get(tokenStore).balances?.[token.address];

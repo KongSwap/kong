@@ -9,6 +9,24 @@ export function getChartConfig(params: {
 }) {
   const { symbol, datafeed, container, containerWidth, containerHeight, isMobile, autosize } = params;
 
+  const customTheme = {
+    chart: {
+      backgroundColor: 'rgba(22, 16, 40, 1)',
+      layout: {
+        background: { color: 'rgba(22, 16, 40, 1)' },
+        textColor: '#9ca3af',
+      },
+      topToolbar: {
+        backgroundColor: 'rgba(22, 16, 40, 1)',
+        borderColor: 'transparent',
+      },
+      leftToolbar: {
+        backgroundColor: 'rgba(22, 16, 40, 1)',
+        borderColor: 'transparent',
+      }
+    },
+  };
+
   return {
     symbol,
     datafeed,
@@ -22,6 +40,11 @@ export function getChartConfig(params: {
     autosize: autosize ?? true,
     theme: 'dark',
     timezone: 'Etc/UTC',
+    toolbar_bg: 'rgba(22, 16, 40, 1)',
+    loading_screen: { 
+      backgroundColor: "rgba(22, 16, 40, 1)",
+      foregroundColor: "#2962FF"
+    },
     disabled_features: [
       'use_localstorage_for_settings',
       'study_templates',
@@ -54,11 +77,8 @@ export function getChartConfig(params: {
       'legend_widget'
     ],
     custom_css_url: '/tradingview-chart.css',
-    loading_screen: { 
-      backgroundColor: "#131722",
-      foregroundColor: "#2962FF"
-    },
     overrides: {
+      ...customTheme,
       // Chart styling
       "mainSeriesProperties.candleStyle.upColor": "#22c55e",
       "mainSeriesProperties.candleStyle.downColor": "#ef4444",
@@ -68,13 +88,13 @@ export function getChartConfig(params: {
       "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
       
       // Chart background
-      "paneProperties.background": "rgba(0,0,0,0)",
+      "paneProperties.background": "rgba(22, 16, 40, 1)",
       "paneProperties.backgroundType": "solid",
       "paneProperties.vertGridProperties.color": "rgba(30, 41, 59, 0.64)",
       "paneProperties.horzGridProperties.color": "rgba(30, 41, 59, 0.64)",
       
       // Chart area
-      "chartProperties.background": "rgba(0,0,0,0)",
+      "chartProperties.background": "rgba(22, 16, 40, 1)",
       "chartProperties.backgroundType": "solid",
       
       // Price scale formatting
@@ -82,13 +102,13 @@ export function getChartConfig(params: {
       "mainSeriesProperties.priceFormat.minMove": isMobile ? 0.001 : 0.0001,
       
       // Price axis
-      "scalesProperties.backgroundColor": "rgba(0,0,0,0)",
+      "scalesProperties.backgroundColor": "rgba(22, 16, 40, 1)",
       "scalesProperties.lineColor": "rgba(30, 41, 59, 0.2)",
       "scalesProperties.textColor": "#9ca3af",
       "scalesProperties.fontSize": isMobile ? 10 : 12,
       
       // Time axis
-      "timeScale.backgroundColor": "rgba(0,0,0,0)",
+      "timeScale.backgroundColor": "rgba(22, 16, 40, 1)",
       "timeScale.borderColor": "rgba(30, 41, 59, 0.2)",
       "timeScale.textColor": "#9ca3af",
       

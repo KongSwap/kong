@@ -332,6 +332,21 @@
 </div>
 
 <style lang="postcss">
+  :root {
+    --tv-color-platform-background: rgba(22, 16, 40, 1);
+    --tv-color-toolbar-bg: rgba(22, 16, 40, 1);
+    --tv-color-toolbar-button-background-hover: rgba(22, 16, 40, 1);
+    --tv-color-toolbar-button-background-expanded: rgba(22, 16, 40, 1);
+    --tv-color-toolbar-button-background-active: rgba(1, 1, 1, 1);
+    --tv-color-toolbar-button-background-active-hover: rgba(22, 16, 40, 0.9);
+    --tv-color-toolbar-button-text: rgba(255, 255, 255, 0.8);
+    --tv-color-toolbar-button-text-hover: #ffffff;
+    --tv-color-toolbar-button-text-active: #ffffff;
+    --tv-color-toolbar-button-text-active-hover: #ffffff;
+    --tv-color-toolbar-toggle-button-background-active: rgba(22, 16, 40, 1);
+    --tv-color-toolbar-toggle-button-background-active-hover: rgba(1, 1, 1, 1);
+  }
+
   .chart-wrapper {
     position: absolute;
     inset: 0;
@@ -378,6 +393,44 @@
     text-align: center;
   }
 
+  :global(.layout__area--top) {
+    background: linear-gradient(180deg, rgba(22, 16, 40, 1) 0%, rgba(1, 1, 1, 1) 100%) !important;
+  }
+
+  :global(.layout__area--left) {
+    background: linear-gradient(180deg, rgba(22, 16, 40, 1) 0%, rgba(1, 1, 1, 1) 100%) !important;
+  }
+
+  :global(.tools-group),
+  :global(.button-2ioYhFEY-),
+  :global(.button-1VVj8kLG-),
+  :global(.toggleButton-3zv4iS2j-),
+  :global(.button-2pZNJ24z-) {
+    background-color: transparent !important;
+  }
+
+  :global(.tools-group:hover),
+  :global(.button-2ioYhFEY-:hover),
+  :global(.button-1VVj8kLG-:hover),
+  :global(.toggleButton-3zv4iS2j-:hover),
+  :global(.button-2pZNJ24z-:hover) {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  :global(.tools-group.active),
+  :global(.button-2ioYhFEY-.active),
+  :global(.button-1VVj8kLG-.active),
+  :global(.toggleButton-3zv4iS2j-.isActive-3zv4iS2j-),
+  :global(.button-2pZNJ24z-.active) {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  :global(.group-2JyOhh7Z-),
+  :global(.inner-2JyOhh7Z-) {
+    border: none !important;
+    background-color: transparent !important;
+  }
+
   .error-message {
     position: absolute;
     inset: 0;
@@ -388,6 +441,10 @@
     background: var(--bg-card);
     padding: 1rem;
     text-align: center;
+  }
+
+  :global(#drawing-toolbar) {
+    background: red !important;
   }
 
   :global(.tradingview-widget-container) {

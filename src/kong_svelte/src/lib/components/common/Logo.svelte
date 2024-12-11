@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { t } from '$lib/services/translations';
+    import { goto } from '$app/navigation';
+import { t } from '$lib/services/translations';
     import { fade } from 'svelte/transition';
 
     function handleImageError(event: Event) {
@@ -9,8 +10,8 @@
 </script>
   
 <div class="logo-container" transition:fade>
-  <a 
-    href="/" 
+  <button 
+    on:click={() => goto('/')}
     class="flex items-center gap-3 group transition-all duration-300"
   >
     <div class="logo-image-container">
@@ -29,7 +30,7 @@
     <span class="logo-text">
       {$t('nav.logo')}
     </span>
-  </a>
+  </button>
 </div>
   
 <style lang="postcss">

@@ -1,88 +1,36 @@
-/* Make all chart backgrounds transparent */
-.tv-chart-container,
-.chart-container,
-.chart-markup-table,
+:root:not(.theme-dark),
+:root.theme-dark,
+.theme-dark:root {
+  --tv-color-platform-background: rgba(22, 16, 40, 1) !important;
+  --tv-color-pane-background: rgba(22, 16, 40, 1) !important;
+}
+
 .chart-page,
-.chart-container-border,
-.layout__area--center,
-.chart-widget,
-.chart-container-border {
-  background: transparent !important;
+.chart-page .chart-container {
+  background-color: rgba(22, 16, 40, 1) !important;
 }
 
-/* Target the main chart area */
-.tv-chart-container > div {
-  background: transparent !important;
+.chart-controls-bar,
+.chart-page .chart-container-border {
+  background-color: rgba(22, 16, 40, 1) !important;
+  border-color: transparent !important;
 }
 
-/* Target the price and time axis */
-.price-axis,
-.time-axis {
-  background: transparent !important;
-}
-
-/* Target the main pane */
-.pane-legend-line.main {
-  background: transparent !important;
-}
-
-/* Target all chart elements */
-[class^="chart"] {
-  background: transparent !important;
-}
-
-/* Target specific TradingView elements */
-.layout__area--left,
-.layout__area--right,
-.layout__area--top {
-  background: transparent !important;
-}
-
-/* Target the trading panel */
-.trading-panel {
-  background: transparent !important;
-}
-
-/* Target the chart toolbar */
-.chart-toolbar {
-  background: transparent !important;
-  border-color: rgba(30, 41, 59, 0.2) !important;
-}
-
-/* Other styles remain the same */
-.button {
-  background-color: rgba(30, 41, 59, 0.4) !important;
-  border-color: rgba(30, 41, 59, 0.2) !important;
-  color: #9ca3af !important;
-}
-
-.button:hover {
-  background-color: rgba(45, 55, 72, 0.6) !important;
-}
-
-/* Popup menus with blur effect */
-.context-menu,
-.popup-menu {
-  background-color: rgba(30, 41, 59, 0.95) !important;
-  border-color: rgba(45, 55, 72, 0.5) !important;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Make sure loading screen is transparent */
-.loading-indicator,
-.tv-loading-screen {
-  background: transparent !important;
-}
-
-/* Additional TradingView specific elements */
+.drawing-toolbar,
+.group-2JyOhh7Z,
 .group-wWM3zP_M-,
-._tv-dialog,
-.chart-widget {
-  background: transparent !important;
+.chart-toolbar {
+  background-color: rgba(22, 16, 40, 1) !important;
+  border-color: transparent !important;
 }
 
-/* Force all backgrounds to be transparent */
-div[class*="background"] {
-  background: transparent !important;
-} 
+.toggleButton-3zv4iS2j,
+.button-2ioYhFEY,
+.button-2ioYhFEY.isInteractive-20uLObIc {
+  background-color: rgba(22, 16, 40, 1) !important;
+}
+
+.wrap-3tiHesTk,
+.background-Q1Fcmxly {
+  background-color: rgba(22, 16, 40, 1) !important;
+}

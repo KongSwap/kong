@@ -16,9 +16,6 @@
   
   $: isFavorite = $currentWalletFavorites.includes(token.canister_id);
 
-  $: console.log("usdValue", token);
-
-
   function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
     dispatch('toggleFavorite', { canisterId: token.canister_id });

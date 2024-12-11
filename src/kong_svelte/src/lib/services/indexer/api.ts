@@ -129,7 +129,7 @@ export interface TransactionResponse {
 
 export const fetchTransactions = async (
   poolId: number, 
-  page: number = 1, 
+  page: number = 0, 
   limit: number = 20
 ): Promise<Transaction[]> => {
   try {

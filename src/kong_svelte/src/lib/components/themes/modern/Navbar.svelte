@@ -3,6 +3,7 @@
   import { t } from "$lib/services/translations";
   import { auth } from "$lib/services/auth";
   import { fade, slide } from "svelte/transition";
+    import { goto } from "$app/navigation";
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
@@ -55,27 +56,30 @@
       <div class="left-section">
         <nav class="nav-tabs">
           {#each tabs as tab}
-            <a
-              href="/{tab}"
+            <button
+              aria-label={tab.toUpperCase()}
               data-sveltekit-preload-data
               class="nav-link {activeTab === tab ? 'active' : ''}"
-              on:click={() => onTabChange(tab)}
+              on:click={() => { 
+                onTabChange(tab)
+                goto(`/${tab}`);
+              }}
             >
               {tab.toUpperCase()}
-            </a>
+            </button>
           {/each}
         </nav>
       </div>
     {/if}
 
     <div class="center-section">
-      <a href="/" class="logo-link">
+      <button class="logo-link" on:click={() => goto("/")}>
         <img
           src="/titles/logo-white-wide.png"
           alt="Kong Logo"
           class="logo-wide shiny-logo"
         />
-      </a>
+      </button>
     </div>
 
     {#if isMobile}
@@ -127,7 +131,8 @@
           </div>
         </button>
 
-        <a
+        <button
+          aria-label="Wallet"
           class="nav-link wallet-btn"
           class:selected={sidebarOpen}
           on:click|preventDefault={onConnect}
@@ -152,7 +157,7 @@
                 : $t("common.connect")}
             </span>
           </div>
-        </a>
+        </button>
       </div>
     {/if}
   </div>
@@ -195,17 +200,17 @@
 
       <nav class="mobile-nav">
         {#each tabs as tab}
-          <a
-            href="/{tab}"
-            data-sveltekit-preload-data
+          <button
+            aria-label={tab}
             class="mobile-nav-btn {activeTab === tab ? 'active' : ''}"
             on:click={() => {
               onTabChange(tab);
+              goto(`/${tab}`);
               handleNavClose();
             }}
           >
             {tab.toUpperCase()}
-          </a>
+          </button>
         {/each}
 
         <button

@@ -4,6 +4,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import type { Pool } from "$lib/services/pools";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
+    import { goto } from "$app/navigation";
   
   // Update the props type definition to use BE and FE namespaces directly
   const props = $props<{
@@ -111,12 +112,12 @@
                   </div>
                 </div>
                 <div class="hidden sm:block">
-                  <a
-                    href="/swap?from={pool.address_0}&to={pool.address_1}"
+                  <button
+                    onclick={() => goto(`/swap?from=${pool.address_0}&to=${pool.address_1}`)}
                     class="inline-block px-3 py-1.5 text-sm bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/30 transition-colors duration-200"
                   >
                     Trade
-                  </a>
+                  </button>
                 </div>
               </div>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -151,12 +152,12 @@
                 </div>
               </div>
               <div class="mt-3 sm:hidden">
-                <a
-                  href="/swap?from={pool.address_0}&to={pool.address_1}"
+                <button
+                  onclick={() => goto(`/swap?from=${pool.address_0}&to=${pool.address_1}`)}
                   class="block w-full text-center px-3 py-1.5 text-sm bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/30 transition-colors duration-200"
                 >
                   Trade
-                </a>
+                </button>
               </div>
             </div>
           {/each}

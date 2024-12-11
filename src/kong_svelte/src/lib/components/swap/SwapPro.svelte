@@ -125,7 +125,7 @@
     background: var(--color-background);
     position: relative;
     padding: 0 1rem;
-    height: calc(100vh - 64px);
+    height: calc(100vh - 98px);
     overflow-y: auto; /* Allow container to scroll */
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   }

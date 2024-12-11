@@ -90,7 +90,7 @@ function createTokenStore() {
     return walletId;
   };
 
-  const loadBalances = async (principal: Principal) => {
+  const loadBalances = async (principal: Principal, forceRefresh: boolean = false) => {
     const currentStore = get(store);
     if (!principal) {
       console.warn("No principal provided to loadBalances");

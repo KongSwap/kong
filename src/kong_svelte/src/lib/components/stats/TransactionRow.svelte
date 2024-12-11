@@ -57,25 +57,14 @@
   <td class="px-4 py-3 text-right">
     {#if tx.tx_id}
       <a
-        href={`https://explorer.sui.io/txblock/${tx.tx_id}`}
+        href={`https://www.icexplorer.io/address/detail/${tx.user.principal_id}`}
         target="_blank"
         rel="noopener noreferrer"
-        class="text-blue-400 hover:text-blue-300"
+        class="text-blue-400/70 hover:text-blue-300"
         title="View transaction"
         aria-label="View transaction details"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-5 w-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-            clip-rule="evenodd"
-          />
-        </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       </a>
     {:else}
       N/A

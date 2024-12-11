@@ -55,9 +55,9 @@
       (t) => t.address === pageId || t.canister_id === pageId,
     );
     
-    console.log('Found token:', foundToken);
-    console.log('Token metrics:', foundToken?.metrics);
-    console.log('24h price change:', foundToken?.metrics?.price_change_24h);
+    // console.log('Found token:', foundToken);
+    // console.log('Token metrics:', foundToken?.metrics);
+    // console.log('24h price change:', foundToken?.metrics?.price_change_24h);
 
     if (foundToken) {
       const converted = foundToken;

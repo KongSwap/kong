@@ -31,7 +31,7 @@
     if (!isRefreshing) {
       isRefreshing = true;
       try {
-        await tokenStore.loadBalances($auth?.account?.owner);
+        await tokenStore.loadBalances($auth?.account?.owner, true);
       } finally {
         isRefreshing = false;
       }

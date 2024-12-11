@@ -34,7 +34,7 @@
   $: {
     if (Array.isArray(balances)) {
       processedPools = balances
-        .filter(poolBalance => Number(poolBalance.amount_0) > 0 || Number(poolBalance.amount_1) > 0)
+        .filter(poolBalance => Number(poolBalance.balance) > 0)
         .map(poolBalance => {
           const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);
           const token1 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_1);
@@ -66,7 +66,7 @@
             symbol: poolBalance.symbol,
             symbol_0: poolBalance.symbol_0,
             symbol_1: poolBalance.symbol_1,
-            balance: `${Number(poolBalance.amount_0).toFixed(8)} ${poolBalance.symbol_0} / ${Number(poolBalance.amount_1).toFixed(8)} ${poolBalance.symbol_1}`,
+            balance: poolBalance.balance.toString(),
             amount_0: poolBalance.amount_0,
             amount_1: poolBalance.amount_1,
             usd_balance: poolBalance.usd_balance,
