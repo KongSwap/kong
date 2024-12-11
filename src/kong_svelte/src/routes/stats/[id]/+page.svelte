@@ -191,7 +191,7 @@
   });
 </script>
 
-<div class="p-4 pt-0 -mt-2">
+<div class="p-4 pt-0 mt-2">
   {#if !$formattedTokens || !$poolStore?.pools}
     <div class="text-white">Loading token data...</div>
   {:else if !token}
