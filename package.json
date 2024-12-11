@@ -3,14 +3,14 @@
   "private": true,
   "engines": {
     "node": ">=16.0.0",
-    "pnpm": ">=7.0.0"
+    "npm": ">=10.0.0"
   },
   "scripts": {
-    "build": "pnpm -r build",
-    "prebuild": "pnpm -r prebuild",
-    "pretest": "pnpm -r prebuild",
-    "start": "pnpm -r start",
-    "test": "pnpm -r test"
+    "build": "npm -r build",
+    "prebuild": "npm -r prebuild",
+    "pretest": "npm -r prebuild",
+    "start": "npm -r start",
+    "test": "npm -r test"
   },
   "workspaces": [
     "src/*"
@@ -24,5 +24,5 @@
     "@dfinity/principal": "^2.1.3",
     "@dfinity/utils": "^2.6.0"
   },
-  "packageManager": "pnpm@9.7.0+sha256.b35018fbfa8f583668b2649e407922a721355cd81f61beeb4ac1d4258e585559"
+  "packageManager": "npm@9.7.0+sha256.b35018fbfa8f583668b2649e407922a721355cd81f61beeb4ac1d4258e585559"
 }

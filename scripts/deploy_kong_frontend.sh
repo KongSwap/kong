@@ -10,6 +10,6 @@ if [ -z "$1" ]
 fi
 IDENTITY="--identity kong"
 
-pnpm --filter kong_frontend i
+npm --filter kong_frontend i
 
 dfx deploy ${NETWORK} ${IDENTITY} ${SAME_SUBNET} kong_frontend
