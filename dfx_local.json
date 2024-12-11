@@ -28,23 +28,6 @@
 				}
 			]
     },
-    "kong_frontend": {
-      "dependencies": [
-        "kong_backend"
-      ],
-      "source": [
-        "src/assets",
-        "src/kong_frontend/dist"
-      ],
-      "type": "assets",
-      "workspace": "kong_frontend",
-      "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
-			"metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
-    },
     "kong_svelte": {
       "dependencies": [
         "kong_backend"
@@ -54,7 +37,7 @@
       ],
       "type": "assets",
       "workspace": "kong_svelte",
-      "specified_id": "edoy4-liaaa-aaaar-qakha-cai",
+      "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
 			"metadata": [
 				{
 					"name": "candid:service"

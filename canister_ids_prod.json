@@ -5,9 +5,6 @@
   "kong_data": {
     "ic": "cbefx-hqaaa-aaaar-qakrq-cai"
   },
-  "kong_frontend": {
-    "ic": "3ldz4-aiaaa-aaaar-qaina-cai"
-  },
   "ckusdt_ledger": {
     "ic": "cngnf-vqaaa-aaaar-qag4q-cai"
   },
@@ -144,7 +141,7 @@
     "ic": "cp4zx-yiaaa-aaaah-aqzea-cai"
   },
   "kong_svelte": {
-    "ic": "edoy4-liaaa-aaaar-qakha-cai"
+    "ic": "3ldz4-aiaaa-aaaar-qaina-cai"
   },
   "paca_ledger": {
     "ic": "6zn6a-cyaaa-aaaai-q3m3q-cai"
