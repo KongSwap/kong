@@ -106,10 +106,10 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
                 let to_principal_id = Account::from(principal);
                 match remove_liquidity_from_pool(args, user_id, &to_principal_id).await {
                     Ok(_) => {
-                        results.push(format!("Removed user_id {} LP positions", user_id));
+                        results.push(format!("Removed user_id {} LP position", user_id));
                     }
                     Err(e) => {
-                        results.push(format!("Failed to remove user_id {} LP positions: {}", user_id, e));
+                        results.push(format!("Failed to remove user_id {} LP position: {}", user_id, e));
                     }
                 }
             }

@@ -1,7 +1,6 @@
 use ic_cdk::query;
 
 use super::lp_reply::LPReply;
-use super::usd_balance::USDBalance;
 use super::user_balances_reply::UserBalancesReply;
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
@@ -37,8 +36,7 @@ pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesRep
         }
         IC(_) => (),
     });
-    // order by usd_balance in reverse order
-    user_balances.sort_by(|a, b| b.usd_balance().partial_cmp(&a.usd_balance()).unwrap_or(std::cmp::Ordering::Equal));
+
     Ok(user_balances)
 }
 
