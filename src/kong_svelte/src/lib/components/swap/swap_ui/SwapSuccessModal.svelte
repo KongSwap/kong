@@ -5,6 +5,7 @@
   import { onDestroy } from "svelte";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";
+  import { toastStore } from "$lib/stores/toastStore";
 
   export let show = false;
   export let payAmount: string = "0";
@@ -13,8 +14,6 @@
   export let receiveToken: FE.Token | null = null;
   export let onClose: () => void;
   export let principalId: string = "";
-
-  let showCopiedToast = false;
 
   // Validate tokens are defined
   $: isValid = payToken && receiveToken && 
@@ -39,22 +38,29 @@
     const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
 
     const tradeDetails = 
-      `Trade completed on KongSwap\n` +
-      `Swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol}\n` +
-      `View trade: https://kongswap.io/swap?ref=${principalId}`;
-
+      `🍌 Trade completed on KongSwap!\n\n` +
+      `Swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol}\n\n` +
+      `Trade now: https://kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}\n`
     try {
       await navigator.clipboard.writeText(tradeDetails);
-      showCopiedToast = true;
-      setTimeout(() => showCopiedToast = false, 2000);
+      toastStore.success('Trade details copied to clipboard');
     } catch (err) {
       console.error('Failed to copy trade details:', err);
+      toastStore.error('Failed to copy trade details');
     }
   }
 
-  onDestroy(() => {
-    showCopiedToast = false;
-  });
+  async function shareOnX() {
+    if (!isValid) return;
+
+    const formattedPaidAmount = formatTokenAmount(payAmount, payToken.decimals).toString();
+    const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
+
+    const tweetText = encodeURIComponent(
+      `🍌 Just swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol} on @KongSwap!\n\nTrade now: https://kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}`
+    );
+    window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
+  }
 </script>
 
 {#if show && isValid}
@@ -98,13 +104,21 @@
             </div>
           </div>
 
-          <div class="flex gap-2">
-            <button 
-              class="swap-button blue-button"
-              on:click={copyTradeDetails}
-            >
-              Copy Details
-            </button>
+          <div class="flex flex-col gap-2">
+            <div class="flex gap-2">
+              <button 
+                class="swap-button blue-button"
+                on:click={copyTradeDetails}
+              >
+                Copy Details
+              </button>
+              <button 
+                class="swap-button share-button"
+                on:click={shareOnX}
+              >
+                Share on X
+              </button>
+            </div>
             <button 
               class="swap-button red-button"
               on:click={handleClose}
@@ -115,16 +129,6 @@
         </div>
       </div>
     </div>
-    
-    {#if showCopiedToast}
-      <div 
-        class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-900/90 text-indigo-50 px-4 py-2 rounded-lg shadow-lg border border-indigo-500/20"
-        in:fly={{ y: 20, duration: 300 }}
-        out:fade
-      >
-        Trade details copied to clipboard
-      </div>
-    {/if}
     <!-- <BananaRain /> -->
   </div>
 {/if}
@@ -158,6 +162,21 @@
     background: linear-gradient(135deg, 
       rgba(55, 114, 255, 0.9) 0%, 
       rgba(55, 114, 255, 1) 100%
+    );
+    transform: translateY(-1px);
+  }
+
+  .share-button {
+    background: linear-gradient(135deg,
+      rgba(29, 161, 242, 0.8) 0%,
+      rgba(29, 161, 242, 0.9) 100%
+    );
+  }
+
+  .share-button:hover {
+    background: linear-gradient(135deg,
+      rgba(29, 161, 242, 0.9) 0%,
+      rgba(29, 161, 242, 1) 100%
     );
     transform: translateY(-1px);
   }

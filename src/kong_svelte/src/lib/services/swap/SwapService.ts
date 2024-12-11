@@ -61,8 +61,10 @@ BigNumber.config({
 
 export class SwapService {
   private static pollingInterval: ReturnType<typeof setInterval> | null = null;
-  private static readonly POLLING_INTERVAL = 300; // .3 second
+  private static readonly INITIAL_POLLING_INTERVAL = 1000; // 1 second for first 4 seconds
+  private static readonly AGGRESSIVE_POLLING_INTERVAL = 300; // .3 second after 4 seconds
   private static readonly MAX_ATTEMPTS = 100; // 30 seconds
+  private static readonly SWITCH_TO_AGGRESSIVE_TIME = 4000; // 4 seconds
 
   public static toBigInt(amount: string, decimals: number): bigint {
     if (!amount || isNaN(Number(amount.replace(/_/g, '')))) return BigInt(0);
@@ -347,13 +349,17 @@ export class SwapService {
       10000,
     );
 
-    this.pollingInterval = setInterval(async () => {
+    const startTime = Date.now();
+    let currentInterval = this.INITIAL_POLLING_INTERVAL;
+
+    const pollStatus = async () => {
       if (attempts >= this.MAX_ATTEMPTS) {
         this.stopPolling();
         swapStatusStore.updateSwap(swapId, {
           status: "Timeout",
           isProcessing: false,
           error: "Swap timed out",
+          shouldCloseModal: true
         });
         toastStore.error("Swap timed out");
         toastStore.dismiss(toastId);
@@ -373,6 +379,7 @@ export class SwapService {
               status: "Error",
               isProcessing: false,
               error: res.statuses.find((s) => s.includes("Failed")),
+              shouldCloseModal: true
             });
             toastStore.error(
               res.statuses.find((s) => s.includes("Failed")),
@@ -413,6 +420,7 @@ export class SwapService {
                 isProcessing: false,
                 shouldRefreshQuote: true,
                 lastQuote: null,
+                shouldCloseModal: true,
                 details: {
                   payAmount: formattedPayAmount,
                   payToken: token0,
@@ -472,6 +480,7 @@ export class SwapService {
                 status: "Failed",
                 isProcessing: false,
                 error: "Swap failed",
+                shouldCloseModal: true
               });
               toastStore.error("Swap failed");
               toastStore.dismiss(toastId);
@@ -481,6 +490,15 @@ export class SwapService {
         }
 
         attempts++;
+
+        // Switch to aggressive polling after SWITCH_TO_AGGRESSIVE_TIME
+        const elapsedTime = Date.now() - startTime;
+        if (elapsedTime >= this.SWITCH_TO_AGGRESSIVE_TIME && currentInterval !== this.AGGRESSIVE_POLLING_INTERVAL) {
+          currentInterval = this.AGGRESSIVE_POLLING_INTERVAL;
+          this.stopPolling();
+          this.pollingInterval = setInterval(pollStatus, currentInterval);
+        }
+
       } catch (error) {
         console.error("Error monitoring swap:", error);
         this.stopPolling();
@@ -488,12 +506,16 @@ export class SwapService {
           status: "Error",
           isProcessing: false,
           error: "Failed to monitor swap status",
+          shouldCloseModal: true
         });
         toastStore.error("Failed to monitor swap status");
         toastStore.dismiss(toastId);
         return;
       }
-    }, this.POLLING_INTERVAL);
+    };
+
+    // Start with initial polling interval
+    this.pollingInterval = setInterval(pollStatus, currentInterval);
   }
 
   private static stopPolling() {
