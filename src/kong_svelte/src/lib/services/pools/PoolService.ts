@@ -168,8 +168,6 @@ export class PoolService {
     amount_0: bigint;
     token_1: FE.Token;
     amount_1: bigint;
-    tx_id_0?: number[];
-    tx_id_1?: number[];
   }): Promise<bigint> {
     await requireWalletConnection();
 
@@ -178,12 +176,13 @@ export class PoolService {
         throw new Error("Invalid token configuration");
       }
 
-      console.log("Calling add_liquidity_async with:", params);
-      let approval0;
-      let approval1;
+      let tx_id_0: Array<{ BlockIndex: bigint }> = [];
+      let tx_id_1: Array<{ BlockIndex: bigint }> = [];
       let actor;
-      if (params.token_0.icrc2 === true && params.token_1.icrc2 === true) {
-        [approval0, approval1, actor] = await Promise.all([
+
+      // Handle ICRC2 tokens
+      if (params.token_0.icrc2 && params.token_1.icrc2) {
+        const [approval0, approval1, actorResult] = await Promise.all([
           IcrcService.checkAndRequestIcrc2Allowances(
             params.token_0,
             params.amount_0,
@@ -197,37 +196,69 @@ export class PoolService {
             requiresSigning: false,
           }),
         ]);
+
+        // For ICRC2 tokens, we don't need to pass transfer block indexes
+        tx_id_0 = [];
+        tx_id_1 = [];
+        actor = actorResult;
+
+        console.log("ICRC2 Approvals granted:", {
+          approval0: approval0?.toString(),
+          approval1: approval1?.toString(),
+        });
       } else {
-        const approval0response = await IcrcService.icrc1Transfer(
+        // Handle ICRC1 tokens
+        const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
+          IcrcService.icrc1Transfer(
             params.token_0,
             KONG_BACKEND_CANISTER_ID,
             params.amount_0,
-          )
-        approval0 = [{ BlockIndex: approval0response?.Ok }]
-        const approval1response = await IcrcService.icrc1Transfer(
-            params.token_1, 
+          ),
+          IcrcService.icrc1Transfer(
+            params.token_1,
             KONG_BACKEND_CANISTER_ID,
             params.amount_1,
-          )
-        approval1 =[{ BlockIndex: approval1response?.Ok }]
-
-        actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
+          ),
+          auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
             anon: false,
             requiresSigning: false,
-          })
+          }),
+        ]);
+
+        // Keep block IDs as BigInt
+        tx_id_0 = transfer0Result?.Ok ? [{ BlockIndex: transfer0Result.Ok }] : [];
+        tx_id_1 = transfer1Result?.Ok ? [{ BlockIndex: transfer1Result.Ok }] : [];
+        actor = actorResult;
+
+        console.log("ICRC1 Transfers:", {
+          transfer0: transfer0Result?.Ok?.toString(),
+          transfer1: transfer1Result?.Ok?.toString(),
+          tx_id_0,
+          tx_id_1
+        });
       }
 
-      const result = await actor.add_liquidity_async({
+      const addLiquidityArgs = {
         token_0: params.token_0.symbol,
         amount_0: params.amount_0,
         token_1: params.token_1.symbol,
         amount_1: params.amount_1,
-        tx_id_0: approval0 || [],
-        tx_id_1: approval1 || [],
+        tx_id_0,
+        tx_id_1,
+      };
+
+      console.log("Adding liquidity with args:", {
+        ...addLiquidityArgs,
+        amount_0: addLiquidityArgs.amount_0.toString(),
+        amount_1: addLiquidityArgs.amount_1.toString(),
+        tx_id_0: tx_id_0.map(id => ({ BlockIndex: id.BlockIndex.toString() })),
+        tx_id_1: tx_id_1.map(id => ({ BlockIndex: id.BlockIndex.toString() }))
       });
 
+      const result = await actor.add_liquidity_async(addLiquidityArgs);
+
       if ("Err" in result) {
-        throw new Error(result.Err || "Failed to add liquidity");
+        throw new Error(result.Err);
       }
 
       return result.Ok;

@@ -34,7 +34,11 @@
   $: {
     if (Array.isArray(balances)) {
       processedPools = balances
-        .filter(poolBalance => Number(poolBalance.balance) > 0)
+        .filter(poolBalance => 
+          // Filter out pools with zero balance or zero USD value
+          Number(poolBalance.balance) > 0 && 
+          Number(poolBalance.usd_balance) > 0
+        )
         .map(poolBalance => {
           const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);
           const token1 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_1);

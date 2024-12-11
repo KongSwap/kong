@@ -84,39 +84,24 @@ export class IcrcService {
   public static async checkAndRequestIcrc2Allowances(
     token: FE.Token,
     payAmount: bigint,
-  ): Promise<bigint> {
+  ): Promise<bigint | null> {
     if (!token?.canister_id) {
       throw new Error("Invalid token: missing canister_id");
     }
 
     try {
-      // Create actor with retries
-      let retries = 3;
-      const expiresAt =
-        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
+      const expiresAt = BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
 
-      console.log(`[IcrcService] Checking allowances for token ${token.symbol}:`);
-      console.log(`  Pay amount: ${payAmount} (type: ${typeof payAmount})`);
-      console.log(`  Token fee: ${token.fee} (type: ${typeof token.fee})`);
-      
-      const totalAmount = BigInt(payAmount) + BigInt(token.fee.toString().replace('_', ''));
-      try {
-        console.log(`  Total amount (including fee): ${totalAmount} (type: ${typeof totalAmount})`);
-      } catch (error) {
-        console.error(`  Error calculating total amount:`, error);
-        console.log(`  Raw values for debugging:`);
-        console.log(`    payAmount: ${JSON.stringify(payAmount)}`);
-        console.log(`    token.fee: ${JSON.stringify(token.fee)}`);
-        throw error;
-      }
+      // Calculate total amount including fee
+      const tokenFee = token.fee_fixed ? BigInt(token.fee_fixed.toString().replace('_', '')) : 0n;
+      const totalAmount = payAmount + tokenFee;
 
-      // First check if we already have sufficient allowance
+      // Check current allowance
       const currentAllowance = await this.checkIcrc2Allowance(
         token,
         auth.pnp.account.owner,
         Principal.fromText(kongBackendCanisterId),
       );
-      
 
       if (currentAllowance >= totalAmount) {
         return currentAllowance;
@@ -127,7 +112,9 @@ export class IcrcService {
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: token?.metrics?.total_supply ? BigInt(token?.metrics?.total_supply) : BigInt(totalAmount) * 10n,
+        amount: token?.metrics?.total_supply 
+          ? BigInt(token.metrics.total_supply.toString().replace('_', '')) 
+          : totalAmount * 10n,
         expected_allowance: [],
         expires_at: [expiresAt],
         spender: {
@@ -136,55 +123,26 @@ export class IcrcService {
         },
       };
 
-      console.log("ICRC2_APPROVE ARGS", approveArgs);
+      console.log("ICRC2_APPROVE ARGS:", {
+        ...approveArgs,
+        amount: approveArgs.amount.toString(),
+        expires_at: approveArgs.expires_at[0].toString(),
+      });
 
-      // Fetch balance with retries
-      retries = 3;
-      while (retries > 0) {
-        try {
-          let balanceActor = await auth.getActor(
-            token.canister_id,
-            canisterIDLs.icrc2,
-            {
-              anon: true,
-              requiresSigning: false
-            },
-          );
-          await balanceActor.icrc1_balance_of({
-            owner: auth.pnp.account.owner,
-            subaccount: [],
-          });
-          break;
-        } catch (error) {
-          console.warn(
-            `Balance check attempt failed, ${retries - 1} retries left:`,
-            error,
-          );
-          retries--;
-          if (retries === 0) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
-
-      // Approve with retries
       let result;
-      retries = 3;
+      let retries = 3;
       while (retries > 0) {
         try {
           let approveActor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
             anon: false,
             requiresSigning: true,
           });
-          console.log("ICRC2_APPROVE ACTOR", approveActor);
 
           result = await approveActor.icrc2_approve(approveArgs);
-          console.log("ICRC2_APPROVE RESULT", result);
+          console.log("ICRC2_APPROVE RESULT:", result);
           break;
         } catch (error) {
-          console.warn(
-            `Approve attempt failed, ${retries - 1} retries left:`,
-            error,
-          );
+          console.warn(`Approve attempt failed, ${retries - 1} retries left:`, error);
           retries--;
           if (retries === 0) throw error;
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -192,25 +150,12 @@ export class IcrcService {
       }
 
       if ("Err" in result) {
-        // Convert BigInt to string in the error object
-        const serializedError = JSON.stringify(
-          result.Err,
-          (key, value) =>
-            typeof value === "bigint" ? value.toString() : value,
-          2,
-        );
-
-        console.error("ICRC2 approve error:", serializedError);
-        throw new Error(`ICRC2 approve error: ${serializedError}`);
+        throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
       }
 
       return result.Ok;
-    } catch (error: any) {
-      if (error?.message?.includes("wallet")) {
-        throw error; // Pass through wallet connection errors directly
-      }
+    } catch (error) {
       console.error("ICRC2 approve error:", error);
-      this.handleError("checkAndRequestIcrc2Allowances", error);
       throw error;
     }
   }
