@@ -161,6 +161,7 @@ export class PoolService {
         throw new Error('Invalid token configuration');
       }
       
+      console.log('Calling add_liquidity_async with:', params);
       const [_approval0, _approval1, actor] = await Promise.all([
         IcrcService.checkAndRequestIcrc2Allowances(
           params.token_0,
