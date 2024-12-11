@@ -12,22 +12,19 @@ export const priceStore = writable<{[key: string]: number}>({});
 const requestCache = new Map<string, Promise<any>>();
 const tokenLocks = new Map<string, Promise<void>>();
 
-async function acquireTokenLock(tokenId: string): Promise<void> {
+async function acquireTokenLock(tokenId: string): Promise<() => void> {
   while (tokenLocks.has(tokenId)) {
     await tokenLocks.get(tokenId);
   }
   let releaseLock: () => void;
   const lockPromise = new Promise<void>((resolve) => {
-    releaseLock = resolve;
+    releaseLock = () => {
+      resolve();
+      tokenLocks.delete(tokenId);
+    };
   });
   tokenLocks.set(tokenId, lockPromise);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve();
-      releaseLock!();
-      tokenLocks.delete(tokenId);
-    }, 0);
-  });
+  return releaseLock;
 }
 
 async function fetchCandleData(payTokenId: number, receiveTokenId: number, startTime: number, endTime: number): Promise<any> {
@@ -85,7 +82,7 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
 }
 
 export async function calculate24hPriceChange(token: FE.Token): Promise<number | string> {
-  await acquireTokenLock(token.canister_id);
+  const releaseLock = await acquireTokenLock(token.canister_id);
   
   try {
     // Get current time and ensure UTC handling
@@ -138,23 +135,18 @@ export async function calculate24hPriceChange(token: FE.Token): Promise<number |
   } catch (error) {
     console.error(`Error calculating 24h price change for ${token.symbol}:`, error);
     return 0;
+  } finally {
+    // Release the lock
+    releaseLock();
   }
 }
 
 // Helper to validate and convert timestamps
 function ensureValidTimestamp(timestamp: number): number {
-  // Handle NaN or undefined timestamps
-  if (isNaN(timestamp) || timestamp == null) {
-    console.warn(`Invalid timestamp encountered: ${timestamp}. Using current time.`);
-    return Math.floor(Date.now() / 1000);
-  }
-
   // If timestamp is 0 or negative, return current time
   if (timestamp <= 0) return Math.floor(Date.now() / 1000);
-
   // If timestamp is in milliseconds, convert to seconds
   if (timestamp > 1e10) return Math.floor(timestamp / 1000);
-
   return Math.floor(timestamp);
 }
 
@@ -384,26 +376,26 @@ export async function getHistoricalPrice(
           
           price = tokenInIcp * icpInUsdt;
 
-          console.log(`[${token.symbol}] Historical price - ICP path:`, {
-            symbol: token.symbol,
-            price,
-            tokenIcpData,
-            icpUsdtData,
-            tokenIcpPrice,
-            icpUsdtPrice,
-            tokenInIcp,
-            icpInUsdt
-          });
+          // console.log(`[${token.symbol}] Historical price - ICP path:`, {
+          //   symbol: token.symbol,
+          //   price,
+          //   tokenIcpData,
+          //   icpUsdtData,
+          //   tokenIcpPrice,
+          //   icpUsdtPrice,
+          //   tokenInIcp,
+          //   icpInUsdt
+          // });
         }
       }
     }
 
-    if (price === 0) {
-      console.log(`[${token.symbol}] No price found through any path for token:`, {
-        symbol: token.symbol,
-        canisterId: token.canister_id
-      });
-    }
+    // if (price === 0) {
+    //   console.log(`[${token.symbol}] No price found through any path for token:`, {
+    //     symbol: token.symbol,
+    //     canisterId: token.canister_id
+    //   });
+    // }
 
     return price;
   } catch (error) {

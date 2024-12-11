@@ -33,6 +33,7 @@ export function initializePNP(principals?: Principal[]): PNP {
       delegationTargets.push(...principals);
     }
 
+    const isDev = import.meta.env.DEV;
     globalPnp = createPNP({
       hostUrl: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://icp0.io",
       isDev: process.env.DFX_NETWORK !== "ic",
@@ -42,7 +43,7 @@ export function initializePNP(principals?: Principal[]): PNP {
       verifyQuerySignatures: process.env.DFX_NETWORK === "ic",
       identityProvider: process.env.DFX_NETWORK !== "ic" ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943" : "https://identity.ic0.app",
       persistSession: true,
-      derivationOrigin: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://kongswap.io",
+      derivationOrigin: (isDev && process.env.DFX_NETWORK !== "ic") ? "http://localhost:4943" : "https://3ldz4-aiaaa-aaaar-qaina-cai.icp0.io",
       delegationTimeout: BigInt(Date.now()) + BigInt(1000 * 60 * 60 * 24 * 30) * BigInt(1000), // 30 days
       delegationTargets,
     });
