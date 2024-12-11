@@ -8,6 +8,7 @@ import { canisterIDLs } from "../pnp/PnpInitializer";
 import { PoolSerializer } from "./PoolSerializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { toastStore } from "$lib/stores/toastStore";
 
 export class PoolService {
   protected static instance: PoolService;
@@ -272,21 +273,66 @@ export class PoolService {
    * Poll for request status
    */
   public static async pollRequestStatus(requestId: bigint): Promise<any> {
-    try {
-      const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
-        canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
-      );
-      const result = await actor.requests([requestId]);
-      console.log("Request status:", result);
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10;
+    let lastStatus = '';
+    
+    const toastId = toastStore.info(
+      "Processing liquidity operation...",
+      0
+    );
 
-      if (!result.Ok || result.Ok.length === 0) {
-        throw new Error("Failed to get request status");
+    try {
+      while (attempts < MAX_ATTEMPTS) {
+        const actor = await auth.pnp.getActor(
+          kongBackendCanisterId,
+          canisterIDLs.kong_backend,
+          { anon: false, requiresSigning: false },
+        );
+        const result = await actor.requests([requestId]);
+        console.log("Request status:", result);
+
+        if (!result.Ok || result.Ok.length === 0) {
+          toastStore.dismiss(toastId);
+          throw new Error("Failed to get request status");
+        }
+
+        const status = result.Ok[0];
+        
+        // Show status updates in toast
+        if (status.statuses && status.statuses.length > 0) {
+          const currentStatus = status.statuses[status.statuses.length - 1];
+          if (currentStatus !== lastStatus) {
+            lastStatus = currentStatus;
+            toastStore.info(`Status: ${currentStatus}`, 3000);
+          }
+        }
+
+        // Check for success
+        if (status.statuses.includes("Success")) {
+          toastStore.dismiss(toastId);
+          return status;
+        }
+
+        // Check for failure
+        if (status.statuses.find(s => s.includes("Failed"))) {
+          const failureMessage = status.statuses.find(s => s.includes("Failed"));
+          toastStore.dismiss(toastId);
+          toastStore.error(failureMessage || "Operation failed", 5000);
+          throw new Error(failureMessage || "Operation failed");
+        }
+
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between polls
       }
 
-      return result.Ok[0];
+      // If we exit the loop without success/failure
+      toastStore.dismiss(toastId);
+      toastStore.error("Operation timed out", 5000);
+      throw new Error("Polling timed out");
     } catch (error) {
+      toastStore.dismiss(toastId);
+      toastStore.error(error.message || "Error polling request status", 5000);
       console.error("Error polling request status:", error);
       throw error;
     }

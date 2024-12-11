@@ -2,6 +2,7 @@ import { auth } from "$lib/services/auth";
 import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { toastStore } from "$lib/stores/toastStore";
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -133,6 +134,7 @@ export class IcrcService {
       let retries = 3;
       while (retries > 0) {
         try {
+          toastStore.info(`Approving ${token.symbol}...`);
           let approveActor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
             anon: false,
             requiresSigning: true,
@@ -140,6 +142,7 @@ export class IcrcService {
 
           result = await approveActor.icrc2_approve(approveArgs);
           console.log("ICRC2_APPROVE RESULT:", result);
+          toastStore.success(`Successfully approved ${token.symbol} for trading`);
           break;
         } catch (error) {
           console.warn(`Approve attempt failed, ${retries - 1} retries left:`, error);
@@ -156,6 +159,7 @@ export class IcrcService {
       return result.Ok;
     } catch (error) {
       console.error("ICRC2 approve error:", error);
+      toastStore.error(`Failed to approve ${token.symbol}: ${error.message}`);
       throw error;
     }
   }
@@ -198,6 +202,7 @@ export class IcrcService {
     } = {},
   ): Promise<Result<bigint>> {
     try {
+      toastStore.info(`Sending ${token.symbol}...`);
       const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
         anon: false,
         requiresSigning: ["nfid"].includes(auth.pnp.activeWallet.id.toLowerCase()) ? true : false,
@@ -220,10 +225,13 @@ export class IcrcService {
       const result = await actor.icrc1_transfer(transferArgs);
       console.log("ICRC1_TRANSFER RESULT", result);
       if ("Err" in result) {
+        toastStore.error(`Failed to send ${token.symbol}: ${JSON.stringify(result.Err)}`);
         return { Err: result.Err };
       }
+      toastStore.success(`Successfully sent ${token.symbol}`);
       return { Ok: result.Ok };
     } catch (error) {
+      toastStore.error(`Failed to send ${token.symbol}: ${error.message}`);
       this.handleError("icrc1Transfer", error);
     }
   }

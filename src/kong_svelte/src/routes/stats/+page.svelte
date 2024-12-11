@@ -756,7 +756,7 @@
   }
 
   .token-metrics-row {
-    @apply flex items-center gap-2 text-xs text-[#8890a4] mt-0.5;
+    @apply flex items-center gap-2 text-[10px] text-[#8890a4] mt-0.5;
   }
 
   .separator {

@@ -83,9 +83,15 @@
     return Math.max(...$pools.map((pool) => Number(pool.rolling_24h_apy)));
   });
 
-  const activePoolCount = derived(userPoolBalances, ($balances) => {
+  const activePoolCount = derived([userPoolBalances, poolsList], ([$balances, $pools]) => {
     if (!Array.isArray($balances)) return 0;
-    return $balances.filter((balance) => balance.balance > 0n).length;
+    return $balances.filter((balance) => {
+      if (balance.balance <= 0n) return false;
+      
+      // Find matching pool to get price
+      const pool = $pools.find(p => p.pool_id === balance.pool_id);
+      return pool && Number(pool.price) > 0.10; // hide irrelavant ones
+    }).length;
   });
 
   function handleAddLiquidity(token0: string, token1: string) {
@@ -107,7 +113,12 @@
 
   // Filter pools by search (only when viewing all pools)
   $: filteredPools = $displayPools.filter((pool) => {
-    if ($activePoolView !== "all") return true; // no filtering when on user view
+    // Filter out pools with price < $0.01 when viewing user pools
+    if ($activePoolView === "user" && Number(pool.price) < 0.1) {
+      return false;
+    }
+
+    if ($activePoolView !== "all") return true; // no search filtering when on user view
 
     if (!debouncedSearchTerm) return true;
 
