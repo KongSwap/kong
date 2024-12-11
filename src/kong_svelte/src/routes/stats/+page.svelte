@@ -497,40 +497,49 @@
                     <!-- Mobile token cards -->
                     <div class="space-y-2">
                       {#each $filteredTokens.tokens as token}
-                        <div class="flex items-center justify-between bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-3"
+                        <div 
+                          class="token-card"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
-                          <div class="flex items-center flex-1">
-                            <span class="text-[#8890a4] text-sm w-8 text-center">#{token.marketCapRank}</span>
-                            {#if $auth.isConnected}
-                              <button
-                                class="favorite-button-mobile {$currentWalletFavorites.includes(token.canister_id) ? 'active' : ''}"
-                                on:click={(e) => toggleFavorite(token, e)}
-                              >
-                                {#if $currentWalletFavorites.includes(token.canister_id)}
-                                  <Star class="star-icon filled" size={12} color="yellow" fill="yellow" />
-                                {:else}
-                                  <Star class="star-icon" size={12} />
-                                {/if}
-                              </button>
-                            {/if}
-                            <TokenImages tokens={[token]} size={24} />
-                            <div class="ml-2 flex flex-col">
-                              <span class="font-medium">{token.symbol}</span>
-                              <span class="text-xs text-[#8890a4]">Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
+                          <span class="token-rank">#{token.marketCapRank}</span>
+                          <div class="token-card-main">
+                            <!-- Left section: Favorite, Token Icon, Symbol -->
+                            <div class="token-card-left">
+                              {#if $auth.isConnected}
+                                <button
+                                  class="favorite-button-mobile"
+                                  on:click={(e) => toggleFavorite(token, e)}
+                                >
+                                  {#if $currentWalletFavorites.includes(token.canister_id)}
+                                    <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
+                                  {:else}
+                                    <Star class="star-icon" size={14} />
+                                  {/if}
+                                </button>
+                              {/if}
+                              <TokenImages tokens={[token]} size={24} />
+                              <div class="token-info-mobile">
+                                <span class="token-symbol-mobile">{token.symbol}</span>
+                                <div class="token-metrics-row">
+                                  <span>MCap: {formatUsdValue(token?.metrics?.market_cap)}</span>
+                                  <span class="separator">|</span>
+                                  <span>Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div class="flex flex-col items-end">
-                            <span class="font-medium">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
-                            {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
-                              <span class="text-xs text-purple-400">NEW</span>
-                            {:else if token?.metrics?.price_change_24h === 0}
-                              <span class="text-xs text-slate-400">--</span>
-                            {:else}
-                              <span class="text-xs {Number(token?.metrics?.price_change_24h) > 0 ? 'text-green-400' : 'text-red-400'}">
-                                {formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
-                              </span>
-                            {/if}
+
+                            <div class="token-card-right">
+                              <span class="token-price">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
+                              {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
+                                <span class="token-change new">NEW</span>
+                              {:else if token?.metrics?.price_change_24h === 0}
+                                <span class="token-change neutral">--</span>
+                              {:else}
+                                <span class="token-change {Number(token?.metrics?.price_change_24h) > 0 ? 'positive' : 'negative'}">
+                                  {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
+                                </span>
+                              {/if}
+                            </div>
                           </div>
                         </div>
                       {/each}
@@ -641,7 +650,8 @@
   }
 
   .favorite-button-mobile {
-    @apply flex items-center justify-center w-5 h-5 rounded-lg hover:bg-white/10 transition-none mx-1;
+    @apply flex items-center justify-center w-6 h-6 rounded-lg 
+           hover:bg-white/5 active:bg-white/10 transition-colors duration-150;
   }
 
   .change-cell.positive {
@@ -717,5 +727,67 @@
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: #60A5FA #1a1b23;
+  }
+
+  .token-card {
+    @apply bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-2.5
+           active:bg-[#2a2d3d]/50 transition-colors duration-150
+           hover:border-[#2a2d3d]/80 relative;
+  }
+
+  .token-rank {
+    @apply absolute top-1 left-2 text-xs text-[#8890a4]/70;
+  }
+
+  .token-card-main {
+    @apply flex items-center justify-between w-full mt-2;
+  }
+
+  .token-card-left {
+    @apply flex items-center gap-2 flex-1 min-w-0;
+  }
+
+  .token-info-mobile {
+    @apply flex flex-col justify-center min-w-0;
+  }
+
+  .token-symbol-mobile {
+    @apply text-sm text-white font-medium;
+  }
+
+  .token-metrics-row {
+    @apply flex items-center gap-2 text-xs text-[#8890a4] mt-0.5;
+  }
+
+  .separator {
+    @apply text-[#8890a4]/50 mx-0.5;
+  }
+
+  .token-card-right {
+    @apply flex flex-col items-end justify-center ml-2;
+  }
+
+  .token-price {
+    @apply font-medium text-white text-sm;
+  }
+
+  .token-change {
+    @apply text-xs font-medium mt-0.5;
+  }
+
+  .token-change.positive {
+    @apply text-green-400;
+  }
+
+  .token-change.negative {
+    @apply text-red-400;
+  }
+
+  .token-change.new {
+    @apply text-purple-400;
+  }
+
+  .token-change.neutral {
+    @apply text-[#8890a4];
   }
 </style>
