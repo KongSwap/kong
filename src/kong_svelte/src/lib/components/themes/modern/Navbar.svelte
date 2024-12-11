@@ -442,7 +442,7 @@
     }
 
     .logo-wide {
-      height: 2.5rem;
+      height: 2rem;
       max-width: 100%;
       object-fit: contain;
       -webkit-backface-visibility: hidden;
@@ -658,5 +658,31 @@
 
   :global(.nav-panel) {
     padding: 0 !important;
+  }
+
+  @media (max-width: 1024px) {
+    .logo-wide {
+        height: 2.25rem;
+        max-width: 100%;
+        object-fit: contain;
+        -webkit-backface-visibility: hidden;
+        -webkit-transform: translateZ(0);
+    }
+  }
+
+  @media (max-width: 818px) {
+    .logo-link {
+        max-width: 100%;
+        padding: 0 0.5rem;
+    }
+    
+    .logo-wide {
+        height: min(2.5rem, 8vw);  /* Dynamic size: either 2.5rem or 8% of viewport width, whichever is smaller */
+        width: auto;
+        max-width: min(280px, 70vw);  /* Dynamic width: either 280px or 70% of viewport width, whichever is smaller */
+        object-fit: contain;
+        -webkit-backface-visibility: hidden;
+        -webkit-transform: translateZ(0);
+    }
   }
 </style>
