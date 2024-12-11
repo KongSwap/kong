@@ -490,7 +490,7 @@
     display: flex;
     align-items: center;
     gap: pxrm(4);
-    font-family: "Alumni Sans", sans-serif;
+    font-family: "Space Grotesk", sans-serif;
 }
 .claim-token-logo {
     width: 1em;
@@ -500,7 +500,7 @@
 .claim-tablecell--amount {
     width: calc(33% - pxrm(20));
     color: var(--c-black);
-    font-family: "Alumni Sans", sans-serif;
+    font-family: "Space Grotesk", sans-serif;
     text-align: right;
 }
 .claim-tablecell--control {

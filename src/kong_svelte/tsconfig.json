@@ -11,17 +11,19 @@
     "strict": false,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": {
-      "$lib": ["src/lib"],
-      "$lib/*": ["src/lib/*"]
-    },
-    "types": ["vite/client", "svelte"]
+    "types": ["vite/client", "svelte", "node"],
+    "checkJs": false,
+    "typeRoots": ["./src/types"]
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte",
+    "src/types/**/*.d.ts"
+  ]
 }

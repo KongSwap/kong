@@ -28,16 +28,15 @@
 				}
 			]
     },
-    "kong_frontend": {
+    "kong_svelte": {
       "dependencies": [
         "kong_backend"
       ],
       "source": [
-        "src/assets",
-        "src/kong_frontend/dist"
+        "src/kong_svelte/dist"
       ],
       "type": "assets",
-      "workspace": "kong_frontend",
+      "workspace": "kong_svelte",
       "specified_id": "oaq4p-2iaaa-aaaar-qahqa-cai",
 			"metadata": [
 				{

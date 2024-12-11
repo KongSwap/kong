@@ -1,0 +1,20 @@
+{
+  "browserSubtitle": "Rumble in the crypto jungle",
+  "greeting": "Hello",
+  "welcome": "Welcome to KongSwap!",
+  "tokenName": "Token Name",
+  "connecting": "Connecting to wallet...",
+  "connectedTo": "Connected to",
+  "openDrawer": "Wallet",
+  "connect": "Connect",
+  "navigation": "Go To",
+  "disconnectWallet": "Disconnect Wallet",
+  "notConnected": "Not connected",
+  "selectWallet": "Select a wallet",
+  "connectWallet": "Connect Wallet",
+  "subaccount": "Subaccount",
+  "error": "Error",
+  "loadingTokens": "Loading tokens...",
+  "tokenList": "Token List",
+  "selectToken": "Select Token"
+}

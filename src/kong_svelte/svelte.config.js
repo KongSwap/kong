@@ -9,12 +9,39 @@ const config = {
     adapter: adapter({
       pages: "dist",
       assets: "dist",
-      fallback: undefined,
-      precompress: true,
+      fallback: "index.html",
+      precompress: false,
       strict: true,
     }),
     files: {
       assets: "static",
+    },
+    alias: {
+      $lib: 'src/lib',
+      "$lib/*": 'src/lib/*',
+    },
+    prerender: {
+      handleHttpError: ({ path, referrer, message }) => {
+        // ignore deliberate link to shiny 404 page
+        if (path === '/404') {
+          return;
+        }
+        if (path.startsWith('/pxcomponents/')) {
+          return;
+        }
+        // otherwise fail the build
+        throw new Error(message);
+      },
+      handleMissingId: ({ id, path, referrers }) => {
+        // Ignore missing hash links for specific routes
+        if (id === 'swap' || id === 'pools' || id === 'stats' || id === 'earn') {
+          return;
+        }
+        // Otherwise, fail the build
+        throw new Error(
+          `Missing ID "${id}" for link in ${referrers.join(', ')} pointing to ${path}`
+        );
+      }
     },
   },
   preprocess: vitePreprocess({
@@ -27,13 +54,9 @@ const config = {
     },
   }),
   onwarn: (warning, handler) => {
-    // suppress warnings on `vite dev` and `vite build`
-    if (warning.code === "a11y-click-events-have-key-events") return;
-    if (warning.code === "a11y-no-static-element-interactions") return;
-    if (warning.code === "a11y-missing-attribute") return;
-    if (warning.code === "a11y-no-noninteractive-element-interactions") return;
-    if (warning.code === "a11y-no-noninteractive-element-to-interactive-role") return;
-    if (warning.code === "a11y_consider_explicit_label") return;
+    if (warning.code.startsWith('a11y_')) {
+      return;
+    }
     handler(warning);
   },
 };

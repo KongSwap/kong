@@ -1,42 +1,40 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { t } from "$lib/services/translations";
+  import { auth } from "$lib/services/auth";
 
   export let variant: "default" | "stats" = "default";
-  export let textClass: "text-left" | "text-right" | "text-center" | null = "text-left";
+  export let textClass: string = "text-left";
   export let column: string;
   export let label: string;
-  export let sortColumn: string;
-  export let sortDirection: "asc" | "desc";
-
-  const dispatch = createEventDispatcher();
+  export let sortColumn: string | null = null;
+  export let sortDirection: "asc" | "desc" | null = null;
+  export let requiresAuth: boolean = false;
+  export let onsort: (data: { column: string, direction: "asc" | "desc" }) => void;
 
   function handleSort() {
     let newDirection: "asc" | "desc" = "asc";
     if (sortColumn === column) {
       newDirection = sortDirection === "asc" ? "desc" : "asc";
     }
-    dispatch('sort', { column, direction: newDirection });
+    onsort({ column, direction: newDirection });
   }
 
-  function getVariantClass() {
-    switch (variant) {
-      case "stats":
-        return "font-alumni text-3xl uppercase";
-      default:
-        return "";
-    }
-  }
-
-  $: className = getVariantClass();
+  $: variantClass = variant === "stats" ? "font-alumni text-3xl uppercase" : "";
+  $: showHeader = requiresAuth ? auth.pnp.isConnected : true;
 </script>
 
-<th class="p-2 cursor-pointer {className} {textClass}" on:click={handleSort}>
-  {label}
-  <span>
-    {#if sortColumn === column}
-      {sortDirection === "asc" ? "↑" : "↓"}
-    {:else}
-      &nbsp;
-    {/if}
-  </span>
-</th>
+{#if showHeader}
+  <th 
+    class="p-2 cursor-pointer {textClass} {variantClass}"
+    on:click={handleSort}
+  >
+    {$t(label)}
+    <span>
+      {#if sortColumn === column}
+        {sortDirection === "asc" ? "↑" : "↓"}
+      {:else}
+        &nbsp;
+      {/if}
+    </span>
+  </th>
+{/if}

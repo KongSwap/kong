@@ -1,41 +1,88 @@
 <script lang="ts">
-  import { t } from '$lib/locales/translations';
-  import { backendService } from '$lib/services/backendService';
-  import { onMount } from 'svelte';
+  import { t } from '$lib/services/translations';
+  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { onDestroy } from 'svelte';
+  import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
-  import { tokenStore } from '$lib/stores/tokenStore';
+  import SwapPro from '$lib/components/swap/SwapPro.svelte';
+  import { page } from '$app/stores';
 
-  let tokens: any = null;
+  let fromToken: FE.Token | null = null;
+  let toToken: FE.Token | null = null;
+  let currentMode: 'normal' | 'pro' = 'normal';
 
-  onMount(async () => {
-    tokenStore.loadTokens();
-    try {
-      tokens = await backendService.getTokens();
-    } catch (error) {
-      console.error('Error fetching tokens:', error);
-    }
+  $: if ($tokenStore.tokens && $tokenStore.tokens.length > 0) {
+    const fromCanisterId = $page.url.searchParams.get('from');
+    const toCanisterId = $page.url.searchParams.get('to');
+    
+    fromToken = fromCanisterId ? $tokenStore.tokens.find(t => t.canister_id === fromCanisterId) || null : null;
+    toToken = toCanisterId ? $tokenStore.tokens.find(t => t.canister_id === toCanisterId) || null : null;
+  }
+
+  const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
+    currentMode = event.detail.mode;
+  };
+
+  onDestroy(() => {
+    SwapService.cleanup();
   });
 </script>
 
-<main class="flex flex-col items-center">
-  {#if tokens?.Ok}
-    {#each tokens?.Ok as token}
-      <div class="text-sm uppercase text-gray-500">
-        {token?.IC?.name}
+<section class="swap-container">
+  {#if $tokenStore.tokens}
+    <div class="swap-wrapper">
+      {#if currentMode === 'normal'}
+      <div class="swap-normal">
+        <Swap 
+          initialFromToken={fromToken} 
+          initialToToken={toToken} 
+          {currentMode}
+          on:modeChange={handleModeChange}
+        />
       </div>
-    {/each}
-  {:else if tokens}
-    <div class="swap-container">
-      <Swap />
+      {:else}
+        <SwapPro 
+          initialFromToken={fromToken} 
+          initialToToken={toToken}
+          {currentMode}
+          on:modeChange={handleModeChange}
+        />
+      {/if}
     </div>
   {:else}
     <p>{$t('common.loadingTokens')}</p>
   {/if}
-</main>
+</section>
 
-<style>
+<style scoped lang="postcss">
   .swap-container {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .swap-wrapper {
+    margin: 0;
+    padding: 0;
+    width: 100%;
     display: flex;
     justify-content: center;
+  }
+
+  .swap-normal {
+    background-color: transparent;
+
+  }
+
+  @media (max-width: 640px) {
+    .swap-normal {
+      padding-top: 0.5rem;
+      padding: 1rem 1rem 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .swap-normal {
+      padding-top: 0.25rem;
+    }
   }
 </style>

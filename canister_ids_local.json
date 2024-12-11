@@ -8,9 +8,6 @@
   "kong_faucet": {
     "ic": "ohr23-xqaaa-aaaar-qahqq-cai"
   },
-  "kong_frontend": {
-    "ic": "oaq4p-2iaaa-aaaar-qahqa-cai"
-  },
   "ckusdt_ledger": {
     "ic": "zdzgz-siaaa-aaaar-qaiba-cai"
   },
@@ -25,5 +22,11 @@
   },
   "cketh_ledger": {
     "ic": "zr7ra-6yaaa-aaaar-qaica-cai"
+  },
+  "kong_svelte": {  
+    "ic": "3ldz4-aiaaa-aaaar-qaina-cai"
+  },
+  "kong_ledger": {
+    "ic": "o7oak-iyaaa-aaaaq-aadzq-cai"
   }
 }

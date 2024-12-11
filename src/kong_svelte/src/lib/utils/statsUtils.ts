@@ -1,4 +1,15 @@
-import { getTokenDecimals, formatNumberCustom } from '$lib/utils/formatNumberCustom';
+import { tokenStore } from '$lib/services/tokens/tokenStore';
+import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
+import { get } from 'svelte/store';
+import BigNumber from 'bignumber.js';
+
+type Token = {
+  symbol: string;
+  name: string;
+  canister_id: string;
+  decimals: number;
+  [key: string]: any;
+};
 
 /**
  * Parses a value by removing unwanted characters and converting to a number if applicable.
@@ -8,10 +19,7 @@ import { getTokenDecimals, formatNumberCustom } from '$lib/utils/formatNumberCus
 export function parseValue(value: any): any {
   if (typeof value === 'string') {
     value = value.replace(/[$%,]/g, '');
-    if (value.includes('%')) {
-      return parseFloat(value);
-    }
-    return isNaN(parseFloat(value)) ? value : parseFloat(value);
+    return value.includes('%') ? parseFloat(value) : parseFloat(value) || value;
   }
   return value;
 }
@@ -23,28 +31,61 @@ export function parseValue(value: any): any {
  * @param direction - The sort direction ('asc' or 'desc').
  * @returns A new sorted array of pools.
  */
-export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc'): any[] {
-  if (!Array.isArray(pools)) {
-    console.error('sortPools expects an array, but received:', pools);
+export function sortTableData<T extends Record<string, any>>(
+  data: T[],
+  column: string,
+  direction: 'asc' | 'desc'
+): T[] {
+  if (!Array.isArray(data)) {
+    console.error('sortTableData expects an array, but received:', data);
     return [];
   }
 
-  return pools.slice().sort((a, b) => {
-    let aValue = parseValue(a[column]);
-    let bValue = parseValue(b[column]);
+  return [...data].sort((a, b) => {
+    let aValue = a[column];
+    let bValue = b[column];
 
-    if (typeof aValue === 'string') {
-      aValue = aValue.toLowerCase();
-      bValue = bValue.toLowerCase();
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-      return 0;
+    // Handle special cases for different columns
+    switch (column) {
+      case 'total_24h_volume':
+      case 'rolling_24h_volume':
+        // Convert BigInt to number
+        aValue = Number(aValue || 0n);
+        bValue = Number(bValue || 0n);
+        break;
+
+      case 'formattedUsdValue':
+      case 'price':
+      case 'tvl':
+        // Remove $ and , from string numbers and convert to float
+        aValue = parseFloat(String(aValue || '0').replace(/[$,]/g, ''));
+        bValue = parseFloat(String(bValue || '0').replace(/[$,]/g, ''));
+        break;
+
+      case 'rolling_24h_apy':
+        // Remove % and convert to float
+        aValue = parseFloat(String(aValue || '0').replace(/%/g, ''));
+        bValue = parseFloat(String(bValue || '0').replace(/%/g, ''));
+        break;
+
+      case 'symbol':
+      case 'name':
+        // Case-insensitive string comparison
+        aValue = String(aValue || '').toLowerCase();
+        bValue = String(bValue || '').toLowerCase();
+        break;
+
+      default:
+        // Handle compound columns (like pool names)
+        if (column === 'poolName') {
+          aValue = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
+          bValue = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
+        }
     }
 
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return direction === 'asc' ? aValue - bValue : bValue - aValue;
-    }
-
+    // Perform the comparison
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
     return 0;
   });
 }
@@ -54,26 +95,18 @@ export function sortPools(pools: any[], column: string, direction: 'asc' | 'desc
  * @param pools - The array of pools to format.
  * @returns A new array of formatted pools.
  */
-export function formatPoolData(pools: any[]): any[] {
+export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
   if (pools.length === 0) return pools;
-
-  const decimals1 = getTokenDecimals(pools[0]?.symbol_1) || 6;
+  const store = get(tokenStore);
 
   return pools.map((pool, index) => {
-    const balance = Number(pool.balance || 0);
-    const apy = formatNumberCustom(Number(pool.rolling_24h_apy || 0), 2);
-    const roll24hVolume = formatNumberCustom(
-      Number(pool.rolling_24h_volume || 0) / 10 ** decimals1,
-      0,
-    );
-    const tvl = formatNumberCustom(balance / 10 ** decimals1, 0);
+    const decimals1 = 6;
+    const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
 
     return {
       ...pool,
-      id: `${pool.symbol_0}-${pool.symbol_1}-${index}`, // Unique ID
+      id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
       apy,
-      roll24hVolume,
-      tvl,
     };
   });
 }
@@ -84,10 +117,25 @@ export function formatPoolData(pools: any[]): any[] {
  * @param query - The search query.
  * @returns A new array of filtered pools.
  */
-export function filterPools(pools: any[], query: string): any[] {
+export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {
   if (!query) return pools;
   const lowerQuery = query.toLowerCase();
-  return pools.filter((pool) =>
+  return pools.filter(pool =>
     `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(lowerQuery),
+  );
+}
+
+/**
+ * Filters tokens based on a search query.
+ * @param tokens - The array of tokens to filter.
+ * @param searchQuery - The search query.
+ * @returns A new array of filtered tokens.
+ */
+export function filterTokens(tokens: Token[], searchQuery: string): Token[] {
+  if (!searchQuery) return tokens;
+  const lowerCaseQuery = searchQuery.toLowerCase();
+  return tokens.filter(token =>
+    token.symbol.toLowerCase().includes(lowerCaseQuery) ||
+    token.name.toLowerCase().includes(lowerCaseQuery)
   );
 }

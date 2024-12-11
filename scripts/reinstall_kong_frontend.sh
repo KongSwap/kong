@@ -8,7 +8,7 @@ if [ -z "$1" ]
 fi
 IDENTITY="--identity kong"
 
-npm i kong_frontend
+pnpm i kong_frontend
 
 dfx build ${NETWORK} ${IDENTITY} kong_frontend
 dfx canister install ${NETWORK} ${IDENTITY} kong_frontend --mode reinstall
