@@ -247,6 +247,13 @@
   </div>
 
   <div class="pool-list-content">
+    {#if !pool}
+      <div class="add-liquidity-button-wrapper">
+        <button class="primary-button" on:click={handleAddLiquidity}>
+          Add Position
+        </button>
+      </div>
+    {/if}
     <div class="pool-list">
       {#if loading && processedPools.length === 0}
         <div class="loading-state" in:fade>
@@ -275,9 +282,6 @@
             </button>
           {:else if !pool}
             <p>No active positions</p>
-            <button class="primary-button" on:click={handleAddLiquidity}>
-              Add Position
-            </button>
           {:else}
             <p>No matching pool found</p>
           {/if}
@@ -382,6 +386,10 @@
     @apply flex-1 min-h-0 overflow-y-auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+
+  .add-liquidity-button-wrapper {
+    @apply flex justify-end p-4;
   }
 
   .pool-list {
