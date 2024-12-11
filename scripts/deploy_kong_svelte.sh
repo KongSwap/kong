@@ -10,6 +10,6 @@ if [ -z "$1" ]
 fi
 IDENTITY="--identity kong"
 
-pnpm i --filter=kong_svelte 
+npm i --filter=kong_svelte 
 
 dfx deploy ${NETWORK} ${IDENTITY} ${SAME_SUBNET} kong_svelte

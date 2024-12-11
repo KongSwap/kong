@@ -5,8 +5,8 @@ if ! command -v cargo >/dev/null; then
 	exit 1
 fi
 
-if ! command -v pnpm >/dev/null; then
-	echo "Node.js/pnpm is not installed"
+if ! command -v npm >/dev/null; then
+	echo "Node.js/npm is not installed"
 	exit 1
 fi
 
