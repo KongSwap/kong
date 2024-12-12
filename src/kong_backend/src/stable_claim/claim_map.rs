@@ -1,9 +1,11 @@
 use super::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 
+use crate::helpers::nat_helpers::{nat_is_zero, nat_subtract, nat_zero};
 use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_token::stable_token::StableToken;
+use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 pub fn get_by_claim_id(claim_id: u64) -> Option<StableClaim> {
@@ -18,7 +20,11 @@ pub fn get_token(claim: &StableClaim) -> StableToken {
     token_map::get_by_token_id(claim.token_id).unwrap()
 }
 
-pub fn insert(claim: &StableClaim) -> Result<u64, String> {
+pub fn insert(token: &StableToken, claim: &StableClaim) -> Result<u64, String> {
+    let amount_with_gas = nat_subtract(&claim.amount, &token.fee()).unwrap_or(nat_zero());
+    if nat_is_zero(&amount_with_gas) {
+        return Err("Claim amount is zero".to_string());
+    }
     CLAIM_MAP.with(|m| {
         let mut map = m.borrow_mut();
         let claim_id = kong_settings_map::inc_claim_map_idx();

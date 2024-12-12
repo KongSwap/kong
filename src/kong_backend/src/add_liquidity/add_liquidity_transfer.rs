@@ -516,14 +516,17 @@ async fn return_token(
         }
         Err(e) => {
             // attempt to return token failed, so save as a claim
-            let message = match claim_map::insert(&StableClaim::new(
-                user_id,
-                token_id,
-                amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            )) {
+            let message = match claim_map::insert(
+                token,
+                &StableClaim::new(
+                    user_id,
+                    token_id,
+                    amount,
+                    Some(request_id),
+                    Some(Address::PrincipalId(*to_principal_id)),
+                    ts,
+                ),
+            ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)

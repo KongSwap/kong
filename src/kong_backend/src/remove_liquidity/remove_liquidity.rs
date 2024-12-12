@@ -185,7 +185,7 @@ async fn check_arguments_with_user(args: &RemoveLiquidityArgs, user_id: u32) -> 
     // Check the user has enough LP tokens
     let user_lp_token_amount =
         lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
-    let remove_lp_token_amount = if args.remove_lp_token_amount > user_lp_token_amount {
+    let remove_lp_token_amount = if user_lp_token_amount == nat_zero() || args.remove_lp_token_amount > user_lp_token_amount {
         return Err("Insufficient LP balance".to_string());
     } else {
         args.remove_lp_token_amount.clone()
@@ -470,14 +470,17 @@ async fn transfer_token(
             };
         }
         Err(e) => {
-            let message = match claim_map::insert(&StableClaim::new(
-                user_id,
-                token_id,
-                &amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            )) {
+            let message = match claim_map::insert(
+                token,
+                &StableClaim::new(
+                    user_id,
+                    token_id,
+                    &amount,
+                    Some(request_id),
+                    Some(Address::PrincipalId(*to_principal_id)),
+                    ts,
+                ),
+            ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)

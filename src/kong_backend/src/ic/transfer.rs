@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
-use crate::helpers::nat_helpers::nat_to_u64;
+use crate::helpers::nat_helpers::{nat_is_zero, nat_to_u64, nat_zero};
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 
@@ -16,6 +16,10 @@ pub async fn icp_transfer(
     token: &StableToken,
     created_at_time: Option<&Timestamp>,
 ) -> Result<Nat, String> {
+    if nat_is_zero(amount) {
+        // if amount = 0, return Ok(block_id = 0) to return success. Don't error Err as it could be put into claims
+        return Ok(nat_zero());
+    }
     let amount = Tokens::from_e8s(nat_to_u64(amount).ok_or("Invalid transfer amount")?);
 
     let transfer_args = TransferArgs {
@@ -55,6 +59,10 @@ pub async fn icrc1_transfer(
     token: &StableToken,
     created_at_time: Option<u64>,
 ) -> Result<Nat, String> {
+    if nat_is_zero(amount) {
+        // if amount = 0, return Ok(block_id = 0) to return success. Don't error Err as it could be put into claims
+        return Ok(nat_zero());
+    }
     let id = *token.canister_id().ok_or("Invalid principal id")?;
 
     let transfer_args: TransferArg = TransferArg {
@@ -86,6 +94,9 @@ pub async fn icrc2_transfer_from(
 ) -> Result<Nat, String> {
     if !token.is_icrc2() {
         return Err("Token does not support ICRC2".to_string());
+    }
+    if nat_is_zero(amount) {
+        return Err("Transfer_from amount is zero".to_string());
     }
     let id = *token.canister_id().ok_or("Invalid principal id")?;
 

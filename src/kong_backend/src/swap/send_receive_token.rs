@@ -30,6 +30,9 @@ pub async fn send_receive_token(
     txs: &[SwapCalc],
     ts: u64,
 ) -> SwapReply {
+    let pay_token_id = pay_token.token_id();
+    let receive_token_id = receive_token.token_id();
+
     let mut claim_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::SendReceiveToken, None);
@@ -45,8 +48,8 @@ pub async fn send_receive_token(
                 transfer_id: 0,
                 request_id,
                 is_send: false,
+                token_id: receive_token_id,
                 amount: receive_amount.clone(),
-                token_id: receive_token.token_id(),
                 tx_id: TxId::BlockIndex(tx_id),
                 ts,
             });
@@ -54,14 +57,17 @@ pub async fn send_receive_token(
             request_map::update_status(request_id, StatusCode::SendReceiveTokenSuccess, None);
         }
         Err(e) => {
-            let message = match claim_map::insert(&StableClaim::new(
-                user_id,
-                receive_token.token_id(),
-                receive_amount,
-                Some(request_id),
-                Some(to_address.clone()),
-                ts,
-            )) {
+            let message = match claim_map::insert(
+                receive_token,
+                &StableClaim::new(
+                    user_id,
+                    receive_token_id,
+                    receive_amount,
+                    Some(request_id),
+                    Some(to_address.clone()),
+                    ts,
+                ),
+            ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)
@@ -75,9 +81,9 @@ pub async fn send_receive_token(
     let swap_tx = SwapTx::new_success(
         user_id,
         request_id,
-        pay_token.token_id(),
+        pay_token_id,
         pay_amount,
-        receive_token.token_id(),
+        receive_token_id,
         receive_amount,
         mid_price,
         price,

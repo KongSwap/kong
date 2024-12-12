@@ -463,12 +463,15 @@ async fn return_token(
     claim_ids: &mut Vec<u64>,
     ts: u64,
 ) {
+    let token_id = token.token_id();
+    let fee = token.fee();
+
     match token_index {
         TokenIndex::Token0 => request_map::update_status(request_id, StatusCode::ReturnToken0, None),
         TokenIndex::Token1 => request_map::update_status(request_id, StatusCode::ReturnToken1, None),
     };
 
-    let amount_with_gas = nat_subtract(amount, &token.fee()).unwrap_or(nat_zero());
+    let amount_with_gas = nat_subtract(amount, &fee).unwrap_or(nat_zero());
     match icrc1_transfer(&amount_with_gas, to_principal_id, token, None).await {
         Ok(block_id) => {
             let transfer_id = transfer_map::insert(&StableTransfer {
@@ -476,7 +479,7 @@ async fn return_token(
                 request_id,
                 is_send: false,
                 amount: amount_with_gas,
-                token_id: token.token_id(),
+                token_id,
                 tx_id: TxId::BlockIndex(block_id),
                 ts,
             });
@@ -488,14 +491,17 @@ async fn return_token(
         }
         Err(e) => {
             // attempt to return token_0 failed, so save as a claim
-            let message = match claim_map::insert(&StableClaim::new(
-                user_id,
-                token.token_id(),
-                amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            )) {
+            let message = match claim_map::insert(
+                token,
+                &StableClaim::new(
+                    user_id,
+                    token_id,
+                    amount,
+                    Some(request_id),
+                    Some(Address::PrincipalId(*to_principal_id)),
+                    ts,
+                ),
+            ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)

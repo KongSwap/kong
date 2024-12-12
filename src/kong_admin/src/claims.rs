@@ -65,36 +65,12 @@ pub fn serialize_claim(claim: &StableClaim) -> serde_json::Value {
 }
 
 pub async fn update_claims_on_database(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let dir_path = "./backups";
-    let re_pattern = Regex::new(r"claims.*.json").unwrap();
-    let mut files = fs::read_dir(dir_path)?
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| {
-            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
-                Some(entry)
-            } else {
-                None
-            }
-        })
-        .map(|entry| {
-            // sort by the number in the filename
-            let file = entry.path();
-            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
-            let number_str = filename.split('.').nth(1).unwrap();
-            let number = number_str.parse::<u32>().unwrap();
-            (number, file)
-        })
-        .collect::<Vec<_>>();
-    files.sort_by(|a, b| a.0.cmp(&b.0));
+    let file = File::open("./backups/claims.json")?;
+    let reader = BufReader::new(file);
+    let claim_map: BTreeMap<StableClaimId, StableClaim> = serde_json::from_reader(reader)?;
 
-    for file in files {
-        let file = File::open(file.1)?;
-        let reader = BufReader::new(file);
-        let claim_map: BTreeMap<StableClaimId, StableClaim> = serde_json::from_reader(reader)?;
-
-        for v in claim_map.values() {
-            insert_claim_on_database(v, db_client, tokens_map).await?;
-        }
+    for v in claim_map.values() {
+        insert_claim_on_database(v, db_client, tokens_map).await?;
     }
 
     Ok(())
@@ -161,36 +137,13 @@ pub async fn insert_claim_on_database(
 }
 
 pub async fn update_claims_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
-    let dir_path = "./backups";
-    let re_pattern = Regex::new(r"claims.*.json").unwrap();
-    let mut files = fs::read_dir(dir_path)?
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| {
-            if re_pattern.is_match(entry.file_name().to_str().unwrap()) {
-                Some(entry)
-            } else {
-                None
-            }
-        })
-        .map(|entry| {
-            // sort by the number in the filename
-            let file = entry.path();
-            let filename = Path::new(&file).file_name().unwrap().to_str().unwrap();
-            let number_str = filename.split('.').nth(1).unwrap();
-            let number = number_str.parse::<u32>().unwrap();
-            (number, file)
-        })
-        .collect::<Vec<_>>();
-    files.sort_by(|a, b| a.0.cmp(&b.0));
-
-    for file in files {
-        println!("processing: {:?}", file.1.file_name().unwrap());
-        let file = File::open(file.1)?;
-        let mut reader = BufReader::new(file);
-        let mut contents = String::new();
-        reader.read_to_string(&mut contents)?;
-        kong_update.update_claims(&contents).await?;
-    }
+    let path = Path::new("./backups/claims.json");
+    let file = File::open(path)?;
+    println!("processing: {:?}", path.file_name().unwrap());
+    let mut reader = BufReader::new(file);
+    let mut contents = String::new();
+    reader.read_to_string(&mut contents)?;
+    kong_update.update_claims(&contents).await?;
 
     Ok(())
 }
