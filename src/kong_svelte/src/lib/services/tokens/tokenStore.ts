@@ -605,11 +605,10 @@ export const formattedTokens = derived(
         // Preserve all original token properties and add formatted ones
         return {
           ...token,
-          logo_url: token.logo_url, // Explicitly preserve logo_url
+          logo_url: token.logo_url,
           metrics: {
             ...token.metrics,
             price: price.toString(),
-            market_cap: (Number(price) * (Number(token.metrics?.total_supply) / Math.pow(10, token.decimals))).toString(),
             price_change_24h: token.canister_id === CKUSDT_CANISTER_ID ? 0 : token.metrics.price_change_24h
           },
           balance: balance.toString(),

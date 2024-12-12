@@ -66,7 +66,7 @@ export class SwapService {
   private static pollingInterval: NodeJS.Timeout | null = null;
   private static startTime: number;
   private static readonly POLLING_INTERVAL = 300; // .3 second
-  private static readonly MAX_ATTEMPTS = 100; // 30 seconds
+  private static readonly MAX_ATTEMPTS = 200; // 30 seconds
 
   public static toBigInt(amount: string, decimals: number): bigint {
     if (!amount || isNaN(Number(amount.replace(/_/g, '')))) return BigInt(0);
@@ -349,7 +349,7 @@ export class SwapService {
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
       `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
-      10000,
+      11000,
     );
 
     const poll = async () => {

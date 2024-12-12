@@ -17,6 +17,7 @@ import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { Pr } from "svelte-flags";
+import BigNumber from "bignumber.js";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -89,7 +90,10 @@ export class TokenService {
               ...token.metrics,
               market_cap: token.canister_id === CKUSDT_CANISTER_ID ? 
                 (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : 
-                token.metrics.market_cap,
+                new BigNumber(token.metrics.total_supply)
+                  .div(new BigNumber(10 ** token.decimals))
+                  .times(new BigNumber(price))
+                  .toString(),
               volume_24h: total24hVolume.toString(),
             },
             price,

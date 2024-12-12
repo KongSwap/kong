@@ -43,7 +43,7 @@
   const activeStatsSection = writable<"tokens" | "marketStats">("tokens");
   const DEBOUNCE_DELAY = 300;
   const searchQuery = writable<string>("");
-  const sortColumnStore = writable<string>("marketCap"); // Changed default sort to marketCap
+  const sortColumnStore = writable<string>("marketCap");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const previousPrices = writable<{ [key: string]: number }>({});
 
@@ -145,8 +145,8 @@
             bValue = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
             break;
           case "marketCap":
-            aValue = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
-            bValue = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+            aValue = Number(a?.metrics?.market_cap) || 0;
+            bValue = Number(b?.metrics?.market_cap) || 0;
             break;
           case "name":
             return $sortDirection === "asc"
@@ -162,8 +162,8 @@
 
       // Sort by market cap for ranking
       const tokensByMarketCap = [...tokens].sort((a, b) => {
-        const aVal = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
-        const bVal = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        const aVal = Number(a?.metrics?.market_cap) || 0;
+        const bVal = Number(b?.metrics?.market_cap) || 0;
         return bVal - aVal;
       });
 
