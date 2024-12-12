@@ -34,7 +34,7 @@ const config = {
       },
       handleMissingId: ({ id, path, referrers }) => {
         // Ignore missing hash links for specific routes
-        if (id === 'swap' || id === 'pools' || id === 'stats' || id === 'earn') {
+        if (id === 'swap' || id === 'pools' || id === 'stats' || id === 'earn' || id === ".well-known" || id === "ic-domains" || id === ".well-known/ic-domains") {
           return;
         }
         // Otherwise, fail the build
