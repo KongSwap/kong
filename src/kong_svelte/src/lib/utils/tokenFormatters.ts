@@ -1,5 +1,4 @@
 import { formatToNonZeroDecimal } from "./numberFormatUtils";
-import type { Transaction } from "$lib/types/transaction";
 
 /**
  * Formats a raw token balance considering its decimals
@@ -33,7 +32,7 @@ export function formatBalance(rawBalance: string | undefined, decimals: number =
     }).replace(/\.?0+$/, '');
 }
 
-export function calculateTotalUsdValue(tx: Transaction, formattedTokens: FE.Token[]): string {
+export function calculateTotalUsdValue(tx: FE.Transaction, formattedTokens: FE.Token[]): string {
     const payToken = formattedTokens?.find(
       (t) => t.token_id === tx.pay_token_id,
     );

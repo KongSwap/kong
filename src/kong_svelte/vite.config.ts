@@ -144,5 +144,10 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       'process.env.DFX_NETWORK': JSON.stringify(env.DFX_NETWORK),
       'process.env.IC_HOST': JSON.stringify(env.IC_HOST),
     },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./test/setup.ts'],
+    },
   };
 });
