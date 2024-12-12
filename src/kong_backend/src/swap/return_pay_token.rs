@@ -23,11 +23,14 @@ pub async fn return_pay_token(
     transfer_ids: &mut Vec<u64>,
     ts: u64,
 ) {
+    let token_id = pay_token.token_id();
+    let fee = pay_token.fee();
+
     let mut claim_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::ReturnPayToken, None);
 
-    let pay_amount_with_gas = nat_subtract(pay_amount, &pay_token.fee()).unwrap_or(nat_zero());
+    let pay_amount_with_gas = nat_subtract(pay_amount, &fee).unwrap_or(nat_zero());
     match icrc1_transfer(&pay_amount_with_gas, to_principal_id, pay_token, None).await {
         Ok(tx_id) => {
             let transfer_id = transfer_map::insert(&StableTransfer {
@@ -35,7 +38,7 @@ pub async fn return_pay_token(
                 request_id,
                 is_send: false,
                 amount: pay_amount_with_gas,
-                token_id: pay_token.token_id(),
+                token_id,
                 tx_id: TxId::BlockIndex(tx_id),
                 ts,
             });
@@ -43,14 +46,17 @@ pub async fn return_pay_token(
             request_map::update_status(request_id, StatusCode::ReturnPayTokenSuccess, None);
         }
         Err(e) => {
-            let message = match claim_map::insert(&StableClaim::new(
-                user_id,
-                pay_token.token_id(),
-                pay_amount,
-                Some(request_id),
-                Some(Address::PrincipalId(*to_principal_id)),
-                ts,
-            )) {
+            let message = match claim_map::insert(
+                pay_token,
+                &StableClaim::new(
+                    user_id,
+                    token_id,
+                    pay_amount,
+                    Some(request_id),
+                    Some(Address::PrincipalId(*to_principal_id)),
+                    ts,
+                ),
+            ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);
                     format!("Saved as claim #{}. {}", claim_id, e)
