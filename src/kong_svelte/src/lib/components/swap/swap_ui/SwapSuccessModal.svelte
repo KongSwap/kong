@@ -40,7 +40,7 @@
     const tradeDetails = 
       `🍌 Trade completed on KongSwap!\n\n` +
       `Swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol}\n\n` +
-      `Trade now: https://kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}\n`
+      `Trade now: https://www.kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}\n`
     try {
       await navigator.clipboard.writeText(tradeDetails);
       toastStore.success('Trade details copied to clipboard');
