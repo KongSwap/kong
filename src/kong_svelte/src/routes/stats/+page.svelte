@@ -2,7 +2,7 @@
   import { writable, derived } from "svelte/store";
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
@@ -52,38 +52,20 @@
   });
 
   const tokensLoading = derived(
-    [formattedTokens, poolStore],
-    ([$formattedTokens, $poolStore]): boolean => {
-      const formattedTokensInitialLoading =
-        !$formattedTokens ||
-        !Array.isArray($formattedTokens) ||
-        $formattedTokens.length === 0;
-
-      const poolStoreInitialLoading =
-        !$poolStore ||
-        !$poolStore.pools ||
-        $poolStore.pools.length === 0 ||
-        $poolStore.isLoading;
-
-      return formattedTokensInitialLoading || poolStoreInitialLoading;
-    },
+    [tokenStore, poolStore],
+    ([$tokenStore, $poolStore]) => {
+      return $poolStore.isLoading || 
+             $tokenStore.isLoading || 
+             !$tokenStore.tokens || 
+             $tokenStore.tokens.length === 0;
+    }
   );
 
-  const tokensError = derived(
-    [formattedTokens, poolStore],
-    ([$formattedTokens, $poolStore]): string | null => {
-      const formattedTokensError =
-        $formattedTokens &&
-        typeof $formattedTokens === "object" &&
-        "error" in $formattedTokens
-          ? ($formattedTokens.error as string)
-          : null;
-      const poolStoreError =
-        $poolStore && typeof $poolStore === "object" && "error" in $poolStore
-          ? ($poolStore.error as string)
-          : null;
-      return formattedTokensError || poolStoreError || null;
-    },
+  const tokensError = derived<[typeof tokenStore, typeof poolStore], string | null>(
+    [tokenStore, poolStore],
+    ([$tokenStore, $poolStore]) => {
+      return $tokenStore.error || $poolStore.error || null;
+    }
   );
 
   const debouncedSearch = debounce((value: string) => {
@@ -102,7 +84,7 @@
 
   const filteredTokens = derived(
     [
-      formattedTokens,
+      tokenStore,
       searchQuery,
       sortColumnStore,
       sortDirectionStore,
@@ -111,7 +93,7 @@
       auth
     ],
     ([
-      $formattedTokens,
+      $tokenStore,
       $searchQuery,
       $sortColumn,
       $sortDirection,
@@ -119,38 +101,34 @@
       $currentWalletFavorites,
       $auth
     ]) => {
-      let tokens = $formattedTokens;
+      let tokens = [...$tokenStore.tokens];
 
       // If showing favorites only:
       if ($showFavoritesOnly) {
-        // If not connected, no favorites to show
         if (!$auth.isConnected) {
           return { tokens: [], showFavoritesPrompt: true };
         }
 
-        // Filter tokens by favorites
         tokens = tokens.filter((token) =>
-          $currentWalletFavorites.includes(token.canister_id),
+          $currentWalletFavorites.includes(token.canister_id)
         );
 
-        // If user has no favorites
         if (tokens.length === 0) {
           return { tokens: [], noFavorites: true };
         }
       } else {
-        // Show all tokens and apply search filter
         if ($searchQuery) {
           const query = $searchQuery.toLowerCase();
           tokens = tokens.filter(
             (token) =>
               token.name.toLowerCase().includes(query) ||
-              token.symbol.toLowerCase().includes(query),
+              token.symbol.toLowerCase().includes(query)
           );
         }
       }
 
       // Apply sorting
-      tokens = [...tokens].sort((a, b) => {
+      tokens = tokens.sort((a, b) => {
         let aValue, bValue;
 
         switch ($sortColumn) {
@@ -182,12 +160,13 @@
         return $sortDirection === "asc" ? aValue - bValue : bValue - aValue;
       });
 
-      // Sort by market cap again for ranking
-      const tokensByMarketCap = [...$formattedTokens].sort((a, b) => {
+      // Sort by market cap for ranking
+      const tokensByMarketCap = [...tokens].sort((a, b) => {
         const aVal = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
         const bVal = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
         return bVal - aVal;
       });
+
       const marketCapRankings = new Map(
         tokensByMarketCap.map((token, index) => [token.canister_id, index + 1])
       );
@@ -198,7 +177,7 @@
       }));
 
       return { tokens };
-    },
+    }
   );
 
   function toggleSort(column: string) {

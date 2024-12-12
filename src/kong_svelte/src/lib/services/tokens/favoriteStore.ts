@@ -40,7 +40,6 @@ function createFavoriteStore() {
       }));
     } catch (error) {
       console.error("Error loading favorites:", error);
-      toastStore.error("Failed to load favorite tokens");
       store.update(s => ({ ...s, isLoading: false }));
     }
   };
