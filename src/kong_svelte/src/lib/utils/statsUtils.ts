@@ -1,16 +1,6 @@
 import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
-import BigNumber from 'bignumber.js';
-
-type Token = {
-  symbol: string;
-  name: string;
-  canister_id: string;
-  decimals: number;
-  [key: string]: any;
-};
-
 /**
  * Parses a value by removing unwanted characters and converting to a number if applicable.
  * @param value - The value to parse.
@@ -131,7 +121,7 @@ export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {
  * @param searchQuery - The search query.
  * @returns A new array of filtered tokens.
  */
-export function filterTokens(tokens: Token[], searchQuery: string): Token[] {
+export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[] {
   if (!searchQuery) return tokens;
   const lowerCaseQuery = searchQuery.toLowerCase();
   return tokens.filter(token =>
