@@ -36,8 +36,14 @@
            (p.address_1 === fromToken.canister_id && p.address_0 === toToken.canister_id);
   });
 
+  let baseToken: FE.Token | null = null;
+  let quoteToken: FE.Token | null = null;
+  $: {
+    baseToken = selectedPool?.address_0 === fromToken?.canister_id ? fromToken : toToken;
+    quoteToken = selectedPool?.address_0 === toToken?.canister_id ? fromToken : toToken;
+  }
   // Create the symbol from the pool tokens
-  $: chartSymbol = fromToken && toToken ? `${fromToken?.symbol}/${toToken?.symbol}` : '';
+  $: chartSymbol = baseToken && quoteToken ? `${quoteToken?.symbol}/${baseToken?.symbol}` : '';
 
   // Handle token selection changes
   function handleTokenChange(event: CustomEvent) {
@@ -82,12 +88,11 @@
           class="chart-wrapper !p-0"
           class:minimized={isChartMinimized}
         >
-          {#if fromToken && toToken}
+          {#if baseToken && quoteToken}
             <TradingViewChart 
               poolId={selectedPool ? Number(selectedPool.pool_id) : undefined}
-              symbol={chartSymbol}
-              {fromToken}
-              {toToken}
+              quoteToken={quoteToken}
+              baseToken={baseToken}
             />
           {:else}
             <div class="flex items-center justify-center h-full text-white">

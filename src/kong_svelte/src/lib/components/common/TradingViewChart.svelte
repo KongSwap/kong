@@ -12,9 +12,9 @@
   // Convert props to runes syntax
   const props = $props<{
     poolId?: number;
-    symbol: string;
-    fromToken: FE.Token;
-    toToken: FE.Token;
+    symbol?: string;
+    quoteToken: FE.Token;
+    baseToken: FE.Token;
   }>();
 
   // Local state
@@ -24,8 +24,8 @@
   let selectedPoolId: number | undefined = $state(undefined);
   let updateTimeout: NodeJS.Timeout;
   let routingPath = $state<string[]>([]);
-  let previousFromTokenId = $state<string | undefined>(undefined);
-  let previousToTokenId = $state<string | undefined>(undefined);
+  let previousQuoteTokenId = $state<string | undefined>(undefined);
+  let previousBaseTokenId = $state<string | undefined>(undefined);
   let chartWrapper: HTMLElement;
 
   // Create a store for the chart
@@ -52,20 +52,20 @@
 
   // Watch for token or pool changes and reinitialize chart
   $effect(() => {
-    const currentFromId = props.fromToken?.canister_id;
-    const currentToId = props.toToken?.canister_id;
+    const currentFromId = props.quoteToken?.canister_id;
+    const currentToId = props.baseToken?.canister_id;
     const hasTokenChange =
-      currentFromId !== previousFromTokenId ||
-      currentToId !== previousToTokenId;
+      currentFromId !== previousQuoteTokenId ||
+      currentToId !== previousBaseTokenId;
     const hasPoolChange = props.poolId !== selectedPoolId;
 
     if (
       (hasTokenChange || hasPoolChange) &&
-      ((props.fromToken && props.toToken) || props.poolId) &&
+      ((props.quoteToken && props.baseToken) || props.poolId) &&
       (!chart || (chart && hasTokenChange))
     ) {
-      previousFromTokenId = currentFromId;
-      previousToTokenId = currentToId;
+      previousQuoteTokenId = currentFromId;
+      previousBaseTokenId = currentToId;
 
       if (chart) {
         chart.remove();
@@ -92,7 +92,7 @@
   });
 
   const initChart = async () => {
-    if (!chartContainer || !props.fromToken?.token_id || !props.toToken?.token_id) {
+    if (!chartContainer || !props.quoteToken?.token_id || !props.baseToken?.token_id) {
       isLoading = false;
       return;
     }
@@ -101,13 +101,13 @@
       await loadTradingViewLibrary();
 
       const isMobile = window.innerWidth < 768;
-      const datafeed = new KongDatafeed(props.fromToken.token_id, props.toToken.token_id);
+      const datafeed = new KongDatafeed(props.quoteToken.token_id, props.baseToken.token_id);
 
       // Get container dimensions
       const containerWidth = chartContainer.clientWidth;
       const containerHeight = chartContainer.clientHeight;
       const chartConfig = getChartConfig({
-        symbol: props.symbol || `${props.fromToken.symbol}/${props.toToken.symbol}`,
+        symbol: props.symbol || `${props.baseToken.symbol}/${props.quoteToken.symbol}`,
         datafeed,
         container: chartContainer,
         containerWidth,
@@ -136,17 +136,17 @@
 
   // Get the best pool for the token pair
   async function getBestPool() {
-    if (!props.fromToken || !props.toToken) {
+    if (!props.quoteToken || !props.baseToken) {
       return selectedPoolId ? { pool_id: selectedPoolId } : null;
     }
 
     try {
       const directPool = pools.find(
         (p) =>
-          (p.address_0 === props.fromToken.canister_id &&
-            p.address_1 === props.toToken.canister_id) ||
-          (p.address_1 === props.fromToken.canister_id &&
-            p.address_0 === props.toToken.canister_id),
+          (p.address_0 === props.quoteToken.canister_id &&
+            p.address_1 === props.baseToken.canister_id) ||
+          (p.address_1 === props.quoteToken.canister_id &&
+            p.address_0 === props.baseToken.canister_id),
       );
 
       if (directPool) {
@@ -156,10 +156,10 @@
 
       const relatedPool = pools.find(
         (p) =>
-          p.address_0 === props.fromToken.canister_id ||
-          p.address_1 === props.fromToken.canister_id ||
-          p.address_0 === props.toToken.canister_id ||
-          p.address_1 === props.toToken.canister_id,
+          p.address_0 === props.quoteToken.canister_id ||
+          p.address_1 === props.quoteToken.canister_id ||
+          p.address_0 === props.baseToken.canister_id ||
+          p.address_1 === props.baseToken.canister_id,
       );
 
       if (relatedPool) {
@@ -182,7 +182,7 @@
       hasNoData = false;
 
       const bestPool =
-        props.fromToken && props.toToken
+        props.quoteToken && props.baseToken
           ? await getBestPool()
           : { pool_id: selectedPoolId };
 
@@ -196,8 +196,8 @@
       const now = Math.floor(Date.now() / 1000);
       const startTime = now - 2 * 365 * 24 * 60 * 60;
 
-      const payTokenId = props.fromToken?.token_id || 1;
-      const receiveTokenId = props.toToken?.token_id || 10;
+      const payTokenId = props.quoteToken?.token_id || 1;
+      const receiveTokenId = props.baseToken?.token_id || 10;
 
       const candleData = await fetchChartData(
         payTokenId,
@@ -247,7 +247,7 @@
     if (chartWrapper) {
       resizeObserver.observe(chartWrapper);
       // Initial data fetch when component mounts
-      if ((props.fromToken && props.toToken) || props.poolId) {
+      if ((props.quoteToken && props.baseToken) || props.poolId) {
         debouncedFetchData();
       }
     }
