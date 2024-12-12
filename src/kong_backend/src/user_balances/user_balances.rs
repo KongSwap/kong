@@ -5,7 +5,8 @@ use super::user_balances_reply::UserBalancesReply;
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_multiply, nat_to_decimals_f64, nat_zero};
 use crate::ic::ckusdt::{ckusdt_amount, to_ckusdt_decimals_f64};
-use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode_and_caller_is_not_anonymous};
+use crate::ic::get_time::get_time;
+use crate::ic::guards::not_in_maintenance_mode;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken::{IC, LP};
@@ -13,9 +14,14 @@ use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
-#[query(guard = "not_in_maintenance_mode_and_caller_is_not_anonymous")]
-pub async fn user_balances(symbol: Option<String>) -> Result<Vec<UserBalancesReply>, String> {
-    let user_id = user_map::get_by_caller().ok().flatten().ok_or("User not found")?.user_id;
+#[query(guard = "not_in_maintenance_mode")]
+pub async fn user_balances(principal_id: String, symbol: Option<String>) -> Result<Vec<UserBalancesReply>, String> {
+    let user_id = user_map::get_by_principal_id(&principal_id)
+        .ok()
+        .flatten()
+        .ok_or("User not found")?
+        .user_id;
+
     let mut user_balances = Vec::new();
     let ts = get_time();
 
