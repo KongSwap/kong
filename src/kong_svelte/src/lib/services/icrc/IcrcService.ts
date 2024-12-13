@@ -3,6 +3,7 @@ import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
+import { tokenStore } from "$lib/services/tokens/tokenStore";
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -190,6 +191,19 @@ export class IcrcService {
     }
   }
 
+  public static async getTokenFee(token: FE.Token): Promise<bigint> {
+    try {
+      const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
+        anon: true,
+        requiresSigning: false,
+      });
+      return await actor.icrc1_fee();
+    } catch (error) {
+      console.error(`Error getting token fee for ${token.symbol}:`, error);
+      return BigInt(10000); // Fallback to default fee
+    }
+  }
+
   public static async icrc1Transfer(
     token: FE.Token,
     to: string | Principal,
@@ -202,37 +216,37 @@ export class IcrcService {
     } = {},
   ): Promise<Result<bigint>> {
     try {
-      toastStore.info(`Sending ${token.symbol}...`);
       const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
         anon: false,
-        requiresSigning: ["nfid"].includes(auth.pnp.activeWallet.id.toLowerCase()) ? true : false,
+        requiresSigning: true,
       });
-      console.log("ICRC1_TRANSFER ACTOR", actor);
-      const toPrincipal = typeof to === "string" ? Principal.fromText(to) : to;
 
-      const transferArgs = {
-        to: {
-          owner: toPrincipal,
-          subaccount: [],
-        },
-        amount: BigInt(amount),
-        memo: opts.memo ? opts.memo : [],
-        fee: opts.fee ? [opts.fee] : [],
-        from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
+      // Get the token's actual fee from the canister
+      const tokenFee = await this.getTokenFee(token);
+
+      const result = await actor.icrc1_transfer({
+        to: typeof to === "string" ? { owner: Principal.fromText(to), subaccount: [] } : { owner: to, subaccount: [] },
+        amount,
+        fee: [tokenFee],  // Use the actual token fee
+        memo: opts.memo || [],
+        from_subaccount: opts.fromSubaccount || [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
-      };
-      console.log("ICRC1_TRANSFER ARGS", transferArgs);
-      const result = await actor.icrc1_transfer(transferArgs);
-      console.log("ICRC1_TRANSFER RESULT", result);
-      if ("Err" in result) {
-        toastStore.error(`Failed to send ${token.symbol}: ${JSON.stringify(result.Err)}`);
-        return { Err: result.Err };
+      });
+
+      if ('Ok' in result) {
+        // Refresh balance after successful transfer
+        const newBalance = await this.getIcrc1Balance(token, auth.pnp.account.owner);
+        tokenStore.updateBalances({
+          [token.canister_id]: {
+            in_tokens: newBalance,
+            in_usd: "0" // The USD value will be updated by the store's price update mechanism
+          }
+        });
       }
-      toastStore.success(`Successfully sent ${token.symbol}`);
-      return { Ok: result.Ok };
+
+      return result;
     } catch (error) {
-      toastStore.error(`Failed to send ${token.symbol}: ${error.message}`);
-      this.handleError("icrc1Transfer", error);
+      return this.handleError("icrc1Transfer", error);
     }
   }
 }
