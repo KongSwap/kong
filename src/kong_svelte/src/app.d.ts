@@ -28,6 +28,7 @@ declare global {
       symbol_0: string;
       symbol_1: string;
       ts: bigint;
+      pool_id: number;
       usd_amount_0: number;
       usd_amount_1: number;
       usd_balance: number;

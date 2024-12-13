@@ -191,7 +191,7 @@ function createPoolStore() {
             ts: lpData.ts,
             pool_id: matchingPool?.pool_id
           };
-        }).filter(Boolean);
+        }).filter(Boolean).filter(balance => Number(balance.balance) > 0);
 
         // Update the store with processed balances
         update(state => ({
@@ -200,8 +200,6 @@ function createPoolStore() {
           isLoading: false,
           error: null
         }));
-
-        console.log('[PoolStore] Updated user pool balances:', processedBalances);
       } catch (error) {
         console.error('[PoolStore] Error loading user pool balances:', error);
         update(state => ({
