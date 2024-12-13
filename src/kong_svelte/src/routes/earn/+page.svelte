@@ -44,6 +44,8 @@
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
 
+  const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
+
   onMount(() => {
     const checkMobile = () => {
       isMobile = window.innerWidth < 768;
@@ -90,7 +92,7 @@
       
       // Find matching pool to get price
       const pool = $pools.find(p => p.pool_id === balance.pool_id);
-      return pool && Number(pool.price) > 0.10; // hide irrelavant ones
+      return pool && Number(pool.price) > 0.15; // match the display threshold
     }).length;
   });
 
@@ -113,8 +115,8 @@
 
   // Filter pools by search (only when viewing all pools)
   $: filteredPools = $displayPools.filter((pool) => {
-    // Filter out pools with price < $0.01 when viewing user pools
-    if ($activePoolView === "user" && Number(pool.price) < 0.1) {
+    // Filter out pools with price < $0.15 when viewing user pools
+    if ($activePoolView === "user" && Number(pool.price) < 0.15) {
       return false;
     }
 
@@ -154,6 +156,13 @@
   }
 
   $: sortedPools = [...filteredPools].sort((a, b) => {
+    // Always put Kong pools first
+    const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
+    const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
+    
+    if (aHasKong && !bHasKong) return -1;
+    if (!aHasKong && bHasKong) return 1;
+
     if ($activePoolView !== "all") return 0; // sorting only applies to all pools view
 
     const direction = $sortDirection === "asc" ? 1 : -1;
@@ -265,7 +274,7 @@
 
         <div class="earn-card" disabled>
           <div class="card-content">
-            <h3>Lending</h3>
+            <h3>Borrowing & Lending</h3>
             <div class="coming-soon-label">
               <span class="coming-soon-icon">🚀</span>
               <span class="coming-soon-text">Coming Soon</span>
@@ -408,6 +417,7 @@
                         {pool}
                         tokenMap={$tokenMap}
                         isEven={i % 2 === 0}
+                        isKongPool={pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID}
                         onAddLiquidity={handleAddLiquidity}
                         onShowDetails={() => handleShowDetails(pool)}
                       />
@@ -419,7 +429,8 @@
                 <div class="md:hidden space-y-4">
                   {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                     <div
-                      class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200"
+                      class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 
+                            {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) ? 'kong-special-card' : ''}"
                     >
                       <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center space-x-2">
@@ -461,7 +472,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">TVL</div>
                           <div class="font-medium text-white">
-                            ${formatLargeNumber(Number(pool.tvl), true)}
+                            ${formatLargeNumber(Number(pool.tvl), false)}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
@@ -540,7 +551,7 @@
 
       <button class="mobile-nav-item disabled" disabled>
         <span class="nav-icon">💰</span>
-        <span class="nav-label">Lending</span>
+        <span class="nav-label">Borrow & Lend</span>
         <span class="soon-label">Soon</span>
       </button>
     </div>
@@ -563,30 +574,50 @@
 <style>
   .earn-cards {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
+    max-width: 100%;
   }
 
   .earn-card {
-    @apply relative flex items-center justify-between p-6 rounded-lg transition-all duration-200
+    @apply relative flex items-center justify-between p-4 lg:p-6 rounded-lg transition-all duration-200
            bg-[#1a1b23]/60 border border-[#2a2d3d] text-left
            hover:bg-[#1e1f2a]/80 hover:border-[#60A5FA]/30 
            hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
            backdrop-blur-sm;
+    min-width: 0; /* Prevent flex items from growing beyond container */
   }
 
   .earn-card[disabled] {
     @apply opacity-75 cursor-not-allowed hover:border-[#2a2d3d] hover:bg-[#1a1b23]/60 hover:shadow-none;
   }
 
+  .card-content {
+    @apply flex-1 min-w-0; /* Allow content to shrink */
+  }
+
   .card-content h3 {
-    @apply text-[#8890a4] text-sm font-medium;
+    @apply text-[#8890a4] text-xs lg:text-sm font-medium;
+    white-space: nowrap;
   }
 
   .apy {
-    @apply text-[#60A5FA] font-medium text-2xl mt-2;
+    @apply text-[#60A5FA] font-medium text-lg lg:text-2xl mt-2;
   }
 
   .stat-icon-wrapper {
-    @apply p-4 rounded-lg bg-[#2a2d3d] text-[#60A5FA];
+    @apply p-3 lg:p-4 rounded-lg bg-[#2a2d3d] text-[#60A5FA] ml-3 flex-shrink-0;
+  }
+
+  .coming-soon-label {
+    @apply flex items-center gap-1 lg:gap-2 mt-2;
+  }
+
+  .coming-soon-text {
+    @apply text-[#60A5FA] text-sm lg:text-base;
+    white-space: nowrap;
+  }
+
+  .coming-soon-icon {
+    @apply text-lg lg:text-xl;
   }
 
   .mobile-nav {
@@ -651,18 +682,6 @@
     background-color: #1a1b23;
   }
 
-  .coming-soon-label {
-    @apply flex items-center gap-2 mt-2;
-  }
-
-  .coming-soon-text {
-    @apply text-[#60A5FA] text-base;
-  }
-
-  .coming-soon-icon {
-    @apply text-xl;
-  }
-
   /* Custom Scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
@@ -713,6 +732,18 @@
     
     .xs\:flex-1 {
       flex: 1 1 0%;
+    }
+  }
+  
+  .kong-special-card {
+    background: rgba(0, 255, 128, 0.02);
+    
+    .token-info {
+      font-weight: 500;
+    }
+
+    &:hover {
+      background: rgba(0, 255, 128, 0.04);
     }
   }
 </style>

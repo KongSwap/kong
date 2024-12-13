@@ -29,7 +29,7 @@
   let searchResultsReady = false;
   let initialFilterApplied = false;
 
-  const MIN_USD_VALUE = 0.01; // Minimum USD value threshold (1 cent)
+  const MIN_USD_VALUE = 0.15; // Minimum USD value threshold ($0.15)
 
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;

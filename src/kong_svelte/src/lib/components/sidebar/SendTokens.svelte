@@ -4,7 +4,8 @@
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
     import Modal from '$lib/components/common/Modal.svelte';
-    import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+    import { formatTokenAmount, toMinimalUnit } from '$lib/utils/numberFormatUtils';
+    import BigNumber from 'bignumber.js';
 
     export let token: {
         symbol: string;
@@ -17,7 +18,25 @@
     let amount = '';
     let isValidating = false;
     let errorMessage = '';
-    $: maxAmount = parseFloat(formatTokenAmount(token.balance, token.decimals));
+    let tokenFee: bigint;
+
+    async function loadTokenFee() {
+        try {
+            tokenFee = await IcrcService.getTokenFee(token);
+        } catch (error) {
+            console.error('Error loading token fee:', error);
+            tokenFee = BigInt(10000); // Fallback to default fee
+        }
+    }
+
+    $: if (token) {
+        loadTokenFee();
+    }
+
+    $: maxAmount = new BigNumber(token.balance)
+        .dividedBy(new BigNumber(10).pow(token.decimals))
+        .minus(new BigNumber(tokenFee?.toString() || '10000').dividedBy(new BigNumber(10).pow(token.decimals)))
+        .toNumber();
     let addressType: 'principal' | 'account' | null = null;
     let showConfirmation = false;
 
@@ -127,12 +146,13 @@
 
         try {
             const decimals = token.decimals || 8;
-            const amountBigInt = BigInt(Math.floor(parseFloat(amount) * 10 ** decimals));
+            const amountBigInt = BigInt(Math.floor(Number(amount) * 10 ** decimals).toString());
 
+            toastStore.info(`Sending ${token.symbol}...`);
             const result = await IcrcService.icrc1Transfer(token, recipientAddress, amountBigInt);
 
             if (result?.Ok) {
-                toastStore.success("Transfer successful");
+                toastStore.success(`Successfully sent ${token.symbol}`);
                 recipientAddress = '';
                 amount = '';
             } else if (result?.Err) {
@@ -151,7 +171,7 @@
     }
 
     function setMaxAmount() {
-        amount = maxAmount.toString();
+        amount = maxAmount.toFixed(token.decimals);
         errorMessage = '';
     }
 
@@ -278,20 +298,20 @@
                     
                     <div class="details-grid">
                         <div class="detail-item">
-                            <span class="label">To Address</span>
-                            <span class="value address">{recipientAddress}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Address Type</span>
-                            <span class="value type">{addressType}</span>
+                            <span class="label">You Send</span>
+                            <span class="value">{amount} {token.symbol}</span>
                         </div>
                         <div class="detail-item">
                             <span class="label">Network Fee</span>
-                            <span class="value">0.0001 {token.symbol}</span>
+                            <span class="value">{formatTokenAmount(tokenFee?.toString() || '10000', token.decimals)} {token.symbol}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Receiver Gets</span>
+                            <span class="value">{parseFloat(amount).toFixed(token.decimals)} {token.symbol}</span>
                         </div>
                         <div class="detail-item total">
                             <span class="label">Total Amount</span>
-                            <span class="value">{(parseFloat(amount) + 0.0001).toFixed(4)} {token.symbol}</span>
+                            <span class="value">{(parseFloat(amount) + parseFloat(tokenFee?.toString() || '10000') / 10 ** token.decimals).toFixed(4)} {token.symbol}</span>
                         </div>
                     </div>
                 </div>

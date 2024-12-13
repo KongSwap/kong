@@ -7,13 +7,18 @@ import {
 import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
 import { idlFactory as icrc1idl } from "../../../../../declarations/ckbtc_ledger";
 import { idlFactory as icrc2idl } from "../../../../../declarations/ckusdt_ledger";
+import { 
+  idlFactory as kongDataIDL,
+  canisterId as kongDataCanisterId,
+} from "../../../../../declarations/kong_data";
 
-export type CanisterType = "kong_backend" | "kong_faucet" | "icrc1" | "icrc2";
+export type CanisterType = "kong_backend" | "kong_faucet" | "icrc1" | "icrc2" | "kong_data";
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
   kong_faucet: kongFaucetIDL,
   icrc1: icrc1idl,
   icrc2: icrc2idl,
+  kong_data: kongDataIDL,
 };
 
 let globalPnp: PNP | null = null;
@@ -24,13 +29,24 @@ export function initializePNP(principals?: Principal[]): PNP {
       return globalPnp;
     }
 
-    // Convert all canister IDs to Principal
+    // Convert all canister IDs to Principal, but only if they are defined
     const delegationTargets = [
       kongBackendCanisterId,
-    ].map(id => Principal.fromText(id));
+      kongDataCanisterId,
+    ]
+    .filter(id => id !== undefined && id !== null && id !== '')
+    .map(id => {
+      try {
+        return Principal.fromText(id);
+      } catch (error) {
+        console.warn(`Failed to create Principal from canister ID: ${id}`, error);
+        return null;
+      }
+    })
+    .filter(principal => principal !== null);
 
     if (principals) {
-      delegationTargets.push(...principals);
+      delegationTargets.push(...principals.filter(p => p !== null));
     }
 
     const isDev = import.meta.env.DEV;

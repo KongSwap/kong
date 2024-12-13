@@ -88,7 +88,8 @@
 
     function setPercentage(percent: number) {
         const maxAmount = parseFloat(pool.balance);
-        removeLiquidityAmount = ((maxAmount * percent) / 100).toString();
+        // Format to 8 decimal places to match LP token precision
+        removeLiquidityAmount = (Math.floor((maxAmount * percent / 100) * 1e8) / 1e8).toString();
         handleInputChange();
     }
 

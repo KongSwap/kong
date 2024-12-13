@@ -68,20 +68,41 @@ export const formatToNonZeroDecimal = (number: number | string): string => {
   }).format(num);
 };
 
-export const parseTokenAmount = (formattedAmount: number | string, decimals: number): bigint => {
-  // Convert to string and handle scientific notation
-  const amountStr = typeof formattedAmount === 'number' 
-    ? formattedAmount.toString() 
-    : formattedAmount;
+export function parseTokenAmount(formattedAmount: number | string, decimals: number): bigint {
+  // Handle empty or invalid input
+  if (!formattedAmount || formattedAmount === '') {
+    return BigInt(0);
+  }
 
-  // Use BigNumber to handle the conversion accurately
-  const amount = new BigNumber(amountStr)
-    .multipliedBy(new BigNumber(10).pow(decimals))
-    .integerValue(BigNumber.ROUND_DOWN);
+  // Convert to string, remove commas, and clean up the input
+  const amountStr = formattedAmount.toString()
+    .replace(/,/g, '')  // Remove all commas
+    .trim();
+  
+  // Validate the input is a valid number (now allows for scientific notation too)
+  if (!/^-?\d*\.?\d*(?:[eE][+-]?\d+)?$/.test(amountStr) || isNaN(Number(amountStr))) {
+    console.error('Invalid number format:', amountStr);
+    return BigInt(0);  // Return 0 instead of throwing
+  }
 
-  // Convert to bigint
-  return BigInt(amount.toString());
-};
+  try {
+    // Use BigNumber for precise calculation
+    const amount = new BigNumber(amountStr)
+      .multipliedBy(new BigNumber(10).pow(decimals))
+      .integerValue(BigNumber.ROUND_DOWN);
+
+    // Ensure the result is a valid number before BigInt conversion
+    if (amount.isNaN() || !amount.isFinite()) {
+      console.warn('Calculation resulted in invalid number:', amount.toString());
+      return BigInt(0);
+    }
+
+    return BigInt(amount.toString());
+  } catch (error) {
+    console.error('Error in parseTokenAmount:', error);
+    return BigInt(0);
+  }
+}
 
 export function formatDisplayNumber(rawNum: number | string | bigint, decimals: number = 6): string {
   // Convert bigint or string to number
