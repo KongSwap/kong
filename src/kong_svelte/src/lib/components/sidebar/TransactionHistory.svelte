@@ -40,36 +40,58 @@
     ];
 
     function processTransaction(tx: any) {
+        // First check if we have a valid transaction object
+        if (!tx) return null;
+
+        // Helper function to format timestamp
+        const formatTimestamp = (ts: bigint | number | string) => {
+            // Convert to number and ensure it's in milliseconds
+            const timestamp = typeof ts === 'bigint' ? Number(ts) : Number(ts);
+            // If timestamp is in nanoseconds or microseconds, convert to milliseconds
+            const msTimestamp = timestamp > 1e12 ? timestamp / 1e6 : timestamp;
+            return new Date(msTimestamp).toLocaleString();
+        };
+
         if ('AddLiquidity' in tx) {
+            const data = tx.AddLiquidity;
             return {
                 type: 'Add Liquidity',
-                status: tx.AddLiquidity.status,
-                formattedDate: new Date(Number(tx.AddLiquidity.ts) / 1000000).toLocaleString(),
-                symbol_0: tx.AddLiquidity.symbol_0,
-                symbol_1: tx.AddLiquidity.symbol_1,
-                amount_0: formatTokenAmount(tx.AddLiquidity.amount_0.toString(), 8),
-                amount_1: formatTokenAmount(tx.AddLiquidity.amount_1.toString(), 8),
-                lp_amount: formatTokenAmount(tx.AddLiquidity.add_lp_token_amount.toString(), 8)
+                status: data.status,
+                formattedDate: formatTimestamp(data.ts),
+                symbol_0: data.symbol_0,
+                symbol_1: data.symbol_1,
+                amount_0: formatTokenAmount(data.amount_0.toString(), 8),
+                amount_1: formatTokenAmount(data.amount_1.toString(), 8),
+                lp_amount: formatTokenAmount(data.add_lp_token_amount.toString(), 8)
             };
         } else if ('Swap' in tx) {
+            const data = tx.Swap;
             return {
                 type: 'Swap',
-                status: tx.Swap.status,
-                formattedDate: new Date(Number(tx.Swap.ts) / 1000000).toLocaleString(),
-                pay_symbol: tx.Swap.pay_symbol,
-                receive_symbol: tx.Swap.receive_symbol,
-                pay_amount: formatTokenAmount(tx.Swap.pay_amount.toString(), 8),
-                receive_amount: formatTokenAmount(tx.Swap.receive_amount.toString(), 8),
-                price: tx.Swap.price,
-                slippage: tx.Swap.slippage
+                status: data.status,
+                formattedDate: formatTimestamp(data.ts),
+                pay_symbol: data.pay_symbol,
+                receive_symbol: data.receive_symbol,
+                pay_amount: formatTokenAmount(data.pay_amount.toString(), 8),
+                receive_amount: formatTokenAmount(data.receive_amount.toString(), 8),
+                price: data.price,
+                slippage: data.slippage
+            };
+        } else if ('RemoveLiquidity' in tx) {
+            const data = tx.RemoveLiquidity;
+            return {
+                type: 'Remove Liquidity',
+                status: data.status,
+                formattedDate: formatTimestamp(data.ts),
+                symbol_0: data.symbol_0,
+                symbol_1: data.symbol_1,
+                amount_0: formatTokenAmount(data.amount_0.toString(), 8),
+                amount_1: formatTokenAmount(data.amount_1.toString(), 8),
+                lp_amount: formatTokenAmount(data.remove_lp_token_amount.toString(), 8)
             };
         }
+        console.log('Unhandled transaction type:', tx);
         return null;
-    }
-
-    // Watch auth store changes
-    $: if ($auth.isConnected) {
-        loadTransactions();
     }
 
     async function loadTransactions() {
@@ -77,6 +99,11 @@
         error = null;
         
         try {
+            if (!$auth.isConnected) {
+                processedTransactions = [];
+                return;
+            }
+
             const response = await TokenService.fetchUserTransactions();
             if (response.Ok) {
                 processedTransactions = response.Ok
@@ -84,7 +111,7 @@
                     .filter(tx => tx !== null);
                 console.log("Processed transactions:", processedTransactions);
             } else if (response.Err) {
-                error = response.Err;
+                error = typeof response.Err === 'string' ? response.Err : 'Failed to load transactions';
             }
         } catch (err) {
             console.error("Error fetching transactions:", err);
@@ -92,6 +119,11 @@
         } finally {
             isLoading = false;
         }
+    }
+
+    // Watch auth store changes
+    $: if ($auth.isConnected) {
+        loadTransactions();
     }
 
     onMount(() => {
@@ -110,7 +142,11 @@
 
 <div class="transaction-history-wrapper">
     <div class="notice-banner">
-        Note: Currently showing one only recent activity. Full transaction history coming soon!
+        {#if selectedFilter === 'send'}
+            Note: Send transaction tracking will be available soon!
+        {:else}
+            Showing your 20 most recent actions. More insights coming soon! 🌎
+        {/if}
     </div>
 
     <!-- Add filter buttons at the top -->
@@ -136,16 +172,26 @@
                 <div class="error-state" in:fade>
                     <p>{error}</p>
                 </div>
+            {:else if selectedFilter === 'send'}
+                <div class="empty-state" in:fade>
+                    <p>Send transaction tracking is coming soon!</p>
+                </div>
             {:else if processedTransactions.length === 0}
                 <div class="empty-state" in:fade>
-                    <p>No transactions found</p>
+                    <p>No actions found</p>
                 </div>
             {:else}
-                {#each processedTransactions as tx}
+                {#each processedTransactions.filter(tx => {
+                    if (selectedFilter === 'all') return true;
+                    if (selectedFilter === 'swap') return tx.type === 'Swap';
+                    if (selectedFilter === 'pool') return tx.type === 'Add Liquidity' || tx.type === 'Remove Liquidity';
+                    if (selectedFilter === 'send') return tx.type === 'Send';
+                    return true;
+                }) as tx}
                     <div class="transaction-item" in:fade>
                         <div class="transaction-header">
                             <span class="timestamp">{tx.formattedDate}</span>
-                            <span class="status {tx.status?.toLowerCase() || 'pending'}">{tx.status || 'Pending'}</span>
+                            <span class="status {tx.status ? tx.status.toLowerCase().replace('_', '-') : 'pending'}">{tx.status ? tx.status.replace('_', ' ') : 'Pending'}</span>
                         </div>
                         <div class="transaction-details">
                             <div class="transaction-type">{tx.type}</div>
@@ -173,6 +219,18 @@
                                 <div class="amount-row">
                                     <span>Slippage:</span>
                                     <span>{tx.slippage}%</span>
+                                </div>
+                            {:else if tx.type === 'Remove Liquidity'}
+                                <div class="amount-row">
+                                    <span>Removed:</span>
+                                    <span>
+                                        {tx.amount_0} {tx.symbol_0} + 
+                                        {tx.amount_1} {tx.symbol_1}
+                                    </span>
+                                </div>
+                                <div class="amount-row">
+                                    <span>Received:</span>
+                                    <span>{tx.lp_amount} LP</span>
                                 </div>
                             {/if}
                         </div>

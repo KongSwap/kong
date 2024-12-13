@@ -13,12 +13,18 @@ import { parseTokens } from "./tokenParsers";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { canisterId as kongDataCanisterId } from "../../../../../declarations/kong_data";
+import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
+import { canisterId as kongFaucetId } from "../../../../../declarations/kong_faucet";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
+
 import { Pr } from "svelte-flags";
 import BigNumber from "bignumber.js";
 import { eventBus } from './eventBus';
+
+const KONG_DATA_CANISTER_ID = kongDataCanisterId || process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -432,7 +438,6 @@ export class TokenService {
     token: FE.Token, 
     pools: BE.Pool[]
   ): Promise<number> {
-    console.debug(`Calculating price for token: ${token.symbol}`);
 
     // Find all pools containing the token
     const relevantPools = pools.filter(pool => {
@@ -440,8 +445,6 @@ export class TokenService {
                      pool.address_1 === token.canister_id;
       return isMatch;
     });
-
-    console.debug(`Found ${relevantPools.length} relevant pools for ${token.symbol}`);
 
     if (relevantPools.length === 0) {
       console.debug(`No pools found for ${token.symbol}`);
@@ -452,24 +455,20 @@ export class TokenService {
     const pricePaths = await Promise.all([
       // Direct USDT path
       this.calculateDirectUsdtPrice(token, relevantPools).then(result => {
-        console.debug(`Direct USDT path for ${token.symbol}: ${result.price}`);
         return result;
       }),
       // ICP intermediary path
       this.calculateIcpPath(token, pools).then(result => {
-        console.debug(`ICP path for ${token.symbol}: ${result.price}`);
         return result;
       }),
       // Other stable coin paths
       this.calculateStableCoinPath(token, pools).then(result => {
-        console.debug(`Stablecoin path for ${token.symbol}: ${result.price}`);
         return result;
       })
     ]);
 
     // Filter out invalid prices and calculate weighted average
     const validPrices = pricePaths.filter(p => p.price > 0);
-    console.debug(`Found ${validPrices.length} valid price paths for ${token.symbol}`);
     
     if (validPrices.length === 0) {
       console.debug(`No valid prices found for ${token.symbol}`);
@@ -482,7 +481,6 @@ export class TokenService {
       sum + (p.price * p.weight / totalWeight), 0
     );
 
-    console.debug(`Final weighted price for ${token.symbol}: ${weightedPrice}`);
     return weightedPrice;
   }
 
@@ -666,9 +664,30 @@ export class TokenService {
   }
 
   public static async fetchUserTransactions(): Promise<any> {
-    const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: false, requiresSigning: false }); 
-    const txs = await actor.txs([true]);
-    return txs;
+    try {
+      if (!KONG_DATA_CANISTER_ID) {
+        console.warn('Kong Data canister ID is missing');
+        return { Ok: [] };
+      }
+
+      if (!kongDataIDL) {
+        console.warn('Kong Data IDL is missing');
+        return { Ok: [] };
+      }
+
+      const actor = await auth.pnp.getActor(KONG_DATA_CANISTER_ID, kongDataIDL, { 
+        anon: false, 
+        requiresSigning: false 
+      }); 
+
+      const txs = await actor.txs([true], [], [], [20n]);
+      console.log('Raw transactions:', txs);
+      
+      return txs;
+    } catch (error) {
+      console.error('Error fetching user transactions:', error);
+      return { Ok: [] };
+    }
   }
 
   public static async claimFaucetTokens(): Promise<any> {
