@@ -47,6 +47,8 @@
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const previousPrices = writable<{ [key: string]: number }>({});
 
+  const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
+
   onMount(async () => {
     await tokenStore.loadFavorites();
   });
@@ -129,6 +131,10 @@
 
       // Apply sorting
       tokens = tokens.sort((a, b) => {
+        // Always put Kong token first
+        if (a.canister_id === KONG_CANISTER_ID) return -1;
+        if (b.canister_id === KONG_CANISTER_ID) return 1;
+
         let aValue, bValue;
 
         switch ($sortColumn) {
@@ -365,7 +371,8 @@
                               : "negative"
                             : ""}
                           <tr
-                            class="token-row"
+                            class:kong-special-row={token.canister_id === KONG_CANISTER_ID}
+                            class="transition-all duration-200 hover:bg-secondary/10 cursor-pointer"
                             on:click={() => goto(`/stats/${enrichedToken.canister_id}`)}
                           >
                             <td class="text-center text-[#8890a4]">#{enrichedToken.marketCapRank}</td>
@@ -420,12 +427,12 @@
                             </td>
                             <td class="change-cell text-right {priceChangeClass}">
                               {#if enrichedToken?.metrics?.price_change_24h === null || enrichedToken?.metrics?.price_change_24h === "n/a"}
-                                <span class="text-purple-400">0%</span>
+                                <span class="text-slate-400">0.00%</span>
                               {:else if Number(enrichedToken?.metrics?.price_change_24h) === 0}
-                                <span class="text-slate-400">--</span>
+                                <span class="text-slate-400">0.00%</span>
                               {:else}
                                 <span>
-                                  {formatToNonZeroDecimal(enrichedToken?.metrics?.price_change_24h)}%
+                                  {Number(enrichedToken?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(enrichedToken?.metrics?.price_change_24h)}%
                                 </span>
                               {/if}
                             </td>
@@ -485,7 +492,7 @@
                           marketCapRank: token.marketCapRank
                         } as unknown as FE.Token}
                         <div 
-                          class="token-card"
+                          class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''}"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
                           <span class="token-rank">#{token.marketCapRank}</span>
@@ -519,12 +526,17 @@
                               <span class="token-price">${formatToNonZeroDecimal(enrichedToken?.price || enrichedToken?.metrics?.price)}</span>
                               {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
                                 <span class="token-change new">NEW</span>
-                              {:else if token?.metrics?.price_change_24h === 0}
-                                <span class="token-change neutral">--</span>
+                              {:else if token?.metrics?.price_change_24h === 0 || !token?.metrics?.price_change_24h}
+                                <span class="token-change neutral">0.00%</span>
                               {:else}
-                                <span class="token-change {Number(token?.metrics?.price_change_24h) > 0 ? 'positive' : 'negative'}">
-                                  {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
-                                </span>
+                                {@const priceChange = Number(token?.metrics?.price_change_24h)}
+                                {#if isNaN(priceChange)}
+                                  <span class="token-change neutral">0.00%</span>
+                                {:else}
+                                  <span class="token-change {priceChange > 0 ? 'positive' : 'negative'}">
+                                    {priceChange > 0 ? '+' : ''}{formatToNonZeroDecimal(priceChange)}%
+                                  </span>
+                                {/if}
                               {/if}
                             </div>
                           </div>
@@ -717,9 +729,18 @@
   }
 
   .token-card {
-    @apply bg-[#1a1b23] border border-[#2a2d3d] rounded-lg p-2.5
-           active:bg-[#2a2d3d]/50 transition-colors duration-150
-           hover:border-[#2a2d3d]/80 relative;
+    @apply flex items-center justify-between p-3 rounded-lg relative;
+    background: #1a1b23;
+    border: 1px solid #2a2d3d;
+
+    &.kong-special-card {
+      background: rgba(0, 255, 128, 0.02);
+      border-left: 2px solid #00ff8033;
+      
+      .token-symbol-mobile {
+        font-weight: 500;
+      }
+    }
   }
 
   .token-rank {
@@ -776,5 +797,18 @@
 
   .token-change.neutral {
     @apply text-[#8890a4];
+  }
+
+  .kong-special-row {
+    background: rgba(0, 255, 128, 0.02);
+    border-left: 2px solid #00ff8033;
+    
+    &:hover {
+      background: rgba(0, 255, 128, 0.04);
+    }
+
+    td {
+      font-weight: 500;
+    }
   }
 </style>

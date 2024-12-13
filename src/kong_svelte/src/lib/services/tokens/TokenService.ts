@@ -394,10 +394,7 @@ export class TokenService {
     token: FE.Token, 
     pools: BE.Pool[]
   ): Promise<number> {
-    // Special case for USDT
-    if (token.canister_id === process.env.CANISTER_ID_CKUSDT_LEDGER) {
-      return 1;
-    }
+    console.debug(`Calculating price for token: ${token.symbol}`);
 
     // Find all pools containing the token
     const relevantPools = pools.filter(pool => {
@@ -406,24 +403,38 @@ export class TokenService {
       return isMatch;
     });
 
+    console.debug(`Found ${relevantPools.length} relevant pools for ${token.symbol}`);
+
     if (relevantPools.length === 0) {
+      console.debug(`No pools found for ${token.symbol}`);
       return 0;
     }
 
     // Calculate prices through different paths
     const pricePaths = await Promise.all([
       // Direct USDT path
-      this.calculateDirectUsdtPrice(token, relevantPools),
+      this.calculateDirectUsdtPrice(token, relevantPools).then(result => {
+        console.debug(`Direct USDT path for ${token.symbol}: ${result.price}`);
+        return result;
+      }),
       // ICP intermediary path
-      this.calculateIcpPath(token, pools),
-      // Other stable coin paths (could add more stable coins here)
-      this.calculateStableCoinPath(token, pools)
+      this.calculateIcpPath(token, pools).then(result => {
+        console.debug(`ICP path for ${token.symbol}: ${result.price}`);
+        return result;
+      }),
+      // Other stable coin paths
+      this.calculateStableCoinPath(token, pools).then(result => {
+        console.debug(`Stablecoin path for ${token.symbol}: ${result.price}`);
+        return result;
+      })
     ]);
 
     // Filter out invalid prices and calculate weighted average
     const validPrices = pricePaths.filter(p => p.price > 0);
+    console.debug(`Found ${validPrices.length} valid price paths for ${token.symbol}`);
     
     if (validPrices.length === 0) {
+      console.debug(`No valid prices found for ${token.symbol}`);
       return 0;
     }
 
@@ -433,6 +444,7 @@ export class TokenService {
       sum + (p.price * p.weight / totalWeight), 0
     );
 
+    console.debug(`Final weighted price for ${token.symbol}: ${weightedPrice}`);
     return weightedPrice;
   }
 
