@@ -61,9 +61,6 @@
     slippageInputValue = value.toString();
     isCustomSlippage = false;
     toastStore.success(`Slippage updated to ${value}%`);
-    if (value > 10) {
-      toastStore.warning('Hmm... high slippage. Trade carefully!');
-    }
   }
 
   function handleSlippageChange(e: Event) {
@@ -74,9 +71,6 @@
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
-      if (boundedValue > 10) {
-        toastStore.warning('Hmm... high slippage. Trade carefully!');
-      }
     }
   }
 
@@ -100,9 +94,6 @@
         settingsStore.updateSetting('max_slippage', value);
         slippageValue = value;
         isCustomSlippage = !quickSlippageValues.includes(value);
-        if (value > 10) {
-          toastStore.warning('Hmm... high slippage. Trade carefully!');
-        }
       }
     }
   }
@@ -131,9 +122,6 @@
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
       if (boundedValue !== value) {
         toastStore.success(`Slippage bounded to ${boundedValue}%`);
-      }
-      if (boundedValue > 10) {
-        toastStore.warning('Hmm... high slippage. Trade carefully!');
       }
     }
   }
@@ -187,6 +175,11 @@
       return () => window.removeEventListener('resize', handleResize);
     }
   });
+
+  // Reactive statement for slippage warning
+  $: if (slippageValue > 10 && $auth.isConnected) {
+    toastStore.warning('Hmm... high slippage. Trade carefully!');
+  }
 </script>
 
 <div class="settings-container">
@@ -220,11 +213,6 @@
             <span class="percentage-symbol">%</span>
           </div>
         </div>
-        {#if slippageValue > 10}
-          <div class="warning-text">
-            Warning: High slippage may result in unfavorable trades
-          </div>
-        {/if}
       </div>
     </div>
 
@@ -322,10 +310,6 @@
 
   .percentage-symbol {
     @apply text-white/70 font-medium;
-  }
-
-  .warning-text {
-    @apply text-yellow-500 text-sm font-medium;
   }
 
   .setting-row {
