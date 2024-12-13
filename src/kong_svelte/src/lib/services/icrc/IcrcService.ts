@@ -4,6 +4,7 @@ import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
+import { eventBus } from '$lib/services/tokens/eventBus';
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -242,6 +243,9 @@ export class IcrcService {
             in_usd: "0" // The USD value will be updated by the store's price update mechanism
           }
         });
+        
+        // Emit balance change event to trigger immediate price update
+        eventBus.emit('balanceChanged', { tokenId: token.canister_id });
       }
 
       return result;
