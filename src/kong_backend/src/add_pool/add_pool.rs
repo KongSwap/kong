@@ -42,7 +42,7 @@ enum TokenIndex {
     Token1,
 }
 
-/// Adds a pool to the system
+/// Adds a pool to Kong
 ///
 /// # Arguments
 ///
@@ -121,9 +121,10 @@ async fn check_arguments(
         return Err("Invalid zero amounts".to_string());
     }
 
-    // can overwrite lp_fee_bps
-    let default_lp_fee_bps = kong_settings_map::get().default_lp_fee_bps;
-    let lp_fee_bps = args.lp_fee_bps.unwrap_or(default_lp_fee_bps);
+    let lp_fee_bps = match args.lp_fee_bps {
+        Some(lp_fee_bps) => lp_fee_bps,
+        None => kong_settings_map::get().default_lp_fee_bps,
+    };
 
     let default_kong_fee_bps = kong_settings_map::get().default_kong_fee_bps;
     // only controllers can set kong_fee_bps otherwise use default
@@ -136,8 +137,8 @@ async fn check_arguments(
         return Err("Kong fee cannot be greater than LP fee".to_string());
     }
 
-    // only controllers can add a token and pool to Kong
-    let on_kong = is_caller_controller() && args.on_kong.unwrap_or(false);
+    // add a token and pool to Kong
+    let on_kong = args.on_kong.unwrap_or(false);
 
     // check tx_id_0 and tx_id_1 are valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
@@ -173,7 +174,7 @@ async fn check_arguments(
     let token_0 = match token_map::get_by_token(&args.token_0) {
         Ok(token) => token, // token_0 exists already
         Err(_) => {
-            // token_0 needs to add it. Only IC tokens of format IC.CanisterId supported
+            // token_0 needs to be added. Only IC tokens of format IC.CanisterId supported
             match token_map::get_chain(&args.token_0) {
                 Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0, on_kong).await?,
                 Some(chain) if chain == LP_CHAIN => return Err("Token_0 LP tokens not supported".to_string()),
