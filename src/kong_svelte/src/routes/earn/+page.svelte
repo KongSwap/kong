@@ -461,7 +461,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">TVL</div>
                           <div class="font-medium text-white">
-                            ${formatLargeNumber(Number(pool.tvl), true)}
+                            ${formatLargeNumber(Number(pool.tvl), false)}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">

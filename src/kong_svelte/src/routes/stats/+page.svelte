@@ -476,6 +476,14 @@
                     <!-- Mobile token cards -->
                     <div class="space-y-2">
                       {#each $filteredTokens.tokens as token}
+                        {@const enrichedToken = {
+                          ...token,
+                          metrics: {
+                            ...token.metrics,
+                            price: token.metrics.price.toString(),
+                          },
+                          marketCapRank: token.marketCapRank
+                        } as unknown as FE.Token}
                         <div 
                           class="token-card"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
@@ -508,7 +516,7 @@
                             </div>
 
                             <div class="token-card-right">
-                              <span class="token-price">${formatToNonZeroDecimal(token?.metrics?.price)}</span>
+                              <span class="token-price">${formatToNonZeroDecimal(enrichedToken?.price || enrichedToken?.metrics?.price)}</span>
                               {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
                                 <span class="token-change new">NEW</span>
                               {:else if token?.metrics?.price_change_24h === 0}
