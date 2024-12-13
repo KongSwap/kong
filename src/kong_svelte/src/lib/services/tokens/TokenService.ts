@@ -18,6 +18,7 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { Pr } from "svelte-flags";
 import BigNumber from "bignumber.js";
+import { eventBus } from './eventBus';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -36,26 +37,63 @@ export class TokenService {
   }
 
   public static async fetchTokens(): Promise<FE.Token[]> {
+    // First try to get cached tokens
+    let cachedTokens: FE.Token[] = [];
     try {
-      // Try to get cached tokens first
-      const cachedTokens = await kongDB.tokens
+      cachedTokens = await kongDB.tokens
         .where('timestamp')
         .above(Date.now() - this.TOKEN_CACHE_DURATION)
-        .toArray();
-
-      if (cachedTokens.length > 0) {
-        // Refresh in background after returning cached data
-        setTimeout(() => this.fetchFromNetwork(), 0);
-        return cachedTokens as FE.Token[];
-      }
-
-      const tokens = await this.fetchFromNetwork();
-
-      // Cache the fetched tokens
-      kongDB.tokens.bulkPut(tokens);
-      return tokens;
+        .toArray() as FE.Token[];
     } catch (error) {
-      console.error("Error fetching tokens:", error);
+      console.error("Error fetching cached tokens:", error);
+    }
+
+    // If we have cached tokens, update the store immediately
+    if (cachedTokens.length > 0) {
+      tokenStore.update(state => ({
+        ...state,
+        tokens: cachedTokens,
+        lastTokensFetch: Date.now(),
+        isLoading: true // Keep loading true while fetching fresh data
+      }));
+    }
+
+    try {
+      // Fetch fresh data in the background
+      const freshTokens = await this.fetchFromNetwork();
+      
+      // Update cache with fresh data
+      await kongDB.tokens.bulkPut(freshTokens.map(token => ({
+        ...token,
+        timestamp: Date.now()
+      })));
+
+      // Update store with fresh data
+      tokenStore.update(state => ({
+        ...state,
+        tokens: freshTokens,
+        lastTokensFetch: Date.now(),
+        isLoading: false
+      }));
+      
+      return freshTokens;
+    } catch (error) {
+      console.error("Error fetching fresh tokens:", error);
+      
+      // If we failed to fetch fresh data but have cached data, use that
+      if (cachedTokens.length > 0) {
+        tokenStore.update(state => ({
+          ...state,
+          isLoading: false
+        }));
+        return cachedTokens;
+      }
+      
+      tokenStore.update(state => ({
+        ...state,
+        isLoading: false,
+        error: "Failed to fetch tokens"
+      }));
       return [];
     }
   }

@@ -116,7 +116,14 @@ function createTokenStore() {
   };
 
   // Start price updates when tokens are loaded
-  eventBus.on('tokensFetched', () => {
+  eventBus.on('tokensFetched', (tokens: FE.Token[]) => {
+    store.update(s => ({
+      ...s,
+      tokens,
+      lastTokensFetch: Date.now(),
+      isLoading: false,
+      error: null
+    }));
     startPriceUpdates();
   });
 
