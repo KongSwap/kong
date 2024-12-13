@@ -21,7 +21,7 @@
   let isCustomSlippage = false;
 
   // Predefined slippage values for quick selection
-  const quickSlippageValues = [0.5, 1, 2, 3, 5];
+  const quickSlippageValues = [1, 2, 3, 5];
 
   // Subscribe to settings changes using liveQuery
   const settings = liveQuery(async () => {
@@ -283,19 +283,20 @@
   }
 
   .slippage-content {
-    @apply grid gap-4;
+    @apply flex flex-wrap gap-2;
   }
 
   .quick-slippage-buttons {
-    @apply grid grid-cols-6 gap-2;
+    @apply flex flex-wrap gap-2 flex-1;
   }
 
   .quick-slippage-button {
-    @apply px-3 py-2.5 rounded-lg 
+    @apply px-6 py-2.5 rounded-lg 
            bg-gray-800 text-white/90 text-base font-medium
            border border-gray-700 transition-all duration-200
            hover:bg-gray-700 hover:border-gray-600
-           focus:outline-none focus:ring-2 focus:ring-blue-500/50;
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50
+           flex-1 min-w-[80px] text-center;
   }
 
   .quick-slippage-button.active {
@@ -305,9 +306,10 @@
 
   .custom-slippage-input {
     @apply flex items-center gap-2
-           px-3 py-2 rounded-lg bg-gray-800 
+           px-4 py-2 rounded-lg bg-gray-800 
            border-2 border-dashed border-gray-600 transition-all duration-200
-           hover:bg-gray-700 hover:border-gray-500;
+           hover:bg-gray-700 hover:border-gray-500
+           min-w-[120px] flex-1;
   }
 
   .custom-slippage-input.active {
@@ -339,11 +341,12 @@
   }
 
   .action-button {
-    @apply min-w-[140px] px-4 py-2 rounded-lg 
+    @apply w-[140px] px-4 py-2 rounded-lg 
            bg-blue-600 text-white text-sm font-medium
            border border-blue-500 transition-all duration-200
            hover:bg-blue-500 hover:border-blue-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500/50;
+           focus:outline-none focus:ring-2 focus:ring-blue-500/50
+           text-center whitespace-nowrap;
   }
 
   .action-button.warning {
@@ -365,16 +368,16 @@
       @apply text-base;
     }
     
-    .quick-slippage-buttons {
-      @apply grid-cols-3;
+    .quick-slippage-button {
+      @apply px-4 py-2 text-sm min-w-[70px];
     }
     
-    .quick-slippage-button {
-      @apply px-2 py-2 text-sm;
+    .custom-slippage-input {
+      @apply min-w-[100px];
     }
     
     .action-button {
-      @apply min-w-[100px] px-3 py-1.5;
+      @apply w-[120px] px-3 py-1.5;
     }
   }
 </style>
