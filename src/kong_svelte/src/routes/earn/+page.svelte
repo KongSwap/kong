@@ -92,7 +92,7 @@
       
       // Find matching pool to get price
       const pool = $pools.find(p => p.pool_id === balance.pool_id);
-      return pool && Number(pool.price) > 0.10; // hide irrelavant ones
+      return pool && Number(pool.price) > 0.15; // match the display threshold
     }).length;
   });
 
@@ -115,8 +115,8 @@
 
   // Filter pools by search (only when viewing all pools)
   $: filteredPools = $displayPools.filter((pool) => {
-    // Filter out pools with price < $0.01 when viewing user pools
-    if ($activePoolView === "user" && Number(pool.price) < 0.1) {
+    // Filter out pools with price < $0.15 when viewing user pools
+    if ($activePoolView === "user" && Number(pool.price) < 0.15) {
       return false;
     }
 

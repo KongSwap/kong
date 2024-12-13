@@ -46,6 +46,19 @@
     $: token1Value = (Number(amount1) * token1.price).toFixed(2);
     $: totalValue = (Number(token0Value) + Number(token1Value)).toFixed(2);
     
+    $: {
+        if (pool) {
+            console.log('Pool Debug:', {
+                pool_balance_0: pool.balance_0,
+                pool_balance_1: pool.balance_1,
+                token0_price: token0.price,
+                token1_price: token1.price,
+                pool_value: (Number(pool.balance_0) * token0.price + Number(pool.balance_1) * token1.price).toFixed(2),
+                your_value: totalValue
+            });
+        }
+    }
+    
     $: poolRate = pool ? formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0)) : "0";
 </script>
 
@@ -90,10 +103,6 @@
                     <span>${totalValue}</span>
                 </div>
                 {#if pool}
-                    <div class="info-row">
-                        <span>Pool Share:</span>
-                        <span>{((Number(totalValue) / (Number(pool.balance) / 1e6)) * 100).toFixed(2)}%</span>
-                    </div>
                     <div class="info-row">
                         <span>Current Rate:</span>
                         <span>1 {token0.symbol} = {poolRate} {token1.symbol}</span>
