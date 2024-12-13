@@ -181,7 +181,7 @@
     if (isProcessing) return 'Processing...';
     if (error) return error;
     if (insufficientFunds) return 'Insufficient Funds';
-    if (highSlippage) return 'High Slippage - Click to Adjust';
+    if (highSlippage) return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
     if (!isWalletConnected) return 'Click to Connect Wallet';
     if (!payAmount) return 'Enter Amount';
     return 'SWAP';
