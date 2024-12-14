@@ -61,17 +61,19 @@ BigNumber.config({
 
 export class SwapService {
   private static INITIAL_POLLING_INTERVAL = 500; // 500ms initially
-  private static FAST_POLLING_INTERVAL = 100;    // 100ms after 5 seconds
-  private static FAST_POLLING_DELAY = 5000;      // 5 seconds before switching to fast polling
+  private static FAST_POLLING_INTERVAL = 100; // 100ms after 5 seconds
+  private static FAST_POLLING_DELAY = 5000; // 5 seconds before switching to fast polling
   private static pollingInterval: NodeJS.Timeout | null = null;
   private static startTime: number;
   private static readonly POLLING_INTERVAL = 300; // .3 second
   private static readonly MAX_ATTEMPTS = 200; // 30 seconds
 
   public static toBigInt(amount: string, decimals: number): bigint {
-    if (!amount || isNaN(Number(amount.replace(/_/g, '')))) return BigInt(0);
+    if (!amount || isNaN(Number(amount.replace(/_/g, "")))) return BigInt(0);
     return BigInt(
-      new BigNumber(amount.replace(/_/g, '')).times(new BigNumber(10).pow(decimals)).toString(),
+      new BigNumber(amount.replace(/_/g, ""))
+        .times(new BigNumber(10).pow(decimals))
+        .toString(),
     );
   }
 
@@ -144,9 +146,7 @@ export class SwapService {
     const receiveToken = tokens.find(
       (t) => t.address === params.receiveToken.address,
     );
-    const payToken = tokens.find(
-      (t) => t.address === params.payToken.address,
-    );
+    const payToken = tokens.find((t) => t.address === params.payToken.address);
     if (!receiveToken) throw new Error("Receive token not found");
 
     const receiveAmount = SwapService.fromBigInt(
@@ -234,9 +234,7 @@ export class SwapService {
   ): Promise<bigint | false> {
     const swapId = params.swapId;
     try {
-      await Promise.all([
-        requireWalletConnection(),
-      ]);
+      await Promise.all([requireWalletConnection()]);
       const tokens = get(tokenStore).tokens;
       const payToken = tokens.find(
         (t) => t.address === params.payToken.address,
@@ -270,7 +268,10 @@ export class SwapService {
       );
       if (payToken.icrc2) {
         const requiredAllowance = payAmount;
-        console.log("CHECKING AND REQUESTING IC2 ALLOWANCES, REQUIRED ALLOWANCE", requiredAllowance);
+        console.log(
+          "CHECKING AND REQUESTING IC2 ALLOWANCES, REQUIRED ALLOWANCE",
+          requiredAllowance,
+        );
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
           payToken,
           requiredAllowance,
@@ -318,16 +319,100 @@ export class SwapService {
       };
 
       console.log("SWAP PARAMS", swapParams);
-      const result = await SwapService.swap_async(swapParams);
-
-      if (result.Ok) {
-        this.monitorTransaction(result?.Ok, swapId);
+      if (["oisy"].includes(auth.pnp.activeWallet.id)) {
+        const actor = await auth.pnp.getActor(
+          kongBackendCanisterId,
+          canisterIDLs.kong_backend,
+          { anon: false, requiresSigning: true },
+        );
+        const result = await actor.swap(swapParams);
         toastStore.dismiss(toastId);
+        
+        if ("Ok" in result) {
+          console.log("Sync swap success, result.Ok:", result.Ok);
+          
+          // Convert amounts using the correct decimals
+          const formattedPayAmount = SwapService.fromBigInt(
+            result.Ok.pay_amount,
+            getTokenDecimals(result.Ok.pay_symbol)
+          );
+          const formattedReceiveAmount = SwapService.fromBigInt(
+            result.Ok.receive_amount,
+            getTokenDecimals(result.Ok.receive_symbol)
+          );
+
+          swapStatusStore.updateSwap(swapId, {
+            status: "Success", 
+            isProcessing: false,
+            error: null,
+            shouldRefreshQuote: true,
+            lastQuote: null,
+            details: {
+              payAmount: formattedPayAmount,
+              payToken: params.payToken,
+              receiveAmount: formattedReceiveAmount,
+              receiveToken: params.receiveToken,
+            }
+          });
+
+          // Load updated balances immediately and after delays
+          const tokens = get(tokenStore).tokens;
+          const walletId = auth?.pnp?.account?.owner?.toString();
+
+          if (walletId) {
+            console.log("Swap completed successfully, updating balances for tokens:", {
+              payToken: params.payToken?.symbol,
+              receiveToken: params.receiveToken?.symbol,
+              walletId,
+            });
+
+            const updateBalances = async () => {
+              try {
+                console.log("Attempting to update balances...");
+                await tokenStore.loadBalancesForTokens(
+                  [params.payToken, params.receiveToken],
+                  Principal.fromText(walletId),
+                );
+                console.log("Successfully updated balances");
+              } catch (error) {
+                console.error("Error updating balances:", error);
+              }
+            };
+
+            // Update immediately
+            await updateBalances();
+
+            // Schedule updates with increasing delays
+            const delays = [1000, 2000, 3000, 4000, 5000];
+            delays.forEach((delay) => {
+              setTimeout(async () => {
+                await updateBalances();
+              }, delay);
+            });
+          }
+
+          return BigInt(result.Ok.tx_id);
+        } else {
+          swapStatusStore.updateSwap(swapId, {
+            status: "Failed",
+            isProcessing: false,
+            error: result.Err || "Swap failed",
+          });
+          toastStore.error(result.Err || "Swap failed");
+          return false;
+        }
       } else {
-        console.error("Swap error:", result.Err);
-        return false;
+        const result = await SwapService.swap_async(swapParams);
+
+        if (result.Ok) {
+          this.monitorTransaction(result?.Ok, swapId);
+          toastStore.dismiss(toastId);
+        } else {
+          console.error("Swap error:", result.Err);
+          return false;
+        }
+        return result.Ok;
       }
-      return result.Ok;
     } catch (error) {
       swapStatusStore.updateSwap(swapId, {
         status: "Failed",
@@ -345,7 +430,7 @@ export class SwapService {
     this.startTime = Date.now();
     console.log("SWAP MONITORING - REQUEST ID:", requestId);
     let attempts = 0;
-    let lastStatus = ''; // Track the last status
+    let lastStatus = ""; // Track the last status
     let swapStatus = swapStatusStore.getSwap(swapId);
     const toastId = toastStore.info(
       `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
@@ -431,33 +516,42 @@ export class SwapService {
                   payToken: token0,
                   receiveAmount: formattedReceiveAmount,
                   receiveToken: token1,
-                }
+                },
               });
 
               // Load updated balances immediately and after delays
               const tokens = get(tokenStore).tokens;
-              const payToken = tokens.find((t) => t.symbol === swapStatus.pay_symbol);
-              const receiveToken = tokens.find((t) => t.symbol === swapStatus.receive_symbol);
+              const payToken = tokens.find(
+                (t) => t.symbol === swapStatus.pay_symbol,
+              );
+              const receiveToken = tokens.find(
+                (t) => t.symbol === swapStatus.receive_symbol,
+              );
               const walletId = auth?.pnp?.account?.owner?.toString();
 
               if (!payToken || !receiveToken || !walletId) {
-                console.error("Missing token or wallet info for balance update");
+                console.error(
+                  "Missing token or wallet info for balance update",
+                );
                 toastStore.dismiss(toastId);
                 return;
               }
 
-              console.log("Swap completed successfully, updating balances for tokens:", {
-                payToken: payToken?.symbol,
-                receiveToken: receiveToken?.symbol,
-                walletId
-              });
+              console.log(
+                "Swap completed successfully, updating balances for tokens:",
+                {
+                  payToken: payToken?.symbol,
+                  receiveToken: receiveToken?.symbol,
+                  walletId,
+                },
+              );
 
               const updateBalances = async () => {
                 try {
                   console.log("Attempting to update balances...");
                   await tokenStore.loadBalancesForTokens(
                     [payToken, receiveToken],
-                    Principal.fromText(walletId)
+                    Principal.fromText(walletId),
                   );
                   console.log("Successfully updated balances");
                 } catch (error) {
@@ -471,7 +565,7 @@ export class SwapService {
               // Schedule updates with increasing delays
               const delays = [1000, 2000, 3000, 4000, 5000];
               console.log("Scheduling delayed balance updates...");
-              delays.forEach(delay => {
+              delays.forEach((delay) => {
                 setTimeout(async () => {
                   await updateBalances();
                 }, delay);
@@ -494,12 +588,13 @@ export class SwapService {
         }
 
         attempts++;
-        
+
         // Calculate next polling interval
         const elapsedTime = Date.now() - this.startTime;
-        const nextInterval = elapsedTime >= this.FAST_POLLING_DELAY 
-          ? this.FAST_POLLING_INTERVAL 
-          : this.INITIAL_POLLING_INTERVAL;
+        const nextInterval =
+          elapsedTime >= this.FAST_POLLING_DELAY
+            ? this.FAST_POLLING_INTERVAL
+            : this.INITIAL_POLLING_INTERVAL;
 
         // Schedule next poll
         this.pollingInterval = setTimeout(poll, nextInterval);

@@ -6,15 +6,12 @@ export const ICP_CANISTER_ID = process.env.CANISTER_ID_ICP_LEDGER || 'ryjl3-tyaa
 
 export const KONG_BACKEND_PRINCIPAL = process.env.CANISTER_ID_KONG_BACKEND || '2ipq2-uqaaa-aaaar-qailq-cai';
 export const KONG_DATA_PRINCIPAL = process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
-export const INDEXER_URL = process.env.DFX_NETWORK === 'local' ? "http://localhost:8080" : "https://api.kongswap.io";
-
-export const DFX_VERSION = '0.24.1';
-export const DFX_NETWORK = 'ic';
+export const INDEXER_URL = "https://api.kongswap.io";
 
 // Frontend Canister IDs
-export const KONG_FRONTEND_CANISTER_ID = '3ldz4-aiaaa-aaaar-qaina-cai';
-export const KONG_SVELTE_CANISTER_ID = 'edoy4-liaaa-aaaar-qakha-cai';
-export const KONG_BACKEND_CANISTER_ID = '2ipq2-uqaaa-aaaar-qailq-cai';
+export const KONG_FRONTEND_CANISTER_ID = process.env.CANISTER_ID_KONG_FRONTEND;
+export const KONG_SVELTE_CANISTER_ID = process.env.CANISTER_ID_KONG_SVELTE;
+export const KONG_BACKEND_CANISTER_ID = process.env.CANISTER_ID_KONG_BACKEND;
 
 // Token Canister IDs
 export const CKBTC_CANISTER_ID = 'mxzaz-hqaaa-aaaar-qaada-cai';

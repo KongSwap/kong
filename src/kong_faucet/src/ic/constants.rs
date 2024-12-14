@@ -1,6 +1,6 @@
 // Tokens
 pub const ICP: &str = "ICP";
-pub const ICP_LEDGER: &str = "nppha-riaaa-aaaal-ajf2q-cai";
+pub const ICP_LEDGER: &str = "ryjl3-tyaaa-aaaaa-aaaba-cai";
 
 pub const CKUSDT: &str = "ckUSDT";
 pub const CKUSDT_LEDGER: &str = "zdzgz-siaaa-aaaar-qaiba-cai";

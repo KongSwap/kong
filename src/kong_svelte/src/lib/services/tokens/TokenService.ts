@@ -5,26 +5,18 @@ import {
   formatTokenAmount,
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { parseTokens } from "./tokenParsers";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
-import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
-import { canisterId as kongDataCanisterId } from "../../../../../declarations/kong_data";
-import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
-import { canisterId as kongFaucetId } from "../../../../../declarations/kong_faucet";
+import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
-
-import { Pr } from "svelte-flags";
 import BigNumber from "bignumber.js";
-import { eventBus } from './eventBus';
-
-const KONG_DATA_CANISTER_ID = kongDataCanisterId || process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -665,22 +657,18 @@ export class TokenService {
 
   public static async fetchUserTransactions(): Promise<any> {
     try {
-      if (!KONG_DATA_CANISTER_ID) {
+      if (!KONG_BACKEND_CANISTER_ID) {
         console.warn('Kong Data canister ID is missing');
         return { Ok: [] };
       }
 
-      if (!kongDataIDL) {
+      if (!kongBackendIDL) {
         console.warn('Kong Data IDL is missing');
         return { Ok: [] };
       }
 
-      const actor = await auth.pnp.getActor(KONG_DATA_CANISTER_ID, kongDataIDL, { 
-        anon: false, 
-        requiresSigning: false 
-      }); 
-
-      const txs = await actor.txs([true], [], [], [20n]);
+      const actor = await createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, kongBackendIDL); 
+      const txs = await actor.txs([auth.pnp?.account?.owner?.toString()]);
       console.log('Raw transactions:', txs);
       
       return txs;

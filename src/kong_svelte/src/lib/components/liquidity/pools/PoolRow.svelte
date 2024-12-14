@@ -142,6 +142,7 @@
 <style lang="scss">
   tr {
     transition: colors 150ms;
+    padding: 0 1rem;
   }
 
   tr:hover {
@@ -161,10 +162,10 @@
   }
 
   td {
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
     color: #8890a4;
-    border-bottom: 1px solid #2a2d3d;
+    border-bottom: 1px solid #2a2d3da8;
     height: 64px;
   }
 
@@ -275,7 +276,7 @@
   .mobile-pool-card {
     background-color: #1a1b23;
     border-radius: 0.5rem;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
     border: 1px solid #2a2d3d;
   }
@@ -316,7 +317,7 @@
 
   @media (max-width: 640px) {
     .mobile-pool-card {
-      padding: 0.625rem;
+      padding: 0.625rem 1rem;
     }
     
     .token-info {
@@ -326,6 +327,5 @@
     .tvl-badge {
       font-size: 0.6875rem;
     }
-
   }
 </style>

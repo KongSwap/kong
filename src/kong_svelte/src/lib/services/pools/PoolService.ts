@@ -84,10 +84,9 @@ export class PoolService {
     token1Symbol: string,
   ): Promise<any> {
     try {
-      const actor = await auth.pnp.getActor(
+      const actor = await createAnonymousActorHelper(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
-        { anon: true, requiresSigning: false },
       );
       const result = await actor.add_liquidity_amounts(
         token0Symbol,
@@ -256,7 +255,12 @@ export class PoolService {
         tx_id_1: tx_id_1.map(id => ({ BlockIndex: id.BlockIndex.toString() }))
       });
 
-      const result = await actor.add_liquidity_async(addLiquidityArgs);
+      let result;
+      if(["oisy"].includes(auth.pnp.activeWallet.id)) {
+        result = await actor.add_liquidity(addLiquidityArgs);
+      } else {
+        result = await actor.add_liquidity_async(addLiquidityArgs);
+      }
 
       if ("Err" in result) {
         throw new Error(result.Err);
@@ -399,10 +403,9 @@ export class PoolService {
       }
 
       console.log("[PoolService] Creating actor...");
-      const actor = await auth.pnp.getActor(
+      const actor = await createAnonymousActorHelper(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
       );
 
       if (!actor) {
@@ -413,7 +416,7 @@ export class PoolService {
       console.log(
         "[PoolService] Actor created successfully, fetching balances...",
       );
-      const balances = await actor.user_balances([]);
+      const balances = await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
       console.log("[PoolService] Balances fetched successfully:", balances);
 
       return balances;

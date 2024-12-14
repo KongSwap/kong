@@ -44,17 +44,9 @@
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
-
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
-  // Add type for cleanup function
-  type Cleanup = () => void;
-
-  onMount(async (): Promise<Cleanup> => {
-    if ($auth.isConnected) {
-      await poolStore.loadUserPoolBalances();
-    }
-
+  onMount(() => {
     window.addEventListener("resize", checkMobile);
     checkMobile();
 
@@ -71,12 +63,7 @@
   $: if (browser) {
     checkMobile();
   }
-
-  // Watch for auth changes and reload balances
-  $: if ($auth.isConnected) {
-    poolStore.loadUserPoolBalances();
-  }
-
+  
   const tokenMap = derived(formattedTokens, ($tokens) => {
     const map = new Map();
     if ($tokens) {
@@ -158,7 +145,6 @@
     
     if (aHasKong && !bHasKong) return -1;
     if (!aHasKong && bHasKong) return 1;
-
     if ($activePoolView !== "all") return 0;
 
     const direction = $sortDirection === "asc" ? 1 : -1;
@@ -271,8 +257,8 @@
     {/if}
 
     {#if $activeSection === "pools"}
-      <Panel className="flex-1">
-        <div class="h-full overflow-hidden flex flex-col">
+      <Panel className="flex-1 {$isMobile ? '' : '!p-0'}">
+        <div class="overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button -->
           <div class="flex flex-col sticky top-0 z-20">
             <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
@@ -320,8 +306,8 @@
                   </div>
                 </div>
               </div>
-
-              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d]">
+              <!-- Desktop view -->
+              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
@@ -416,60 +402,42 @@
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
-                <table class="w-full hidden md:table relative">
-                  <thead class="sticky top-0 z-10">
+                <table class="pools-table w-full hidden md:table relative">
+                  <thead class="sticky top-0 z-10 bg-[#1E1F2A]">
                     <tr class="h-10 border-b border-[#2a2d3d]">
+                      <th class="text-left text-sm font-medium text-[#8890a4]">Pool</th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4]"
-                        >Pool</th
-                      >
-                      <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("price")}
                       >
                         Price
-                        <svelte:component
-                          this={getSortIcon("price")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("price")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("tvl")}
                       >
                         TVL
-                        <svelte:component
-                          this={getSortIcon("tvl")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("tvl")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_volume")}
                       >
                         Volume 24H
-                        <svelte:component
-                          this={getSortIcon("rolling_24h_volume")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_apy")}
                       >
                         APY
-                        <svelte:component
-                          this={getSortIcon("rolling_24h_apy")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
-                      <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4]"
-                        >Actions</th
-                      >
+                      <th class="text-left text-sm font-medium text-[#8890a4]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody class="!px-4">
                     {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
@@ -488,7 +456,7 @@
                 </table>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="md:hidden space-y-4">
+                <div class="md:hidden space-y-4 mt-2">
                   {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                     <div
                       class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 
@@ -636,7 +604,7 @@
   />
 {/if}
 
-<style>
+<style scoped>
   .earn-cards {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
     max-width: 100%;
@@ -809,6 +777,20 @@
 
     &:hover {
       background: rgba(0, 255, 128, 0.04);
+    }
+  }
+
+  .pools-table {
+    th, td {
+      padding: 0.5rem 0.5rem;
+      
+      &:first-child {
+        padding-left: 1rem;
+      }
+      
+      &:last-child {
+        padding-right: 1rem;
+      }
     }
   }
 </style>
