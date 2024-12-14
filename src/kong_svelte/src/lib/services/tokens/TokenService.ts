@@ -9,7 +9,6 @@ import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID } from "$
 import { poolStore } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
-import { parseTokens } from "./tokenParsers";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
 import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
@@ -101,54 +100,72 @@ export class TokenService {
 
     while (retries > 0) {
       try {
-        const result = await fetchTokens();
-        const parsed = parseTokens(result);
+        const parsed = await fetchTokens();
         
-        // Enrich tokens with additional data
-        const enriched = await Promise.all(parsed.map(async (token) => {
-          const price = await this.fetchPrice(token);
-          let total24hVolume = 0;
-          const tokenPools = get(poolStore).pools.filter((p: BE.Pool) => 
-            p.address_0 === token.canister_id || p.address_1 === token.canister_id
-          );
-
-          // Calculate total volume synchronously since the pool data is already loaded
-          total24hVolume = tokenPools.reduce((sum, pool) => {
-            if (pool.rolling_24h_volume) {
-              return sum + Number(pool.rolling_24h_volume.toString()) / (10 ** 6);
-            }
-            return sum;
-          }, 0);
-
-          const enrichedToken: FE.Token = {
-            ...token,
-            metrics: {
-              ...token.metrics,
-              market_cap: token.canister_id === CKUSDT_CANISTER_ID ? 
-                (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : 
-                new BigNumber(token.metrics.total_supply)
-                  .div(new BigNumber(10 ** token.decimals))
-                  .times(new BigNumber(price))
-                  .toString(),
-              volume_24h: total24hVolume.toString(),
-            },
-            price,
-          };
-
-          return enrichedToken;
-        }));
-
-        // Cache the enriched tokens
-        await Promise.all(
-          enriched.filter(token => token && token.canister_id).map((token) =>
-            kongDB.tokens.put({
-              ...token,
-              timestamp: Date.now(),
-            })
-          )
+        // Filter out invalid tokens
+        const validTokens = parsed.filter(token => 
+          token && 
+          typeof token.canister_id === 'string' && 
+          token.canister_id.length > 0
         );
+        
+        // Get pools data once for all tokens
+        const poolData = get(poolStore);
+        
+        // Process tokens in batches to avoid overwhelming the system
+        const BATCH_SIZE = 10;
+        const enrichedTokens = [];
+        
+        for (let i = 0; i < validTokens.length; i += BATCH_SIZE) {
+          const batch = validTokens.slice(i, i + BATCH_SIZE);
+          const enrichedBatch = await Promise.all(batch.map(async (token) => {
+            try {
+              if (!token?.canister_id) {
+                console.warn('Invalid token found:', token);
+                return null;
+              }
 
-        return enriched;
+              // Get current price first
+              const price = await this.fetchPrice(token);
+
+              const currentToken = await kongDB.tokens
+                .where('canister_id')
+                .equals(token.canister_id)
+                .first();
+
+              const enrichedToken: FE.Token = {
+                ...token,
+                metrics: {
+                  ...token.metrics,
+                  price: price.toString(),
+                  price_change_24h: currentToken?.metrics?.price_change_24h || "0",
+                  market_cap: this.calculateMarketCap(token, price),
+                  volume_24h: (await this.calculateVolume(token, poolData.pools)).toString()
+                },
+                price,
+                timestamp: Date.now()
+              };
+
+              return enrichedToken;
+            } catch (error) {
+              console.error(`Error enriching token ${token?.symbol}:`, error);
+              // Return null for failed tokens
+              return null;
+            }
+          }));
+          
+          // Filter out null values and update DB with valid tokens
+          const validEnrichedBatch = enrichedBatch.filter((token): token is FE.Token => 
+            token !== null && typeof token.canister_id === 'string'
+          );
+          
+          if (validEnrichedBatch.length > 0) {
+            await kongDB.tokens.bulkPut(validEnrichedBatch);
+            enrichedTokens.push(...validEnrichedBatch);
+          }
+        }
+
+        return enrichedTokens;
       } catch (error) {
         console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
         retries--;
@@ -157,6 +174,30 @@ export class TokenService {
       }
     }
     return [];
+  }
+
+  // Helper method to calculate volume
+  private static calculateVolume(token: FE.Token, pools: BE.Pool[]): number {
+    const tokenPools = pools.filter((p: BE.Pool) => 
+      p.address_0 === token.canister_id || p.address_1 === token.canister_id
+    );
+
+    return tokenPools.reduce((sum, pool) => {
+      if (pool.rolling_24h_volume) {
+        return sum + Number(pool.rolling_24h_volume.toString()) / (10 ** 6);
+      }
+      return sum;
+    }, 0);
+  }
+
+  // Helper method to calculate market cap
+  private static calculateMarketCap(token: FE.Token, price: number): string {
+    return token.canister_id === CKUSDT_CANISTER_ID ? 
+      (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : 
+      new BigNumber(token.metrics.total_supply)
+        .div(new BigNumber(10 ** token.decimals))
+        .times(new BigNumber(price))
+        .toString();
   }
 
   public static async clearTokenCache(): Promise<void> {
@@ -243,16 +284,19 @@ export class TokenService {
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
-    const cached = this.priceCache.get(token.address);
+    const cacheKey = token.canister_id;
+    const cached = this.priceCache.get(cacheKey);
+    
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
       return cached.price;
     }
 
     const price = await this.fetchPrice(token);
-    this.priceCache.set(token.address, {
+    this.priceCache.set(cacheKey, {
       price,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
+    
     return price;
   }
 
@@ -439,7 +483,6 @@ export class TokenService {
     });
 
     if (relevantPools.length === 0) {
-      console.debug(`No pools found for ${token.symbol}`);
       return 0;
     }
 

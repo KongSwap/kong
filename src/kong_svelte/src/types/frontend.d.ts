@@ -40,7 +40,6 @@ declare global {
       balance: string;
       timestamp?: number;
       isFavorite?: boolean;
-      usdValue?: number;
       formattedBalance?: string;
       formattedUsdValue?: string;
       marketCapRank?: number;

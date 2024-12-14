@@ -41,6 +41,7 @@ declare global {
       tvl?: bigint;
       volume_24h?: string;
       apr?: number;
+      timestamp?: number;
     }
   }
 }

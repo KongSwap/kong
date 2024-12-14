@@ -1,6 +1,5 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
-  import { t } from "$lib/services/translations";
   import { auth } from "$lib/services/auth";
   import { fade, slide } from "svelte/transition";
     import { goto } from "$app/navigation";
@@ -153,8 +152,8 @@
             </svg>
             <span class="wallet-text uppercase">
               {$auth.isConnected
-                ? $t("common.openDrawer")
-                : $t("common.connect")}
+                ? "Wallet"
+                : "Connect"}
             </span>
           </div>
         </button>
@@ -165,7 +164,7 @@
 
 {#if navOpen && isMobile}
   <div class="mobile-menu" transition:fade={{ duration: 200 }}>
-    <div class="mobile-menu-overlay" on:click={handleNavClose} />
+    <div class="mobile-menu-overlay" on:click={handleNavClose}></div>
     <div
       class="mobile-menu-content"
       transition:slide={{ duration: 200, axis: "x" }}
@@ -226,7 +225,7 @@
 
       <div class="mobile-menu-footer">
         <Button
-          text={$auth.isConnected ? $t("common.openDrawer") : $t("common.connect")}
+          text={$auth.isConnected ? "Wallet" : "Connect"}
           variant="yellow"
           size="medium"
           state={sidebarOpen ? "selected" : "default"}
