@@ -675,11 +675,7 @@ export class TokenService {
         return { Ok: [] };
       }
 
-      const actor = await auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, kongBackendIDL, { 
-        anon: false, 
-        requiresSigning: false 
-      }); 
-
+      const actor = await createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, kongBackendIDL); 
       const txs = await actor.txs([auth.pnp?.account?.owner?.toString()]);
       console.log('Raw transactions:', txs);
       
