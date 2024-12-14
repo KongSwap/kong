@@ -57,7 +57,7 @@
     const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
 
     const tweetText = encodeURIComponent(
-      `🍌 Just swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol} on @KongSwap!\n\nTrade now: https://kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}`
+      `🍌 Just swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol} on @KongSwap!\n\nTrade now: https://www.kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}`
     );
     window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
   }
