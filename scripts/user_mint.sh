@@ -11,9 +11,9 @@ IDENTITY="--identity kong_token_minter"
 TO_PRINCIPAL_ID=$(dfx identity ${NETWORK} --identity kong_user1 get-principal)
 #TO_PRINCIPAL_ID=lxm55-254xc-c6obr-ygh6x-dd4n6-vmqfc-jsbwo-gbi5n-lrpol-haxdl-zae
 
-# 100,000 ICP
+# 100,000 ksICP
 AMOUNT=10_000_000_000_000
-TOKEN="icp"
+TOKEN="ksicp"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
@@ -21,9 +21,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 	amount=${AMOUNT};
 },)"
 
-# 1,000,000 ckUSDT
+# 1,000,000 ksUSDT
 AMOUNT=1_000_000_000_000
-TOKEN="ckusdt"
+TOKEN="ksusdt"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
@@ -31,9 +31,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 	amount=${AMOUNT};
 },)"
 
-# 200,000 ckUSDC
+# 200,000 ksUSDC
 AMOUNT=200_000_000_000
-TOKEN="ckusdc"
+TOKEN="ksusdc"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
@@ -41,9 +41,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 	amount=${AMOUNT};
 },)"
 
-# 5 ckBTC
+# 5 ksBTC
 AMOUNT=500_000_000
-TOKEN="ckbtc"
+TOKEN="ksbtc"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
@@ -51,9 +51,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 	amount=${AMOUNT};
 },)"
 
-# 60 ckETH
+# 60 ksETH
 AMOUNT=60_000_000_000_000_000_000
-TOKEN="cketh"
+TOKEN="kseth"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
@@ -61,9 +61,9 @@ dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record
 	amount=${AMOUNT};
 },)"
 
-# 5,000,000 KONG
+# 5,000,000 ksKONG
 AMOUNT=500_000_000_000_000
-TOKEN="kong"
+TOKEN="kskong"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {

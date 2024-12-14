@@ -9,9 +9,9 @@ fi
 IDENTITY="--identity kong"
 TO_PRINCIPAL_ID=tmp3d-jaaaa-aaaam-adcla-cai
 
-# 1,000,000 ckUSDT
+# 1,000,000 ksUSDT
 AMOUNT=1_000_000_000_000
-TOKEN="ckusdt"
+TOKEN="ksusdt"
 TOKEN_LEDGER="${TOKEN}_ledger"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {

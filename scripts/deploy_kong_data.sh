@@ -3,11 +3,11 @@
 if [ -z "$1" ]
 	then
 		NETWORK=""
-		SUBNET_TYPE=""
+		SAME_SUBNET=""
 	else
 		NETWORK="--network $1"
-		SUBNET_TYPE="--subnet-type fiduciary"
+		SAME_SUBNET="--next-to kong_backend"
 fi
 IDENTITY="--identity kong"
 
-dfx deploy ${NETWORK} ${IDENTITY} ${SUBNET_TYTPE} kong_data
+dfx deploy ${NETWORK} ${IDENTITY} ${SAME_SUBNET} kong_data
