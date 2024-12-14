@@ -110,7 +110,7 @@
       );
     }
     if (column === "tvl") {
-      return direction * ((a.tvl || 0) - (b.tvl || 0));
+      return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
     }
     if (column === "rolling_24h_apy") {
       return (
@@ -322,7 +322,7 @@
             <tbody>
               {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                 <PoolRow
-                  {pool}
+                  pool={{...pool, tvl: Number(pool.tvl)}}
                   tokenMap={$tokenMap}
                   isEven={i % 2 === 0}
                   onAddLiquidity={handleAddLiquidity}
@@ -377,7 +377,7 @@
                         $tokenMap.get(pool.address_1),
                       ]}
                       size={28}
-                      overlap={10}
+                      overlap={true}
                     />
                     <div class="font-medium text-white">
                       {pool.symbol_0}/{pool.symbol_1}
@@ -405,7 +405,7 @@
                   <div class="bg-[#2a2d3d]/50 p-2 rounded-lg">
                     <div class="text-xs text-[#8890a4]">TVL</div>
                     <div class="text-sm font-medium text-white">
-                      {formatUsdValue(pool.tvl) || "0.00"}
+                      {formatUsdValue(Number(pool.tvl)) || "0.00"}
                     </div>
                   </div>
                   <div class="bg-[#2a2d3d]/50 p-2 rounded-lg">
@@ -432,7 +432,7 @@
           <div class="h-full">
             <PoolList
               on:poolClick={handlePoolClick}
-              searchTerm={debouncedSearchTerm}
+              initialSearch={debouncedSearchTerm}
             />
           </div>
         {:else}

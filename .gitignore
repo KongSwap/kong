@@ -135,7 +135,5 @@ package-lock.json
 *.lock
 backups/
 **/public/.ic-assets.json5
-ic-domains
-ii-alternative-origins
 settings.json
 *.pem

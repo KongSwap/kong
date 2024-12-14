@@ -6,7 +6,18 @@
     import { onMount } from 'svelte';
     import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   
-    export let pool: BE.Pool & { tvl?: number };
+    interface Pool {
+      tvl: number;
+      rolling_24h_volume: bigint;
+      rolling_24h_apy: number;
+      address_0: string;
+      address_1: string;
+      symbol_0: string;
+      symbol_1: string;
+      price: number;
+    }
+  
+    export let pool: Pool;
     export let tokenMap: Map<string, any>;
     export let isEven: boolean;
     export let isKongPool = false;
@@ -16,7 +27,9 @@
     let isMobile = false;
     let showDetailsButton = true;
   
-    onMount(() => {
+    type Cleanup = () => void;
+  
+    onMount((): Cleanup => {
       const checkMobile = () => {
         isMobile = window.innerWidth < 768;
         showDetailsButton = window.innerWidth >= 1150;

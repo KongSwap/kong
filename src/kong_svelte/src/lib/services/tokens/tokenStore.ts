@@ -237,7 +237,17 @@ function createTokenStore() {
         const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
         
         // Get historical price for 24h change
-        const historicalPrice = await getHistoricalPrice(token);
+        const now = Math.floor(Date.now() / 1000);
+        const yesterday = now - (24 * 60 * 60);
+        const searchWindowStart = yesterday - (4 * 60 * 60); // 4 hours before target
+        const searchWindowEnd = yesterday + (4 * 60 * 60); // 4 hours after target
+
+        const historicalPrice = await getHistoricalPrice(
+          token,
+          yesterday,
+          searchWindowStart, 
+          searchWindowEnd
+        );
         const currentPrice = Number(token.metrics?.price || 0);
         
         // Calculate price change

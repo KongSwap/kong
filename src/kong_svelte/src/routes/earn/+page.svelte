@@ -22,8 +22,9 @@
   import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
   import { auth } from "$lib/services/auth";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import PoolList from "$lib/components/sidebar/PoolList.svelte";
+  import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { toastStore } from "$lib/stores/toastStore";
+    import { browser } from "$app/environment";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -39,31 +40,37 @@
   const sortColumn = writable("rolling_24h_volume");
   const sortDirection = writable<"asc" | "desc">("desc");
 
-  let isMobile = false;
+  let isMobile = writable(false);
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
 
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
-  onMount(() => {
-    const checkMobile = () => {
-      isMobile = window.innerWidth < 768;
-    };
+  // Add type for cleanup function
+  type Cleanup = () => void;
 
-    checkMobile();
+  onMount(async (): Promise<Cleanup> => {
+    if ($auth.isConnected) {
+      await poolStore.loadUserPoolBalances();
+    }
+
     window.addEventListener("resize", checkMobile);
+    checkMobile();
 
     return () => {
       window.removeEventListener("resize", checkMobile);
     };
   });
 
-  onMount(async () => {
-    if ($auth.isConnected) {
-      await poolStore.loadUserPoolBalances();
-    }
-  });
+
+  const checkMobile = () => {
+    $isMobile = window.innerWidth < 768;
+  };
+
+  $: if (browser) {
+    checkMobile();
+  }
 
   // Watch for auth changes and reload balances
   $: if ($auth.isConnected) {
@@ -83,17 +90,6 @@
   const highestApr = derived(poolsList, ($pools) => {
     if (!$pools || $pools.length === 0) return 0;
     return Math.max(...$pools.map((pool) => Number(pool.rolling_24h_apy)));
-  });
-
-  const activePoolCount = derived([userPoolBalances, poolsList], ([$balances, $pools]) => {
-    if (!Array.isArray($balances)) return 0;
-    return $balances.filter((balance) => {
-      if (balance.balance <= 0n) return false;
-      
-      // Find matching pool to get price
-      const pool = $pools.find(p => p.pool_id === balance.pool_id);
-      return pool && Number(pool.price) > 0.15; // match the display threshold
-    }).length;
   });
 
   function handleAddLiquidity(token0: string, token1: string) {
@@ -155,7 +151,7 @@
     return $sortDirection === "asc" ? ArrowUp : ArrowDown;
   }
 
-  $: sortedPools = [...filteredPools].sort((a, b) => {
+  $: sortedPools = [...filteredPools].sort((a: BE.Pool, b: BE.Pool) => {
     // Always put Kong pools first
     const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
     const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
@@ -163,30 +159,29 @@
     if (aHasKong && !bHasKong) return -1;
     if (!aHasKong && bHasKong) return 1;
 
-    if ($activePoolView !== "all") return 0; // sorting only applies to all pools view
+    if ($activePoolView !== "all") return 0;
 
     const direction = $sortDirection === "asc" ? 1 : -1;
     const column = $sortColumn;
 
     if (column === "rolling_24h_volume") {
-      return (
-        direction *
-        (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume))
-      );
+      return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
     }
     if (column === "tvl") {
       return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
     }
     if (column === "rolling_24h_apy") {
-      return (
-        direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy))
-      );
+      return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
     }
     if (column === "price") {
       return direction * (Number(a.price) - Number(b.price));
     }
     return 0;
-  });
+  }).map(pool => ({
+    ...pool,
+    tvl: Number(pool.tvl),
+    displayTvl: Number(pool.tvl),
+  }));
 
   function handlePoolClick(event) {
     const pool = event.detail;
@@ -219,31 +214,19 @@
     return num.toFixed(2);
   }
 
-  // Toggle between All Pools and User Pools
-  function toggleUserPools() {
-    if ($activePoolView === "all") {
-      // Switch to user pools
-      if (!$auth.isConnected) {
-        toastStore.error(
-          "Please connect your wallet to view your liquidity positions",
-          undefined,
-          "Connect Wallet",
-        );
-        return;
-      }
-      activePoolView.set("user");
-    } else {
-      // Switch back to all pools
-      activePoolView.set("all");
-    }
+  function handleSearch() {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+    }, 300);
   }
 </script>
 
 <section
-  class="flex flex-col w-full h-full px-4 pb-4 {isMobile ? 'pb-24' : ''}"
+  class="flex flex-col w-full h-full px-4 pb-4 {$isMobile ? 'pb-24' : ''}"
 >
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
-    {#if !isMobile}
+    {#if !$isMobile}
       <div class="earn-cards">
         <div
           class="earn-card"
@@ -259,7 +242,7 @@
           </div>
         </div>
 
-        <div class="earn-card" disabled>
+        <div class="earn-card" aria-disabled="true">
           <div class="card-content">
             <h3>Staking</h3>
             <div class="coming-soon-label">
@@ -272,7 +255,7 @@
           </div>
         </div>
 
-        <div class="earn-card" disabled>
+        <div class="earn-card" aria-disabled="true">
           <div class="card-content">
             <h3>Borrowing & Lending</h3>
             <div class="coming-soon-label">
@@ -291,36 +274,111 @@
       <Panel className="flex-1">
         <div class="h-full overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20 pb-2">
-            <div class="flex flex-col xs:flex-row items-center gap-2">
-              {#if $activePoolView === "all"}
-                <input
-                  type="text"
-                  placeholder={isMobile ? "Search..." : "Search by token symbol, name, or address..."}
-                  bind:value={searchTerm}
-                  class="w-full xs:flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2"
-                />
-              {:else}
-                <div class="flex-1"></div>
-              {/if}
-              <button
-                class="w-full xs:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap
-                       {$activePoolView === 'user'
-                         ? 'bg-[#60A5FA] text-white'
-                         : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
-                on:click={toggleUserPools}
-              >
-                My Pools
-                {#if $activePoolCount > 0 && $auth.isConnected}
-                  <span class="ml-2 px-2 py-0.5 rounded-full text-xs">
-                    {$activePoolCount}
-                  </span>
-                {/if}
-              </button>
+          <div class="flex flex-col sticky top-0 z-20">
+            <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
+              <!-- Mobile-only buttons -->
+              <div class="flex flex-col gap-3 sm:hidden">
+                <div class="w-full">
+                  <div class="bg-[#1A1B24] border border-[#2a2d3d] rounded-lg w-full">
+                    <div class="flex items-center w-full">
+                      <div class="flex w-full border-r border-[#2a2d3d]">
+                        <button
+                          class="px-4 py-2 w-1/2 transition-colors duration-200 {$activePoolView === 'all'
+                            ? 'text-white'
+                            : 'text-[#8890a4] hover:text-white'}"
+                          on:click={() => ($activePoolView = "all")}
+                        >
+                          All Pools
+                        </button>
+                        <button
+                          class="px-4 py-2 w-1/2 transition-colors duration-200 {$activePoolView === 'user'
+                            ? 'text-white'
+                            : 'text-[#8890a4] hover:text-white'}"
+                          on:click={() => ($activePoolView = "user")}
+                        >
+                        My Pools <span class="text-xs ml-1 font-bold py-0 text-black bg-blue-400/90 px-1.5 rounded">{$userPoolBalances.length}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="w-full bg-[#1a1b23] border border-[#2a2d3d] rounded-lg px-4 py-2">
+                  <input
+                    type="text"
+                    placeholder={$isMobile == true ? "Search pools..." : "Search pools by name, symbol, or canister ID"}
+                    class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
+                    bind:value={searchTerm}
+                    on:input={handleSearch}
+                  />
+                </div>
+                <div class="w-full">
+                  <div class="">
+                    <button class="primary-button bg-transparent border border-blue-500/40" on:click={() => goto("/earn/add")}>
+                      Add Position
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d]">
+                <div class="flex-1">
+                  <div class="flex items-center">
+                    <div class="flex bg-transparent">
+                      <button
+                        class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'all'
+                          ? 'text-white'
+                          : 'text-[#8890a4] hover:text-white'}"
+                        on:click={() => ($activePoolView = "all")}
+                      >
+                        All Pools
+                      </button>
+                      <button
+                        class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'user'
+                          ? 'text-white'
+                          : 'text-[#8890a4] hover:text-white'}"
+                        on:click={() => ($activePoolView = "user")}
+                      >
+                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-blue-400/60 px-1.5 rounded">{$userPoolBalances.length}</span>
+                      </button>
+                    </div>
+
+                    <div class="flex-1 px-4 py-2">
+                      <input
+                        type="text"
+                        placeholder={$isMobile == true ? "Search pools..." : "Search pools by name, symbol, or canister ID"}
+                        class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
+                        bind:value={searchTerm}
+                        on:input={handleSearch}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  class="flex items-center gap-2 rounded-none !rounded-tr-lg px-4 py-2 text-white/80 hover:text-primary-blue"
+                  on:click={() => goto("/earn/add")}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  <span>Add Position</span>
+                </button>
+              </div>
             </div>
 
             <!-- Mobile Sort Controls -->
-            {#if isMobile && $activePoolView === "all"}
+            {#if $isMobile && $activePoolView === "all"}
               <div
                 class="flex items-center justify-between mt-2 py-1 rounded-lg"
               >
@@ -353,7 +411,7 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div
-                class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {isMobile
+                class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {$isMobile
                   ? 'max-h-[calc(97vh-16.5rem)]'
                   : ''} custom-scrollbar"
               >
@@ -414,7 +472,11 @@
                   <tbody>
                     {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
-                        {pool}
+                        pool={{
+                          ...pool,
+                          tvl: Number(pool.tvl),
+                          rolling_24h_volume: BigInt(pool.rolling_24h_volume)
+                        }}
                         tokenMap={$tokenMap}
                         isEven={i % 2 === 0}
                         isKongPool={pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID}
@@ -500,7 +562,10 @@
               <!-- User Pools View -->
               {#if $auth.isConnected}
                 <div class="h-full custom-scrollbar">
-                  <PoolList on:poolClick={handlePoolClick} />
+                  <UserPoolList 
+                    on:poolClick={handlePoolClick}
+                    searchQuery={searchTerm}
+                  />
                 </div>
               {:else}
                 <div
@@ -510,7 +575,7 @@
                     Connect your wallet to view your liquidity positions
                   </p>
                   <button
-                    class="px-6 py-2 bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    class="px-6 py-2 bg-primary-blue text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
                     on:click={() => {
                       toastStore.info(
                         "Connect your wallet to view your liquidity positions",
@@ -531,7 +596,7 @@
   </div>
 </section>
 
-{#if isMobile}
+{#if $isMobile}
   <nav class="mobile-nav">
     <div class="mobile-nav-container">
       <button

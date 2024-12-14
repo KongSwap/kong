@@ -37,7 +37,6 @@ const poolResponseSchema = z.object({
 export class PoolSerializer {
   static serializePoolsResponse(response: unknown): BE.PoolResponse {
     try {
-      console.log('response', response);
       const parsed = poolResponseSchema.parse(response);
       return {
         pools: parsed.pools.map(pool => ({

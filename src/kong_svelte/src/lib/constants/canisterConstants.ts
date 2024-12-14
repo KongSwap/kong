@@ -5,6 +5,7 @@ export const CKUSDT_CANISTER_ID = process.env.CANISTER_ID_CKUSDT_LEDGER || 'cngn
 export const ICP_CANISTER_ID = process.env.CANISTER_ID_ICP_LEDGER || 'ryjl3-tyaaa-aaaaa-aaaba-cai';
 
 export const KONG_BACKEND_PRINCIPAL = process.env.CANISTER_ID_KONG_BACKEND || '2ipq2-uqaaa-aaaar-qailq-cai';
+export const KONG_DATA_PRINCIPAL = process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
 export const INDEXER_URL = process.env.DFX_NETWORK === 'local' ? "http://localhost:8080" : "https://api.kongswap.io";
 
 export const DFX_VERSION = '0.24.1';
