@@ -6,11 +6,11 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "build": "npm -r build",
-    "prebuild": "npm -r prebuild",
-    "pretest": "npm -r prebuild",
-    "start": "npm -r start",
-    "test": "npm -r test"
+    "build": "npm run build --workspace=src/kong_svelte",
+    "prebuild": "npm run prebuild --workspace=src/kong_svelte",
+    "pretest": "npm run prebuild --workspace=src/kong_svelte",
+    "start": "npm run dev --workspace=src/kong_svelte",
+    "test": "npm run test --workspace=src/kong_svelte"
   },
   "workspaces": [
     "src/kong_svelte"
