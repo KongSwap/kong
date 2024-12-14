@@ -44,7 +44,6 @@
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
-
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
   onMount(() => {
@@ -146,7 +145,6 @@
     
     if (aHasKong && !bHasKong) return -1;
     if (!aHasKong && bHasKong) return 1;
-
     if ($activePoolView !== "all") return 0;
 
     const direction = $sortDirection === "asc" ? 1 : -1;
