@@ -2,7 +2,7 @@
   import { writable, derived } from "svelte/store";
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, liveTokens } from "$lib/services/tokens/tokenStore";
   import { poolStore } from "$lib/services/pools";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
@@ -26,6 +26,8 @@
   } from "$lib/services/tokens/favoriteStore";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { browser } from "$app/environment";
+  import { liveQuery } from "dexie";
+  import { kongDB } from "$lib/services/db";
 
   const isMobile = writable(false);
 
@@ -61,15 +63,10 @@
     await tokenStore.loadFavorites();
   });
 
-  const tokensLoading = derived(
-    [tokenStore, poolStore],
-    ([$tokenStore, $poolStore]) => {
-      return $poolStore.isLoading || 
-             $tokenStore.isLoading || 
-             !$tokenStore.tokens || 
-             $tokenStore.tokens.length === 0;
-    }
-  );
+  let tokensLoading: boolean;
+  $: {
+    tokensLoading = $liveTokens === undefined;
+  }
 
   const tokensError = derived<[typeof tokenStore, typeof poolStore], string | null>(
     [tokenStore, poolStore],
@@ -94,24 +91,28 @@
 
   const filteredTokens = derived(
     [
-      tokenStore,
       searchQuery,
       sortColumnStore,
       sortDirectionStore,
       showFavoritesOnly,
       currentWalletFavorites,
-      auth
+      auth,
+      liveTokens
     ],
     ([
-      $tokenStore,
       $searchQuery,
       $sortColumn,
       $sortDirection,
       $showFavoritesOnly,
       $currentWalletFavorites,
-      $auth
+      $auth,
+      $liveTokens
     ]) => {
-      let tokens = [...$tokenStore.tokens];
+      if (!$liveTokens) {
+        return { tokens: [], loading: true };
+      }
+
+      let tokens = [...$liveTokens];
 
       // If showing favorites only:
       if ($showFavoritesOnly) {
@@ -131,9 +132,9 @@
           const query = $searchQuery.toLowerCase();
           tokens = tokens.filter(
             (token) =>
-              token.name.toLowerCase().includes(query.toLowerCase()) ||
-              token.symbol.toLowerCase().includes(query.toLowerCase()) || 
-              token.address.toLowerCase().includes(query.toLowerCase())
+              token.name.toLowerCase().includes(query) ||
+              token.symbol.toLowerCase().includes(query) || 
+              token.address.toLowerCase().includes(query)
           );
         }
       }
@@ -191,7 +192,7 @@
         marketCapRank: marketCapRankings.get(token.canister_id)
       }));
 
-      return { tokens };
+      return { tokens, loading: false };
     }
   );
 
@@ -209,16 +210,61 @@
     return $sortDirectionStore === "asc" ? ArrowUp : ArrowDown;
   }
 
+  // Use liveQuery to get reactive prices from DexieDB
+  const livePrices = liveQuery(
+    async () => {
+      // Get all tokens with their prices
+      const tokens = await kongDB.tokens
+        .orderBy('timestamp')
+        .reverse()
+        .toArray();
+      
+      // Create a map of canister_id to price
+      const priceMap = tokens.reduce((acc, token) => {
+        if (token.metrics?.price) {
+          acc[token.canister_id] = Number(token.metrics.price);
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      return priceMap;
+    }
+  );
+
+  // Track price changes
+  $: {
+    if ($liveTokens && $livePrices) {
+      const currentPrices = Object.fromEntries(
+        $liveTokens.map(token => [token.canister_id, $livePrices[token.canister_id] || 0])
+      );
+
+      // Only update if prices have changed
+      const hasChanges = Object.entries(currentPrices).some(([id, price]) => {
+        return price !== $previousPrices[id];
+      });
+
+      if (hasChanges) {
+        // Wait 1 second before updating previous prices to allow animation to complete
+        setTimeout(() => {
+          previousPrices.set(currentPrices);
+        }, 1000);
+      }
+    }
+  }
+
   function getPriceChangeClass(
-    token: any,
+    token: FE.Token,
     $previousPrices: { [key: string]: number },
   ): string {
     const prevPrice = $previousPrices[token.canister_id];
-    const currentPrice = token.metrics.price;
+    const currentPrice = $livePrices?.[token.canister_id] || 0;
 
+    // If no previous price or no change, return empty string
     if (prevPrice === undefined || currentPrice === prevPrice) {
-      return "";
+        return "";
     }
+
+    // Return the appropriate class without immediately resetting the previous price
     return currentPrice > prevPrice ? "price-up" : "price-down";
   }
 
@@ -319,7 +365,7 @@
             </div>
           </div>
 
-          {#if $tokensLoading}
+          {#if tokensLoading}
             <LoadingIndicator />
           {:else if $tokensError}
             <div class="error-message">
@@ -350,6 +396,12 @@
             {:else if $filteredTokens.noFavorites}
               <div class="flex flex-col items-center justify-center h-64 text-center">
                 <p class="text-gray-400 mb-4">You have no favorite tokens yet. Mark some tokens as favorites to view them here.</p>
+              </div>
+            {:else if $filteredTokens.loading}
+              <LoadingIndicator />
+            {:else if $filteredTokens.tokens.length === 0}
+              <div class="flex flex-col items-center justify-center h-64 text-center">
+                <p class="text-gray-400">No tokens found matching your search criteria</p>
               </div>
             {:else}
               <div class="overflow-auto flex-1 custom-scrollbar">
@@ -382,34 +434,26 @@
                       </thead>
                       <tbody class="text-base">
                         {#each $filteredTokens.tokens as token, index (token.canister_id)}
-                          {@const enrichedToken = {
-                            ...token,
-                            metrics: {
-                              ...token.metrics,
-                              price: token.metrics.price.toString(),
-                            },
-                            marketCapRank: token.marketCapRank
-                          } as unknown as FE.Token}
-                          {@const priceChangeClass = enrichedToken?.metrics
+                          {@const priceChangeClass = token?.metrics
                             ?.price_change_24h
-                            ? Number(enrichedToken.metrics.price_change_24h) > 0
+                            ? Number(token.metrics.price_change_24h) > 0
                               ? "positive"
                               : "negative"
                             : ""}
                           <tr
                             class:kong-special-row={token.canister_id === KONG_CANISTER_ID}
                             class="border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer"
-                            on:click={() => goto(`/stats/${enrichedToken.canister_id}`)}
+                            on:click={() => goto(`/stats/${token.canister_id}`)}
                           >
-                            <td class="text-center text-[#8890a4]">#{enrichedToken.marketCapRank}</td>
+                            <td class="text-center text-[#8890a4]">#{token.marketCapRank}</td>
                             <td class="">
                               <div class=" flex items-center gap-2 h-full">
                                 {#if $auth.isConnected}
                                   <button
-                                    class="favorite-button {$currentWalletFavorites.includes(enrichedToken.canister_id) ? 'active' : ''}"
-                                    on:click={(e) => toggleFavorite(enrichedToken, e)}
+                                    class="favorite-button {$currentWalletFavorites.includes(token.canister_id) ? 'active' : ''}"
+                                    on:click={(e) => toggleFavorite(token, e)}
                                   >
-                                    {#if $currentWalletFavorites.includes(enrichedToken.canister_id)}
+                                    {#if $currentWalletFavorites.includes(token.canister_id)}
                                       <Star
                                         class="star-icon filled"
                                         size={16}
@@ -422,56 +466,40 @@
                                   </button>
                                 {/if}
                                 <TokenImages
-                                  tokens={[enrichedToken]}
+                                  tokens={[token]}
                                   containerClass="self-center"
                                   size={24}
                                 />
-                                <span class="token-name">{enrichedToken.name}</span>
-                                <span class="token-symbol">{enrichedToken.symbol}</span>
+                                <span class="token-name">{token.name}</span>
+                                <span class="token-symbol">{token.symbol}</span>
                               </div>
                             </td>
                             <td class="price-cell text-right">
-                              <span
-                                class={getPriceChangeClass(
-                                  enrichedToken,
-                                  $previousPrices,
-                                )}
-                              >
-                                ${formatToNonZeroDecimal(
-                                  enrichedToken?.price || enrichedToken?.metrics?.price,
-                                )}
-                                {#if getPriceChangeClass(enrichedToken, $previousPrices) === "price-up"}
-                                  <div>
-                                    <ArrowUp class="price-arrow up" size={14} />
-                                  </div>
-                                {:else if getPriceChangeClass(enrichedToken, $previousPrices) === "price-down"}
-                                  <div>
-                                    <ArrowDown class="price-arrow down" size={14} />
-                                  </div>
-                                {/if}
+                              <span class={getPriceChangeClass(token, $previousPrices)}>
+                                ${formatToNonZeroDecimal($livePrices?.[token.canister_id] || 0)}
                               </span>
                             </td>
                             <td class="change-cell text-right {priceChangeClass}">
-                              {#if enrichedToken?.metrics?.price_change_24h === null || enrichedToken?.metrics?.price_change_24h === "n/a"}
+                              {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "n/a"}
                                 <span class="text-slate-400">0.00%</span>
-                              {:else if Number(enrichedToken?.metrics?.price_change_24h) === 0}
+                              {:else if Number(token?.metrics?.price_change_24h) === 0}
                                 <span class="text-slate-400">0.00%</span>
                               {:else}
                                 <span>
-                                  {Number(enrichedToken?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(enrichedToken?.metrics?.price_change_24h)}%
+                                  {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}{formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
                                 </span>
                               {/if}
                             </td>
                             <td class="text-right">
-                              <span>{formatUsdValue(enrichedToken?.metrics?.volume_24h)}</span>
+                              <span>{formatUsdValue(token?.metrics?.volume_24h)}</span>
                             </td>
                             <td class="text-right">
-                              <span>{formatUsdValue(enrichedToken?.metrics?.market_cap)}</span>
+                              <span>{formatUsdValue(token?.metrics?.market_cap)}</span>
                             </td>
                             <td class="actions-cell">
                               <button
                                 class="action-button"
-                                on:click|stopPropagation={() => goto(`/stats/${enrichedToken.canister_id}`)}
+                                on:click|stopPropagation={() => goto(`/stats/${token.canister_id}`)}
                               >
                                 Details
                               </button>
@@ -484,11 +512,11 @@
                     <!-- Mobile sorting options - Fixed at top -->
                     <div class="flex items-center gap-2 mb-2 sticky top-0 bg-[#1a1b23] p-4 z-10 border-b border-[#2a2d3d]">
                       <button 
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("marketCap")}
+                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'market_cap' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
+                        on:click={() => toggleSort("market_cap")}
                       >
                         MCap
-                        <svelte:component this={getSortIcon("marketCap")} class="inline w-3.5 h-3.5 ml-1" />
+                        <svelte:component this={getSortIcon("market_cap")} class="inline w-3.5 h-3.5 ml-1" />
                       </button>
                       <button 
                         class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'volume_24h' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
@@ -508,17 +536,8 @@
 
                     <!-- Mobile token cards -->
                     <div class="space-y-2 {$isMobile ? 'px-4' : '!p-0'}">
-                      {#each $filteredTokens.tokens as token}
-                        {@const enrichedToken = {
-                          ...token,
-                          metrics: {
-                            ...token.metrics,
-                            price: token.metrics.price.toString(),
-                          },
-                          marketCapRank: token.marketCapRank
-                        } as unknown as FE.Token}
+                      {#each $liveTokens as token}
                         <div
-                          role="button"
                           class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''}"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
@@ -550,10 +569,10 @@
                             </div>
 
                             <div class="token-card-right">
-                              <span class="token-price">${formatToNonZeroDecimal(enrichedToken?.price || enrichedToken?.metrics?.price)}</span>
+                              <span class="token-price">${formatToNonZeroDecimal(token?.price || token?.metrics?.price)}</span>
                               {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "NEW"}
                                 <span class="token-change new">NEW</span>
-                              {:else if token?.metrics?.price_change_24h === 0 || !token?.metrics?.price_change_24h}
+                              {:else if Number(token?.metrics?.price_change_24h) === 0}
                                 <span class="token-change neutral">0.00%</span>
                               {:else}
                                 {@const priceChange = Number(token?.metrics?.price_change_24h)}
@@ -598,7 +617,7 @@
         class:active={$activeStatsSection === 'marketStats'}
         on:click={() => activeStatsSection.set('marketStats')}
       >
-        <span class="nav-icon">📊</span>
+        <span class="nav-icon">��</span>
         <span class="nav-label">Market Stats</span>
       </button>
     </div>
@@ -862,5 +881,29 @@
 
   .h-full {
     height: 100%;
+  }
+
+  .price-up {
+    color: #22c55e; /* green */
+    transition: color 0.3s ease;
+    animation: flash-green 2s ease;
+  }
+
+  .price-down {
+    color: #ef4444; /* red */
+    transition: color 0.3s ease;
+    animation: flash-red 2s ease;
+  }
+
+  @keyframes flash-green {
+    0% { color: inherit; }
+    30% { color: #22c55e; }
+    100% { color: inherit; }
+  }
+
+  @keyframes flash-red {
+    0% { color: inherit; }
+    30% { color: #ef4444; }
+    100% { color: inherit; }
   }
 </style>

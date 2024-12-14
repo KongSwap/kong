@@ -4,7 +4,6 @@
     selectedWalletId
   } from "$lib/services/auth";
   import { walletsList as availableWallets } from "@windoge98/plug-n-play";
-  import { t } from "$lib/services/translations";
   import { onMount } from "svelte";
   import { uint8ArrayToHexString } from "@dfinity/utils";
   import { WalletService } from "$lib/services/wallet/WalletService";
@@ -51,7 +50,7 @@
 
   async function handleDisconnect() {
     try {
-      await $auth.disconnect();
+      await auth.disconnect();
       selectedWalletId.set("");
       localStorage.removeItem("kongSelectedWallet");
     } catch (error) {
@@ -64,9 +63,9 @@
   {#if $auth.isConnected}
     <div class="my-4">
       <h2 class="text-lg font-black uppercase">From Wallet Library</h2>
-      {$t("common.connectedTo")}: {$auth?.account?.owner?.toString()}
+      Principal: {$auth?.account?.owner?.toString()}
       <br />
-      {$t("common.subaccount")}: {uint8ArrayToHexString(
+      Subaccount: {uint8ArrayToHexString(
         $auth?.account?.subaccount,
       )}
     </div>
@@ -80,10 +79,10 @@
       {/if}
     </div>
     <button on:click={handleDisconnect}>
-      {$t("common.disconnectWallet")}
+      Disconnect
     </button>
   {:else}
-    <p>{$t("common.notConnected")}</p>
+    <p>Not connected</p>
     <div class="wallet-list">
       {#if availableWallets && availableWallets.length > 0}
         {#each availableWallets as wallet}
@@ -102,7 +101,7 @@
           </div>
         {/each}
       {:else}
-        <p>{$t("common.noWalletsAvailable")}</p>
+        <p>No wallets available</p>
       {/if}
     </div>
   {/if}

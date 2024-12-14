@@ -1,6 +1,6 @@
 {
   "kong_backend": {
-    "ic": "l4lgk-raaaa-aaaar-qahpq-cai"
+    "ic": "2ipq2-uqaaa-aaaar-qailq-cai"
   },
   "kong_data": {
     "ic": "cbefx-hqaaa-aaaar-qakrq-cai"
@@ -8,25 +8,25 @@
   "kong_faucet": {
     "ic": "ohr23-xqaaa-aaaar-qahqq-cai"
   },
-  "ckusdt_ledger": {
-    "ic": "zdzgz-siaaa-aaaar-qaiba-cai"
-  },
-  "icp_ledger": {
-    "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
-  },
-  "ckusdc_ledger": {
-    "ic": "zw6xu-taaaa-aaaar-qaicq-cai"
-  },
-  "ckbtc_ledger": {
-    "ic": "zeyan-7qaaa-aaaar-qaibq-cai"
-  },
-  "cketh_ledger": {
-    "ic": "zr7ra-6yaaa-aaaar-qaica-cai"
-  },
   "kong_svelte": {  
     "ic": "3ldz4-aiaaa-aaaar-qaina-cai"
   },
-  "kong_ledger": {
+  "ksusdt_ledger": {
+    "ic": "zdzgz-siaaa-aaaar-qaiba-cai"
+  },
+  "ksicp_ledger": {
+    "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+  },
+  "ksusdc_ledger": {
+    "ic": "zw6xu-taaaa-aaaar-qaicq-cai"
+  },
+  "ksbtc_ledger": {
+    "ic": "zeyan-7qaaa-aaaar-qaibq-cai"
+  },
+  "kseth_ledger": {
+    "ic": "zr7ra-6yaaa-aaaar-qaica-cai"
+  },
+  "kskong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai"
   }
 }

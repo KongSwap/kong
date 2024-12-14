@@ -1,16 +1,13 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
   import { onMount } from "svelte";
-  import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../../declarations/kong_backend";
   import QRCode from 'qrcode';
   import { writable } from 'svelte/store';
   import { toastStore } from "$lib/stores/toastStore";
-    import { uint8ArrayToHexString } from "@dfinity/utils";
+  import { uint8ArrayToHexString } from "@dfinity/utils";
 
   export let display: 'both' | 'principal' | 'account' = 'both';
 
-  let loading = writable(true);
-  let error = writable<string | null>(null);
   let copied = writable(false);
   let copyLoading = writable(false);
   let qrLoading = writable(false);
@@ -190,7 +187,7 @@
     </div>
 </div>
 
-<style>
+<style scoped>
   .tab-panel {
     animation: fadeIn 0.3s ease;
     padding-bottom: 4rem;
@@ -205,31 +202,6 @@
     color: rgba(255, 255, 255, 0.9);
     margin-bottom: 0.5rem;
     font-weight: 600;
-  }
-
-  .loading-state,
-  .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 2rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .error-state {
-    color: rgb(248, 113, 113);
-  }
-
-  .retry-button {
-    padding: 0.5rem 1rem;
-    background: rgba(248, 113, 113, 0.2);
-    border: 1px solid rgba(248, 113, 113, 0.3);
-    border-radius: 4px;
-    color: rgb(248, 113, 113);
-    font-size: 0.875rem;
-    cursor: pointer;
   }
 
   .tabs {
@@ -274,11 +246,6 @@
     background: rgba(0, 0, 0, 0.3);
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .label {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
   }
 
   .value-container {

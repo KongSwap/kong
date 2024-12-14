@@ -604,7 +604,7 @@
   />
 {/if}
 
-<style scoped>
+<style scoped lang="postcss">
   .earn-cards {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
     max-width: 100%;
@@ -753,27 +753,8 @@
     }
   }
 
-  /* Custom breakpoint for extra small screens */
-  @media (min-width: 350px) {
-    .xs\:flex-row {
-      flex-direction: row;
-    }
-    
-    .xs\:w-auto {
-      width: auto;
-    }
-    
-    .xs\:flex-1 {
-      flex: 1 1 0%;
-    }
-  }
-  
   .kong-special-card {
     background: rgba(0, 255, 128, 0.02);
-    
-    .token-info {
-      font-weight: 500;
-    }
 
     &:hover {
       background: rgba(0, 255, 128, 0.04);

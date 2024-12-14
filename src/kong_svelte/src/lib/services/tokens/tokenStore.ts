@@ -7,7 +7,7 @@ import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 import { toastStore } from "$lib/stores/toastStore";
 import { eventBus } from './eventBus';
 import { auth } from "$lib/services/auth";
-import { liveQuery } from "dexie";
+import { liveQuery, type Observable } from "dexie";
 import { Principal } from "@dfinity/principal";
 import { AnonymousIdentity } from "@dfinity/agent";
 import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
@@ -103,6 +103,7 @@ function createTokenStore() {
             }), {})
           }
         }));
+        
       } catch (error) {
         console.error('Error updating prices:', error);
       }
@@ -233,39 +234,61 @@ function createTokenStore() {
         .toArray();
 
       const tokensWithPrices = await Promise.all(fetchedTokens.map(async token => {
-        // Find cached token with price
-        const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
-        
-        // Get historical price for 24h change
-        const now = Math.floor(Date.now() / 1000);
-        const yesterday = now - (24 * 60 * 60);
-        const searchWindowStart = yesterday - (4 * 60 * 60); // 4 hours before target
-        const searchWindowEnd = yesterday + (4 * 60 * 60); // 4 hours after target
+        try {
+          // Find cached token with price
+          const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
+          
+          let priceChange = 0;
+          try {
+            // Get historical price for 24h change
+            const now = Math.floor(Date.now() / 1000);
+            const yesterday = now - (24 * 60 * 60);
+            const searchWindowStart = yesterday - (4 * 60 * 60);
+            const searchWindowEnd = yesterday + (4 * 60 * 60);
 
-        const historicalPrice = await getHistoricalPrice(
-          token,
-          yesterday,
-          searchWindowStart, 
-          searchWindowEnd
-        );
-        const currentPrice = Number(token.metrics?.price || 0);
-        
-        // Calculate price change
-        const priceChange = historicalPrice > 0 ? 
-          ((currentPrice - historicalPrice) / historicalPrice) * 100 : 
-          0;
-
-        return {
-          ...token,
-          metrics: {
-            ...token.metrics,
-            price_change_24h: priceChange.toFixed(2),
-            historical_price: historicalPrice
+            const historicalPrice = await getHistoricalPrice(
+              token,
+              yesterday,
+              searchWindowStart, 
+              searchWindowEnd
+            );
+            const currentPrice = Number(token.metrics?.price || 0);
+            
+            // Calculate price change
+            priceChange = historicalPrice > 0 ? 
+              ((currentPrice - historicalPrice) / historicalPrice) * 100 : 
+              0;
+          } catch (error) {
+            console.warn(`Failed to calculate price change for ${token.symbol}:`, error);
+            // Use cached price change if available
+            priceChange = cachedToken?.metrics?.price_change_24h ? 
+              Number(cachedToken.metrics.price_change_24h) : 
+              0;
           }
-        };
+
+          return {
+            ...token,
+            metrics: {
+              ...token.metrics,
+              price_change_24h: priceChange.toFixed(2),
+              price: token.metrics?.price || cachedToken?.metrics?.price || "0"
+            }
+          };
+        } catch (error) {
+          console.error(`Error enriching token ${token.symbol}:`, error);
+          // Return token with default values if enrichment fails
+          return {
+            ...token,
+            metrics: {
+              ...token.metrics,
+              price_change_24h: "0",
+              price: token.metrics?.price || "0"
+            }
+          };
+        }
       }));
 
-      // Update store with initial tokens (with cached prices)
+      // Update store with tokens
       store.update((s) => ({
         ...s,
         tokens: tokensWithPrices,
@@ -315,13 +338,12 @@ function createTokenStore() {
       }));
 
     } catch (error: any) {
-      console.error("Error enriching tokens:", error);
+      console.error("Error processing tokens:", error);
       store.update((s) => ({
         ...s,
-        error: error.message,
         isLoading: false,
+        error: "Failed to process tokens"
       }));
-      toastStore.error("Failed to enrich tokens");
     }
   });
 
@@ -654,18 +676,56 @@ export const cleanup = () => {
 
 export const tokenStore = createTokenStore();
 
-const liveTokensQuery = liveQuery(async () => {
-  return await kongDB.tokens.toArray();
-});
+// Create a wrapper to convert Dexie Observable to Svelte Readable
+function observableToReadable<T>(observable: Observable<T>): Readable<T | undefined> {
+  return {
+    subscribe: (run) => {
+      const subscription = observable.subscribe({
+        next: (value) => run(value),
+        error: (error) => console.error('Observable error:', error)
+      });
+      return () => subscription.unsubscribe();
+    }
+  };
+}
 
-export const liveTokens: Readable<FE.Token[] | undefined> = {
-  subscribe: (run: (value: FE.Token[] | undefined) => void) => {
-    const subscription = liveTokensQuery?.subscribe(run);
-    return () => subscription?.unsubscribe();
-  }
-};
+export const liveTokens = observableToReadable(
+  liveQuery(async () => {
+    try {
+      // First get cached tokens to show immediately
+      const cachedTokens = await kongDB.tokens.toArray();
+      
+      // If we have cached tokens, return them immediately
+      if (cachedTokens.length > 0) {
+        return cachedTokens;
+      }
+      
+      // If no cached tokens, get from store
+      const store = get(tokenStore);
+      if (store.tokens.length > 0) {
+        await Promise.all(
+          store.tokens.map(token => kongDB.tokens.put({
+            ...token,
+            timestamp: Date.now()
+          }))
+        );
+        return store.tokens;
+      }
 
-export const formattedTokens = derived(
+      return [];
+    } catch (error) {
+      console.error('Error in liveQuery:', error);
+      return [];
+    }
+  })
+);
+
+// For specific token updates
+export const getLiveToken = (canisterId: string) => observableToReadable(
+  liveQuery(() => kongDB.tokens.get(canisterId))
+);
+
+export const formattedTokens = derived<[typeof tokenStore, Readable<FE.Token[] | undefined>], FE.Token[]>(
   [tokenStore, liveTokens],
   ([$tokenStore, $liveTokens]) => {
     if (!$liveTokens) return [];
@@ -696,9 +756,6 @@ export const formattedTokens = derived(
         // Remove trailing zeros
         formattedBalance = formattedBalance.replace(/\.?0+$/, '');
         
-        const usdValue = amount.times(price);
-        const isFavorite = favorites.includes(token.canister_id);
-
         // Preserve all original token properties and add formatted ones
         return {
           ...token,
@@ -710,10 +767,9 @@ export const formattedTokens = derived(
           },
           balance: balance.toString(),
           formattedBalance,
-          formattedUsdValue: formatToNonZeroDecimal(usdValue.toString()),
+          formattedUsdValue: formatToNonZeroDecimal(amount.times(price).toString()),
           total_24h_volume: token.metrics.volume_24h || "0",
-          usdValue: Number(usdValue),
-          isFavorite
+          isFavorite: favorites.includes(token.canister_id)
         } as FE.Token;
       })
       .sort((a, b) => {
@@ -745,19 +801,18 @@ export const favoriteTokens = derived(
   }
 );
 
-export const portfolioValue = derived(
+export const portfolioValue = derived<[typeof tokenStore, Readable<FE.Token[]>], string>(
   [tokenStore, formattedTokens],
   ([$tokenStore, $formattedTokens]) => {
     if (!$formattedTokens) return "$0.00";
 
-    const total = $formattedTokens.reduce((sum, token) => {
+    const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
       const balance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
       const price = $tokenStore.prices[token.canister_id] || 0;
       const amount = Number(balance) / Math.pow(10, token.decimals);
       return sum + (amount * price);
     }, 0);
 
-    // Format with commas and 2 decimal places
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',

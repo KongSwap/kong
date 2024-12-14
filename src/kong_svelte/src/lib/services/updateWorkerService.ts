@@ -15,6 +15,7 @@ import { appLoader } from "$lib/services/appLoader";
 import { calculate24hPriceChange, priceStore } from "$lib/price/priceService";
 import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { kongDB } from "./db";
+import { TokenService } from "./tokens/TokenService";
 
 class UpdateWorkerService {
   private worker: Worker | null = null;
@@ -131,8 +132,7 @@ class UpdateWorkerService {
       const currentStore = get(tokenStore);
       if (!currentStore?.tokens?.length) return;
 
-      // Create batches of tokens to process in parallel
-      const batchSize = 15; // Process 5 tokens at a time
+      const batchSize = 20;
       const tokens = currentStore.tokens;
       const batches = [];
       
@@ -141,20 +141,43 @@ class UpdateWorkerService {
       }
 
       // Process each batch in parallel
-      const results = await Promise.all(
+      const updates = await Promise.all(
         batches.map(async (batch) => {
-          // Process tokens within each batch in parallel
           const batchResults = await Promise.all(
             batch.map(async (token) => {
               try {
-                // Skip USDT price change calculation
                 const priceChange = token.canister_id === CKUSDT_CANISTER_ID ? 0 : await calculate24hPriceChange(token);
-                await kongDB.tokens.update(token.canister_id, { ...token, metrics: { ...token.metrics, price_change_24h: priceChange } });
-                // console.log(`Price change for token ${token.canister_id}: ${priceChange}`);
-                return [token.canister_id, priceChange] as [string, number | string];
+                const currentPrice = await TokenService.fetchPrice(token);
+                
+                // Get existing token from DB
+                const existingToken = await kongDB.tokens.get(token.canister_id);
+                
+                // Prepare updated token with new price data
+                const updatedToken = {
+                  ...(existingToken || token),
+                  metrics: {
+                    ...(existingToken?.metrics || token.metrics),
+                    price_change_24h: priceChange,
+                    price: currentPrice.toString()
+                  },
+                  timestamp: Date.now()
+                };
+
+                // Update in DB
+                await kongDB.tokens.put(updatedToken);
+
+                return {
+                  id: token.canister_id,
+                  price: currentPrice,
+                  priceChange: Number(priceChange)
+                };
               } catch (error) {
-                console.error(`Error calculating price change for token ${token.canister_id}:`, error);
-                return [token.canister_id, 0] as [string, number];
+                console.error(`Error updating token ${token.canister_id}:`, error);
+                return {
+                  id: token.canister_id,
+                  price: Number(token.metrics?.price || 0),
+                  priceChange: Number(token.metrics?.price_change_24h || 0)
+                };
               }
             })
           );
@@ -162,27 +185,44 @@ class UpdateWorkerService {
         })
       );
 
-      // Flatten results and update stores
-      const priceChanges = results.flat();
-      const priceChangeMap = Object.fromEntries(priceChanges);
+      const flatUpdates = updates.flat();
       
-      // Update price store with new values
-      priceStore.set(priceChangeMap);
+      // Create maps for both price and price change
+      const priceMap = Object.fromEntries(
+        flatUpdates.map(update => [update.id, update.price])
+      );
+      const priceChangeMap = Object.fromEntries(
+        flatUpdates.map(update => [update.id, update.priceChange])
+      );
 
-      // Update token store
+      // Update price store with numeric values
+      priceStore.set(priceMap);
+
+      // Update token store with both metrics and prices fields
       tokenStore.update((store) => {
         if (!store) return store;
         return {
           ...store,
+          // Update the prices field for reactivity
+          prices: {
+            ...store.prices,
+            ...priceMap
+          },
+          // Update token metrics
           tokens: store.tokens.map((token) => ({
             ...token,
             metrics: {
               ...token.metrics,
-              price_change_24h: priceChangeMap[token.canister_id] ?? token.metrics.price_change_24h
+              price: priceMap[token.canister_id]?.toString() ?? token.metrics.price,
+              price_change_24h: priceChangeMap[token.canister_id]?.toString() ?? token.metrics.price_change_24h
             }
           }))
         };
       });
+
+      // Force a refresh of the live query
+      await kongDB.tokens.toArray();
+
     } catch (error) {
       console.error("Error updating prices:", error);
     }

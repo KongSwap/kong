@@ -35,14 +35,12 @@ dfx identity use kong
 ./deploy_kong_backend.sh
 ./deploy_kong_data.sh
 ./deploy_internet_identity.sh
-./deploy_icp_ledger.sh
-./deploy_ckusdc_ledger.sh
-./deploy_ckusdt_ledger.sh
-./deploy_ckbtc_ledger.sh
-./deploy_cketh_ledger.sh
-./deploy_kong_ledger.sh
-./deploy_kong1_ledger.sh
-./deploy_kong2_ledger.sh
+./deploy_ksicp_ledger.sh
+./deploy_ksusdc_ledger.sh
+./deploy_ksusdt_ledger.sh
+./deploy_ksbtc_ledger.sh
+./deploy_kseth_ledger.sh
+./deploy_kskong_ledger.sh
 ./deploy_kong_svelte.sh
 
 ./user_mint.sh

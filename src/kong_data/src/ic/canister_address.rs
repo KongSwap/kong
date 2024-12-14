@@ -1,5 +1,5 @@
 #[cfg(not(feature = "prod"))]
-pub const KONG_BACKEND: &str = "l4lgk-raaaa-aaaar-qahpq-cai";
+pub const KONG_BACKEND: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 #[cfg(feature = "prod")]
 pub const KONG_BACKEND: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
