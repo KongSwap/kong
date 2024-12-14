@@ -12,19 +12,11 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { parseTokens } from "./tokenParsers";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
-import { canisterId as kongBackendCanisterId, idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
-import { canisterId as kongDataCanisterId } from "../../../../../declarations/kong_data";
-import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
-import { canisterId as kongFaucetId } from "../../../../../declarations/kong_faucet";
+import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
-
-import { Pr } from "svelte-flags";
 import BigNumber from "bignumber.js";
-import { eventBus } from './eventBus';
-
-const KONG_DATA_CANISTER_ID = kongDataCanisterId || process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
 
 export class TokenService {
   protected static instance: TokenService;

@@ -282,7 +282,7 @@
     <div class="pool-details">
         <div class="pool-header">
             <div class="token-info">
-                <TokenImages tokens={[token0, token1]} overlap={12} size={28} />
+                <TokenImages tokens={[token0, token1]} overlap={true} size={28} />
                 <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
             </div>
         </div>

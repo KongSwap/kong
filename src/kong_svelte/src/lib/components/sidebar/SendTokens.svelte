@@ -7,12 +7,7 @@
     import { formatTokenAmount, toMinimalUnit } from '$lib/utils/numberFormatUtils';
     import BigNumber from 'bignumber.js';
 
-    export let token: {
-        symbol: string;
-        amount: string;
-        canister_id: string;
-        decimals: number;
-    };
+    export let token: FE.Token;
 
     let recipientAddress = '';
     let amount = '';
