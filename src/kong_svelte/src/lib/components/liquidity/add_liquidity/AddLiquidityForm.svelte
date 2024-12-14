@@ -492,7 +492,7 @@
                 <div class="pool-info mt-4">
                     <div class="pool-stats-grid">
                         <div class="pool-stat">
-                            <span class="stat-value">${formatLargeNumber(pool.balance)}</span>
+                            <span class="stat-value">${formatLargeNumber(pool.tvl)}</span>
                             <span class="stat-label">TVL</span>
                         </div>
                         <div class="pool-stat">

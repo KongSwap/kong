@@ -13,16 +13,8 @@
     "test": "npm -r test"
   },
   "workspaces": [
-    "src/*"
+    "src/kong_svelte"
   ],
   "type": "module",
-  "dependencies": {
-    "@dfinity/agent": "^2.1.3",
-    "@dfinity/auth-client": "^2.1.3",
-    "@dfinity/candid": "^2.1.3",
-    "@dfinity/identity": "^2.1.3",
-    "@dfinity/principal": "^2.1.3",
-    "@dfinity/utils": "^2.6.0"
-  },
   "packageManager": "npm@9.7.0+sha256.b35018fbfa8f583668b2649e407922a721355cd81f61beeb4ac1d4258e585559"
 }

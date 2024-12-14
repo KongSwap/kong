@@ -5,7 +5,6 @@
   import { fade } from "svelte/transition";
   import Navbar from "$lib/components/nav/Navbar.svelte";
   import Toast from "$lib/components/common/Toast.svelte";
-  import { t } from "$lib/services/translations";
   import { appLoader } from "$lib/services/appLoader";
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
@@ -48,7 +47,7 @@
 </script>
 
 <svelte:head>
-  <title>{pageTitle} - {$t("common.browserSubtitle")}</title>
+  <title>{pageTitle} - Rumble in the crypto jungle!</title>
 </svelte:head>
 
 <div class="app-container">

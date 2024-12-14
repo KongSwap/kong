@@ -23,11 +23,11 @@
   }
 </script>
 
-<div class="flex items-center {containerClass}" style="margin-right: {overlap ? '10px' : '0'}">
+<div class="flex items-center {containerClass} p-0 m-0" style="margin-right: {overlap ? '10px' : '0'}">
   {#each validTokens as token, index}
     <div 
       style="height: {size}px; width: {size}px; z-index: {validTokens.length - index};"
-      class="inline-block rounded-full {imageWrapperClass} {overlap ? 'mr-[-10px]' : ''} relative"
+      class="flex items-center rounded-full {imageWrapperClass} {overlap ? 'mr-[-10px]' : ''} relative"
     >
       <img
         class="w-full h-full rounded-full bg-transparent"

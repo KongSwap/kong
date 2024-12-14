@@ -30,6 +30,8 @@ declare global {
         market_cap: string;
         updated_at: string;
         price_change_24h?: string;
+        historical_price?: number;
+        historical_timestamp?: number;
       };
       logo_url: string;
       total_24h_volume: string;
@@ -38,7 +40,6 @@ declare global {
       balance: string;
       timestamp?: number;
       isFavorite?: boolean;
-      usdValue?: number;
       formattedBalance?: string;
       formattedUsdValue?: string;
       marketCapRank?: number;

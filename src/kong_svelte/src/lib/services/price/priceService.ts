@@ -1,5 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import { fetchChartData, type CandleData } from '../indexer/api';
+import { kongDB } from '../db';
 
 interface PriceState {
   currentPrice: number | null;
@@ -136,3 +137,54 @@ export function getPriceChangeColor(change: number | null): string {
 
 // Export singleton instance
 export const priceStore = new PriceService(); 
+
+export async function getHistoricalPrice(
+  token: FE.Token,
+  targetTimestamp: number,
+  windowStart: number,
+  windowEnd: number
+): Promise<number> {
+  try {
+    // Check if we have a recent historical price
+    if (token.metrics.historical_timestamp && 
+        token.metrics.historical_timestamp >= windowStart && 
+        token.metrics.historical_timestamp <= windowEnd) {
+      return token.metrics.historical_price || 0;
+    }
+
+    // If not, fetch from API
+    const data = await fetchChartData(
+      token.token_id,
+      0,
+      targetTimestamp,
+      windowEnd,
+      "1H"
+    );
+
+    if (!data || data.length === 0) return 0;
+
+    // Find closest price to target timestamp
+    const closest = data.reduce((closest, current) => {
+      const currentDiff = Math.abs(current.candle_start - targetTimestamp);
+      const closestDiff = Math.abs(closest.candle_start - targetTimestamp);
+      return currentDiff < closestDiff ? current : closest;
+    });
+
+    const historicalPrice = Number(closest.close_price);
+
+    // Update token in DB with historical price
+    await kongDB.tokens.update(token.canister_id, {
+      metrics: {
+        ...token.metrics,
+        historical_price: historicalPrice,
+        historical_timestamp: closest.candle_start
+      }
+    });
+
+    return historicalPrice;
+
+  } catch (error) {
+    console.error('Error getting historical price:', error);
+    return 0;
+  }
+} 

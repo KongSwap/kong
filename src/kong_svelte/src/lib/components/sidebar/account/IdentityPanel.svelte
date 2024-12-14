@@ -1,15 +1,13 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
   import { onMount } from "svelte";
-  import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../../declarations/kong_backend";
   import QRCode from 'qrcode';
   import { writable } from 'svelte/store';
   import { toastStore } from "$lib/stores/toastStore";
+  import { uint8ArrayToHexString } from "@dfinity/utils";
 
   export let display: 'both' | 'principal' | 'account' = 'both';
 
-  let loading = writable(true);
-  let error = writable<string | null>(null);
   let copied = writable(false);
   let copyLoading = writable(false);
   let qrLoading = writable(false);
@@ -67,58 +65,28 @@
     }
   };
 
-  export async function loadIdentityData() {
-    if (!mounted) return;
-    try {
-      loading.set(true);
-      error.set(null);
-      const actor = await auth.getActor(kongBackendId, kongBackendIDL, { anon: false, requiresSigning: false });
-      const res = await actor.get_user();
-      
-      if (!res.Ok) throw new Error('Failed to fetch user data');
-
-      identity = {
-        ...identity,
-        principalId: res.Ok.principal_id,
-        accountId: res.Ok.account_id
-      };
-
-      const [principalQR, accountQR] = await Promise.all([
-        generateQR(res.Ok.principal_id),
-        generateQR(res.Ok.account_id)
-      ]);
-
-      identity = {
-        ...identity,
-        principalQR,
-        accountQR
-      };
-    } catch (err) {
-      error.set('Failed to load identity data');
-      console.error(err);
-    } finally {
-      loading.set(false);
-    }
-  }
-
-  onMount(() => {
+  onMount(async () => {
     mounted = true;
-    loadIdentityData();
+    identity = {
+      ...identity,
+      principalId: auth.pnp.account.owner,
+      accountId: uint8ArrayToHexString(auth.pnp.account.subaccount)
+    };
+
+    console.log("PNP", auth.pnp);
+
+    const principalQR = await generateQR(identity.principalId.toString());
+    const accountQR = await generateQR(identity.accountId);
+
+    identity = {
+      ...identity,
+      principalQR,
+      accountQR
+    };
   });
 </script>
 
 <div class="tab-panel">
-  {#if $loading && !identity.principalId}
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>Loading identity data...</p>
-    </div>
-  {:else if $error}
-    <div class="error-state">
-      <p class="error-message">{$error}</p>
-      <button class="retry-button" on:click={loadIdentityData}>Retry</button>
-    </div>
-  {:else}
     <div class="detail-section">
 
       {#if display === 'both'}
@@ -217,10 +185,9 @@
         {/if}
       </div>
     </div>
-  {/if}
 </div>
 
-<style>
+<style scoped>
   .tab-panel {
     animation: fadeIn 0.3s ease;
     padding-bottom: 4rem;
@@ -235,31 +202,6 @@
     color: rgba(255, 255, 255, 0.9);
     margin-bottom: 0.5rem;
     font-weight: 600;
-  }
-
-  .loading-state,
-  .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 2rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .error-state {
-    color: rgb(248, 113, 113);
-  }
-
-  .retry-button {
-    padding: 0.5rem 1rem;
-    background: rgba(248, 113, 113, 0.2);
-    border: 1px solid rgba(248, 113, 113, 0.3);
-    border-radius: 4px;
-    color: rgb(248, 113, 113);
-    font-size: 0.875rem;
-    cursor: pointer;
   }
 
   .tabs {
@@ -304,11 +246,6 @@
     background: rgba(0, 0, 0, 0.3);
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .label {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
   }
 
   .value-container {

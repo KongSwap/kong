@@ -102,9 +102,13 @@
     error = "";
     
     try {
-      const success = await onConfirm();
+      const result = await onConfirm();
+      console.log("Confirmation result:", result, typeof result);
+      
+      const success = result !== false && result !== null && result !== undefined;
       
       if (success) {
+        console.log("Swap confirmed as successful");
         swapState.update(state => ({
           ...state,
           showConfirmation: false,
@@ -114,6 +118,7 @@
         }));
         onClose?.();
       } else {
+        console.log("Swap confirmed as failed");
         error = "Swap failed";
         toastStore.error(error);
         swapState.update(state => ({
@@ -123,6 +128,7 @@
         }));
       }
     } catch (e) {
+      console.error("Swap confirmation error:", e);
       error = e.message || "An error occurred";
       toastStore.error(error);
       swapState.update(state => ({

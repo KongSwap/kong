@@ -194,10 +194,10 @@ service : {
     icrc10_supported_standards : () -> (vec Icrc10SupportedStandards) query;
     icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
 
-    // requests(request_id, num_requests) - returns specific request or all requests of the user
+    // requests(opt request_id, opt num_requests) - return requests by request id.
     requests : (opt nat64, opt nat16) -> (RequestsResult) query;
-    // txs(my_txs, tx_id, token_id, num_txs) - returns transactions of the user or all transactions
-    txs : (opt bool, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
+    // txs(opt principal_id, opt tx_id, opt token_id, opt num_txs) - returns transactions filtered by principal id, transaction id or token
+    txs : (opt text, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 
     get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
     get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;

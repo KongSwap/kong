@@ -1,20 +1,19 @@
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, INDEXER_URL } from "$lib/constants/canisterConstants";
+import { INDEXER_URL } from "$lib/constants/canisterConstants";
 import { DEFAULT_LOGOS } from "./tokenLogos";
 
 // For default logos, we don't need the INDEXER_URL prefix
 const STATIC_ASSETS_URL = `${INDEXER_URL}`;
 
-export const parseTokens = (
+export const parseTokens = async (
   data: FE.Token[],
-): FE.Token[] => {
+): Promise<FE.Token[]> => {
   try {
-    const icTokens: FE.Token[] = data.map((token) => {
+    const icTokens: FE.Token[] = await Promise.all(data.map(async (token) => {
       let logoUrl: string;
 
       if (token.canister_id in DEFAULT_LOGOS) {
         // For default logos, use the path directly without the INDEXER_URL prefix
         logoUrl = DEFAULT_LOGOS[token.canister_id as keyof typeof DEFAULT_LOGOS];
-        console.log(`Using default logo for ${token.symbol} (${token.canister_id}):`, logoUrl);
       } else if (token?.logo_url) {
         // For dynamic logos from the indexer, use the INDEXER_URL prefix
         const originalUrl = token.logo_url;
@@ -22,15 +21,13 @@ export const parseTokens = (
       } else {
         // For the default fallback logo, use the path directly
         logoUrl = DEFAULT_LOGOS.DEFAULT;
-        console.log(`Using fallback logo for ${token.symbol} (${token.canister_id}):`, logoUrl);
       }
-
       const result: FE.Token = {
         canister_id: token.canister_id,
         address: token.address || token.canister_id,
         name: token.name,
         symbol: token.symbol,
-        fee: Number(token.fee.toString().replace("_", "")),
+        fee: Number(token.fee_fixed.toString().replace("_", "")),
         fee_fixed: token.fee_fixed.replace("_", ""),
         decimals: token.decimals,
         token: token.token_type || '',
@@ -58,7 +55,7 @@ export const parseTokens = (
         balance: "0",
       };
       return result;
-    });
+    }));
 
     return icTokens;
   } catch (error) {

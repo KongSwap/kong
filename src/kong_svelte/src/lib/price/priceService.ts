@@ -12,6 +12,15 @@ export const priceStore = writable<{[key: string]: number}>({});
 const requestCache = new Map<string, Promise<any>>();
 const tokenLocks = new Map<string, Promise<void>>();
 
+// Add cache for historical prices at the top with other caches
+const historicalPriceCache = new Map<string, {
+  price: number;
+  timestamp: number;
+}>();
+
+// Cache duration for historical prices (e.g. 5 minutes)
+const HISTORICAL_PRICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 async function acquireTokenLock(tokenId: string): Promise<void> {
   while (tokenLocks.has(tokenId)) {
     await tokenLocks.get(tokenId);
@@ -84,59 +93,37 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
   }
 }
 
-export async function calculate24hPriceChange(token: FE.Token): Promise<number | string> {
-  await acquireTokenLock(token.canister_id);
-  
+export async function calculate24hPriceChange(token: FE.Token): Promise<number> {
   try {
-    // Get current time and ensure UTC handling
-    const now = new Date();
-    const nowUTC = Math.floor(now.getTime() / 1000);
-    
-    // Calculate exactly 24 hours ago
-    const yesterdayUTC = nowUTC - (24 * 60 * 60);
-    
-    // Use a smaller window to ensure we get closer to the exact 24h ago price
-    const searchWindowStartUTC = yesterdayUTC - (4 * 60 * 60); // ±4 hours
-    const searchWindowEndUTC = yesterdayUTC + (4 * 60 * 60);
+    // Get current price
+    const currentPrice = Number(token.metrics?.price || 0);
+    if (!currentPrice) return 0;
 
-    // console.log(`[${token.symbol}] Time windows for price calculation:`, {
-    //   symbol: token.symbol,
-    //   currentTime: new Date(nowUTC * 1000).toISOString(),
-    //   targetTime: new Date(yesterdayUTC * 1000).toISOString(),
-    //   searchWindow: {
-    //     start: new Date(searchWindowStartUTC * 1000).toISOString(),
-    //     end: new Date(searchWindowEndUTC * 1000).toISOString()
-    //   }
-    // });
+    // Try to get historical price
+    const now = Math.floor(Date.now() / 1000);
+    const yesterday = now - (24 * 60 * 60);
+    const searchWindowStart = yesterday - (4 * 60 * 60);
+    const searchWindowEnd = yesterday + (4 * 60 * 60);
 
-    const poolData = get(poolStore);
-    if (!poolData?.pools?.length) {
+    try {
+      const historicalPrice = await getHistoricalPrice(
+        token,
+        yesterday,
+        searchWindowStart,
+        searchWindowEnd
+      );
+
+      // If we couldn't get historical price, return 0
+      if (!historicalPrice) return 0;
+
+      // Calculate price change
+      return ((currentPrice - historicalPrice) / historicalPrice) * 100;
+    } catch (error) {
+      console.warn(`Failed to calculate price change for ${token.symbol}:`, error);
       return 0;
     }
-
-    const [currentPrice, price24hAgo] = await Promise.all([
-      calculateTokenPrice(token, poolData.pools),
-      getHistoricalPrice(token, yesterdayUTC, searchWindowStartUTC, searchWindowEndUTC)
-    ]);
-
-    // console.log(`[${token.symbol}] Price comparison:`, {
-    //   symbol: token.symbol,
-    //   currentPrice,
-    //   price24hAgo,
-    //   percentageChange: price24hAgo === 0 ? "NEW" : ((currentPrice - price24hAgo) / price24hAgo) * 100
-    // });
-
-    if (price24hAgo === 0) {
-      return "n/a";
-    }
-
-    if (currentPrice === 0) {
-      return 0;
-    }
-
-    return ((currentPrice - price24hAgo) / price24hAgo) * 100;
   } catch (error) {
-    console.error(`Error calculating 24h price change for ${token.symbol}:`, error);
+    console.error(`Error in calculate24hPriceChange for ${token.symbol}:`, error);
     return 0;
   }
 }
@@ -296,19 +283,25 @@ export async function getHistoricalPrice(
       return 1;
     }
 
+    // Create cache key using token and target time
+    const cacheKey = `${token.canister_id}-${targetTime}`;
+    
+    // Check cache first
+    const cached = historicalPriceCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < HISTORICAL_PRICE_CACHE_DURATION) {
+      return cached.price;
+    }
+
     // Ensure all timestamps are valid
     targetTime = ensureValidTimestamp(targetTime);
     startTime = ensureValidTimestamp(startTime);
     endTime = ensureValidTimestamp(endTime);
 
-    const tokenId = Number(token.token_id);
-
-    // Log the exact candle we're using
-    const getClosestPrice = (data: any[]) => {
+    // Helper function to get closest price from candle data
+    const getClosestPrice = (data: any[]): number => {
       if (!data?.length) return 0;
       
       const sortedData = [...data].sort((a, b) => {
-        // Convert API timestamps to Unix seconds
         const aTime = apiTimestampToUnix(a.candle_start);
         const bTime = apiTimestampToUnix(b.candle_start);
         return Math.abs(aTime - targetTime) - Math.abs(bTime - targetTime);
@@ -317,87 +310,66 @@ export async function getHistoricalPrice(
       const closest = sortedData[0];
       if (!closest) return 0;
 
-      const closestTime = apiTimestampToUnix(closest.candle_start);
-      const hoursDiff = Math.abs(closestTime - targetTime) / 3600;
-
-      // console.log(`[${token.symbol}] Selected historical candle:`, {
-      //   symbol: token.symbol,
-      //   candleTime: new Date(closestTime * 1000).toISOString(),
-      //   targetTime: new Date(targetTime * 1000).toISOString(),
-      //   hoursDifference: hoursDiff,
-      //   candleData: {
-      //     ...closest,
-      //     candle_start: new Date(closestTime * 1000).toISOString()
-      //   }
-      // });
-
       const price = Number(closest.close_price);
       return isNaN(price) ? 0 : price;
     };
 
-    // Try direct USDT path first
-    const directUsdtData = await fetchCandleData(tokenId, 1, startTime, endTime);
-    let price = 0;
+    try {
+      // Try direct USDT path first
+      const directUsdtData = await fetchCandleData(Number(token.token_id), 1, startTime, endTime);
+      let price = 0;
 
-    if (directUsdtData.length > 0) {
-      const isPayToken = directUsdtData[0].pay_token_id === tokenId;
-      const rawPrice = getClosestPrice(directUsdtData);
+      if (directUsdtData.length > 0) {
+        const isPayToken = directUsdtData[0].pay_token_id === Number(token.token_id);
+        const rawPrice = getClosestPrice(directUsdtData);
 
-      if (rawPrice > 0) {
-        price = isPayToken ? rawPrice : 1 / rawPrice;
-      }
-    }
-
-    // console.log(`[${token.symbol}] Historical price - Direct USDT path:`, {
-    //   symbol: token.symbol,
-    //   price,
-    //   rawData: directUsdtData
-    // });
-
-    // If no direct USDT price, try via ICP
-    if (price === 0) {
-      const [tokenIcpData, icpUsdtData] = await Promise.all([
-        fetchCandleData(tokenId, 2, startTime, endTime),
-        fetchCandleData(2, 1, startTime, endTime)
-      ]);
-
-      if (tokenIcpData.length > 0 && icpUsdtData.length > 0) {
-        const tokenIcpPrice = getClosestPrice(tokenIcpData);
-        const icpUsdtPrice = getClosestPrice(icpUsdtData);
-
-        if (tokenIcpPrice > 0 && icpUsdtPrice > 0) {
-          const tokenIsPayToken = tokenIcpData[0].pay_token_id === tokenId;
-          const icpIsPayToken = icpUsdtData[0].pay_token_id === 2;
-
-          const tokenInIcp = tokenIsPayToken ? tokenIcpPrice : 1 / tokenIcpPrice;
-          const icpInUsdt = icpIsPayToken ? icpUsdtPrice : 1 / icpUsdtPrice;
-          
-          price = tokenInIcp * icpInUsdt;
-
-          // console.log(`[${token.symbol}] Historical price - ICP path:`, {
-          //   symbol: token.symbol,
-          //   price,
-          //   tokenIcpData,
-          //   icpUsdtData,
-          //   tokenIcpPrice,
-          //   icpUsdtPrice,
-          //   tokenInIcp,
-          //   icpInUsdt
-          // });
+        if (rawPrice > 0) {
+          price = isPayToken ? rawPrice : 1 / rawPrice;
         }
       }
+
+      // If no direct USDT price, try via ICP
+      if (price === 0) {
+        const [tokenIcpData, icpUsdtData] = await Promise.all([
+          fetchCandleData(Number(token.token_id), 2, startTime, endTime),
+          fetchCandleData(2, 1, startTime, endTime)
+        ]);
+
+        if (tokenIcpData.length > 0 && icpUsdtData.length > 0) {
+          const tokenIcpPrice = getClosestPrice(tokenIcpData);
+          const icpUsdtPrice = getClosestPrice(icpUsdtData);
+
+          if (tokenIcpPrice > 0 && icpUsdtPrice > 0) {
+            const tokenIsPayToken = tokenIcpData[0].pay_token_id === Number(token.token_id);
+            const icpIsPayToken = icpUsdtData[0].pay_token_id === 2;
+
+            const tokenInIcp = tokenIsPayToken ? tokenIcpPrice : 1 / tokenIcpPrice;
+            const icpInUsdt = icpIsPayToken ? icpUsdtPrice : 1 / icpUsdtPrice;
+            
+            price = tokenInIcp * icpInUsdt;
+          }
+        }
+      }
+
+      // Cache the result before returning
+      historicalPriceCache.set(cacheKey, {
+        price,
+        timestamp: Date.now()
+      });
+
+      return price;
+    } catch (error) {
+      console.warn(`Failed to fetch historical price data for ${token.symbol}:`, error);
+      // Return current price as fallback
+      return Number(token.metrics?.price || 0);
     }
-
-    // if (price === 0) {
-    //   console.log(`[${token.symbol}] No price found through any path for token:`, {
-    //     symbol: token.symbol,
-    //     canisterId: token.canister_id
-    //   });
-    // }
-
-    return price;
   } catch (error) {
     console.error(`[${token.symbol}] Error getting historical price:`, error);
-    return 0;
+    return Number(token.metrics?.price || 0); // Return current price as fallback
   }
+}
+
+// Add a function to clear the cache if needed
+export function clearHistoricalPriceCache() {
+  historicalPriceCache.clear();
 }

@@ -11,10 +11,6 @@ export const fetchTokens = async (): Promise<FE.Token[]> => {
     }
     const data = await response.json();
     const parsed = parseTokens(data);
-    await kongDB.tokens.bulkPut(parsed.map(token => ({
-      ...token,
-      timestamp: Date.now()
-    })));
     return parsed;
   } catch (error) {
     console.error('Error fetching tokens:', error);

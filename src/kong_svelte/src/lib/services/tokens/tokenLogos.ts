@@ -15,12 +15,6 @@ import {
 // System and configuration constants
 import {
   INDEXER_URL,
-  KONG_BACKEND_PRINCIPAL,
-  DFX_VERSION,
-  DFX_NETWORK,
-  KONG_FRONTEND_CANISTER_ID,
-  KONG_SVELTE_CANISTER_ID,
-  KONG_BACKEND_CANISTER_ID,
 } from "$lib/constants/canisterConstants";
 
 import { kongDB } from '../db';
