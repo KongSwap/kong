@@ -132,8 +132,8 @@
     if (!balance) return "0";
 
     try {
-      const feesInTokens = tokenInfo?.fee
-        ? BigInt(tokenInfo.fee.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
+      const feesInTokens = tokenInfo?.fee_fixed
+        ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
         : 0n;
 
       return formatTokenAmount(
@@ -225,7 +225,7 @@
           $tokenStore.balances[tokenInfo.canister_id]?.in_tokens.toString() ||
             "0",
         );
-        const totalFees = new BigNumber(tokenInfo.fee.toString()).multipliedBy(
+        const totalFees = new BigNumber(tokenInfo.fee_fixed.toString()).multipliedBy(
           tokenInfo.icrc2 ? 2 : 1,
         );
 

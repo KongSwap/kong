@@ -1,5 +1,4 @@
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, INDEXER_URL } from "$lib/constants/canisterConstants";
-import { kongDB } from "../db";
+import { INDEXER_URL } from "$lib/constants/canisterConstants";
 import { DEFAULT_LOGOS } from "./tokenLogos";
 
 // For default logos, we don't need the INDEXER_URL prefix
@@ -23,13 +22,12 @@ export const parseTokens = async (
         // For the default fallback logo, use the path directly
         logoUrl = DEFAULT_LOGOS.DEFAULT;
       }
-      const currentToken = await kongDB.tokens.get(token.canister_id);
       const result: FE.Token = {
         canister_id: token.canister_id,
         address: token.address || token.canister_id,
         name: token.name,
         symbol: token.symbol,
-        fee: Number(token.fee.toString().replace("_", "")),
+        fee: Number(token.fee_fixed.toString().replace("_", "")),
         fee_fixed: token.fee_fixed.replace("_", ""),
         decimals: token.decimals,
         token: token.token_type || '',
