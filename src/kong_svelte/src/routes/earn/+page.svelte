@@ -139,12 +139,15 @@
   }
 
   $: sortedPools = [...filteredPools].sort((a: BE.Pool, b: BE.Pool) => {
-    // Always put Kong pools first
-    const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
-    const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
+    // Only prioritize Kong/ICP pool
+    const isKongIcpA = (a.address_0 === KONG_CANISTER_ID && a.symbol_1 === 'ICP') || 
+                      (a.address_1 === KONG_CANISTER_ID && a.symbol_0 === 'ICP');
+    const isKongIcpB = (b.address_0 === KONG_CANISTER_ID && b.symbol_1 === 'ICP') || 
+                      (b.address_1 === KONG_CANISTER_ID && b.symbol_0 === 'ICP');
     
-    if (aHasKong && !bHasKong) return -1;
-    if (!aHasKong && bHasKong) return 1;
+    if (isKongIcpA && !isKongIcpB) return -1;
+    if (!isKongIcpA && isKongIcpB) return 1;
+
     if ($activePoolView !== "all") return 0;
 
     const direction = $sortDirection === "asc" ? 1 : -1;
