@@ -59,6 +59,7 @@ interface TokenState {
   activeSwaps: Record<string, any>;
   favoriteTokens: Record<string, string[]>;
   lastBalanceUpdate: Record<string, number>;
+  lastPriceUpdate: Record<string, number>;
 }
 
 function createTokenStore() {
@@ -73,11 +74,96 @@ function createTokenStore() {
     activeSwaps: {},
     favoriteTokens: {},
     lastBalanceUpdate: {},
+    lastPriceUpdate: {},
   };
 
   const store = writable<TokenState>(initialState);
   
-  // Remove periodic balance updates setup since it's now handled by the worker
+  // Set up periodic price updates
+  const PRICE_UPDATE_INTERVAL = 10000; // 10 seconds
+  let priceUpdateTimer: NodeJS.Timeout;
+
+  const startPriceUpdates = () => {
+    if (priceUpdateTimer) clearInterval(priceUpdateTimer);
+    
+    const updatePrices = async () => {
+      const currentStore = get(store);
+      if (!currentStore?.tokens) return;
+
+      try {
+        const prices = await TokenService.fetchPrices(currentStore.tokens);
+        store.update(s => ({
+          ...s,
+          prices,
+          lastPriceUpdate: {
+            ...s.lastPriceUpdate,
+            ...Object.keys(prices).reduce((acc, tokenId) => ({
+              ...acc,
+              [tokenId]: Date.now()
+            }), {})
+          }
+        }));
+      } catch (error) {
+        console.error('Error updating prices:', error);
+      }
+    };
+
+    // Initial update
+    updatePrices();
+    
+    // Set up interval
+    priceUpdateTimer = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+  };
+
+  // Start price updates when tokens are loaded
+  eventBus.on('tokensFetched', (tokens: FE.Token[]) => {
+    store.update(s => ({
+      ...s,
+      tokens,
+      lastTokensFetch: Date.now(),
+      isLoading: false,
+      error: null
+    }));
+    startPriceUpdates();
+  });
+
+  // Clean up interval when needed
+  eventBus.on('cleanup', () => {
+    if (priceUpdateTimer) clearInterval(priceUpdateTimer);
+  });
+
+  // Function to update specific token prices immediately
+  const updateTokenPrices = async (tokenIds: string[]) => {
+    const currentStore = get(store);
+    const tokensToUpdate = currentStore.tokens.filter(t => tokenIds.includes(t.canister_id));
+    
+    if (tokensToUpdate.length === 0) return;
+
+    try {
+      const prices = await TokenService.fetchPrices(tokensToUpdate);
+      store.update(s => ({
+        ...s,
+        prices: {
+          ...s.prices,
+          ...prices
+        },
+        lastPriceUpdate: {
+          ...s.lastPriceUpdate,
+          ...Object.keys(prices).reduce((acc, tokenId) => ({
+            ...acc,
+            [tokenId]: Date.now()
+          }), {})
+        }
+      }));
+    } catch (error) {
+      console.error('Error updating specific token prices:', error);
+    }
+  };
+
+  // Add event listener for balance changes to trigger immediate price updates
+  eventBus.on('balanceChanged', async ({ tokenId }) => {
+    await updateTokenPrices([tokenId]);
+  });
 
   const getCurrentWalletId = (): Principal => {
     let walletId;
@@ -151,7 +237,17 @@ function createTokenStore() {
         const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
         
         // Get historical price for 24h change
-        const historicalPrice = await getHistoricalPrice(token);
+        const now = Math.floor(Date.now() / 1000);
+        const yesterday = now - (24 * 60 * 60);
+        const searchWindowStart = yesterday - (4 * 60 * 60); // 4 hours before target
+        const searchWindowEnd = yesterday + (4 * 60 * 60); // 4 hours after target
+
+        const historicalPrice = await getHistoricalPrice(
+          token,
+          yesterday,
+          searchWindowStart, 
+          searchWindowEnd
+        );
         const currentPrice = Number(token.metrics?.price || 0);
         
         // Calculate price change
@@ -485,7 +581,7 @@ function createTokenStore() {
       return price;
     },
     cleanup: async () => {
-      // Cleanup any active subscriptions or connections
+      if (priceUpdateTimer) clearInterval(priceUpdateTimer);
       store.set(initialState);
     },
     updateBalances: (newBalances: Record<string, { in_tokens: bigint; in_usd: string }>) => {
@@ -549,6 +645,7 @@ function createTokenStore() {
         console.error('Error updating prices:', error);
       }
     },
+    updateTokenPrices,
   };
 }
 
@@ -605,11 +702,10 @@ export const formattedTokens = derived(
         // Preserve all original token properties and add formatted ones
         return {
           ...token,
-          logo_url: token.logo_url, // Explicitly preserve logo_url
+          logo_url: token.logo_url,
           metrics: {
             ...token.metrics,
             price: price.toString(),
-            market_cap: (Number(price) * (Number(token.metrics?.total_supply) / Math.pow(10, token.decimals))).toString(),
             price_change_24h: token.canister_id === CKUSDT_CANISTER_ID ? 0 : token.metrics.price_change_24h
           },
           balance: balance.toString(),

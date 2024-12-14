@@ -477,8 +477,8 @@ export interface _SERVICE {
   'swap_amounts' : ActorMethod<[string, bigint, string], SwapAmountsResult>,
   'swap_async' : ActorMethod<[SwapArgs], SwapAsyncResult>,
   'tokens' : ActorMethod<[[] | [string]], TokensResult>,
-  'txs' : ActorMethod<[[] | [boolean]], TxsResult>,
-  'user_balances' : ActorMethod<[[] | [string]], UserBalancesResult>,
+  'txs' : ActorMethod<[[] | [string]], TxsResult>,
+  'user_balances' : ActorMethod<[string, [] | [string]], UserBalancesResult>,
   'validate_add_liquidity' : ActorMethod<[], ValidateAddLiquidityResult>,
   'validate_remove_liquidity' : ActorMethod<[], ValidateRemoveLiquidityResult>,
 }

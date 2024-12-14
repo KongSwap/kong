@@ -94,8 +94,11 @@
 
     function isValidNumber(value: string): boolean {
         if (!value) return true;
-        const regex = /^[0-9]*\.?[0-9]*$/;
-        return regex.test(value);
+        // Remove commas first
+        const cleanValue = value.replace(/,/g, '');
+        // Allow numbers with optional decimal point and optional scientific notation
+        const regex = /^[0-9]*\.?[0-9]*(?:[eE][+-]?[0-9]+)?$/;
+        return regex.test(cleanValue) && !isNaN(Number(cleanValue));
     }
 
     // Create debounced version of the input handler
@@ -132,24 +135,18 @@
     // Enhanced input handling
     async function handleInput(index: 0 | 1, event: Event) {
         const inputElement = event.target as HTMLInputElement;
-        if (!isValidNumber(inputElement.value)) {
+        let value = inputElement.value.replace(/,/g, ''); // Remove commas during typing
+        
+        if (!isValidNumber(value)) {
             inputElement.value = index === 0 ? previousValue0 : previousValue1;
             return;
         }
 
-        const input = inputElement.value;
-        let value = input.replace(/,/g, '');
         const currentToken = index === 0 ? token0 : token1;
         const otherToken = index === 0 ? token1 : token0;
 
         if (!currentToken || !otherToken) {
             error = "Please select both tokens.";
-            return;
-        }
-
-        // Validate input
-        if (!isValidNumber(value)) {
-            inputElement.value = index === 0 ? previousValue0 : previousValue1;
             return;
         }
 
@@ -169,21 +166,39 @@
             value = "0";
         }
 
-        // Update previous value and input display immediately
+        // Update previous value without commas
         if (index === 0) {
             previousValue0 = value;
-            if (input0Element) {
-                input0Element.value = formatWithCommas(value);
+            // Don't format with commas while typing
+            if (input0Element && input0Focused) {
+                input0Element.value = value;
             }
         } else {
             previousValue1 = value;
-            if (input1Element) {
-                input1Element.value = formatWithCommas(value);
+            // Don't format with commas while typing
+            if (input1Element && input1Focused) {
+                input1Element.value = value;
             }
         }
 
         // Call debounced handler for API request
         debouncedHandleInput(index, value, currentToken, otherToken);
+    }
+
+    // Add onBlur handlers to format with commas when input loses focus
+    function handleBlur(index: 0 | 1) {
+        const value = index === 0 ? previousValue0 : previousValue1;
+        const inputElement = index === 0 ? input0Element : input1Element;
+        
+        if (inputElement) {
+            inputElement.value = formatWithCommas(value);
+        }
+        
+        if (index === 0) {
+            input0Focused = false;
+        } else {
+            input1Focused = false;
+        }
     }
 
     // Max button handler
@@ -221,11 +236,13 @@
     // Reactive declarations for USD values
     $: {
         if (token0?.price && amount0) {
-            const value = parseFloat(amount0) * token0.price;
+            const cleanAmount = amount0.toString().replace(/,/g, '');
+            const value = parseFloat(cleanAmount) * token0.price;
             animatedUsdValue0.set(value);
         }
         if (token1?.price && amount1) {
-            const value = parseFloat(amount1) * token1.price;
+            const cleanAmount = amount1.toString().replace(/,/g, '');
+            const value = parseFloat(cleanAmount) * token1.price;
             animatedUsdValue1.set(value);
         }
     }
@@ -350,10 +367,10 @@
                             pattern="[0-9]*"
                             placeholder="0.00"
                             class="amount-input"
-                            value={formattedDisplayAmount0}
+                            value={input0Focused ? previousValue0 : formattedDisplayAmount0}
                             on:input={(e) => handleInput(0, e)}
                             on:focus={() => (input0Focused = true)}
-                            on:blur={() => (input0Focused = false)}
+                            on:blur={() => handleBlur(0)}
                         />
                     </div>
                     <div class="token-selector-wrapper">
@@ -410,10 +427,10 @@
                             pattern="[0-9]*"
                             placeholder="0.00"
                             class="amount-input"
-                            value={formattedDisplayAmount1}
+                            value={input1Focused ? previousValue1 : formattedDisplayAmount1}
                             on:input={(e) => handleInput(1, e)}
                             on:focus={() => (input1Focused = true)}
-                            on:blur={() => (input1Focused = false)}
+                            on:blur={() => handleBlur(1)}
                         />
                     </div>
                     <div class="token-selector-wrapper">
@@ -475,7 +492,7 @@
                 <div class="pool-info mt-4">
                     <div class="pool-stats-grid">
                         <div class="pool-stat">
-                            <span class="stat-value">${formatLargeNumber(pool.balance)}</span>
+                            <span class="stat-value">${formatLargeNumber(pool.tvl)}</span>
                             <span class="stat-label">TVL</span>
                         </div>
                         <div class="pool-stat">

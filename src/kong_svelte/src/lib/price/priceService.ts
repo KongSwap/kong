@@ -12,6 +12,15 @@ export const priceStore = writable<{[key: string]: number}>({});
 const requestCache = new Map<string, Promise<any>>();
 const tokenLocks = new Map<string, Promise<void>>();
 
+// Add cache for historical prices at the top with other caches
+const historicalPriceCache = new Map<string, {
+  price: number;
+  timestamp: number;
+}>();
+
+// Cache duration for historical prices (e.g. 5 minutes)
+const HISTORICAL_PRICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 async function acquireTokenLock(tokenId: string): Promise<void> {
   while (tokenLocks.has(tokenId)) {
     await tokenLocks.get(tokenId);
@@ -296,6 +305,15 @@ export async function getHistoricalPrice(
       return 1;
     }
 
+    // Create cache key using token and target time
+    const cacheKey = `${token.canister_id}-${targetTime}`;
+    
+    // Check cache first
+    const cached = historicalPriceCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < HISTORICAL_PRICE_CACHE_DURATION) {
+      return cached.price;
+    }
+
     // Ensure all timestamps are valid
     targetTime = ensureValidTimestamp(targetTime);
     startTime = ensureValidTimestamp(startTime);
@@ -395,9 +413,20 @@ export async function getHistoricalPrice(
     //   });
     // }
 
+    // Cache the result before returning
+    historicalPriceCache.set(cacheKey, {
+      price,
+      timestamp: Date.now()
+    });
+
     return price;
   } catch (error) {
     console.error(`[${token.symbol}] Error getting historical price:`, error);
     return 0;
   }
+}
+
+// Add a function to clear the cache if needed
+export function clearHistoricalPriceCache() {
+  historicalPriceCache.clear();
 }

@@ -4,10 +4,18 @@
         "ignore": false
     },
     {
+        "match": ".well-known/ii-alternative-origins",
+        "headers": {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json"
+        },
+        "ignore": false
+    },
+    {
         "match": "**/*",
         "security_policy": "standard",
         "headers": {
-            "Content-Security-Policy": "default-src 'self';script-src 'self' 'unsafe-eval' 'unsafe-inline';connect-src 'self' blob: http://localhost:* https://icp0.io https://*.icp0.io https://icp-api.io https://ic0.app https://api.kongswap.io http://18.170.224.113:8080 https://18.170.224.113:8080 http://18.170.224.113:* https://18.170.224.113:* ws://18.170.224.113:* wss://18.170.224.113:*;frame-src 'self' blob: https://*.tradingview.com;img-src * blob: data:;style-src * 'unsafe-inline';style-src-elem * 'unsafe-inline';font-src *;object-src 'none';base-uri 'self';frame-ancestors 'self' https://*.tradingview.com;form-action 'self';upgrade-insecure-requests;",
+            "Content-Security-Policy": "default-src 'self';script-src 'self' 'unsafe-eval' 'unsafe-inline';connect-src 'self' blob: http://localhost:* https://icp0.io https://*.icp0.io https://icp-api.io https://ic0.app https://kongswap.io https://www.kongswap.io https://api.kongswap.io http://18.170.224.113:8080 https://18.170.224.113:8080 http://18.170.224.113:* https://18.170.224.113:* ws://18.170.224.113:* wss://18.170.224.113:*;frame-src 'self' blob: https://*.tradingview.com;img-src * blob: data:;style-src * 'unsafe-inline';style-src-elem * 'unsafe-inline';font-src *;object-src 'none';base-uri 'self';frame-ancestors 'self' https://*.tradingview.com;form-action 'self';upgrade-insecure-requests;",
 
             "Permissions-Policy": "clipboard-read=(self), clipboard-write=(self)"
         },

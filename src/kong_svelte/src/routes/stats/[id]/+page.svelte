@@ -72,15 +72,15 @@
   let selectedPool = $state<Pool | undefined>(undefined);
   $effect(() => {
     if (token?.canister_id === CKUSDT_CANISTER_ID) {
-      const foundPool = $poolStore?.pools?.find((p) => {
+      const foundPool = $poolStore?.pools?.filter((p) => {
         const hasToken =
           p.address_0 === CKUSDT_CANISTER_ID || p.address_1 === CKUSDT_CANISTER_ID;
         const hasUSDC =
           p.address_0 === CKUSDC_CANISTER_ID || p.address_1 === CKUSDC_CANISTER_ID;
-        const hasTVL = Number(p.tvl) > 0;
+        const hasTVL = Number(p.tvl) > 10;
 
         return hasToken && hasUSDC && hasTVL;
-      });
+      }).sort((a, b) => Number(b.tvl) - Number(a.tvl)).at(0);
 
       if (foundPool) {
         selectedPool = {
@@ -102,7 +102,7 @@
       const hasUSDT =
         p.address_0 === ckusdtToken.canister_id ||
         p.address_1 === ckusdtToken.canister_id;
-      const hasTVL = Number(p.tvl) > 0;
+      const hasTVL = Number(p.tvl) > 10 * 10 ** 6;
 
       return hasToken && hasUSDT && hasTVL;
     });
@@ -227,7 +227,11 @@
                 </button>
 
                 <div class="flex items-center gap-3 md:gap-4">
-                  <TokenImages tokens={token ? [token] : []} size={36} class="md:w-12 md:h-12" />
+                  <TokenImages 
+                    tokens={token ? [token] : []} 
+                    size={36} 
+                    containerClass="md:w-12 md:h-12" 
+                  />
                   <div class="flex items-center gap-2">
                     <h1 class="text-lg md:text-2xl font-bold text-white">{token.name}</h1>
                     <div class="text-sm md:text-base text-[#8890a4]">({token.symbol})</div>
@@ -371,15 +375,15 @@
               symbol={token?.canister_id === CKUSDT_CANISTER_ID 
                 ? "ckUSDT/ckUSDC"
                 : token
-                  ? `${
+                  ? `${token.symbol}/${
                       selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
                         ? "ckUSDT"
                         : selectedPool?.address_0 === token.canister_id
                           ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)?.symbol
                           : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)?.symbol
-                    }/${token.symbol}`
+                    }`
                   : ""}
-              fromToken={token?.canister_id === CKUSDT_CANISTER_ID
+              quoteToken={token?.canister_id === CKUSDT_CANISTER_ID
                 ? ckusdtToken
                 : selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
                   ? ckusdtToken
@@ -387,7 +391,7 @@
                     ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)
                     : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)
               }
-              toToken={token?.canister_id === CKUSDT_CANISTER_ID
+              baseToken={token?.canister_id === CKUSDT_CANISTER_ID
                 ? $formattedTokens?.find(t => t.canister_id === CKUSDC_CANISTER_ID)
                 : selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
                   ? token
@@ -434,33 +438,6 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
-    }
-  }
-
-  /* Add animation for new transactions */
-  .new-transaction {
-    animation: highlightTransaction 1s ease-out;
-  }
-
-  @keyframes highlightTransaction {
-    0% {
-      background-color: rgba(34, 197, 94, 0.2); /* Green for buys */
-    }
-    100% {
-      background-color: transparent;
-    }
-  }
-
-  tr:has(span.text-red-500).new-transaction {
-    animation: highlightSellTransaction 1s ease-out;
-  }
-
-  @keyframes highlightSellTransaction {
-    0% {
-      background-color: rgba(239, 68, 68, 0.2); /* Red for sells */
-    }
-    100% {
-      background-color: transparent;
     }
   }
 

@@ -5,18 +5,26 @@ import {
   formatTokenAmount,
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { parseTokens } from "./tokenParsers";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
-import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { canisterId as kongBackendCanisterId, idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
+import { canisterId as kongDataCanisterId } from "../../../../../declarations/kong_data";
+import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
+import { canisterId as kongFaucetId } from "../../../../../declarations/kong_faucet";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
+
 import { Pr } from "svelte-flags";
+import BigNumber from "bignumber.js";
+import { eventBus } from './eventBus';
+
+const KONG_DATA_CANISTER_ID = kongDataCanisterId || process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
 
 export class TokenService {
   protected static instance: TokenService;
@@ -35,26 +43,63 @@ export class TokenService {
   }
 
   public static async fetchTokens(): Promise<FE.Token[]> {
+    // First try to get cached tokens
+    let cachedTokens: FE.Token[] = [];
     try {
-      // Try to get cached tokens first
-      const cachedTokens = await kongDB.tokens
+      cachedTokens = await kongDB.tokens
         .where('timestamp')
         .above(Date.now() - this.TOKEN_CACHE_DURATION)
-        .toArray();
-
-      if (cachedTokens.length > 0) {
-        // Refresh in background after returning cached data
-        setTimeout(() => this.fetchFromNetwork(), 0);
-        return cachedTokens as FE.Token[];
-      }
-
-      const tokens = await this.fetchFromNetwork();
-
-      // Cache the fetched tokens
-      kongDB.tokens.bulkPut(tokens);
-      return tokens;
+        .toArray() as FE.Token[];
     } catch (error) {
-      console.error("Error fetching tokens:", error);
+      console.error("Error fetching cached tokens:", error);
+    }
+
+    // If we have cached tokens, update the store immediately
+    if (cachedTokens.length > 0) {
+      tokenStore.update(state => ({
+        ...state,
+        tokens: cachedTokens,
+        lastTokensFetch: Date.now(),
+        isLoading: true // Keep loading true while fetching fresh data
+      }));
+    }
+
+    try {
+      // Fetch fresh data in the background
+      const freshTokens = await this.fetchFromNetwork();
+      
+      // Update cache with fresh data
+      await kongDB.tokens.bulkPut(freshTokens.map(token => ({
+        ...token,
+        timestamp: Date.now()
+      })));
+
+      // Update store with fresh data
+      tokenStore.update(state => ({
+        ...state,
+        tokens: freshTokens,
+        lastTokensFetch: Date.now(),
+        isLoading: false
+      }));
+      
+      return freshTokens;
+    } catch (error) {
+      console.error("Error fetching fresh tokens:", error);
+      
+      // If we failed to fetch fresh data but have cached data, use that
+      if (cachedTokens.length > 0) {
+        tokenStore.update(state => ({
+          ...state,
+          isLoading: false
+        }));
+        return cachedTokens;
+      }
+      
+      tokenStore.update(state => ({
+        ...state,
+        isLoading: false,
+        error: "Failed to fetch tokens"
+      }));
       return [];
     }
   }
@@ -89,7 +134,10 @@ export class TokenService {
               ...token.metrics,
               market_cap: token.canister_id === CKUSDT_CANISTER_ID ? 
                 (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : 
-                token.metrics.market_cap,
+                new BigNumber(token.metrics.total_supply)
+                  .div(new BigNumber(10 ** token.decimals))
+                  .times(new BigNumber(price))
+                  .toString(),
               volume_24h: total24hVolume.toString(),
             },
             price,
@@ -390,10 +438,6 @@ export class TokenService {
     token: FE.Token, 
     pools: BE.Pool[]
   ): Promise<number> {
-    // Special case for USDT
-    if (token.canister_id === process.env.CANISTER_ID_CKUSDT_LEDGER) {
-      return 1;
-    }
 
     // Find all pools containing the token
     const relevantPools = pools.filter(pool => {
@@ -403,23 +447,31 @@ export class TokenService {
     });
 
     if (relevantPools.length === 0) {
+      console.debug(`No pools found for ${token.symbol}`);
       return 0;
     }
 
     // Calculate prices through different paths
     const pricePaths = await Promise.all([
       // Direct USDT path
-      this.calculateDirectUsdtPrice(token, relevantPools),
+      this.calculateDirectUsdtPrice(token, relevantPools).then(result => {
+        return result;
+      }),
       // ICP intermediary path
-      this.calculateIcpPath(token, pools),
-      // Other stable coin paths (could add more stable coins here)
-      this.calculateStableCoinPath(token, pools)
+      this.calculateIcpPath(token, pools).then(result => {
+        return result;
+      }),
+      // Other stable coin paths
+      this.calculateStableCoinPath(token, pools).then(result => {
+        return result;
+      })
     ]);
 
     // Filter out invalid prices and calculate weighted average
     const validPrices = pricePaths.filter(p => p.price > 0);
     
     if (validPrices.length === 0) {
+      console.debug(`No valid prices found for ${token.symbol}`);
       return 0;
     }
 
@@ -612,9 +664,30 @@ export class TokenService {
   }
 
   public static async fetchUserTransactions(): Promise<any> {
-    const actor = await auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, { anon: false, requiresSigning: false }); 
-    const txs = await actor.txs([true]);
-    return txs;
+    try {
+      if (!KONG_BACKEND_CANISTER_ID) {
+        console.warn('Kong Data canister ID is missing');
+        return { Ok: [] };
+      }
+
+      if (!kongBackendIDL) {
+        console.warn('Kong Data IDL is missing');
+        return { Ok: [] };
+      }
+
+      const actor = await auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, kongBackendIDL, { 
+        anon: false, 
+        requiresSigning: false 
+      }); 
+
+      const txs = await actor.txs([auth.pnp?.account?.owner?.toString()]);
+      console.log('Raw transactions:', txs);
+      
+      return txs;
+    } catch (error) {
+      console.error('Error fetching user transactions:', error);
+      return { Ok: [] };
+    }
   }
 
   public static async claimFaucetTokens(): Promise<any> {

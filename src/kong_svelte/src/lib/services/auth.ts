@@ -16,7 +16,7 @@ import { browser } from '$app/environment';
 import { TokenService } from "./tokens";
 
 // Export the list of available wallets
-export const availableWallets = walletsList.filter(w => w.id !== 'oisy');
+export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
 
 // Create a store for the selected wallet ID
 export const selectedWalletId = writable<string | null>(null);

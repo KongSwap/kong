@@ -6,16 +6,30 @@
     import { onMount } from 'svelte';
     import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   
-    export let pool: BE.Pool & { tvl?: number };
+    interface Pool {
+      tvl: number;
+      rolling_24h_volume: bigint;
+      rolling_24h_apy: number;
+      address_0: string;
+      address_1: string;
+      symbol_0: string;
+      symbol_1: string;
+      price: number;
+    }
+  
+    export let pool: Pool;
     export let tokenMap: Map<string, any>;
     export let isEven: boolean;
+    export let isKongPool = false;
     export let onAddLiquidity: (token0: string, token1: string) => void;
     export let onShowDetails: () => void;
   
     let isMobile = false;
     let showDetailsButton = true;
   
-    onMount(() => {
+    type Cleanup = () => void;
+  
+    onMount((): Cleanup => {
       const checkMobile = () => {
         isMobile = window.innerWidth < 768;
         showDetailsButton = window.innerWidth >= 1150;
@@ -37,7 +51,7 @@
 
 {#if !isMobile}
   <!-- Desktop view (table row) -->
-  <tr class={isEven ? 'even' : ''}>
+  <tr class="{isEven ? 'even' : ''} {isKongPool ? 'kong-special-row' : ''}">
     <td class="pool-cell">
       <div class="pool-info">
         <TokenImages
@@ -125,13 +139,25 @@
   </div>
 {/if}
 
-<style>
+<style lang="scss">
   tr {
     transition: colors 150ms;
   }
 
   tr:hover {
     background-color: #1a1b23;
+  }
+
+  tr.kong-special-row {
+    background: rgba(0, 255, 128, 0.02);
+    
+    td {
+      font-weight: 500;
+    }
+
+    &:hover {
+      background: rgba(0, 255, 128, 0.04);
+    }
   }
 
   td {

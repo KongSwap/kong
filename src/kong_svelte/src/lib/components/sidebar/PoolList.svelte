@@ -29,7 +29,7 @@
   let searchResultsReady = false;
   let initialFilterApplied = false;
 
-  const MIN_USD_VALUE = 0.01; // Minimum USD value threshold (1 cent)
+  const MIN_USD_VALUE = 0.15; // Minimum USD value threshold ($0.15)
 
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;
@@ -38,13 +38,7 @@
       processedPools = balances
         .filter(poolBalance => {
           const hasBalance = Number(poolBalance.balance) > 0;
-          const hasMinValue = Number(poolBalance.usd_balance) >= MIN_USD_VALUE;
-          console.log('Pool:', poolBalance.name, 
-            'Balance:', poolBalance.balance, 
-            'USD:', poolBalance.usd_balance,
-            'Passes Filter:', hasBalance && hasMinValue
-          );
-          return hasBalance && hasMinValue;
+          return hasBalance;
         })
         .map(poolBalance => {
           const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);

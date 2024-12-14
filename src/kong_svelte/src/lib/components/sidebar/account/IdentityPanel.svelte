@@ -5,6 +5,7 @@
   import QRCode from 'qrcode';
   import { writable } from 'svelte/store';
   import { toastStore } from "$lib/stores/toastStore";
+    import { uint8ArrayToHexString } from "@dfinity/utils";
 
   export let display: 'both' | 'principal' | 'account' = 'both';
 
@@ -67,58 +68,28 @@
     }
   };
 
-  export async function loadIdentityData() {
-    if (!mounted) return;
-    try {
-      loading.set(true);
-      error.set(null);
-      const actor = await auth.getActor(kongBackendId, kongBackendIDL, { anon: false, requiresSigning: false });
-      const res = await actor.get_user();
-      
-      if (!res.Ok) throw new Error('Failed to fetch user data');
-
-      identity = {
-        ...identity,
-        principalId: res.Ok.principal_id,
-        accountId: res.Ok.account_id
-      };
-
-      const [principalQR, accountQR] = await Promise.all([
-        generateQR(res.Ok.principal_id),
-        generateQR(res.Ok.account_id)
-      ]);
-
-      identity = {
-        ...identity,
-        principalQR,
-        accountQR
-      };
-    } catch (err) {
-      error.set('Failed to load identity data');
-      console.error(err);
-    } finally {
-      loading.set(false);
-    }
-  }
-
-  onMount(() => {
+  onMount(async () => {
     mounted = true;
-    loadIdentityData();
+    identity = {
+      ...identity,
+      principalId: auth.pnp.account.owner,
+      accountId: uint8ArrayToHexString(auth.pnp.account.subaccount)
+    };
+
+    console.log("PNP", auth.pnp);
+
+    const principalQR = await generateQR(identity.principalId.toString());
+    const accountQR = await generateQR(identity.accountId);
+
+    identity = {
+      ...identity,
+      principalQR,
+      accountQR
+    };
   });
 </script>
 
 <div class="tab-panel">
-  {#if $loading && !identity.principalId}
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>Loading identity data...</p>
-    </div>
-  {:else if $error}
-    <div class="error-state">
-      <p class="error-message">{$error}</p>
-      <button class="retry-button" on:click={loadIdentityData}>Retry</button>
-    </div>
-  {:else}
     <div class="detail-section">
 
       {#if display === 'both'}
@@ -217,7 +188,6 @@
         {/if}
       </div>
     </div>
-  {/if}
 </div>
 
 <style>

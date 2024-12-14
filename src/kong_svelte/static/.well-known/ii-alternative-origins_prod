@@ -1,12 +1,12 @@
 {
     "alternativeOrigins": [
-        "www.kongswap.io",
-        "kongswap.io",
-        "www.kingkongswap.com",
-        "kingkongswap.com",
         "https://www.kongswap.io",
+        "https://kongswap.io",
         "https://www.kingkongswap.com",
+        "https://kingkongswap.com",
+        "https://dev.kongswap.io",
         "https://3ldz4-aiaaa-aaaar-qaina-cai.icp0.app",
-        "https://6z2or-qqaaa-aaaar-qaitq-cai.icp0.io"
+        "https://edoy4-liaaa-aaaar-qakha-cai.icp0.io",
+        "http://edoy4-liaaa-aaaar-qakha-cai.localhost:4943"
     ]
 }
