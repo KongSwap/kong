@@ -25,11 +25,15 @@
     currentWalletFavorites,
   } from "$lib/services/tokens/favoriteStore";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { browser } from "$app/environment";
 
-  let isMobile = false;
+  const isMobile = writable(false);
+
   onMount(() => {
     const checkMobile = () => {
-      isMobile = window.innerWidth < 768;
+      if (browser) {
+        isMobile.set(window.innerWidth < 768);
+      }
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -37,6 +41,10 @@
       window.removeEventListener('resize', checkMobile);
     };
   });
+
+  $: if (browser) {
+    isMobile.set(window.innerWidth < 768);
+  }
 
   // Store for toggling between all tokens and favorites only
   const showFavoritesOnly = writable(false);
@@ -123,8 +131,9 @@
           const query = $searchQuery.toLowerCase();
           tokens = tokens.filter(
             (token) =>
-              token.name.toLowerCase().includes(query) ||
-              token.symbol.toLowerCase().includes(query)
+              token.name.toLowerCase().includes(query.toLowerCase()) ||
+              token.symbol.toLowerCase().includes(query.toLowerCase()) || 
+              token.address.toLowerCase().includes(query.toLowerCase())
           );
         }
       }
@@ -151,8 +160,8 @@
             bValue = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
             break;
           case "marketCap":
-            aValue = Number(a?.metrics?.market_cap) || 0;
-            bValue = Number(b?.metrics?.market_cap) || 0;
+            aValue = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+            bValue = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
             break;
           case "name":
             return $sortDirection === "asc"
@@ -168,8 +177,8 @@
 
       // Sort by market cap for ranking
       const tokensByMarketCap = [...tokens].sort((a, b) => {
-        const aVal = Number(a?.metrics?.market_cap) || 0;
-        const bVal = Number(b?.metrics?.market_cap) || 0;
+        const aVal = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        const bVal = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
         return bVal - aVal;
       });
 
@@ -227,11 +236,11 @@
 <section class="flex flex-col w-full h-full px-4">
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
 
-    {#if isMobile && $activeStatsSection === 'marketStats'}
+    {#if $isMobile && $activeStatsSection === 'marketStats'}
       <h2 class="text-xl font-semibold text-white mt-4 mb-2">Market Overview</h2>
     {/if}
 
-    {#if (!isMobile) || (isMobile && $activeStatsSection === 'marketStats')}
+    {#if (!$isMobile) || ($isMobile && $activeStatsSection === 'marketStats')}
       <div class="earn-cards">
         <div class="earn-card">
           <div class="card-content">
@@ -271,32 +280,43 @@
       </div>
     {/if}
 
-    {#if (!isMobile) || (isMobile && $activeStatsSection === 'tokens')}
-      <Panel variant="green" type="main" className="content-panel flex-1">
+    {#if $activeStatsSection === 'tokens'}
+      <Panel variant="green" type="main" className="content-panel flex-1 !p-0" height="100%">
         <div class="h-full overflow-hidden flex flex-col">
-          <div class="flex items-center justify-between mb-4">
-            <input
-              type="text"
-              placeholder="Search tokens..."
-              class="flex-1 bg-transparent border-b border-[#2a2d3d] text-white placeholder-gray-400 focus:outline-none focus:ring-0 py-2 mr-4 min-w-0"
-              on:input={handleSearch}
-              disabled={$showFavoritesOnly} 
-            />
-            <button
-              class="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0
-                     {$showFavoritesOnly
-                       ? 'bg-[#60A5FA] text-white'
-                       : 'bg-[#2a2d3d] text-[#8890a4] hover:bg-[#2a2d3d]/80'}"
-              on:click={toggleShowFavorites}
-            >
-              <span class="hidden sm:inline">My Favorites</span>
-              <span class="sm:hidden">Favorites</span>
-              {#if $auth.isConnected && $currentWalletFavorites.length > 0}
-                <span class="ml-1 sm:ml-2 px-2 py-0.5 bg-[#2a2d3d] rounded-full text-xs">
-                  {$currentWalletFavorites.length}
-                </span>
-              {/if}
-            </button>
+          <div class="flex flex-col sticky top-0 z-20 h-full">
+            <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
+              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2">
+                <div class="flex bg-transparent">
+                  <button
+                    class="px-4 py-2 transition-colors duration-200 {($showFavoritesOnly ? 'text-[#8890a4] hover:text-white' : 'text-white')}"
+                    on:click={() => showFavoritesOnly.set(false)}
+                  >
+                    All Tokens
+                  </button>
+                  <button
+                    class="px-4 py-2 transition-colors duration-200 {($showFavoritesOnly ? 'text-white' : 'text-[#8890a4] hover:text-white')}"
+                    on:click={toggleShowFavorites}
+                  >
+                    My Favorites
+                    {#if $auth.isConnected}
+                      <span class="ml-1 px-2 py-0.5 text-white/80 bg-blue-400/60 rounded text-xs">
+                        {$currentWalletFavorites.length}
+                      </span>
+                    {/if}
+                  </button>
+                </div>
+
+                <div class="flex-1 px-4 py-2">
+                  <input
+                    type="text"
+                    placeholder={$isMobile ? "Search tokens..." : "Search tokens by name, symbol, or canister ID"}
+                    class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
+                    on:input={handleSearch}
+                    disabled={$showFavoritesOnly}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {#if $tokensLoading}
@@ -333,11 +353,11 @@
               </div>
             {:else}
               <div class="overflow-auto flex-1 custom-scrollbar">
-                <div class="overflow-auto flex-1 {isMobile ? 'max-h-[calc(100vh-15.9rem)]' : 'max-h-[calc(100vh-20.9rem)]'} custom-scrollbar">
-                  {#if !isMobile}
+                <div class="overflow-auto flex-1 {$isMobile ? 'max-h-[calc(100vh-9.6rem)]' : 'max-h-[calc(100vh-20.9rem)]'} custom-scrollbar">
+                  {#if !$isMobile}
                     <!-- Desktop table view -->
-                    <table class="data-table">
-                      <thead class="sticky top-0 bg-[#1a1b23] z-10">
+                    <table class="w-full border-collapse min-w-[800px] md:min-w-0">
+                      <thead class="sticky top-0 bg-[#1E1F2A] z-10">
                         <tr class="h-10 border-b border-[#2a2d3d]">
                           <th class="text-center px-4 py-2 text-sm font-medium text-[#8890a4] w-12">Rank</th>
                           <th class="text-left px-4 py-2 text-sm font-medium text-[#8890a4] w-[200px]">Token</th>
@@ -378,12 +398,12 @@
                             : ""}
                           <tr
                             class:kong-special-row={token.canister_id === KONG_CANISTER_ID}
-                            class="transition-all duration-200 hover:bg-secondary/10 cursor-pointer"
+                            class="border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer"
                             on:click={() => goto(`/stats/${enrichedToken.canister_id}`)}
                           >
                             <td class="text-center text-[#8890a4]">#{enrichedToken.marketCapRank}</td>
-                            <td class="token-cell">
-                              <div class="token-info flex items-center gap-2">
+                            <td class="">
+                              <div class=" flex items-center gap-2 h-full">
                                 {#if $auth.isConnected}
                                   <button
                                     class="favorite-button {$currentWalletFavorites.includes(enrichedToken.canister_id) ? 'active' : ''}"
@@ -403,7 +423,7 @@
                                 {/if}
                                 <TokenImages
                                   tokens={[enrichedToken]}
-                                  containerClass="token-image"
+                                  containerClass="self-center"
                                   size={24}
                                 />
                                 <span class="token-name">{enrichedToken.name}</span>
@@ -448,9 +468,9 @@
                             <td class="text-right">
                               <span>{formatUsdValue(enrichedToken?.metrics?.market_cap)}</span>
                             </td>
-                            <td class="actions-cell text-right">
+                            <td class="actions-cell">
                               <button
-                                class="action-button ml-auto"
+                                class="action-button"
                                 on:click|stopPropagation={() => goto(`/stats/${enrichedToken.canister_id}`)}
                               >
                                 Details
@@ -462,7 +482,7 @@
                     </table>
                   {:else}
                     <!-- Mobile sorting options - Fixed at top -->
-                    <div class="flex items-center gap-2 mb-2 sticky top-0 bg-[#1a1b23] p-2 z-10 border-b border-[#2a2d3d]">
+                    <div class="flex items-center gap-2 mb-2 sticky top-0 bg-[#1a1b23] p-4 z-10 border-b border-[#2a2d3d]">
                       <button 
                         class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap' ? 'bg-[#60A5FA] text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
                         on:click={() => toggleSort("marketCap")}
@@ -487,7 +507,7 @@
                     </div>
 
                     <!-- Mobile token cards -->
-                    <div class="space-y-2">
+                    <div class="space-y-2 {$isMobile ? 'px-4' : '!p-0'}">
                       {#each $filteredTokens.tokens as token}
                         {@const enrichedToken = {
                           ...token,
@@ -497,7 +517,8 @@
                           },
                           marketCapRank: token.marketCapRank
                         } as unknown as FE.Token}
-                        <div 
+                        <div
+                          role="button"
                           class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''}"
                           on:click={() => goto(`/stats/${token.canister_id}`)}
                         >
@@ -560,7 +581,7 @@
   </div>
 </section>
 
-{#if isMobile}
+{#if $isMobile}
   <nav class="mobile-nav">
     <div class="mobile-nav-container">
       <button 
@@ -623,15 +644,15 @@
   }
 
   .data-table td {
-    @apply px-3 md:px-4 py-3 text-sm text-white/80;
+    @apply px-3 md:px-4 py-2 text-sm text-white/80;
   }
 
   .token-cell {
-    @apply flex items-center gap-2 md:gap-3 relative min-w-[180px];
+    @apply flex items-center min-w-[180px];
   }
 
   .token-info {
-    @apply flex-grow truncate;
+    @apply flex items-center gap-2;
   }
 
   .token-name {
@@ -675,7 +696,7 @@
     @apply px-4 py-1.5 text-sm rounded
            bg-white/5 text-white/60 hover:bg-white/10 hover:text-white
            focus:outline-none focus:ring-2 focus:ring-white/20
-           min-w-[80px];
+           min-w-[80px] my-0.5;
   }
 
   .mobile-nav {
@@ -704,10 +725,19 @@
 
   table th {
     @apply font-medium;
+    padding: 0.75rem 0.5rem;
+    
+    &:first-child {
+      padding-left: 1rem;
+    }
+    
+    &:last-child {
+      padding-right: 1rem;
+    }
   }
 
   .actions-cell {
-    @apply flex justify-end px-4;
+    @apply flex items-center justify-end px-4 h-full py-2;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -816,5 +846,21 @@
     td {
       font-weight: 500;
     }
+  }
+
+  .token-name, .token-symbol {
+    @apply leading-none;
+  }
+
+  section {
+    height: 100vh;
+  }
+
+  .content-panel {
+    flex: 1;
+  }
+
+  .h-full {
+    height: 100%;
   }
 </style>

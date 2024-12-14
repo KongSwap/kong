@@ -258,7 +258,7 @@
 
     {#if $activeSection === "pools"}
       <Panel className="flex-1 {$isMobile ? '' : '!p-0'}">
-        <div class="h-full overflow-hidden flex flex-col">
+        <div class="overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button -->
           <div class="flex flex-col sticky top-0 z-20">
             <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
@@ -456,7 +456,7 @@
                 </table>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="md:hidden space-y-4">
+                <div class="md:hidden space-y-4 mt-2">
                   {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
                     <div
                       class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 

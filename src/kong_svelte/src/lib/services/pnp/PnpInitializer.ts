@@ -44,7 +44,7 @@ export function initializePNP(): PNP {
       verifyQuerySignatures: process.env.DFX_NETWORK === "ic",
       identityProvider: process.env.DFX_NETWORK !== "ic" ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943" : "https://identity.ic0.app",
       persistSession: true,
-      derivationOrigin: (isDev || process.env.DFX_NETWORK === "local") ? "http://edoy4-liaaa-aaaar-qakha-cai.localhost:4943" : "https://" + process.env.CANISTER_ID_KONG_SVELTE + ".icp0.io",
+      derivationOrigin: (isDev || process.env.DFX_NETWORK === "local") ? "http://localhost:5173" : "https://" + process.env.CANISTER_ID_KONG_SVELTE + ".icp0.io",
       delegationTimeout: BigInt(86400000000000), // 30 days
       delegationTargets,
     });
