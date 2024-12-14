@@ -274,12 +274,12 @@
       <Panel className="flex-1">
         <div class="h-full overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button -->
-          <div class="flex flex-col sticky top-0 z-20 pb-2">
-            <div class="flex flex-col gap-3 sm:gap-0 mb-4 sticky top-0 z-10">
+          <div class="flex flex-col sticky top-0 z-20">
+            <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
               <!-- Mobile-only buttons -->
               <div class="flex flex-col gap-3 sm:hidden">
                 <div class="w-full">
-                  <div class="bg-[#1a1b23] border border-[#2a2d3d] rounded-lg w-full">
+                  <div class="bg-[#1A1B24] border border-[#2a2d3d] rounded-lg w-full">
                     <div class="flex items-center w-full">
                       <div class="flex w-full border-r border-[#2a2d3d]">
                         <button
@@ -321,10 +321,10 @@
                 </div>
               </div>
 
-              <div class="hidden sm:flex items-center gap-3">
-                <div class="flex-1 bg-[#1a1b23] border border-[#2a2d3d] rounded-lg">
+              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d]">
+                <div class="flex-1">
                   <div class="flex items-center">
-                    <div class="flex border-r border-[#2a2d3d]">
+                    <div class="flex bg-transparent">
                       <button
                         class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'all'
                           ? 'text-white'
@@ -339,7 +339,7 @@
                           : 'text-[#8890a4] hover:text-white'}"
                         on:click={() => ($activePoolView = "user")}
                       >
-                        My Pools <span class="text-xs ml-1 font-bold py-0 text-black bg-blue-400/90 px-1.5 rounded">{$userPoolBalances.length}</span>
+                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-blue-400/60 px-1.5 rounded">{$userPoolBalances.length}</span>
                       </button>
                     </div>
 
@@ -356,7 +356,7 @@
                 </div>
 
                 <button
-                  class="flex items-center gap-2 primary-button whitespace-nowrap"
+                  class="flex items-center gap-2 rounded-none !rounded-tr-lg px-4 py-2 text-white/80 hover:text-primary-blue"
                   on:click={() => goto("/earn/add")}
                 >
                   <svg
@@ -575,7 +575,7 @@
                     Connect your wallet to view your liquidity positions
                   </p>
                   <button
-                    class="px-6 py-2 bg-[#60A5FA] text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    class="px-6 py-2 bg-primary-blue text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
                     on:click={() => {
                       toastStore.info(
                         "Connect your wallet to view your liquidity positions",

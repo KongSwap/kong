@@ -9,6 +9,7 @@ export default {
       },
       colors: {
         "k-light-blue": "#00A1FA",
+        "primary-blue": "#3B82F6"
       },
       scale: {
         '80': '0.8', // Define a custom scale value
