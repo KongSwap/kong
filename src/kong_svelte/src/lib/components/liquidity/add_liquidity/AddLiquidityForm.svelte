@@ -793,10 +793,6 @@
         @apply text-xs text-white/60;
     }
 
-    .pool-ratio {
-        @apply mt-2 text-sm text-white/80 text-center;
-    }
-
     @media (min-width: 640px) {
         .stat-value {
             @apply text-lg;
@@ -814,28 +810,6 @@
 
     .available-balance {
         @apply text-white/70 hover:text-yellow-500 transition-colors duration-150;
-    }
-
-    .switch-button-container {
-        @apply absolute left-1/2 z-20;
-        transform: translateX(-50%);
-        top: calc(50% - 1rem); /* Adjust this value to fine-tune vertical position */
-    }
-
-    .switch-button {
-        @apply flex items-center justify-center;
-        @apply w-12 h-12 rounded-full;
-        @apply bg-[#1a1b1e] hover:bg-[#2a2b2e];
-        @apply text-white/80 hover:text-white;
-        @apply transition-all duration-150;
-        @apply disabled:opacity-50 disabled:cursor-not-allowed;
-        @apply border-2 border-white/20;
-        @apply shadow-lg;
-    }
-
-    .switch-button:hover:not(:disabled) {
-        @apply text-white border-white/30;
-        transform: scale(1.1);
     }
 
     .amount-input:disabled {
