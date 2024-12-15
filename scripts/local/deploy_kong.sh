@@ -30,19 +30,19 @@ cd ..
 
 dfx identity use kong
 
-if [ -z "$1"]; then
+if [ -z "$1" ]; then
 	set -- "local"	# default to local build if none specified
 fi
 
 echo Building and deploying to $1
 
 if [ "$1" == "local" ]; then
-	./deploy_internet_identity.sh
+	dfx deploy internet_identity --network $1
 fi
 
-./deploy_kong_backend.sh $1
-./deploy_kong_data.sh $1
-./deploy_kong_svelte.sh $1
+dfx deploy kong_backend --network $1
+dfx deploy kong_data --network $1
+dfx deploy kong_svelte --network $1
 ./deploy_ksusdt_ledger.sh $1
 ./deploy_ksicp_ledger.sh $1
 ./deploy_ksusdc_ledger.sh $1
@@ -51,6 +51,9 @@ fi
 ./deploy_kskong_ledger.sh $1
 
 if [ "$1" == "staging" ] || [ "$1" == "local" ]; then
-	./deploy_kong_faucet.sh $1
+ 	dfx deploy kong_faucet --network $1
 	./user_mint.sh $1
 fi
+
+pwd
+echo "Current DFX identity: $(dfx identity whoami)"
