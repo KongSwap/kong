@@ -1,6 +1,6 @@
 {
   "canisters": {
-    "kong_backend": {
+    "kong_backend_local": {
       "declarations": {
         "node_compatibility": true
       },
@@ -14,7 +14,7 @@
 				}
 			]
     },
-    "kong_data": {
+    "kong_data_local": {
       "candid": "src/kong_data/kong_data.did",
       "declarations": {
         "node_compatibility": true
@@ -28,17 +28,17 @@
 				}
 			]
     },
-    "kong_svelte": {
+    "kong_svelte_local": {
       "dependencies": [
-        "kong_backend",
-        "kong_data"
+        "kong_backend_local",
+        "kong_data_local"
       ],
       "source": [
         "src/kong_svelte/dist"
       ],
       "type": "assets",
       "workspace": "kong_svelte",
-      "specified_id": "3ldz4-aiaaa-aaaar-qaina-cai",
+      "specified_id": "edoy4-liaaa-aaaar-qakha-cai",
 			"metadata": [
 				{
 					"name": "candid:service"

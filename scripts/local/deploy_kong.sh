@@ -42,6 +42,7 @@ fi
 
 ./deploy_kong_backend.sh $1
 ./deploy_kong_data.sh $1
+./deploy_kong_svelte.sh $1
 ./deploy_ksusdt_ledger.sh $1
 ./deploy_ksicp_ledger.sh $1
 ./deploy_ksusdc_ledger.sh $1
@@ -53,5 +54,3 @@ if [ "$1" == "staging" ] || [ "$1" == "local" ]; then
 	./deploy_kong_faucet.sh $1
 	./user_mint.sh $1
 fi
-
-./deploy_kong_svelte.sh $1
