@@ -15,6 +15,7 @@
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
+  import IcrcService from "$lib/services/icrc/IcrcService";
   
   // Props with proper TypeScript types
   export let title: string;
@@ -135,7 +136,7 @@
 
     try {
       const feesInTokens = tokenInfo?.fee_fixed
-        ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
+        ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n) // icrc2 * 2 because approving is also a transaction fee
         : 0n;
 
       return formatTokenAmount(
@@ -223,35 +224,79 @@
   async function handleMaxClick() {
     if (!disabled && title === "You Pay" && tokenInfo) {
       try {
-        const balance = new BigNumber(
-          $tokenStore.balances[tokenInfo.canister_id]?.in_tokens.toString() ||
-            "0",
-        );
-        const totalFees = new BigNumber(tokenInfo.fee_fixed.toString()).multipliedBy(
-          tokenInfo.icrc2 ? 2 : 1,
-        );
-
-        let maxAmount = balance.minus(totalFees);
-
-        if (maxAmount.isLessThanOrEqualTo(0)) {
-          toastStore.error(
-            "Insufficient balance to cover the transaction fees",
-          );
+        // Validate token info and required properties
+        if (!tokenInfo.decimals) {
+          console.error("Token info missing required properties", tokenInfo);
+          toastStore.error("Invalid token configuration");
           return;
         }
 
-        maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
-        const formattedMax = formatTokenAmount(maxAmount.toString(), decimals).replace(/,/g, '');
-
-        if (inputElement) {
-          inputElement.value = formatWithCommas(formattedMax);
+        // Get and validate balance
+        const rawBalance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
+        if (rawBalance === undefined || rawBalance === null) {
+          console.error("Balance not available for token", tokenInfo.symbol);
+          toastStore.error(`Balance not available for ${tokenInfo.symbol}`);
+          return;
         }
 
-        previousValue = formattedMax;
+        // Convert balance to BigNumber with proper decimal handling
+        const balance = new BigNumber(rawBalance.toString());
+        if (!balance.isFinite() || balance.isNaN()) {
+          console.error("Invalid balance value", rawBalance);
+          toastStore.error("Invalid balance value");
+          return;
+        }
 
+        // Get actual fee from canister
+        let tokenFee;
+        try {
+          tokenFee = await IcrcService.getTokenFee(tokenInfo);
+        } catch (error) {
+          console.error("Error getting token fee, falling back to fee_fixed:", error);
+          if (!tokenInfo.fee_fixed) {
+            toastStore.error("Could not determine token fee");
+            return;
+          }
+          tokenFee = BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, ''));
+        }
+
+        // Calculate total fees based on token type
+        const feeMultiplier = tokenInfo.icrc2 ? 2n : 1n;
+        const totalFees = new BigNumber(tokenFee.toString()).multipliedBy(feeMultiplier.toString());
+
+        // Calculate max amount
+        let maxAmount = balance.minus(totalFees);
+
+        // Validate max amount
+        if (maxAmount.isLessThanOrEqualTo(0) || maxAmount.isNaN()) {
+          console.error("Invalid max amount calculated", maxAmount.toString());
+          toastStore.error("Insufficient balance to cover fees");
+          return;
+        }
+
+        // Round down to avoid precision issues
+        maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
+        
+        // Format with proper decimal handling
+        const formattedMax = formatTokenAmount(maxAmount.toString(), tokenInfo.decimals);
+        if (!formattedMax || formattedMax === "NaN") {
+          console.error("Invalid formatted amount", formattedMax);
+          toastStore.error("Failed to format amount");
+          return;
+        }
+
+        // Update input value
+        const cleanFormattedMax = formattedMax.replace(/,/g, '');
+        if (inputElement) {
+          inputElement.value = formatWithCommas(cleanFormattedMax);
+        }
+
+        previousValue = cleanFormattedMax;
+
+        // Trigger amount change event
         onAmountChange(
           new CustomEvent("input", {
-            detail: { value: formattedMax, panelType },
+            detail: { value: cleanFormattedMax, panelType },
           }),
         );
 
@@ -404,9 +449,9 @@
           </button>
           <TokenSelectorDropdown
             show={$swapState.tokenSelectorOpen === panelType}
-            onSelect={(selectedToken) => {
+            onSelect={() => {
               swapState.update(s => ({ ...s, tokenSelectorOpen: null }));
-              onTokenSelect(selectedToken);
+              onTokenSelect();
             }}
             onClose={() => swapState.update(s => ({ ...s, tokenSelectorOpen: null }))}
             currentToken={token}
