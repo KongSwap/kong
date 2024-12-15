@@ -19,7 +19,8 @@
       otherPanelToken = null,
       expandDirection = 'down',
       allowedCanisterIds = [],
-      restrictToSecondaryTokens = false
+      restrictToSecondaryTokens = false,
+      tokens = $formattedTokens
     } = props;
   
     let searchQuery = $state("");
@@ -30,7 +31,79 @@
     let sortDirection = $state('desc');
     let standardFilter = $state("all");
     let favorites = $derived($tokenStore.favoriteTokens);
-    let favoriteCount = $derived($formattedTokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
+
+    // Get filtered tokens before any UI filters (search, favorites, etc)
+    let baseFilteredTokens = $derived(
+      tokens.filter(token => {
+        // First check if we should restrict to secondary tokens
+        if (restrictToSecondaryTokens) {
+          return SECONDARY_TOKEN_IDS.includes(token.canister_id);
+        }
+        
+        // Then check allowed canister IDs if provided
+        if (allowedCanisterIds.length > 0) {
+          return allowedCanisterIds.includes(token.canister_id);
+        }
+        return true;
+      })
+    );
+
+    // Get counts based on the base filtered tokens
+    let allTokensCount = $derived(baseFilteredTokens.length);
+    let ckTokensCount = $derived(baseFilteredTokens.filter(t => t.symbol.toLowerCase().startsWith('ck')).length);
+    let favoritesCount = $derived(baseFilteredTokens.filter(t => tokenStore.isFavorite(t.canister_id)).length);
+
+    // Then apply UI filters for display
+    let filteredTokens = $derived(
+      baseFilteredTokens
+        .map((token): TokenMatch | null => {
+          if (!token?.symbol || !token?.name) return null;
+          
+          const searchLower = searchQuery.toLowerCase();
+          const matches = findMatches(token, searchLower);
+          
+          return matches.length > 0 ? { token, matches } : null;
+        })
+        .filter((match): match is TokenMatch => {
+          if (!match) return false;
+
+          // Apply standard filter
+          switch (standardFilter) {
+            case "ck":
+              return match.token.symbol.toLowerCase().startsWith("ck");
+            case "favorites":
+              return tokenStore.isFavorite(match.token.canister_id);
+            case "all":
+            default:
+              // Apply balance filter if enabled
+              if (hideZeroBalances) {
+                const balance = $tokenStore.balances[match.token.canister_id]?.in_tokens || BigInt(0);
+                return balance > 0;
+              }
+              return true;
+          }
+        })
+        .sort((a, b) => {
+          // Sort by volume first
+          const volumeA = Number(a.token.volume || 0);
+          const volumeB = Number(b.token.volume || 0);
+          if (volumeA !== volumeB) return sortDirection === 'desc' ? volumeB - volumeA : volumeA - volumeB;
+          
+          // Then sort by favorites
+          const aFavorite = tokenStore.isFavorite(a.token.canister_id);
+          const bFavorite = tokenStore.isFavorite(b.token.canister_id);
+          if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+          
+          // Then sort by best match if searching
+          if (searchQuery) {
+            const aMinIndex = Math.min(...a.matches.map(m => m.index));
+            const bMinIndex = Math.min(...b.matches.map(m => m.index));
+            if (aMinIndex !== bMinIndex) return aMinIndex - bMinIndex;
+          }
+          
+          return 0;
+        })
+    );
 
     const SECONDARY_TOKEN_IDS = [
       'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
@@ -93,68 +166,6 @@
       
       return matches;
     }
-
-    // Filter tokens based on search, balance, and allowed canister IDs
-    let filteredTokens = $derived(
-      $formattedTokens
-        .filter(token => {
-          // First check if we should restrict to secondary tokens
-          if (restrictToSecondaryTokens) {
-            return SECONDARY_TOKEN_IDS.includes(token.canister_id);
-          }
-          
-          // Then check allowed canister IDs if provided
-          if (allowedCanisterIds.length > 0) {
-            return allowedCanisterIds.includes(token.canister_id);
-          }
-          return true;
-        })
-        .map((token): TokenMatch | null => {
-          if (!token?.symbol || !token?.name) return null;
-          
-          const searchLower = searchQuery.toLowerCase();
-          const matches = findMatches(token, searchLower);
-          
-          return matches.length > 0 ? { token, matches } : null;
-        })
-        .filter((match): match is TokenMatch => {
-          if (!match) return false;
-
-          // Apply standard filter
-          switch (standardFilter) {
-            case "ck":
-              return match.token.symbol.toLowerCase().startsWith("ck");
-            case "favorites":
-              return tokenStore.isFavorite(match.token.canister_id);
-            case "all":
-            default:
-              // Apply balance filter if enabled
-              if (hideZeroBalances) {
-                const balance = $tokenStore.balances[match.token.canister_id]?.in_tokens || BigInt(0);
-                return balance > 0;
-              }
-              return true;
-          }
-        })
-        .sort((a, b) => {
-          // Sort by favorites first
-          const aFavorite = tokenStore.isFavorite(a.token.canister_id);
-          const bFavorite = tokenStore.isFavorite(b.token.canister_id);
-          if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
-          
-          // Then sort by best match (lowest index)
-          if (searchQuery) {
-            const aMinIndex = Math.min(...a.matches.map(m => m.index));
-            const bMinIndex = Math.min(...b.matches.map(m => m.index));
-            if (aMinIndex !== bMinIndex) return aMinIndex - bMinIndex;
-          }
-          
-          // Then sort by balance
-          const balanceA = Number($tokenStore.balances[a.token.canister_id]?.in_tokens || 0);
-          const balanceB = Number($tokenStore.balances[b.token.canister_id]?.in_tokens || 0);
-          return sortDirection === 'desc' ? balanceB - balanceA : balanceA - balanceB;
-        })
-    );
 
     function getStaggerDelay(index: number) {
       return index * 30; // 30ms delay between each item
@@ -261,9 +272,9 @@
               <div class="filter-bar">
                 <div class="filter-buttons">
                   {#each [
-                    { id: 'all', label: 'All', count: $formattedTokens.length },
-                    { id: 'ck', label: 'CK', count: $formattedTokens.filter(t => t.symbol.toLowerCase().startsWith('ck')).length },
-                    { id: 'favorites', label: 'Favorites', count: favoriteCount }
+                    { id: 'all', label: 'All', count: allTokensCount },
+                    { id: 'ck', label: 'CK', count: ckTokensCount },
+                    { id: 'favorites', label: 'Favorites', count: favoritesCount }
                   ] as tab}
                     <button
                       on:click={() => standardFilter = tab.id}
@@ -359,11 +370,6 @@
                       </div>
                     </div>
                     <div class="token-right">
-                      {#if $tokenStore.balances[token.canister_id]}
-                        <span class="token-balance">
-                          {formatBalance($tokenStore.balances[token.canister_id].in_tokens.toString(), token.decimals)}
-                        </span>
-                      {/if}
                       {#if currentToken?.canister_id === token.canister_id}
                         <div class="selected-indicator">
                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -757,12 +763,6 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-  }
-
-  .token-balance {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
   }
 
   .selected-indicator {

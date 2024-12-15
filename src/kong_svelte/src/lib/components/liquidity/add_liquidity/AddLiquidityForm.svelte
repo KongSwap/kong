@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
-    import { Plus } from "lucide-svelte";
+    import { onDestroy } from 'svelte';
     import { formatTokenAmount, parseTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import { poolStore } from "$lib/services/pools/poolStore";
     import Portal from 'svelte-portal';
@@ -10,10 +9,10 @@
     import AddLiquidityConfirmation from './AddLiquidityConfirmation.svelte';
     import { tweened } from "svelte/motion";
     import { cubicOut } from "svelte/easing";
-    import BigNumber from "bignumber.js";
     import { auth } from '$lib/services/auth';
-    import { tokenStore } from '$lib/services/tokens';
+    import { tokenStore } from '$lib/services/tokens/tokenStore';
     import debounce from 'lodash-es/debounce';
+    import { toastStore } from "$lib/stores/toastStore";
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -33,6 +32,80 @@
     let showToken1Selector = false;
     let loadingState = '';
 
+    const ALLOWED_TOKEN_SYMBOLS = ['ICP', 'ckUSDT'];
+    const DEFAULT_TOKEN = 'ICP';
+    const SECONDARY_TOKEN_IDS = [
+        'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
+        'cngnf-vqaaa-aaaar-qag4q-cai'  // ckUSDT
+    ];
+
+    function getAvailableTokens(currentIndex: 0 | 1): FE.Token[] {
+        if (currentIndex === 1) {
+            // For the second token (index 1), only show whitelisted tokens
+            return $tokenStore.tokens.filter(t => ALLOWED_TOKEN_SYMBOLS.includes(t.symbol));
+        }
+        // For the first token (index 0), show all tokens
+        return $tokenStore.tokens;
+    }
+
+    function validateTokenCombination(token0Symbol: string, token1Symbol: string): boolean {
+        // Token1 (second token) must be ICP or ckUSDT
+        const hasAllowedToken = ALLOWED_TOKEN_SYMBOLS.includes(token1Symbol);
+        
+        // Tokens must be different
+        const isDifferentTokens = token0Symbol !== token1Symbol;
+        
+        return hasAllowedToken && isDifferentTokens;
+    }
+
+    function handleTokenSelect(index: 0 | 1, token: FE.Token) {
+        const otherToken = index === 0 ? token1 : token0;
+        
+        if (otherToken && !validateTokenCombination(
+            index === 0 ? token.symbol : token0.symbol,
+            index === 0 ? token1.symbol : token.symbol
+        )) {
+            toastStore.error(
+                'Token 2 must be ICP or ckUSDT',
+                undefined,
+                'Invalid Token Pair'
+            );
+            // Reset to default token
+            const defaultToken = $tokenStore.tokens.find(t => t.symbol === DEFAULT_TOKEN);
+            if (defaultToken) {
+                if (index === 0) {
+                    token0 = defaultToken;
+                } else {
+                    token1 = defaultToken;
+                }
+            }
+            return;
+        }
+
+        if (index === 0) {
+            token0 = token;
+            showToken0Selector = false;
+        } else {
+            token1 = token;
+            showToken1Selector = false;
+        }
+        onTokenSelect(index);
+    }
+
+    // Add reactive statement to handle token changes
+    $: {
+        if (token0 && token1 && (amount0 !== "0" || amount1 !== "0")) {
+            const nonZeroAmount = amount0 !== "0" ? amount0 : amount1;
+            const index = amount0 !== "0" ? 0 : 1;
+            const currentToken = index === 0 ? token0 : token1;
+            const otherToken = index === 0 ? token1 : token0;
+            
+            if (nonZeroAmount && currentToken && otherToken) {
+                debouncedHandleInput(index, nonZeroAmount, currentToken, otherToken);
+            }
+        }
+    }
+
     $: {
         if ($poolStore.userPoolBalances) {
             console.log('Pool balances updated:', $poolStore.userPoolBalances);
@@ -51,8 +124,6 @@
     let input1Element: HTMLInputElement | null = null;
     let input0Focused = false;
     let input1Focused = false;
-    let previousValue0 = "0";
-    let previousValue1 = "0";
 
     // Animated values for smooth transitions
     const animatedUsdValue0 = tweened(0, {
@@ -94,66 +165,81 @@
 
     function isValidNumber(value: string): boolean {
         if (!value) return true;
-        // Remove commas first
-        const cleanValue = value.replace(/,/g, '');
+        // Remove commas and underscores first
+        const cleanValue = value.replace(/[,_]/g, '');
         // Allow numbers with optional decimal point and optional scientific notation
         const regex = /^[0-9]*\.?[0-9]*(?:[eE][+-]?[0-9]+)?$/;
         return regex.test(cleanValue) && !isNaN(Number(cleanValue));
     }
 
-    // Create debounced version of the input handler
+    // Create debounced version of the input handler with shorter delay
     const debouncedHandleInput = debounce(async (index: 0 | 1, value: string, currentToken: FE.Token, otherToken: FE.Token) => {
         try {
             loading = true;
             error = null;
             loadingState = `Calculating required ${otherToken.symbol} amount...`;
             
+            // Clean the value by removing underscores before parsing
+            const cleanValue = value.replace(/_/g, '');
+            let inputAmount = parseTokenAmount(cleanValue, currentToken.decimals);
+
             const requiredAmount = await PoolService.addLiquidityAmounts(
-                currentToken.symbol,
-                parseTokenAmount(value, currentToken.decimals),
-                otherToken.symbol
+                token0.symbol,
+                index === 0 ? inputAmount : BigInt(0),
+                token1.symbol,
             );
 
+            if (!requiredAmount.Ok) {
+                throw new Error("Failed to calculate required amount");
+            }
+
+            const calculatedAmount = formatTokenAmount(
+                index === 0 ? requiredAmount.Ok.amount_1 : requiredAmount.Ok.amount_0,
+                otherToken.decimals
+            ).toString();
+
+            // Update amounts based on input index
             if (index === 0) {
                 amount0 = value;
-                amount1 = formatTokenAmount(requiredAmount.Ok.amount_1, otherToken.decimals).toString();
+                amount1 = calculatedAmount;
+                if (input1Element) input1Element.value = calculatedAmount;
             } else {
-                amount0 = formatTokenAmount(requiredAmount.Ok.amount_1, otherToken.decimals).toString();
+                amount0 = calculatedAmount;
                 amount1 = value;
+                if (input0Element) input0Element.value = calculatedAmount;
             }
 
             // Call the parent's onInput handler
             onInput(index, value);
         } catch (err) {
+            console.error("Error in debouncedHandleInput:", err);
             error = err.message;
         } finally {
             loading = false;
             loadingState = '';
         }
-    }, 400);
+    }, 300); // Reduced debounce time for better responsiveness
 
     // Enhanced input handling
     async function handleInput(index: 0 | 1, event: Event) {
-        const inputElement = event.target as HTMLInputElement;
-        let value = inputElement.value.replace(/,/g, ''); // Remove commas during typing
-        
-        if (!isValidNumber(value)) {
-            inputElement.value = index === 0 ? previousValue0 : previousValue1;
+        if (!poolExists) {
+            event.preventDefault();
             return;
         }
-
-        const currentToken = index === 0 ? token0 : token1;
-        const otherToken = index === 0 ? token1 : token0;
-
-        if (!currentToken || !otherToken) {
-            error = "Please select both tokens.";
+        const inputElement = event.target as HTMLInputElement;
+        let value = inputElement.value.replace(/[,_]/g, ''); // Remove commas and underscores
+        
+        if (!isValidNumber(value)) {
+            inputElement.value = index === 0 ? amount0 : amount1;
             return;
         }
 
         // Handle decimal point
         if (value.includes('.')) {
             const [whole, decimal] = value.split('.');
-            value = `${whole}.${decimal.slice(0, currentToken?.decimals || DEFAULT_DECIMALS)}`;
+            const currentToken = index === 0 ? token0 : token1;
+            const maxDecimals = currentToken?.decimals || DEFAULT_DECIMALS;
+            value = `${whole}.${decimal.slice(0, maxDecimals)}`;
         }
 
         // Remove leading zeros unless it's "0." or just "0"
@@ -166,34 +252,23 @@
             value = "0";
         }
 
-        // Update previous value without commas
-        if (index === 0) {
-            previousValue0 = value;
-            // Don't format with commas while typing
-            if (input0Element && input0Focused) {
-                input0Element.value = value;
-            }
-        } else {
-            previousValue1 = value;
-            // Don't format with commas while typing
-            if (input1Element && input1Focused) {
-                input1Element.value = value;
-            }
+        const currentToken = index === 0 ? token0 : token1;
+        const otherToken = index === 0 ? token1 : token0;
+
+        if (!currentToken || !otherToken) {
+            error = "Please select both tokens.";
+            return;
         }
+
+        // Update the input value
+        inputElement.value = value;
 
         // Call debounced handler for API request
         debouncedHandleInput(index, value, currentToken, otherToken);
     }
 
-    // Add onBlur handlers to format with commas when input loses focus
+    // Remove the blur handler as we don't need formatting anymore
     function handleBlur(index: 0 | 1) {
-        const value = index === 0 ? previousValue0 : previousValue1;
-        const inputElement = index === 0 ? input0Element : input1Element;
-        
-        if (inputElement) {
-            inputElement.value = formatWithCommas(value);
-        }
-        
         if (index === 0) {
             input0Focused = false;
         } else {
@@ -201,8 +276,9 @@
         }
     }
 
-    // Max button handler
+    // Update max button handler
     async function handleMaxClick(index: 0 | 1) {
+        if (!poolExists) return;
         const currentToken = index === 0 ? token0 : token1;
         const currentBalance = index === 0 ? token0Balance : token1Balance;
         const otherToken = index === 0 ? token1 : token0;
@@ -210,19 +286,21 @@
         if (!currentToken || !otherToken) return;
 
         try {
-            const value = formatTokenAmount(currentBalance, currentToken.decimals);
+            // Clean the balance by removing underscores before formatting
+            const cleanBalance = currentBalance.toString().replace(/_/g, '');
+            const value = formatTokenAmount(cleanBalance, currentToken.decimals);
             
             // Update the input display
             if (index === 0) {
                 if (input0Element) {
-                    input0Element.value = formatWithCommas(value);
+                    input0Element.value = value;
                 }
-                previousValue0 = value;
+                amount0 = value;
             } else {
                 if (input1Element) {
-                    input1Element.value = formatWithCommas(value);
+                    input1Element.value = value;
                 }
-                previousValue1 = value;
+                amount1 = value;
             }
 
             // Call the debounced handler to calculate the other amount
@@ -236,12 +314,12 @@
     // Reactive declarations for USD values
     $: {
         if (token0?.price && amount0) {
-            const cleanAmount = amount0.toString().replace(/,/g, '');
+            const cleanAmount = amount0.toString().replace(/[,_]/g, '');
             const value = parseFloat(cleanAmount) * token0.price;
             animatedUsdValue0.set(value);
         }
         if (token1?.price && amount1) {
-            const cleanAmount = amount1.toString().replace(/,/g, '');
+            const cleanAmount = amount1.toString().replace(/[,_]/g, '');
             const value = parseFloat(cleanAmount) * token1.price;
             animatedUsdValue1.set(value);
         }
@@ -260,8 +338,6 @@
     // Format display amounts
     $: displayAmount0 = formatDisplayValue(amount0, token0?.decimals || DEFAULT_DECIMALS);
     $: displayAmount1 = formatDisplayValue(amount1, token1?.decimals || DEFAULT_DECIMALS);
-    $: formattedDisplayAmount0 = formatWithCommas(displayAmount0);
-    $: formattedDisplayAmount1 = formatWithCommas(displayAmount1);
 
     function openTokenSelector(index: 0 | 1) {
         if (index === 0) {
@@ -276,35 +352,49 @@
     $: hasInsufficientBalance = () => {
         if (!token0 || !token1 || !amount0 || !amount1) return false;
         
-        // Convert amounts to BigInt, accounting for fees
-        const parsedAmount0 = BigInt(parseTokenAmount(amount0, token0.decimals)) - BigInt(token0.fee_fixed);
-        const parsedAmount1 = BigInt(parseTokenAmount(amount1, token1.decimals)) - BigInt(token1.fee_fixed);
-        
-        // Convert balances to BigInt
-        const parsedBalance0 = BigInt(token0Balance);
-        const parsedBalance1 = BigInt(token1Balance);
-        
-        // Compare using BigInt operations
-        return parsedAmount0 > parsedBalance0 || parsedAmount1 > parsedBalance1;
+        try {
+            // Clean the amounts by removing commas and underscores
+            const cleanAmount0 = amount0.toString().replace(/[,_]/g, '');
+            const cleanAmount1 = amount1.toString().replace(/[,_]/g, '');
+            
+            // Convert amounts to BigInt, accounting for fees
+            const parsedAmount0 = BigInt(parseTokenAmount(cleanAmount0, token0.decimals)) - BigInt(token0.fee.toString());
+            const parsedAmount1 = BigInt(parseTokenAmount(cleanAmount1, token1.decimals)) - BigInt(token1.fee.toString());
+            
+            // Convert balances to BigInt
+            const parsedBalance0 = BigInt(token0Balance.toString().replace(/_/g, ''));
+            const parsedBalance1 = BigInt(token1Balance.toString().replace(/_/g, ''));
+            
+            // Compare using BigInt operations
+            return parsedAmount0 > parsedBalance0 || parsedAmount1 > parsedBalance1;
+        } catch (err) {
+            console.error("Error in hasInsufficientBalance:", err);
+            return true; // Return true on error to prevent invalid transactions
+        }
     };
 
-    $: buttonText = hasInsufficientBalance()
-        ? "Insufficient Balance"
-        : !token0 || !token1
+    $: buttonText = !token0 || !token1
         ? "Select Tokens"
+        : !poolExists
+        ? "Pool Does Not Exist"
+        : hasInsufficientBalance()
+        ? "Insufficient Balance"
         : !amount0 || !amount1
         ? "Enter Amounts"
-        : !pool
-        ? "No Pool Found"
         : loading
         ? loadingState || "Loading..."
         : "Review Transaction";
 
-    $: isValid = token0 && token1 && amount0 && amount1 && !error && !hasInsufficientBalance() && pool !== null;
+    $: isValid = token0 && token1 && 
+        parseFloat(amount0.replace(/[,_]/g, '')) > 0 && 
+        parseFloat(amount1.replace(/[,_]/g, '')) > 0 && 
+        !error && !hasInsufficientBalance() && 
+        pool !== null;
 
     // Helper function to format large numbers with commas and fixed decimals
     function formatLargeNumber(value: string | number | bigint, decimals: number = 2): string {
-        const num = Number(value) / 1e6; // Convert from microdollars to dollars
+        const cleanValue = value.toString().replace(/_/g, '');
+        const num = Number(cleanValue) / 1e6; // Convert from microdollars to dollars
         return new Intl.NumberFormat('en-US', {
             minimumFractionDigits: decimals,
             maximumFractionDigits: decimals
@@ -344,6 +434,9 @@
     onDestroy(() => {
         debouncedHandleInput.cancel();
     });
+
+    // Add this computed property to check if pool exists
+    $: poolExists = pool !== null;
 </script>
 
 <Panel variant="green" width="auto" className="liquidity-panel w-full max-w-[690px]">
@@ -356,118 +449,118 @@
             </div>
         </header>
 
-        <div class="token-input-container">
-            <div class="relative flex-grow mb-2">
-                <div class="flex items-center gap-4">
-                    <div class="relative flex-1">
-                        <input
-                            bind:this={input0Element}
-                            type="text"
-                            inputmode="decimal"
-                            pattern="[0-9]*"
-                            placeholder="0.00"
-                            class="amount-input"
-                            value={input0Focused ? previousValue0 : formattedDisplayAmount0}
-                            on:input={(e) => handleInput(0, e)}
-                            on:focus={() => (input0Focused = true)}
-                            on:blur={() => handleBlur(0)}
-                        />
-                    </div>
-                    <div class="token-selector-wrapper">
-                        <button 
-                            class="token-selector-button" 
-                            on:click={() => openTokenSelector(0)}
-                        >
-                            {#if token0}
-                                <div class="token-info">
-                                    <img src={token0.logo_url} alt={token0.symbol} class="token-logo" />
-                                    <span class="token-symbol">{token0.symbol}</span>
-                                </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
-                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                                </svg>
-                            {:else}
-                                <span class="select-token-text">Select Token</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
-                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                                </svg>
-                            {/if}
-                        </button>
+        <div class="relative">
+            <div class="token-input-container">
+                <div class="relative flex-grow mb-2">
+                    <div class="flex items-center gap-4">
+                        <div class="relative flex-1">
+                            <input
+                                bind:this={input0Element}
+                                type="text"
+                                inputmode="decimal"
+                                pattern="[0-9]*"
+                                placeholder={!poolExists ? "Pool does not exist" : "0.00"}
+                                class="amount-input {!poolExists ? 'cursor-not-allowed' : ''}"
+                                value={amount0}
+                                on:input={(e) => handleInput(0, e)}
+                                on:focus={() => (input0Focused = true)}
+                                on:blur={() => handleBlur(0)}
+                                disabled={!poolExists}
+                            />
+                        </div>
+                        <div class="token-selector-wrapper">
+                            <button 
+                                class="token-selector-button" 
+                                on:click={() => openTokenSelector(0)}
+                            >
+                                {#if token0}
+                                    <div class="token-info">
+                                        <img src={token0.logo_url} alt={token0.symbol} class="token-logo" />
+                                        <span class="token-symbol">{token0.symbol}</span>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                {:else}
+                                    <span class="select-token-text">Select Token</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                {/if}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="balance-info">
-                <button 
-                    class="available-balance"
-                    on:click={() => handleMaxClick(0)}
-                >
-                    Available: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'} {token0?.symbol || ''}
-                </button>
-                <div class="flex items-center gap-2">
-                    <span class="text-white/50 font-normal tracking-wide">Est Value</span>
-                    <span class="pl-1 text-white/50 font-medium tracking-wide">
-                        ${formatToNonZeroDecimal($animatedUsdValue0)}
-                    </span>
+                <div class="balance-info">
+                    <div class="flex items-center gap-2">
+                        <span class="text-white/50 font-normal tracking-wide">Value</span>
+                        <span class="pl-1 text-white/50 font-medium tracking-wide">
+                            ${formatToNonZeroDecimal($animatedUsdValue0)}
+                        </span>
+                    </div>
+                    <button 
+                        class="available-balance"
+                        on:click={() => handleMaxClick(0)}
+                    >
+                        Available: {token0 ? formatTokenAmount(token0Balance, token0.decimals) : '0.00'} {token0?.symbol || ''}
+                    </button>
                 </div>
             </div>
-        </div>
 
-        <div class="plus-icon">
-            <Plus size={24} />
-        </div>
-
-        <div class="token-input-container">
-            <div class="relative flex-grow mb-2">
-                <div class="flex items-center gap-4">
-                    <div class="relative flex-1">
-                        <input
-                            bind:this={input1Element}
-                            type="text"
-                            inputmode="decimal"
-                            pattern="[0-9]*"
-                            placeholder="0.00"
-                            class="amount-input"
-                            value={input1Focused ? previousValue1 : formattedDisplayAmount1}
-                            on:input={(e) => handleInput(1, e)}
-                            on:focus={() => (input1Focused = true)}
-                            on:blur={() => handleBlur(1)}
-                        />
-                    </div>
-                    <div class="token-selector-wrapper">
-                        <button 
-                            class="token-selector-button" 
-                            on:click={() => openTokenSelector(1)}
-                        >
-                            {#if token1}
-                                <div class="token-info">
-                                    <img src={token1.logo_url} alt={token1.symbol} class="token-logo" />
-                                    <span class="token-symbol">{token1.symbol}</span>
-                                </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
-                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                                </svg>
-                            {:else}
-                                <span class="select-token-text">Select Token</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
-                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                                </svg>
-                            {/if}
-                        </button>
+            <div class="token-input-container mt-12">
+                <div class="relative flex-grow mb-2">
+                    <div class="flex items-center gap-4">
+                        <div class="relative flex-1">
+                            <input
+                                bind:this={input1Element}
+                                type="text"
+                                inputmode="decimal"
+                                pattern="[0-9]*"
+                                placeholder={!poolExists ? "Pool does not exist" : "0.00"}
+                                class="amount-input {!poolExists ? 'cursor-not-allowed' : ''}"
+                                value={amount1}
+                                on:input={(e) => handleInput(1, e)}
+                                on:focus={() => (input1Focused = true)}
+                                on:blur={() => handleBlur(1)}
+                                disabled={!poolExists}
+                            />
+                        </div>
+                        <div class="token-selector-wrapper">
+                            <button 
+                                class="token-selector-button" 
+                                on:click={() => openTokenSelector(1)}
+                            >
+                                {#if token1}
+                                    <div class="token-info">
+                                        <img src={token1.logo_url} alt={token1.symbol} class="token-logo" />
+                                        <span class="token-symbol">{token1.symbol}</span>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                {:else}
+                                    <span class="select-token-text">Select Token</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                {/if}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="balance-info">
-                <button 
-                    class="available-balance"
-                    on:click={() => handleMaxClick(1)}
-                >
-                    Available: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'} {token1?.symbol || ''}
-                </button>
-                <div class="flex items-center gap-2">
-                    <span class="text-white/50 font-normal tracking-wide">Est Value</span>
-                    <span class="pl-1 text-white/50 font-medium tracking-wide">
-                        ${formatToNonZeroDecimal($animatedUsdValue1)}
-                    </span>
+                <div class="balance-info">
+                    <div class="flex items-center gap-2">
+                        <span class="text-white/50 font-normal tracking-wide">Value</span>
+                        <span class="pl-1 text-white/50 font-medium tracking-wide">
+                            ${formatToNonZeroDecimal($animatedUsdValue1)}
+                        </span>
+                    </div>
+                    <button 
+                        class="available-balance"
+                        on:click={() => handleMaxClick(1)}
+                    >
+                        Available: {token1 ? formatTokenAmount(token1Balance, token1.decimals) : '0.00'} {token1?.symbol || ''}
+                    </button>
                 </div>
             </div>
         </div>
@@ -511,7 +604,12 @@
             {:else}
                 <div class="pool-info mt-4">
                     <div class="no-pool-message">
-                        <span>This pool doesn't exist yet.</span>
+                        <div class="flex flex-col items-center gap-2 py-3">
+                            <span class="text-yellow-500 font-medium">This pool doesn't exist yet</span>
+                            <span class="text-white/60 text-sm text-center">
+                                You cannot add liquidity until the pool is created
+                            </span>
+                        </div>
                     </div>
                 </div>
             {/if}
@@ -526,11 +624,7 @@
             show={true}
             currentToken={token0}
             otherPanelToken={token1}
-            onSelect={(token) => {
-                token0 = token;
-                showToken0Selector = false;
-                onTokenSelect(0);
-            }}
+            onSelect={(token) => handleTokenSelect(0, token)}
             onClose={() => showToken0Selector = false}
         />
     </Portal>
@@ -542,13 +636,9 @@
             show={true}
             currentToken={token1}
             otherPanelToken={token0}
-            onSelect={(token) => {
-                token1 = token;
-                showToken1Selector = false;
-                onTokenSelect(1);
-            }}
+            onSelect={(token) => handleTokenSelect(1, token)}
             onClose={() => showToken1Selector = false}
-            restrictToSecondaryTokens={true}
+            allowedCanisterIds={SECONDARY_TOKEN_IDS}
         />
     </Portal>
 {/if}
@@ -579,14 +669,6 @@
 {/if}
 
 <style lang="postcss">
-    .liquidity-panel {
-        @apply relative;
-    }
-
-    .token-input-container {
-        @apply mb-4;
-    }
-
     .token-selector-wrapper {
         @apply min-w-[180px];
     }
@@ -626,10 +708,6 @@
     .balance-info {
         @apply flex justify-between mt-2;
         @apply text-[clamp(0.8rem,2vw,0.875rem)] text-white/50;
-    }
-
-    .plus-icon {
-        @apply flex justify-center text-white/50 my-2;
     }
 
     .submit-button {
@@ -693,11 +771,37 @@
     }
 
     .no-pool-message {
-        @apply flex items-center justify-center p-4 rounded-lg bg-white/5 text-white/80;
-        font-size: 0.95rem;
+        @apply flex items-center justify-center p-4 rounded-lg;
+        @apply bg-white/5 border border-yellow-500/20;
     }
 
     .available-balance {
         @apply text-white/70 hover:text-yellow-500 transition-colors duration-150;
+    }
+
+    .switch-button-container {
+        @apply absolute left-1/2 z-20;
+        transform: translateX(-50%);
+        top: calc(50% - 1rem); /* Adjust this value to fine-tune vertical position */
+    }
+
+    .switch-button {
+        @apply flex items-center justify-center;
+        @apply w-12 h-12 rounded-full;
+        @apply bg-[#1a1b1e] hover:bg-[#2a2b2e];
+        @apply text-white/80 hover:text-white;
+        @apply transition-all duration-150;
+        @apply disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply border-2 border-white/20;
+        @apply shadow-lg;
+    }
+
+    .switch-button:hover:not(:disabled) {
+        @apply text-white border-white/30;
+        transform: scale(1.1);
+    }
+
+    .amount-input:disabled {
+        @apply opacity-50 cursor-not-allowed;
     }
 </style>

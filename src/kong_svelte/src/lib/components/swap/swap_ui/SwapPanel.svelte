@@ -14,6 +14,7 @@
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   
   // Props with proper TypeScript types
   export let title: string;
@@ -25,6 +26,7 @@
   export let showPrice: boolean;
   export let slippage: number;
   export let panelType: "pay" | "receive";
+  export let otherToken: FE.Token;
 
   // Constants
   const DEFAULT_DECIMALS = 8;
@@ -261,22 +263,32 @@
   }
 
   // Token selector functionality
-  function handleTokenSelect() {
+  function handleTokenSelect(event) {
     if (disabled) return;
     
+    const position = {
+      x: event.currentTarget.getBoundingClientRect().right + 8,
+      y: event.currentTarget.getBoundingClientRect().top,
+      windowWidth: window.innerWidth
+    };
+
     if (panelType === "pay") {
       const currentState = $swapState.showPayTokenSelector;
       swapState.update(s => ({
         ...s,
         showPayTokenSelector: !currentState,
-        showReceiveTokenSelector: false
+        showReceiveTokenSelector: false,
+        tokenSelectorPosition: position,
+        tokenSelectorOpen: 'pay'
       }));
     } else {
       const currentState = $swapState.showReceiveTokenSelector;
       swapState.update(s => ({
         ...s,
         showReceiveTokenSelector: !currentState,
-        showPayTokenSelector: false
+        showPayTokenSelector: false,
+        tokenSelectorPosition: position,
+        tokenSelectorOpen: 'receive'
       }));
     }
 
@@ -372,7 +384,7 @@
                 tokenSelectorPosition: position,
                 tokenSelectorOpen: panelType
               }));
-              handleTokenSelect();
+              handleTokenSelect(event);
             }}
           >
             {#if token}
@@ -390,6 +402,17 @@
               </svg>
             {/if}
           </button>
+          <TokenSelectorDropdown
+            show={$swapState.tokenSelectorOpen === panelType}
+            onSelect={(selectedToken) => {
+              swapState.update(s => ({ ...s, tokenSelectorOpen: null }));
+              onTokenSelect(selectedToken);
+            }}
+            onClose={() => swapState.update(s => ({ ...s, tokenSelectorOpen: null }))}
+            currentToken={token}
+            otherPanelToken={otherToken}
+            expandDirection={$swapState.tokenSelectorPosition?.y > window.innerHeight / 2 ? 'up' : 'down'}
+          />
         </div>
       </div>
     </div>
