@@ -113,23 +113,24 @@ function createAuthStore(pnp: PNP) {
       }
     },
 
-    async connect(walletId: string, isAutoConnect = false) {
+    async connect(walletId: string, event?: Event, isAutoConnect = false) {
       try {
-        const result = await pnp.connect(walletId);
+        const result = await pnp.connect(walletId, event);
+        console.log("Connection result:", result);
         
-        if (result && 'owner' in result) {          
+        if (result && typeof result === 'object' && 'owner' in result) {          
           const newState = { 
             isConnected: true,
             account: result,
             isInitialized: true
           };
           set(newState);
-
+  
           // Only save wallet if it's not an auto-connect
           if (!isAutoConnect) {
             saveLastWallet(walletId);
           }
-
+  
           // Force a refresh of the userStore and token balances
           const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false, requiresSigning: false });
           
@@ -146,7 +147,7 @@ function createAuthStore(pnp: PNP) {
             throw error;
           }
         } else {
-          console.log("Invalid connection result:", result);
+          console.error("Invalid connection result format:", result);
           set({ isConnected: false, account: null, isInitialized: true });
           localStorage.removeItem("kongSelectedWallet");
           return null;
