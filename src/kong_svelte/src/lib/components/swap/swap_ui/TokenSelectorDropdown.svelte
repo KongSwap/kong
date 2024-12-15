@@ -4,7 +4,6 @@
     import { fade, scale } from 'svelte/transition';
     import { flip } from 'svelte/animate';
     import { cubicOut } from 'svelte/easing';
-    import { formatBalance, formatTokenValue } from '$lib/utils/tokenFormatters';
     import { browser } from '$app/environment';
     import Portal from 'svelte-portal';
     import { Star } from 'lucide-svelte';
@@ -203,7 +202,7 @@
   
     // Focus search input when dropdown opens
     $effect(() => {
-      if (show) {
+      if (show && browser) {
         setTimeout(() => {
           searchInput?.focus();
           window.addEventListener('click', handleClickOutside);
@@ -214,8 +213,10 @@
 
     // Cleanup event listeners
     function cleanup() {
-      window.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('keydown', handleKeydown);
+      if (browser) {
+        window.removeEventListener('click', handleClickOutside);
+        window.removeEventListener('keydown', handleKeydown);
+      }
     }
 
     onDestroy(cleanup);

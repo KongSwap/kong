@@ -2,32 +2,42 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import {
-    tokenStore,
-    fromTokenDecimals,
-  } from "$lib/services/tokens/tokenStore";
-  import {
-    formatTokenAmount,
-    formatToNonZeroDecimal,
-  } from "$lib/utils/numberFormatUtils";
+  import { tokenStore, fromTokenDecimals } from "$lib/services/tokens/tokenStore";
+  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
-  import IcrcService from "$lib/services/icrc/IcrcService";
+  import { IcrcService } from "$lib/services/icrc/IcrcService";
+  import { onMount } from "svelte";
   
   // Props with proper TypeScript types
-  export let title: string;
-  export let token: FE.Token;
-  export let amount: string;
-  export let onTokenSelect: () => void;
-  export let onAmountChange: (event: CustomEvent) => void;
-  export let disabled: boolean;
-  export let showPrice: boolean;
-  export let slippage: number;
-  export let panelType: "pay" | "receive";
-  export let otherToken: FE.Token;
+  let { 
+    title,
+    token,
+    amount,
+    onTokenSelect,
+    onAmountChange,
+    disabled,
+    showPrice,
+    slippage,
+    panelType,
+    otherToken,
+    isLoading = false 
+  } = $props<{
+    title: string;
+    token: FE.Token;
+    amount: string;
+    onTokenSelect: () => void;
+    onAmountChange: (event: CustomEvent) => void;
+    disabled: boolean;
+    showPrice: boolean;
+    slippage: number;
+    panelType: "pay" | "receive";
+    otherToken: FE.Token;
+    isLoading?: boolean;
+  }>();
 
   // Constants
   const DEFAULT_DECIMALS = 8;
@@ -38,34 +48,57 @@
   const ANIMATION_VALUE_MULTIPLIER = 50;
   const HIGH_IMPACT_THRESHOLD = 10;
 
-  // State management
-  let inputElement: HTMLInputElement | null = null;
-  let inputFocused = false;
-  let calculatedUsdValue = 0;
-  let previousValue = "0";
+  // State management using runes
+  let inputElement = $state<HTMLInputElement | null>(null);
+  let inputFocused = $state(false);
+  let calculatedUsdValue = $state(0);
+  let previousValue = $state("0");
+  let isMobile = $state(false);
+  let formattedBalance = $state("0");
+  let displayBalance = $state("0");
 
-  // Animated values
-  const animatedUsdValue = tweened(0, {
-    duration: ANIMATION_BASE_DURATION,
-    easing: cubicOut,
-  });
-
-  const animatedAmount = tweened(0, {
-    duration: ANIMATION_BASE_DURATION,
-    easing: cubicOut,
-  });
-
-  const animatedSlippage = tweened(0, {
-    duration: ANIMATION_BASE_DURATION,
-    easing: cubicOut,
-  });
-
-  // Reactive declarations
-  $: tokenInfo = $tokenStore.tokens.find(
+  // Derived state using runes
+  let tokenInfo = $derived($tokenStore.tokens.find(
     (t) => t.canister_id === token?.canister_id,
-  );
-  $: decimals = tokenInfo?.decimals || DEFAULT_DECIMALS;
-  $: isIcrc1 = tokenInfo?.icrc1 && !tokenInfo?.icrc2;
+  ));
+  
+  let decimals = $derived(tokenInfo?.decimals || DEFAULT_DECIMALS);
+  let isIcrc1 = $derived(tokenInfo?.icrc1 && !tokenInfo?.icrc2);
+
+  // Initialize window-dependent values
+  let windowWidth = $state(0);
+  let windowHeight = $state(0);
+  let expandDirection = $state('down'); // default value
+
+  // Browser-only initialization
+  onMount(() => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth <= 420;
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  });
+
+  // Animated values using runes
+  let animatedUsdValue = tweened(0, {
+    duration: ANIMATION_BASE_DURATION,
+    easing: cubicOut,
+  });
+
+  let animatedAmount = tweened(0, {
+    duration: ANIMATION_BASE_DURATION,
+    easing: cubicOut,
+  });
+
+  let animatedSlippage = tweened(0, {
+    duration: ANIMATION_BASE_DURATION,
+    easing: cubicOut,
+  });
 
   // Format number with commas for display
   function formatWithCommas(value: string): string {
@@ -77,7 +110,7 @@
 
   // Function to get max decimals based on screen width
   function getMaxDisplayDecimals(): number {
-    return window.innerWidth <= 420 ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP;
+    return isMobile ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP;
   }
 
   // Format display value with proper decimals
@@ -88,11 +121,9 @@
     const maxDecimals = getMaxDisplayDecimals();
     
     if (parts.length === 2) {
-      // For "You Receive" panel, show ellipsis if there are more decimals
       if (panelType === "receive" && parts[1].length > maxDecimals && decimals > maxDecimals) {
         parts[1] = parts[1].slice(0, maxDecimals) + "...";
       } else {
-        // For "You Pay" panel, just truncate
         parts[1] = parts[1].slice(0, maxDecimals);
       }
       
@@ -110,12 +141,8 @@
     return regex.test(value);
   }
 
-  // Balance calculations
-  let formattedBalance = "0";
-  let displayBalance = "0";
-
-  // Watch for token and balance changes
-  $: {
+  // Watch for token and balance changes using $effect
+  $effect(() => {
     if (tokenInfo) {
       const balance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
       if (balance !== undefined) {
@@ -125,18 +152,17 @@
         ));
         formattedBalance = calculateAvailableBalance(balance);
       } else {
-        // Load balance if not available
         tokenStore.loadBalance(tokenInfo, "", true);
       }
     }
-  }
+  });
 
   function calculateAvailableBalance(balance: bigint): string {
     if (!balance) return "0";
 
     try {
       const feesInTokens = tokenInfo?.fee_fixed
-        ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n) // icrc2 * 2 because approving is also a transaction fee
+        ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
         : 0n;
 
       return formatTokenAmount(
@@ -152,8 +178,8 @@
     }
   }
 
-  // Animation and value updates
-  $: {
+  // Animation and value updates using $effect
+  $effect(() => {
     if (amount === "0") {
       updateAnimatedValues(0);
     } else {
@@ -171,7 +197,7 @@
     }
 
     animatedSlippage.set(slippage, { duration: 0 });
-  }
+  });
 
   function updateAnimatedValues(duration: number) {
     animatedUsdValue.set(calculatedUsdValue, { duration });
@@ -183,37 +209,31 @@
     const input = event.target as HTMLInputElement;
     let value = input.value.replace(/,/g, '');
 
-    // Validate input
     if (!isValidNumber(value)) {
       input.value = previousValue;
       return;
     }
 
-    // Handle decimal point
     if (value.includes('.')) {
       const [whole, decimal] = value.split('.');
       value = `${whole}.${decimal.slice(0, decimals)}`;
     }
 
-    // Remove leading zeros unless it's "0." or just "0"
     if (value.length > 1 && value.startsWith('0') && value[1] !== '.') {
       value = value.replace(/^0+/, '');
     }
 
-    // If empty or invalid after processing, set to "0"
     if (!value || value === '.') {
       value = "0";
     }
 
     previousValue = value;
 
-    // Format display value with commas
     if (inputElement) {
       const formattedValue = formatWithCommas(value);
       inputElement.value = formattedValue;
     }
 
-    // Send the raw value (without commas) to the swap logic
     onAmountChange(
       new CustomEvent("input", {
         detail: { value, panelType },
@@ -224,14 +244,12 @@
   async function handleMaxClick() {
     if (!disabled && title === "You Pay" && tokenInfo) {
       try {
-        // Validate token info and required properties
         if (!tokenInfo.decimals) {
           console.error("Token info missing required properties", tokenInfo);
           toastStore.error("Invalid token configuration");
           return;
         }
 
-        // Get and validate balance
         const rawBalance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
         if (rawBalance === undefined || rawBalance === null) {
           console.error("Balance not available for token", tokenInfo.symbol);
@@ -239,7 +257,6 @@
           return;
         }
 
-        // Convert balance to BigNumber with proper decimal handling
         const balance = new BigNumber(rawBalance.toString());
         if (!balance.isFinite() || balance.isNaN()) {
           console.error("Invalid balance value", rawBalance);
@@ -247,7 +264,6 @@
           return;
         }
 
-        // Get actual fee from canister
         let tokenFee;
         try {
           tokenFee = await IcrcService.getTokenFee(tokenInfo);
@@ -260,24 +276,19 @@
           tokenFee = BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, ''));
         }
 
-        // Calculate total fees based on token type
         const feeMultiplier = tokenInfo.icrc2 ? 2n : 1n;
         const totalFees = new BigNumber(tokenFee.toString()).multipliedBy(feeMultiplier.toString());
 
-        // Calculate max amount
         let maxAmount = balance.minus(totalFees);
 
-        // Validate max amount
         if (maxAmount.isLessThanOrEqualTo(0) || maxAmount.isNaN()) {
           console.error("Invalid max amount calculated", maxAmount.toString());
           toastStore.error("Insufficient balance to cover fees");
           return;
         }
 
-        // Round down to avoid precision issues
         maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
         
-        // Format with proper decimal handling
         const formattedMax = formatTokenAmount(maxAmount.toString(), tokenInfo.decimals);
         if (!formattedMax || formattedMax === "NaN") {
           console.error("Invalid formatted amount", formattedMax);
@@ -285,7 +296,6 @@
           return;
         }
 
-        // Update input value
         const cleanFormattedMax = formattedMax.replace(/,/g, '');
         if (inputElement) {
           inputElement.value = formatWithCommas(cleanFormattedMax);
@@ -293,7 +303,6 @@
 
         previousValue = cleanFormattedMax;
 
-        // Trigger amount change event
         onAmountChange(
           new CustomEvent("input", {
             detail: { value: cleanFormattedMax, panelType },
@@ -308,13 +317,14 @@
   }
 
   // Token selector functionality
-  function handleTokenSelect(event) {
+  function handleTokenSelect(event: MouseEvent) {
     if (disabled) return;
     
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const position = {
-      x: event.currentTarget.getBoundingClientRect().right + 8,
-      y: event.currentTarget.getBoundingClientRect().top,
-      windowWidth: window.innerWidth
+      x: rect.right + 8,
+      y: rect.top,
+      windowWidth
     };
 
     if (panelType === "pay") {
@@ -337,7 +347,6 @@
       }));
     }
 
-    // Trigger amount change with current amount when token changes
     if (amount) {
       onAmountChange(
         new CustomEvent("input", {
@@ -347,13 +356,42 @@
     }
   }
 
-  // Display calculations
-  $: displayAmount = formatDisplayValue(amount || "0");
-  $: formattedDisplayAmount = formatWithCommas(displayAmount);
+  // Display calculations using runes
+  let displayAmount = $derived(formatDisplayValue(amount || "0"));
+  let formattedDisplayAmount = $derived(formatWithCommas(displayAmount));
+  let parsedAmount = $derived(parseFloat(displayAmount || "0"));
+  let tokenPrice = $derived(tokenInfo ? ($tokenStore?.prices[tokenInfo.canister_id] || 0) : 0);
+  let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 
-  $: parsedAmount = parseFloat(displayAmount || "0");
-  $: tokenPrice = tokenInfo ? ($tokenStore?.prices[tokenInfo.canister_id] || 0) : 0;
-  $: tradeUsdValue = tokenPrice * parsedAmount;
+  // Use onMount to safely access window properties
+  onMount(() => {
+    // Initial values
+    windowWidth = window.innerWidth;
+    windowHeight = window.innerHeight;
+
+    // Update function
+    const updateWindowDimensions = () => {
+      windowWidth = window.innerWidth;
+      windowHeight = window.innerHeight;
+    };
+
+    // Add event listener
+    window.addEventListener('resize', updateWindowDimensions);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', updateWindowDimensions);
+    };
+  });
+
+  // Use $effect for the direction calculation
+  $effect(() => {
+    if (typeof window !== 'undefined') { // Check if we're in browser environment
+      expandDirection = $swapState.tokenSelectorPosition?.y > (windowHeight / 2) 
+        ? 'up' 
+        : 'down';
+    }
+  });
 </script>
 
 <Panel
@@ -397,6 +435,15 @@
     <div class="relative flex-grow mb-[-1px] h-[68px]">
       <div class="flex items-center gap-1 h-[69%] box-border rounded-md">
         <div class="relative flex-1">
+          {#if isLoading && panelType === "receive"}
+            <div class="absolute inset-0 flex items-center">
+              <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          {/if}
           <input
             bind:this={inputElement}
             type="text"
@@ -404,6 +451,7 @@
             pattern="[0-9]*"
             placeholder="0.00"
             class="flex-1 min-w-0 bg-transparent border-none text-white text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
+            class:opacity-0={isLoading && panelType === "receive"}
             value={formattedDisplayAmount}
             on:input={handleInput}
             on:focus={() => (inputFocused = true)}
@@ -456,7 +504,7 @@
             onClose={() => swapState.update(s => ({ ...s, tokenSelectorOpen: null }))}
             currentToken={token}
             otherPanelToken={otherToken}
-            expandDirection={$swapState.tokenSelectorPosition?.y > window.innerHeight / 2 ? 'up' : 'down'}
+            {expandDirection}
           />
         </div>
       </div>
@@ -488,7 +536,7 @@
   </div>
 </Panel>
 
-<style>
+<style lang="postcss">
   .clickable:hover {
     color: #eab308;
   }
@@ -569,6 +617,41 @@
     .token-selector-button {
       padding: 0.5rem 0.75rem;
       min-width: auto;
+    }
+  }
+
+  .loading-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 4px;
+  }
+
+  .loading-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+
+  .loading-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+
+  .loading-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+
+  @keyframes bounce {
+    0%, 80%, 100% { 
+      transform: scale(0);
+      opacity: 0.3;
+    }
+    40% { 
+      transform: scale(1);
+      opacity: 1;
     }
   }
 </style>
