@@ -27,20 +27,28 @@ echo "Building and deploying to ${NETWORK}"
 if [ "${NETWORK}" == "local" ]; then
     dfx stop
     dfx start --clean --background
-    dfx identity --network local deploy-wallet
+    #dfx identity --network local deploy-wallet
 fi
 
 dfx identity use kong
 
+# set build environment for kong_backend and kong_data
+export KONG_BUILDENV="${NETWORK}"
+
 # Deploy core canisters
 CORE_CANISTERS=("kong_backend" "kong_data" "kong_svelte")
 for canister in "${CORE_CANISTERS[@]}"; do
-    if CANISTER_ID=$(jq -r ".[\"${canister}\"][\"${NETWORK}\"]" canister_ids.all.json); then
-        [ "${CANISTER_ID}" != "null" ] && {
-            echo "Deploying ${canister} with ID: ${CANISTER_ID}"
-            dfx deploy "${canister}" --network "${NETWORK}" --specified-id "${CANISTER_ID}" || true
-        }
-    fi
+	if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
+		if CANISTER_ID=$(jq -r ".[\"${canister}\"][\"${NETWORK}\"]" canister_ids.all.json); then
+			[ "${CANISTER_ID}" != "null" ] && {
+				echo "Deploying ${canister} with ID: ${CANISTER_ID}"
+				dfx deploy "${canister}" --network "${NETWORK}" --specified-id "${CANISTER_ID}" || true
+			}
+		fi
+	elif [ "${NETWORK}" == "ic" ]; then
+		echo "Building ${canister}"
+		dfx build "${canister}" --network "${NETWORK}"
+	fi
 done
 
 # Deploy Internet Identity for local network
