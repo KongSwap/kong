@@ -1,10 +1,10 @@
 <script lang="ts">
     import { fade, scale } from 'svelte/transition';
-    import { quintOut, cubicOut } from 'svelte/easing';
+    import { quintOut } from 'svelte/easing';
     import QRCode from 'qrcode';
     import { onMount } from 'svelte';
     import { auth } from "$lib/services/auth";
-    import { canisterId as kongBackendId, idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
+    import Modal from "./Modal.svelte";
 
     interface UserIdentity {
         principalId: string;
@@ -66,33 +66,14 @@
         }
     }
 
-    async function loadIdentityData() {
-        try {
-            const actor = await auth.getActor(kongBackendId, kongBackendIDL, { anon: false, requiresSigning: false });
-            const res = await actor.get_user();
-            
-            if (!res.Ok) throw new Error('Failed to fetch user data');
-
-            const [principalQR, accountQR] = await Promise.all([
-                generateQR(res.Ok.principal_id),
-                generateQR(res.Ok.account_id)
-            ]);
-
-            identity = {
-                principalId: res.Ok.principal_id,
-                accountId: res.Ok.account_id,
-                principalQR,
-                accountQR
-            };
-        } catch (err) {
-            error = 'Failed to load identity data';
-            console.error(err);
-        } finally {
-            loading = false;
-        }
-    }
-
-    onMount(loadIdentityData);
+    onMount(async () => {
+      identity = {
+        principalId: auth.pnp?.account?.owner?.toString(),
+        accountId: auth.pnp?.account?.owner?.toString(),
+        principalQR: await generateQR(auth.pnp?.account?.owner?.toString()),
+        accountQR: await generateQR(auth.pnp?.account?.owner?.toString())
+      };
+    });
 
     $: currentId = activeId === 'principal' ? identity.principalId : identity.accountId;
     $: currentQR = activeId === 'principal' ? identity.principalQR : identity.accountQR;
@@ -107,9 +88,6 @@
     {:else if error}
         <div class="status-message error" transition:fade>
             <span>❌ {error}</span>
-            <button class="retry-btn" on:click={loadIdentityData}>
-                Try Again
-            </button>
         </div>
     {:else}
         <div class="id-selector" transition:scale={{duration: 300, easing: quintOut}}>

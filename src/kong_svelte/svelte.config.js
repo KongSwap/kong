@@ -9,7 +9,7 @@ const config = {
     adapter: adapter({
       pages: "dist",
       assets: "dist",
-      fallback: "index.html",
+      fallback: "200.html",
       precompress: false,
       strict: true,
     }),
@@ -22,14 +22,12 @@ const config = {
     },
     prerender: {
       handleHttpError: ({ path, referrer, message }) => {
-        // ignore deliberate link to shiny 404 page
-        if (path === '/404') {
+        // Ignore specific paths that require client-side rendering
+        if (path === '/swap' || path === '/pools' || path === '/stats' || path === '/earn') {
           return;
         }
-        if (path.startsWith('/pxcomponents/')) {
-          return;
-        }
-        // otherwise fail the build
+        
+        // Throw error for other paths
         throw new Error(message);
       },
       handleMissingId: ({ id, path, referrers }) => {

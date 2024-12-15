@@ -1,7 +1,6 @@
 // services/PoolService.ts
 import { auth, requireWalletConnection } from "$lib/services/auth";
 import { get } from "svelte/store";
-import { PoolResponseSchema, UserPoolBalanceSchema } from "./poolSchema";
 import { IcrcService } from "../icrc/IcrcService";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { canisterIDLs } from "../pnp/PnpInitializer";
@@ -389,37 +388,14 @@ export class PoolService {
   public static async fetchUserPoolBalances(): Promise<FE.UserPoolBalance[]> {
     try {
       const wallet = get(auth);
-      console.log("[PoolService] Fetching user pool balances, wallet state:", {
-        isConnected: wallet.isConnected,
-        hasAccount: !!wallet.account,
-        accountOwner: wallet.account?.owner,
-      });
 
       if (!wallet.isConnected || !wallet.account?.owner) {
-        console.log(
-          "[PoolService] Wallet not connected or no account owner, returning empty balances",
-        );
+        // when wallet not connected, return empty balances
         return [];
       }
 
-      console.log("[PoolService] Creating actor...");
-      const actor = await createAnonymousActorHelper(
-        kongBackendCanisterId,
-        canisterIDLs.kong_backend,
-      );
-
-      if (!actor) {
-        console.error("[PoolService] Actor creation failed");
-        throw new Error("Actor not available");
-      }
-
-      console.log(
-        "[PoolService] Actor created successfully, fetching balances...",
-      );
-      const balances = await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
-      console.log("[PoolService] Balances fetched successfully:", balances);
-
-      return balances;
+      const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
+      return await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
     } catch (error) {
       if (error.message?.includes("Anonymous user")) {
         console.log(
