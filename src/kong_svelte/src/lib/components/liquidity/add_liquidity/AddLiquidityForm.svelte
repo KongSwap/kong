@@ -13,6 +13,7 @@
     import { tokenStore } from '$lib/services/tokens/tokenStore';
     import debounce from 'lodash-es/debounce';
     import { toastStore } from "$lib/stores/toastStore";
+    import { BigNumber } from 'bignumber.js';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -218,7 +219,7 @@
             loading = false;
             loadingState = '';
         }
-    }, 300); // Reduced debounce time for better responsiveness
+    }, 1000); // Increased from default to 1000ms
 
     // Enhanced input handling
     async function handleInput(index: 0 | 1, event: Event) {
@@ -315,15 +316,40 @@
     $: {
         if (token0?.price && amount0) {
             const cleanAmount = amount0.toString().replace(/[,_]/g, '');
-            const value = parseFloat(cleanAmount) * token0.price;
+            const value = new BigNumber(cleanAmount)
+            .times(new BigNumber(token0.price))
+            .toNumber();
             animatedUsdValue0.set(value);
         }
         if (token1?.price && amount1) {
             const cleanAmount = amount1.toString().replace(/[,_]/g, '');
-            const value = parseFloat(cleanAmount) * token1.price;
+            const value = new BigNumber(cleanAmount)
+            .times(new BigNumber(token1.price))
+            .toNumber();
             animatedUsdValue1.set(value);
         }
     }
+
+    // Calculate and display pool ratio
+    $: poolRatio = (() => {
+        if (token0 && token1 && amount0 && amount1) {
+            const amt0 = new BigNumber(amount0.toString().replace(/[,_]/g, ''));
+            const amt1 = new BigNumber(amount1.toString().replace(/[,_]/g, ''));
+            if (amt0.isGreaterThan(0) && amt1.isGreaterThan(0)) {
+                return `1 ${token0.symbol} = ${amt1.dividedBy(amt0).toFixed(6)} ${token1.symbol}`;
+            }
+        }
+        return '';
+    })();
+
+    // Calculate USD ratio to show price relationship
+    $: usdRatio = (() => {
+        if (token0?.price && token1?.price) {
+            const ratio = new BigNumber(token0.price).dividedBy(token1.price);
+            return `1 ${token0.symbol} ≈ $${ratio.times(token1.price).toFixed(2)}`;
+        }
+        return '';
+    })();
 
     // Get pool when both tokens are selected
     $: if (token0 && token1) {
@@ -565,20 +591,22 @@
             </div>
         </div>
 
-        <button
-            class="submit-button"
-            disabled={!isValid || loading}
-            on:click={handleSubmit}
-        >
-            {#if loading}
-                <div class="loading-state">
-                    <span class="loading-spinner"></span>
-                    <span>{loadingState}</span>
-                </div>
-            {:else}
-                {buttonText}
-            {/if}
-        </button>
+        <div class="mt-4">
+            <button
+                class="submit-button"
+                disabled={!isValid || loading}
+                on:click={handleSubmit}
+            >
+                {#if loading}
+                    <div class="loading-state">
+                        <span class="loading-spinner"></span>
+                        <span>{loadingState}</span>
+                    </div>
+                {:else}
+                    {buttonText}
+                {/if}
+            </button>
+        </div>
 
         {#if token0 && token1}
             {#if pool}
@@ -597,9 +625,18 @@
                             <span class="stat-label">APY</span>
                         </div>
                     </div>
-                    <div class="pool-ratio">
-                        <span>1 {pool.symbol_0} = {formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0))} {pool.symbol_1}</span>
+                    {#if poolRatio}
+                    <div class="flex flex-col gap-1 mt-4 text-sm text-gray-500">
+                        <div class="flex items-center justify-between">
+                            <span>Pool Ratio:</span>
+                            <span class="font-medium">{poolRatio}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>Price:</span>
+                            <span class="font-medium">{usdRatio}</span>
+                        </div>
                     </div>
+                {/if}
                 </div>
             {:else}
                 <div class="pool-info mt-4">
