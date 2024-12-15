@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ]
-	then
-		NETWORK=""
-	else
-		NETWORK="--network $1"
+if [ "$1" == "staging" ]; then
+	NETWORK="--network ic"
+else
+	NETWORK="--network local"
 fi
 IDENTITY="--identity kong_token_minter"
 MINTER_ACCOUNT_ID=$(dfx ledger $NETWORK $IDENTITY account-id)

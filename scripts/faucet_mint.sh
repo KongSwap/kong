@@ -1,71 +1,71 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ]
-	then
-		NETWORK=""
-	else
-		NETWORK="--network $1"
+if [ "$1" == "staging" ]; then
+	network="--network ic"
+else
+	network="--network local"
 fi
-IDENTITY="--identity kong_token_minter"
+identity="--identity kong_token_minter"
+kong_faucet="kong_faucet"
 
-TO_PRINCIPAL_ID=$(dfx canister id ${NETWORK} kong_faucet)
+to_principal_id=$(dfx canister id $network $kong_faucet)
+
+# 100,000,000 ksUSDT
+amount=100_000_000_000_000
+token="ksusdt"
+token_ledger="${token}_ledger"
+
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
+},)"
 
 # 10,000,000 ksICP
-AMOUNT=1_000_000_000_000_000
-TOKEN="ksicp"
-TOKEN_LEDGER="${TOKEN}_ledger"
+amount=1_000_000_000_000_000
+token="ksicp"
+token_ledger="${token}_ledger"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
 },)"
 
 # 100,000,000 ksUSDC
-AMOUNT=100_000_000_000_000
-TOKEN="ksusdc"
-TOKEN_LEDGER="${TOKEN}_ledger"
+amount=100_000_000_000_000
+token="ksusdc"
+token_ledger="${token}_ledger"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
-},)"
-
-# 100,000,000 ksUSDT
-AMOUNT=100_000_000_000_000
-TOKEN="ksusdt"
-TOKEN_LEDGER="${TOKEN}_ledger"
-
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
 },)"
 
 # 1,500 ksBTC
-AMOUNT=150_000_000_000
-TOKEN="ksbtc"
-TOKEN_LEDGER="${TOKEN}_ledger"
+amount=150_000_000_000
+token="ksbtc"
+token_ledger="${token}_ledger"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
 },)"
 
 # 30,000 ksETH
-AMOUNT=30_000_000_000_000_000_000_000
-TOKEN="kseth"
-TOKEN_LEDGER="${TOKEN}_ledger"
+amount=30_000_000_000_000_000_000_000
+token="kseth"
+token_ledger="${token}_ledger"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
 },)"
 
 # 2,000,000 ksKONG
-AMOUNT=200_000_000_000_000
-TOKEN="kskong"
-TOKEN_LEDGER="${TOKEN}_ledger"
+amount=200_000_000_000_000
+token="kskong"
+token_ledger="${token}_ledger"
 
-dfx canister call ${NETWORK} ${IDENTITY} ${TOKEN_LEDGER} icrc1_transfer "(record {
-	to=record {owner=principal \"${TO_PRINCIPAL_ID}\"; subaccount=null};
-	amount=${AMOUNT};
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
 },)"

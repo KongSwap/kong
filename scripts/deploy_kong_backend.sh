@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ]
-	then
-		NETWORK=""
-	else
-		NETWORK="--network $1"
+if [ "$1" == "staging" ]; then
+	network="--network ic"
+	kong_backend="kong_backend_staging"
+elif [ "$1" == "prod" ]; then
+	network="--network ic"
+	kong_backend="kong_backend_prod"
+else
+	network="--network local"
+	kong_backend="kong_backend_local"
 fi
-IDENTITY="--identity kong"
+identity="--identity kong"
 
-dfx deploy ${NETWORK} ${IDENTITY} kong_backend
+dfx deploy $network $identity $kong_backend

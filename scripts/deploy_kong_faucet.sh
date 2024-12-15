@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
-if [ -z "$1" ]
-	then
-		NETWORK=""
-		SAME_SUBNET=""
-	else
-		NETWORK="--network $1"
-		SAME_SUBNET="--next-to kong_backend"
+if [ "$1" == "staging" ]; then
+	network="--network ic"
+else
+	network="--network local"
 fi
-IDENTITY="--identity kong"
+identity="--identity kong"
+kong_faucet="kong_faucet"
 
-dfx deploy ${NETWORK} ${IDENTITY} ${SAME_SUBNET} kong_faucet
+dfx deploy $network $identity $kong_faucet
 
 ./faucet_mint.sh $1
