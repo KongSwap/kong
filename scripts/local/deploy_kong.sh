@@ -66,6 +66,11 @@ done
 # Deploy faucet and mint for local/staging
 if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
     dfx deploy kong_faucet --network "${NETWORK}"
+	# mint test tokens to kong_faucet
+    [ -f "${SCRIPT_DIR}/../faucet_mint.sh" ] && {
+        bash "${SCRIPT_DIR}/../faucet_mint.sh" "${NETWORK}"
+    } || echo "Warning: user_mint.sh not found"
+	# mint test tokens to kong_user1
     [ -f "${SCRIPT_DIR}/../user_mint.sh" ] && {
         bash "${SCRIPT_DIR}/../user_mint.sh" "${NETWORK}"
     } || echo "Warning: user_mint.sh not found"
