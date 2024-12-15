@@ -8,6 +8,10 @@ description = "Kong Swap faucet canister"
 name = "kong_faucet"
 crate-type = ["cdylib"]
 
+[features]
+local = []
+staging = []
+
 [dependencies]
 kong_lib = { path = "../kong_lib" }
 candid = "0.10.10"

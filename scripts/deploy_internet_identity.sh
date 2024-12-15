@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# will only work on local network
+# can only be for local replica
 
-IDENTITY="--identity kong"
+network="--network local"
+identity="--identity kong"
+internet_identity="internet_identity"
 
-dfx deploy ${IDENTITY} internet_identity
+dfx deploy $identity $internet_identity

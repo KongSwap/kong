@@ -26,23 +26,32 @@ if [[ $USER_LIST != *"kong"* ]] || [[ $USER_LIST != *"kong_token_minter"* ]] || 
 	exit 1
 fi
 
-./switch_local.sh
-
 cd ..
 
 dfx identity use kong
 
-./deploy_kong_backend.sh
-./deploy_kong_data.sh
-./deploy_internet_identity.sh
-./deploy_ksicp_ledger.sh
-./deploy_ksusdc_ledger.sh
-./deploy_ksusdt_ledger.sh
-./deploy_ksbtc_ledger.sh
-./deploy_kseth_ledger.sh
-./deploy_kskong_ledger.sh
-./deploy_kong_svelte.sh
+if [ -z "$1"]; then
+	set -- "local"	# default to local build if none specified
+fi
 
-./user_mint.sh
+echo Building and deploying to $1
 
-./deploy_kong_faucet.sh
+if [ "$1" == "local" ]; then
+	./deploy_internet_identity.sh
+fi
+
+./deploy_kong_backend.sh $1
+./deploy_kong_data.sh $1
+./deploy_ksusdt_ledger.sh $1
+./deploy_ksicp_ledger.sh $1
+./deploy_ksusdc_ledger.sh $1
+./deploy_ksbtc_ledger.sh $1
+./deploy_kseth_ledger.sh $1
+./deploy_kskong_ledger.sh $1
+
+if [ "$1" == "staging" ] || [ "$1" == "local" ]; then
+	./deploy_kong_faucet.sh $1
+	./user_mint.sh $1
+fi
+
+./deploy_kong_svelte.sh $1

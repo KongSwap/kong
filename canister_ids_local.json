@@ -1,32 +1,32 @@
 {
   "kong_backend": {
-    "ic": "2ipq2-uqaaa-aaaar-qailq-cai"
+    "local": "2ipq2-uqaaa-aaaar-qailq-cai"
   },
   "kong_data": {
-    "ic": "cbefx-hqaaa-aaaar-qakrq-cai"
-  },
-  "kong_faucet": {
-    "ic": "ohr23-xqaaa-aaaar-qahqq-cai"
+    "local": "cbefx-hqaaa-aaaar-qakrq-cai"
   },
   "kong_svelte": {  
-    "ic": "3ldz4-aiaaa-aaaar-qaina-cai"
+    "local": "3ldz4-aiaaa-aaaar-qaina-cai"
+  },
+  "kong_faucet": {
+    "local": "ohr23-xqaaa-aaaar-qahqq-cai"
   },
   "ksusdt_ledger": {
-    "ic": "zdzgz-siaaa-aaaar-qaiba-cai"
+    "local": "zdzgz-siaaa-aaaar-qaiba-cai"
   },
   "ksicp_ledger": {
-    "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+    "local": "nppha-riaaa-aaaal-ajf2q-cai"
   },
   "ksusdc_ledger": {
-    "ic": "zw6xu-taaaa-aaaar-qaicq-cai"
+    "local": "zw6xu-taaaa-aaaar-qalocalq-cai"
   },
   "ksbtc_ledger": {
-    "ic": "zeyan-7qaaa-aaaar-qaibq-cai"
+    "local": "zeyan-7qaaa-aaaar-qaibq-cai"
   },
   "kseth_ledger": {
-    "ic": "zr7ra-6yaaa-aaaar-qaica-cai"
+    "local": "zr7ra-6yaaa-aaaar-qalocala-cai"
   },
   "kskong_ledger": {
-    "ic": "o7oak-iyaaa-aaaaq-aadzq-cai"
+    "local": "o7oak-iyaaa-aaaaq-aadzq-cai"
   }
 }

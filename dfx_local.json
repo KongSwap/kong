@@ -152,6 +152,12 @@
         "subnet_type": "system"
       }
     },
+    "staging": {
+      "type": "persistent",
+      "providers": [
+        "https://ic0.app"
+      ]
+    },
     "ic": {
       "type": "persistent",
       "providers": [
