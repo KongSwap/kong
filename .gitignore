@@ -128,8 +128,6 @@ dist/
 
 # environment variables
 .env
-canister_ids.json
-dfx.json
 secrets*
 package-lock.json
 *.lock
