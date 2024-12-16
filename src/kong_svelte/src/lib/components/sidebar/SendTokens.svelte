@@ -6,6 +6,10 @@
     import Modal from '$lib/components/common/Modal.svelte';
     import { formatTokenAmount, toMinimalUnit } from '$lib/utils/numberFormatUtils';
     import BigNumber from 'bignumber.js';
+    import QrScanner from '$lib/components/common/QrScanner.svelte';
+    import { onMount, onDestroy } from 'svelte';
+    import { Clipboard } from 'lucide-svelte';
+    import { Camera } from 'lucide-svelte';
 
     export let token: FE.Token;
 
@@ -14,6 +18,8 @@
     let isValidating = false;
     let errorMessage = '';
     let tokenFee: bigint;
+    let showScanner = false;
+    let hasCamera = false;
 
     async function loadTokenFee() {
         try {
@@ -195,6 +201,33 @@
             toastStore.error('Failed to paste from clipboard');
         }
     }
+
+    function handleScan(scannedText: string) {
+        const cleanedText = scannedText.trim();
+        console.log('Scanned text:', cleanedText);
+        
+        if (validateAddress(cleanedText)) {
+            recipientAddress = cleanedText;
+            toastStore.success('QR code scanned successfully');
+            showScanner = false;
+        } else {
+            toastStore.error('Invalid QR code. Please scan a valid Principal ID');
+        }
+    }
+
+    async function checkCameraAvailability() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            hasCamera = devices.some(device => device.kind === 'videoinput');
+        } catch (err) {
+            console.debug('Error checking camera:', err);
+            hasCamera = false;
+        }
+    }
+
+    onMount(() => {
+        checkCameraAvailability();
+    });
 </script>
 
 <div class="container" transition:fade>
@@ -202,6 +235,23 @@
         <div class="id-card">
             <div class="id-header">
                 <span>Recipient Address</span>
+                <div class="header-actions">
+                        <button 
+                            type="button"
+                            class="header-button"
+                            on:click={() => showScanner = true}
+                            title="Scan QR Code"
+                        >
+                            <Camera class="w-4 h-4" />
+                        </button>
+                    <button 
+                        type="button"
+                        class="header-button"
+                        on:click={recipientAddress ? () => recipientAddress = '' : handlePaste}
+                    >
+                        {#if recipientAddress}✕{:else}<Clipboard class="w-4 h-4" /> {/if}
+                    </button>
+                </div>
             </div>
 
             <div class="input-group">
@@ -213,13 +263,6 @@
                         class:error={errorMessage && recipientAddress}
                         class:valid={addressType === 'principal' && !errorMessage}
                     />
-                    <button 
-                        type="button"
-                        class="action-button"
-                        on:click={recipientAddress ? () => recipientAddress = '' : handlePaste}
-                    >
-                        {#if recipientAddress}✕{:else}📋{/if}
-                    </button>
                 </div>
                 
                 {#if recipientAddress}
@@ -237,18 +280,20 @@
         <div class="id-card">
             <div class="id-header">
                 <span>Amount</span>
-                <button type="button" class="max-btn" on:click={setMaxAmount}>MAX</button>
+                <button type="button" class="header-button" on:click={setMaxAmount}>MAX</button>
             </div>
 
             <div class="input-group">
-                <input
-                    type="text"
-                    inputmode="decimal"
-                    placeholder="Enter amount"
-                    bind:value={amount}
-                    on:input={handleAmountInput}
-                    class:error={errorMessage.includes('balance') || errorMessage.includes('Amount')}
-                />
+                <div class="input-wrapper">
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="Enter amount"
+                        bind:value={amount}
+                        on:input={handleAmountInput}
+                        class:error={errorMessage.includes('balance') || errorMessage.includes('Amount')}
+                    />
+                </div>
                 <div class="balance-info">
                     <span>Balance: {formatTokenAmount(token.balance, token.decimals)} {token.symbol}</span>
                 </div>
@@ -330,6 +375,14 @@
             </div>
         </Modal>
     {/if}
+
+    {#if showScanner}
+        <QrScanner 
+            isOpen={showScanner}
+            onClose={() => showScanner = false}
+            onScan={handleScan}
+        />
+    {/if}
 </div>
 
 <style lang="postcss">
@@ -345,27 +398,30 @@
         @apply flex justify-between items-center mb-2 text-white/70 text-sm;
     }
 
+    .header-actions {
+        @apply flex items-center gap-2;
+    }
+
+    .header-button {
+        @apply px-3 py-1 bg-white/10 rounded-lg hover:bg-white/20 text-white;
+    }
+
     .max-btn {
         @apply px-3 py-1 bg-white/10 rounded-lg hover:bg-white/20 text-white;
     }
 
     .input-wrapper {
         @apply relative flex items-center;
-    }
 
-    .action-button {
-        @apply absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 
-               flex items-center justify-center rounded-lg
-               bg-white/10 text-white/70 hover:bg-white/15;
-    }
+        input {
+            @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white
+                   border border-white/10 hover:border-white/20
+                   focus:border-indigo-500 focus:outline-none;
 
-    input {
-        @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white
-               border border-white/10 hover:border-white/20
-               focus:border-indigo-500 focus:outline-none pr-10;
-        
-        &.error { @apply border-red-500/50 bg-red-500/10; }
-        &.valid { @apply border-green-500/50; }
+            &.error { 
+                @apply border-red-500/50 bg-red-500/10; 
+            }
+        }
     }
 
     .error-message {
@@ -384,7 +440,7 @@
     }
 
     .balance-info {
-        @apply text-right mt-1 text-sm text-white/60;
+        @apply text-right text-sm text-white/60;
     }
 
     .confirm-box {
@@ -459,5 +515,55 @@
 
     .loading-spinner {
         @apply inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
+    }
+
+    .scanner-container {
+        @apply p-4 flex flex-col items-center gap-4;
+
+        :global(#qr-reader) {
+            @apply w-full max-w-[300px] mx-auto bg-black/20 rounded-lg overflow-hidden;
+            
+            :global(video) {
+                @apply rounded-lg;
+            }
+
+            :global(#qr-reader__header_message),
+            :global(#qr-reader__filescan_input),
+            :global(#qr-reader__dashboard_section_csr) {
+                @apply hidden;
+            }
+
+            :global(#qr-reader__scan_region) {
+                @apply bg-transparent rounded-lg relative;
+                border: 2px solid theme('colors.indigo.500') !important;
+            }
+        }
+
+        .scanner-controls {
+            @apply flex gap-3 mt-4;
+        }
+
+        .switch-camera-btn {
+            @apply px-4 py-2 bg-white/10 hover:bg-white/15 text-white/90 
+                   rounded-lg flex items-center justify-center;
+        }
+
+        .cancel-scan-btn {
+            @apply px-4 py-2 bg-white/10 hover:bg-white/15 text-white/90 rounded-lg;
+        }
+    }
+
+    @keyframes scan {
+        0% { 
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        50% { 
+            opacity: 1;
+        }
+        100% { 
+            transform: translateY(100%);
+            opacity: 0;
+        }
     }
 </style>

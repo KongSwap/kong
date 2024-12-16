@@ -213,15 +213,12 @@ class UpdateWorkerService {
             ...token,
             metrics: {
               ...token.metrics,
-              price: priceMap[token.canister_id]?.toString() ?? token.metrics.price,
-              price_change_24h: priceChangeMap[token.canister_id]?.toString() ?? token.metrics.price_change_24h
+              price: priceMap[token.canister_id]?.toString() || token.metrics.price,
+              price_change_24h: priceChangeMap[token.canister_id]?.toString() || token.metrics.price_change_24h
             }
           }))
         };
       });
-
-      // Force a refresh of the live query
-      await kongDB.tokens.toArray();
 
     } catch (error) {
       console.error("Error updating prices:", error);

@@ -1,7 +1,6 @@
 import { writable, get } from "svelte/store";
 import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import {
-  canisterId as kongBackendCanisterId,
   idlFactory as kongBackendIDL,
 } from "../../../../declarations/kong_backend";
 import {
@@ -33,41 +32,6 @@ export const canisterIDLs = {
 // Add a constant for the storage key
 const LAST_WALLET_KEY = 'kongSelectedWallet';
 
-export class Auth {
-  private initialized = false;
-  private initializationPromise: Promise<void> | null = null;
-  private authStore: AuthStore;
-
-  constructor(authStore: AuthStore) {
-    this.authStore = authStore;
-  }
-
-  public async initialize() {
-    if (this.initialized) {
-      return;
-    }
-
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
-
-    this.initializationPromise = (async () => {
-      try {
-        // Use the auth store's initialize method
-        await this.authStore.initialize();
-        this.initialized = true;
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        this.initialized = false;
-        this.initializationPromise = null;
-        throw error;
-      }
-    })();
-
-    return this.initializationPromise;
-  }
-}
-
 function createAuthStore(pnp: PNP) {
   const store = writable({
     isConnected: false,
@@ -76,17 +40,6 @@ function createAuthStore(pnp: PNP) {
   });
 
   const { subscribe, set, update } = store;
-
-  // Add function to get last used wallet
-  const getLastWallet = () => {
-    if (!browser) return null;
-    try {
-      return localStorage.getItem(LAST_WALLET_KEY);
-    } catch (e) {
-      console.warn('Failed to read from localStorage:', e);
-      return null;
-    }
-  };
 
   // Add function to save last used wallet
   const saveLastWallet = (walletId: string) => {
@@ -101,19 +54,7 @@ function createAuthStore(pnp: PNP) {
   return {
     subscribe,
     pnp,
-    
-    // Add initialization function
-    async initialize() {
-      try {
-
-      } catch (error) {
-        console.warn('Auto-reconnect failed:', error);
-      } finally {
-        update(s => ({ ...s, isInitialized: true }));
-      }
-    },
-
-    async connect(walletId: string, event?: Event, isAutoConnect = false) {
+    async connect(walletId: string, isAutoConnect = false) {
       try {
         const result = await pnp.connect(walletId, event);
         console.log("Connection result:", result);
@@ -127,25 +68,11 @@ function createAuthStore(pnp: PNP) {
           set(newState);
   
           // Only save wallet if it's not an auto-connect
-          if (!isAutoConnect) {
-            saveLastWallet(walletId);
-          }
-  
-          // Force a refresh of the userStore and token balances
-          const actor = await this.getActor(kongBackendCanisterId, kongBackendIDL, { anon: false, requiresSigning: false });
-          
-          try {
-            const [_, balances] = await Promise.all([
-              actor.get_user(),
-              TokenService.fetchBalances(null, result.owner.toString())
-            ]);
-            tokenStore.updateBalances(balances);
-            return result;
-          } catch (error) {
-            console.error('Error fetching user data or balances:', error);
-            localStorage.removeItem("kongSelectedWallet");
-            throw error;
-          }
+          if (!isAutoConnect) saveLastWallet(walletId);
+
+          const balances = await TokenService.fetchBalances(null, result.owner.toString())
+          tokenStore.updateBalances(balances);
+          return result;
         } else {
           console.error("Invalid connection result format:", result);
           set({ isConnected: false, account: null, isInitialized: true });
@@ -175,6 +102,7 @@ function createAuthStore(pnp: PNP) {
         // Clear saved wallet on disconnect
         if (browser) {
           localStorage.removeItem(LAST_WALLET_KEY);
+          localStorage.removeItem("kongSelectedWallet");
         }
         
         return result;
@@ -200,8 +128,7 @@ function createAuthStore(pnp: PNP) {
       const createActorWithRetry = async () => {
         while (attempt < maxRetries) {
           try {
-            const actor = await pnp.getActor(canisterId, idl, { anon: options.anon, requiresSigning: options.requiresSigning });
-            return actor;
+            return await pnp.getActor(canisterId, idl, { anon: options.anon, requiresSigning: options.requiresSigning });;
           } catch (error) {
             attempt++;
             if (attempt === maxRetries) {
@@ -224,14 +151,6 @@ const authStore = createAuthStore(getPnpInstance());
 
 // Create Auth class instance with the store
 export const auth = authStore;
-
-// Create a writable store for user data
-const userDataStore = writable<any>(null);
-
-// Export the readable user store
-export const userStore = {
-  subscribe: userDataStore.subscribe
-};
 
 export async function requireWalletConnection(): Promise<void> {
   const pnp = get(auth);

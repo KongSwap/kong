@@ -22,13 +22,14 @@ export const parseTokens = async (
         // For the default fallback logo, use the path directly
         logoUrl = DEFAULT_LOGOS.DEFAULT;
       }
+
       const result: FE.Token = {
         canister_id: token.canister_id,
         address: token.address || token.canister_id,
         name: token.name,
         symbol: token.symbol,
-        fee: Number(token.fee_fixed.toString().replace("_", "")),
-        fee_fixed: token.fee_fixed.replace("_", ""),
+        fee: Number(token.fee),
+        fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
         decimals: token.decimals,
         token: token.token_type || '',
         token_type: token.token_type || '',
