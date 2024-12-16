@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
+bash create_canister_id.sh $1
 NETWORK="--network $1"
-
 KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
 # 1. Add ckUSDT token
