@@ -8,6 +8,7 @@ name = "kong_data"
 crate-type = ["cdylib"]
 
 [features]
+default = ["local"]
 local = []
 staging = []
 prod = []
