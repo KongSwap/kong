@@ -57,8 +57,7 @@ function createAuthStore(pnp: PNP) {
     async connect(walletId: string, isAutoConnect = false) {
       try {
         const result = await pnp.connect(walletId, event);
-        console.log("Connection result:", result);
-        
+
         if (result && typeof result === 'object' && 'owner' in result) {          
           const newState = { 
             isConnected: true,
@@ -117,9 +116,7 @@ function createAuthStore(pnp: PNP) {
         return createAnonymousActorHelper(canisterId, idl);
       }
 
-      if (!pnp.isWalletConnected()) {
-        throw new Error('Anonymous user');
-      }
+      if (!pnp.isWalletConnected()) throw new Error('Anonymous user');
 
       // Add retry logic for actor creation
       const maxRetries = 3;
@@ -155,8 +152,7 @@ export const auth = authStore;
 export async function requireWalletConnection(): Promise<void> {
   const pnp = get(auth);
   const connected = pnp.isConnected;
-  console.log("REQUIRE WALLET CONNECTION - IS CONNECTED?", connected);
-  console.log("REQUIRE WALLET CONNECTION - ACCOUNT", pnp.account);
+
   if (!connected) {
     throw new Error('Wallet is not connected.');
   }

@@ -14,7 +14,7 @@
   import LiquidityPoolsPanel from "$lib/components/stats/LiquidityPoolsPanel.svelte";
   import StatPanel from "$lib/components/stats/StatPanel.svelte";
   import { goto } from "$app/navigation";
-  import { CKUSDC_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   // Ensure formattedTokens and poolStore are initialized
   if (!formattedTokens || !poolStore) {
@@ -36,7 +36,9 @@
 
   let icpToken = $state<FE.Token | undefined>(undefined);
   $effect(() => {
-    const found = $formattedTokens?.find((t) => t.canister_id === ICP_CANISTER_ID);
+    const found = $formattedTokens?.find(
+      (t) => t.canister_id === ICP_CANISTER_ID,
+    );
     if (found) {
       icpToken = found;
     }
@@ -54,16 +56,12 @@
     const foundToken = $formattedTokens.find(
       (t) => t.address === pageId || t.canister_id === pageId,
     );
-    
-    // console.log('Found token:', foundToken);
-    // console.log('Token metrics:', foundToken?.metrics);
-    // console.log('24h price change:', foundToken?.metrics?.price_change_24h);
 
     if (foundToken) {
       const converted = foundToken;
       token = converted;
     } else {
-      console.warn('Token not found:', $page.params.id);
+      console.warn("Token not found:", $page.params.id);
       token = undefined;
     }
   });
@@ -71,71 +69,54 @@
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
   let selectedPool = $state<Pool | undefined>(undefined);
   $effect(() => {
-    if (token?.canister_id === CKUSDT_CANISTER_ID) {
-      const foundPool = $poolStore?.pools?.filter((p) => {
+    if (!token?.canister_id || !$poolStore?.pools) return;
+
+    // Get all pools containing this token
+    const relevantPools = $poolStore.pools.filter((p) => {
+      const hasToken =
+        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
+      const hasTVL = Number(p.tvl) > 0;
+      const hasVolume = Number(p.volume_24h) > 0;
+      return hasToken && hasTVL && hasVolume; // Only include pools with actual volume
+    });
+
+    if (relevantPools.length === 0) {
+      // If no pools with volume, fall back to pools with just TVL
+      const poolsWithTvl = $poolStore.pools.filter((p) => {
         const hasToken =
-          p.address_0 === CKUSDT_CANISTER_ID || p.address_1 === CKUSDT_CANISTER_ID;
-        const hasUSDC =
-          p.address_0 === CKUSDC_CANISTER_ID || p.address_1 === CKUSDC_CANISTER_ID;
-        const hasTVL = Number(p.tvl) > 10;
+          p.address_0 === token.canister_id ||
+          p.address_1 === token.canister_id;
+        const hasTVL = Number(p.tvl) > 0;
+        return hasToken && hasTVL;
+      });
 
-        return hasToken && hasUSDC && hasTVL;
-      }).sort((a, b) => Number(b.tvl) - Number(a.tvl)).at(0);
-
-      if (foundPool) {
+      if (poolsWithTvl.length > 0) {
+        const sortedByTvl = poolsWithTvl.sort(
+          (a, b) => Number(b.tvl) - Number(a.tvl),
+        );
+        const highestTvlPool = sortedByTvl[0];
         selectedPool = {
-          ...foundPool,
-          pool_id: String(foundPool.pool_id),
-          tvl: String(foundPool.tvl),
-          lp_token_supply: String(foundPool.lp_token_supply),
+          ...highestTvlPool,
+          pool_id: String(highestTvlPool.pool_id),
+          tvl: String(highestTvlPool.tvl),
+          lp_token_supply: String(highestTvlPool.lp_token_supply),
         } as unknown as Pool;
       }
       return;
     }
 
-    // Try to find CKUSDT pool first
-    const ckusdtPool = $poolStore?.pools?.find((p) => {
-      if (!token?.canister_id || !ckusdtToken?.canister_id) return false;
+    // Sort by 24h volume descending
+    const sortedPools = relevantPools.sort(
+      (a, b) => Number(b.volume_24h) - Number(a.volume_24h),
+    );
+    const highestVolumePool = sortedPools[0];
 
-      const hasToken =
-        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
-      const hasUSDT =
-        p.address_0 === ckusdtToken.canister_id ||
-        p.address_1 === ckusdtToken.canister_id;
-      const hasTVL = Number(p.tvl) > 10 * 10 ** 6;
-
-      return hasToken && hasUSDT && hasTVL;
-    });
-
-    if (ckusdtPool) {
+    if (highestVolumePool) {
       selectedPool = {
-        ...ckusdtPool,
-        pool_id: String(ckusdtPool.pool_id),
-        tvl: String(ckusdtPool.tvl),
-        lp_token_supply: String(ckusdtPool.lp_token_supply),
-      } as unknown as Pool;
-      return;
-    }
-
-    // If no CKUSDT pool found, try ICP pool
-    const icpPool = $poolStore?.pools?.find((p) => {
-      if (!token?.canister_id) return false;
-
-      const hasToken =
-        p.address_0 === token.canister_id || p.address_1 === token.canister_id;
-      const hasICP =
-        p.address_0 === ICP_CANISTER_ID || p.address_1 === ICP_CANISTER_ID;
-      const hasTVL = Number(p.tvl) > 0;
-
-      return hasToken && hasICP && hasTVL;
-    });
-
-    if (icpPool) {
-      selectedPool = {
-        ...icpPool,
-        pool_id: String(icpPool.pool_id),
-        tvl: String(icpPool.tvl),
-        lp_token_supply: String(icpPool.lp_token_supply),
+        ...highestVolumePool,
+        pool_id: String(highestVolumePool.pool_id),
+        tvl: String(highestVolumePool.tvl),
+        lp_token_supply: String(highestVolumePool.lp_token_supply),
       } as unknown as Pool;
     }
   });
@@ -183,11 +164,7 @@
   // Add back the isChartDataReady state and effect
   let isChartDataReady = $state(false);
   $effect(() => {
-    if (token?.canister_id === CKUSDT_CANISTER_ID) {
-      isChartDataReady = Boolean(selectedPool && token && $formattedTokens?.find(t => t.canister_id === CKUSDC_CANISTER_ID));
-    } else {
-      isChartDataReady = Boolean(selectedPool && token && (ckusdtToken || icpToken));
-    }
+    isChartDataReady = Boolean(selectedPool && token);
   });
 </script>
 
@@ -195,7 +172,10 @@
   {#if !$formattedTokens || !$poolStore?.pools}
     <div class="text-white">Loading token data...</div>
   {:else if !token}
-    <div class="text-white">Token not found: {$page.params.id}</div>
+    <div class="text-white">
+      <!-- Add a no token found and loading indicator -->
+      
+    </div>
   {:else}
     <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
       <!-- Token Header - Non-fixed with border radius -->
@@ -227,14 +207,18 @@
                 </button>
 
                 <div class="flex items-center gap-3 md:gap-4">
-                  <TokenImages 
-                    tokens={token ? [token] : []} 
-                    size={36} 
-                    containerClass="md:w-12 md:h-12" 
+                  <TokenImages
+                    tokens={token ? [token] : []}
+                    size={36}
+                    containerClass="md:w-12 md:h-12"
                   />
                   <div class="flex items-center gap-2">
-                    <h1 class="text-lg md:text-2xl font-bold text-white">{token.name}</h1>
-                    <div class="text-sm md:text-base text-[#8890a4]">({token.symbol})</div>
+                    <h1 class="text-lg md:text-2xl font-bold text-white">
+                      {token.name}
+                    </h1>
+                    <div class="text-sm md:text-base text-[#8890a4]">
+                      ({token.symbol})
+                    </div>
                   </div>
                 </div>
               </div>
@@ -245,7 +229,9 @@
                   class="bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full md:w-auto transition-colors duration-200"
                 >
                   <div class="truncate">
-                    <span class="text-[#8890a4] text-sm">{token.canister_id}</span>
+                    <span class="text-[#8890a4] text-sm"
+                      >{token.canister_id}</span
+                    >
                   </div>
                   <button
                     class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
@@ -281,7 +267,8 @@
                 class="bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full transition-colors duration-200"
               >
                 <div class="truncate">
-                  <span class="text-[#8890a4] text-sm">{token.canister_id}</span>
+                  <span class="text-[#8890a4] text-sm">{token.canister_id}</span
+                  >
                 </div>
                 <button
                   class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
@@ -327,8 +314,14 @@
             {:else if token.metrics.price_change_24h === null || Number(token.metrics.price_change_24h) === 0}
               <span class="text-slate-400">--</span>
             {:else}
-              <span class={Number(token.metrics.price_change_24h) > 0 ? "text-green-500" : "text-red-500"}>
-                {Number(token.metrics.price_change_24h) > 0 ? "+" : ""}{Number(token.metrics.price_change_24h).toFixed(2)}%
+              <span
+                class={Number(token.metrics.price_change_24h) > 0
+                  ? "text-green-500"
+                  : "text-red-500"}
+              >
+                {Number(token.metrics.price_change_24h) > 0 ? "+" : ""}{Number(
+                  token.metrics.price_change_24h,
+                ).toFixed(2)}%
               </span>
             {/if}
             <span class="text-slate-400 ml-1">24h</span>
@@ -372,31 +365,25 @@
           {#if isChartDataReady}
             <TradingViewChart
               poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-              symbol={token?.canister_id === CKUSDT_CANISTER_ID 
-                ? "ckUSDT/ckUSDC"
-                : token
-                  ? `${token.symbol}/${
-                      selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
-                        ? "ckUSDT"
-                        : selectedPool?.address_0 === token.canister_id
-                          ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)?.symbol
-                          : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)?.symbol
-                    }`
-                  : ""}
-              quoteToken={token?.canister_id === CKUSDT_CANISTER_ID
-                ? ckusdtToken
-                : selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
-                  ? ckusdtToken
-                  : selectedPool?.address_0 === token?.canister_id
-                    ? $formattedTokens?.find(t => t.canister_id === selectedPool?.address_1)
-                    : $formattedTokens?.find(t => t.canister_id === selectedPool?.address_0)
-              }
-              baseToken={token?.canister_id === CKUSDT_CANISTER_ID
-                ? $formattedTokens?.find(t => t.canister_id === CKUSDC_CANISTER_ID)
-                : selectedPool?.address_0 === CKUSDT_CANISTER_ID || selectedPool?.address_1 === CKUSDT_CANISTER_ID
-                  ? token
-                  : token
-              }
+              symbol={token && selectedPool
+                ? `${token.symbol}/${
+                    selectedPool.address_0 === token.canister_id
+                      ? $formattedTokens?.find(
+                          (t) => t.canister_id === selectedPool.address_1,
+                        )?.symbol
+                      : $formattedTokens?.find(
+                          (t) => t.canister_id === selectedPool.address_0,
+                        )?.symbol
+                  }`
+                : ""}
+              quoteToken={selectedPool?.address_0 === token?.canister_id
+                ? $formattedTokens?.find(
+                    (t) => t.canister_id === selectedPool?.address_1,
+                  )
+                : $formattedTokens?.find(
+                    (t) => t.canister_id === selectedPool?.address_0,
+                  )}
+              baseToken={token}
             />
           {:else}
             <div class="flex items-center justify-center h-full">

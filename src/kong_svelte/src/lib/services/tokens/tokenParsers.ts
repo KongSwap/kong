@@ -1,5 +1,6 @@
 import { INDEXER_URL } from "$lib/constants/canisterConstants";
 import { DEFAULT_LOGOS } from "./tokenLogos";
+import { kongDB } from "$lib/services/db";
 
 // For default logos, we don't need the INDEXER_URL prefix
 const STATIC_ASSETS_URL = `${INDEXER_URL}`;
@@ -9,6 +10,12 @@ export const parseTokens = async (
 ): Promise<FE.Token[]> => {
   try {
     const icTokens: FE.Token[] = await Promise.all(data.map(async (token) => {
+      // Get existing token data from Dexie
+      const existingToken = await kongDB.tokens
+        .where('canister_id')
+        .equals(token.canister_id)
+        .first();
+
       let logoUrl: string;
 
       if (token.canister_id in DEFAULT_LOGOS) {
@@ -43,15 +50,17 @@ export const parseTokens = async (
         pools: [],
         metrics: {
           total_supply: token.metrics?.total_supply?.toString() || "0",
-          price: token.metrics?.price || "0",
-          price_change_24h: token.metrics?.price_change_24h || "0",
-          volume_24h: "0",
+          // Prefer existing price data from Dexie over API data
+          price: existingToken?.metrics?.price || token.metrics?.price || "0",
+          price_change_24h: existingToken?.metrics?.price_change_24h || token.metrics?.price_change_24h || "0",
+          volume_24h: token.metrics?.volume_24h || "0",
           market_cap: token.metrics?.market_cap || "0",
           updated_at: token.metrics?.updated_at || "",
         },
         logo_url: logoUrl,
-        total_24h_volume: "0",
-        price: Number(token.metrics?.price || 0),
+        total_24h_volume: token.metrics?.volume_24h || "0",
+        // Use existing price from Dexie if available
+        price: existingToken ? Number(existingToken.metrics?.price || 0) : Number(token.metrics?.price || 0),
         tvl: 0,
         balance: "0",
       };
