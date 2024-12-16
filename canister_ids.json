@@ -1,7 +1,4 @@
 {
-  "kong_svelte": {
-    "ic": "edoy4-liaaa-aaaar-qakha-cai"
-  },
   "kong_backend": {
     "local": "2ipq2-uqaaa-aaaar-qailq-cai"
   },
@@ -25,5 +22,8 @@
   },
   "cketh_ledger": {
     "local": "ss2fx-dyaaa-aaaar-qacoq-cai"
+  },
+  "kong_ledger": {
+    "local": "o7oak-iyaaa-aaaaq-aadzq-cai"
   }
 }

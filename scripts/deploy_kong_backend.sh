@@ -9,7 +9,7 @@ if [ "$1" == "ic" ]; then
     bash gzip_kong_backend.sh ic
 elif [ "$1" == "staging" ]; then
     bash create_canister_id.sh staging
-    dfx deploy kong_backend --network staging
+    KONG_BUILDENV="staging" dfx deploy kong_backend --network staging
 elif [ "$1" == "local" ]; then
     if CANISTER_ID=$(jq -r ".[\"kong_backend\"][\"local\"]" "${root_dir}"/canister_ids.all.json); then
         [ "${CANISTER_ID}" != "null" ] && {

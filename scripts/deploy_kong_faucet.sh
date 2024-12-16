@@ -5,7 +5,7 @@ root_dir="${original_dir}"/..
 
 if [ "$1" == "staging" ]; then
     bash create_canister_id.sh staging
-    dfx deploy kong_faucet --network staging
+    KONG_BUILDENV="staging" dfx deploy kong_faucet --network staging
 elif [ "$1" == "local" ]; then
     if CANISTER_ID=$(jq -r ".[\"kong_faucet\"][\"local\"]" "${root_dir}"/canister_ids.all.json); then
         [ "${CANISTER_ID}" != "null" ] && {
