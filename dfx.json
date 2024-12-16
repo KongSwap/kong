@@ -28,8 +28,6 @@
     },
     "kong_svelte": {
       "dependencies": [
-        "kong_backend",
-        "kong_data"
       ],
       "source": [
         "src/kong_svelte/dist"

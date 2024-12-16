@@ -29,6 +29,7 @@
     "comlink": "^4.4.2",
     "date-fns": "^4.1.0",
     "dexie": "^4.0.9",
+    "html5-qrcode": "^2.3.8",
     "hyperid": "^3.3.0",
     "qrcode": "^1.5.4"
   },

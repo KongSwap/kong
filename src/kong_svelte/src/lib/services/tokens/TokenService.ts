@@ -138,7 +138,7 @@ export class TokenService {
                 metrics: {
                   ...token.metrics,
                   price: price.toString(),
-                  price_change_24h: currentToken?.metrics?.price_change_24h || "0",
+                  price_change_24h: currentToken?.metrics?.price_change_24h,
                   market_cap: this.calculateMarketCap(token, price),
                   volume_24h: (await this.calculateVolume(token, poolData.pools)).toString()
                 },

@@ -9,6 +9,7 @@
   import PageWrapper from "$lib/components/layout/PageWrapper.svelte";
   import { updateWorkerService } from "$lib/services/updateWorkerService";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
+  import QRModal from '$lib/components/common/QRModal.svelte';
 
   let { children } = $props();
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
@@ -61,6 +62,7 @@
   </PageWrapper>
   <Toast />
   <AddToHomeScreen />
+  <QRModal />
 </div>
 
 <style scoped lang="postcss">
