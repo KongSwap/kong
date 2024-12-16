@@ -1,8 +1,26 @@
 {
   "kong_backend": {
-    "ic": "2ipq2-uqaaa-aaaar-qailq-cai"
+    "local": "2ipq2-uqaaa-aaaar-qailq-cai"
   },
   "kong_data": {
-    "ic": "cbefx-hqaaa-aaaar-qakrq-cai"
+    "local": "cbefx-hqaaa-aaaar-qakrq-cai"
+  },
+  "kong_svelte": {
+    "local": "3ldz4-aiaaa-aaaar-qaina-cai"
+  },
+  "kong_faucet": {
+    "local": "ohr23-xqaaa-aaaar-qahqq-cai"
+  },
+  "ckusdt_ledger": {
+    "local": "cngnf-vqaaa-aaaar-qag4q-cai"
+  },
+  "icp_ledger": {
+    "local": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+  },
+  "ckbtc_ledger": {
+    "local": "mxzaz-hqaaa-aaaar-qaada-cai"
+  },
+  "cketh_ledger": {
+    "local": "ss2fx-dyaaa-aaaar-qacoq-cai"
   }
 }

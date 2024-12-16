@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+original_dir=$(pwd)
+root_dir="${original_dir}"/..
 
-if [ "$KONG_BUILDENV" = "ic" ]; then
-    [ -f "${SCRIPT_DIR}/../.dfx/ic/canisters/kong_data/kong_data.wasm" ] && {
-        ic-wasm "${SCRIPT_DIR}/../.dfx/ic/canisters/kong_data/kong_data.wasm" -o "${SCRIPT_DIR}/../.dfx/ic/canisters/kong_data/kong_data_opt.wasm" optimize O3
-        gzip -c "${SCRIPT_DIR}/../.dfx/ic/canisters/kong_data/kong_data_opt.wasm" > "${SCRIPT_DIR}/../.dfx/ic/canisters/kong_data/kong_data.wasm.gz"
-        rm "${SCRIPT_DIR}/../.dfx/ic/canisters/kong_data/kong_data_opt.wasm"
+if [ "$1" == "ic" ]; then
+    [ -f "${root_dir}"/.dfx/ic/canisters/kong_data/kong_data.wasm ] && {
+        ic-wasm "${root_dir}"/.dfx/ic/canisters/kong_data/kong_data.wasm -o "${root_dir}"/.dfx/ic/canisters/kong_data/kong_data_opt.wasm optimize O3
+        gzip -c "${root_dir}"/.dfx/ic/canisters/kong_data/kong_data_opt.wasm > "${root_dir}"/.dfx/ic/canisters/kong_data/kong_data.wasm.gz
+        rm "${root_dir}"/.dfx/ic/canisters/kong_data/kong_data_opt.wasm
     }
 fi
