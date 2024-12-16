@@ -16,6 +16,7 @@ elif [ "$1" == "local" ]; then
 else
 	exit 1
 fi
+NETWORK="--network $1"
 IDENTITY="--identity kong_token_minter"
 CONTROLLER_PRINCIPAL_ID=$(dfx identity ${NETWORK} ${IDENTITY} get-principal)
 

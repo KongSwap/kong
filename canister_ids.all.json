@@ -7,7 +7,7 @@
   "kong_data": {
     "ic": "cbefx-hqaaa-aaaar-qakrq-cai",
     "local": "cbefx-hqaaa-aaaar-qakrq-cai",
-    "staging": ""
+    "staging": "6ukzc-hiaaa-aaaah-qpxqa-cai"
   },
   "kong_svelte": {  
     "ic": "3ldz4-aiaaa-aaaar-qaina-cai",
@@ -42,6 +42,6 @@
   "kong_ledger": {
     "ic": "o7oak-iyaaa-aaaaq-aadzq-cai",
     "local": "o7oak-iyaaa-aaaaq-aadzq-cai",
-    "staging": ""
+    "staging": "ed276-pqaaa-aaaag-atuhq-cai"
   }
 }

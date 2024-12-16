@@ -8,6 +8,9 @@ name = "kong_lib"
 crate-type = ["lib"]
 
 [features]
+default = ["local"]
+local = []
+staging = []
 prod = []
 
 [dependencies]
