@@ -9,7 +9,6 @@ name = "kong_faucet"
 crate-type = ["cdylib"]
 
 [features]
-default = ["local"]
 local = []
 staging = []
 
