@@ -6,6 +6,8 @@
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
   import Toast from "./Toast.svelte";
+  import { createEventDispatcher } from 'svelte';
+  const dispatch = createEventDispatcher();
 
   export let isOpen = false;
   export let title: string;
@@ -88,6 +90,12 @@
       onClose();
     }
   }
+
+  function handleTransitionEnd(event: CustomEvent) {
+    if (isOpen) {
+      dispatch('introend');
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleEscape} />
@@ -101,6 +109,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
+      on:introend={handleTransitionEnd}
     >
       <div
         bind:this={modalElement}
@@ -162,7 +171,7 @@
   {/if}
 </Portal>
 
-<style>
+<style scoped>
   .modal-overlay {
     position: fixed;
     top: 0;
@@ -171,12 +180,11 @@
     left: 0;
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 9999;
+    z-index: 99999;
     display: grid;
     place-items: center;
     overflow: auto;
     will-change: opacity;
-    padding: 1rem;
   }
 
   .modal-container {
@@ -189,7 +197,6 @@
 
   .modal-content {
     height: 100%;
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     min-height: var(--min-height, auto);
@@ -199,7 +206,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 1.5rem;
+    padding-bottom: 1rem;
     margin-bottom: 0;
     flex-shrink: 0;
   }
@@ -219,8 +226,8 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    margin: 0 -1.5rem;
-    padding: 0 1.5rem;
+    margin: 0rem;
+    padding: 0rem;
   }
 
   .action-button {
@@ -251,12 +258,9 @@
 
   @media (max-width: 768px) {
     .modal-overlay {
-      padding: 0.5rem;
+      padding: 0.4rem;
     }
 
-    .modal-content {
-      padding: 1rem;
-    }
 
     .modal-header {
       padding-bottom: 1rem;
@@ -267,8 +271,7 @@
     }
 
     .modal-body {
-      margin: 0 -1rem;
-      padding: 0 1rem;
+      margin: 0rem;
     }
 
     .modal-container {

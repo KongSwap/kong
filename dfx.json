@@ -7,7 +7,7 @@
       "package": "kong_backend",
       "candid": "src/kong_backend/kong_backend.did",
       "type": "custom",
-      "build": "sh ./scripts/build_kong_backend.sh",
+      "build": "bash ./scripts/build_kong_backend.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_backend.wasm",
 			"metadata": [
 				{
@@ -22,7 +22,7 @@
       },
       "package": "kong_data",
       "type": "custom",
-      "build": "sh ./scripts/build_kong_data.sh",
+      "build": "bash ./scripts/build_kong_data.sh",
       "wasm": "target/wasm32-unknown-unknown/release/kong_data.wasm",
 			"metadata": [
 				{
@@ -32,8 +32,6 @@
     },
     "kong_svelte": {
       "dependencies": [
-        "kong_backend",
-        "kong_data"
       ],
       "source": [
         "src/kong_svelte/dist"
@@ -71,66 +69,50 @@
 				}
 			]
     },
-    "ksusdt_ledger": {
+    "ckusdt_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "zdzgz-siaaa-aaaar-qaiba-cai",
       "metadata": [
 				{
 					"name": "candid:service"
 				}
 			]
     },
-    "ksicp_ledger": {
+    "icp_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icp_ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ledger-canister.wasm.gz",
-      "specified_id": "nppha-riaaa-aaaal-ajf2q-cai",
       "metadata": [
 				{
 					"name": "candid:service"
 				}
 			]
     },
-    "ksusdc_ledger": {
+    "ckbtc_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "zw6xu-taaaa-aaaar-qaicq-cai",
       "metadata": [
 				{
 					"name": "candid:service"
 				}
 			]
     },
-    "ksbtc_ledger": {
-      "type": "custom",
-      "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
-      "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "zeyan-7qaaa-aaaar-qaibq-cai",
-      "metadata": [
-				{
-					"name": "candid:service"
-				}
-			]
-    },
-    "kseth_ledger": {
+    "cketh_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger-u256.wasm.gz",
-      "specified_id": "zr7ra-6yaaa-aaaar-qaica-cai",
       "metadata": [
 				{
 					"name": "candid:service"
 				}
 			]
     },
-    "kskong_ledger": {
+    "kong_ledger": {
       "type": "custom",
       "candid": "https://raw.githubusercontent.com/dfinity/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/rs/rosetta-api/icrc1/ledger/ledger.did",
       "wasm": "https://download.dfinity.systems/ic/c87abf70cf6f0f81f7f16d9f517c3ff0db1fab1e/canisters/ic-icrc1-ledger.wasm.gz",
-      "specified_id": "o7oak-iyaaa-aaaaq-aadzq-cai",
       "metadata": [
 				{
 					"name": "candid:service"

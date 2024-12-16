@@ -5,6 +5,7 @@
     import { onMount } from 'svelte';
     import { auth } from "$lib/services/auth";
     import Modal from "./Modal.svelte";
+    import { Clipboard } from 'lucide-svelte';
 
     interface UserIdentity {
         principalId: string;
@@ -130,7 +131,7 @@
                             {:else if copied}
                                 <span>✓</span>
                             {:else}
-                                <span>📋</span>
+                                <span><Clipboard class="w-4 h-4" /></span>
                             {/if}
                             <span class="action-text">Copy</span>
                         </button>
