@@ -14,7 +14,7 @@ elif [ "$1" == "local" ]; then
     if CANISTER_ID=$(jq -r ".[\"kong_backend\"][\"local\"]" "${root_dir}"/canister_ids.all.json); then
         [ "${CANISTER_ID}" != "null" ] && {
             echo "Deploying kong_backend with ID: ${CANISTER_ID}"
-            dfx deploy kong_backend --network local --specified-id "${CANISTER_ID}" || true
+            KONG_BUILDENV="local" dfx deploy kong_backend --network local --specified-id "${CANISTER_ID}" || true
         }
     fi
 fi
