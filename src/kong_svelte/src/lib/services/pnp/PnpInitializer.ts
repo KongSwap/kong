@@ -42,7 +42,7 @@ export function initializePNP(): PNP {
       }
       return "https://" + process.env.CANISTER_ID_KONG_SVELTE + ".icp0.io";
     }
-
+   
     globalPnp = createPNP({
       hostUrl: process.env.DFX_NETWORK === "local" ? "http://localhost:4943" : "https://icp0.io",
       isDev: process.env.DFX_NETWORK === "local",
