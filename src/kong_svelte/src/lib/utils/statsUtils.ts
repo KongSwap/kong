@@ -1,98 +1,206 @@
+import { derived, type Readable } from 'svelte/store';
+import { KONG_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
 import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
 import { get } from 'svelte/store';
-/**
- * Parses a value by removing unwanted characters and converting to a number if applicable.
- * @param value - The value to parse.
- * @returns The parsed value.
- */
-export function parseValue(value: any): any {
-  if (typeof value === 'string') {
-    value = value.replace(/[$%,]/g, '');
-    return value.includes('%') ? parseFloat(value) : parseFloat(value) || value;
-  }
-  return value;
+
+type FilterResult = 
+  | { type: 'tokens'; tokens: FE.Token[] }
+  | { type: 'error'; showFavoritesPrompt?: boolean; noFavorites?: boolean };
+
+export type EnhancedToken = FE.Token & {
+  marketCapRank?: number;
+  volumeRank?: number;
+  isHot?: boolean;
+};
+
+type FilteredTokensResult = {
+  tokens: EnhancedToken[];
+  loading: boolean;
+  volumeRankMap?: Map<string, number>;
+  showFavoritesPrompt?: boolean;
+  noFavorites?: boolean;
+};
+
+export function getPriceChangeClass(token: FE.Token): string {
+  if (!token?.metrics?.price_change_24h) return '';
+  const change = Number(token.metrics.price_change_24h);
+  if (change > 0) return 'text-kong-accent-green';
+  if (change < 0) return 'text-kong-accent-red';
+  return '';
 }
 
-/**
- * Sorts an array of pools based on a specified column and direction.
- * @param pools - The array of pools to sort.
- * @param column - The column to sort by.
- * @param direction - The sort direction ('asc' or 'desc').
- * @returns A new sorted array of pools.
- */
-export function sortTableData<T extends Record<string, any>>(
-  data: T[],
-  column: string,
-  direction: 'asc' | 'desc'
-): T[] {
-  if (!Array.isArray(data)) {
-    console.error('sortTableData expects an array, but received:', data);
-    return [];
+export function createFilteredTokens(
+  liveTokens: Readable<FE.Token[]>,
+  searchQuery: Readable<string>,
+  sortColumn: Readable<string>,
+  sortDirection: Readable<'asc' | 'desc'>,
+  showFavoritesOnly: Readable<boolean>,
+  currentWalletFavorites: Readable<string[]>,
+  auth: { isConnected: boolean }
+): Readable<FilteredTokensResult> {
+  return derived(
+    [liveTokens, searchQuery, sortColumn, sortDirection, showFavoritesOnly, currentWalletFavorites],
+    ([$liveTokens, $searchQuery, $sortColumn, $sortDirection, $showFavoritesOnly, $currentWalletFavorites]): FilteredTokensResult => {
+      if (!$liveTokens) return { tokens: [], loading: true };
+      
+      let tokens = [...$liveTokens];
+      
+      // Create volume rank map
+      const volumeRankMap = createVolumeRankMap(tokens);
+
+      // Apply filters
+      const filterResult = applyFilters(tokens, {
+        showFavoritesOnly: $showFavoritesOnly,
+        currentWalletFavorites: $currentWalletFavorites,
+        searchQuery: $searchQuery,
+        isConnected: auth.isConnected
+      });
+
+      if (filterResult.type === 'error') {
+        return {
+          tokens: [],
+          loading: false,
+          ...(filterResult.showFavoritesPrompt && { showFavoritesPrompt: true }),
+          ...(filterResult.noFavorites && { noFavorites: true })
+        };
+      }
+
+      tokens = filterResult.tokens;
+      
+      // Create market cap rank map
+      const marketCapRankMap = createMarketCapRankMap(tokens);
+
+      // Apply sorting
+      tokens = applySorting(tokens, {
+        sortColumn: $sortColumn,
+        sortDirection: $sortDirection,
+        marketCapRankMap
+      });
+
+      // Add ranks and hot status
+      tokens = addTokenMetadata(tokens, { volumeRankMap, marketCapRankMap });
+
+      return { 
+        tokens, 
+        loading: false,
+        volumeRankMap
+      };
+    }
+  );
+}
+
+function createVolumeRankMap(tokens: FE.Token[]) {
+  return new Map(
+    [...tokens]
+      .filter(token => 
+        token.canister_id !== CKUSDT_CANISTER_ID && 
+        token.canister_id !== ICP_CANISTER_ID
+      )
+      .sort((a, b) => {
+        const aVolume = Number(a?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
+        const bVolume = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
+        return bVolume - aVolume;
+      })
+      .map((token, index) => [token.canister_id, index + 1])
+  );
+}
+
+function createMarketCapRankMap(tokens: FE.Token[]) {
+  return new Map(
+    [...tokens]
+      .sort((a, b) => {
+        const aMarketCap = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        const bMarketCap = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        return bMarketCap - aMarketCap;
+      })
+      .map((token, index) => [token.canister_id, index + 1])
+  );
+}
+
+function applyFilters(tokens: FE.Token[], options: {
+  showFavoritesOnly: boolean,
+  currentWalletFavorites: string[],
+  searchQuery: string,
+  isConnected: boolean
+}): FilterResult {
+  const { showFavoritesOnly, currentWalletFavorites, searchQuery, isConnected } = options;
+
+  if (showFavoritesOnly) {
+    if (!isConnected) {
+      return { type: 'error', showFavoritesPrompt: true };
+    }
+    tokens = tokens.filter(token => currentWalletFavorites.includes(token.canister_id));
+    if (tokens.length === 0) {
+      return { type: 'error', noFavorites: true };
+    }
+  } else if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    tokens = tokens.filter(token => 
+      token.name.toLowerCase().includes(query) ||
+      token.symbol.toLowerCase().includes(query) || 
+      token.address.toLowerCase().includes(query)
+    );
   }
 
-  return [...data].sort((a, b) => {
-    let aValue = a[column];
-    let bValue = b[column];
+  return { type: 'tokens', tokens };
+}
 
-    // Handle special cases for different columns
-    switch (column) {
-      case 'total_24h_volume':
-      case 'rolling_24h_volume':
-        // Convert BigInt to number
-        aValue = Number(aValue || 0n);
-        bValue = Number(bValue || 0n);
-        break;
+function applySorting(tokens: FE.Token[], options: {
+  sortColumn: string,
+  sortDirection: 'asc' | 'desc',
+  marketCapRankMap: Map<string, number>
+}) {
+  const { sortColumn, sortDirection, marketCapRankMap } = options;
 
-      case 'formattedUsdValue':
-      case 'price':
-      case 'tvl':
-        // Remove $ and , from string numbers and convert to float
-        aValue = parseFloat(String(aValue || '0').replace(/[$,]/g, ''));
-        bValue = parseFloat(String(bValue || '0').replace(/[$,]/g, ''));
-        break;
+  return tokens.sort((a, b) => {
+    if (a.canister_id === KONG_CANISTER_ID) return -1;
+    if (b.canister_id === KONG_CANISTER_ID) return 1;
 
-      case 'rolling_24h_apy':
-        // Remove % and convert to float
-        aValue = parseFloat(String(aValue || '0').replace(/%/g, ''));
-        bValue = parseFloat(String(bValue || '0').replace(/%/g, ''));
-        break;
+    const getValue = (token: FE.Token) => {
+      switch (sortColumn) {
+        case "marketCapRank": return marketCapRankMap.get(token.canister_id) || Infinity;
+        case "price": return Number(token?.metrics?.price) || 0;
+        case "price_change_24h": return Number(token?.metrics?.price_change_24h) || 0;
+        case "volume_24h": return Number(token?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
+        case "marketCap": return Number(token?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
+        case "name": return token.name;
+        default: return token[sortColumn] || 0;
+      }
+    };
 
-      case 'symbol':
-      case 'name':
-        // Case-insensitive string comparison
-        aValue = String(aValue || '').toLowerCase();
-        bValue = String(bValue || '').toLowerCase();
-        break;
+    const aValue = getValue(a);
+    const bValue = getValue(b);
 
-      default:
-        // Handle compound columns (like pool names)
-        if (column === 'poolName') {
-          aValue = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
-          bValue = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
-        }
-    }
-
-    // Perform the comparison
-    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-    return 0;
+    return sortDirection === "asc" 
+      ? (typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue)
+      : (typeof bValue === 'string' ? bValue.localeCompare(aValue) : bValue - aValue);
   });
 }
 
-/**
- * Formats pool data by calculating APY, 24h Volume, TVL, and adding a unique ID.
- * @param pools - The array of pools to format.
- * @returns A new array of formatted pools.
- */
+function addTokenMetadata(tokens: FE.Token[], options: {
+  volumeRankMap: Map<string, number>,
+  marketCapRankMap: Map<string, number>
+}) {
+  const { volumeRankMap, marketCapRankMap } = options;
+
+  return tokens.map(token => {
+    const volumeRank = volumeRankMap.get(token.canister_id);
+    return {
+      ...token,
+      marketCapRank: marketCapRankMap.get(token.canister_id),
+      volumeRank,
+      isHot: volumeRank !== undefined && volumeRank <= 5
+    };
+  });
+}
+
 export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
   if (pools.length === 0) return pools;
   const store = get(tokenStore);
 
   return pools.map((pool, index) => {
-    const decimals1 = 6;
     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
-
     return {
       ...pool,
       id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
@@ -101,12 +209,6 @@ export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
   });
 }
 
-/**
- * Filters pools based on a search query.
- * @param pools - The array of pools to filter.
- * @param query - The search query.
- * @returns A new array of filtered pools.
- */
 export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {
   if (!query) return pools;
   const lowerQuery = query.toLowerCase();
@@ -115,12 +217,6 @@ export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {
   );
 }
 
-/**
- * Filters tokens based on a search query.
- * @param tokens - The array of tokens to filter.
- * @param searchQuery - The search query.
- * @returns A new array of filtered tokens.
- */
 export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[] {
   if (!searchQuery) return tokens;
   const lowerCaseQuery = searchQuery.toLowerCase();

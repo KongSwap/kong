@@ -44,7 +44,6 @@ export class PoolService {
     poolId: string | number,
   ): Promise<BE.Pool> {
     try {
-      console.log("[PoolService] Getting pool details for ID:", poolId);
       const actor = await auth.pnp.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
@@ -57,10 +56,6 @@ export class PoolService {
         throw new Error(`Invalid pool ID: ${poolId}`);
       }
 
-      console.log(
-        "[PoolService] Fetching pool with numeric ID:",
-        numericPoolId,
-      );
       const pool = await actor.get_by_pool_id(numericPoolId);
 
       if (!pool) {

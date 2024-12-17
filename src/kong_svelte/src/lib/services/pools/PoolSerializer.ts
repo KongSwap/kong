@@ -77,9 +77,7 @@ export class PoolSerializer {
   }
 
   static serializePool(rawPool: unknown): BE.Pool {
-    console.log('rawPool', rawPool);
-    const parsed = poolSchema.parse(rawPool);
-    
+    const parsed = poolSchema.parse(rawPool);    
     return {
       id: parsed.pool_id.toString(),
       pool_id: parsed.pool_id,

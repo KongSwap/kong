@@ -13,7 +13,6 @@ import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { kongDB } from "../db";
 import { tokenStore } from "./tokenStore";
 import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
-import { canisterIDLs } from "../pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import BigNumber from "bignumber.js";
@@ -100,73 +99,8 @@ export class TokenService {
     let retries = 3;
 
     while (retries > 0) {
-      try {
-        const parsed = await fetchTokens();
-        
-        // Filter out invalid tokens
-        const validTokens = parsed.filter(token => 
-          token && 
-          typeof token.canister_id === 'string' && 
-          token.canister_id.length > 0
-        );
-        
-        // Get pools data once for all tokens
-        const poolData = get(poolStore);
-        
-        // Process tokens in batches to avoid overwhelming the system
-        const BATCH_SIZE = 10;
-        const enrichedTokens = [];
-        
-        for (let i = 0; i < validTokens.length; i += BATCH_SIZE) {
-          const batch = validTokens.slice(i, i + BATCH_SIZE);
-          const enrichedBatch = await Promise.all(batch.map(async (token) => {
-            try {
-              if (!token?.canister_id) {
-                console.warn('Invalid token found:', token);
-                return null;
-              }
-
-              // Get current price first
-              const price = await this.fetchPrice(token);
-
-              const currentToken = await kongDB.tokens
-                .where('canister_id')
-                .equals(token.canister_id)
-                .first();
-
-              const enrichedToken: FE.Token = {
-                ...token,
-                metrics: {
-                  ...token.metrics,
-                  price: price.toString(),
-                  price_change_24h: currentToken?.metrics?.price_change_24h,
-                  market_cap: this.calculateMarketCap(token, price),
-                  volume_24h: (await this.calculateVolume(token, poolData.pools)).toString()
-                },
-                price,
-                timestamp: Date.now()
-              };
-
-              return enrichedToken;
-            } catch (error) {
-              console.error(`Error enriching token ${token?.symbol}:`, error);
-              // Return null for failed tokens
-              return null;
-            }
-          }));
-          
-          // Filter out null values and update DB with valid tokens
-          const validEnrichedBatch = enrichedBatch.filter((token): token is FE.Token => 
-            token !== null && typeof token.canister_id === 'string'
-          );
-          
-          if (validEnrichedBatch.length > 0) {
-            await kongDB.tokens.bulkPut(validEnrichedBatch);
-            enrichedTokens.push(...validEnrichedBatch);
-          }
-        }
-
-        return enrichedTokens;
+      try {   
+        return await fetchTokens();
       } catch (error) {
         console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
         retries--;
@@ -238,50 +172,6 @@ export class TokenService {
     } catch (error) {
       console.error("Error updating token:", error);
     }
-  }
-
-  public static async enrichTokenWithMetadata(
-    tokens: FE.Token[],
-  ): Promise<PromiseSettledResult<FE.Token>[]> {
-    const poolData = get(poolStore);
-    const BATCH_SIZE = 1000; // Process 10 tokens at a time
-
-    const processTokenBatch = async (tokenBatch: FE.Token[]) => {
-      return Promise.all(
-        tokenBatch.map(async (token) => {
-          try {
-            const [price, fee] = await Promise.allSettled([
-              this.getCachedPrice(token),
-              token?.fee_fixed
-                ? Promise.resolve(token.fee_fixed)
-                : this.fetchTokenFee(token),
-            ]);
-
-            return {
-              ...token,
-              fee: fee.status === "fulfilled" ? fee.value : 0n,
-              price: price.status === "fulfilled" ? price.value : 0,
-            };
-          } catch (error) {
-            console.error(`Error enriching token ${token.symbol}:`, error);
-            return null;
-          }
-        }),
-      );
-    };
-
-    // Process tokens in batches
-    const results = [];
-    for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
-      const batch = tokens.slice(i, i + BATCH_SIZE);
-      const batchResults = await processTokenBatch(batch);
-      results.push(...batchResults);
-    }
-
-    return results.map((r) => ({
-      status: r ? "fulfilled" : "rejected",
-      value: r,
-    })) as PromiseSettledResult<FE.Token>[];
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
@@ -408,6 +298,7 @@ export class TokenService {
   public static async fetchPrices(
     tokens: FE.Token[],
   ): Promise<Record<string, number>> {
+    
     // Ensure pools are loaded first
     const poolData = await PoolService.fetchPoolsData();
     if (!poolData?.pools?.length) {
@@ -423,6 +314,13 @@ export class TokenService {
     // Create an array of promises for all tokens
     const pricePromises = tokens.map(async (token) => {
       try {
+        if(token.canister_id === ICP_CANISTER_ID) {
+          return {
+            canister_id: token.canister_id,
+            price: await this.getIcpPrice()
+          }
+        }
+    
         const price = await this.calculateTokenPrice(token, poolData.pools);
         return { 
           canister_id: token.canister_id, 
@@ -475,12 +373,15 @@ export class TokenService {
     token: FE.Token, 
     pools: BE.Pool[]
   ): Promise<number> {
+    // Special case for USDT
+    if (token.canister_id === CKUSDT_CANISTER_ID) {
+      return 1;
+    }
 
     // Find all pools containing the token
     const relevantPools = pools.filter(pool => {
-      const isMatch = pool.address_0 === token.canister_id || 
-                     pool.address_1 === token.canister_id;
-      return isMatch;
+      return pool.address_0 === token.canister_id || 
+             pool.address_1 === token.canister_id;
     });
 
     if (relevantPools.length === 0) {
@@ -488,26 +389,17 @@ export class TokenService {
     }
 
     // Calculate prices through different paths
-    const pricePaths = await Promise.all([
+    const [directUsdtPrice, icpPathPrice] = await Promise.all([
       // Direct USDT path
-      this.calculateDirectUsdtPrice(token, relevantPools).then(result => {
-        return result;
-      }),
+      this.calculateDirectUsdtPrice(token, relevantPools),
       // ICP intermediary path
-      this.calculateIcpPath(token, pools).then(result => {
-        return result;
-      }),
-      // Other stable coin paths
-      this.calculateStableCoinPath(token, pools).then(result => {
-        return result;
-      })
+      this.calculateIcpPath(token, pools)
     ]);
 
     // Filter out invalid prices and calculate weighted average
-    const validPrices = pricePaths.filter(p => p.price > 0);
+    const validPrices = [directUsdtPrice, icpPathPrice].filter(p => p.price > 0);
     
     if (validPrices.length === 0) {
-      console.debug(`No valid prices found for ${token.symbol}`);
       return 0;
     }
 
@@ -525,14 +417,15 @@ export class TokenService {
     pools: BE.Pool[]
   ): Promise<{price: number, weight: number}> {
     const usdtPool = pools.find(pool => 
-      (pool.address_0 === token.canister_id && pool.symbol_1 === "ckUSDT") ||
-      (pool.address_1 === token.canister_id && pool.symbol_0 === "ckUSDT")
+      (pool.address_0 === token.canister_id && pool.address_1 === CKUSDT_CANISTER_ID) ||
+      (pool.address_1 === token.canister_id && pool.address_0 === CKUSDT_CANISTER_ID)
     );
 
     if (!usdtPool) {
       return { price: 0, weight: 0 };
     }
 
+    // If token is token1, invert the price
     const price = usdtPool.address_0 === token.canister_id ? 
       usdtPool.price : 
       1 / usdtPool.price;
@@ -547,6 +440,13 @@ export class TokenService {
     token: FE.Token, 
     pools: BE.Pool[]
   ): Promise<{price: number, weight: number}> {
+    // If this is ICP itself, return the API price directly
+    if (token.canister_id === ICP_CANISTER_ID) {
+      const price = await this.getIcpPrice();
+      return { price, weight: 1 };
+    }
+
+    // For other tokens using ICP path
     const icpPool = pools.find(pool =>
       (pool.address_0 === token.canister_id && pool.symbol_1 === "ICP") ||
       (pool.address_1 === token.canister_id && pool.symbol_0 === "ICP")
@@ -556,146 +456,30 @@ export class TokenService {
       return { price: 0, weight: 0 };
     }
 
-    const icpUsdtPrice = await this.getUsdtPriceForToken("ICP", pools);
+    const icpPrice = await this.getIcpPrice();
     const tokenIcpPrice = icpPool.address_0 === token.canister_id ? 
       icpPool.price : 
       1 / icpPool.price;
 
-    // Calculate weight based on total liquidity
     const weight = Number(icpPool.balance_0) + Number(icpPool.balance_1);
-
     return {
-      price: tokenIcpPrice * icpUsdtPrice,
+      price: tokenIcpPrice * icpPrice,
       weight
     };
   }
 
-  private static async calculateStableCoinPath(
-    token: FE.Token, 
-    pools: BE.Pool[]
-  ): Promise<{price: number, weight: number}> {
-    // Could implement additional stable coin paths here (USDC, DAI, etc.)
-    return { price: 0, weight: 0 };
-  }
-
   public static async fetchPrice(token: FE.Token): Promise<number> {
-    const poolData = get(poolStore);
-    const relevantPools = poolData.pools.filter(
-      (pool) =>
-        pool.address_0 === token.canister_id ||
-        pool.address_1 === token.canister_id,
-    );
-
-    if (relevantPools.length === 0) return 0;
-
-    let totalWeight = 0n;
-    let weightedPrice = 0;
-
-    for (const pool of relevantPools) {
-      let price: number;
-      let weight: bigint;
-
-      if (pool.address_0 === token.canister_id) {
-        if (pool.symbol_1 === "ICP") {
-          const icpPrice = await this.getUsdtPriceForToken(
-            "ICP",
-            poolData.pools,
-          );
-          const usdtPrice = pool.price * icpPrice;
-          price = usdtPrice;
-        } else {
-          price =
-            pool.price *
-            (await this.getUsdtPriceForToken(pool.symbol_1, poolData.pools));
-        }
-        weight = pool.balance_0;
-      } else {
-        if (pool.symbol_0 === "ckUSDT") {
-          price = 1 / pool.price;
-        } else {
-          price =
-            (1 / pool.price) *
-            (await this.getUsdtPriceForToken(pool.symbol_0, poolData.pools));
-        }
-        weight = pool.balance_1;
-      }
-
-      if (price > 0 && weight > 0n) {
-        weightedPrice += Number(weight) * price;
-        totalWeight += weight;
-      }
-    }
-
-    return totalWeight > 0n ? weightedPrice / Number(totalWeight) : 0;
-  }
-
-  private static async getUsdtPriceForToken(
-    symbol: string,
-    pools: BE.Pool[],
-  ): Promise<number> {
-    const usdtPool = pools.find(
-      (p) =>
-        (p.symbol_0 === symbol && p.symbol_1 === "ckUSDT") ||
-        (p.symbol_1 === symbol && p.symbol_0 === "ckUSDT"),
-    );
-
-    if (usdtPool) {
-      const price =
-        usdtPool.symbol_1 === "ckUSDT" ? usdtPool.price : 1 / usdtPool.price;
-      return price;
-    }
-
-    const icpPrice = await this.getUsdtPriceViaICP(symbol, pools);
-    if (icpPrice > 0) {
-      return icpPrice;
-    }
-
-    console.warn(`Unable to determine USDT price for token: ${symbol}`);
-    return 0;
-  }
-
-  private static async getUsdtPriceViaICP(
-    symbol: string,
-    pools: BE.Pool[],
-  ): Promise<number> {
-    const tokenIcpPool = pools.find(
-      (p) =>
-        (p.symbol_0 === symbol && p.symbol_1 === "ICP") ||
-        (p.symbol_1 === symbol && p.symbol_0 === "ICP"),
-    );
-
-    const icpUsdtPool = pools.find(
-      (p) =>
-        (p.symbol_0 === "ICP" && p.symbol_1 === "ckUSDT") ||
-        (p.symbol_1 === "ICP" && p.symbol_0 === "ckUSDT"),
-    );
-
-    if (tokenIcpPool && icpUsdtPool) {
-      const tokenPriceInIcp =
-        tokenIcpPool.symbol_1 === "ICP"
-          ? tokenIcpPool.price
-          : 1 / tokenIcpPool.price;
-
-      const icpPriceInUsdt =
-        icpUsdtPool.symbol_1 === "ckUSDT"
-          ? icpUsdtPool.price
-          : 1 / icpUsdtPool.price;
-
-      const combinedPrice = tokenPriceInIcp * icpPriceInUsdt;
-      return combinedPrice;
-    }
-
-    console.warn(`No ICP pools found for token: ${symbol}`);
-    return 0;
-  }
-
-  public static async getIcrc1TokenMetadata(canisterId: string): Promise<any> {
     try {
-      const actor = await createAnonymousActorHelper(canisterId, "icrc1");
-      return await actor.icrc1_metadata();
+      // Get current pools
+      const pools = get(poolStore);
+      if (!pools?.pools?.length) {
+        await poolStore.loadPools();
+      }
+      // Calculate price using pools - use the static class method
+      return await TokenService.calculateTokenPrice(token, pools.pools);;
     } catch (error) {
-      console.error("Error getting icrc1 token metadata:", error);
-      throw error;
+      console.error(`[TokenService] Error fetching price for ${token.symbol}:`, error);
+      return 0;
     }
   }
 
@@ -713,7 +497,6 @@ export class TokenService {
 
       const actor = await createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, kongBackendIDL); 
       const txs = await actor.txs([auth.pnp?.account?.owner?.toString()]);
-      console.log('Raw transactions:', txs);
       
       return txs;
     } catch (error) {
@@ -722,74 +505,45 @@ export class TokenService {
     }
   }
 
-  public static async claimFaucetTokens(): Promise<any> {
+
+  public static async getIcpPrice(): Promise<number> {
     try {
-      const kongFaucetId = process.env.CANISTER_ID_KONG_FAUCET;
-      const actor = await createAnonymousActorHelper(kongFaucetId, canisterIDLs.kong_faucet);
-      return await actor.claim();
-    } catch (error) {
-      console.error("Error claiming faucet tokens:", error);
-    }
-  }
-
-  public static async toggleFavorite(
-    canister_id: string,
-    walletId: string,
-  ): Promise<void> {
-    if (!walletId || !canister_id) return;
-
-    const tokens = get(tokenStore);
-    const currentFavorites = tokens.favoriteTokens[walletId] || [];
-    const isFavorite = currentFavorites.includes(canister_id);
-
-    if (isFavorite) {
-      await kongDB.favorite_tokens
-        .where("wallet_id")
-        .equals(walletId)
-        .and((favorite) => favorite.canister_id === canister_id)
-        .delete();
-      tokenStore.update((s) => ({
-        ...s,
-        favoriteTokens: {
-          [walletId]: currentFavorites.filter((id) => id !== canister_id),
-        },
-      }));
-    } else {
-      await kongDB.favorite_tokens.add({
-        wallet_id: walletId,
-        canister_id: canister_id,
-        timestamp: Date.now(),
-      });
-      tokenStore.update((s) => ({
-        ...s,
-        favoriteTokens: {
-          [walletId]: [...currentFavorites, canister_id],
-        },
-      }));
-    }
-  }
-  
-  private static async fetchTokenFee(token: FE.Token): Promise<bigint> {
-    try {
-      if (token.canister_id === ICP_CANISTER_ID) {
-        // For ICP, use the standard transaction fee
-        // ICP's fee is typically 10,000 e8s (0.0001 ICP)
-        return BigInt(10000);
-      } else {
-        const actor = await createAnonymousActorHelper(token.canister_id, canisterIDLs.icrc1);
-        const fee = await actor.icrc1_fee();
-        return BigInt(fee.toString());
+      const cached = this.priceCache.get('ICP_USD');
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp < this.CACHE_DURATION)) {
+        return cached.price;
       }
-    } catch (error) {
-      console.error(`Error fetching fee for ${token.symbol}:`, error);
-      // Provide a default fee if necessary
-      return BigInt(10000); // Adjust default fee as appropriate
-    }
-  }
 
-  private static async calculatePriceChange24h(token: FE.Token): Promise<number> {
-    // You'll need to implement this based on your historical price data
-    // For now returning 0
-    return 0;
+      // Fetch new price if cache is stale or missing
+      const response = await fetch('https://api.coincap.io/v2/assets/internet-computer');
+      
+      if (!response.ok) {
+        throw new Error(`CoinCap API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const price = Number(data.data.priceUsd);
+
+      // Update cache
+      if (price > 0) {
+        this.priceCache.set('ICP_USD', {
+          price,
+          timestamp: now
+        });
+      }
+
+      return price;
+    } catch (error) {
+      console.error('Error fetching ICP price from CoinCap:', error);
+      
+      // Return cached price if available, even if stale
+      const cached = this.priceCache.get('ICP_USD');
+      if (cached) {
+        return cached.price;
+      }
+      
+      return 0;
+    }
   }
 }

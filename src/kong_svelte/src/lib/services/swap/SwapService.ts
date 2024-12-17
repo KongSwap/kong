@@ -215,10 +215,7 @@ export class SwapService {
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
-      console.log("REQUESTS ACTOR", actor);
-      console.log("REQUESTS REQUEST IDS", requestIds);
       const result = await actor.requests(requestIds);
-      console.log("REQUESTS RESULT", result);
       return result;
     } catch (error) {
       console.error("Error getting request status:", error);
