@@ -9,7 +9,6 @@ if [ "$1" == "staging" ]; then
 elif [ "$1" == "local" ]; then
 	if CANISTER_ID=$(jq -r ".[\"ckusdt_ledger\"][\"local\"]" "${root_dir}"/canister_ids.all.json); then
 		[ "${CANISTER_ID}" != "null" ] && {
-			echo "Deploying ckusdt_ledger with ID: ${CANISTER_ID}"
 			SPECIFIED_ID="--specified-id ${CANISTER_ID}"
 		}
 	fi
