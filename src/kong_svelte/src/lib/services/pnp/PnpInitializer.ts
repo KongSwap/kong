@@ -75,3 +75,5 @@ export function getPnpInstance(): PNP {
   }
   return globalPnp;
 }
+
+export const pnp = getPnpInstance();
