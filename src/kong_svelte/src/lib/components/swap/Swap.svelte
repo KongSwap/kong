@@ -8,6 +8,7 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
   import Portal from 'svelte-portal';
+  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
 
   // Svelte imports
   import { fade } from "svelte/transition";
@@ -67,6 +68,7 @@
   let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
+  let showWalletModal = false;
 
   // Subscribe to swap status changes
   $: {
@@ -273,24 +275,7 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      // If no wallet is selected, select the first available one
-      if (!$selectedWalletId && walletsList.length > 0) {
-        const firstWallet = walletsList[0];
-        if (firstWallet) {
-          selectedWalletId.set(firstWallet.id);
-          localStorage.setItem("kongSelectedWallet", firstWallet.id);
-        }
-      }
-      
-      // Open sidebar and attempt connection
-      sidebarStore.toggleExpand();
-      if ($selectedWalletId) {
-        try {
-          await auth.connect($selectedWalletId);
-        } catch (error) {
-          console.error("Failed to connect wallet:", error);
-        }
-      }
+      showWalletModal = true;
       return;
     }
 
@@ -480,6 +465,11 @@
       });
     }
   }
+
+  // Handle wallet connection success
+  function handleWalletLogin() {
+    showWalletModal = false;
+  }
 </script>
 
 <!-- Template content -->
@@ -653,6 +643,18 @@
       title="Slippage Settings"
     >
       <Settings />
+    </Modal>
+  </Portal>
+{/if}
+
+{#if showWalletModal}
+  <Portal target="body">
+    <Modal
+      isOpen={showWalletModal}
+      onClose={() => (showWalletModal = false)}
+      title="Connect Wallet"
+    >
+      <WalletProvider on:login={handleWalletLogin} />
     </Modal>
   </Portal>
 {/if}
