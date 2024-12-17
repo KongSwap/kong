@@ -156,6 +156,7 @@
   onMount(() => {
     initializeComponent();
     setupEventListeners();
+    resetSwapState();
 
     return () => {
       window.removeEventListener("swapSuccess", handleSwapSuccess);
@@ -469,6 +470,41 @@
   // Handle wallet connection success
   function handleWalletLogin() {
     showWalletModal = false;
+  }
+
+  // Add this to the reactive statements section
+  $: if (currentMode !== previousMode) {
+    resetSwapState();
+  }
+
+  // Add this function to handle resetting state
+  function resetSwapState() {
+    // Cancel any pending quote updates
+    if (quoteUpdateTimeout) {
+      clearTimeout(quoteUpdateTimeout);
+    }
+
+    // Reset quote loading state
+    isQuoteLoading = false;
+
+    // Immediately reset all relevant state
+    swapState.update(state => ({
+      ...state,
+      payAmount: '',
+      receiveAmount: '',
+      error: null,
+      isProcessing: false,
+      showConfirmation: false,
+      showBananaRain: false,
+      swapSlippage: 0,  // Reset slippage
+      lpFees: null,     // Reset fees
+      routingPath: null // Reset routing
+    }));
+
+    // Reset previous values to prevent unnecessary quote updates
+    previousPayAmount = '';
+    previousPayToken = null;
+    previousReceiveToken = null;
   }
 </script>
 
