@@ -5,14 +5,11 @@ import BigNumber from "bignumber.js";
 import { TokenService } from "./TokenService";
 import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 import { toastStore } from "$lib/stores/toastStore";
-import { eventBus } from './eventBus';
 import { auth } from "$lib/services/auth";
 import { liveQuery, type Observable } from "dexie";
 import { Principal } from "@dfinity/principal";
-import { AnonymousIdentity } from "@dfinity/agent";
-import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
 import { getHistoricalPrice } from "$lib/price/priceService";
-import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { browser } from "$app/environment";
 
 BigNumber.config({
   DECIMAL_PLACES: 36,
@@ -60,6 +57,7 @@ interface TokenState {
   favoriteTokens: Record<string, string[]>;
   lastBalanceUpdate: Record<string, number>;
   lastPriceUpdate: Record<string, number>;
+  priceChangeClasses: Record<string, string>;
 }
 
 function createTokenStore() {
@@ -75,96 +73,9 @@ function createTokenStore() {
     favoriteTokens: {},
     lastBalanceUpdate: {},
     lastPriceUpdate: {},
+    priceChangeClasses: {}
   };
-
   const store = writable<TokenState>(initialState);
-  
-  // Set up periodic price updates
-  const PRICE_UPDATE_INTERVAL = 10000; // 10 seconds
-  let priceUpdateTimer: NodeJS.Timeout;
-
-  const startPriceUpdates = () => {
-    if (priceUpdateTimer) clearInterval(priceUpdateTimer);
-    
-    const updatePrices = async () => {
-      const currentStore = get(store);
-      if (!currentStore?.tokens) return;
-
-      try {
-        const prices = await TokenService.fetchPrices(currentStore.tokens);
-        store.update(s => ({
-          ...s,
-          prices,
-          lastPriceUpdate: {
-            ...s.lastPriceUpdate,
-            ...Object.keys(prices).reduce((acc, tokenId) => ({
-              ...acc,
-              [tokenId]: Date.now()
-            }), {})
-          }
-        }));
-        
-      } catch (error) {
-        console.error('Error updating prices:', error);
-      }
-    };
-
-    // Initial update
-    updatePrices();
-    
-    // Set up interval
-    priceUpdateTimer = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
-  };
-
-  // Start price updates when tokens are loaded
-  eventBus.on('tokensFetched', (tokens: FE.Token[]) => {
-    store.update(s => ({
-      ...s,
-      tokens,
-      lastTokensFetch: Date.now(),
-      isLoading: false,
-      error: null
-    }));
-    startPriceUpdates();
-  });
-
-  // Clean up interval when needed
-  eventBus.on('cleanup', () => {
-    if (priceUpdateTimer) clearInterval(priceUpdateTimer);
-  });
-
-  // Function to update specific token prices immediately
-  const updateTokenPrices = async (tokenIds: string[]) => {
-    const currentStore = get(store);
-    const tokensToUpdate = currentStore.tokens.filter(t => tokenIds.includes(t.canister_id));
-    
-    if (tokensToUpdate.length === 0) return;
-
-    try {
-      const prices = await TokenService.fetchPrices(tokensToUpdate);
-      store.update(s => ({
-        ...s,
-        prices: {
-          ...s.prices,
-          ...prices
-        },
-        lastPriceUpdate: {
-          ...s.lastPriceUpdate,
-          ...Object.keys(prices).reduce((acc, tokenId) => ({
-            ...acc,
-            [tokenId]: Date.now()
-          }), {})
-        }
-      }));
-    } catch (error) {
-      console.error('Error updating specific token prices:', error);
-    }
-  };
-
-  // Add event listener for balance changes to trigger immediate price updates
-  eventBus.on('balanceChanged', async ({ tokenId }) => {
-    await updateTokenPrices([tokenId]);
-  });
 
   const getCurrentWalletId = (): Principal => {
     let walletId;
@@ -172,12 +83,15 @@ function createTokenStore() {
     if (wallet && wallet.account && wallet.account.owner) {
       walletId = wallet.account.owner;
     } else {
-      walletId = new AnonymousIdentity().getPrincipal();
+      walletId = null;
     }
     return walletId;
   };
 
-  const loadBalances = async (principal: Principal, forceRefresh: boolean = false) => {
+  const loadBalances = async (
+    principal: Principal,
+    forceRefresh: boolean = false,
+  ) => {
     const currentStore = get(store);
     if (!principal) {
       console.warn("No principal provided to loadBalances");
@@ -203,18 +117,24 @@ function createTokenStore() {
     }
   };
 
-  const loadBalancesForTokens = async (tokens: FE.Token[], principal: Principal) => {
+  const loadBalancesForTokens = async (
+    tokens: FE.Token[],
+    principal: Principal,
+  ) => {
     if (!principal) {
       console.warn("No principal provided to loadBalancesForTokens");
       return {};
     }
     try {
-      const balances = await TokenService.fetchBalances(tokens, principal.toString());
+      const balances = await TokenService.fetchBalances(
+        tokens,
+        principal.toString(),
+      );
       store.update((s) => ({
         ...s,
         balances: {
           ...s.balances,
-          ...balances
+          ...balances,
         },
       }));
       return balances;
@@ -225,169 +145,7 @@ function createTokenStore() {
     }
   };
 
-  eventBus.on('tokensFetched', async (fetchedTokens: FE.Token[]) => {
-    try {
-      // First try to get tokens with prices from kongDB
-      const cachedTokens = await kongDB.tokens
-        .where('timestamp')
-        .above(Date.now() - TokenService.TOKEN_CACHE_DURATION)
-        .toArray();
 
-      const tokensWithPrices = await Promise.all(fetchedTokens.map(async token => {
-        try {
-          // Find cached token with price
-          const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
-          
-          let priceChange = 0;
-          try {
-            // Get historical price for 24h change
-            const now = Math.floor(Date.now() / 1000);
-            const yesterday = now - (24 * 60 * 60);
-            const searchWindowStart = yesterday - (4 * 60 * 60);
-            const searchWindowEnd = yesterday + (4 * 60 * 60);
-
-            const historicalPrice = await getHistoricalPrice(
-              token,
-              yesterday,
-              searchWindowStart, 
-              searchWindowEnd
-            );
-            const currentPrice = Number(token.metrics?.price || 0);
-            
-            // Calculate price change
-            priceChange = historicalPrice > 0 ? 
-              ((currentPrice - historicalPrice) / historicalPrice) * 100 : 
-              0;
-          } catch (error) {
-            console.warn(`Failed to calculate price change for ${token.symbol}:`, error);
-            // Use cached price change if available
-            priceChange = cachedToken?.metrics?.price_change_24h ? 
-              Number(cachedToken.metrics.price_change_24h) : 
-              0;
-          }
-
-          return {
-            ...token,
-            metrics: {
-              ...token.metrics,
-              price_change_24h: priceChange.toFixed(2),
-              price: token.metrics?.price || cachedToken?.metrics?.price || "0"
-            }
-          };
-        } catch (error) {
-          console.error(`Error enriching token ${token.symbol}:`, error);
-          // Return token with default values if enrichment fails
-          return {
-            ...token,
-            metrics: {
-              ...token.metrics,
-              price_change_24h: "0",
-              price: token.metrics?.price || "0"
-            }
-          };
-        }
-      }));
-
-      // Update store with tokens
-      store.update((s) => ({
-        ...s,
-        tokens: tokensWithPrices,
-        lastTokensFetch: Date.now(),
-        isLoading: false,
-      }));
-
-      const wallet = get(auth);
-      const enrichedTokens = await TokenService.enrichTokenWithMetadata(tokensWithPrices);
-      const validTokens = enrichedTokens
-        .filter((result) => result.status === "fulfilled")
-        .map((result) => (result as PromiseFulfilledResult<FE.Token>).value);
-
-      // Only fetch new prices for tokens that don't have a recent cached price
-      const tokensNeedingPrices = validTokens.filter(token => {
-        const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
-        const needsPrice = !cachedToken || (Date.now() - cachedToken.timestamp) > TokenService.TOKEN_CACHE_DURATION;
-        return needsPrice;
-      });
-
-      let prices = {};
-      if (tokensNeedingPrices.length > 0) {
-        prices = await TokenService.fetchPrices(tokensNeedingPrices);
-        console.log('Fetched new prices:', prices);
-      }
-
-      // Combine cached prices with newly fetched prices
-      const allPrices = validTokens.reduce((acc, token) => {
-        const cachedToken = cachedTokens.find(t => t.canister_id === token.canister_id);
-        acc[token.canister_id] = prices[token.canister_id] || cachedToken?.price || 0;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      // Then load balances if we have a wallet
-      let balances = {};
-      if(wallet.account && wallet.account.owner) {
-        balances = await loadBalances(wallet.account.owner);
-      }
-
-      // Update everything at once to prevent multiple re-renders
-      store.update((s) => ({
-        ...s,
-        tokens: validTokens,
-        prices: allPrices,
-        balances,
-        isLoading: false,
-      }));
-
-    } catch (error: any) {
-      console.error("Error processing tokens:", error);
-      store.update((s) => ({
-        ...s,
-        isLoading: false,
-        error: "Failed to process tokens"
-      }));
-    }
-  });
-
-  // Add pool update handler with debounce to prevent rapid updates
-  const debouncedPoolUpdate = debounce(async (pools: BE.Pool[]) => {
-    const currentStore = get(store);
-    const updatedTokens = currentStore.tokens.map(token => {
-      const volume = pools
-        .filter(p => p.address_0 === token.canister_id || p.address_1 === token.canister_id)
-        .reduce((acc, p) => acc + (Number(p.rolling_24h_volume) / (10 ** 6)), 0);
-
-      const updatedToken = {
-        ...token,
-        pools: pools.filter(p => p.address_0 === token.canister_id || p.address_1 === token.canister_id),
-        metrics: {
-          ...token.metrics,
-          volume_24h: volume.toString()
-        }
-      };
-
-      // Update the token in the database to persist volume
-      kongDB.tokens.put({
-        ...updatedToken,
-        timestamp: Date.now()
-      });
-
-      return updatedToken;
-    });
-
-    // Update tokens and trigger a price refresh
-    store.update(state => ({
-      ...state,
-      tokens: updatedTokens,
-    }));
-
-    // Refresh prices after pool update
-    const prices = await TokenService.fetchPrices(updatedTokens);
-    store.update(state => ({
-      ...state,
-      prices,
-    }));
-  }, 1000);
-
-  eventBus.on('poolsUpdated', debouncedPoolUpdate);
 
   return {
     subscribe: store.subscribe,
@@ -397,17 +155,47 @@ function createTokenStore() {
       try {
         const baseTokens = await TokenService.fetchTokens();
         if (!baseTokens || baseTokens.length === 0) {
-          throw new Error('No tokens fetched from service');
+          throw new Error("No tokens fetched from service");
         }
 
-        eventBus.emit('tokensFetched', baseTokens);
+        // Only update IndexedDB in the browser
+        if (browser) {
+          await Promise.all(
+            baseTokens.map(async (token) => {
+              await kongDB.tokens.put({
+                ...token,
+                timestamp: Date.now(),
+                metrics: {
+                  ...token.metrics,
+                  price: token.metrics?.price || "0",
+                  price_change_24h: token.metrics?.price_change_24h || "0",
+                  volume_24h: token.metrics?.volume_24h || "0",
+                  market_cap: token.metrics?.market_cap || "0",
+                  total_supply: token.metrics?.total_supply || "0"
+                }
+              });
+            })
+          );
+        }
+
+        // Update store directly
         store.update((s) => ({
           ...s,
           isLoading: false,
           error: null,
           tokens: baseTokens,
-          lastTokensFetch: Date.now()
+          lastTokensFetch: Date.now(),
         }));
+
+        // Load balances if we have a wallet
+        const wallet = get(auth);
+        if (browser && wallet.account && wallet.account.owner) {
+          const balances = await loadBalances(wallet.account.owner);
+          store.update((s) => ({
+            ...s,
+            balances,
+          }));
+        }
 
         return baseTokens;
       } catch (error: any) {
@@ -416,50 +204,10 @@ function createTokenStore() {
           ...s,
           error: error.message,
           isLoading: false,
-          tokens: s.tokens || [] // Keep existing tokens on error
+          tokens: s.tokens || [], // Keep existing tokens on error
         }));
         throw error;
       }
-    },
-    loadPrices: async () => {
-      try {
-        const currentStore = get(store);
-        if (!currentStore.tokens) return;
-
-        const prices = await TokenService.fetchPrices(currentStore.tokens);
-        store.update((s) => ({
-          ...s,
-          prices,
-        }));
-
-        // After prices are loaded, update USD values in balances
-        const balances = { ...currentStore.balances };
-        for (const token of currentStore.tokens) {
-          if (balances[token.canister_id]) {
-            const price = prices[token.canister_id] || 0;
-            const amount = parseFloat(formatTokenAmount(balances[token.canister_id].in_tokens.toString(), token.decimals));
-            balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * price);
-          }
-        }
-
-        store.update((s) => ({
-          ...s,
-          balances,
-        }));
-
-        return prices;
-      } catch (error) {
-        console.error("Error loading prices:", error);
-        toastStore.error("Failed to load prices");
-      }
-    },
-    loadPrice: async (token: FE.Token): Promise<number> => {
-      const price = await TokenService.fetchPrice(token);
-      store.update((s) => ({
-        ...s,
-        prices: { ...s.prices, [token.canister_id]: price },
-      }));
-      return price;
     },
     loadBalances,
     loadBalancesForTokens,
@@ -521,12 +269,6 @@ function createTokenStore() {
         const currentFavorites = store?.favoriteTokens[walletId] || [];
         const isFavorite = currentFavorites.includes(canister_id);
 
-        eventBus.emit("favorite-token-update", {
-          canister_id,
-          currentFavorites,
-          isFavorite,
-        });
-
         if (isFavorite) {
           await kongDB.favorite_tokens
             .where(["canister_id", "wallet_id"])
@@ -560,7 +302,7 @@ function createTokenStore() {
     },
     isFavorite: (canister_id: string): boolean => {
       const currentState = get(store);
-      const walletId = getCurrentWalletId().toString(); 
+      const walletId = getCurrentWalletId().toString();
       return (
         currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false
       );
@@ -568,11 +310,6 @@ function createTokenStore() {
     getFavorites: (walletId: string = getCurrentWalletId().toString()) => {
       const currentState = get(store);
       return currentState.favoriteTokens[walletId] || [];
-    },
-    claimFaucetTokens: async () => {
-      await TokenService.claimFaucetTokens();
-      const pnp = get(auth);
-      await loadBalances(pnp?.account?.owner);
     },
     clearUserData: () => {
       store.update((s) => ({
@@ -584,7 +321,7 @@ function createTokenStore() {
       await kongDB.tokens.clear();
       await kongDB.favorite_tokens
         .where("wallet_id")
-        .equals(getCurrentWalletId().toString())  
+        .equals(getCurrentWalletId().toString())
         .delete();
       store.set(initialState);
     },
@@ -602,273 +339,173 @@ function createTokenStore() {
       }));
       return price;
     },
-    cleanup: async () => {
-      if (priceUpdateTimer) clearInterval(priceUpdateTimer);
-      store.set(initialState);
-    },
-    updateBalances: (newBalances: Record<string, { in_tokens: bigint; in_usd: string }>) => {
-      store.update(state => {
+    updateBalances: (
+      newBalances: Record<string, { in_tokens: bigint; in_usd: string }>,
+    ) => {
+      store.update((state) => {
         const updatedState = {
           ...state,
-          balances: { ...newBalances }
+          balances: { ...newBalances },
         };
         return updatedState;
       });
     },
-    updateTokenBalance: (tokenId: string, balance: { in_tokens: bigint; in_usd: string }) => {
-      store.update(state => ({
-        ...state,
-        balances: {
-          ...state.balances,
-          [tokenId]: balance
-        }
-      }));
+    handlePriceUpdate: (updates: any[]) => {
+      updateTokenMetrics(updates);
     },
-    async updatePrices() {
-      try {
-        const currentStore = get(store);
-        if (!currentStore?.tokens) return;
-
-        const prices = await this.loadPrices();
-        const balances = { ...currentStore.balances };
-        const tokens = [...currentStore.tokens] as FE.Token[];
-        const ckusdtToken = tokens.find(t => t.symbol === "ckUSDT");
-
-        if (!ckusdtToken) {
-          console.warn('ckUSDT token not found for price calculations');
-          return;
-        }
-
-        // Update each token's price and get 24h changes
-        for (const token of tokens) {
-          const currentPrice = prices[token.canister_id] || 0;
-
-          // Update token metrics
-          token.metrics = {
-            ...token.metrics,
-            price: currentPrice,
-          };
-
-          // Update balance in USD if exists
-          if (balances[token.canister_id]) {
-            const balance = balances[token.canister_id].in_tokens;
-            const amount = Number(formatTokenAmount(balance.toString(), token.decimals));
-            balances[token.canister_id].in_usd = formatToNonZeroDecimal(amount * currentPrice);
-          }
-        }
-
-        store.set({
-          ...currentStore as TokenState,
-          tokens,
-          balances
-        });
-
-      } catch (error) {
-        console.error('Error updating prices:', error);
-      }
-    },
-    updateTokenPrices,
   };
 }
 
-export const cleanup = () => {
-};
-
+export const cleanup = () => {};
 export const tokenStore = createTokenStore();
 
 // Create a wrapper to convert Dexie Observable to Svelte Readable
-function observableToReadable<T>(observable: Observable<T>): Readable<T | undefined> {
+function observableToReadable<T>(
+  observable: Observable<T>,
+): Readable<T | undefined> {
   return {
     subscribe: (run) => {
       const subscription = observable.subscribe({
         next: (value) => run(value),
-        error: (error) => console.error('Observable error:', error)
+        error: (error) => console.error("Observable error:", error),
       });
       return () => subscription.unsubscribe();
-    }
+    },
   };
 }
 
 export const liveTokens = observableToReadable(
   liveQuery(async () => {
     try {
+      // Only access IndexedDB in the browser
+      if (!browser) {
+        return [];
+      }
+
       // First get cached tokens to show immediately
       const cachedTokens = await kongDB.tokens.toArray();
-      
+
       // If we have cached tokens, return them immediately
       if (cachedTokens.length > 0) {
         return cachedTokens;
       }
-      
+
       // If no cached tokens, get from store
       const store = get(tokenStore);
       if (store.tokens.length > 0) {
         await Promise.all(
-          store.tokens.map(token => kongDB.tokens.put({
-            ...token,
-            timestamp: Date.now()
-          }))
+          store.tokens.map((token) =>
+            kongDB.tokens.put({
+              ...token,
+              timestamp: Date.now(),
+            }),
+          ),
         );
         return store.tokens;
       }
 
       return [];
     } catch (error) {
-      console.error('Error in liveQuery:', error);
+      console.error("Error in liveQuery:", error);
       return [];
     }
-  })
+  }),
 );
 
-// For specific token updates
-export const getLiveToken = (canisterId: string) => observableToReadable(
-  liveQuery(() => kongDB.tokens.get(canisterId))
-);
+export const formattedTokens = derived<
+  [typeof tokenStore, Readable<FE.Token[] | undefined>],
+  FE.Token[]
+>([tokenStore, liveTokens], ([$tokenStore, $liveTokens]) => {
+  if (!$liveTokens) return [];
 
-export const formattedTokens = derived<[typeof tokenStore, Readable<FE.Token[] | undefined>], FE.Token[]>(
-  [tokenStore, liveTokens],
-  ([$tokenStore, $liveTokens]) => {
-    if (!$liveTokens) return [];
-    
-    const wallet = get(auth);
-    const walletId = wallet?.account?.owner?.toString() || "anonymous";
-    const favorites = $tokenStore?.favoriteTokens[walletId] || [];
-    
-    return ($liveTokens as FE.Token[])
-      .map(token => {
-        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-        const amount = toTokenDecimals(balance.toString(), token.decimals);
-        const price = $tokenStore.prices[token.canister_id] || 0;
-        
-        // Format balance with appropriate decimals based on value
-        let formattedBalance;
-        const numericAmount = Number(amount);
-        if (numericAmount === 0) {
-          formattedBalance = "0";
-        } else if (numericAmount < 0.000001) {
-          formattedBalance = amount.toFormat(8);
-        } else if (numericAmount < 0.01) {
-          formattedBalance = amount.toFormat(6);
-        } else {
-          formattedBalance = amount.toFormat(4);
-        }
-        
-        // Remove trailing zeros
-        formattedBalance = formattedBalance.replace(/\.?0+$/, '');
-        
-        // Preserve all original token properties and add formatted ones
-        return {
-          ...token,
-          logo_url: token.logo_url,
-          metrics: {
-            ...token.metrics,
-            price: price.toString(),
-            price_change_24h: token.canister_id === CKUSDT_CANISTER_ID ? 0 : token.metrics.price_change_24h
-          },
-          balance: balance.toString(),
-          formattedBalance,
-          formattedUsdValue: formatToNonZeroDecimal(amount.times(price).toString()),
-          total_24h_volume: token.metrics.volume_24h || "0",
-          isFavorite: favorites.includes(token.canister_id)
-        } as FE.Token;
-      })
-      .sort((a, b) => {
-        // Sort by favorites first
-        if (a.isFavorite && !b.isFavorite) return -1;
-        if (!a.isFavorite && b.isFavorite) return 1;
-        
-        // Then sort by 24h trading volume
-        const aVolume = Number(a.metrics.volume_24h || 0);
-        const bVolume = Number(b.metrics.volume_24h || 0);
-        return bVolume - aVolume;
-      });
-  }
-);
+  const wallet = get(auth);
+  const walletId = wallet?.account?.owner?.toString() || "anonymous";
+  const favorites = $tokenStore?.favoriteTokens[walletId] || [];
 
-export const favoriteTokens = derived(
-  tokenStore,
-  ($store) => {
-    const wallet = get(auth);
-
-    if (!$store || !wallet) return [];
-
-    const walletId = wallet.account?.owner?.toString() || "anonymous";
-    return (
-      $store?.tokens?.filter((token) =>
-        $store.favoriteTokens[walletId]?.includes(token.canister_id),
-      ) ?? []
-    );
-  }
-);
-
-export const portfolioValue = derived<[typeof tokenStore, Readable<FE.Token[]>], string>(
-  [tokenStore, formattedTokens],
-  ([$tokenStore, $formattedTokens]) => {
-    if (!$formattedTokens) return "$0.00";
-
-    const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
-      const balance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
+  return ($liveTokens as FE.Token[])
+    .map((token) => {
+      const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+      const amount = toTokenDecimals(balance.toString(), token.decimals);
       const price = $tokenStore.prices[token.canister_id] || 0;
-      const amount = Number(balance) / Math.pow(10, token.decimals);
-      return sum + (amount * price);
-    }, 0);
 
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(total);
-  }
-);
+      // Format balance with appropriate decimals based on value
+      let formattedBalance;
+      const numericAmount = Number(amount);
+      if (numericAmount === 0) {
+        formattedBalance = "0";
+      } else if (numericAmount < 0.000001) {
+        formattedBalance = amount.toFormat(8);
+      } else if (numericAmount < 0.01) {
+        formattedBalance = amount.toFormat(6);
+      } else {
+        formattedBalance = amount.toFormat(4);
+      }
 
-export const tokenPrices = derived(tokenStore, ($store) => $store?.prices ?? {});
+      // Remove trailing zeros
+      formattedBalance = formattedBalance.replace(/\.?0+$/, "");
 
-export const toggleFavoriteToken = async (canister_id: string) => {
-  try {
-    const wallet = get(auth);
-    const walletId = wallet?.account?.owner?.toString() || "anonymous";
-    const currentState = get(tokenStore);
-    const currentFavorites = currentState?.favoriteTokens[walletId] || [];
-    const isFavorite = currentFavorites.includes(canister_id);
+      // Preserve all original token properties and add formatted ones
+      return {
+        ...token,
+        balance: balance.toString(),
+        formattedBalance,
+        formattedUsdValue: formatToNonZeroDecimal(
+          amount.times(price).toString(),
+        ),
+        total_24h_volume: token.metrics.volume_24h || "0",
+        isFavorite: favorites.includes(token.canister_id),
+      } as FE.Token;
+    })
+    .sort((a, b) => {
+      // Sort by favorites first
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
 
-    eventBus.emit("favorite-token-update", {
-      canister_id,
-      currentFavorites,
-      isFavorite,
+      // Then sort by 24h trading volume
+      const aVolume = Number(a.metrics.volume_24h || 0);
+      const bVolume = Number(b.metrics.volume_24h || 0);
+      return bVolume - aVolume;
     });
+});
 
-    if (isFavorite) {
-      await kongDB.favorite_tokens
-        .where(["canister_id", "wallet_id"])
-        .equals([canister_id, walletId])
-        .delete();
-      tokenStore.update((s) => ({
-        ...s,
-        favoriteTokens: {
-          ...s.favoriteTokens,
-          [walletId]: currentFavorites.filter((id) => id !== canister_id),
-        },
-      }));
-    } else {
-      await kongDB.favorite_tokens.add({
-        canister_id,
-        wallet_id: walletId,
-        timestamp: Date.now(),
-      });
-      tokenStore.update((s) => ({
-        ...s,
-        favoriteTokens: {
-          ...s.favoriteTokens,
-          [walletId]: [...currentFavorites, canister_id],
-        },
-      }));
-    }
-  } catch (error) {
-    console.error("Error toggling favorite token:", error);
-    toastStore.error("Failed to update favorite token");
-  }
-};
+export const favoriteTokens = derived(tokenStore, ($store) => {
+  const wallet = get(auth);
+
+  if (!$store || !wallet) return [];
+
+  const walletId = wallet.account?.owner?.toString() || "anonymous";
+  return (
+    $store?.tokens?.filter((token) =>
+      $store.favoriteTokens[walletId]?.includes(token.canister_id),
+    ) ?? []
+  );
+});
+
+export const portfolioValue = derived<
+  [typeof tokenStore, Readable<FE.Token[]>],
+  string
+>([tokenStore, formattedTokens], ([$tokenStore, $formattedTokens]) => {
+  if (!$formattedTokens) return "$0.00";
+
+  const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
+    const balance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
+    const price = $tokenStore.prices[token.canister_id] || 0;
+    const amount = Number(balance) / Math.pow(10, token.decimals);
+    return sum + amount * price;
+  }, 0);
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(total);
+});
+
+export const tokenPrices = derived(
+  tokenStore,
+  ($store) => $store?.prices ?? {},
+);
 
 export const isTokenFavorite = (canister_id: string): boolean => {
   const state = get(tokenStore);
@@ -886,3 +523,81 @@ export const getTokenDecimals = (canister_id: string): number => {
   const token = tokenStore.getToken(canister_id);
   return token?.decimals || 0;
 };
+
+export function updateTokenMetrics(updates: Array<{
+  id: string;
+  price: number;
+  previousPrice: number;
+  price_change_24h: number;
+  volume?: number;
+  market_cap?: string;
+}>) {
+  console.log('Processing token metrics update:', updates);
+  
+  tokenStore.update(store => {
+    const newPriceChangeClasses = { ...store.priceChangeClasses };
+    
+    const updatedTokens = store.tokens.map(token => {
+      const update = updates.find(u => u.id === token.canister_id);
+      if (update) {
+        // Only trigger animation if price change is significant
+        const priceDiff = Math.abs(update.price - update.previousPrice);
+        if (priceDiff > 0.000001) {
+          console.log(`Applying price change animation for ${token.symbol}:`, {
+            previous: update.previousPrice,
+            new: update.price,
+            diff: priceDiff
+          });
+          
+          newPriceChangeClasses[token.canister_id] = 
+            update.price > update.previousPrice ? 'flash-green' : 'flash-red';
+            
+          // Schedule removal of animation class
+          setTimeout(() => {
+            console.log(`Removing animation class for ${token.symbol}`);
+            tokenStore.update(s => ({
+              ...s,
+              priceChangeClasses: {
+                ...s.priceChangeClasses,
+                [token.canister_id]: ''
+              }
+            }));
+          }, 1000);
+        }
+
+        return {
+          ...token,
+          metrics: {
+            ...token.metrics,
+            price: update.price.toString(),
+            price_change_24h: update.price_change_24h.toString(),
+            volume_24h: update.volume?.toString() || token.metrics?.volume_24h,
+            market_cap: update.market_cap || token.metrics?.market_cap
+          }
+        };
+      }
+      return token;
+    });
+
+    const newState = {
+      ...store,
+      tokens: updatedTokens,
+      prices: {
+        ...store.prices,
+        ...Object.fromEntries(updates.map(u => [u.id, u.price]))
+      },
+      priceChangeClasses: newPriceChangeClasses
+    };
+
+    console.log('Updated store state:', {
+      priceChangeClasses: newPriceChangeClasses,
+      prices: Object.fromEntries(updates.map(u => [u.id, u.price]))
+    });
+
+    return newState;
+  });
+}
+
+export function handlePriceUpdate(updates: any[]) {
+  updateTokenMetrics(updates);
+}

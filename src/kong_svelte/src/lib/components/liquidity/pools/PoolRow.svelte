@@ -14,7 +14,7 @@
       address_1: string;
       symbol_0: string;
       symbol_1: string;
-      price: number;
+      price: number | string;
     }
   
     export let pool: Pool;
@@ -47,6 +47,14 @@
       onAddLiquidity(pool.address_0, pool.address_1);
     }
   
+    function formatPrice(price: number | string): string {
+      const numPrice = Number(price);
+      if (isNaN(numPrice)) return '$0.00';
+      return numPrice < 0.01 
+        ? formatToNonZeroDecimal(numPrice) 
+        : numPrice.toFixed(2);
+    }
+  
 </script>
 
 {#if !isMobile}
@@ -68,7 +76,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatToNonZeroDecimal(Number(tokenMap.get(pool.address_0)?.price) ?? 0)}
+          ${formatPrice(pool.price)}
         </div>
       </div>
     </td>

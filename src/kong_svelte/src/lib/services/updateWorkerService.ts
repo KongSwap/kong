@@ -10,16 +10,19 @@ import { poolStore } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
 import * as Comlink from "comlink";
-import type { WorkerApi } from "$lib/workers/updateWorker";
+import type { PriceWorkerApi } from "$lib/workers/priceWorker";
+import type { StateWorkerApi } from "$lib/workers/stateWorker";
 import { appLoader } from "$lib/services/appLoader";
 import { calculate24hPriceChange, priceStore } from "$lib/price/priceService";
-import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { kongDB } from "./db";
+import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { TokenService } from "./tokens/TokenService";
+import { kongDB } from "./db";
 
 class UpdateWorkerService {
-  private worker: Worker | null = null;
-  private workerApi: WorkerApi | null = null;
+  private priceWorker: Worker | null = null;
+  private stateWorker: Worker | null = null;
+  private priceWorkerApi: PriceWorkerApi | null = null;
+  private stateWorkerApi: StateWorkerApi | null = null;
   private isInitialized = false;
   private isInBackground = false;
   private updateInterval: number | null = null;
@@ -47,33 +50,50 @@ class UpdateWorkerService {
   }
 
   destroy() {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-      this.workerApi = null;
+    if (this.priceWorker) {
+      this.priceWorker.terminate();
+      this.priceWorker = null;
+      this.priceWorkerApi = null;
+    }
+    if (this.stateWorker) {
+      this.stateWorker.terminate();
+      this.stateWorker = null;
+      this.stateWorkerApi = null;
     }
   }
 
   // -------------------- Private Methods --------------------
 
   private async initializeWorker(): Promise<void> {
-    console.log("Initializing update worker service...");
+    console.log("Initializing update worker services...");
 
     document.addEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
 
-    this.worker = new Worker(
-      new URL("../workers/updateWorker.ts", import.meta.url),
-      { type: "module" },
+    // Initialize price worker first and wait for it
+    this.priceWorker = new Worker(
+      new URL("../workers/priceWorker.ts", import.meta.url),
+      { type: "module" }
     );
+    this.priceWorkerApi = Comlink.wrap<PriceWorkerApi>(this.priceWorker);
 
-    this.workerApi = Comlink.wrap<WorkerApi>(this.worker);
+    // Set up message handlers
+    this.priceWorker.onmessage = this.handlePriceWorkerMessage.bind(this);
 
     const tokens = get(tokenStore);
     if (!tokens?.tokens?.length) {
       await tokenStore.loadTokens();
     }
 
-    await this.workerApi.setTokens(tokens.tokens);
+    await this.priceWorkerApi.setTokens(tokens.tokens);
+    await this.priceWorkerApi.startUpdates();
+
+    // Initialize state worker after price worker is ready
+    this.stateWorker = new Worker(
+      new URL("../workers/stateWorker.ts", import.meta.url),
+      { type: "module" }
+    );
+    this.stateWorkerApi = Comlink.wrap<StateWorkerApi>(this.stateWorker);
+    this.stateWorker.onmessage = this.handleStateWorkerMessage.bind(this);
 
     const updateStarted = await this.startUpdates();
     if (!updateStarted) {
@@ -88,14 +108,20 @@ class UpdateWorkerService {
   private handleVisibilityChange() {
     this.isInBackground = document.hidden;
     if (document.hidden) {
-      if (this.worker) {
-        this.worker.postMessage({ type: "pause" });
+      if (this.priceWorker) {
+        this.priceWorker.postMessage({ type: "pause" });
+      }
+      if (this.stateWorker) {
+        this.stateWorker.postMessage({ type: "pause" });
       }
     } else {
-      if (this.worker) {
-        this.worker.postMessage({ type: "resume" });
-        this.forceUpdate();
+      if (this.priceWorker) {
+        this.priceWorker.postMessage({ type: "resume" });
       }
+      if (this.stateWorker) {
+        this.stateWorker.postMessage({ type: "resume" });
+      }
+      this.forceUpdate();
     }
   }
 
@@ -108,7 +134,6 @@ class UpdateWorkerService {
       await Promise.all([
         tokenStore.loadBalances(walletId),
         poolStore.loadPools(true),
-        this.updatePrices(),
       ]);
     } catch (error) {
       console.error("Error during force update:", error);
@@ -125,104 +150,6 @@ class UpdateWorkerService {
 
   private async updatePools() {
     await poolStore.loadPools();
-  }
-
-  private async updatePrices() {
-    try {
-      const currentStore = get(tokenStore);
-      if (!currentStore?.tokens?.length) return;
-
-      const batchSize = 20;
-      const tokens = currentStore.tokens;
-      const batches = [];
-      
-      for (let i = 0; i < tokens.length; i += batchSize) {
-        batches.push(tokens.slice(i, i + batchSize));
-      }
-
-      // Process each batch in parallel
-      const updates = await Promise.all(
-        batches.map(async (batch) => {
-          const batchResults = await Promise.all(
-            batch.map(async (token) => {
-              try {
-                const priceChange = token.canister_id === CKUSDT_CANISTER_ID ? 0 : await calculate24hPriceChange(token);
-                const currentPrice = await TokenService.fetchPrice(token);
-                
-                // Get existing token from DB
-                const existingToken = await kongDB.tokens.get(token.canister_id);
-                
-                // Prepare updated token with new price data
-                const updatedToken = {
-                  ...(existingToken || token),
-                  metrics: {
-                    ...(existingToken?.metrics || token.metrics),
-                    price_change_24h: priceChange,
-                    price: currentPrice.toString()
-                  },
-                  timestamp: Date.now()
-                };
-
-                // Update in DB
-                await kongDB.tokens.put(updatedToken);
-
-                return {
-                  id: token.canister_id,
-                  price: currentPrice,
-                  priceChange: Number(priceChange)
-                };
-              } catch (error) {
-                console.error(`Error updating token ${token.canister_id}:`, error);
-                return {
-                  id: token.canister_id,
-                  price: Number(token.metrics?.price || 0),
-                  priceChange: Number(token.metrics?.price_change_24h || 0)
-                };
-              }
-            })
-          );
-          return batchResults;
-        })
-      );
-
-      const flatUpdates = updates.flat();
-      
-      // Create maps for both price and price change
-      const priceMap = Object.fromEntries(
-        flatUpdates.map(update => [update.id, update.price])
-      );
-      const priceChangeMap = Object.fromEntries(
-        flatUpdates.map(update => [update.id, update.priceChange])
-      );
-
-      // Update price store with numeric values
-      priceStore.set(priceMap);
-
-      // Update token store with both metrics and prices fields
-      tokenStore.update((store) => {
-        if (!store) return store;
-        return {
-          ...store,
-          // Update the prices field for reactivity
-          prices: {
-            ...store.prices,
-            ...priceMap
-          },
-          // Update token metrics
-          tokens: store.tokens.map((token) => ({
-            ...token,
-            metrics: {
-              ...token.metrics,
-              price: priceMap[token.canister_id]?.toString() || token.metrics.price,
-              price_change_24h: priceChangeMap[token.canister_id]?.toString() || token.metrics.price_change_24h
-            }
-          }))
-        };
-      });
-
-    } catch (error) {
-      console.error("Error updating prices:", error);
-    }
   }
 
   private async waitForTokens(): Promise<void> {
@@ -243,7 +170,7 @@ class UpdateWorkerService {
   }
 
   private async startUpdates() {
-    if (!this.workerApi) {
+    if (!this.priceWorkerApi || !this.stateWorkerApi) {
       console.error("Worker API not available");
       return false;
     }
@@ -251,7 +178,7 @@ class UpdateWorkerService {
     try {
       console.log("Starting worker updates...");
       await this.waitForTokens();
-      await this.workerApi.startUpdates();
+      await this.priceWorkerApi.startUpdates();
       console.log("Worker updates started, triggering immediate updates...");
 
       appLoader.updateLoadingState({
@@ -264,7 +191,6 @@ class UpdateWorkerService {
         [
           this.updateTokens(),
           this.updatePools(),
-          !this.isInBackground && this.updatePrices(),
         ].filter(Boolean),
       );
 
@@ -283,7 +209,6 @@ class UpdateWorkerService {
         [
           this.updateTokens(),
           this.updatePools(),
-          !this.isInBackground && this.updatePrices(),
         ].filter(Boolean),
       );
     }, 10000);
@@ -292,9 +217,25 @@ class UpdateWorkerService {
       [
         this.updateTokens(),
         this.updatePools(),
-        !this.isInBackground && this.updatePrices(),
       ].filter(Boolean),
     );
+  }
+
+  private async handlePriceWorkerMessage(event: MessageEvent) {
+    if (event.data.type === 'price_update') {
+      const { updates } = event.data;
+      if (updates?.length > 0) {
+        tokenStore.handlePriceUpdate(updates);
+      }
+    }
+  }
+
+  private handleStateWorkerMessage(event: MessageEvent) {
+    if (event.data.type === 'token_update') {
+      this.updateTokens();
+    } else if (event.data.type === 'pool_update') {
+      this.updatePools();
+    }
   }
 }
 

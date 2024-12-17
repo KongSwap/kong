@@ -10,14 +10,11 @@
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
 
-  let activeTab: 'settings' = 'settings';
   let soundEnabled = true;
   let settingsSubscription: () => void;
   let slippageValue: number = 2.0;
   let slippageInputValue = '2.0';
   let isMobile = false;
-  let isIcNetwork = process.env.DFX_NETWORK === 'ic';
-  let showClaimButton = !isIcNetwork;
   let isCustomSlippage = false;
 
   // Predefined slippage values for quick selection
@@ -156,12 +153,6 @@
     }
   }
 
-  const claimTokens = async () => {
-    await tokenStore.claimFaucetTokens();
-    await tokenStore.loadBalances($auth.account?.owner);
-    toastStore.success('Test tokens claimed successfully');
-  };
-
   async function resetDatabase() {
     try {
       await kongDB.delete();
@@ -240,15 +231,6 @@
         Clear Favorites
       </button>
     </div>
-
-    {#if showClaimButton}
-      <div class="setting-row">
-        <span class="setting-label">Test Tokens</span>
-        <button class="action-button" on:click={claimTokens}>
-          Claim Tokens
-        </button>
-      </div>
-    {/if}
 
     <div class="setting-row">
       <span class="setting-label">Clear App Data</span>

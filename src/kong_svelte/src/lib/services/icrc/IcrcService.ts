@@ -72,18 +72,6 @@ export class IcrcService {
     return results;
   }
 
-  public static async getIcrc1TokenMetadata(canister_id: string): Promise<any> {
-    try {
-      const actor = await auth.getActor(canister_id, canisterIDLs.icrc1, {
-        anon: true,
-        requiresSigning: false,
-      });
-      return await actor.icrc1_metadata();
-    } catch (error) {
-      this.handleError("getIcrc1TokenMetadata", error);
-    }
-  }
-
   public static async checkAndRequestIcrc2Allowances(
     token: FE.Token,
     payAmount: bigint,
@@ -250,7 +238,7 @@ export class IcrcService {
 
       return result;
     } catch (error) {
-      return this.handleError("icrc1Transfer", error);
+      return { Err: error };
     }
   }
 }

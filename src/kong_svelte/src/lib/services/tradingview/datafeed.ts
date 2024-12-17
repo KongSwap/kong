@@ -37,12 +37,9 @@ export class KongDatafeed {
 
   constructor(fromTokenId: number, toTokenId: number) {
     this.fromTokenId = fromTokenId;
-    this.toTokenId = toTokenId;
-    console.log('KongDatafeed initialized with:', { fromTokenId, toTokenId });
-  }
+    this.toTokenId = toTokenId;  }
 
   onReady(callback: (configuration: any) => void): void {
-    console.log('KongDatafeed.onReady called');
     setTimeout(() => callback({
       supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D', '1W', '1M'],
       symbols_types: [{
@@ -53,14 +50,11 @@ export class KongDatafeed {
   }
 
   searchSymbols(userInput: string, exchange: string, symbolType: string, onResult: (result: any[]) => void): void {
-    console.log('[searchSymbols]: Method call');
     // Return empty since we only support one symbol per chart
     onResult([]);
   }
 
   resolveSymbol(symbolName: string, onSymbolResolvedCallback: (symbolInfo: any) => void, onError: (error: string) => void): void {
-    console.log('[resolveSymbol]: Method call', symbolName);
-
     // Symbol information object
     const symbolInfo = {
       name: symbolName,
@@ -82,8 +76,6 @@ export class KongDatafeed {
       data_status: 'streaming',
       currency_code: 'USD'
     };
-
-    console.log('[resolveSymbol]: Symbol resolved', symbolName);
     onSymbolResolvedCallback(symbolInfo);
   }
 
@@ -95,14 +87,6 @@ export class KongDatafeed {
     onErrorCallback: (error: string) => void
   ): Promise<void> {
     try {
-      console.log('KongDatafeed.getBars called with:', { 
-        symbolInfo, 
-        resolution, 
-        periodParams,
-        fromTokenId: this.fromTokenId,
-        toTokenId: this.toTokenId
-      });
-
       const data = await fetchChartData(
         this.fromTokenId,
         this.toTokenId,
@@ -110,8 +94,6 @@ export class KongDatafeed {
         periodParams.to,
         resolution
       );
-
-      console.log('Received bar data:', { count: data.length, firstBar: data[0], lastBar: data[data.length - 1] });
 
       if (!data || data.length === 0) {
         onHistoryCallback([], { noData: true });
@@ -166,8 +148,6 @@ export class KongDatafeed {
       console.log('[subscribeBars]: No token IDs available');
       return;
     }
-
-    console.log('[subscribeBars]: Method call with subscriberUID:', subscriberUID);
     
     const poll = async () => {
       if (!this.lastBar) return;
@@ -231,7 +211,6 @@ export class KongDatafeed {
   }
 
   unsubscribeBars(subscriberUID: string): void {
-    console.log('[unsubscribeBars]: Method call with subscriberUID:', subscriberUID);
     const interval = (this as any)[subscriberUID];
     if (interval) {
       clearInterval(interval);
