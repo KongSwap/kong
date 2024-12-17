@@ -35,12 +35,17 @@ export function initializePNP(): PNP {
 
     const isDev = import.meta.env.DEV;
     const derivationOrigin = () => {
-      if (process.env.DFX_NETWORK === "local" || isDev) {
+      if (isDev) {
         return "http://localhost:5173";
-      } else if (process.env.DFX_NETWORK === "staging") {
-        return null;
       }
-      return "https://" + process.env.CANISTER_ID_KONG_SVELTE + ".icp0.io";
+      let httpPrefix = "https://";
+      let icp0Suffix = ".icp0.io";
+      if(process.env.DFX_NETWORK === "local") {
+        httpPrefix = "http://";
+        icp0Suffix = ".localhost:4943";
+      }
+      
+      return httpPrefix + process.env.CANISTER_ID_KONG_SVELTE + icp0Suffix;
     }
    
     globalPnp = createPNP({
