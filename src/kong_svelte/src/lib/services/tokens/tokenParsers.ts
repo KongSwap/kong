@@ -1,6 +1,6 @@
 import { INDEXER_URL } from "$lib/constants/canisterConstants";
 import { DEFAULT_LOGOS } from "./tokenLogos";
-
+import { kongDB } from "../db";
 // For default logos, we don't need the INDEXER_URL prefix
 const STATIC_ASSETS_URL = `${INDEXER_URL}`;
 
@@ -8,56 +8,64 @@ export const parseTokens = async (
   data: FE.Token[],
 ): Promise<FE.Token[]> => {
   try {
+    const existingTokens = await kongDB.tokens.toArray();
     const icTokens: FE.Token[] = await Promise.all(data.map(async (token) => {
-      let logoUrl: string;
+      const logoUrl = DEFAULT_LOGOS[token.canister_id] || 
+        (token?.logo_url
+          ? token.logo_url.startsWith('http')
+            ? token.logo_url
+            : `${STATIC_ASSETS_URL}${token.logo_url.startsWith('/') ? '' : '/'}${token.logo_url}`
+          : DEFAULT_LOGOS.DEFAULT);
 
-      if (token.canister_id in DEFAULT_LOGOS) {
-        // For default logos, use the path directly without the INDEXER_URL prefix
-        logoUrl = DEFAULT_LOGOS[token.canister_id as keyof typeof DEFAULT_LOGOS];
-      } else if (token?.logo_url) {
-        // For dynamic logos from the indexer, use the INDEXER_URL prefix
-        const originalUrl = token.logo_url;
-        logoUrl = originalUrl.startsWith('http') ? originalUrl : `${STATIC_ASSETS_URL}${originalUrl.startsWith('/') ? '' : '/'}${originalUrl}`;
+      const existingToken = existingTokens.find(t => t.canister_id === token.canister_id);
+      let result: FE.Token;
+      if (!existingToken) {
+        result = {
+          ...token,
+          metrics: {
+            ...token.metrics,
+            price: "0",
+            price_change_24h: "0",
+            volume_24h: "0",
+            market_cap: "0",
+          },
+          logo_url: logoUrl,
+          address: token.address || token.canister_id,
+          fee: Number(token.fee),
+          fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
+          token: token.token_type || '',
+          token_type: token.token_type || '',
+          chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
+          pool_symbol: token.pool_symbol ?? "Pool not found",
+          pools: [],
+        };
+        return result;
       } else {
-        // For the default fallback logo, use the path directly
-        logoUrl = DEFAULT_LOGOS.DEFAULT;
+        result = {
+          ...existingToken,
+          logo_url: logoUrl,
+          fee: Number(token.fee),
+          fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
+          token: token.token_type || '',
+          token_type: token.token_type || '',
+          chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
+          pool_symbol: token.pool_symbol ?? "Pool not found",
+          metrics: {
+            total_supply: token.metrics?.total_supply?.toString() || "0",
+            price: existingToken?.metrics?.price || "0",
+            price_change_24h: existingToken?.metrics?.price_change_24h || "0",
+            volume_24h: existingToken?.metrics?.volume_24h || "0",
+            market_cap: existingToken?.metrics?.market_cap || "0",
+            updated_at: existingToken?.metrics?.updated_at || Date.now().toString(),
+          },
+          total_24h_volume: existingToken?.metrics?.volume_24h || "0",
+          price: Number(existingToken?.metrics?.price || "0"),
+          tvl: existingToken?.tvl || 0,
+          balance: existingToken?.balance || "0",
+        };
+        return result;
       }
-
-      const result: FE.Token = {
-        canister_id: token.canister_id,
-        address: token.address || token.canister_id,
-        name: token.name,
-        symbol: token.symbol,
-        fee: Number(token.fee),
-        fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
-        decimals: token.decimals,
-        token: token.token_type || '',
-        token_type: token.token_type || '',
-        token_id: token.token_id,
-        chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
-        icrc1: token.icrc1,
-        icrc2: token.icrc2,
-        icrc3: token.icrc3,
-        on_kong: token.on_kong,
-        pool_symbol: token.pool_symbol ?? "Pool not found",
-        pools: [],
-        metrics: {
-          total_supply: token.metrics?.total_supply?.toString() || "0",
-          price: token.metrics?.price || "0",
-          price_change_24h: token.metrics?.price_change_24h || "0",
-          volume_24h: "0",
-          market_cap: token.metrics?.market_cap || "0",
-          updated_at: token.metrics?.updated_at || "",
-        },
-        logo_url: logoUrl,
-        total_24h_volume: "0",
-        price: Number(token.metrics?.price || 0),
-        tvl: 0,
-        balance: "0",
-      };
-      return result;
     }));
-
     return icTokens;
   } catch (error) {
     console.error('Error parsing tokens:', error);

@@ -29,7 +29,7 @@
   import { browser } from "$app/environment";
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-    import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { createFilteredTokens, getPriceChangeClass } from '$lib/utils/statsUtils';
 
   const isMobile = writable(false);
 
@@ -59,11 +59,12 @@
   const sortDirectionStore = writable<"asc" | "desc">("desc");
   const previousPrices = writable<Record<string, number>>({});
   const priceChangeClasses = writable<Record<string, string>>({});
-
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
   onMount(async () => {
-    await tokenStore.loadFavorites();
+    if ($auth.isConnected) {
+      await tokenStore.loadFavorites();
+    }
   });
 
   let tokensLoading: boolean;
@@ -87,104 +88,14 @@
     debouncedSearch(target.value);
   }
 
-  async function toggleFavorite(token: FE.Token, event: MouseEvent) {
-    event.stopPropagation();
-    await favoriteStore.toggleFavorite(token.canister_id);
-  }
-
-  const filteredTokens = derived(
-    [liveTokens, searchQuery, sortColumnStore, sortDirectionStore, showFavoritesOnly, currentWalletFavorites],
-    ([$liveTokens, $searchQuery, $sortColumn, $sortDirection, $showFavoritesOnly, $currentWalletFavorites]) => {
-      if (!$liveTokens) return { tokens: [], loading: true };
-      
-      let tokens = [...$liveTokens];
-      
-      // Create volume rank map, filtering out CKUSDT and ICP only for hot ranking
-      const volumeRankMap = new Map(
-        [...tokens]
-          .filter(token => 
-            token.canister_id !== CKUSDT_CANISTER_ID && 
-            token.canister_id !== ICP_CANISTER_ID
-          )
-          .sort((a, b) => {
-            const aVolume = Number(a?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
-            const bVolume = Number(b?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
-            return bVolume - aVolume;
-          })
-          .map((token, index) => [token.canister_id, index + 1])
-      );
-
-      // Apply filters
-      if ($showFavoritesOnly) {
-        if (!$auth.isConnected) {
-          return { tokens: [], showFavoritesPrompt: true };
-        }
-        tokens = tokens.filter(token => $currentWalletFavorites.includes(token.canister_id));
-        if (tokens.length === 0) {
-          return { tokens: [], noFavorites: true };
-        }
-      } else if ($searchQuery) {
-        const query = $searchQuery.toLowerCase();
-        tokens = tokens.filter(token => 
-          token.name.toLowerCase().includes(query) ||
-          token.symbol.toLowerCase().includes(query) || 
-          token.address.toLowerCase().includes(query)
-        );
-      }
-
-      // Create market cap rank map before any other sorting
-      const marketCapRankMap = new Map(
-        [...tokens]
-          .sort((a, b) => {
-            const aMarketCap = Number(a?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
-            const bMarketCap = Number(b?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
-            return bMarketCap - aMarketCap;
-          })
-          .map((token, index) => [token.canister_id, index + 1])
-      );
-
-      // Apply sorting
-      tokens = tokens.sort((a, b) => {
-        if (a.canister_id === KONG_CANISTER_ID) return -1;
-        if (b.canister_id === KONG_CANISTER_ID) return 1;
-
-        const getValue = (token: FE.Token) => {
-          switch ($sortColumn) {
-            case "marketCapRank": return marketCapRankMap.get(token.canister_id) || Infinity;
-            case "price": return Number(token?.metrics?.price) || 0;
-            case "price_change_24h": return Number(token?.metrics?.price_change_24h) || 0;
-            case "volume_24h": return Number(token?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
-            case "marketCap": return Number(token?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
-            case "name": return token.name;
-            default: return token[$sortColumn] || 0;
-          }
-        };
-
-        const aValue = getValue(a);
-        const bValue = getValue(b);
-
-        return $sortDirection === "asc" 
-          ? (typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue)
-          : (typeof bValue === 'string' ? bValue.localeCompare(aValue) : bValue - aValue);
-      });
-
-      // Add ranks and hot status to tokens
-      tokens = tokens.map(token => {
-        const volumeRank = volumeRankMap.get(token.canister_id);
-        return {
-          ...token,
-          marketCapRank: marketCapRankMap.get(token.canister_id),
-          volumeRank,
-          isHot: volumeRank !== undefined && volumeRank <= 5
-        };
-      });
-
-      return { 
-        tokens, 
-        loading: false,
-        volumeRankMap
-      };
-    }
+  const filteredTokens = createFilteredTokens(
+    liveTokens,
+    searchQuery,
+    sortColumnStore,
+    sortDirectionStore,
+    showFavoritesOnly,
+    currentWalletFavorites,
+    $auth
   );
 
   function toggleSort(column: string) {
@@ -202,26 +113,14 @@
   }
 
   // Price change class functions
-  function getPriceChangeClass(token: FE.Token): string {
-    if (!token?.metrics?.price_change_24h) return '';
-    const change = Number(token.metrics.price_change_24h);
-    if (change > 0) return 'positive';
-    if (change < 0) return 'negative';
-    return '';
-  }
-
   function getPriceClass(token: FE.Token): string {
-    return $priceChangeClasses[token.canister_id] || '';
-  }
-
-  function toggleShowFavorites() {
-    showFavoritesOnly.update(v => !v);
-  }
-
-  $: {
-    if($auth.isConnected) {
-      poolStore.loadUserPoolBalances();
-    }
+    const trendClass = token?.metrics?.price_change_24h ? 
+      (Number(token.metrics.price_change_24h) > 0 ? 'positive' : 
+       Number(token.metrics.price_change_24h) < 0 ? 'negative' : '') : '';
+    
+    const flashClass = $priceChangeClasses[token.canister_id] || '';
+    
+    return `${trendClass} ${flashClass}`.trim();
   }
 
   // Add smooth price animations
@@ -263,61 +162,34 @@
     }
   }
 
-  // Price stores for animations
-  const priceStores = new Map();
-
-  function getPriceStore(tokenId: string, initialPrice: number) {
-    if (!priceStores.has(tokenId)) {
-      priceStores.set(tokenId, createPriceStore(initialPrice));
-    }
-    return priceStores.get(tokenId);
-  }
-
-  let priceUpdateInterval: NodeJS.Timeout;
-
-  // Add this to handle price updates
-  onMount(() => {
-    // Initial price load
-    tokenStore.updatePrices();
-
-    // Set up interval for price updates
-    priceUpdateInterval = setInterval(() => {
-      if (!document.hidden) {
-        tokenStore.updatePrices();
-      }
-    }, 5000); // Update every 5 seconds
-
-    // Clean up on unmount
-    return () => {
-      if (priceUpdateInterval) {
-        clearInterval(priceUpdateInterval);
-      }
-    };
-  });
-
   // Single reactive statement for price changes
   $: if ($tokenStore?.prices) {
     Object.entries($tokenStore.prices).forEach(([tokenId, price]) => {
       const currentPrice = Number(price);
       const previousPrice = $previousPrices[tokenId];
 
+      // Check if we have a valid price change
       if (previousPrice !== undefined && 
           currentPrice !== previousPrice && 
           Math.abs(currentPrice - previousPrice) > 0.000001) {
+        
+        // Update price change classes
         priceChangeClasses.update(classes => ({
           ...classes,
-          [tokenId]: currentPrice > previousPrice ? 'flash-green' : 'flash-red'
+          [tokenId]: currentPrice > previousPrice ? 'positive' : 'negative'
         }));
 
+        // Clear the price change class after animation
         setTimeout(() => {
-          priceChangeClasses.update(classes => ({
-            ...classes,
-            [tokenId]: ''
-          }));
-        }, 5000);
+          priceChangeClasses.update(classes => {
+            const newClasses = { ...classes };
+            delete newClasses[tokenId];
+            return newClasses;
+          });
+        }, 1000);
       }
 
-      // Always update the previous price
+      // Always update the previous price after checking for changes
       previousPrices.update(prices => ({
         ...prices,
         [tokenId]: currentPrice
@@ -328,6 +200,57 @@
   function getFullPrice(price: number | string | undefined): string {
     if (typeof price === 'undefined') return '0';
     return Number(price).toString();
+  }
+
+  // Create tweened stores for the totals
+  const volume24h = tweened(0, {
+    duration: 400,
+    easing: cubicOut
+  });
+  const totalLiquidity = tweened(0, {
+    duration: 400,
+    easing: cubicOut
+  });
+  const totalFees = tweened(0, {
+    duration: 400,
+    easing: cubicOut
+  });
+
+  // Previous values to determine animation direction
+  let prevVolume = 0;
+  let prevLiquidity = 0;
+  let prevFees = 0;
+
+  // Animation classes
+  let volumeClass = '';
+  let liquidityClass = '';
+  let feesClass = '';
+
+  // Update function to set animation classes
+  function updateWithAnimation(newValue: number, prevValue: number): string {
+    if (prevValue === 0) return '';
+    return newValue > prevValue ? 'animate-number-up' : 'animate-number-down';
+  }
+
+  // Watch for changes in pool store totals
+  $: if ($poolStore.totals) {
+    // Update volume with animation
+    const newVolume = Number($poolStore.totals.rolling_24h_volume || 0);
+    volume24h.set(newVolume);
+    volumeClass = updateWithAnimation(newVolume, prevVolume);
+    prevVolume = newVolume;
+
+    // Update liquidity with animation
+    const newLiquidity = Number($poolStore.totals.tvl || 0);
+    totalLiquidity.set(newLiquidity);
+    liquidityClass = updateWithAnimation(newLiquidity, prevLiquidity);
+    prevLiquidity = newLiquidity;
+
+    // Update fees with animation
+    const newFees = Number($poolStore.totals.fees_24h || 0);
+    totalFees.set(newFees);
+    feesClass = updateWithAnimation(newFees, prevFees);
+    prevFees = newFees;
   }
 </script>
 
@@ -357,8 +280,8 @@
         <div class="earn-card">
           <div class="card-content">
             <h3>Total Volume (24h)</h3>
-            <div class="apy">
-              ${formatToNonZeroDecimal($poolStore.totals.rolling_24h_volume)}
+            <div class="apy {volumeClass}">
+              ${formatToNonZeroDecimal($volume24h)}
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -369,8 +292,8 @@
         <div class="earn-card">
           <div class="card-content">
             <h3>Total Liquidity</h3>
-            <div class="apy">
-              ${formatToNonZeroDecimal($poolStore.totals.tvl)}
+            <div class="apy {liquidityClass}">
+              ${formatToNonZeroDecimal($totalLiquidity)}
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -381,8 +304,8 @@
         <div class="earn-card">
           <div class="card-content">
             <h3>Total Fees (24h)</h3>
-            <div class="apy">
-              ${formatToNonZeroDecimal($poolStore.totals.fees_24h)}
+            <div class="apy {feesClass}">
+              ${formatToNonZeroDecimal($totalFees)}
             </div>
           </div>
           <div class="stat-icon-wrapper">
@@ -406,7 +329,7 @@
                 </button>
                 <button
                   class="px-4 py-2 transition-colors duration-200 {($showFavoritesOnly ? 'text-white' : 'text-[#8890a4] hover:text-white')}"
-                  on:click={toggleShowFavorites}
+                  on:click={() => showFavoritesOnly.update(v => !v)}
                 >
                   My Favorites
                   {#if $auth.isConnected}
@@ -512,7 +435,7 @@
                                 {#if $auth.isConnected}
                                   <button
                                     class="favorite-button {$currentWalletFavorites.includes(token.canister_id) ? 'active' : ''}"
-                                    on:click={(e) => toggleFavorite(token, e)}
+                                    on:click={(e) => favoriteStore.toggleFavorite(token.canister_id)}
                                   >
                                     {#if $currentWalletFavorites.includes(token.canister_id)}
                                       <Star
@@ -542,10 +465,10 @@
                             </td>
                             <td class="price-cell text-right">
                               <span 
-                                class={getPriceClass(token)}
-                                title="${getFullPrice($tokenStore.prices[token.canister_id] || "0")}"
+                                class={`${getPriceClass(token)} ${$priceChangeClasses[token.canister_id] || ''}`}
+                                title="${getFullPrice(token?.metrics?.price || "0")}"
                               >
-                                ${formatToNonZeroDecimal($tokenStore.prices[token.canister_id] || 0)}
+                                ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
                               </span>
                             </td>
                             <td class="change-cell text-right {getPriceChangeClass(token)}">
@@ -623,7 +546,7 @@
                                 {#if $auth.isConnected}
                                   <button
                                     class="favorite-button-mobile"
-                                    on:click={(e) => toggleFavorite(token, e)}
+                                    on:click={(e) => favoriteStore.toggleFavorite(token.canister_id)}
                                   >
                                     {#if $currentWalletFavorites.includes(token.canister_id)}
                                       <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
@@ -651,10 +574,10 @@
                               </div>
                               <div class="token-card-right">
                                 <span 
-                                  class="token-price {getPriceClass(token)} mobile-price"
-                                  title="$${getFullPrice($tokenStore.prices[token.canister_id] || 0)}"
+                                  class="token-price ${getPriceClass(token)} ${$priceChangeClasses[token.canister_id] || ''} mobile-price"
+                                  title="$${getFullPrice(token?.metrics?.price || 0)}"
                                 >
-                                  ${formatToNonZeroDecimal($tokenStore.prices[token.canister_id] || 0)}
+                                  ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
                                 </span>
                                 <span class="token-change {getPriceChangeClass(token)}">
                                   {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}
@@ -703,6 +626,7 @@
 
   .card-content {
     @apply flex flex-col gap-1.5;
+    min-height: 4rem; /* Adjust based on your needs */
   }
 
   .card-content h3 {
@@ -865,7 +789,7 @@
   }
 
   .token-price, .price-cell span {
-    @apply transition-colors duration-200 cursor-help;
+    @apply text-white transition-colors duration-200 cursor-help;
   }
 
   .token-change {
@@ -919,54 +843,17 @@
     height: 100%;
   }
 
-  .flash-green, .mobile-price.flash-green, .price-up {
-    animation: flash-green 1s ease;
+  /* Base price styles */
+  .token-price, .price-cell span {
+    @apply text-white transition-colors duration-200 cursor-help;
   }
 
-  .flash-red, .mobile-price.flash-red, .price-down {
-    animation: flash-red 1s ease;
+  /* Price change animations */
+  .positive {
+    @apply animate-price-flash-green;
   }
 
-  @keyframes flash-green {
-    0% { color: inherit; }
-    30% { color: #22c55e; }
-    100% { color: inherit; }
-  }
-
-  @keyframes flash-red {
-    0% { color: inherit; }
-    30% { color: #ef4444; }
-    100% { color: inherit; }
-  }
-
-  .hot-badge {
-    @apply px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-red-500/20 text-red-400 
-           border border-red-500/20 uppercase tracking-wide;
-  }
-
-  .hot-badge-small {
-    @apply flex items-center justify-center w-5 h-5 rounded 
-           bg-red-500/20 text-red-400 border border-red-500/20;
-  }
-
-  .hot-icon {
-    @apply animate-pulse;
-  }
-
-  .volume-cell {
-    @apply relative text-right pr-8 px-4;
-  }
-
-  /* Add mobile price flash animations */
-  .mobile-price.flash-green {
-    animation: flash-green 1s ease;
-  }
-
-  .mobile-price.flash-red {
-    animation: flash-red 1s ease;
-  }
-
-  .token-price {
-    @apply transition-colors duration-200 cursor-help;
+  .negative {
+    @apply animate-price-flash-red;
   }
 </style>

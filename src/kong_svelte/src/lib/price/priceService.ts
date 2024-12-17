@@ -44,11 +44,6 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
     // Ensure timestamps are valid and in seconds
     startTime = ensureValidTimestamp(startTime);
     endTime = ensureValidTimestamp(endTime);
-
-    // Convert to ISO strings
-    const startTimeUTC = new Date(startTime * 1000).toISOString();
-    const endTimeUTC = new Date(endTime * 1000).toISOString();
-
     const cacheKey = `${payTokenId}-${receiveTokenId}-${startTime}-${endTime}`;
     
     // Wait for any existing requests for this data to complete
@@ -58,18 +53,6 @@ async function fetchCandleData(payTokenId: number, receiveTokenId: number, start
 
     // Get token info for logging
     const tokens = await kongDB.tokens.toArray();
-    const payToken = tokens.find(t => Number(t.token_id) === payTokenId);
-    const receiveToken = tokens.find(t => Number(t.token_id) === receiveTokenId);
-    
-    // console.log(`[${payToken?.symbol || payTokenId}/${receiveToken?.symbol || receiveTokenId}] Fetching candle data:`, {
-    //   startTime: startTimeUTC,
-    //   endTime: endTimeUTC,
-    //   timestamps: {
-    //     startUnix: startTime,
-    //     endUnix: endTime
-    //   }
-    // });
-    
     const promise = fetchChartData(payTokenId, receiveTokenId, startTime, endTime, "1D")
       .finally(() => {
         if (requestCache.get(cacheKey) === promise) {
@@ -145,131 +128,6 @@ function apiTimestampToUnix(timestamp: number | string): number {
     return Math.floor(timestamp / 1000);
   }
   return Math.floor(timestamp);
-}
-
-async function calculateTokenPrice(token: FE.Token, pools: BE.Pool[]): Promise<number> {
-  // Special case for USDT
-  if (token.canister_id === CKUSDT_CANISTER_ID) {
-    return 1;
-  }
-
-  // Find all pools containing the token
-  const relevantPools = pools.filter(pool => 
-    pool.address_0 === token.canister_id || 
-    pool.address_1 === token.canister_id
-  );
-
-  if (relevantPools.length === 0) {
-    // console.log(`[${token.symbol}] No relevant pools found`);
-    return 0;
-  }
-
-  // Calculate prices through different paths
-  const pricePaths = await Promise.all([
-    calculateDirectUsdtPrice(token, relevantPools),
-    calculateIcpPath(token, pools),
-  ]);
-
-  // console.log(`[${token.symbol}] Price paths:`, pricePaths);
-
-  // Filter out invalid prices and calculate weighted average
-  const validPrices = pricePaths.filter(p => p.price > 0);
-  
-  if (validPrices.length === 0) {
-    // console.log(`[${token.symbol}] No valid prices found`);
-    return 0;
-  }
-
-  // Calculate weighted average based on liquidity
-  const totalWeight = validPrices.reduce((sum, p) => sum + p.weight, 0);
-  const weightedPrice = validPrices.reduce((sum, p) => 
-    sum + (p.price * p.weight / totalWeight), 0
-  );
-
-  // console.log(`[${token.symbol}] Final weighted price:`, {
-  //   validPrices,
-  //   totalWeight,
-  //   weightedPrice
-  // });
-
-  return weightedPrice;
-}
-
-async function calculateDirectUsdtPrice(
-  token: FE.Token, 
-  pools: BE.Pool[]
-): Promise<{price: number, weight: number}> {
-  const usdtPool = pools.find(pool => 
-    (pool.address_0 === token.canister_id && pool.address_1 === CKUSDT_CANISTER_ID) ||
-    (pool.address_1 === token.canister_id && pool.address_0 === CKUSDT_CANISTER_ID)
-  );
-
-  if (!usdtPool) {
-    return { price: 0, weight: 0 };
-  }
-
-  // If token is token0, use raw price
-  // If token is token1, invert the price
-  const price = usdtPool.address_0 === token.canister_id ? 
-    usdtPool.price : 
-    1 / usdtPool.price;
-
-  // console.log(`[${token.symbol}] Direct USDT pool calculation:`, {
-  //   pool: usdtPool,
-  //   isToken0: usdtPool.address_0 === token.canister_id,
-  //   rawPrice: usdtPool.price,
-  //   finalPrice: price
-  // });
-
-  // Calculate weight based on total liquidity
-  const weight = Number(usdtPool.balance_0) + Number(usdtPool.balance_1);
-
-  return { price, weight };
-}
-
-async function calculateIcpPath(
-  token: FE.Token, 
-  pools: BE.Pool[]
-): Promise<{price: number, weight: number}> {
-  const icpPool = pools.find(pool =>
-    (pool.address_0 === token.canister_id && pool.address_1 === ICP_CANISTER_ID) ||
-    (pool.address_1 === token.canister_id && pool.address_0 === ICP_CANISTER_ID)
-  );
-
-  const icpUsdtPool = pools.find(pool =>
-    (pool.address_0 === ICP_CANISTER_ID && pool.address_1 === CKUSDT_CANISTER_ID) ||
-    (pool.address_1 === ICP_CANISTER_ID && pool.address_0 === CKUSDT_CANISTER_ID)
-  );
-
-  if (!icpPool || !icpUsdtPool) {
-    return { price: 0, weight: 0 };
-  }
-
-  // Calculate token price in terms of ICP
-  const tokenInIcp = icpPool.address_0 === token.canister_id ? 
-    icpPool.price : 
-    1 / icpPool.price;
-
-  // Calculate ICP price in terms of USDT
-  const icpInUsdt = icpUsdtPool.address_0 === ICP_CANISTER_ID ? 
-    icpUsdtPool.price : 
-    1 / icpUsdtPool.price;
-
-  // Final price is token's ICP price * ICP's USDT price
-  const price = tokenInIcp * icpInUsdt;
-
-  // console.log(`[${token.symbol}] ICP path pool calculation:`, {
-  //   tokenPool: icpPool,
-  //   icpPool: icpUsdtPool,
-  //   tokenInIcp,
-  //   icpInUsdt,
-  //   finalPrice: price
-  // });
-
-  // Calculate weight based on total liquidity
-  const weight = Number(icpPool.balance_0) + Number(icpPool.balance_1);
-
-  return { price, weight };
 }
 
 export async function getHistoricalPrice(

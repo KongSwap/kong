@@ -154,8 +154,6 @@ export const auth = authStore;
 export async function requireWalletConnection(): Promise<void> {
   const pnp = get(auth);
   const connected = pnp.isConnected;
-  console.log("REQUIRE WALLET CONNECTION - IS CONNECTED?", connected);
-  console.log("REQUIRE WALLET CONNECTION - ACCOUNT", pnp.account);
   if (!connected) {
     throw new Error('Wallet is not connected.');
   }
