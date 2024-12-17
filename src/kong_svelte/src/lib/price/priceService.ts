@@ -1,8 +1,6 @@
 import { kongDB } from "$lib/services/db";
 import { fetchChartData } from "$lib/services/indexer/api";
-import { poolStore } from "$lib/services/pools";
-import { get } from "svelte/store";
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, WTN_CANISTER_ID, INDEXER_URL } from "$lib/constants/canisterConstants";
+import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { writable } from 'svelte/store';
 
 // Store for price updates

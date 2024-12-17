@@ -5,8 +5,7 @@ import {
   canisterId as kongBackendCanisterId,
 } from "../../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
-import { idlFactory as icrc1idl } from "../../../../../declarations/ckbtc_ledger";
-import { idlFactory as icrc2idl } from "../../../../../declarations/ckusdt_ledger";
+import { ICRC2_IDL } from "$lib/idls/icrc2.idl";
 import { 
   idlFactory as kongDataIDL,
   canisterId as kongDataCanisterId,
@@ -16,8 +15,8 @@ export type CanisterType = "kong_backend" | "kong_faucet" | "icrc1" | "icrc2" | 
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
   kong_faucet: kongFaucetIDL,
-  icrc1: icrc1idl,
-  icrc2: icrc2idl,
+  icrc1: ICRC2_IDL,
+  icrc2: ICRC2_IDL,
   kong_data: kongDataIDL,
 };
 
