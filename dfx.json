@@ -50,7 +50,9 @@
         "node_compatibility": true
       },
       "package": "kong_faucet",
-      "type": "rust",
+      "type": "custom",
+      "build": "bash ./scripts/build_kong_faucet.sh",
+      "wasm": "target/wasm32-unknown-unknown/release/kong_faucet.wasm",
 			"metadata": [
 				{
 					"name": "candid:service"
