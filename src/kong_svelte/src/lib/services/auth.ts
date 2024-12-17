@@ -6,8 +6,7 @@ import {
 import {
   idlFactory as kongFaucetIDL,
 } from "../../../../declarations/kong_faucet";
-import { idlFactory as icrc1idl } from "../../../../declarations/ckbtc_ledger";
-import { idlFactory as icrc2idl } from "../../../../declarations/ckusdt_ledger";
+import { ICRC2_IDL } from "$lib/idls/icrc2.idl";
 import { getPnpInstance } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
@@ -25,8 +24,8 @@ export type CanisterType = "kong_backend" | "icrc1" | "icrc2" | "kong_faucet";
 export const canisterIDLs = {
   kong_backend: kongBackendIDL,
   kong_faucet: kongFaucetIDL,
-  icrc1: icrc1idl,
-  icrc2: icrc2idl,
+  icrc1: ICRC2_IDL,
+  icrc2: ICRC2_IDL,
 };
 
 // Add a constant for the storage key
@@ -154,8 +153,6 @@ export const auth = authStore;
 export async function requireWalletConnection(): Promise<void> {
   const pnp = get(auth);
   const connected = pnp.isConnected;
-  console.log("REQUIRE WALLET CONNECTION - IS CONNECTED?", connected);
-  console.log("REQUIRE WALLET CONNECTION - ACCOUNT", pnp.account);
   if (!connected) {
     throw new Error('Wallet is not connected.');
   }

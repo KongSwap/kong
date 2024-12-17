@@ -18,7 +18,7 @@ done
 
 # Set network and prepare environment
 NETWORK=${1:-local}
-echo "Building and deploying to ${NETWORK}"
+echo "Building and deploying KONG canisters to ${NETWORK}"
 
 # Setup local network if needed
 if [ "${NETWORK}" == "local" ]; then
@@ -26,8 +26,6 @@ if [ "${NETWORK}" == "local" ]; then
     dfx start --clean --background
     #dfx identity --network local deploy-wallet
 fi
-
-dfx identity use kong
 
 # Deploy core canisters
 CORE_CANISTERS_SCRIPTS=(
@@ -85,5 +83,3 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         bash "deploy_tokens_pools.sh" "${NETWORK}"
     } || echo "Warning: deploy_tokens_pools.sh not found"
 fi
-
-echo "Current DFX identity: $(dfx identity whoami)"

@@ -5,6 +5,8 @@
     poolStore,
     userPoolBalances,
     displayPools,
+    livePools,
+    filteredLivePools
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -98,8 +100,7 @@
 
   // Filter pools by search (only when viewing all pools)
   $: filteredPools = $displayPools.filter((pool) => {
-    // Filter out pools with price < $0.15 when viewing user pools
-    if ($activePoolView === "user" && Number(pool.price) < 0.15) {
+    if ($activePoolView === "user") {
       return false;
     }
 
@@ -126,10 +127,9 @@
 
   function toggleSort(column: string) {
     if ($sortColumn === column) {
-      sortDirection.update((d) => (d === "asc" ? "desc" : "asc"));
+      poolStore.setSort(column, $sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      sortColumn.set(column);
-      sortDirection.set("asc");
+      poolStore.setSort(column, 'asc');
     }
   }
 
@@ -137,37 +137,6 @@
     if ($sortColumn !== column) return ArrowUpDown;
     return $sortDirection === "asc" ? ArrowUp : ArrowDown;
   }
-
-  $: sortedPools = [...filteredPools].sort((a: BE.Pool, b: BE.Pool) => {
-    // Always put Kong pools first
-    const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
-    const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
-    
-    if (aHasKong && !bHasKong) return -1;
-    if (!aHasKong && bHasKong) return 1;
-    if ($activePoolView !== "all") return 0;
-
-    const direction = $sortDirection === "asc" ? 1 : -1;
-    const column = $sortColumn;
-
-    if (column === "rolling_24h_volume") {
-      return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
-    }
-    if (column === "tvl") {
-      return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
-    }
-    if (column === "rolling_24h_apy") {
-      return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
-    }
-    if (column === "price") {
-      return direction * (Number(a.price) - Number(b.price));
-    }
-    return 0;
-  }).map(pool => ({
-    ...pool,
-    tvl: Number(pool.tvl),
-    displayTvl: Number(pool.tvl),
-  }));
 
   function handlePoolClick(event) {
     const pool = event.detail;
@@ -203,7 +172,7 @@
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+      poolStore.setSearch(searchTerm.trim().toLowerCase());
     }, 300);
   }
 </script>
@@ -438,7 +407,7 @@
                     </tr>
                   </thead>
                   <tbody class="!px-4">
-                    {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                    {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
                           ...pool,
@@ -457,7 +426,7 @@
 
                 <!-- Mobile/Tablet Card View -->
                 <div class="md:hidden space-y-4 mt-2">
-                  {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                  {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <div
                       class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 
                             {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) ? 'kong-special-card' : ''}"

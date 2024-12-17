@@ -7,7 +7,7 @@
   import { fetchChartData } from "$lib/services/indexer/api";
   import { poolStore } from "$lib/services/pools";
   import { debounce } from "lodash-es";
-  import { priceStore} from '$lib/services/price/priceService';
+  import { priceStore} from '$lib/price/priceService';
 
   // Convert props to runes syntax
   const props = $props<{
@@ -88,7 +88,6 @@
       }
     }
     debouncedFetchData.cancel();
-    priceStore.reset();
   });
 
   const initChart = async () => {

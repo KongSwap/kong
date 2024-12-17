@@ -1,7 +1,5 @@
 import { INDEXER_URL } from "$lib/constants/canisterConstants";
-import { kongDB } from "../db";
 import { parseTokens } from "../tokens/tokenParsers";
-
 
 export const fetchTokens = async (): Promise<FE.Token[]> => {
   try {
@@ -129,9 +127,7 @@ export const fetchTransactions = async (
   limit: number = 20
 ): Promise<Transaction[]> => {
   try {
-    const url = `${INDEXER_URL}/api/pools/${poolId}/transactions?page=${page}&limit=${limit}`;
-    console.log('Fetching transactions from URL:', url);
-    
+    const url = `${INDEXER_URL}/api/pools/${poolId}/transactions?page=${page}&limit=${limit}`;    
     const response = await fetch(url);
     const data: TransactionResponse = await response.json();
     

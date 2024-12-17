@@ -24,7 +24,8 @@ export default {
 
           // Accent colors
           "accent-blue": "#00A1FA", // Light blue accents
-          "accent-green": "#1FC7A4", // Token color (KONG)
+          "accent-red": "#FF4B4B",  // Added red accent
+          "accent-green": "#00d3a5", // Token color (KONG)
 
           // Text colors
           "text-primary": "#FFFFFF",
@@ -44,14 +45,48 @@ export default {
       scale: {
         80: "0.8", // Define a custom scale value
       },
+      keyframes: {
+        'price-flash-green': {
+          '0%': { color: '#FFFFFF' },
+          '30%': { color: '#00d3a5' },
+          '100%': { color: '#FFFFFF' },
+        },
+        'price-flash-red': {
+          '0%': { color: '#FFFFFF' },
+          '30%': { color: '#FF4B4B' },
+          '100%': { color: '#FFFFFF' },
+        },
+        'number-up': {
+          '0%': { transform: 'translateY(0)', opacity: '1' },
+          '50%': { transform: 'translateY(-20px)', opacity: '0' },
+          '51%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        'number-down': {
+          '0%': { transform: 'translateY(0)', opacity: '1' },
+          '50%': { transform: 'translateY(20px)', opacity: '0' },
+          '51%': { transform: 'translateY(-20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        }
+      },
+      animation: {
+        'price-flash-green': 'price-flash-green 1s ease-out forwards',
+        'price-flash-red': 'price-flash-red 1s ease-out forwards',
+        'number-up': 'number-up 0.4s ease-in-out',
+        'number-down': 'number-down 0.4s ease-in-out'
+      },
     },
   },
   plugins: [
     require("@tailwindcss/typography"),
+    /** @param {{ addUtilities: (utilities: Record<string, any>, config: object) => void }} param0 */
     function ({ addUtilities }) {
-      const outlineThicknesses = [1, 2, 3, 4, 5]; // Define the thicknesses you want
-      const newUtilities = outlineThicknesses.reduce((acc, thickness) => {
-        acc[`.text-outline-${thickness}`] = {
+      /** @type {Record<string, { 'text-shadow': string }>} */
+      const newUtilities = {};
+      
+      const outlineThicknesses = [1, 2, 3, 4, 5];
+      outlineThicknesses.forEach(thickness => {
+        newUtilities[`.text-outline-${thickness}`] = {
           "text-shadow": `
             -${thickness}px -${thickness}px 0 #000,  
              ${thickness}px -${thickness}px 0 #000,
@@ -59,10 +94,14 @@ export default {
              ${thickness}px  ${thickness}px 0 #000
           `,
         };
-        return acc;
-      }, {});
-      addUtilities(newUtilities, ["responsive", "hover"]);
+      });
+      
+      addUtilities(newUtilities, {
+        respectPrefix: true,
+        respectImportant: true,
+      });
     },
+    /** @param {{ addComponents: (components: Record<string, any>) => void }} param0 */
     function ({ addComponents }) {
       addComponents({
         ".primary-button": {
