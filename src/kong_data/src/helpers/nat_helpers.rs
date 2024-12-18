@@ -14,6 +14,7 @@ pub fn nat_is_zero(n: &Nat) -> bool {
     n.0.is_zero()
 }
 
+#[allow(dead_code)]
 pub fn nat_to_biguint(n: &Nat) -> BigUint {
     BigUint::from_bytes_be(&n.0.to_bytes_be())
 }
@@ -27,6 +28,7 @@ pub fn nat_to_u128(n: &Nat) -> Option<u128> {
     n.0.to_u128()
 }
 
+#[allow(dead_code)]
 pub fn nat_to_u64(n: &Nat) -> Option<u64> {
     n.0.to_u64()
 }
@@ -42,6 +44,7 @@ pub fn nat_10pow(n: u8) -> Nat {
 }
 
 /// Convert Nat to f64 with decimals
+#[allow(dead_code)]
 pub fn nat_to_decimals_f64(decimals: u8, amount: &Nat) -> Option<f64> {
     let numerator = nat_to_biguint(amount);
     let denominator = pow(BigInt::from(10), decimals.into());
@@ -87,6 +90,7 @@ pub fn nat_multiply_rational(n1: &Nat, n2: &BigRational) -> Option<Nat> {
     nat_divide(&numerator, &Nat::from(n2.denom().to_biguint()?))
 }
 
+#[allow(dead_code)]
 pub fn nat_multiply_f64(n1: &Nat, n2: f64) -> Option<Nat> {
     let n2 = BigRational::from_float(n2)?;
     nat_multiply_rational(n1, &n2)
@@ -104,6 +108,7 @@ pub fn nat_divide(numerator: &Nat, denominator: &Nat) -> Option<Nat> {
 }
 
 // division with decimal precision
+#[allow(dead_code)]
 pub fn nat_divide_as_f64(numerator: &Nat, denominator: &Nat) -> Option<f64> {
     if nat_is_zero(numerator) {
         return Some(0_f64);
@@ -114,6 +119,7 @@ pub fn nat_divide_as_f64(numerator: &Nat, denominator: &Nat) -> Option<f64> {
     numerator.0.to_f64().and_then(|n| denominator.0.to_f64().map(|d| n / d))
 }
 
+#[allow(dead_code)]
 pub fn nat_sqrt(n: &Nat) -> Nat {
     Nat::from(n.0.sqrt())
 }

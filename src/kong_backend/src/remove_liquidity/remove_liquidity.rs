@@ -9,6 +9,7 @@ use super::remove_liquidity_reply_helpers::{create_remove_liquidity_reply_failed
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
 use crate::ic::{address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, transfer::icrc1_transfer};
 use crate::stable_claim::{claim_map, stable_claim::StableClaim};
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
@@ -16,6 +17,7 @@ use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
 use crate::stable_tx::{remove_liquidity_tx::RemoveLiquidityTx, stable_tx::StableTx, tx_map};
 use crate::stable_user::user_map;
+use crate::swap::archive_to_kong_data;
 
 enum TokenIndex {
     Token0,
@@ -38,7 +40,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     let caller_id = caller_id();
 
-    let result = process_remove_liquidity(
+    process_remove_liquidity(
         request_id,
         user_id,
         &caller_id,
@@ -58,15 +60,11 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         },
         |reply| {
             request_map::update_status(request_id, StatusCode::Success, None);
+            // archive to kong data
+            archive_to_kong_data(&reply);
             Ok(reply)
         },
-    );
-
-    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
-        .first()
-        .map(archive_to_kong_data);
-
-    result
+    )
 }
 
 /// used by remove_lp_positions() to remove_liquidity for user_id and tokens returned to to_principal_id
@@ -81,7 +79,7 @@ pub async fn remove_liquidity_from_pool(
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
 
-    let result = process_remove_liquidity(
+    process_remove_liquidity(
         request_id,
         user_id,
         to_principal_id,
@@ -101,15 +99,10 @@ pub async fn remove_liquidity_from_pool(
         },
         |reply| {
             request_map::update_status(request_id, StatusCode::Success, None);
+            archive_to_kong_data(&reply);
             Ok(reply)
         },
-    );
-
-    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
-        .first()
-        .map(archive_to_kong_data);
-
-    result
+    )
 }
 
 #[update]
@@ -135,13 +128,14 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
         )
         .await
         {
-            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
-            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+            Ok(reply) => {
+                request_map::update_status(request_id, StatusCode::Success, None);
+                archive_to_kong_data(&reply);
+            }
+            Err(e) => {
+                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            }
         };
-
-        if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
-            archive_to_kong_data(request);
-        }
     });
 
     Ok(request_id)
@@ -523,9 +517,8 @@ fn return_tokens(
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply));
 }
 
-pub fn archive_to_kong_data(request: &StableRequest) {
-    request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::RemoveLiquidity(reply) = &request.reply {
+pub fn archive_to_kong_data(reply: &RemoveLiquidityReply) {
+    if kong_settings_map::get().archive_to_kong_data {
         for claim_id in reply.claim_ids.iter() {
             claim_map::archive_claim_to_kong_data(*claim_id);
         }
@@ -533,7 +526,7 @@ pub fn archive_to_kong_data(request: &StableRequest) {
             transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
         }
         tx_map::archive_tx_to_kong_data(reply.tx_id);
-    };
+    }
 }
 
 /// api to validate remove_liquidity for SNS proposals
