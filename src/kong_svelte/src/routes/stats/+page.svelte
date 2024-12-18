@@ -539,7 +539,7 @@
                           class="absolute w-full"
                           style="transform: translateY({y}px)"
                         >
-                          <div class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''} mx-4">
+                          <div class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''} mx-4" on:click={() => goto(`/stats/${token.canister_id}`)}>
                             <span class="token-rank">#{token.marketCapRank}</span>
                             <div class="token-card-main">
                               <div class="token-card-left">
