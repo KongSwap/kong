@@ -458,7 +458,7 @@
                                 <span class="token-symbol">{token.symbol}</span>
                                 {#if token.isHot}
                                   <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
-                                    <Flame size={14} class="hot-icon" />
+                                    <Flame size={20} class="hot-icon" fill="#FFA500" stroke="white" />
                                   </div>
                                 {/if}
                               </div>
@@ -565,7 +565,7 @@
                                       Vol: {formatUsdValue(token?.metrics?.volume_24h)}
                                       {#if token.isHot}
                                         <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
-                                          <Flame size={14} class="hot-icon" />
+                                          <Flame size={20} class="hot-icon" fill="#FFA500" stroke="white" />
                                         </div>
                                       {/if}
                                     </span>
@@ -627,6 +627,12 @@
   .card-content {
     @apply flex flex-col gap-1.5;
     min-height: 4rem; /* Adjust based on your needs */
+  }
+
+  .hot-icon {
+    @apply text-kong-accent-red;
+    fill: #FFA500;
+    stroke: #FFA500;
   }
 
   .card-content h3 {

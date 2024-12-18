@@ -7,17 +7,19 @@ import {
   idlFactory as kongFaucetIDL,
 } from "../../../../declarations/kong_faucet";
 import { ICRC2_IDL } from "$lib/idls/icrc2.idl";
-import { getPnpInstance } from "./pnp/PnpInitializer";
+import { pnp } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from '$app/environment';
 import { TokenService } from "./tokens";
 
 // Export the list of available wallets
-export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
+export const availableWallets = walletsList;
 
-// Create a store for the selected wallet ID
+// Create stores for auth state
 export const selectedWalletId = writable<string | null>(null);
+export const isConnected = writable<boolean>(false);
+export const principalId = writable<string | null>(null);
 
 // IDL Mappings
 export type CanisterType = "kong_backend" | "icrc1" | "icrc2" | "kong_faucet";
@@ -35,12 +37,11 @@ function createAuthStore(pnp: PNP) {
   const store = writable({
     isConnected: false,
     account: null,
-    isInitialized: false  // Add this flag to track initialization state
+    isInitialized: false
   });
 
   const { subscribe, set, update } = store;
 
-  // Add function to save last used wallet
   const saveLastWallet = (walletId: string) => {
     if (!browser) return;
     try {
@@ -64,9 +65,11 @@ function createAuthStore(pnp: PNP) {
             isInitialized: true
           };
           set(newState);
+          selectedWalletId.set(walletId);
+          isConnected.set(true);
+          principalId.set(result.owner.toString());
 
-          // Only save wallet if it's not an auto-connect
-          if (!isAutoConnect) saveLastWallet(walletId);
+          saveLastWallet(walletId);
 
           const balances = await TokenService.fetchBalances(null, result.owner.toString())
           tokenStore.updateBalances(balances);
@@ -74,13 +77,13 @@ function createAuthStore(pnp: PNP) {
         } else {
           console.log("Invalid connection result:", result);
           set({ isConnected: false, account: null, isInitialized: true });
-          localStorage.removeItem("kongSelectedWallet");
+          localStorage.removeItem(LAST_WALLET_KEY);
           return null;
         }
       } catch (error) {
         console.error('Connection error:', error);
         set({ isConnected: false, account: null, isInitialized: true });
-        localStorage.removeItem("kongSelectedWallet");
+        localStorage.removeItem(LAST_WALLET_KEY);
         throw error;
       }
     },
@@ -145,15 +148,24 @@ function createAuthStore(pnp: PNP) {
 export type AuthStore = ReturnType<typeof createAuthStore>;
 
 // Create the auth store instance
-const authStore = createAuthStore(getPnpInstance());
+const authStore = createAuthStore(pnp);
 
 // Create Auth class instance with the store
 export const auth = authStore;
 
 export async function requireWalletConnection(): Promise<void> {
-  const pnp = get(auth);
   const connected = pnp.isConnected;
   if (!connected) {
     throw new Error('Wallet is not connected.');
   }
 }
+
+export const connectWallet = async (walletId: string) => {
+  try {
+      const account = await auth.connect(walletId);
+      return account;
+  } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      throw error;
+  }
+};

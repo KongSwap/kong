@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd ".." && pwd )"
+
+# Debug output
+echo "=============== DEPLOY SCRIPT INFO ==============="
+echo "Script directory: $SCRIPT_DIR"
+echo "Project root: $PROJECT_ROOT"
+echo "Current directory before cd: $(pwd)"
+
+# Change to project root directory
+echo "==============================================="
+
 # Check required commands
 for cmd in cargo npm dfx jq; do
     if ! command -v $cmd >/dev/null; then
@@ -19,6 +32,27 @@ done
 # Set network and prepare environment
 NETWORK=${1:-local}
 echo "Building and deploying KONG canisters to ${NETWORK}"
+
+# Copy correct environment file using absolute path
+if [ -f "copy_env.sh" ]; then
+    echo "Running copy_env.sh from $SCRIPT_DIR"
+    bash "./copy_env.sh" "${NETWORK}"
+    
+    # Verify .env file after copy_env.sh
+    if [ -f "${PROJECT_ROOT}/.env" ]; then
+        echo ".env file exists after copy_env.sh"
+        ls -la "${PROJECT_ROOT}/.env"
+        echo "Content of .env:"
+        cat "${PROJECT_ROOT}/.env"
+    else
+        echo "Error: .env file not found after copy_env.sh!"
+        exit 1
+    fi
+else 
+    echo "Warning: copy_env.sh not found in $SCRIPT_DIR"
+    ls -la "$SCRIPT_DIR"
+    exit 1
+fi
 
 # Setup local network if needed
 if [ "${NETWORK}" == "local" ]; then
