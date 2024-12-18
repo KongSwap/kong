@@ -48,19 +48,40 @@
     function handleAddLiquidity() {
       onAddLiquidity(pool.address_0, pool.address_1);
     }
-  
-    function formatPrice(price: number | string): string {
-      const numPrice = Number(price);
-      if (isNaN(numPrice)) return '$0.00';
-      return numPrice < 0.01 
-        ? formatToNonZeroDecimal(numPrice) 
-        : numPrice.toFixed(2);
-    }
 
-    function getToken0Price(): string {
+    function getTokenPrice(): string {
       const store = get(tokenStore);
-      const price = store.prices?.[pool.address_0] || 0;
-      return `$${formatToNonZeroDecimal(price)}`;
+      const token0 = tokenMap.get(pool.address_0);
+      const token1 = tokenMap.get(pool.address_1);
+      
+      // For ckUSDT pairs, use the pool price directly
+      if (token1?.symbol === "ckUSDT" || token0?.symbol === "ckUSDT") {
+        return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+      }
+      
+      // For ICP pairs
+      if (token1?.symbol === "ICP") {
+        const icpPrice = store.prices?.[pool.address_1];
+        const poolPrice = Number(pool.price);
+        if (icpPrice && !isNaN(poolPrice)) {
+          return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
+        }
+      } else if (token0?.symbol === "ICP") {
+        const icpPrice = store.prices?.[pool.address_0];
+        const poolPrice = Number(pool.price);
+        if (icpPrice && !isNaN(poolPrice)) {
+          return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
+        }
+      }
+      
+      // For other pairs, use token0's price from store
+      const price = store.prices?.[pool.address_0];
+      if (typeof price === 'number' && !isNaN(price)) {
+        return `$${formatToNonZeroDecimal(price)}`;
+      }
+      
+      // Fallback to pool price
+      return `$${formatToNonZeroDecimal(Number(pool.price))}`;
     }
   
 </script>
@@ -84,7 +105,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          {getToken0Price()}
+          {getTokenPrice()}
         </div>
       </div>
     </td>
