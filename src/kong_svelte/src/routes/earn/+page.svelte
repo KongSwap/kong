@@ -48,6 +48,9 @@
   let debouncedSearchTerm = "";
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
+  // Create a writable store for the debounced search term
+  const searchTermStore = writable("");
+
   onMount(() => {
     window.addEventListener("resize", checkMobile);
     checkMobile();
@@ -90,76 +93,80 @@
     showPoolDetails = true;
   }
 
-  // Debounce search input
+  // Update the search term store when debouncing
   $: {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+      searchTermStore.set(searchTerm.trim().toLowerCase());
     }, 300);
   }
 
-  // Filter pools by search (only when viewing all pools)
-  $: filteredPools = $displayPools.filter((pool) => {
-    if ($activePoolView === "user") {
-      return false;
+  // Create filteredPools as a derived store
+  const filteredPools = derived(
+    [displayPools, activePoolView, tokenMap, searchTermStore],
+    ([$displayPools, $activePoolView, $tokenMap, $searchTerm]) => {
+      if ($activePoolView === "user") {
+        return [];
+      }
+
+      if ($activePoolView !== "all") return $displayPools;
+
+      if (!$searchTerm) return $displayPools;
+
+      return $displayPools.filter((pool) => {
+        const token0 = $tokenMap.get(pool.address_0);
+        const token1 = $tokenMap.get(pool.address_1);
+
+        const searchMatches = [
+          pool.symbol_0.toLowerCase(),
+          pool.symbol_1.toLowerCase(),
+          `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
+          `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
+          pool.address_0?.toLowerCase() || "",
+          pool.address_1?.toLowerCase() || "",
+          token0?.name?.toLowerCase() || "",
+          token1?.name?.toLowerCase() || "",
+        ];
+
+        return searchMatches.some((match) => match.includes($searchTerm));
+      });
     }
+  );
 
-    if ($activePoolView !== "all") return true; // no search filtering when on user view
-
-    if (!debouncedSearchTerm) return true;
-
-    const token0 = $tokenMap.get(pool.address_0);
-    const token1 = $tokenMap.get(pool.address_1);
-
-    const searchMatches = [
-      pool.symbol_0.toLowerCase(),
-      pool.symbol_1.toLowerCase(),
-      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
-      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
-      pool.address_0?.toLowerCase() || "",
-      pool.address_1?.toLowerCase() || "",
-      token0?.name?.toLowerCase() || "",
-      token1?.name?.toLowerCase() || "",
-    ];
-
-    return searchMatches.some((match) => match.includes(debouncedSearchTerm));
-  });
-
-  // Add these derived stores to handle sorting
-  $: sortedPools = derived([filteredLivePools, sortColumn, sortDirection], ([$pools, $sortColumn, $sortDirection]) => {
-    if (!$pools) return [];
-    
-    return [...$pools].sort((a, b) => {
-      let valueA, valueB;
+  // Create sortedPools as a derived store
+  const sortedPools = derived(
+    [filteredPools, sortColumn, sortDirection],
+    ([$filteredPools, $sortColumn, $sortDirection]) => {
+      if (!$filteredPools) return [];
       
-      switch ($sortColumn) {
-        case 'price':
-          valueA = Number(a.price);
-          valueB = Number(b.price);
-          break;
-        case 'tvl':
-          valueA = Number(a.tvl);
-          valueB = Number(b.tvl);
-          break;
-        case 'rolling_24h_volume':
-          valueA = Number(a.rolling_24h_volume);
-          valueB = Number(b.rolling_24h_volume);
-          break;
-        case 'rolling_24h_apy':
-          valueA = Number(a.rolling_24h_apy);
-          valueB = Number(b.rolling_24h_apy);
-          break;
-        default:
-          return 0;
-      }
+      return [...$filteredPools].sort((a, b) => {
+        let valueA, valueB;
+        
+        switch ($sortColumn) {
+          case 'price':
+            valueA = Number(a.price);
+            valueB = Number(b.price);
+            break;
+          case 'tvl':
+            valueA = Number(a.tvl);
+            valueB = Number(b.tvl);
+            break;
+          case 'rolling_24h_volume':
+            valueA = Number(a.rolling_24h_volume);
+            valueB = Number(b.rolling_24h_volume);
+            break;
+          case 'rolling_24h_apy':
+            valueA = Number(a.rolling_24h_apy);
+            valueB = Number(b.rolling_24h_apy);
+            break;
+          default:
+            return 0;
+        }
 
-      if ($sortDirection === 'asc') {
-        return valueA - valueB;
-      } else {
-        return valueB - valueA;
-      }
-    });
-  });
+        return $sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+      });
+    }
+  );
 
   function toggleSort(column: string) {
     if ($sortColumn === column) {
@@ -444,7 +451,7 @@
                     </tr>
                   </thead>
                   <tbody class="!px-4">
-                    {#each $sortedPools || [] as pool, i (pool.address_0 + pool.address_1)}
+                    {#each $sortedPools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
                           ...pool,
