@@ -414,16 +414,6 @@ export const filteredLivePools = liveQuery(
       }
     });
 
-    // convert icp pools to usd
-    result = await Promise.all(result.map(async pool => {
-      if (pool.symbol_1 === 'ICP') {
-        const icp = await kongDB.tokens.where('canister_id').equals(ICP_CANISTER_ID).first();
-        const poolPrice = Number(pool.price) * icp.price;
-        pool.price = poolPrice;
-      }
-      return pool;
-    }));
-
     return result.map(pool => ({
       ...pool,
       displayTvl: Number(pool.tvl) / 1e6

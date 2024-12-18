@@ -26,6 +26,7 @@
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { toastStore } from "$lib/stores/toastStore";
     import { browser } from "$app/environment";
+    import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -97,32 +98,6 @@
     }, 300);
   }
 
-  // Filter pools by search (only when viewing all pools)
-  $: filteredPools = $displayPools.filter((pool) => {
-    if ($activePoolView === "user") {
-      return false;
-    }
-
-    if ($activePoolView !== "all") return true; // no search filtering when on user view
-
-    if (!debouncedSearchTerm) return true;
-
-    const token0 = $tokenMap.get(pool.address_0);
-    const token1 = $tokenMap.get(pool.address_1);
-
-    const searchMatches = [
-      pool.symbol_0.toLowerCase(),
-      pool.symbol_1.toLowerCase(),
-      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
-      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
-      pool.address_0?.toLowerCase() || "",
-      pool.address_1?.toLowerCase() || "",
-      token0?.name?.toLowerCase() || "",
-      token1?.name?.toLowerCase() || "",
-    ];
-
-    return searchMatches.some((match) => match.includes(debouncedSearchTerm));
-  });
 
   function toggleSort(column: string) {
     if ($sortColumn === column) {
@@ -462,9 +437,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">Price</div>
                           <div class="font-medium text-white">
-                            ${Number(pool.price) < 0.01
-                              ? Number(pool.price).toFixed(6)
-                              : Number(pool.price).toFixed(2)}
+                            {formatUsdValue(Number(pool.price) * Number($tokenMap.get(pool.address_1).price))}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">

@@ -49,7 +49,7 @@
   
     function formatPrice(price: number | string): string {
       const numPrice = Number(price);
-      if (isNaN(numPrice)) return '$0.00';
+      if (isNaN(numPrice)) return '0.00';
       return numPrice < 0.01 
         ? formatToNonZeroDecimal(numPrice) 
         : numPrice.toFixed(2);
@@ -76,7 +76,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatPrice(pool.price)}
+          {formatUsdValue(Number(pool.price || 0) * Number(tokenMap.get(pool.address_1).price))}
         </div>
       </div>
     </td>
