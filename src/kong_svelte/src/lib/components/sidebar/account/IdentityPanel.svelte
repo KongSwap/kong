@@ -81,10 +81,13 @@
 
   onMount(async () => {
     mounted = true;
+    const owner = auth.pnp?.account?.owner || '';
+    const accountId = auth.pnp?.accountId || '';  
+
     identity = {
       ...identity,
-      principalId: auth.pnp?.account?.owner || '',
-      accountId: auth.pnp?.account?.subaccount ? uint8ArrayToHexString(auth.pnp.account.subaccount) : ''
+      principalId: owner,
+      accountId: accountId
     };
 
     console.log("PNP", auth.pnp);
@@ -100,7 +103,7 @@
   });
 
   function openQrModal(qr: string, type: 'principal' | 'account') {
-    const title = type === 'principal' ? 'Principal ID' : 'Account ID';
+    const title = type === 'principal' ? 'Principal Address' : 'CEX Address';
     qrModalStore.update(state => ({ isOpen: true, qrData: qr, title }));
   }
 </script>
@@ -137,13 +140,13 @@
             class="tab-button {activeTab === 'principal' ? 'active' : ''}"
             on:click={() => activeTab = 'principal'}
           >
-            Principal ID
+            Principal Address
           </button>
           <button
             class="tab-button {activeTab === 'account' ? 'active' : ''}"
             on:click={() => activeTab = 'account'}
           >
-            Account ID
+            CEX Address
           </button>
         </div>
       {/if}
@@ -182,12 +185,11 @@
                 </div>
               </div>
               <div class="info-tooltip">
-                <p>Your Principal ID is your unique digital identity that:</p>
+                <p>Your Principal Address is used to:</p>
                 <ul>
-                  <li>Is used for ICRC token transfers and DeFi operations</li>
-                  <li>Acts as your universal username across IC applications</li>
-                  <li>Controls access to your assets and data</li>
-                  <li>Is required for interacting with most dapps</li>
+                  <li>Send and receive all IC tokens to and from KongSwap</li>
+                  <li>Control access to your assets and data</li>
+                  <li>Interact with dapps on the Internet Computer</li>
                 </ul>
               </div>
             </div>
@@ -225,12 +227,12 @@
                   </div>
                 </div>
                 <div class="info-tooltip">
-                  <p>Your Account ID is a legacy address format that:</p>
+                  <p>Your CEX Address (Account Address) is used to:</p>
                   <ul>
-                    <li>Is primarily used for ICP token transfers</li>
-                    <li>Works with NNS and Internet Identity</li>
-                    <li>Is not compatible with most ICRC tokens</li>
-                    <li>May be required for some older applications</li>
+                    <li>Send ICP to and from centralized exchanges (CEX)</li>
+                    <li>Compatible with Binance, Coinbase, Bybit, Crypto.com</li>
+                    <li>Only works with ICP token transfers</li>
+                    <li>Required for CEX deposits and withdrawals</li>
                   </ul>
                 </div>
               </div>
