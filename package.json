@@ -13,9 +13,16 @@
     "start": "npm --workspace=src/kong_svelte start",
     "test": "npm run test --workspaces"
   },
+  "dependencies": {
+    "@dfinity/agent": "2.2.0",
+    "@dfinity/auth-client": "2.2.0",
+    "@dfinity/candid": "2.2.0",
+    "@dfinity/identity": "2.2.0",
+    "@dfinity/principal": "2.2.0",
+    "@dfinity/utils": "2.7.1"
+  },
   "workspaces": [
     "src/kong_svelte"
   ],
-  "type": "module",
-  "packageManager": "npm@9.7.0+sha256.b35018fbfa8f583668b2649e407922a721355cd81f61beeb4ac1d4258e585559"
+  "type": "module"
 }

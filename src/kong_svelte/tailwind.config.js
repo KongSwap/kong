@@ -1,6 +1,6 @@
+/** @type {import('tailwindcss').Config} */
 import typography from '@tailwindcss/typography';
 
-/** @type {import('tailwindcss').Config} */
 export default {
   content: [
     "./src/**/*.{html,js,svelte,ts}",
@@ -17,17 +17,17 @@ export default {
         "primary-blue": "#3B82F6",
         kong: {
           // Main background colors
-          "bg-dark": "#0B0E17",
-          "bg-card": "#151926",
+          "bg-dark": "#0B0E17", // Dark background
+          "bg-card": "#151926", // Card/container background
 
           // Primary colors
-          primary: "#3B82F6",
+          primary: "#3B82F6", // Primary button color
           "primary-hover": "#3D5BF9",
 
           // Accent colors
-          "accent-blue": "#00A1FA",
-          "accent-red": "#FF4B4B",
-          "accent-green": "#00d3a5",
+          "accent-blue": "#00A1FA", // Light blue accents
+          "accent-red": "#FF4B4B",  // Added red accent
+          "accent-green": "#00d3a5", // Token color (KONG)
 
           // Text colors
           "text-primary": "#FFFFFF",
@@ -45,7 +45,7 @@ export default {
         },
       },
       scale: {
-        80: "0.8",
+        80: "0.8", // Define a custom scale value
       },
       keyframes: {
         'price-flash-green': {

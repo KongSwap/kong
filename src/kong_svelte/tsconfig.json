@@ -15,15 +15,19 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["vite/client", "svelte", "node"],
+    "types": ["node", "vite/client", "svelte"],
     "checkJs": false,
-    "typeRoots": ["./src/types"]
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ]
   },
   "include": [
     "src/**/*.d.ts",
     "src/**/*.ts",
     "src/**/*.js",
     "src/**/*.svelte",
-    "src/types/**/*.d.ts"
+    "src/types/**/*.d.ts",
+    "node_modules/@types"
   ]
 }
