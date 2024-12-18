@@ -30,4 +30,4 @@ pub mod user;
 mod user_balances;
 
 pub const APP_NAME: &str = "Kong Lib";
-pub const APP_VERSION: &str = "v0.0.13";
+pub const APP_VERSION: &str = "v0.0.14";
