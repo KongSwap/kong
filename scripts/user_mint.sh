@@ -4,6 +4,7 @@ network="--network $1"
 identity="--identity kong_token_minter"
 
 to_principal_id=$(dfx identity $network --identity kong_user1 get-principal)
+#to_principal_id=a3rqz-stbdu-qbi46-eiave-4nufu-pubny-ja6wg-cubyr-fa2p7-dggfx-cae
 
 # 100,000 ICP
 amount=10_000_000_000_000
