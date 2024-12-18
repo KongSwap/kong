@@ -28,11 +28,14 @@
           p.address_1 === props.token.canister_id,
       )
       .sort((a, b) => Number(b.tvl) - Number(a.tvl))
-      .map((p) => ({
+      .map((p) => {
+      return {
         ...p,
+        volume_24h: Number(p.rolling_24h_volume) / 1e6,
         pool_id: String(p.pool_id),
         tvl: String(p.tvl),
-      })) as unknown as Pool[];
+      }
+    });
 
     return {
       pools: filteredPools,
@@ -130,7 +133,7 @@
                 <div>
                   <div class="text-slate-400 text-xs mb-1">24h Volume</div>
                   <div class="text-white font-medium">
-                    {formatUsdValue(Number(pool.daily_volume || 0))}
+                    {formatUsdValue(Number(pool.volume_24h))}
                   </div>
                 </div>
                 <div>

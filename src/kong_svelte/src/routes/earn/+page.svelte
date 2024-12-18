@@ -5,7 +5,6 @@
     poolStore,
     userPoolBalances,
     displayPools,
-    livePools,
     filteredLivePools
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";

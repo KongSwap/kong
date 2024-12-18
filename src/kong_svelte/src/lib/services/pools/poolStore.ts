@@ -6,7 +6,7 @@ import BigNumber from 'bignumber.js';
 import { auth } from '../auth';
 import { eventBus } from '$lib/services/tokens/eventBus';
 import { kongDB } from '../db';
-import { KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { ICP_CANISTER_ID, KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { liveQuery } from "dexie";
 
 interface PoolState {
@@ -413,6 +413,16 @@ export const filteredLivePools = liveQuery(
           return 0;
       }
     });
+
+    // convert icp pools to usd
+    result = await Promise.all(result.map(async pool => {
+      if (pool.symbol_1 === 'ICP') {
+        const icp = await kongDB.tokens.where('canister_id').equals(ICP_CANISTER_ID).first();
+        const poolPrice = Number(pool.price) * icp.price;
+        pool.price = poolPrice;
+      }
+      return pool;
+    }));
 
     return result.map(pool => ({
       ...pool,

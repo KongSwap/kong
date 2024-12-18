@@ -6,9 +6,8 @@
   import { PoolService } from "$lib/services/pools/PoolService";
   import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
-  import { auth } from "$lib/services/auth";
   import { browser } from "$app/environment";
-    import { toastStore } from "$lib/stores/toastStore";
+  import { toastStore } from "$lib/stores/toastStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
