@@ -425,10 +425,16 @@ export class TokenService {
       return { price: 0, weight: 0 };
     }
 
-    // If token is token1, invert the price
+    // Get token decimals
+    const tokenDecimals = token.decimals;
+    const usdtDecimals = 6; // USDT always has 6 decimals
+
+    // Calculate price based on pool balances, accounting for decimals
     const price = usdtPool.address_0 === token.canister_id ? 
-      usdtPool.price : 
-      1 / usdtPool.price;
+      (Number(usdtPool.balance_1) / Math.pow(10, usdtDecimals)) / 
+      (Number(usdtPool.balance_0) / Math.pow(10, tokenDecimals)) : // token0/USDT pool
+      (Number(usdtPool.balance_0) / Math.pow(10, usdtDecimals)) /
+      (Number(usdtPool.balance_1) / Math.pow(10, tokenDecimals));  // USDT/token1 pool
 
     // Calculate weight based on total liquidity
     const weight = Number(usdtPool.balance_0) + Number(usdtPool.balance_1);
@@ -440,13 +446,6 @@ export class TokenService {
     token: FE.Token, 
     pools: BE.Pool[]
   ): Promise<{price: number, weight: number}> {
-    // If this is ICP itself, return the API price directly
-    if (token.canister_id === ICP_CANISTER_ID) {
-      const price = await this.getIcpPrice();
-      return { price, weight: 1 };
-    }
-
-    // For other tokens using ICP path
     const icpPool = pools.find(pool =>
       (pool.address_0 === token.canister_id && pool.symbol_1 === "ICP") ||
       (pool.address_1 === token.canister_id && pool.symbol_0 === "ICP")
@@ -456,16 +455,30 @@ export class TokenService {
       return { price: 0, weight: 0 };
     }
 
-    const icpPrice = await this.getIcpPrice();
-    const tokenIcpPrice = icpPool.address_0 === token.canister_id ? 
-      icpPool.price : 
-      1 / icpPool.price;
+    // Get token prices from store
+    const store = get(tokenStore);
+    const token0Price = store.prices?.[icpPool.address_0] || 0;
+    const token1Price = store.prices?.[icpPool.address_1] || 0;
+
+    // Get token decimals
+    const tokenDecimals = token.decimals;
+    const icpDecimals = 8; // ICP always has 8 decimals
+
+    // Calculate price based on which token we're looking for
+    let price = 0;
+    if (icpPool.address_0 === token.canister_id) {
+      // If our token is token0, use its price directly from store
+      price = token0Price;
+    } else {
+      // If our token is token1, calculate its price using token0's price and the ratio
+      const token0Amount = Number(icpPool.balance_0) / Math.pow(10, icpDecimals);
+      const token1Amount = Number(icpPool.balance_1) / Math.pow(10, tokenDecimals);
+      price = token0Price * (token0Amount / token1Amount);
+    }
 
     const weight = Number(icpPool.balance_0) + Number(icpPool.balance_1);
-    return {
-      price: tokenIcpPrice * icpPrice,
-      weight
-    };
+    
+    return { price, weight };
   }
 
   public static async fetchPrice(token: FE.Token): Promise<number> {

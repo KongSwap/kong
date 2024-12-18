@@ -5,6 +5,8 @@
     import TokenImages from "$lib/components/common/TokenImages.svelte";
     import { onMount } from 'svelte';
     import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
+    import { tokenStore } from "$lib/services/tokens/tokenStore";
+    import { get } from "svelte/store";
   
     interface Pool {
       tvl: number;
@@ -54,6 +56,12 @@
         ? formatToNonZeroDecimal(numPrice) 
         : numPrice.toFixed(2);
     }
+
+    function getToken0Price(): string {
+      const store = get(tokenStore);
+      const price = store.prices?.[pool.address_0] || 0;
+      return `$${formatToNonZeroDecimal(price)}`;
+    }
   
 </script>
 
@@ -76,7 +84,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatPrice(pool.price)}
+          {getToken0Price()}
         </div>
       </div>
     </td>
