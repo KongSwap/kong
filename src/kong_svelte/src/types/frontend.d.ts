@@ -73,6 +73,14 @@ declare global {
         principal_id: string;
       };
     }
+
+    export interface AllowanceData {
+      address: string;
+      amount: bigint;
+      spender: string;
+      wallet_address: string;
+      timestamp: number;
+    }
   }
 }
 

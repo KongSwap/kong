@@ -7,8 +7,7 @@
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
-  import Portal from 'svelte-portal';
-
+  import Portal from "svelte-portal";
   // Svelte imports
   import { fade } from "svelte/transition";
   import { onMount, createEventDispatcher } from "svelte";
@@ -20,7 +19,10 @@
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { auth, selectedWalletId } from "$lib/services/auth";
-  import { tokenStore, getTokenDecimals } from "$lib/services/tokens/tokenStore";
+  import {
+    tokenStore,
+    getTokenDecimals,
+  } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
@@ -41,7 +43,7 @@
   // Props
   export let initialFromToken: FE.Token | null = null;
   export let initialToToken: FE.Token | null = null;
-  export let currentMode: 'normal' | 'pro';
+  export let currentMode: "normal" | "pro";
 
   // Constants
   const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
@@ -51,8 +53,8 @@
   ];
 
   // Constants for dropdown positioning
-  const DROPDOWN_WIDTH = 360;  // Width of dropdown
-  const MARGIN = 16;          // Margin from edges
+  const DROPDOWN_WIDTH = 360; // Width of dropdown
+  const MARGIN = 16; // Margin from edges
   const SEARCH_HEADER_HEIGHT = 56; // Height of search header
 
   // State
@@ -79,7 +81,7 @@
           payToken: status.details.payToken,
           receiveAmount: status.details.receiveAmount,
           receiveToken: status.details.receiveToken,
-          principalId: selectedWalletId
+          principalId: selectedWalletId,
         };
       }
     }
@@ -90,22 +92,24 @@
     showSuccessModal = false;
     successDetails = null;
     // Reset swap state
-    swapState.update(state => ({
+    swapState.update((state) => ({
       ...state,
-      payAmount: '',
-      receiveAmount: '',
+      payAmount: "",
+      receiveAmount: "",
       error: null,
-      isProcessing: false
+      isProcessing: false,
     }));
   }
 
   // Function to calculate optimal dropdown position
-  function getDropdownPosition(pos: { x: number; y: number; windowWidth: number } | null) {
+  function getDropdownPosition(
+    pos: { x: number; y: number; windowWidth: number } | null,
+  ) {
     if (!pos) return { top: 0, left: 0 };
-    
+
     // Position dropdown to the right of the button
     let left = pos.x;
-    
+
     // If it would overflow right edge, position to the left of the button instead
     if (left + DROPDOWN_WIDTH > pos.windowWidth - MARGIN) {
       left = Math.max(MARGIN, pos.x - DROPDOWN_WIDTH - 8);
@@ -119,7 +123,7 @@
 
   // Event dispatcher
   const dispatch = createEventDispatcher<{
-    modeChange: { mode: 'normal' | 'pro' };
+    modeChange: { mode: "normal" | "pro" };
     tokenChange: { fromToken: FE.Token | null; toToken: FE.Token | null };
   }>();
 
@@ -130,9 +134,12 @@
 
   // Reactive statements
   $: userMaxSlippage = $settingsStore.max_slippage;
-  
-  $: insufficientFunds = $swapState.payToken && $swapState.payAmount && 
-      Number($swapState.payAmount) > Number(getTokenBalance($swapState.payToken.canister_id));
+
+  $: insufficientFunds =
+    $swapState.payToken &&
+    $swapState.payAmount &&
+    Number($swapState.payAmount) >
+      Number(getTokenBalance($swapState.payToken.canister_id));
 
   $: buttonText = getButtonText(
     showSuccessModal,
@@ -141,7 +148,7 @@
     insufficientFunds,
     $swapState.swapSlippage > userMaxSlippage,
     $auth?.account?.owner,
-    $swapState.payAmount
+    $swapState.payAmount,
   );
 
   // Initialize tokens when they become available
@@ -164,8 +171,10 @@
   function getTokenBalance(tokenId: string): string {
     if (!tokenId) return "0";
     const balance = $tokenStore.balances[tokenId]?.in_tokens ?? BigInt(0);
-    const token = $tokenStore.tokens.find(t => t.canister_id === tokenId);
-    return token ? (Number(balance) / Math.pow(10, token.decimals)).toString() : "0";
+    const token = $tokenStore.tokens.find((t) => t.canister_id === tokenId);
+    return token
+      ? (Number(balance) / Math.pow(10, token.decimals)).toString()
+      : "0";
   }
 
   function getButtonText(
@@ -175,36 +184,42 @@
     insufficientFunds: boolean,
     highSlippage: boolean,
     isWalletConnected: boolean | undefined,
-    payAmount: string | null
+    payAmount: string | null,
   ): string {
-    if (showSuccessModal) return 'Swap';
-    if (isProcessing) return 'Processing...';
+    if (showSuccessModal) return "Swap";
+    if (isProcessing) return "Processing...";
     if (error) return error;
-    if (insufficientFunds) return 'Insufficient Funds';
-    if (highSlippage) return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
-    if (!isWalletConnected) return 'Click to Connect Wallet';
-    if (!payAmount) return 'Enter Amount';
-    return 'SWAP';
+    if (insufficientFunds) return "Insufficient Funds";
+    if (highSlippage)
+      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
+    if (!isWalletConnected) return "Click to Connect Wallet";
+    if (!payAmount) return "Enter Amount";
+    return "SWAP";
   }
 
-  function getButtonTooltip(owner: boolean | undefined, slippageTooHigh: boolean, error: string | null): string {
-    if (!owner) return 'Connect to trade';
+  function getButtonTooltip(
+    owner: boolean | undefined,
+    slippageTooHigh: boolean,
+    error: string | null,
+  ): string {
+    if (!owner) return "Connect to trade";
     if (insufficientFunds) {
       const balance = getTokenBalance($swapState.payToken?.canister_id);
       return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
     }
-    if (slippageTooHigh) return `Slippage: ${$swapState.swapSlippage}% > ${userMaxSlippage}%`;
+    if (slippageTooHigh)
+      return `Slippage: ${$swapState.swapSlippage}% > ${userMaxSlippage}%`;
     if (error) return error;
-    return 'Execute swap';
+    return "Execute swap";
   }
 
   // Event handlers
-  function handleModeChange(mode: 'normal' | 'pro'): void {
+  function handleModeChange(mode: "normal" | "pro"): void {
     if (mode === currentMode || isTransitioning) return;
     isTransitioning = true;
     previousMode = currentMode;
     setTimeout(() => {
-      dispatch('modeChange', { mode });
+      dispatch("modeChange", { mode });
       setTimeout(() => {
         isTransitioning = false;
       }, 300);
@@ -229,15 +244,20 @@
   }
 
   async function handleSwap(): Promise<boolean> {
-    if (!$swapState.payToken || !$swapState.receiveToken || !$swapState.payAmount || $swapState.isProcessing) {
+    if (
+      !$swapState.payToken ||
+      !$swapState.receiveToken ||
+      !$swapState.payAmount ||
+      $swapState.isProcessing
+    ) {
       return false;
     }
 
     try {
-      swapState.update(state => ({
+      swapState.update((state) => ({
         ...state,
         isProcessing: true,
-        error: null
+        error: null,
       }));
 
       currentSwapId = swapStatusStore.addSwap({
@@ -245,7 +265,9 @@
         lastPayAmount: $swapState.payAmount,
         payToken: $swapState.payToken,
         receiveToken: $swapState.receiveToken,
-        payDecimals: Number(getTokenDecimals($swapState.payToken.canister_id).toString()),
+        payDecimals: Number(
+          getTokenDecimals($swapState.payToken.canister_id).toString(),
+        ),
       });
 
       const result = await SwapService.executeSwap({
@@ -259,13 +281,13 @@
         lpFees: $swapState.lpFees,
       });
 
-      return typeof result === 'bigint';
+      return typeof result === "bigint";
     } catch (error) {
-      console.error('Swap execution failed:', error);
-      swapState.update(state => ({
+      console.error("Swap execution failed:", error);
+      swapState.update((state) => ({
         ...state,
         isProcessing: false,
-        error: error.message || 'Swap failed'
+        error: error.message || "Swap failed",
       }));
       return false;
     }
@@ -281,7 +303,7 @@
           localStorage.setItem("kongSelectedWallet", firstWallet.id);
         }
       }
-      
+
       // Open sidebar and attempt connection
       sidebarStore.toggleExpand();
       if ($selectedWalletId) {
@@ -300,7 +322,7 @@
     }
 
     if (insufficientFunds) {
-      toastStore.error('Insufficient funds for this swap');
+      toastStore.error("Insufficient funds for this swap");
       return;
     }
 
@@ -344,53 +366,45 @@
     }
   }
 
-  async function handleTokenSelected(token: FE.Token, panelType: PanelType) {    
-    if (panelType === 'pay') {
-      swapState.setPayToken(token);
-    } else {
-      swapState.setReceiveToken(token);
-    }
-    
-    swapState.closeTokenSelector();
-    await updateSwapQuote();
-  }
-
   async function handleReverseTokens() {
     if ($swapState.isProcessing) return;
-    
+
     isRotating = true;
     rotationCount++;
-    
+
     const tempPayToken = $swapState.payToken;
     const tempPayAmount = $swapState.payAmount;
     const tempReceiveAmount = $swapState.receiveAmount;
-    
+
     // Update tokens
     swapState.setPayToken($swapState.receiveToken);
     swapState.setReceiveToken(tempPayToken);
-    
+
     // Set the new pay amount
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
       swapState.setPayAmount(tempReceiveAmount);
     } else if (tempPayAmount) {
       swapState.setPayAmount(tempPayAmount);
     }
-    
+
     // Update quote with reversed tokens
     await updateSwapQuote();
-    
+
     // Update URL params
-    if ($swapState.payToken?.canister_id && $swapState.receiveToken?.canister_id) {
-      updateTokenInURL('from', $swapState.payToken.canister_id);
-      updateTokenInURL('to', $swapState.receiveToken.canister_id);
+    if (
+      $swapState.payToken?.canister_id &&
+      $swapState.receiveToken?.canister_id
+    ) {
+      updateTokenInURL("from", $swapState.payToken.canister_id);
+      updateTokenInURL("to", $swapState.receiveToken.canister_id);
     }
-    
+
     setTimeout(() => {
       isRotating = false;
     }, 300);
   }
 
-  function updateTokenInURL(param: 'from' | 'to', tokenId: string) {
+  function updateTokenInURL(param: "from" | "to", tokenId: string) {
     const url = new URL(window.location.href);
     url.searchParams.set(param, tokenId);
     replaceState(url.toString(), {});
@@ -401,12 +415,17 @@
 
   async function updateSwapQuote() {
     const state = get(swapState);
-    
-    if (!state.payToken || !state.receiveToken || !state.payAmount || state.payAmount === "0") {
-      swapState.update(s => ({
+
+    if (
+      !state.payToken ||
+      !state.receiveToken ||
+      !state.payAmount ||
+      state.payAmount === "0"
+    ) {
+      swapState.update((s) => ({
         ...s,
         receiveAmount: "0",
-        swapSlippage: 0
+        swapSlippage: 0,
       }));
       return;
     }
@@ -420,25 +439,25 @@
     quoteUpdateTimeout = setTimeout(async () => {
       try {
         isQuoteLoading = true;
-        
+
         const quote = await SwapService.getSwapQuote(
           state.payToken,
           state.receiveToken,
-          state.payAmount
+          state.payAmount,
         );
-        
-        swapState.update(s => ({
+
+        swapState.update((s) => ({
           ...s,
           receiveAmount: quote.receiveAmount,
           swapSlippage: quote.slippage,
         }));
       } catch (error) {
         console.error("Error getting quote:", error);
-        swapState.update(s => ({
+        swapState.update((s) => ({
           ...s,
           receiveAmount: "0",
           swapSlippage: 0,
-          error: "Failed to get quote"
+          error: "Failed to get quote",
         }));
       } finally {
         isQuoteLoading = false;
@@ -446,23 +465,25 @@
     }, 300); // 300ms debounce
   }
 
-  let previousPayAmount = '';
+  let previousPayAmount = "";
   let previousPayToken = null;
   let previousReceiveToken = null;
 
   $: {
     // Only update quote if relevant values have actually changed
-    if ($swapState.payToken && 
-        $swapState.receiveToken && 
-        $swapState.payAmount && 
-        ($swapState.payAmount !== previousPayAmount ||
-         $swapState.payToken?.canister_id !== previousPayToken?.canister_id ||
-         $swapState.receiveToken?.canister_id !== previousReceiveToken?.canister_id)) {
-      
+    if (
+      $swapState.payToken &&
+      $swapState.receiveToken &&
+      $swapState.payAmount &&
+      ($swapState.payAmount !== previousPayAmount ||
+        $swapState.payToken?.canister_id !== previousPayToken?.canister_id ||
+        $swapState.receiveToken?.canister_id !==
+          previousReceiveToken?.canister_id)
+    ) {
       previousPayAmount = $swapState.payAmount;
       previousPayToken = $swapState.payToken;
       previousReceiveToken = $swapState.receiveToken;
-      
+
       updateSwapQuote();
     }
   }
@@ -474,9 +495,9 @@
   // Watch for token changes and dispatch event
   $: {
     if ($swapState.payToken || $swapState.receiveToken) {
-      dispatch('tokenChange', {
+      dispatch("tokenChange", {
         fromToken: $swapState.payToken,
-        toToken: $swapState.receiveToken
+        toToken: $swapState.receiveToken,
       });
     }
   }
@@ -487,12 +508,15 @@
   <div class="swap-wrapper">
     <div class="swap-container" in:fade={{ duration: 420 }}>
       <div class="mode-selector">
-        <div class="mode-selector-background" style="transform: translateX({currentMode === 'pro' ? '100%' : '0'})"></div>
+        <div
+          class="mode-selector-background"
+          style="transform: translateX({currentMode === 'pro' ? '100%' : '0'})"
+        ></div>
         <button
           class="mode-button"
           class:selected={currentMode === "normal"}
           class:transitioning={isTransitioning && previousMode === "pro"}
-          on:click={() => handleModeChange('normal')}
+          on:click={() => handleModeChange("normal")}
         >
           <span class="mode-text">Normal</span>
         </button>
@@ -500,7 +524,7 @@
           class="mode-button"
           class:selected={currentMode === "pro"}
           class:transitioning={isTransitioning && previousMode === "normal"}
-          on:click={() => handleModeChange('pro')}
+          on:click={() => handleModeChange("pro")}
         >
           <span class="mode-text">Pro</span>
         </button>
@@ -568,12 +592,20 @@
         <div class="swap-footer">
           <button
             class="swap-button"
-            class:error={$swapState.error || ($swapState.swapSlippage > userMaxSlippage) || insufficientFunds}
+            class:error={$swapState.error ||
+              $swapState.swapSlippage > userMaxSlippage ||
+              insufficientFunds}
             class:processing={$swapState.isProcessing}
-            class:ready={!$swapState.error && $swapState.swapSlippage <= userMaxSlippage && !insufficientFunds}
-            class:shine-animation={buttonText === 'SWAP'}
+            class:ready={!$swapState.error &&
+              $swapState.swapSlippage <= userMaxSlippage &&
+              !insufficientFunds}
+            class:shine-animation={buttonText === "SWAP"}
             on:click={handleButtonAction}
-            title={getButtonTooltip($auth?.account?.owner, $swapState.swapSlippage > userMaxSlippage, $swapState.error)}
+            title={getButtonTooltip(
+              $auth?.account?.owner,
+              $swapState.swapSlippage > userMaxSlippage,
+              $swapState.error,
+            )}
           >
             <div class="button-content">
               {#if $swapState.isProcessing}
@@ -595,21 +627,26 @@
   <Portal target="body">
     {#if $swapState.tokenSelectorPosition}
       {@const position = getDropdownPosition($swapState.tokenSelectorPosition)}
-      <div 
+      <div
         class="fixed z-50 origin-left"
         style="
-          left: {position.left}px; 
+          left: {position.left}px;
           top: {position.top}px;
         "
       >
         <TokenSelectorDropdown
           show={true}
           onSelect={(selectedToken) => {
-            SwapLogicService.handleSelectToken($swapState.tokenSelectorOpen, selectedToken);
+            SwapLogicService.handleSelectToken(
+              $swapState.tokenSelectorOpen,
+              selectedToken,
+            );
             swapState.closeTokenSelector();
           }}
           onClose={() => swapState.closeTokenSelector()}
-          currentToken={$swapState.tokenSelectorOpen === 'pay' ? $swapState.payToken : $swapState.receiveToken}
+          currentToken={$swapState.tokenSelectorOpen === "pay"
+            ? $swapState.payToken
+            : $swapState.receiveToken}
         />
       </div>
     {/if}
@@ -617,22 +654,22 @@
 {/if}
 
 {#if $swapState.showConfirmation}
-<Portal target="body">
-  <SwapConfirmation
-    payToken={$swapState.payToken}
-    payAmount={$swapState.payAmount}
-    receiveToken={$swapState.receiveToken}
-    receiveAmount={$swapState.receiveAmount}
-    gasFees={$swapState.gasFees}
-    lpFees={$swapState.lpFees}
-    {userMaxSlippage}
-    routingPath={$swapState.routingPath}
-    onConfirm={handleSwap}
-    onClose={() => {
-      swapState.setShowConfirmation(false);
-    }}
-  />
-</Portal>
+  <Portal target="body">
+    <SwapConfirmation
+      payToken={$swapState.payToken}
+      payAmount={$swapState.payAmount}
+      receiveToken={$swapState.receiveToken}
+      receiveAmount={$swapState.receiveAmount}
+      gasFees={$swapState.gasFees}
+      lpFees={$swapState.lpFees}
+      {userMaxSlippage}
+      routingPath={$swapState.routingPath}
+      onConfirm={handleSwap}
+      onClose={() => {
+        swapState.setShowConfirmation(false);
+      }}
+    />
+  </Portal>
 {/if}
 
 {#if $swapState.showBananaRain}
@@ -682,8 +719,9 @@
     left: 2px;
     width: calc(50% - 1px);
     height: calc(100% - 4px);
-    background: linear-gradient(135deg, 
-      rgba(55, 114, 255, 0.15), 
+    background: linear-gradient(
+      135deg,
+      rgba(55, 114, 255, 0.15),
       rgba(55, 114, 255, 0.2)
     );
     border-radius: 12px;
@@ -710,7 +748,9 @@
     @apply text-lg;
     position: relative;
     z-index: 2;
-    transition: transform 0.2s ease, color 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      color 0.2s ease;
   }
 
   .mode-button:hover:not(.selected) .mode-text {
@@ -739,8 +779,9 @@
     @apply transition-all duration-200 ease-out;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
     margin-top: 4px;
-    background: linear-gradient(135deg, 
-      rgba(55, 114, 255, 0.95) 0%, 
+    background: linear-gradient(
+      135deg,
+      rgba(55, 114, 255, 0.95) 0%,
       rgba(111, 66, 193, 0.95) 100%
     );
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -751,20 +792,25 @@
   }
 
   .swap-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, 
-      rgba(75, 124, 255, 1) 0%, 
+    background: linear-gradient(
+      135deg,
+      rgba(75, 124, 255, 1) 0%,
       rgba(131, 86, 213, 1) 100%
     );
     border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
-    box-shadow: 
+    box-shadow:
       0 4px 12px rgba(55, 114, 255, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .swap-button:active:not(:disabled) {
     transform: translateY(0);
-    background: linear-gradient(135deg, rgba(45, 104, 255, 1) 0%, rgba(91, 46, 173, 1) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(45, 104, 255, 1) 0%,
+      rgba(91, 46, 173, 1) 100%
+    );
     box-shadow: 0 2px 4px rgba(55, 114, 255, 0.2);
     transition-duration: 0.1s;
   }
@@ -772,7 +818,7 @@
   .swap-button.disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: #1C2333;
+    background: #1c2333;
   }
 
   .swap-button-inner {
@@ -829,15 +875,20 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    
+
     /* Add subtle text shadow for better contrast */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   /* Add subtle bounce animation for the emoji */
   @keyframes subtle-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-2px); }
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
   }
 
   .button-text :first-child {
@@ -857,12 +908,20 @@
   }
 
   .swap-button.error {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.9) 0%,
+      rgba(239, 68, 68, 0.8) 100%
+    );
     box-shadow: none;
   }
 
   .swap-button.error:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 1) 0%, rgba(239, 68, 68, 0.9) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 1) 0%,
+      rgba(239, 68, 68, 0.9) 100%
+    );
     box-shadow: none;
   }
 
@@ -925,9 +984,15 @@
 
   /* Add a subtle pulse animation for processing state */
   @keyframes pulse {
-    0% { opacity: 0.8; }
-    50% { opacity: 0.6; }
-    100% { opacity: 0.8; }
+    0% {
+      opacity: 0.8;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0.8;
+    }
   }
 
   .swap-button.processing {
@@ -948,14 +1013,14 @@
     border: none;
     border-radius: 50%;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #1C2333;
+    background: #1c2333;
     color: white;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .switch-button:hover:not(.disabled) {
-    background: #252B3D;
+    background: #252b3d;
     transform: translate(-50%, -50%) scale(1.1);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
     border-color: rgba(255, 255, 255, 0.15);
@@ -969,7 +1034,7 @@
   .switch-button.disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: #1C2333;
+    background: #1c2333;
   }
 
   .switch-button-inner {
@@ -1026,15 +1091,20 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    
+
     /* Add subtle text shadow for better contrast */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   /* Add subtle bounce animation for the emoji */
   @keyframes subtle-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-2px); }
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
   }
 
   .button-text :first-child {
@@ -1054,7 +1124,11 @@
   }
 
   .swap-button.error {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.9) 0%,
+      rgba(239, 68, 68, 0.8) 100%
+    );
     box-shadow: none;
   }
 
@@ -1083,22 +1157,25 @@
   }
 
   @keyframes shine {
-    0%, 100% {
+    0%,
+    100% {
       left: -100%;
     }
-    35%, 65% {
+    35%,
+    65% {
       left: 200%;
     }
   }
 
   .swap-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, 
-      rgba(75, 124, 255, 1) 0%, 
+    background: linear-gradient(
+      135deg,
+      rgba(75, 124, 255, 1) 0%,
       rgba(131, 86, 213, 1) 100%
     );
     border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
-    box-shadow: 
+    box-shadow:
       0 4px 12px rgba(55, 114, 255, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.1);
   }
@@ -1116,7 +1193,8 @@
     position: absolute;
     inset: -2px;
     border-radius: 18px;
-    background: linear-gradient(135deg,
+    background: linear-gradient(
+      135deg,
       rgba(55, 114, 255, 0.5),
       rgba(111, 66, 193, 0.5)
     );
@@ -1130,7 +1208,8 @@
   }
 
   @keyframes float-arrow {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateX(0);
     }
     50% {
@@ -1139,7 +1218,8 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 0;
       transform: scale(1);
     }

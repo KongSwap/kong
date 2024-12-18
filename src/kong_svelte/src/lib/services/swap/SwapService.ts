@@ -231,7 +231,7 @@ export class SwapService {
   ): Promise<bigint | false> {
     const swapId = params.swapId;
     try {
-      await Promise.all([requireWalletConnection()]);
+      await requireWalletConnection();
       const tokens = get(tokenStore).tokens;
       const payToken = tokens.find(
         (t) => t.address === params.payToken.address,
@@ -317,29 +317,29 @@ export class SwapService {
 
       console.log("SWAP PARAMS", swapParams);
       if (["oisy"].includes(auth.pnp.activeWallet.id)) {
-        const actor = await auth.pnp.getActor(
+        const actor = auth.pnp.getActor(
           kongBackendCanisterId,
           canisterIDLs.kong_backend,
           { anon: false, requiresSigning: true },
         );
         const result = await actor.swap(swapParams);
         toastStore.dismiss(toastId);
-        
+
         if ("Ok" in result) {
           console.log("Sync swap success, result.Ok:", result.Ok);
-          
+
           // Convert amounts using the correct decimals
           const formattedPayAmount = SwapService.fromBigInt(
             result.Ok.pay_amount,
-            getTokenDecimals(result.Ok.pay_symbol)
+            getTokenDecimals(result.Ok.pay_symbol),
           );
           const formattedReceiveAmount = SwapService.fromBigInt(
             result.Ok.receive_amount,
-            getTokenDecimals(result.Ok.receive_symbol)
+            getTokenDecimals(result.Ok.receive_symbol),
           );
 
           swapStatusStore.updateSwap(swapId, {
-            status: "Success", 
+            status: "Success",
             isProcessing: false,
             error: null,
             shouldRefreshQuote: true,
@@ -349,19 +349,21 @@ export class SwapService {
               payToken: params.payToken,
               receiveAmount: formattedReceiveAmount,
               receiveToken: params.receiveToken,
-            }
+            },
           });
 
           // Load updated balances immediately and after delays
-          const tokens = get(tokenStore).tokens;
           const walletId = auth?.pnp?.account?.owner?.toString();
 
           if (walletId) {
-            console.log("Swap completed successfully, updating balances for tokens:", {
-              payToken: params.payToken?.symbol,
-              receiveToken: params.receiveToken?.symbol,
-              walletId,
-            });
+            console.log(
+              "Swap completed successfully, updating balances for tokens:",
+              {
+                payToken: params.payToken?.symbol,
+                receiveToken: params.receiveToken?.symbol,
+                walletId,
+              },
+            );
 
             const updateBalances = async () => {
               try {

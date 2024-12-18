@@ -4,7 +4,9 @@ import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
-import { eventBus } from '$lib/services/tokens/eventBus';
+import { eventBus } from "$lib/services/tokens/eventBus";
+import { allowanceStore } from "../tokens/allowanceStore";
+import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -30,7 +32,7 @@ export class IcrcService {
         canisterIDLs["icrc2"],
         { anon: true, requiresSigning: false },
       );
-      
+
       return await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
@@ -44,13 +46,13 @@ export class IcrcService {
   // Add batch balance checking
   public static async batchGetBalances(
     tokens: FE.Token[],
-    principal: Principal
+    principal: Principal,
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
-    
+
     // Group tokens by subnet to minimize subnet key fetches
     const tokensBySubnet = tokens.reduce((acc, token) => {
-      const subnet = token.canister_id.split('-')[1]; // Simple subnet grouping
+      const subnet = token.canister_id.split("-")[1]; // Simple subnet grouping
       if (!acc.has(subnet)) acc.set(subnet, []);
       acc.get(subnet).push(token);
       return acc;
@@ -60,13 +62,13 @@ export class IcrcService {
     await Promise.all(
       Array.from(tokensBySubnet.values()).map(async (subnetTokens) => {
         const balances = await Promise.all(
-          subnetTokens.map(token => this.getIcrc1Balance(token, principal))
+          subnetTokens.map((token) => this.getIcrc1Balance(token, principal)),
         );
-        
+
         subnetTokens.forEach((token, i) => {
           results.set(token.canister_id, balances[i]);
         });
-      })
+      }),
     );
 
     return results;
@@ -79,23 +81,27 @@ export class IcrcService {
     if (!token?.canister_id) {
       throw new Error("Invalid token: missing canister_id");
     }
+    ``;
 
     try {
-      const expiresAt = BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
+      const expiresAt =
+        BigInt(Date.now() + 1000 * 60 * 60 * 24 * 29) * BigInt(1000000);
 
       // Calculate total amount including fee
-      const tokenFee = token.fee_fixed ? BigInt(token.fee_fixed.toString().replace('_', '')) : 0n;
+      const tokenFee = token.fee_fixed
+        ? BigInt(token.fee_fixed.toString().replace("_", ""))
+        : 0n;
       const totalAmount = payAmount + tokenFee;
 
       // Check current allowance
-      const currentAllowance = await this.checkIcrc2Allowance(
-        token,
-        auth.pnp.account.owner,
-        Principal.fromText(kongBackendCanisterId),
+      const currentAllowance = allowanceStore.getAllowance(
+        token.canister_id,
+        auth.pnp.account.owner.toString(),
+        KONG_BACKEND_PRINCIPAL,
       );
 
-      if (currentAllowance >= totalAmount) {
-        return currentAllowance;
+      if (currentAllowance && currentAllowance.amount >= totalAmount) {
+        return currentAllowance.amount;
       }
 
       const approveArgs = {
@@ -103,8 +109,8 @@ export class IcrcService {
         memo: [],
         from_subaccount: [],
         created_at_time: [],
-        amount: token?.metrics?.total_supply 
-          ? BigInt(token.metrics.total_supply.toString().replace('_', '')) 
+        amount: token?.metrics?.total_supply
+          ? BigInt(token.metrics.total_supply.toString().replace("_", ""))
           : totalAmount * 10n,
         expected_allowance: [],
         expires_at: [expiresAt],
@@ -120,27 +126,27 @@ export class IcrcService {
         expires_at: approveArgs.expires_at[0].toString(),
       });
 
-      let result;
-      let retries = 3;
-      while (retries > 0) {
-        try {
-          toastStore.info(`Approving ${token.symbol}...`);
-          let approveActor = await auth.getActor(token.canister_id, canisterIDLs.icrc2, {
-            anon: false,
-            requiresSigning: true,
-          });
 
-          result = await approveActor.icrc2_approve(approveArgs);
-          console.log("ICRC2_APPROVE RESULT:", result);
-          toastStore.success(`Successfully approved ${token.symbol} for trading`);
-          break;
-        } catch (error) {
-          console.warn(`Approve attempt failed, ${retries - 1} retries left:`, error);
-          retries--;
-          if (retries === 0) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
+      const approveActor = auth.pnp.getActor(
+        token.canister_id,
+        canisterIDLs.icrc2,
+        {
+          anon: false,
+          requiresSigning: true,
+        },
+      );
+
+      const result = await approveActor.icrc2_approve(approveArgs);
+      allowanceStore.addAllowance(token.canister_id, {
+        address: token.canister_id,
+        wallet_address: auth.pnp.account.owner.toString(),
+        spender: KONG_BACKEND_PRINCIPAL,
+        amount: approveArgs.amount,
+        timestamp: Date.now(),
+      });
+      toastStore.success(
+        `Successfully approved ${token.symbol} for trading`,
+      );
 
       if ("Err" in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
@@ -160,12 +166,10 @@ export class IcrcService {
     spender: Principal,
   ): Promise<bigint> {
     try {
-      const actor = await auth.getActor(
-        token.canister_id,
-        canisterIDLs.icrc2,
-        { anon: true, requiresSigning: false },
-      );
-      console.log("ICRC2_ALLOWANCE ACTOR", actor);
+      const actor = auth.getActor(token.canister_id, canisterIDLs.icrc2, {
+        anon: true,
+        requiresSigning: false,
+      });
       const result = await actor.icrc2_allowance({
         account: { owner, subaccount: [] },
         spender: {
@@ -173,7 +177,13 @@ export class IcrcService {
           subaccount: [],
         },
       });
-      console.log("ICRC2_ALLOWANCE RESULT", result);
+      allowanceStore.addAllowance(token.canister_id, {
+        address: token.canister_id,
+        wallet_address: owner.toString(),
+        spender: spender.toString(),
+        amount: BigInt(result.allowance),
+        timestamp: Date.now(),
+      });
       return BigInt(result.allowance);
     } catch (error) {
       this.handleError("checkIcrc2Allowance", error);
@@ -214,26 +224,32 @@ export class IcrcService {
       const tokenFee = await this.getTokenFee(token);
 
       const result = await actor.icrc1_transfer({
-        to: typeof to === "string" ? { owner: Principal.fromText(to), subaccount: [] } : { owner: to, subaccount: [] },
+        to:
+          typeof to === "string"
+            ? { owner: Principal.fromText(to), subaccount: [] }
+            : { owner: to, subaccount: [] },
         amount,
-        fee: [tokenFee],  // Use the actual token fee
+        fee: [tokenFee], // Use the actual token fee
         memo: opts.memo || [],
         from_subaccount: opts.fromSubaccount || [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
       });
 
-      if ('Ok' in result) {
+      if ("Ok" in result) {
         // Refresh balance after successful transfer
-        const newBalance = await this.getIcrc1Balance(token, auth.pnp.account.owner);
+        const newBalance = await this.getIcrc1Balance(
+          token,
+          auth.pnp.account.owner,
+        );
         tokenStore.updateBalances({
           [token.canister_id]: {
             in_tokens: newBalance,
-            in_usd: "0" // The USD value will be updated by the store's price update mechanism
-          }
+            in_usd: "0", // The USD value will be updated by the store's price update mechanism
+          },
         });
-        
+
         // Emit balance change event to trigger immediate price update
-        eventBus.emit('balanceChanged', { tokenId: token.canister_id });
+        eventBus.emit("balanceChanged", { tokenId: token.canister_id });
       }
 
       return result;

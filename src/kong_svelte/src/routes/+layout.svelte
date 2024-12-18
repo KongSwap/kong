@@ -11,7 +11,6 @@
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from '$lib/components/common/QRModal.svelte';
 
-  let { children } = $props();
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
 
@@ -55,7 +54,7 @@
     <main class="content-container">
       {#key $page.url.pathname}
         <div class="w-full h-full" in:fade={{ duration: 250 }}>
-          {@render children?.()}
+           <slot />
         </div>
       {/key}
     </main>
