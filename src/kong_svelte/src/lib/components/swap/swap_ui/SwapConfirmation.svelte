@@ -96,19 +96,22 @@
   });
 
   async function handleConfirm() {
-    if (isLoading) return;
+    console.log("Confirm button clicked");
+    if (isLoading) {
+      console.log("Already processing, returning");
+      return;
+    }
 
     isLoading = true;
     error = "";
     
     try {
+      console.log("Attempting to execute onConfirm");
       const result = await onConfirm();
-      console.log("Confirmation result:", result, typeof result);
+      console.log("onConfirm result:", result);
       
-      const success = result !== false && result !== null && result !== undefined;
-      
-      if (success) {
-        console.log("Swap confirmed as successful");
+      if (result === true) {
+        console.log("Swap confirmed successfully");
         swapState.update(state => ({
           ...state,
           showConfirmation: false,
@@ -117,25 +120,18 @@
           showSuccessModal: true
         }));
         onClose?.();
+        return true;
       } else {
-        console.log("Swap confirmed as failed");
+        console.log("Swap failed or returned non-true value");
         error = "Swap failed";
         toastStore.error(error);
-        swapState.update(state => ({
-          ...state,
-          isProcessing: false,
-          error: "Swap failed"
-        }));
+        return false;
       }
     } catch (e) {
       console.error("Swap confirmation error:", e);
       error = e.message || "An error occurred";
       toastStore.error(error);
-      swapState.update(state => ({
-        ...state,
-        isProcessing: false,
-        error: e.message || "An error occurred"
-      }));
+      return false;
     } finally {
       isLoading = false;
     }
@@ -148,30 +144,12 @@
   $: totalGasFee = calculateTotalFee(initialQuoteData.gasFees);
   $: totalLPFee = calculateTotalFee(initialQuoteData.lpFees);
 
-  function calculateTotalFee(fees: string[]): number {
-    if (!routingPath.length || !fees.length) return 0;
-
-    return routingPath.slice(1).reduce((acc, _, i) => {
-      const token = $tokenStore.tokens.find(
-        (t) => t.symbol === routingPath[i + 1],
-      );
-      if (!token) return acc;
-
-      const decimals = token.decimals || 8;
-      const feeValue = parseFloat(fees[i]) || 0;
-
-      try {
-        const stepFee = SwapService.fromBigInt(
-          scaleDecimalToBigInt(feeValue, decimals),
-          decimals,
-        );
-        return acc + (Number(stepFee) || 0);
-      } catch (error) {
-        console.error("Error calculating fee:", error);
-        toastStore.error("Error calculating fee");
-        return acc;
-      }
-    }, 0);
+  function calculateTotalFee(lpFees) {
+    if (!lpFees || !Array.isArray(lpFees)) {
+      return 0;
+    }
+    
+    return lpFees.reduce((total, fee) => total + Number(fee), 0);
   }
 
   function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
@@ -227,6 +205,7 @@
             class:processing={isLoading}
             on:click={handleConfirm}
             disabled={isLoading}
+            on:mousedown={() => console.log("Button pressed")}
           >
             <div class="button-content">
               <span class="button-text">

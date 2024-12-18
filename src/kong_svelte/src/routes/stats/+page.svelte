@@ -394,7 +394,7 @@
                 <p class="text-gray-400">No tokens found matching your search criteria</p>
               </div>
             {:else}
-              <div class="flex-1 overflow-auto custom-scrollbar {$isMobile ? 'h-[calc(100vh-12rem)]' : 'h-[calc(100vh-1rem)]'}">
+              <div class="flex-1 overflow-auto custom-scrollbar {$isMobile ? 'h-[calc(99vh-11rem)]' : 'h-[calc(100vh-1rem)]'}">
                 {#if !$isMobile}
                   <!-- Desktop table view with fixed header -->
                   <div class="overflow-auto custom-scrollbar h-full">
@@ -425,7 +425,7 @@
                           <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] w-[120px]">Actions</th>
                         </tr>
                       </thead>
-                      <tbody class="relative">
+                      <tbody class="!px-4">
                         {#each $filteredTokens.tokens as token (token.canister_id)}
                           <tr
                             class:kong-special-row={token.canister_id === KONG_CANISTER_ID}
@@ -557,18 +557,18 @@
                                 {/if}
                                 <TokenImages tokens={[token]} size={24} />
                                 <div class="token-info-mobile">
-                                  <span class="token-symbol-mobile">{token.symbol}</span>
+                                  <div class="flex items-center gap-1">
+                                    <span class="token-symbol-mobile">{token.symbol}</span>
+                                    {#if token.isHot}
+                                      <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
+                                        <Flame size={14} class="hot-icon" />
+                                      </div>
+                                    {/if}
+                                  </div>
                                   <div class="token-metrics-row">
                                     <span>MCap: {formatUsdValue(token?.metrics?.market_cap)}</span>
                                     <span class="separator">|</span>
-                                    <span class="flex items-center gap-1">
-                                      Vol: {formatUsdValue(token?.metrics?.volume_24h)}
-                                      {#if token.isHot}
-                                        <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
-                                          <Flame size={14} class="hot-icon" />
-                                        </div>
-                                      {/if}
-                                    </span>
+                                    <span>Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -602,7 +602,7 @@
 
 <style scoped lang="postcss">
   .earn-cards {
-    @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-2;
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
   }
 
   .earn-card {
@@ -613,6 +613,7 @@
            hover:border-primary-blue/30 
            hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]
            backdrop-blur-sm;
+           max-height: 110px;
 
     /* Add hover effect for icon */
     &:hover .stat-icon-wrapper {
@@ -883,5 +884,45 @@
     display: inline-block;
     transition: color 0.2s ease-out;
     will-change: color;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1a1b23;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #60a5fa;
+    border-radius: 4px;
+    border: 2px solid #1a1b23;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #60a5fa #1a1b23;
+  }
+
+  /* Table padding adjustments */
+  .pools-table {
+    th, td {
+      padding: 0.5rem 0.5rem;
+      
+      &:first-child {
+        padding-left: 1rem;
+      }
+      
+      &:last-child {
+        padding-right: 1rem;
+      }
+    }
   }
 </style>

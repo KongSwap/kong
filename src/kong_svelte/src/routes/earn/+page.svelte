@@ -5,8 +5,6 @@
     poolStore,
     userPoolBalances,
     displayPools,
-    livePools,
-    filteredLivePools
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -311,13 +309,6 @@
                     on:input={handleSearch}
                   />
                 </div>
-                <div class="w-full">
-                  <div class="">
-                    <button class="primary-button bg-transparent border border-blue-500/40" on:click={() => goto("/earn/add")}>
-                      Add Position
-                    </button>
-                  </div>
-                </div>
               </div>
               <!-- Desktop view -->
               <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2">
@@ -410,8 +401,8 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div
-                class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {$isMobile
-                  ? 'max-h-[calc(97vh-16.5rem)]'
+                class="overflow-auto flex-1 max-h-[calc(100vh-17.5rem)] {$isMobile
+                  ? 'max-h-[calc(101vh-21.5rem)] pb-20'
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
@@ -630,10 +621,6 @@
            hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
            backdrop-blur-sm;
     min-width: 0; /* Prevent flex items from growing beyond container */
-  }
-
-  .earn-card[disabled] {
-    @apply opacity-75 cursor-not-allowed hover:border-[#2a2d3d] hover:bg-[#1a1b23]/60 hover:shadow-none;
   }
 
   .card-content {

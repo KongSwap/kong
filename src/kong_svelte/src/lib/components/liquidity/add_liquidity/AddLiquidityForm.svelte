@@ -14,6 +14,7 @@
     import debounce from 'lodash-es/debounce';
     import { toastStore } from "$lib/stores/toastStore";
     import { BigNumber } from 'bignumber.js';
+    import { IcrcService } from '$lib/services/icrc/IcrcService';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
@@ -287,9 +288,36 @@
         if (!currentToken || !otherToken) return;
 
         try {
-            // Clean the balance by removing underscores before formatting
+            // Get real token fee
+            let tokenFee;
+            try {
+                tokenFee = await IcrcService.getTokenFee(currentToken);
+            } catch (error) {
+                console.error("Error getting token fee, falling back to fee_fixed:", error);
+                if (!currentToken.fee_fixed) {
+                    toastStore.error("Could not determine token fee");
+                    return;
+                }
+                tokenFee = BigInt(currentToken.fee_fixed.toString().replace(/_/g, ''));
+            }
+
+            // Clean the balance
             const cleanBalance = currentBalance.toString().replace(/_/g, '');
-            const value = formatTokenAmount(cleanBalance, currentToken.decimals);
+            const balance = new BigNumber(cleanBalance);
+
+            // Calculate max amount considering transfer fee
+            const feeMultiplier = currentToken.icrc2 ? 2 : 1;
+            const totalFees = new BigNumber(tokenFee.toString()).multipliedBy(feeMultiplier);
+            
+            let maxAmount = balance.minus(totalFees);
+            
+            if (maxAmount.isLessThanOrEqualTo(0) || maxAmount.isNaN()) {
+                toastStore.error("Insufficient balance to cover fees");
+                return;
+            }
+
+            // Format the max amount for display
+            const value = formatTokenAmount(maxAmount.toString(), currentToken.decimals);
             
             // Update the input display
             if (index === 0) {
@@ -379,23 +407,33 @@
         if (!token0 || !token1 || !amount0 || !amount1) return false;
         
         try {
-            // Clean the amounts by removing commas and underscores
+            // Clean the input values first
             const cleanAmount0 = amount0.toString().replace(/[,_]/g, '');
             const cleanAmount1 = amount1.toString().replace(/[,_]/g, '');
             
-            // Convert amounts to BigInt, accounting for fees
-            const parsedAmount0 = BigInt(parseTokenAmount(cleanAmount0, token0.decimals)) - BigInt(token0.fee.toString());
-            const parsedAmount1 = BigInt(parseTokenAmount(cleanAmount1, token1.decimals)) - BigInt(token1.fee.toString());
+            // Use BigNumber for precise decimal arithmetic
+            const amount0Decimal = new BigNumber(cleanAmount0)
+                .times(new BigNumber(10).pow(token0.decimals))
+                .integerValue(BigNumber.ROUND_FLOOR);
             
-            // Convert balances to BigInt
-            const parsedBalance0 = BigInt(token0Balance.toString().replace(/_/g, ''));
-            const parsedBalance1 = BigInt(token1Balance.toString().replace(/_/g, ''));
-            
-            // Compare using BigInt operations
-            return parsedAmount0 > parsedBalance0 || parsedAmount1 > parsedBalance1;
+            const amount1Decimal = new BigNumber(cleanAmount1)
+                .times(new BigNumber(10).pow(token1.decimals))
+                .integerValue(BigNumber.ROUND_FLOOR);
+
+            // Clean and convert balances
+            const balance0Decimal = new BigNumber(token0Balance.toString().replace(/_/g, ''));
+            const balance1Decimal = new BigNumber(token1Balance.toString().replace(/_/g, ''));
+
+            // Add fees if needed
+            const fee0 = new BigNumber(token0.fee || 0);
+            const fee1 = new BigNumber(token1.fee || 0);
+
+            // Compare amounts with balances
+            return amount0Decimal.plus(fee0).isGreaterThan(balance0Decimal) || 
+                   amount1Decimal.plus(fee1).isGreaterThan(balance1Decimal);
         } catch (err) {
             console.error("Error in hasInsufficientBalance:", err);
-            return true; // Return true on error to prevent invalid transactions
+            return true; // Still return true on error to prevent invalid transactions
         }
     };
 
