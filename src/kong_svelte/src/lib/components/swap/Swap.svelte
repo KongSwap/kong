@@ -26,7 +26,6 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { walletsList } from "@windoge98/plug-n-play";
 
   // Utils
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
@@ -1057,26 +1056,10 @@
     z-index: 1;
   }
 
-  /* Add these new styles for enhanced button text */
-  .button-text {
-    @apply text-white font-semibold text-lg;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    
-    /* Add subtle text shadow for better contrast */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-
   /* Add subtle bounce animation for the emoji */
   @keyframes subtle-bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-2px); }
-  }
-
-  .button-text :first-child {
-    animation: subtle-bounce 2s infinite ease-in-out;
   }
 
   .swap-button-text {
@@ -1094,10 +1077,6 @@
   .swap-button.error {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
     box-shadow: none;
-  }
-
-  .button-text.warning {
-    font-weight: 600;
   }
 
   .shine-effect {
@@ -1139,15 +1118,6 @@
     box-shadow: 
       0 4px 12px rgba(55, 114, 255, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-
-  .ready-indicator {
-    position: relative;
-    display: flex;
-    align-items: center;
-    color: rgba(255, 255, 255, 0.8);
-    animation: float-arrow 2s ease-in-out infinite;
-    margin-left: -2px;
   }
 
   .ready-glow {

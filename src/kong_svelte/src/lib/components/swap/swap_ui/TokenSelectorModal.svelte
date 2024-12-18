@@ -1,3 +1,4 @@
+<!-- deprecated -->
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenRowCompact from "$lib/components/sidebar/TokenRowCompact.svelte";

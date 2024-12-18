@@ -34,7 +34,13 @@
     // Get filtered tokens before any UI filters (search, favorites, etc)
     let baseFilteredTokens = $derived(
       tokens.filter(token => {
-        // First check if we should restrict to secondary tokens
+        // First validate the token
+        if (!token?.canister_id) {
+          console.warn('Invalid token found:', token);
+          return false;
+        }
+
+        // Then check if we should restrict to secondary tokens
         if (restrictToSecondaryTokens) {
           return SECONDARY_TOKEN_IDS.includes(token.canister_id);
         }
@@ -56,7 +62,11 @@
     let filteredTokens = $derived(
       baseFilteredTokens
         .map((token): TokenMatch | null => {
-          if (!token?.symbol || !token?.name) return null;
+          // Validate token before processing
+          if (!token?.canister_id || !token?.symbol || !token?.name) {
+            console.warn('Incomplete token data:', token);
+            return null;
+          }
           
           const searchLower = searchQuery.toLowerCase();
           const matches = findMatches(token, searchLower);
@@ -64,7 +74,7 @@
           return matches.length > 0 ? { token, matches } : null;
         })
         .filter((match): match is TokenMatch => {
-          if (!match) return false;
+          if (!match?.token?.canister_id) return false;
 
           // Apply standard filter
           switch (standardFilter) {

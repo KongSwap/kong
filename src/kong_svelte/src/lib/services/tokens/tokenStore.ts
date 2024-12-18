@@ -77,15 +77,9 @@ function createTokenStore() {
   };
   const store = writable<TokenState>(initialState);
 
-  const getCurrentWalletId = (): Principal => {
-    let walletId;
+  const getCurrentWalletId = (): string => {
     const wallet = get(auth);
-    if (wallet && wallet.account && wallet.account.owner) {
-      walletId = wallet.account.owner;
-    } else {
-      walletId = null;
-    }
-    return walletId;
+    return wallet?.account?.owner?.toString() || "anonymous";
   };
 
   const loadBalances = async (
@@ -248,7 +242,7 @@ function createTokenStore() {
       },
     ),
     loadFavorites: async () => {
-      const walletId = getCurrentWalletId().toString();
+      const walletId = getCurrentWalletId();
       const favorites = await kongDB.favorite_tokens
         .where("wallet_id")
         .equals(walletId)
@@ -300,14 +294,14 @@ function createTokenStore() {
         toastStore.error("Failed to update favorite token");
       }
     },
-    isFavorite: (canister_id: string): boolean => {
+    isFavorite: (canister_id: string | null | undefined): boolean => {
+      if (!canister_id) return false;
       const currentState = get(store);
-      const walletId = getCurrentWalletId().toString();
-      return (
-        currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false
-      );
+      const wallet = get(auth);
+      const walletId = wallet?.account?.owner?.toString() || "anonymous";
+      return currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false;
     },
-    getFavorites: (walletId: string = getCurrentWalletId().toString()) => {
+    getFavorites: (walletId: string = getCurrentWalletId()) => {
       const currentState = get(store);
       return currentState.favoriteTokens[walletId] || [];
     },
@@ -321,7 +315,7 @@ function createTokenStore() {
       await kongDB.tokens.clear();
       await kongDB.favorite_tokens
         .where("wallet_id")
-        .equals(getCurrentWalletId().toString())
+        .equals(getCurrentWalletId())
         .delete();
       store.set(initialState);
     },
@@ -601,3 +595,13 @@ export function updateTokenMetrics(updates: Array<{
 export function handlePriceUpdate(updates: any[]) {
   updateTokenMetrics(updates);
 }
+
+export const isValidToken = (token: any): token is FE.Token => {
+  return (
+    token &&
+    typeof token === 'object' &&
+    typeof token.canister_id === 'string' &&
+    typeof token.symbol === 'string' &&
+    typeof token.name === 'string'
+  );
+};
