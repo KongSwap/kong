@@ -46,8 +46,17 @@ export function createFilteredTokens(
       
       let tokens = [...$liveTokens];
       
-      // Create volume rank map
+      // Create rank maps first, before any filtering
       const volumeRankMap = createVolumeRankMap(tokens);
+      const marketCapRankMap = createMarketCapRankMap(tokens);
+
+      // Add ranks to all tokens before filtering
+      tokens = tokens.map(token => ({
+        ...token,
+        marketCapRank: marketCapRankMap.get(token.canister_id),
+        volumeRank: volumeRankMap.get(token.canister_id),
+        isHot: volumeRankMap.get(token.canister_id) !== undefined && volumeRankMap.get(token.canister_id)! <= 5
+      }));
 
       // Apply filters
       const filterResult = applyFilters(tokens, {
@@ -68,18 +77,12 @@ export function createFilteredTokens(
 
       tokens = filterResult.tokens;
       
-      // Create market cap rank map
-      const marketCapRankMap = createMarketCapRankMap(tokens);
-
       // Apply sorting
       tokens = applySorting(tokens, {
         sortColumn: $sortColumn,
         sortDirection: $sortDirection,
         marketCapRankMap
       });
-
-      // Add ranks and hot status
-      tokens = addTokenMetadata(tokens, { volumeRankMap, marketCapRankMap });
 
       return { 
         tokens, 

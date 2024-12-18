@@ -438,7 +438,7 @@
                                 {#if $auth.isConnected}
                                   <button
                                     class="favorite-button {$currentWalletFavorites.includes(token.canister_id) ? 'active' : ''}"
-                                    on:click={(e) => favoriteStore.toggleFavorite(token.canister_id)}
+                                    on:click|stopPropagation={(e) => favoriteStore.toggleFavorite(token.canister_id)}
                                   >
                                     {#if $currentWalletFavorites.includes(token.canister_id)}
                                       <Star
@@ -546,7 +546,7 @@
                                 {#if $auth.isConnected}
                                   <button
                                     class="favorite-button-mobile"
-                                    on:click={(e) => favoriteStore.toggleFavorite(token.canister_id)}
+                                    on:click|stopPropagation={(e) => favoriteStore.toggleFavorite(token.canister_id)}
                                   >
                                     {#if $currentWalletFavorites.includes(token.canister_id)}
                                       <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
