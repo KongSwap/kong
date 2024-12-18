@@ -125,11 +125,48 @@
     return searchMatches.some((match) => match.includes(debouncedSearchTerm));
   });
 
+  // Add these derived stores to handle sorting
+  $: sortedPools = derived([filteredLivePools, sortColumn, sortDirection], ([$pools, $sortColumn, $sortDirection]) => {
+    if (!$pools) return [];
+    
+    return [...$pools].sort((a, b) => {
+      let valueA, valueB;
+      
+      switch ($sortColumn) {
+        case 'price':
+          valueA = Number(a.price);
+          valueB = Number(b.price);
+          break;
+        case 'tvl':
+          valueA = Number(a.tvl);
+          valueB = Number(b.tvl);
+          break;
+        case 'rolling_24h_volume':
+          valueA = Number(a.rolling_24h_volume);
+          valueB = Number(b.rolling_24h_volume);
+          break;
+        case 'rolling_24h_apy':
+          valueA = Number(a.rolling_24h_apy);
+          valueB = Number(b.rolling_24h_apy);
+          break;
+        default:
+          return 0;
+      }
+
+      if ($sortDirection === 'asc') {
+        return valueA - valueB;
+      } else {
+        return valueB - valueA;
+      }
+    });
+  });
+
   function toggleSort(column: string) {
     if ($sortColumn === column) {
-      poolStore.setSort(column, $sortDirection === 'asc' ? 'desc' : 'asc');
+      sortDirection.set($sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      poolStore.setSort(column, 'asc');
+      sortColumn.set(column);
+      sortDirection.set('desc'); // Default to descending when changing columns
     }
   }
 
@@ -407,7 +444,7 @@
                     </tr>
                   </thead>
                   <tbody class="!px-4">
-                    {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
+                    {#each $sortedPools || [] as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
                           ...pool,
@@ -426,7 +463,7 @@
 
                 <!-- Mobile/Tablet Card View -->
                 <div class="md:hidden space-y-4 mt-2">
-                  {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
+                  {#each $sortedPools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <div
                       class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 
                             {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) ? 'kong-special-card' : ''}"
