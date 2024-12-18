@@ -137,9 +137,25 @@
     ([$filteredPools, $sortColumn, $sortDirection]) => {
       if (!$filteredPools) return [];
       
+      // Find the Kong pool with highest TVL
+      let highestTVLKongPool = null;
+      let highestTVL = -1;
+      $filteredPools.forEach(pool => {
+        if ((pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) && 
+            Number(pool.tvl) > highestTVL) {
+          highestTVLKongPool = pool;
+          highestTVL = Number(pool.tvl);
+        }
+      });
+      
       return [...$filteredPools].sort((a, b) => {
-        let valueA, valueB;
+        // If a is the highest TVL Kong pool, it goes first
+        if (a === highestTVLKongPool) return -1;
+        // If b is the highest TVL Kong pool, it goes first
+        if (b === highestTVLKongPool) return 1;
         
+        // Normal sorting for all other pools
+        let valueA, valueB;
         switch ($sortColumn) {
           case 'price':
             valueA = Number(a.price);
