@@ -337,10 +337,10 @@
     const { value, panelType } = event.detail;
 
     if (panelType === "pay") {
-      await swapState.setPayAmount(value);
+      swapState.setPayAmount(value);
       await updateSwapQuote();
     } else {
-      await swapState.setReceiveAmount(value);
+      swapState.setReceiveAmount(value);
     }
   }
 
@@ -448,7 +448,7 @@
       } finally {
         isQuoteLoading = false;
       }
-    }, 300); // 300ms debounce
+    }, 600); // 600ms debounce
   }
 
   let previousPayAmount = "";
@@ -569,6 +569,7 @@
               slippage={$swapState.swapSlippage}
               disabled={false}
               panelType="pay"
+              otherToken={$swapState.receiveToken}
             />
           </div>
 
@@ -611,6 +612,7 @@
               slippage={$swapState.swapSlippage}
               disabled={false}
               panelType="receive"
+              otherToken={$swapState.payToken}
             />
           </div>
         </div>
@@ -693,6 +695,12 @@
       onConfirm={handleSwap}
       onClose={() => {
         swapState.setShowConfirmation(false);
+      }}
+      on:quoteUpdate={({ detail }) => {
+        swapState.update(state => ({
+          ...state,
+          receiveAmount: detail.receiveAmount
+        }));
       }}
     />
   </Portal>
