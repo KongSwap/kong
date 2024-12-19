@@ -10,7 +10,7 @@ import { browser } from "$app/environment";
 import { TokenService } from "./tokens";
 
 // Export the list of available wallets
-export const availableWallets = walletsList.filter(wallet => wallet.id === 'oisy');
+export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
 
 // Create stores for auth state
 export const selectedWalletId = writable<string | null>(null);
