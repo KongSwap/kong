@@ -26,6 +26,7 @@ declare global {
       metrics: {
         total_supply: string;
         price: string;
+        previous_price: string;
         volume_24h: string;
         market_cap: string;
         updated_at: string;

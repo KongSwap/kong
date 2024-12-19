@@ -48,7 +48,6 @@ const DEBUG = true;
 interface TokenState {
   tokens: FE.Token[];
   balances: Record<string, FE.TokenBalance>;
-  prices: Record<string, number>;
   isLoading: boolean;
   error: string | null;
   totalValueUsd: string;
@@ -57,13 +56,13 @@ interface TokenState {
   favoriteTokens: Record<string, string[]>;
   lastBalanceUpdate: Record<string, number>;
   lastPriceUpdate: Record<string, number>;
+  priceChangeClasses: Record<string, string>;
 }
 
 function createTokenStore() {
   const initialState: TokenState = {
     tokens: [],
     balances: {},
-    prices: {},
     isLoading: false,
     error: null,
     totalValueUsd: "0.00",
@@ -72,18 +71,13 @@ function createTokenStore() {
     favoriteTokens: {},
     lastBalanceUpdate: {},
     lastPriceUpdate: {},
+    priceChangeClasses: {}
   };
   const store = writable<TokenState>(initialState);
 
-  const getCurrentWalletId = (): Principal => {
-    let walletId;
+  const getCurrentWalletId = (): string => {
     const wallet = get(auth);
-    if (wallet && wallet.account && wallet.account.owner) {
-      walletId = wallet.account.owner;
-    } else {
-      walletId = null;
-    }
-    return walletId;
+    return wallet?.account?.owner?.toString() || "anonymous";
   };
 
   const loadBalances = async (
@@ -246,7 +240,7 @@ function createTokenStore() {
       },
     ),
     loadFavorites: async () => {
-      const walletId = getCurrentWalletId().toString();
+      const walletId = getCurrentWalletId();
       const favorites = await kongDB.favorite_tokens
         .where("wallet_id")
         .equals(walletId)
@@ -298,14 +292,14 @@ function createTokenStore() {
         toastStore.error("Failed to update favorite token");
       }
     },
-    isFavorite: (canister_id: string): boolean => {
+    isFavorite: (canister_id: string | null | undefined): boolean => {
+      if (!canister_id) return false;
       const currentState = get(store);
-      const walletId = getCurrentWalletId().toString();
-      return (
-        currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false
-      );
+      const wallet = get(auth);
+      const walletId = wallet?.account?.owner?.toString() || "anonymous";
+      return currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false;
     },
-    getFavorites: (walletId: string = getCurrentWalletId().toString()) => {
+    getFavorites: (walletId: string = getCurrentWalletId()) => {
       const currentState = get(store);
       return currentState.favoriteTokens[walletId] || [];
     },
@@ -319,7 +313,7 @@ function createTokenStore() {
       await kongDB.tokens.clear();
       await kongDB.favorite_tokens
         .where("wallet_id")
-        .equals(getCurrentWalletId().toString())
+        .equals(getCurrentWalletId())
         .delete();
       store.set(initialState);
     },
@@ -328,14 +322,6 @@ function createTokenStore() {
         get(store).tokens.find((token) => token.canister_id === canister_id) ||
         null
       );
-    },
-    refetchPrice: async (token: FE.Token): Promise<number> => {
-      const price = await TokenService.fetchPrice(token);
-      store.update((s) => ({
-        ...s,
-        prices: { ...s.prices, [token.canister_id]: price },
-      }));
-      return price;
     },
     updateBalances: (
       newBalances: Record<string, { in_tokens: bigint; in_usd: string }>,
@@ -424,7 +410,7 @@ export const formattedTokens = derived<
     .map((token) => {
       const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
       const amount = toTokenDecimals(balance.toString(), token.decimals);
-      const price = $tokenStore.prices[token.canister_id] || 0;
+      const price = token.metrics?.price || 0;
 
       // Format balance with appropriate decimals based on value
       let formattedBalance;
@@ -487,7 +473,7 @@ export const portfolioValue = derived<
 
   const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
     const balance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
-    const price = $tokenStore.prices[token.canister_id] || 0;
+    const price = Number(token.metrics?.price || 0);
     const amount = Number(balance) / Math.pow(10, token.decimals);
     return sum + amount * price;
   }, 0);
@@ -499,11 +485,6 @@ export const portfolioValue = derived<
     maximumFractionDigits: 2,
   }).format(total);
 });
-
-export const tokenPrices = derived(
-  tokenStore,
-  ($store) => $store?.prices ?? {},
-);
 
 export const isTokenFavorite = (canister_id: string): boolean => {
   const state = get(tokenStore);
@@ -525,49 +506,54 @@ export const getTokenDecimals = (canister_id: string): number => {
 export function updateTokenMetrics(updates: Array<{
   id: string;
   price: number;
+  previousPrice: number;
   price_change_24h: number;
   volume?: number;
   market_cap?: string;
 }>) {
   tokenStore.update(store => {
+    const newPriceChangeClasses = { ...store.priceChangeClasses };
+    
     const updatedTokens = store.tokens.map(token => {
       const update = updates.find(u => u.id === token.canister_id);
       if (update) {
-        // Create new metrics object to ensure reactivity
-        const newMetrics = {
-          ...token.metrics,
-          price: update.price.toString(),
-          price_change_24h: update.price_change_24h.toString(),
-          volume_24h: update.volume?.toString() || token.metrics?.volume_24h,
-          market_cap: update.market_cap || token.metrics?.market_cap,
-          // Preserve other metrics fields
-          total_supply: token.metrics?.total_supply,
-          updated_at: token.metrics?.updated_at
-        };
-        // Create new token object to ensure reactivity
+        // Check if price has changed at all
+        if (update.price !== update.previousPrice) {          
+          const flashClass = update.price > update.previousPrice ? 'flash-green' : 'flash-red';
+          newPriceChangeClasses[token.canister_id] = flashClass;
+            
+          // Remove animation class after delay
+          setTimeout(() => {
+            tokenStore.update(s => {
+              const updatedClasses = { ...s.priceChangeClasses };
+              delete updatedClasses[token.canister_id];
+              return {
+                ...s,
+                priceChangeClasses: updatedClasses
+              };
+            });
+          }, 2000);
+        }
+
         return {
           ...token,
-          metrics: newMetrics
+          metrics: {
+            ...token.metrics,
+            previous_price: update.previousPrice.toString(),
+            price: update.price.toString(),
+            price_change_24h: update.price_change_24h.toString(),
+            volume_24h: update.volume?.toString() || token.metrics?.volume_24h,
+            market_cap: update.market_cap || token.metrics?.market_cap
+          }
         };
       }
       return token;
     });
 
-    // Create new prices object
-    const newPrices = {
-      ...store.prices,
-      ...Object.fromEntries(updates.map(u => [u.id, u.price]))
-    };
-
-    // Return completely new store object to ensure reactivity
     return {
       ...store,
       tokens: updatedTokens,
-      prices: newPrices,
-      lastPriceUpdate: {
-        ...store.lastPriceUpdate,
-        ...Object.fromEntries(updates.map(u => [u.id, Date.now()]))
-      }
+      priceChangeClasses: newPriceChangeClasses
     };
   });
 }
@@ -575,3 +561,13 @@ export function updateTokenMetrics(updates: Array<{
 export function handlePriceUpdate(updates: any[]) {
   updateTokenMetrics(updates);
 }
+
+export const isValidToken = (token: any): token is FE.Token => {
+  return (
+    token &&
+    typeof token === 'object' &&
+    typeof token.canister_id === 'string' &&
+    typeof token.symbol === 'string' &&
+    typeof token.name === 'string'
+  );
+};

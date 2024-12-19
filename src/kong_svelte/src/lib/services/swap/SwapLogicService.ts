@@ -51,12 +51,22 @@ export class SwapLogicService {
       return;
     }
 
+    const SECONDARY_TOKEN_IDS = [
+      'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
+      'cngnf-vqaaa-aaaar-qag4q-cai'  // ckUSDT
+    ];
+
     const updates: Partial<typeof state> = {
       manuallySelectedTokens: {
         ...state.manuallySelectedTokens,
         [type]: true
       }
     };
+
+    // If selecting a secondary token (ICP/ckUSDT)
+    const isSecondaryToken = SECONDARY_TOKEN_IDS.includes(token.canister_id);
+    const otherToken = type === "pay" ? state.receiveToken : state.payToken;
+    const otherTokenIsSecondary = otherToken && SECONDARY_TOKEN_IDS.includes(otherToken.canister_id);
 
     if (type === "pay") {
       updates.payToken = token;

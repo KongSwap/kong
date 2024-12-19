@@ -1,3 +1,4 @@
+// TokenService.ts
 import { auth } from "$lib/services/auth";
 import { PoolService } from "../../services/pools/PoolService";
 import {
@@ -424,14 +425,14 @@ export class TokenService {
       return { price: 0, weight: 0 };
     }
 
-    // If token is token1, invert the price
+    // Calculate price based on pool balances and decimals
     const price = usdtPool.address_0 === token.canister_id ? 
       usdtPool.price : 
       1 / usdtPool.price;
 
     // Calculate weight based on total liquidity
     const weight = Number(usdtPool.balance_0) + Number(usdtPool.balance_1);
-
+    
     return { price, weight };
   }
 

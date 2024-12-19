@@ -46,8 +46,17 @@ export function createFilteredTokens(
       
       let tokens = [...$liveTokens];
       
-      // Create volume rank map
+      // Create rank maps first, before any filtering
       const volumeRankMap = createVolumeRankMap(tokens);
+      const marketCapRankMap = createMarketCapRankMap(tokens);
+
+      // Add ranks to all tokens before filtering
+      tokens = tokens.map(token => ({
+        ...token,
+        marketCapRank: marketCapRankMap.get(token.canister_id),
+        volumeRank: volumeRankMap.get(token.canister_id),
+        isHot: volumeRankMap.get(token.canister_id) !== undefined && volumeRankMap.get(token.canister_id)! <= 5
+      }));
 
       // Apply filters
       const filterResult = applyFilters(tokens, {
@@ -68,18 +77,12 @@ export function createFilteredTokens(
 
       tokens = filterResult.tokens;
       
-      // Create market cap rank map
-      const marketCapRankMap = createMarketCapRankMap(tokens);
-
       // Apply sorting
       tokens = applySorting(tokens, {
         sortColumn: $sortColumn,
         sortDirection: $sortDirection,
         marketCapRankMap
       });
-
-      // Add ranks and hot status
-      tokens = addTokenMetadata(tokens, { volumeRankMap, marketCapRankMap });
 
       return { 
         tokens, 
@@ -199,14 +202,17 @@ export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
   if (pools.length === 0) return pools;
   const store = get(tokenStore);
 
-  return pools.map((pool, index) => {
+  const poolsMap =  pools.map((pool, index) => {
     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
+    const baseToken = store.tokens.find(token => token.canister_id === pool.address_1);
     return {
       ...pool,
+      price_usd: (Number(pool.price) * Number(baseToken?.price)).toString(),
       id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
       apy,
     };
   });
+  return poolsMap;
 }
 
 export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {

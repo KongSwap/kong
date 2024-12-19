@@ -7,7 +7,9 @@
   import BananaRain from "$lib/components/common/BananaRain.svelte";
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
-  import Portal from "svelte-portal";
+  import Portal from 'svelte-portal';
+  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
+
   // Svelte imports
   import { fade } from "svelte/transition";
   import { onMount, createEventDispatcher } from "svelte";
@@ -27,7 +29,6 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { walletsList } from "@windoge98/plug-n-play";
 
   // Utils
   import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
@@ -69,6 +70,7 @@
   let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
+  let showWalletModal = false;
 
   // Subscribe to swap status changes
   $: {
@@ -161,6 +163,7 @@
   onMount(() => {
     initializeComponent();
     setupEventListeners();
+    resetSwapState();
 
     return () => {
       window.removeEventListener("swapSuccess", handleSwapSuccess);
@@ -295,24 +298,7 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      // If no wallet is selected, select the first available one
-      if (!$selectedWalletId && walletsList.length > 0) {
-        const firstWallet = walletsList[0];
-        if (firstWallet) {
-          selectedWalletId.set(firstWallet.id);
-          localStorage.setItem("kongSelectedWallet", firstWallet.id);
-        }
-      }
-
-      // Open sidebar and attempt connection
-      sidebarStore.toggleExpand();
-      if ($selectedWalletId) {
-        try {
-          await auth.connect($selectedWalletId);
-        } catch (error) {
-          console.error("Failed to connect wallet:", error);
-        }
-      }
+      showWalletModal = true;
       return;
     }
 
@@ -500,6 +486,46 @@
         toToken: $swapState.receiveToken,
       });
     }
+  }
+
+  // Handle wallet connection success
+  function handleWalletLogin() {
+    showWalletModal = false;
+  }
+
+  // Add this to the reactive statements section
+  $: if (currentMode !== previousMode) {
+    resetSwapState();
+  }
+
+  // Add this function to handle resetting state
+  function resetSwapState() {
+    // Cancel any pending quote updates
+    if (quoteUpdateTimeout) {
+      clearTimeout(quoteUpdateTimeout);
+    }
+
+    // Reset quote loading state
+    isQuoteLoading = false;
+
+    // Immediately reset all relevant state
+    swapState.update(state => ({
+      ...state,
+      payAmount: '',
+      receiveAmount: '',
+      error: null,
+      isProcessing: false,
+      showConfirmation: false,
+      showBananaRain: false,
+      swapSlippage: 0,  // Reset slippage
+      lpFees: null,     // Reset fees
+      routingPath: null // Reset routing
+    }));
+
+    // Reset previous values to prevent unnecessary quote updates
+    previousPayAmount = '';
+    previousPayToken = null;
+    previousReceiveToken = null;
   }
 </script>
 
@@ -690,6 +716,18 @@
       title="Slippage Settings"
     >
       <Settings />
+    </Modal>
+  </Portal>
+{/if}
+
+{#if showWalletModal}
+  <Portal target="body">
+    <Modal
+      isOpen={showWalletModal}
+      onClose={() => (showWalletModal = false)}
+      title="Connect Wallet"
+    >
+      <WalletProvider on:login={handleWalletLogin} />
     </Modal>
   </Portal>
 {/if}
@@ -1084,7 +1122,6 @@
     z-index: 1;
   }
 
-  /* Add these new styles for enhanced button text */
   .button-text {
     @apply text-white font-semibold text-lg;
     letter-spacing: 0.01em;
@@ -1092,7 +1129,6 @@
     align-items: center;
     gap: 6px;
 
-    /* Add subtle text shadow for better contrast */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
@@ -1105,10 +1141,6 @@
     50% {
       transform: translateY(-2px);
     }
-  }
-
-  .button-text :first-child {
-    animation: subtle-bounce 2s infinite ease-in-out;
   }
 
   .swap-button-text {
@@ -1130,10 +1162,6 @@
       rgba(239, 68, 68, 0.8) 100%
     );
     box-shadow: none;
-  }
-
-  .button-text.warning {
-    font-weight: 600;
   }
 
   .shine-effect {
@@ -1178,15 +1206,6 @@
     box-shadow:
       0 4px 12px rgba(55, 114, 255, 0.3),
       0 0 0 1px rgba(255, 255, 255, 0.1);
-  }
-
-  .ready-indicator {
-    position: relative;
-    display: flex;
-    align-items: center;
-    color: rgba(255, 255, 255, 0.8);
-    animation: float-arrow 2s ease-in-out infinite;
-    margin-left: -2px;
   }
 
   .ready-glow {

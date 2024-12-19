@@ -30,6 +30,7 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { createFilteredTokens, getPriceChangeClass } from '$lib/utils/statsUtils';
+  import { get } from 'svelte/store';
 
   const isMobile = writable(false);
 
@@ -114,13 +115,15 @@
 
   // Price change class functions
   function getPriceClass(token: FE.Token): string {
-    const trendClass = token?.metrics?.price_change_24h ? 
+    const store = get(tokenStore);
+    const flashClass = store.priceChangeClasses[token.canister_id] || '';
+    return flashClass;
+  }
+
+  function getTrendClass(token: FE.Token): string {
+    return token?.metrics?.price_change_24h ? 
       (Number(token.metrics.price_change_24h) > 0 ? 'positive' : 
        Number(token.metrics.price_change_24h) < 0 ? 'negative' : '') : '';
-    
-    const flashClass = $priceChangeClasses[token.canister_id] || '';
-    
-    return `${trendClass} ${flashClass}`.trim();
   }
 
   // Add smooth price animations
@@ -160,46 +163,6 @@
     if (target) {
       scrollY.set(target.scrollTop);
     }
-  }
-
-  // Single reactive statement for price changes
-  $: if ($tokenStore?.prices) {
-    Object.entries($tokenStore.prices).forEach(([tokenId, price]) => {
-      const currentPrice = Number(price);
-      const previousPrice = $previousPrices[tokenId];
-
-      // Check if we have a valid price change
-      if (previousPrice !== undefined && 
-          currentPrice !== previousPrice && 
-          Math.abs(currentPrice - previousPrice) > 0.000001) {
-        
-        // Update price change classes
-        priceChangeClasses.update(classes => ({
-          ...classes,
-          [tokenId]: currentPrice > previousPrice ? 'positive' : 'negative'
-        }));
-
-        // Clear the price change class after animation
-        setTimeout(() => {
-          priceChangeClasses.update(classes => {
-            const newClasses = { ...classes };
-            delete newClasses[tokenId];
-            return newClasses;
-          });
-        }, 1000);
-      }
-
-      // Always update the previous price after checking for changes
-      previousPrices.update(prices => ({
-        ...prices,
-        [tokenId]: currentPrice
-      }));
-    });
-  }
-
-  function getFullPrice(price: number | string | undefined): string {
-    if (typeof price === 'undefined') return '0';
-    return Number(price).toString();
   }
 
   // Create tweened stores for the totals
@@ -247,10 +210,16 @@
     prevLiquidity = newLiquidity;
 
     // Update fees with animation
-    const newFees = Number($poolStore.totals.fees_24h || 0);
+    const newFees = Number($poolStore.totals?.fees_24h || 0);
     totalFees.set(newFees);
     feesClass = updateWithAnimation(newFees, prevFees);
     prevFees = newFees;
+  }
+
+  // Add this function back
+  function getFullPrice(price: number | string | undefined): string {
+    if (typeof price === 'undefined') return '0';
+    return Number(price).toString();
   }
 </script>
 
@@ -391,7 +360,7 @@
                 <p class="text-gray-400">No tokens found matching your search criteria</p>
               </div>
             {:else}
-              <div class="flex-1 overflow-auto custom-scrollbar {$isMobile ? 'h-[calc(100vh-12rem)]' : 'h-[calc(100vh-1rem)]'}">
+              <div class="flex-1 overflow-auto custom-scrollbar {$isMobile ? 'h-[calc(99vh-11rem)]' : 'h-[calc(100vh-1rem)]'}">
                 {#if !$isMobile}
                   <!-- Desktop table view with fixed header -->
                   <div class="overflow-auto custom-scrollbar h-full">
@@ -422,7 +391,7 @@
                           <th class="text-right px-4 py-2 text-sm font-medium text-[#8890a4] w-[120px]">Actions</th>
                         </tr>
                       </thead>
-                      <tbody class="relative">
+                      <tbody class="!px-4">
                         {#each $filteredTokens.tokens as token (token.canister_id)}
                           <tr
                             class:kong-special-row={token.canister_id === KONG_CANISTER_ID}
@@ -464,14 +433,11 @@
                               </div>
                             </td>
                             <td class="price-cell text-right">
-                              <span 
-                                class={`${getPriceClass(token)} ${$priceChangeClasses[token.canister_id] || ''}`}
-                                title="${getFullPrice(token?.metrics?.price || "0")}"
-                              >
+                              <span class={$tokenStore.priceChangeClasses[token.canister_id] || ''}>
                                 ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
                               </span>
                             </td>
-                            <td class="change-cell text-right {getPriceChangeClass(token)}">
+                            <td class="change-cell text-right {getTrendClass(token)}">
                               {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "n/a"}
                                 <span class="text-slate-400">0.00%</span>
                               {:else if Number(token?.metrics?.price_change_24h) === 0}
@@ -539,14 +505,14 @@
                           class="absolute w-full"
                           style="transform: translateY({y}px)"
                         >
-                          <div class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''} mx-4">
+                          <div class="token-card {token.canister_id === KONG_CANISTER_ID ? 'kong-special-card' : ''} mx-4" on:click={() => goto(`/stats/${token.canister_id}`)}>
                             <span class="token-rank">#{token.marketCapRank}</span>
                             <div class="token-card-main">
                               <div class="token-card-left">
                                 {#if $auth.isConnected}
                                   <button
                                     class="favorite-button-mobile"
-                                    on:click={(e) => favoriteStore.toggleFavorite(token.canister_id)}
+                                    on:click|stopPropagation={(e) => favoriteStore.toggleFavorite(token.canister_id)}
                                   >
                                     {#if $currentWalletFavorites.includes(token.canister_id)}
                                       <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
@@ -557,18 +523,18 @@
                                 {/if}
                                 <TokenImages tokens={[token]} size={24} />
                                 <div class="token-info-mobile">
-                                  <span class="token-symbol-mobile">{token.symbol}</span>
+                                  <div class="flex items-center gap-1">
+                                    <span class="token-symbol-mobile">{token.symbol}</span>
+                                    {#if token.isHot}
+                                      <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
+                                        <Flame size={14} class="hot-icon" />
+                                      </div>
+                                    {/if}
+                                  </div>
                                   <div class="token-metrics-row">
                                     <span>MCap: {formatUsdValue(token?.metrics?.market_cap)}</span>
                                     <span class="separator">|</span>
-                                    <span class="flex items-center gap-1">
-                                      Vol: {formatUsdValue(token?.metrics?.volume_24h)}
-                                      {#if token.isHot}
-                                        <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
-                                          <Flame size={20} class="hot-icon" fill="#FFA500" stroke="white" />
-                                        </div>
-                                      {/if}
-                                    </span>
+                                    <span>Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -579,7 +545,7 @@
                                 >
                                   ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
                                 </span>
-                                <span class="token-change {getPriceChangeClass(token)}">
+                                <span class="token-change {getTrendClass(token)}">
                                   {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}
                                   {formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
                                 </span>
@@ -602,7 +568,7 @@
 
 <style scoped lang="postcss">
   .earn-cards {
-    @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-2;
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
   }
 
   .earn-card {
@@ -613,6 +579,7 @@
            hover:border-primary-blue/30 
            hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]
            backdrop-blur-sm;
+           max-height: 110px;
 
     /* Add hover effect for icon */
     &:hover .stat-icon-wrapper {
@@ -712,7 +679,7 @@
   }
 
   .price-arrow.up {
-    @apply text-green-400;
+    @apply text-kong-accent-green;
   }
 
   .price-arrow.down {
@@ -729,7 +696,7 @@
   }
 
   .change-cell.positive {
-    @apply text-green-400;
+    @apply text-kong-accent-green;
   }
 
   .change-cell.negative {
@@ -754,7 +721,7 @@
 
     &.kong-special-card {
       background: rgba(0, 255, 128, 0.02);
-      border-left: 2px solid #00ff8033;
+      border-left: 2px solid #00d3a533;
       
       .token-symbol-mobile {
         font-weight: 500;
@@ -803,7 +770,7 @@
   }
 
   .token-change.positive {
-    @apply text-green-400;
+    @apply text-kong-accent-green;
   }
 
   .token-change.negative {
@@ -820,7 +787,7 @@
 
   .kong-special-row {
     background: rgba(0, 255, 128, 0.02);
-    border-left: 2px solid #00ff8033;
+    border-left: 2px solid #00d3a533;
     
     &:hover {
       background: rgba(0, 255, 128, 0.04);
@@ -854,12 +821,82 @@
     @apply text-white transition-colors duration-200 cursor-help;
   }
 
-  /* Price change animations */
+  /* Price flash animations */
+  .flash-green {
+    animation: flash-green 2s ease-out !important;
+  }
+
+  .flash-red {
+    animation: flash-red 2s ease-out !important;
+  }
+
+  @keyframes flash-green {
+    0% { color: #fff; }
+    15% { color: #00d3a5; }
+    85% { color: #00d3a5; }
+    100% { color: #fff; }
+  }
+
+  @keyframes flash-red {
+    0% { color: #fff; }
+    15% { color: #FF4B4B; }
+    85% { color: #FF4B4B; }
+    100% { color: #fff; }
+  }
+
+  /* 24h trend colors */
   .positive {
-    @apply animate-price-flash-green;
+    @apply text-kong-accent-green;
   }
 
   .negative {
-    @apply animate-price-flash-red;
+    @apply text-kong-accent-red;
+  }
+
+  /* Ensure price cell transitions are smooth */
+  .price-cell span {
+    display: inline-block;
+    will-change: color;
+    padding: 0.25rem;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1a1b23;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #60a5fa;
+    border-radius: 4px;
+    border: 2px solid #1a1b23;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #60a5fa #1a1b23;
+  }
+
+  /* Table padding adjustments */
+  .pools-table {
+    th, td {
+      padding: 0.5rem 0.5rem;
+      
+      &:first-child {
+        padding-left: 1rem;
+      }
+      
+      &:last-child {
+        padding-right: 1rem;
+      }
+    }
   }
 </style>

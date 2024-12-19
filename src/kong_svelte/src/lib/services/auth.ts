@@ -74,7 +74,7 @@ function createAuthStore(pnp: PNP) {
           tokenStore.updateBalances(balances);
           return result;
         } else {
-          console.log("Invalid connection result:", result);
+          console.error("Invalid connection result format:", result);
           set({ isConnected: false, account: null, isInitialized: true });
           localStorage.removeItem(LAST_WALLET_KEY);
           return null;
@@ -124,9 +124,7 @@ function createAuthStore(pnp: PNP) {
         return createAnonymousActorHelper(canisterId, idl);
       }
 
-      if (!pnp.isWalletConnected()) {
-        throw new Error("Anonymous user");
-      }
+      if (!pnp.isWalletConnected()) throw new Error('Anonymous user');
 
       return pnp.getActor(canisterId, idl, {
         anon: options.anon,

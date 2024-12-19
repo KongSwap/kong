@@ -4,7 +4,6 @@
     poolsList,
     poolStore,
     userPoolBalances,
-    displayPools,
     filteredLivePools
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
@@ -25,8 +24,8 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { toastStore } from "$lib/stores/toastStore";
-    import { browser } from "$app/environment";
-    import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { browser } from "$app/environment";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -47,6 +46,9 @@
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
+
+  // Create a writable store for the debounced search term
+  const searchTermStore = writable("");
 
   onMount(() => {
     window.addEventListener("resize", checkMobile);
@@ -90,20 +92,20 @@
     showPoolDetails = true;
   }
 
-  // Debounce search input
+  // Update the search term store when debouncing
   $: {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+      searchTermStore.set(searchTerm.trim().toLowerCase());
     }, 300);
   }
 
-
   function toggleSort(column: string) {
     if ($sortColumn === column) {
-      poolStore.setSort(column, $sortDirection === 'asc' ? 'desc' : 'asc');
+      sortDirection.set($sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      poolStore.setSort(column, 'asc');
+      sortColumn.set(column);
+      sortDirection.set('desc'); // Default to descending when changing columns
     }
   }
 
@@ -241,13 +243,6 @@
                     on:input={handleSearch}
                   />
                 </div>
-                <div class="w-full">
-                  <div class="">
-                    <button class="primary-button bg-transparent border border-blue-500/40" on:click={() => goto("/earn/add")}>
-                      Add Position
-                    </button>
-                  </div>
-                </div>
               </div>
               <!-- Desktop view -->
               <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2">
@@ -340,8 +335,8 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div
-                class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {$isMobile
-                  ? 'max-h-[calc(97vh-16.5rem)]'
+                class="overflow-auto flex-1 max-h-[calc(100vh-17.5rem)] {$isMobile
+                  ? 'max-h-[calc(101vh-21.5rem)] pb-20'
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
@@ -381,7 +376,7 @@
                     </tr>
                   </thead>
                   <tbody class="!px-4">
-                    {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
+                    {#each $filteredLivePools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
                           ...pool,
@@ -437,7 +432,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">Price</div>
                           <div class="font-medium text-white">
-                            {formatUsdValue(Number(pool.price) * Number($tokenMap.get(pool.address_1).price))}
+                            {pool.price_usd}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
@@ -558,10 +553,6 @@
            hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
            backdrop-blur-sm;
     min-width: 0; /* Prevent flex items from growing beyond container */
-  }
-
-  .earn-card[disabled] {
-    @apply opacity-75 cursor-not-allowed hover:border-[#2a2d3d] hover:bg-[#1a1b23]/60 hover:shadow-none;
   }
 
   .card-content {

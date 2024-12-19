@@ -1,60 +1,75 @@
 <script lang="ts">
-    import {
-      formatToNonZeroDecimal,
-    } from "$lib/utils/numberFormatUtils";
-    import TokenImages from "$lib/components/common/TokenImages.svelte";
-    import { onMount } from 'svelte';
-    import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
-  
-    interface Pool {
-      tvl: number;
-      rolling_24h_volume: bigint;
-      rolling_24h_apy: number;
-      address_0: string;
-      address_1: string;
-      symbol_0: string;
-      symbol_1: string;
-      price: number | string;
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { onMount } from "svelte";
+  import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
+  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { get } from "svelte/store";
+
+  export let pool: BE.Pool;
+  export let tokenMap: Map<string, any>;
+  export let isEven: boolean;
+  export let isKongPool = false;
+  export let onAddLiquidity: (token0: string, token1: string) => void;
+  export let onShowDetails: () => void;
+
+  let isMobile = false;
+  let showDetailsButton = true;
+
+  type Cleanup = () => void;
+
+  onMount((): Cleanup => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 768;
+      showDetailsButton = window.innerWidth >= 1150;
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  });
+
+  function handleAddLiquidity() {
+    onAddLiquidity(pool.address_0, pool.address_1);
+  }
+
+  function getTokenPrice(): string {
+    const store = get(tokenStore);
+    const token0 = tokenMap.get(pool.address_0);
+    const token1 = tokenMap.get(pool.address_1);
+
+    // For ckUSDT pairs, use the pool price directly
+    if (token1?.symbol === "ckUSDT" || token0?.symbol === "ckUSDT") {
+      return `$${formatToNonZeroDecimal(Number(pool.price))}`;
     }
-  
-    export let pool: Pool;
-    export let tokenMap: Map<string, any>;
-    export let isEven: boolean;
-    export let isKongPool = false;
-    export let onAddLiquidity: (token0: string, token1: string) => void;
-    export let onShowDetails: () => void;
-  
-    let isMobile = false;
-    let showDetailsButton = true;
-  
-    type Cleanup = () => void;
-  
-    onMount((): Cleanup => {
-      const checkMobile = () => {
-        isMobile = window.innerWidth < 768;
-        showDetailsButton = window.innerWidth >= 1150;
-      };
-      
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-      
-      return () => {
-        window.removeEventListener('resize', checkMobile);
-      };
-    });
-  
-    function handleAddLiquidity() {
-      onAddLiquidity(pool.address_0, pool.address_1);
+
+    // For ICP pairs
+    if (token1?.symbol === "ICP") {
+      const icpPrice = store.prices?.[pool.address_1];
+      const poolPrice = Number(pool.price);
+      if (icpPrice && !isNaN(poolPrice)) {
+        return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
+      }
+    } else if (token0?.symbol === "ICP") {
+      const icpPrice = store.prices?.[pool.address_0];
+      const poolPrice = Number(pool.price);
+      if (icpPrice && !isNaN(poolPrice)) {
+        return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
+      }
     }
-  
-    function formatPrice(price: number | string): string {
-      const numPrice = Number(price);
-      if (isNaN(numPrice)) return '0.00';
-      return numPrice < 0.01 
-        ? formatToNonZeroDecimal(numPrice) 
-        : numPrice.toFixed(2);
+
+    // For other pairs, use token0's price from store
+    const price = store.prices?.[pool.address_0];
+    if (typeof price === "number" && !isNaN(price)) {
+      return `$${formatToNonZeroDecimal(price)}`;
     }
-  
+
+    // Fallback to pool price
+    return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+  }
 </script>
 
 {#if !isMobile}
@@ -76,14 +91,14 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          {formatUsdValue(Number(pool.price || 0) * Number(tokenMap.get(pool.address_1).price))}
+          {getTokenPrice()}
         </div>
       </div>
     </td>
     <td class="tvl-cell">
       <div class="tvl-info">
         <div class="tvl-value">
-          {formatUsdValue(Number(pool.tvl) / (10 ** 6))}
+          {formatUsdValue(Number(pool.tvl) / 10 ** 6)}
         </div>
       </div>
     </td>
@@ -103,17 +118,11 @@
     </td>
     <td class="actions-cell">
       <div class="actions">
-        <button
-          class="action-btn add-lp"
-          on:click={handleAddLiquidity}
-        >
+        <button class="action-btn add-lp" on:click={handleAddLiquidity}>
           Add LP
         </button>
         {#if showDetailsButton}
-          <button 
-            class="action-btn details"
-            on:click={onShowDetails}
-          >
+          <button class="action-btn details" on:click={onShowDetails}>
             Details
           </button>
         {/if}
@@ -136,10 +145,7 @@
         </div>
       </div>
       <div class="card-actions">
-        <button
-          class="action-btn details"
-          on:click={onShowDetails}
-        >
+        <button class="action-btn details" on:click={onShowDetails}>
           Details
         </button>
       </div>
@@ -159,7 +165,7 @@
 
   tr.kong-special-row {
     background: rgba(0, 255, 128, 0.02);
-    
+
     td {
       font-weight: 500;
     }
@@ -327,7 +333,7 @@
     .mobile-pool-card {
       padding: 0.625rem 1rem;
     }
-    
+
     .token-info {
       gap: 0.5rem;
     }

@@ -16,7 +16,6 @@ class PriceWorkerImpl implements PriceWorkerApi {
   private updateInterval: number | null = null;
   private tokens: FE.Token[] = [];
   protected isPaused = false;
-  private lastKnownPrices: Record<string, number> = {};
   
   // Adjust intervals based on visibility
   private readonly ACTIVE_UPDATE_INTERVAL = 15000;   // 30 seconds when active
@@ -24,12 +23,6 @@ class PriceWorkerImpl implements PriceWorkerApi {
 
   async setTokens(tokens: FE.Token[]): Promise<void> {
     this.tokens = tokens;
-    this.lastKnownPrices = Object.fromEntries(
-      tokens.map(token => [
-        token.canister_id, 
-        Number(token.metrics?.price || 0)
-      ])
-    );
   }
 
   async startUpdates(): Promise<void> {
@@ -67,19 +60,19 @@ class PriceWorkerImpl implements PriceWorkerApi {
           batch.map(async (token) => {
             try {
               // Get price first
+              const previousPrice = token.metrics?.price || 0;
               const currentPrice = token.canister_id === ICP_CANISTER_ID 
                 ? await TokenService.getIcpPrice()
                 : await TokenService.fetchPrice(token);
 
               // Only proceed with other calculations if we have a valid price
-              if (currentPrice > 0) {
-                this.lastKnownPrices[token.canister_id] = currentPrice;
-
+              if (currentPrice > 0 && currentPrice !== Number(previousPrice)) {
                 // Update token with current price before calculating price change
                 const tokenWithPrice = {
                   ...token,
                   metrics: {
                     ...token.metrics,
+                    previous_price: previousPrice.toString(),
                     price: currentPrice.toString()
                   }
                 };
@@ -98,6 +91,7 @@ class PriceWorkerImpl implements PriceWorkerApi {
                     metrics: {
                       ...existingToken.metrics,
                       price: currentPrice.toString(),
+                      previous_price: previousPrice.toString(),
                       price_change_24h: priceChange.toString(),
                       volume_24h: volume.toString(),
                       market_cap: marketCap,
@@ -113,6 +107,7 @@ class PriceWorkerImpl implements PriceWorkerApi {
                 return {
                   id: token.canister_id,
                   price: currentPrice,
+                  previousPrice: Number(previousPrice),
                   price_change_24h: priceChange,
                   volume: volume,
                   market_cap: marketCap
@@ -137,7 +132,7 @@ class PriceWorkerImpl implements PriceWorkerApi {
         self.postMessage({ type: 'price_update', updates: validUpdates });
       }
     } catch (error) {
-      console.error('Price worker: Error in price update:', error);
+      console.error('❌ Price worker error:', error);
     }
   }
 

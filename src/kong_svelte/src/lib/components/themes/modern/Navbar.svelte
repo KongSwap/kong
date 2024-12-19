@@ -2,7 +2,9 @@
   import Button from "$lib/components/common/Button.svelte";
   import { auth } from "$lib/services/auth";
   import { fade, slide } from "svelte/transition";
-    import { goto } from "$app/navigation";
+  import { goto } from "$app/navigation";
+  import { toastStore } from "$lib/stores/toastStore";
+  import { onMount } from "svelte";
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
@@ -10,10 +12,23 @@
   export let onTabChange: (tab: "swap" | "earn" | "stats") => void;
   export let onConnect: () => void;
   export let onOpenSettings: () => void;
+  export let principalId: string | undefined = undefined;
 
   let isSpinning = false;
   let navOpen = false;
   const tabs = ["swap", "earn", "stats"] as const;
+
+  $: if ($auth.isConnected && $auth.account) {
+    principalId = $auth.account.owner;
+    console.log("Navbar - Principal ID updated:", principalId);
+  }
+
+  onMount(() => {
+    if ($auth.account) {
+      principalId = $auth.account.owner;
+      console.log("Navbar - Principal ID:", principalId);
+    }
+  });
 
   function handleNavClose() {
     navOpen = false;
@@ -23,6 +38,20 @@
     onOpenSettings();
     if (isMobile) {
       handleNavClose();
+    }
+  }
+
+  async function copyToClipboard(text: string | undefined, type: 'Principal' | 'Account') {
+    if (!text) {
+      toastStore.error(`No ${type} ID available`);
+      return;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(text);
+      toastStore.success(`${type} ID copied to clipboard`);
+    } catch (err) {
+      toastStore.error(`Failed to copy ${type} ID`);
     }
   }
 </script>
@@ -105,58 +134,81 @@
       </div>
     {:else}
       <div class="right-section">
-        <button
-          class="nav-link settings-btn"
-          class:spinning={isSpinning}
-          on:click={handleSettingsClick}
-          aria-label="Settings"
-        >
-          <div class="btn-content uppercase">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-              <path
-                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
-              />
-            </svg>
-            <span class="settings-text">Settings</span>
-          </div>
-        </button>
+        {#if !isMobile}
+          <button
+            class="nav-link settings-btn"
+            class:spinning={isSpinning}
+            on:click={handleSettingsClick}
+            aria-label="Settings"
+          >
+            <div class="btn-content">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+                />
+              </svg>
+            </div>
+          </button>
 
-        <button
-          aria-label="Wallet"
-          class="nav-link wallet-btn"
-          class:selected={sidebarOpen}
-          on:click|preventDefault={onConnect}
-        >
-          <div class="btn-content">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
+          {#if $auth.isConnected}
+            <button
+              class="nav-link copy-btn"
+              on:click={() => copyToClipboard(principalId, 'Principal')}
+              title="Copy Principal ID"
             >
-              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-              <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
-              <path d="M20 8v8" />
-            </svg>
-            <span class="wallet-text uppercase">
-              {$auth.isConnected
-                ? "Wallet"
-                : "Connect"}
-            </span>
-          </div>
-        </button>
+              <div class="btn-content">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+                <span class="copy-text">ID</span>
+              </div>
+            </button>
+          {/if}
+
+          <button
+            aria-label="Wallet"
+            class="nav-link wallet-btn"
+            class:selected={sidebarOpen}
+            on:click|preventDefault={onConnect}
+          >
+            <div class="btn-content">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+                <path d="M20 12v4H6a2 2 0 0 0-2 2c0 1.1.9 2 2 2h12v-4" />
+                <path d="M20 8v8" />
+              </svg>
+              <span class="wallet-text uppercase">
+                {$auth.isConnected ? "Wallet" : "Connect"}
+              </span>
+            </div>
+          </button>
+        {/if}
       </div>
     {/if}
   </div>
@@ -211,6 +263,15 @@
             {tab.toUpperCase()}
           </button>
         {/each}
+
+        {#if $auth.isConnected}
+          <button
+            class="mobile-nav-btn"
+            on:click={() => copyToClipboard(principalId, 'Principal')}
+          >
+            COPY ID
+          </button>
+        {/if}
 
         <button
           class="mobile-nav-btn"
@@ -350,7 +411,6 @@
   /* Settings Button */
   .settings-btn {
     padding: 0.75rem 1.25rem;
-    min-width: 120px;
     width: auto;
     background: rgba(0, 0, 0, 0.2);
     border-color: rgba(255, 255, 255, 0.15);
@@ -360,11 +420,6 @@
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
-  }
-
-  .settings-text {
-    font-size: 0.875rem;
-    font-weight: 600;
   }
 
   /* Wallet Button */
@@ -403,7 +458,7 @@
       transform: rotate(0deg);
     }
     to {
-      transform: rotate(360deg);
+      transform: rotate(360deg); 
     }
   }
 
@@ -683,5 +738,23 @@
         -webkit-backface-visibility: hidden;
         -webkit-transform: translateZ(0);
     }
+  }
+
+  .copy-btn {
+    padding: 0.75rem 1.25rem;
+    min-width: 65px;
+    background: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .copy-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+  }
+
+  .copy-text {
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 </style>
