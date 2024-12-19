@@ -198,19 +198,19 @@
   // Watch for changes in pool store totals
   $: if ($poolStore.totals) {
     // Update volume with animation
-    const newVolume = Number($poolStore.totals.rolling_24h_volume || 0);
+    const newVolume = Number($poolStore.totals.rolling_24h_volume || 0); // Convert from e6 decimals
     volume24h.set(newVolume);
     volumeClass = updateWithAnimation(newVolume, prevVolume);
     prevVolume = newVolume;
 
     // Update liquidity with animation
-    const newLiquidity = Number($poolStore.totals.tvl || 0);
+    const newLiquidity = Number($poolStore.totals.tvl || 0); // Convert from e6 decimals
     totalLiquidity.set(newLiquidity);
     liquidityClass = updateWithAnimation(newLiquidity, prevLiquidity);
     prevLiquidity = newLiquidity;
 
     // Update fees with animation
-    const newFees = Number($poolStore.totals?.fees_24h || 0);
+    const newFees = Number($poolStore.totals?.fees_24h || 0); // Convert from e6 decimals
     totalFees.set(newFees);
     feesClass = updateWithAnimation(newFees, prevFees);
     prevFees = newFees;
