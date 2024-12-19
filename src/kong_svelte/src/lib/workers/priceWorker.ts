@@ -18,7 +18,7 @@ class PriceWorkerImpl implements PriceWorkerApi {
   protected isPaused = false;
   
   // Adjust intervals based on visibility
-  private readonly ACTIVE_UPDATE_INTERVAL = 15000;   // 30 seconds when active
+  private readonly ACTIVE_UPDATE_INTERVAL = 20000;   // 20 seconds when active
   private readonly BACKGROUND_UPDATE_INTERVAL = 60000; // 60 seconds when in background
 
   async setTokens(tokens: FE.Token[]): Promise<void> {
@@ -107,7 +107,7 @@ class PriceWorkerImpl implements PriceWorkerApi {
                 return {
                   id: token.canister_id,
                   price: currentPrice,
-                  previousPrice: Number(previousPrice),
+                  previous_price: Number(previousPrice),
                   price_change_24h: priceChange,
                   volume: volume,
                   market_cap: marketCap

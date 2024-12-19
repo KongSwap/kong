@@ -29,7 +29,7 @@
   import { browser } from "$app/environment";
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
-  import { createFilteredTokens, getPriceChangeClass } from '$lib/utils/statsUtils';
+  import { createFilteredTokens, getPriceChangeClass, type EnhancedToken } from '$lib/utils/statsUtils';
   import { get } from 'svelte/store';
 
   const isMobile = writable(false);
@@ -58,14 +58,16 @@
   const searchQuery = writable<string>("");
   const sortColumnStore = writable<string>("marketCap");
   const sortDirectionStore = writable<"asc" | "desc">("desc");
-  const previousPrices = writable<Record<string, number>>({});
   const priceChangeClasses = writable<Record<string, string>>({});
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
+
+  const poolTotals = derived(poolStore, $store => $store.totals);
 
   onMount(async () => {
     if ($auth.isConnected) {
       await tokenStore.loadFavorites();
     }
+    await poolStore.loadPools(true);
   });
 
   let tokensLoading: boolean;
@@ -129,7 +131,7 @@
   // Add smooth price animations
   function createPriceStore(initialValue = 0) {
     return tweened(initialValue, {
-      duration: 600,
+      duration: 400,
       easing: cubicOut
     });
   }
@@ -191,26 +193,26 @@
 
   // Update function to set animation classes
   function updateWithAnimation(newValue: number, prevValue: number): string {
-    if (prevValue === 0) return '';
+    if (prevValue === 0 || newValue === prevValue) return '';
     return newValue > prevValue ? 'animate-number-up' : 'animate-number-down';
   }
 
   // Watch for changes in pool store totals
   $: if ($poolStore.totals) {
     // Update volume with animation
-    const newVolume = Number($poolStore.totals.rolling_24h_volume || 0); // Convert from e6 decimals
+    const newVolume = Number($poolStore.totals.rolling_24h_volume || 0);
     volume24h.set(newVolume);
     volumeClass = updateWithAnimation(newVolume, prevVolume);
     prevVolume = newVolume;
 
     // Update liquidity with animation
-    const newLiquidity = Number($poolStore.totals.tvl || 0); // Convert from e6 decimals
+    const newLiquidity = Number($poolStore.totals.tvl || 0);
     totalLiquidity.set(newLiquidity);
     liquidityClass = updateWithAnimation(newLiquidity, prevLiquidity);
     prevLiquidity = newLiquidity;
 
     // Update fees with animation
-    const newFees = Number($poolStore.totals?.fees_24h || 0); // Convert from e6 decimals
+    const newFees = Number($poolStore.totals?.fees_24h || 0);
     totalFees.set(newFees);
     feesClass = updateWithAnimation(newFees, prevFees);
     prevFees = newFees;
@@ -371,7 +373,13 @@
                             #
                             <svelte:component this={getSortIcon("marketCapRank")} class="inline w-3.5 h-3.5 ml-1" />
                           </th>
-                          <th class="text-left py-2 text-sm font-medium text-[#8890a4] w-[280px]">Token</th>
+                          <th
+                            class="text-left py-2 text-sm font-medium text-[#8890a4] w-[280px] cursor-pointer"
+                            on:click={() => toggleSort('token_name')}
+                          >
+                            Token
+                            <svelte:component this={getSortIcon('token_name')} class="inline w-3.5 h-3.5 ml-1" />
+                          </th>
                           <th class="text-right py-2 text-sm font-medium text-[#8890a4] cursor-pointer w-[140px]" on:click={() => toggleSort("price")}>
                             Price
                             <svelte:component this={getSortIcon("price")} class="inline w-3.5 h-3.5 ml-1" />
@@ -425,8 +433,8 @@
                                 />
                                 <span class="token-name">{token.name}</span>
                                 <span class="token-symbol">{token.symbol}</span>
-                                {#if token.isHot}
-                                  <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
+                                {#if token?.isHot}
+                                  <div class="hot-badge-small" title="#{token?.volumeRank} 24h volume">
                                     <Flame size={20} class="hot-icon" fill="#FFA500" stroke="white" />
                                   </div>
                                 {/if}
@@ -539,12 +547,11 @@
                                 </div>
                               </div>
                               <div class="token-card-right">
-                                <span 
-                                  class="token-price ${getPriceClass(token)} ${$priceChangeClasses[token.canister_id] || ''} mobile-price"
-                                  title="$${getFullPrice(token?.metrics?.price || 0)}"
-                                >
-                                  ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
-                                </span>
+                                <div class="font-medium text-white">
+                                  <span class={getPriceClass(token)}>
+                                    ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
+                                  </span>
+                                </div>
                                 <span class="token-change {getTrendClass(token)}">
                                   {Number(token?.metrics?.price_change_24h) > 0 ? '+' : ''}
                                   {formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
@@ -898,5 +905,21 @@
         padding-right: 1rem;
       }
     }
+  }
+
+  /* Make sure price animations work in mobile cards */
+  .font-medium span {
+    display: inline-block;
+    will-change: color;
+    transition-property: color;
+    transition-duration: 200ms;
+  }
+
+  .font-medium span.flash-green {
+    animation: flash-green 2s ease-out !important;
+  }
+
+  .font-medium span.flash-red {
+    animation: flash-red 2s ease-out !important;
   }
 </style>

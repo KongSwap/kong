@@ -305,11 +305,11 @@
         <!-- Price Panel -->
         <StatPanel
           title="Price"
-          value={formatUsdValue(token?.price || 0)}
+          value={formatUsdValue(token?.metrics?.price || 0)}
           color="purple"
         >
           <svelte:fragment slot="subtitle">
-            {#if typeof token?.metrics?.price_change_24h !== "number"}
+            {#if !token?.metrics?.price_change_24h || token.metrics.price_change_24h === "n/a"}
               <span class="text-purple-400">0%</span>
             {:else if token.metrics.price_change_24h === null || Number(token.metrics.price_change_24h) === 0}
               <span class="text-slate-400">--</span>

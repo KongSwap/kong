@@ -215,13 +215,10 @@ export class IcrcService {
     } = {},
   ): Promise<Result<bigint>> {
     try {
-      const actor = await auth.getActor(token.canister_id, canisterIDLs.icrc1, {
+      const actor = auth.pnp.getActor(token.canister_id, canisterIDLs.icrc1, {
         anon: false,
         requiresSigning: true,
       });
-
-      // Get the token's actual fee from the canister
-      const tokenFee = await this.getTokenFee(token);
 
       const result = await actor.icrc1_transfer({
         to:
@@ -229,28 +226,12 @@ export class IcrcService {
             ? { owner: Principal.fromText(to), subaccount: [] }
             : { owner: to, subaccount: [] },
         amount,
-        fee: [tokenFee], // Use the actual token fee
+        fee: [BigInt(token.fee_fixed)], // Use the actual token fee
         memo: opts.memo || [],
         from_subaccount: opts.fromSubaccount || [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
       });
 
-      if ("Ok" in result) {
-        // Refresh balance after successful transfer
-        const newBalance = await this.getIcrc1Balance(
-          token,
-          auth.pnp.account.owner,
-        );
-        tokenStore.updateBalances({
-          [token.canister_id]: {
-            in_tokens: newBalance,
-            in_usd: "0", // The USD value will be updated by the store's price update mechanism
-          },
-        });
-
-        // Emit balance change event to trigger immediate price update
-        eventBus.emit("balanceChanged", { tokenId: token.canister_id });
-      }
 
       return result;
     } catch (error) {

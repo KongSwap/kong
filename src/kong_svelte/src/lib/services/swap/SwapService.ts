@@ -231,7 +231,7 @@ export class SwapService {
   ): Promise<bigint | false> {
     const swapId = params.swapId;
     try {
-      await requireWalletConnection();
+      requireWalletConnection();
       const tokens = get(tokenStore).tokens;
       const payToken = tokens.find(
         (t) => t.address === params.payToken.address,
@@ -265,16 +265,11 @@ export class SwapService {
       );
       if (payToken.icrc2) {
         const requiredAllowance = payAmount;
-        console.log(
-          "CHECKING AND REQUESTING IC2 ALLOWANCES, REQUIRED ALLOWANCE",
-          requiredAllowance,
-        );
         approvalId = await IcrcService.checkAndRequestIcrc2Allowances(
           payToken,
           requiredAllowance,
         );
       } else if (payToken.icrc1) {
-        console.log("ICRC1 PAY TOKEN DETECTED", payToken);
         const result = await IcrcService.icrc1Transfer(
           payToken,
           params.backendPrincipal,

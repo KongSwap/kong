@@ -13,10 +13,6 @@ import * as Comlink from "comlink";
 import type { PriceWorkerApi } from "$lib/workers/priceWorker";
 import type { StateWorkerApi } from "$lib/workers/stateWorker";
 import { appLoader } from "$lib/services/appLoader";
-import { calculate24hPriceChange, priceStore } from "$lib/price/priceService";
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
-import { TokenService } from "./tokens/TokenService";
-import { kongDB } from "./db";
 
 class UpdateWorkerService {
   private priceWorker: Worker | null = null;
@@ -161,7 +157,6 @@ class UpdateWorkerService {
     return new Promise<void>((resolve) => {
       const unsubscribe = tokenStore.subscribe((value) => {
         if (value?.tokens?.length) {
-          console.log("Tokens loaded:", value.tokens.length);
           unsubscribe();
           resolve();
         }
@@ -179,7 +174,6 @@ class UpdateWorkerService {
       console.log("Starting worker updates...");
       await this.waitForTokens();
       await this.priceWorkerApi.startUpdates();
-      console.log("Worker updates started, triggering immediate updates...");
 
       appLoader.updateLoadingState({
         isLoading: true,
@@ -194,7 +188,6 @@ class UpdateWorkerService {
         ].filter(Boolean),
       );
 
-      console.log("Initial updates completed successfully");
       return true;
     } catch (error) {
       console.error("Failed to start worker updates:", error);

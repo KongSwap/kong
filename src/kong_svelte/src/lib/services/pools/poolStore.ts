@@ -1,16 +1,19 @@
-import { derived, writable, type Readable, get } from 'svelte/store';
+import { derived, writable, type Readable, get, readable } from 'svelte/store';
 import { PoolService } from './PoolService';
 import { formatPoolData } from '$lib/utils/statsUtils';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
-import BigNumber from 'bignumber.js';
 import { auth } from '../auth';
 import { eventBus } from '$lib/services/tokens/eventBus';
 import { kongDB } from '../db';
-import { ICP_CANISTER_ID, KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { liveQuery } from "dexie";
 
+interface ExtendedPool extends BE.Pool {
+  displayTvl?: number;
+}
+
 interface PoolState {
-  pools: BE.Pool[];
+  pools: ExtendedPool[];
   userPoolBalances: FE.UserPoolBalance[];
   totals: {
     tvl: number;
@@ -23,7 +26,7 @@ interface PoolState {
 }
 
 // Create a stable reference for pools data
-const stablePoolsStore = writable<BE.Pool[]>([]);
+const stablePoolsStore = writable<ExtendedPool[]>([]);
 
 // Create a store for the search term and sort parameters
 export const poolSearchTerm = writable('');
@@ -85,10 +88,14 @@ function createPoolStore() {
         if (!aHasKong && bHasKong) return 1;
 
         switch ($sortColumn) {
-          case 'rolling_24h_volume':
-            return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
-          case 'tvl':
-            return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
+          case 'rolling_24h_volume': {
+            const diff = BigInt(a.rolling_24h_volume) - BigInt(b.rolling_24h_volume);
+            return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+          }
+          case 'tvl': {
+            const diff = BigInt(a.tvl || 0) - BigInt(b.tvl || 0);
+            return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+          }
           case 'rolling_24h_apy':
             return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
           case 'price':
@@ -337,45 +344,53 @@ export const sortedPools = derived(
   poolStore.filteredAndSortedPools,
   ($pools) => $pools.map(pool => ({
     ...pool,
-    tvl: Number(pool.tvl),
-    displayTvl: Number(pool.tvl),
+    tvl: BigInt(pool.tvl),
+    rolling_24h_volume: BigInt(pool.rolling_24h_volume),
+    displayTvl: Number(pool.tvl) / 1e6,
   }))
 );
 
-// Add livePools export using liveQuery
-export const livePools = liveQuery(
-  async () => {
-    // Get all pools from the database, ordered by timestamp
+// Dexie's liveQuery for livePools
+export const livePools = readable<ExtendedPool[]>([], set => {
+  const subscription = liveQuery(async () => {
     const pools = await kongDB.pools
       .orderBy('timestamp')
       .reverse()
       .toArray();
-    
-    // Return empty array if no pools found
+
     if (!pools?.length) {
       return [];
     }
 
     return pools.map(pool => ({
       ...pool,
-      displayTvl: Number(pool.tvl) / 1e6
-    }));
-  }
-);
+      displayTvl: Number(pool.tvl) / 1e6,
+    } as ExtendedPool));
+  }).subscribe({
+    next: value => set(value),
+    error: err => console.error('[livePools] Error:', err),
+  });
 
-// Add filtered live pools based on search and sort
-export const filteredLivePools = liveQuery(
-  async () => {
-    const pools = await kongDB.pools.toArray();
-    const search = get(poolSearchTerm).toLowerCase();
-    const sortCol = get(poolSortColumn);
-    const sortDir = get(poolSortDirection);
+  return () => {
+    subscription.unsubscribe();
+  };
+});
 
-    let result = [...pools];
+// Derived store for filtered and sorted pools
+export const filteredLivePools = derived(
+  [livePools, poolSearchTerm, poolSortColumn, poolSortDirection],
+  ([
+    $livePools,
+    $poolSearchTerm,
+    $poolSortColumn,
+    $poolSortDirection,
+  ]: [ExtendedPool[], string, string, 'asc' | 'desc']) => {
+    let result = [...$livePools];
 
     // Apply search filter
-    if (search) {
-      result = result.filter(pool => {
+    if ($poolSearchTerm) {
+      const search = $poolSearchTerm.toLowerCase();
+      result = result.filter((pool: ExtendedPool) => {
         return (
           pool.symbol_0.toLowerCase().includes(search) ||
           pool.symbol_1.toLowerCase().includes(search) ||
@@ -387,22 +402,37 @@ export const filteredLivePools = liveQuery(
     }
 
     // Apply sorting
-    const direction = sortDir === 'asc' ? 1 : -1;
-    result.sort((a, b) => {
+    const direction = $poolSortDirection === 'asc' ? 1 : -1;
+    result.sort((a: ExtendedPool, b: ExtendedPool) => {
       // Always put Kong pools first
-      const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
-      const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
-      
+      const aHasKong =
+        a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
+      const bHasKong =
+        b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
+
       if (aHasKong && !bHasKong) return -1;
       if (!aHasKong && bHasKong) return 1;
 
-      switch (sortCol) {
-        case 'rolling_24h_volume':
-          return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
-        case 'tvl':
-          return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
+      switch ($poolSortColumn) {
+        case 'pool_name': {
+          const nameA = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
+          const nameB = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
+          return direction * nameA.localeCompare(nameB);
+        }
+        case 'rolling_24h_volume': {
+          const diff =
+            BigInt(a.rolling_24h_volume) - BigInt(b.rolling_24h_volume);
+          return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+        }
+        case 'tvl': {
+          const diff = BigInt(a.tvl || 0) - BigInt(b.tvl || 0);
+          return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+        }
         case 'rolling_24h_apy':
-          return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
+          return (
+            direction *
+            (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy))
+          );
         case 'price':
           return direction * (Number(a.price) - Number(b.price));
         default:
@@ -410,9 +440,6 @@ export const filteredLivePools = liveQuery(
       }
     });
 
-    return result.map(pool => ({
-      ...pool,
-      displayTvl: Number(pool.tvl) / 1e6
-    }));
+    return result;
   }
 );

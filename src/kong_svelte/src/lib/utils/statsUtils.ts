@@ -168,6 +168,7 @@ function applySorting(tokens: FE.Token[], options: {
         case "volume_24h": return Number(token?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
         case "marketCap": return Number(token?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
         case "name": return token.name;
+        case "token_name": return token.name;
         default: return token[sortColumn] || 0;
       }
     };
@@ -175,9 +176,12 @@ function applySorting(tokens: FE.Token[], options: {
     const aValue = getValue(a);
     const bValue = getValue(b);
 
-    return sortDirection === "asc" 
-      ? (typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue)
-      : (typeof bValue === 'string' ? bValue.localeCompare(aValue) : bValue - aValue);
+    if (typeof aValue === 'string') {
+      return sortDirection === "asc" 
+        ? aValue.localeCompare(bValue) 
+        : bValue.localeCompare(aValue);
+    }
+    return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
   });
 }
 

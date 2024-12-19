@@ -142,7 +142,7 @@ const authStore = createAuthStore(pnp);
 // Create Auth class instance with the store
 export const auth = authStore;
 
-export async function requireWalletConnection(): Promise<void> {
+export function requireWalletConnection(): void {
   const connected = pnp.isWalletConnected();
   if (!connected) {
     throw new Error("Wallet is not connected.");

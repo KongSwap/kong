@@ -506,7 +506,7 @@ export const getTokenDecimals = (canister_id: string): number => {
 export function updateTokenMetrics(updates: Array<{
   id: string;
   price: number;
-  previousPrice: number;
+  previous_price: number;
   price_change_24h: number;
   volume?: number;
   market_cap?: string;
@@ -517,9 +517,10 @@ export function updateTokenMetrics(updates: Array<{
     const updatedTokens = store.tokens.map(token => {
       const update = updates.find(u => u.id === token.canister_id);
       if (update) {
+        const prev = Number(update.previous_price)
         // Check if price has changed at all
-        if (update.price !== update.previousPrice) {          
-          const flashClass = update.price > update.previousPrice ? 'flash-green' : 'flash-red';
+        if (update.price !== prev) {          
+          const flashClass = update.price > prev ? 'flash-green' : 'flash-red';
           newPriceChangeClasses[token.canister_id] = flashClass;
             
           // Remove animation class after delay
@@ -539,7 +540,7 @@ export function updateTokenMetrics(updates: Array<{
           ...token,
           metrics: {
             ...token.metrics,
-            previous_price: update.previousPrice.toString(),
+            previous_price: update.previous_price.toString(),
             price: update.price.toString(),
             price_change_24h: update.price_change_24h.toString(),
             volume_24h: update.volume?.toString() || token.metrics?.volume_24h,

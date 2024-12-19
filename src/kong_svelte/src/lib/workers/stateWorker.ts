@@ -13,7 +13,7 @@ class StateWorkerImpl implements StateWorkerApi {
   // Adjust intervals based on visibility
   private readonly ACTIVE_TOKEN_INTERVAL = 15000;    // 15 seconds when active
   private readonly BACKGROUND_TOKEN_INTERVAL = 60000; // 60 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 15000;     // 15 seconds when active
+  private readonly ACTIVE_POOL_INTERVAL = 20000;     // 15 seconds when active
   private readonly BACKGROUND_POOL_INTERVAL = 60000;  // 60 seconds when in background
 
   async startUpdates(): Promise<void> {

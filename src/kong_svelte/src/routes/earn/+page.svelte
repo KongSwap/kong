@@ -2,9 +2,11 @@
   import { writable, derived } from "svelte/store";
   import {
     poolsList,
-    poolStore,
     userPoolBalances,
-    filteredLivePools
+    filteredLivePools,
+    poolSearchTerm,
+    poolSortColumn,
+    poolSortDirection,
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -25,7 +27,7 @@
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { browser } from "$app/environment";
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+    import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -37,18 +39,10 @@
   let selectedPool = null;
   let selectedUserPool = null;
 
-  // Sort state
-  const sortColumn = writable("rolling_24h_volume");
-  const sortDirection = writable<"asc" | "desc">("desc");
-
   let isMobile = writable(false);
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
-  let debouncedSearchTerm = "";
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
-
-  // Create a writable store for the debounced search term
-  const searchTermStore = writable("");
 
   onMount(() => {
     window.addEventListener("resize", checkMobile);
@@ -58,7 +52,6 @@
       window.removeEventListener("resize", checkMobile);
     };
   });
-
 
   const checkMobile = () => {
     $isMobile = window.innerWidth < 768;
@@ -92,26 +85,18 @@
     showPoolDetails = true;
   }
 
-  // Update the search term store when debouncing
-  $: {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      searchTermStore.set(searchTerm.trim().toLowerCase());
-    }, 300);
-  }
-
   function toggleSort(column: string) {
-    if ($sortColumn === column) {
-      sortDirection.set($sortDirection === 'asc' ? 'desc' : 'asc');
+    if ($poolSortColumn === column) {
+      poolSortDirection.set($poolSortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      sortColumn.set(column);
-      sortDirection.set('desc'); // Default to descending when changing columns
+      poolSortColumn.set(column);
+      poolSortDirection.set('desc');
     }
   }
 
   function getSortIcon(column: string) {
-    if ($sortColumn !== column) return ArrowUpDown;
-    return $sortDirection === "asc" ? ArrowUp : ArrowDown;
+    if ($poolSortColumn !== column) return ArrowUpDown;
+    return $poolSortDirection === "asc" ? ArrowUp : ArrowDown;
   }
 
   function handlePoolClick(event) {
@@ -148,7 +133,7 @@
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      poolStore.setSearch(searchTerm.trim().toLowerCase());
+      poolSearchTerm.set(searchTerm.trim().toLowerCase());
     }, 300);
   }
 </script>
@@ -190,7 +175,7 @@
           <div class="card-content">
             <h3>Borrowing & Lending</h3>
             <div class="coming-soon-label">
-              <span class="coming-soon-icon">🚀</span>
+              <span class="coming-soon-icon">💰</span>
               <span class="coming-soon-text">Coming Soon</span>
             </div>
           </div>
@@ -307,7 +292,7 @@
                 class="flex items-center justify-between mt-2 py-1 rounded-lg"
               >
                 <select
-                  bind:value={$sortColumn}
+                  bind:value={$poolSortColumn}
                   class="bg-transparent text-white text-sm focus:outline-none"
                 >
                   <option value="rolling_24h_volume">Volume 24H</option>
@@ -318,12 +303,12 @@
 
                 <button
                   on:click={() =>
-                    sortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
+                    poolSortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
                   class="flex items-center gap-1 text-[#60A5FA] text-sm"
                 >
-                  {$sortDirection === "asc" ? "Ascending" : "Descending"}
+                  {$poolSortDirection === "asc" ? "Ascending" : "Descending"}
                   <svelte:component
-                    this={$sortDirection === "asc" ? ArrowUp : ArrowDown}
+                    this={$poolSortDirection === "asc" ? ArrowUp : ArrowDown}
                     class="w-4 h-4"
                   />
                 </button>
@@ -343,7 +328,13 @@
                 <table class="pools-table w-full hidden md:table relative">
                   <thead class="sticky top-0 z-10 bg-[#1E1F2A]">
                     <tr class="h-10 border-b border-[#2a2d3d]">
-                      <th class="text-left text-sm font-medium text-[#8890a4]">Pool</th>
+                      <th
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        on:click={() => toggleSort("pool_name")}
+                      >
+                        Pool
+                        <svelte:component this={getSortIcon("pool_name")} class="inline w-3.5 h-3.5 ml-1" />
+                      </th>
                       <th
                         class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("price")}
@@ -380,12 +371,16 @@
                       <PoolRow
                         pool={{
                           ...pool,
-                          tvl: Number(pool.tvl),
-                          rolling_24h_volume: BigInt(pool.rolling_24h_volume)
-                        }}
+                          tvl: BigInt(pool.tvl),
+                          rolling_24h_volume: BigInt(pool.rolling_24h_volume),
+                          displayTvl: Number(pool.tvl) / 1e6
+                        } as BE.Pool & { displayTvl: number }}
                         tokenMap={$tokenMap}
                         isEven={i % 2 === 0}
-                        isKongPool={pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID}
+                        isKongPool={
+                          pool.address_0 === KONG_CANISTER_ID ||
+                          pool.address_1 === KONG_CANISTER_ID
+                        }
                         onAddLiquidity={handleAddLiquidity}
                         onShowDetails={() => handleShowDetails(pool)}
                       />
@@ -432,7 +427,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">Price</div>
                           <div class="font-medium text-white">
-                            {pool.price_usd}
+                            ${formatToNonZeroDecimal(pool.price_usd)}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
