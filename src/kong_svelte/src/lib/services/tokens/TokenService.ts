@@ -327,7 +327,6 @@ export class TokenService {
             if (token) {
               await kongDB.tokens.put({
                 ...token,
-                price,
                 timestamp: Date.now()
               });
             }

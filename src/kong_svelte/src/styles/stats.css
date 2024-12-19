@@ -1,0 +1,124 @@
+.hot-icon {
+  @apply text-kong-accent-red;
+  fill: #ffa500;
+  stroke: #ffa500;
+  animation: flame-flicker 2s infinite;
+  transform-origin: center;
+  filter: drop-shadow(0 0 2px rgba(255, 165, 0, 0.5));
+}
+
+@keyframes flame-flicker {
+  0% {
+    transform: rotate(-1deg) scale(1);
+    opacity: 0.9;
+  }
+  25% {
+    transform: rotate(1deg) scale(1.05);
+    opacity: 1;
+  }
+  50% {
+    transform: rotate(-1deg) scale(0.95);
+    opacity: 0.95;
+  }
+  75% {
+    transform: rotate(1deg) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-1deg) scale(1);
+    opacity: 0.9;
+  }
+}
+
+.positive {
+  @apply text-kong-accent-green;
+}
+
+.negative {
+  @apply text-kong-accent-red;
+}
+
+/* Price flash animations */
+@keyframes flash-green {
+  0% {
+    color: #fff;
+  }
+  15% {
+    color: #00d3a5;
+  }
+  85% {
+    color: #00d3a5;
+  }
+  100% {
+    color: #fff;
+  }
+}
+
+@keyframes flash-red {
+  0% {
+    color: #fff;
+  }
+  15% {
+    color: #ff4b4b;
+  }
+  85% {
+    color: #ff4b4b;
+  }
+  100% {
+    color: #fff;
+  }
+}
+
+.flash-green {
+  animation: flash-green 1.2s ease-out !important;
+}
+
+.flash-red {
+  animation: flash-red 1.2s ease-out !important;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #1a1b23;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #60a5fa;
+  border-radius: 4px;
+  border: 2px solid #1a1b23;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #60a5fa #1a1b23;
+}
+
+/* Add a hover effect */
+.hot-badge-small:hover .hot-icon {
+  animation: flame-intense 1s infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 165, 0, 0.7));
+}
+
+@keyframes flame-intense {
+  0% {
+    transform: rotate(-3deg) scale(1.1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: rotate(3deg) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-3deg) scale(1.1);
+    opacity: 0.95;
+  }
+}

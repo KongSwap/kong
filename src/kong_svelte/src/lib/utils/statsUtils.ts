@@ -169,6 +169,11 @@ function applySorting(tokens: FE.Token[], options: {
         case "marketCap": return Number(token?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
         case "name": return token.name;
         case "token_name": return token.name;
+        case "tvl": {
+          const tvlA = Number(a.metrics?.tvl || 0);
+          const tvlB = Number(b.metrics?.tvl || 0);
+          return sortDirection === "asc" ? tvlA - tvlB : tvlB - tvlA;
+        }
         default: return token[sortColumn] || 0;
       }
     };
@@ -211,7 +216,7 @@ export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
     const baseToken = store.tokens.find(token => token.canister_id === pool.address_1);
     return {
       ...pool,
-      price_usd: (Number(pool.price) * Number(baseToken?.price)).toString(),
+      price_usd: (Number(pool.price) * Number(baseToken?.metrics.price)).toString(),
       id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
       apy,
     };

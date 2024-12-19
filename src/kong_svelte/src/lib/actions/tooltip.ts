@@ -8,6 +8,7 @@ interface TooltipOptions {
   paddingClass?: string;
   background?: string;
   direction?: 'top' | 'bottom' | 'left' | 'right';
+  textSize?: 'xs' | 'sm' | 'base' | 'lg' | 'xl';
 }
 
 /**
@@ -50,22 +51,22 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
     // Set arrow position and border based on direction
     switch (direction) {
       case 'bottom':
-        arrow.classList.add('-top-2');
+        arrow.classList.add('-top-2', 'left-1/2', '-translate-x-1/2');
         arrow.style.borderWidth = '0 8px 8px 8px';
         arrow.style.borderColor = 'transparent transparent var(--tooltip-bg) transparent';
         break;
       case 'top':
-        arrow.classList.add('-bottom-2');
+        arrow.classList.add('-bottom-2', 'left-1/2', '-translate-x-1/2');
         arrow.style.borderWidth = '8px 8px 0 8px';
         arrow.style.borderColor = 'var(--tooltip-bg) transparent transparent transparent';
         break;
       case 'left':
-        arrow.classList.add('-right-2');
+        arrow.classList.add('-right-2', 'top-1/2', '-translate-y-1/2');
         arrow.style.borderWidth = '8px 0 8px 8px';
         arrow.style.borderColor = 'transparent transparent transparent var(--tooltip-bg)';
         break;
       case 'right':
-        arrow.classList.add('-left-2');
+        arrow.classList.add('-left-2', 'top-1/2', '-translate-y-1/2');
         arrow.style.borderWidth = '8px 8px 8px 0';
         arrow.style.borderColor = 'transparent var(--tooltip-bg) transparent transparent';
         break;
@@ -138,7 +139,8 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
       'duration-200',
       'opacity-0',
       'text-white',
-      'max-w-xs'
+      'max-w-xs',
+      options.textSize ? `text-${options.textSize}` : 'text-sm'
     );
 
     // Set tooltip background color as CSS variable for arrow
@@ -237,7 +239,8 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
           'duration-200',
           'opacity-0',
           'text-white',
-          'max-w-xs'
+          'max-w-xs',
+          options.textSize ? `text-${options.textSize}` : 'text-sm'
         );
 
         if (options.background) {

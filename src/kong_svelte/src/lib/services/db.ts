@@ -7,6 +7,8 @@ import Dexie, {
 import type { KongImage, FavoriteToken } from "$lib/services/tokens/types";
 import type { Settings } from "$lib/services/settings/types";
 
+const CURRENT_VERSION = 4;
+
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
   tokens!: Table<FE.Token, string>; // Table<KongImage, primary key type>
@@ -16,12 +18,13 @@ export class KongDB extends Dexie {
   pools!: Table<BE.Pool, string>;
   transactions: Table<FE.Transaction, number>;
   allowances: Table<FE.AllowanceData, string>;
+  previous_version: Table<number, string>;
 
   constructor() {
     super("kong_db"); // Database name
 
     // Increase version number for new schema
-    this.version(2).stores({
+    this.version(CURRENT_VERSION).stores({
       tokens: "canister_id, timestamp, *metrics.price",
       images: "++id, canister_id, timestamp",
       pools: "id, address_0, address_1, timestamp",
@@ -29,16 +32,18 @@ export class KongDB extends Dexie {
       favorite_tokens: "[canister_id+wallet_id], wallet_id, timestamp",
       settings: "principal_id, timestamp",
       allowances: "[address+wallet_address], wallet_address, timestamp",
+      previous_version: "version",
     });
 
     // Add upgrade logic
-    this.version(2).upgrade((tx) => {
-      return tx
-        .table("tokens")
-        .toCollection()
-        .modify((token) => {
-          if (!token.timestamp) token.timestamp = Date.now();
-        });
+    this.version(CURRENT_VERSION).upgrade((tx) => {
+      const previousVersion = tx.table("previous_version").get("version") || 0;
+      if (Number(previousVersion) < CURRENT_VERSION) {
+        tx.db.delete().then(() => tx.db.open());
+      }
+      return tx.table("previous_version").put({
+        version: CURRENT_VERSION,
+      });
     });
 
     this.tokens = this.table("tokens");
@@ -48,6 +53,7 @@ export class KongDB extends Dexie {
     this.settings = this.table("settings");
     this.transactions = this.table("transactions");
     this.allowances = this.table("allowances");
+    this.previous_version = this.table("previous_version");
     // Set up periodic cache cleanup
     this.setupCacheCleanup();
   }

@@ -14,12 +14,21 @@
     import debounce from 'lodash-es/debounce';
     import { toastStore } from "$lib/stores/toastStore";
     import { BigNumber } from 'bignumber.js';
-    import { IcrcService } from '$lib/services/icrc/IcrcService';
+    import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
+    import { validateTokenCombination, formatDisplayValue, isValidNumber, calculateMaxAmount } from '$lib/utils/liquidityUtils';
+    import { 
+        formatWithCommas,
+        hasInsufficientBalance as checkInsufficientBalance,
+        getButtonText,
+        calculatePoolRatio,
+        calculateUsdRatio,
+        formatLargeNumber
+    } from '$lib/utils/liquidityUtils';
 
     export let token0: FE.Token | null = null;
     export let token1: FE.Token | null = null;
-    export let amount0: string = "0";
-    export let amount1: string = "0";
+    export let amount0: string = null;
+    export let amount1: string = null;
     export let loading: boolean = false;
     export let error: string | null = null;
     export let token0Balance: string = "0";
@@ -37,35 +46,17 @@
     const ALLOWED_TOKEN_SYMBOLS = ['ICP', 'ckUSDT'];
     const DEFAULT_TOKEN = 'ICP';
     const SECONDARY_TOKEN_IDS = [
-        'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
-        'cngnf-vqaaa-aaaar-qag4q-cai'  // ckUSDT
+        ICP_CANISTER_ID,
+        CKUSDT_CANISTER_ID
     ];
-
-    function getAvailableTokens(currentIndex: 0 | 1): FE.Token[] {
-        if (currentIndex === 1) {
-            // For the second token (index 1), only show whitelisted tokens
-            return $tokenStore.tokens.filter(t => ALLOWED_TOKEN_SYMBOLS.includes(t.symbol));
-        }
-        // For the first token (index 0), show all tokens
-        return $tokenStore.tokens;
-    }
-
-    function validateTokenCombination(token0Symbol: string, token1Symbol: string): boolean {
-        // Token1 (second token) must be ICP or ckUSDT
-        const hasAllowedToken = ALLOWED_TOKEN_SYMBOLS.includes(token1Symbol);
-        
-        // Tokens must be different
-        const isDifferentTokens = token0Symbol !== token1Symbol;
-        
-        return hasAllowedToken && isDifferentTokens;
-    }
 
     function handleTokenSelect(index: 0 | 1, token: FE.Token) {
         const otherToken = index === 0 ? token1 : token0;
         
         if (otherToken && !validateTokenCombination(
             index === 0 ? token.symbol : token0.symbol,
-            index === 0 ? token1.symbol : token.symbol
+            index === 0 ? token1.symbol : token.symbol,
+            ALLOWED_TOKEN_SYMBOLS
         )) {
             toastStore.error(
                 'Token 2 must be ICP or ckUSDT',
@@ -97,13 +88,17 @@
     // Add reactive statement to handle token changes
     $: {
         if (token0 && token1 && (amount0 !== "0" || amount1 !== "0")) {
+            // Only trigger calculation if the amount being watched isn't from user input
             const nonZeroAmount = amount0 !== "0" ? amount0 : amount1;
             const index = amount0 !== "0" ? 0 : 1;
             const currentToken = index === 0 ? token0 : token1;
             const otherToken = index === 0 ? token1 : token0;
             
-            if (nonZeroAmount && currentToken && otherToken) {
-                debouncedHandleInput(index, nonZeroAmount, currentToken, otherToken);
+            // Add this check to prevent recalculation when user is inputting
+            if (!input0Element?.matches(':focus') && !input1Element?.matches(':focus')) {
+                if (nonZeroAmount && currentToken && otherToken) {
+                    debouncedHandleInput(index, nonZeroAmount, currentToken, otherToken);
+                }
             }
         }
     }
@@ -116,10 +111,7 @@
 
     // Constants for formatting and animations
     const DEFAULT_DECIMALS = 8;
-    const MAX_DISPLAY_DECIMALS_DESKTOP = 12;
-    const MAX_DISPLAY_DECIMALS_MOBILE = 9;
     const ANIMATION_BASE_DURATION = 200;
-    const ANIMATION_MAX_DURATION = 300;
 
     // Input state management
     let input0Element: HTMLInputElement | null = null;
@@ -138,42 +130,6 @@
         easing: cubicOut,
     });
 
-    // Helper functions
-    function formatWithCommas(value: string): string {
-        if (!value) return "0";
-        const parts = value.split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return parts.join('.');
-    }
-
-    function getMaxDisplayDecimals(): number {
-        return window.innerWidth <= 420 ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP;
-    }
-
-    function formatDisplayValue(value: string, tokenDecimals: number): string {
-        if (!value || value === "0") return "0";
-        
-        const parts = value.split('.');
-        const maxDecimals = Math.min(getMaxDisplayDecimals(), tokenDecimals);
-        
-        if (parts.length === 2) {
-            parts[1] = parts[1].slice(0, maxDecimals);
-            if (parts[1].length === 0) return parts[0];
-            return parts.join('.');
-        }
-        
-        return parts[0];
-    }
-
-    function isValidNumber(value: string): boolean {
-        if (!value) return true;
-        // Remove commas and underscores first
-        const cleanValue = value.replace(/[,_]/g, '');
-        // Allow numbers with optional decimal point and optional scientific notation
-        const regex = /^[0-9]*\.?[0-9]*(?:[eE][+-]?[0-9]+)?$/;
-        return regex.test(cleanValue) && !isNaN(Number(cleanValue));
-    }
-
     // Create debounced version of the input handler with shorter delay
     const debouncedHandleInput = debounce(async (index: 0 | 1, value: string, currentToken: FE.Token, otherToken: FE.Token) => {
         try {
@@ -186,32 +142,27 @@
             let inputAmount = parseTokenAmount(cleanValue, currentToken.decimals);
 
             const requiredAmount = await PoolService.addLiquidityAmounts(
-                token0.symbol,
-                index === 0 ? inputAmount : BigInt(0),
-                token1.symbol,
+                index === 0 ? token0.symbol : token1.symbol,
+                inputAmount,
+                index === 0 ? token1.symbol : token0.symbol,
             );
 
             if (!requiredAmount.Ok) {
                 throw new Error("Failed to calculate required amount");
             }
 
-            const calculatedAmount = formatTokenAmount(
-                index === 0 ? requiredAmount.Ok.amount_1 : requiredAmount.Ok.amount_0,
-                otherToken.decimals
-            ).toString();
-
-            // Update amounts based on input index
+            // Only update the non-active input
             if (index === 0) {
-                amount0 = value;
-                amount1 = calculatedAmount;
-                if (input1Element) input1Element.value = calculatedAmount;
+                // User modified top input, only update bottom input
+                amount1 = formatTokenAmount(requiredAmount.Ok.amount_1, token1.decimals).toString();
+                if (input1Element) input1Element.value = amount1;
             } else {
-                amount0 = calculatedAmount;
-                amount1 = value;
-                if (input0Element) input0Element.value = calculatedAmount;
+                // User modified bottom input, only update top input
+                amount0 = formatTokenAmount(requiredAmount.Ok.amount_0, token0.decimals).toString();
+                if (input0Element) input0Element.value = amount0;
             }
 
-            // Call the parent's onInput handler
+            // Call the parent's onInput handler with the user's input value
             onInput(index, value);
         } catch (err) {
             console.error("Error in debouncedHandleInput:", err);
@@ -220,7 +171,7 @@
             loading = false;
             loadingState = '';
         }
-    }, 1000); // Increased from default to 1000ms
+    }, 500);
 
     // Enhanced input handling
     async function handleInput(index: 0 | 1, event: Event) {
@@ -288,36 +239,8 @@
         if (!currentToken || !otherToken) return;
 
         try {
-            // Get real token fee
-            let tokenFee;
-            try {
-                tokenFee = await IcrcService.getTokenFee(currentToken);
-            } catch (error) {
-                console.error("Error getting token fee, falling back to fee_fixed:", error);
-                if (!currentToken.fee_fixed) {
-                    toastStore.error("Could not determine token fee");
-                    return;
-                }
-                tokenFee = BigInt(currentToken.fee_fixed.toString().replace(/_/g, ''));
-            }
-
-            // Clean the balance
-            const cleanBalance = currentBalance.toString().replace(/_/g, '');
-            const balance = new BigNumber(cleanBalance);
-
-            // Calculate max amount considering transfer fee
             const feeMultiplier = currentToken.icrc2 ? 2 : 1;
-            const totalFees = new BigNumber(tokenFee.toString()).multipliedBy(feeMultiplier);
-            
-            let maxAmount = balance.minus(totalFees);
-            
-            if (maxAmount.isLessThanOrEqualTo(0) || maxAmount.isNaN()) {
-                toastStore.error("Insufficient balance to cover fees");
-                return;
-            }
-
-            // Format the max amount for display
-            const value = formatTokenAmount(maxAmount.toString(), currentToken.decimals);
+            const value = await calculateMaxAmount(currentToken, currentBalance, feeMultiplier);
             
             // Update the input display
             if (index === 0) {
@@ -337,47 +260,33 @@
         } catch (err) {
             console.error("Error in handleMaxClick:", err);
             error = err.message;
+            toastStore.error(err.message);
         }
     }
 
     // Reactive declarations for USD values
     $: {
-        if (token0?.price && amount0) {
+        if (token0?.metrics.price && amount0) {
             const cleanAmount = amount0.toString().replace(/[,_]/g, '');
             const value = new BigNumber(cleanAmount)
-            .times(new BigNumber(token0.price))
+            .times(new BigNumber(token0.metrics.price))
             .toNumber();
             animatedUsdValue0.set(value);
         }
-        if (token1?.price && amount1) {
+        if (token1?.metrics.price && amount1) {
             const cleanAmount = amount1.toString().replace(/[,_]/g, '');
             const value = new BigNumber(cleanAmount)
-            .times(new BigNumber(token1.price))
+            .times(new BigNumber(token1.metrics.price))
             .toNumber();
             animatedUsdValue1.set(value);
         }
     }
 
     // Calculate and display pool ratio
-    $: poolRatio = (() => {
-        if (token0 && token1 && amount0 && amount1) {
-            const amt0 = new BigNumber(amount0.toString().replace(/[,_]/g, ''));
-            const amt1 = new BigNumber(amount1.toString().replace(/[,_]/g, ''));
-            if (amt0.isGreaterThan(0) && amt1.isGreaterThan(0)) {
-                return `1 ${token0.symbol} = ${amt1.dividedBy(amt0).toFixed(6)} ${token1.symbol}`;
-            }
-        }
-        return '';
-    })();
+    $: poolRatio = calculatePoolRatio(token0, token1, amount0, amount1);
 
     // Calculate USD ratio to show price relationship
-    $: usdRatio = (() => {
-        if (token0?.price && token1?.price) {
-            const ratio = new BigNumber(token0.price).dividedBy(token1.price);
-            return `1 ${token0.symbol} ≈ $${ratio.times(token1.price).toFixed(2)}`;
-        }
-        return '';
-    })();
+    $: usdRatio = calculateUsdRatio(token0, token1);
 
     // Get pool when both tokens are selected
     $: if (token0 && token1) {
@@ -403,67 +312,31 @@
         }
     }
 
-    $: hasInsufficientBalance = () => {
-        if (!token0 || !token1 || !amount0 || !amount1) return false;
-        
-        try {
-            // Clean the input values first
-            const cleanAmount0 = amount0.toString().replace(/[,_]/g, '');
-            const cleanAmount1 = amount1.toString().replace(/[,_]/g, '');
-            
-            // Use BigNumber for precise decimal arithmetic
-            const amount0Decimal = new BigNumber(cleanAmount0)
-                .times(new BigNumber(10).pow(token0.decimals))
-                .integerValue(BigNumber.ROUND_FLOOR);
-            
-            const amount1Decimal = new BigNumber(cleanAmount1)
-                .times(new BigNumber(10).pow(token1.decimals))
-                .integerValue(BigNumber.ROUND_FLOOR);
+    $: hasInsufficientBalance = () => checkInsufficientBalance(
+        amount0,
+        amount1,
+        token0,
+        token1,
+        token0Balance,
+        token1Balance
+    );
 
-            // Clean and convert balances
-            const balance0Decimal = new BigNumber(token0Balance.toString().replace(/_/g, ''));
-            const balance1Decimal = new BigNumber(token1Balance.toString().replace(/_/g, ''));
-
-            // Add fees if needed
-            const fee0 = new BigNumber(token0.fee || 0);
-            const fee1 = new BigNumber(token1.fee || 0);
-
-            // Compare amounts with balances
-            return amount0Decimal.plus(fee0).isGreaterThan(balance0Decimal) || 
-                   amount1Decimal.plus(fee1).isGreaterThan(balance1Decimal);
-        } catch (err) {
-            console.error("Error in hasInsufficientBalance:", err);
-            return true; // Still return true on error to prevent invalid transactions
-        }
-    };
-
-    $: buttonText = !token0 || !token1
-        ? "Select Tokens"
-        : !poolExists
-        ? "Pool Does Not Exist"
-        : hasInsufficientBalance()
-        ? "Insufficient Balance"
-        : !amount0 || !amount1
-        ? "Enter Amounts"
-        : loading
-        ? loadingState || "Loading..."
-        : "Review Transaction";
+    $: buttonText = getButtonText(
+        token0,
+        token1,
+        poolExists,
+        hasInsufficientBalance(),
+        amount0,
+        amount1,
+        loading,
+        loadingState
+    );
 
     $: isValid = token0 && token1 && 
         parseFloat(amount0.replace(/[,_]/g, '')) > 0 && 
         parseFloat(amount1.replace(/[,_]/g, '')) > 0 && 
         !error && !hasInsufficientBalance() && 
         pool !== null;
-
-    // Helper function to format large numbers with commas and fixed decimals
-    function formatLargeNumber(value: string | number | bigint, decimals: number = 2): string {
-        const cleanValue = value.toString().replace(/_/g, '');
-        const num = Number(cleanValue) / 1e6; // Convert from microdollars to dollars
-        return new Intl.NumberFormat('en-US', {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
-        }).format(num);
-    }
 
     async function handleSubmit() {
         if (!isValid || loading) return;
@@ -472,13 +345,14 @@
 
     // Debounce the balance updates
     const debouncedBalanceUpdate = debounce(async () => {
-        if (!token0 || !token1 || !$auth?.account?.owner) return;
+        const owner = $auth?.account?.owner;
+        if (!token0 || !token1 || !owner) return;
         
         try {
             loadingState = 'Fetching token balances...';
             await Promise.all([
-                tokenStore.loadBalance(token0, $auth.account.owner.toString(), true),
-                tokenStore.loadBalance(token1, $auth.account.owner.toString(), true)
+                tokenStore.loadBalance(token0, owner.toString(), true),
+                tokenStore.loadBalance(token1, owner.toString(), true)
             ]);
         } catch (error) {
             console.error("Error updating balances:", error);
@@ -501,6 +375,77 @@
 
     // Add this computed property to check if pool exists
     $: poolExists = pool !== null;
+
+    // Change the initial display values to empty strings
+    let displayValue0 = "";
+    let displayValue1 = "";
+
+    function handleFormattedInput(index: 0 | 1, event: Event) {
+        const input = event.target as HTMLInputElement;
+        const cursorPosition = input.selectionStart || 0;
+        
+        // Get the raw value and clean it
+        let rawValue = input.value.replace(/,/g, '');
+        
+        if (!isValidNumber(rawValue)) {
+            input.value = index === 0 ? displayValue0 : displayValue1;
+            return;
+        }
+
+        // Handle empty values
+        if (!rawValue || rawValue === '.') {
+            if (index === 0) {
+                amount0 = "0";
+                displayValue0 = "";
+            } else {
+                amount1 = "0";
+                displayValue1 = "";
+            }
+            input.value = "";
+            
+            const newEvent = new Event('input', {
+                bubbles: true,
+                cancelable: true
+            });
+            Object.defineProperty(newEvent, 'target', { value: input });
+            handleInput(index, newEvent);
+            return;
+        }
+
+        // Update the actual amounts and display values
+        const formattedValue = formatWithCommas(rawValue);
+        
+        // Count actual commas before cursor in formatted value
+        const beforeCursor = formattedValue.slice(0, cursorPosition);
+        const commasBeforeCursor = (beforeCursor.match(/,/g) || []).length;
+        const commasInOriginal = (input.value.slice(0, cursorPosition).match(/,/g) || []).length;
+        const commaDiff = commasBeforeCursor - commasInOriginal;
+
+        if (index === 0) {
+            amount0 = rawValue;
+            displayValue0 = formattedValue;
+        } else {
+            amount1 = rawValue;
+            displayValue1 = formattedValue;
+        }
+        input.value = formattedValue;
+
+        // Create a new event with the raw value
+        const newEvent = new Event('input', {
+            bubbles: true,
+            cancelable: true
+        });
+        Object.defineProperty(newEvent, 'target', { value: input });
+
+        // Handle the main input logic with raw value
+        handleInput(index, newEvent);
+
+        // Set new cursor position accounting for commas
+        const newPosition = cursorPosition + commaDiff;
+        requestAnimationFrame(() => {
+            input.setSelectionRange(newPosition, newPosition);
+        });
+    }
 </script>
 
 <Panel variant="green" width="auto" className="liquidity-panel w-full max-w-[690px]">
@@ -523,10 +468,10 @@
                                 type="text"
                                 inputmode="decimal"
                                 pattern="[0-9]*"
-                                placeholder={!poolExists ? "Pool does not exist" : "0.00"}
+                                placeholder="0"
                                 class="amount-input {!poolExists ? 'cursor-not-allowed' : ''}"
-                                value={amount0}
-                                on:input={(e) => handleInput(0, e)}
+                                value={displayValue0}
+                                on:input={(e) => handleFormattedInput(0, e)}
                                 on:focus={() => (input0Focused = true)}
                                 on:blur={() => handleBlur(0)}
                                 disabled={!poolExists}
@@ -580,10 +525,10 @@
                                 type="text"
                                 inputmode="decimal"
                                 pattern="[0-9]*"
-                                placeholder={!poolExists ? "Pool does not exist" : "0.00"}
+                                placeholder="0"
                                 class="amount-input {!poolExists ? 'cursor-not-allowed' : ''}"
-                                value={amount1}
-                                on:input={(e) => handleInput(1, e)}
+                                value={displayValue1}
+                                on:input={(e) => handleFormattedInput(1, e)}
                                 on:focus={() => (input1Focused = true)}
                                 on:blur={() => handleBlur(1)}
                                 disabled={!poolExists}

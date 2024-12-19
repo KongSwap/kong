@@ -285,6 +285,20 @@
           </button>
         {/each}
 
+        {#if $auth.isConnected && (process.env.DFX_NETWORK === 'local' || process.env.DFX_NETWORK === 'staging')}
+          <button
+            class="mobile-nav-btn"
+            on:click={() => {
+              claimTokens();
+              handleNavClose();
+            }}
+          >
+            <div class="mobile-nav-btn-content">
+              <span>CLAIM</span>
+            </div>
+          </button>
+        {/if}
+
         {#if $auth.isConnected}
           <button
             class="mobile-nav-btn"
@@ -777,5 +791,11 @@
   .copy-text {
     font-size: 0.875rem;
     font-weight: 600;
+  }
+
+  .mobile-nav-btn-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 </style>

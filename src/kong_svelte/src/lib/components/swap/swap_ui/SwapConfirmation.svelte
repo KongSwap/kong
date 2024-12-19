@@ -35,8 +35,8 @@
     receiveToken: receiveToken,
   };
 
-  $: payUsdValue = formatTokenValue(payAmount.toString(), payToken?.price, payToken?.decimals);
-  $: receiveUsdValue = formatTokenValue(receiveAmount.toString(), receiveToken?.price, receiveToken?.decimals);
+  $: payUsdValue = formatTokenValue(payAmount.toString(), Number(payToken?.metrics.price), payToken?.decimals);
+  $: receiveUsdValue = formatTokenValue(receiveAmount.toString(), Number(receiveToken?.metrics.price), receiveToken?.decimals);
 
   onMount(async () => {
     cleanComponent();

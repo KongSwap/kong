@@ -99,27 +99,8 @@
   async function handleInput(index: 0 | 1, value: string) {
     if (index === 0) {
         amount0 = value;
-        if (pool && value && token0 && token1) {
-            try {
-                const parsedAmount0 = parseTokenAmount(value, token0.decimals);
-                const result = await PoolService.calculateLiquidityAmounts(
-                    token0.symbol,
-                    BigInt(parsedAmount0),
-                    token1.symbol
-                );
-                if (result.Ok) {
-                    amount1 = formatTokenAmount(result.Ok.amount_1.toString(), token1.decimals);
-                }
-            } catch (err) {
-                console.error("Error calculating amounts:", err);
-                toastStore.error(err.message || "Failed to calculate amounts", 8000, "Error");
-            }
-        }
     } else {
         amount1 = value;
-        // Similar calculation for amount0 when amount1 changes
-        // You'd need to modify calculateLiquidityAmounts to support calculating amount0
-        // based on amount1 input, or create a new method for this
     }
     error = null;
   }
