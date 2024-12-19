@@ -27,7 +27,7 @@
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { toastStore } from "$lib/stores/toastStore";
   import { browser } from "$app/environment";
-    import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -427,7 +427,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">Price</div>
                           <div class="font-medium text-white">
-                            ${formatToNonZeroDecimal(pool.price_usd)}
+                            {getPoolPriceUsd(pool)}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">

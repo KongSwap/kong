@@ -235,3 +235,38 @@ export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[
     token.name.toLowerCase().includes(lowerCaseQuery)
   );
 }
+
+export function getPoolPriceUsd(pool: BE.Pool): string {
+  const store = get(tokenStore);
+  const token0 = store.tokens.find(token => token.canister_id === pool.address_0);
+  const token1 = store.tokens.find(token => token.canister_id === pool.address_1);
+
+  // For ckUSDT pairs, use the pool price directly
+  if (token1?.symbol === "ckUSDT" || token0?.symbol === "ckUSDT") {
+    return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+  }
+
+  // For ICP pairs
+  if (token1?.symbol === "ICP") {
+    const icpPrice = token1?.metrics?.price;
+    const poolPrice = Number(pool.price);
+    if (icpPrice && !isNaN(poolPrice)) {
+      return `$${formatToNonZeroDecimal(poolPrice * Number(icpPrice))}`;
+    }
+  } else if (token0?.symbol === "ICP") {
+    const icpPrice = token0?.metrics?.price;
+    const poolPrice = Number(pool.price);
+    if (icpPrice && !isNaN(poolPrice)) {
+      return `$${formatToNonZeroDecimal(poolPrice * Number(icpPrice))}`;
+    }
+  }
+
+  // For other pairs, use token0's price from store
+  const price = token0?.metrics?.price;
+  if (typeof price === "number" && !isNaN(price)) {
+    return `$${formatToNonZeroDecimal(price)}`;
+  }
+
+  // Fallback to pool price
+  return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+}

@@ -3,8 +3,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
-  import { get } from "svelte/store";
+  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 
   export let pool: BE.Pool;
   export let tokenMap: Map<string, any>;
@@ -36,40 +35,6 @@
     onAddLiquidity(pool.address_0, pool.address_1);
   }
 
-  function getTokenPrice(): string {
-    const store = get(tokenStore);
-    const token0 = tokenMap.get(pool.address_0);
-    const token1 = tokenMap.get(pool.address_1);
-
-    // For ckUSDT pairs, use the pool price directly
-    if (token1?.symbol === "ckUSDT" || token0?.symbol === "ckUSDT") {
-      return `$${formatToNonZeroDecimal(Number(pool.price))}`;
-    }
-
-    // For ICP pairs
-    if (token1?.symbol === "ICP") {
-      const icpPrice = token1?.metrics?.price;
-      const poolPrice = Number(pool.price);
-      if (icpPrice && !isNaN(poolPrice)) {
-        return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
-      }
-    } else if (token0?.symbol === "ICP") {
-      const icpPrice = token0?.metrics?.price;
-      const poolPrice = Number(pool.price);
-      if (icpPrice && !isNaN(poolPrice)) {
-        return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
-      }
-    }
-
-    // For other pairs, use token0's price from store
-    const price = token0?.metrics?.price;
-    if (typeof price === "number" && !isNaN(price)) {
-      return `$${formatToNonZeroDecimal(price)}`;
-    }
-
-    // Fallback to pool price
-    return `$${formatToNonZeroDecimal(Number(pool.price))}`;
-  }
 </script>
 
 {#if !isMobile}
@@ -91,7 +56,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          {getTokenPrice()}
+          {getPoolPriceUsd(pool)}
         </div>
       </div>
     </td>
