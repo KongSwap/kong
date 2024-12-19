@@ -11,6 +11,7 @@
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { onMount } from "svelte";
+    import { Nu } from "svelte-flags";
   
   // Props with proper TypeScript types
   let { 
@@ -360,7 +361,7 @@
   let displayAmount = $derived(formatDisplayValue(amount || "0"));
   let formattedDisplayAmount = $derived(formatWithCommas(displayAmount));
   let parsedAmount = $derived(parseFloat(displayAmount || "0"));
-  let tokenPrice = $derived(tokenInfo ? ($tokenStore?.prices[tokenInfo.canister_id] || 0) : 0);
+  let tokenPrice = $derived(tokenInfo ? Number(tokenInfo.metrics.price || 0) : 0);
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 
   // Use onMount to safely access window properties

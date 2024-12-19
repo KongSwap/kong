@@ -219,14 +219,10 @@ function createPoolStore() {
           return;
         }
 
-        const [balancesResponse, tokenPrices] = await Promise.all([
+        const [balancesResponse] = await Promise.all([
           PoolService.fetchUserPoolBalances(),
-          tokens.prices
         ]);
 
-        if (!tokenPrices) {
-          throw new Error('Token prices are not available');
-        }
 
         // Process the response with proper type checking
         const balances = Array.isArray(balancesResponse) ? balancesResponse : 
