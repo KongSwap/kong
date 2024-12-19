@@ -664,9 +664,7 @@ export class SwapService {
         );
 
         const store = get(tokenStore);
-        const price = await tokenStore.refetchPrice(
-          store.tokens.find((t) => t.address === receiveToken.address),
-        );
+        const price = receiveToken?.metrics?.price;
         const usdValueNumber =
           parseFloat(receivedAmount) * parseFloat(price.toString());
 
