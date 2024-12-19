@@ -22,8 +22,8 @@ export default {
           secondary: "#22D3EE", // Teal for vibrancy
           "secondary-hover": "#0EA5E9", // Darker teal hover
           "accent-blue": "#00A1FA",
-          "accent-red": "#D34545",
-          "accent-green": "rgb(0 160 125)",
+          "accent-red": "#d11b1b",
+          "accent-green": "#00cc81",
           "accent-green-hover": "rgb(0 185 145)",
           "accent-blue-hover": "#00A1FA",
           "accent-red-hover": "rgb(175 48 48)",
