@@ -48,13 +48,13 @@
 
     // For ICP pairs
     if (token1?.symbol === "ICP") {
-      const icpPrice = token1.metrics.price;
+      const icpPrice = token1?.metrics?.price;
       const poolPrice = Number(pool.price);
       if (icpPrice && !isNaN(poolPrice)) {
         return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
       }
     } else if (token0?.symbol === "ICP") {
-      const icpPrice = token0.metrics.price;
+      const icpPrice = token0?.metrics?.price;
       const poolPrice = Number(pool.price);
       if (icpPrice && !isNaN(poolPrice)) {
         return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
@@ -62,7 +62,7 @@
     }
 
     // For other pairs, use token0's price from store
-    const price = token0.metrics.price;
+    const price = token0?.metrics?.price;
     if (typeof price === "number" && !isNaN(price)) {
       return `$${formatToNonZeroDecimal(price)}`;
     }
