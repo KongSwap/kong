@@ -1,7 +1,6 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import {
-    tokenStore,
     getTokenDecimals,
   } from "$lib/services/tokens/tokenStore";
   import { SwapService } from "$lib/services/swap/SwapService";

@@ -3,7 +3,6 @@
   import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { goto } from "$app/navigation";
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import PoolList from "$lib/components/sidebar/PoolList.svelte";
 
   export let pool: BE.Pool;
@@ -57,7 +56,7 @@
     <div class="pool-header">
       <div class="header-content">
         <div class="token-info">
-          <TokenImages tokens={[token0, token1]} overlap={12} size={32} />
+          <TokenImages tokens={[token0, token1]} size={32} />
           <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
         </div>
       </div>
