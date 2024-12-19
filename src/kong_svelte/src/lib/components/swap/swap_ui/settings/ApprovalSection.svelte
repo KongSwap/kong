@@ -1,12 +1,11 @@
 <script lang="ts">
-  import type { Token } from '$lib/types/token';
   import TokenApprovalCard from './TokenApprovalCard.svelte';
   import { RefreshCw } from 'lucide-svelte';
 
-  export let tokens: Token[];
+  export let tokens: FE.Token[];
   export let approvedTokens: Set<string>;
-  export let onApprove: (token: Token) => Promise<void>;
-  export let onRevoke: (token: Token) => Promise<void>;
+  export let onApprove: (token: FE.Token) => Promise<void>;
+  export let onRevoke: (token: FE.Token) => Promise<void>;
   export let onRefresh: () => Promise<void> = async () => {};
 
   let loading = false;

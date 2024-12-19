@@ -1,39 +1,23 @@
 <script lang="ts">
-	import kongLogo from '$lib/assets/kong_logo.png';
-  import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
-  import { slide } from 'svelte/transition';
-  
+  import kongLogo from "$lib/assets/kong_logo.png";
+  import { onMount } from "svelte";
+  import { browser } from "$app/environment";
+  import { slide } from "svelte/transition";
+  import { isMobileBrowser } from "$lib/utils/browser";
+
   let deferredPrompt: any;
   let showPrompt = false;
   let isEligible = false;
-
-  function checkEligibility() {
-    // Check if running in standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    if (isStandalone) return false;
-
-    // Check if it's iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    if (isIOS) {
-      // Check if running in Safari
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      return isSafari;
-    }
-
-    // For other devices, we'll wait for the beforeinstallprompt event
-    return true;
-  }
 
   onMount(() => {
     if (!browser) return;
 
     // First check if device is eligible
-    isEligible = checkEligibility();
+    isEligible = isMobileBrowser();
     if (!isEligible) return;
 
     // Then check if user has already interacted
-    const hasInteracted = localStorage.getItem('pwa-prompt-interaction');
+    const hasInteracted = localStorage.getItem("pwa-prompt-interaction");
     if (hasInteracted) return;
 
     // For iOS, show prompt immediately
@@ -43,14 +27,14 @@
     }
 
     // For other devices, wait for beforeinstallprompt
-    window.addEventListener('beforeinstallprompt', (e) => {
+    window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredPrompt = e;
       showPrompt = true;
     });
 
-    window.addEventListener('appinstalled', () => {
-      localStorage.setItem('pwa-prompt-interaction', 'installed');
+    window.addEventListener("appinstalled", () => {
+      localStorage.setItem("pwa-prompt-interaction", "installed");
       showPrompt = false;
     });
   });
@@ -59,34 +43,39 @@
     if (!deferredPrompt) {
       // For iOS, just show instructions
       if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
-        alert('To install Kong:\n1. Tap the share button\n2. Scroll down and tap "Add to Home Screen"');
+        alert(
+          'To install Kong:\n1. Tap the share button\n2. Scroll down and tap "Add to Home Screen"',
+        );
       }
       showPrompt = false;
-      localStorage.setItem('pwa-prompt-interaction', 'dismissed');
+      localStorage.setItem("pwa-prompt-interaction", "dismissed");
       return;
     }
 
     showPrompt = false;
-    localStorage.setItem('pwa-prompt-interaction', 'dismissed');
-    
+    localStorage.setItem("pwa-prompt-interaction", "dismissed");
+
     // Show the install prompt
     deferredPrompt.prompt();
-    
+
     // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
-    
+
     // Clear the deferredPrompt
     deferredPrompt = null;
   }
 
   function dismissPrompt() {
     showPrompt = false;
-    localStorage.setItem('pwa-prompt-interaction', 'dismissed');
+    localStorage.setItem("pwa-prompt-interaction", "dismissed");
   }
 </script>
 
 {#if showPrompt}
-  <div class="pwa-prompt bg-gray-800 text-white/80" transition:slide={{ duration: 300 }}>
+  <div
+    class="pwa-prompt bg-gray-800 text-white/80"
+    transition:slide={{ duration: 300 }}
+  >
     <div class="prompt-content">
       <img src={kongLogo} alt="Kong Logo" class="app-icon" />
 
@@ -95,12 +84,8 @@
         <p>Install Kong for a better experience</p>
       </div>
       <div class="prompt-actions flex flex-col">
-        <button class="install-btn" on:click={installPWA}>
-          Install
-        </button>
-        <button class="dismiss-btn" on:click={dismissPrompt}>
-          Not Now
-        </button>
+        <button class="install-btn" on:click={installPWA}> Install </button>
+        <button class="dismiss-btn" on:click={dismissPrompt}> Not Now </button>
       </div>
     </div>
   </div>
@@ -115,8 +100,9 @@
     z-index: 1000;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
-    box-shadow: 0 8px 16px -4px rgb(0 0 0 / 0.25), 
-                0 4px 6px -2px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 8px 16px -4px rgb(0 0 0 / 0.25),
+      0 4px 6px -2px rgb(0 0 0 / 0.1);
     padding: 20px;
     width: calc(100% - 40px);
     max-width: 420px;
@@ -138,8 +124,13 @@
   }
 
   @keyframes swing {
-    0%, 100% { transform: rotate(-10deg) scaleX(-1); }
-    50% { transform: rotate(-15deg) scaleX(-1); }
+    0%,
+    100% {
+      transform: rotate(-10deg) scaleX(-1);
+    }
+    50% {
+      transform: rotate(-15deg) scaleX(-1);
+    }
   }
 
   @keyframes slideUp {

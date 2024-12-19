@@ -7,6 +7,6 @@ if [ -z "$1" ]
 		NETWORK="--network $1"
 fi
 IDENTITY="--identity kong_token_minter"
-PRINCIPAL_ID=$(dfx canister id ckusdc_ledger)
+PRINCIPAL_ID=$(dfx canister id ksusdc_ledger)
 
 dfx canister stop ${NETWORK} ${IDENTITY} ${PRINCIPAL_ID}

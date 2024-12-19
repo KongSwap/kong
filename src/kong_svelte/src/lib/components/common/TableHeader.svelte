@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { t } from "$lib/services/translations";
   import { auth } from "$lib/services/auth";
 
   export let variant: "default" | "stats" = "default";
@@ -20,7 +19,7 @@
   }
 
   $: variantClass = variant === "stats" ? "font-alumni text-3xl uppercase" : "";
-  $: showHeader = requiresAuth ? auth.pnp.isConnected : true;
+  $: showHeader = requiresAuth ? $auth.isConnected : true;
 </script>
 
 {#if showHeader}
@@ -28,7 +27,7 @@
     class="p-2 cursor-pointer {textClass} {variantClass}"
     on:click={handleSort}
   >
-    {$t(label)}
+    {label}
     <span>
       {#if sortColumn === column}
         {sortDirection === "asc" ? "↑" : "↓"}

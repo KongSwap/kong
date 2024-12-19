@@ -522,9 +522,9 @@ export const idlFactory = ({ IDL }) => {
       ),
     'swap_async' : IDL.Func([SwapArgs], [SwapAsyncResult], []),
     'tokens' : IDL.Func([IDL.Opt(IDL.Text)], [TokensResult], ['query']),
-    'txs' : IDL.Func([IDL.Opt(IDL.Bool)], [TxsResult], ['query']),
+    'txs' : IDL.Func([IDL.Opt(IDL.Text)], [TxsResult], ['query']),
     'user_balances' : IDL.Func(
-        [IDL.Opt(IDL.Text)],
+        [IDL.Text, IDL.Opt(IDL.Text)],
         [UserBalancesResult],
         ['query'],
       ),

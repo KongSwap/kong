@@ -27,7 +27,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
-    let result = process_swap(
+    process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -46,15 +46,10 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         },
         |reply| {
             request_map::update_status(request_id, StatusCode::Success, None);
+            archive_to_kong_data(&reply);
             Ok(reply)
         },
-    );
-
-    if let Some(request) = request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None).first() {
-        archive_to_kong_data(request);
-    }
-
-    result
+    )
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
@@ -77,13 +72,14 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
         )
         .await
         {
-            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
-            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+            Ok(reply) => {
+                request_map::update_status(request_id, StatusCode::Success, None);
+                archive_to_kong_data(&reply);
+            }
+            Err(e) => {
+                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            }
         };
-
-        request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
-            .first()
-            .map(archive_to_kong_data);
     });
 
     Ok(request_id)

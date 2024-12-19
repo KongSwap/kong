@@ -1,5 +1,4 @@
 use agent::{create_agent, create_identity_from_pem_file};
-use kong_backend::KongBackend;
 use kong_data::KongData;
 use std::env;
 use tokio_postgres::NoTls;
