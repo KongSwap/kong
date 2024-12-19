@@ -1,5 +1,3 @@
-use std::f32::consts::E;
-
 use candid::Nat;
 use num::rational::BigRational;
 use num::{FromPrimitive, One, Zero};
