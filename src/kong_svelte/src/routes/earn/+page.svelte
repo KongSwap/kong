@@ -2,16 +2,16 @@
   import { writable, derived } from "svelte/store";
   import {
     poolsList,
-    poolStore,
     userPoolBalances,
-    displayPools,
-    livePools,
-    filteredLivePools
+    filteredLivePools,
+    poolSearchTerm,
+    poolSortColumn,
+    poolSortDirection,
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import {
     ArrowUp,
@@ -26,7 +26,8 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { toastStore } from "$lib/stores/toastStore";
-    import { browser } from "$app/environment";
+  import { browser } from "$app/environment";
+  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -38,14 +39,9 @@
   let selectedPool = null;
   let selectedUserPool = null;
 
-  // Sort state
-  const sortColumn = writable("rolling_24h_volume");
-  const sortDirection = writable<"asc" | "desc">("desc");
-
   let isMobile = writable(false);
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
-  let debouncedSearchTerm = "";
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
   onMount(() => {
@@ -56,7 +52,6 @@
       window.removeEventListener("resize", checkMobile);
     };
   });
-
 
   const checkMobile = () => {
     $isMobile = window.innerWidth < 768;
@@ -90,52 +85,18 @@
     showPoolDetails = true;
   }
 
-  // Debounce search input
-  $: {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      debouncedSearchTerm = searchTerm.trim().toLowerCase();
-    }, 300);
-  }
-
-  // Filter pools by search (only when viewing all pools)
-  $: filteredPools = $displayPools.filter((pool) => {
-    if ($activePoolView === "user") {
-      return false;
-    }
-
-    if ($activePoolView !== "all") return true; // no search filtering when on user view
-
-    if (!debouncedSearchTerm) return true;
-
-    const token0 = $tokenMap.get(pool.address_0);
-    const token1 = $tokenMap.get(pool.address_1);
-
-    const searchMatches = [
-      pool.symbol_0.toLowerCase(),
-      pool.symbol_1.toLowerCase(),
-      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
-      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
-      pool.address_0?.toLowerCase() || "",
-      pool.address_1?.toLowerCase() || "",
-      token0?.name?.toLowerCase() || "",
-      token1?.name?.toLowerCase() || "",
-    ];
-
-    return searchMatches.some((match) => match.includes(debouncedSearchTerm));
-  });
-
   function toggleSort(column: string) {
-    if ($sortColumn === column) {
-      poolStore.setSort(column, $sortDirection === 'asc' ? 'desc' : 'asc');
+    if ($poolSortColumn === column) {
+      poolSortDirection.set($poolSortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      poolStore.setSort(column, 'asc');
+      poolSortColumn.set(column);
+      poolSortDirection.set('desc');
     }
   }
 
   function getSortIcon(column: string) {
-    if ($sortColumn !== column) return ArrowUpDown;
-    return $sortDirection === "asc" ? ArrowUp : ArrowDown;
+    if ($poolSortColumn !== column) return ArrowUpDown;
+    return $poolSortDirection === "asc" ? ArrowUp : ArrowDown;
   }
 
   function handlePoolClick(event) {
@@ -172,9 +133,16 @@
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      poolStore.setSearch(searchTerm.trim().toLowerCase());
+      poolSearchTerm.set(searchTerm.trim().toLowerCase());
     }, 300);
   }
+
+  onDestroy(() => {
+    clearTimeout(searchDebounceTimer);
+    // reset search properties
+    searchTerm = "";
+    poolSearchTerm.set("");
+  });
 </script>
 
 <section
@@ -214,7 +182,7 @@
           <div class="card-content">
             <h3>Borrowing & Lending</h3>
             <div class="coming-soon-label">
-              <span class="coming-soon-icon">🚀</span>
+              <span class="coming-soon-icon">💰</span>
               <span class="coming-soon-text">Coming Soon</span>
             </div>
           </div>
@@ -266,13 +234,6 @@
                     bind:value={searchTerm}
                     on:input={handleSearch}
                   />
-                </div>
-                <div class="w-full">
-                  <div class="">
-                    <button class="primary-button bg-transparent border border-blue-500/40" on:click={() => goto("/earn/add")}>
-                      Add Position
-                    </button>
-                  </div>
                 </div>
               </div>
               <!-- Desktop view -->
@@ -338,7 +299,7 @@
                 class="flex items-center justify-between mt-2 py-1 rounded-lg"
               >
                 <select
-                  bind:value={$sortColumn}
+                  bind:value={$poolSortColumn}
                   class="bg-transparent text-white text-sm focus:outline-none"
                 >
                   <option value="rolling_24h_volume">Volume 24H</option>
@@ -349,12 +310,12 @@
 
                 <button
                   on:click={() =>
-                    sortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
+                    poolSortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
                   class="flex items-center gap-1 text-[#60A5FA] text-sm"
                 >
-                  {$sortDirection === "asc" ? "Ascending" : "Descending"}
+                  {$poolSortDirection === "asc" ? "Ascending" : "Descending"}
                   <svelte:component
-                    this={$sortDirection === "asc" ? ArrowUp : ArrowDown}
+                    this={$poolSortDirection === "asc" ? ArrowUp : ArrowDown}
                     class="w-4 h-4"
                   />
                 </button>
@@ -366,15 +327,21 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div
-                class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {$isMobile
-                  ? 'max-h-[calc(97vh-16.5rem)]'
+                class="overflow-auto flex-1 max-h-[calc(100vh-17.5rem)] {$isMobile
+                  ? 'max-h-[calc(101vh-21.5rem)] pb-20'
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
                 <table class="pools-table w-full hidden md:table relative">
                   <thead class="sticky top-0 z-10 bg-[#1E1F2A]">
                     <tr class="h-10 border-b border-[#2a2d3d]">
-                      <th class="text-left text-sm font-medium text-[#8890a4]">Pool</th>
+                      <th
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        on:click={() => toggleSort("pool_name")}
+                      >
+                        Pool
+                        <svelte:component this={getSortIcon("pool_name")} class="inline w-3.5 h-3.5 ml-1" />
+                      </th>
                       <th
                         class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("price")}
@@ -407,16 +374,20 @@
                     </tr>
                   </thead>
                   <tbody class="!px-4">
-                    {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
+                    {#each $filteredLivePools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
                           ...pool,
-                          tvl: Number(pool.tvl),
-                          rolling_24h_volume: BigInt(pool.rolling_24h_volume)
-                        }}
+                          tvl: BigInt(pool.tvl),
+                          rolling_24h_volume: BigInt(pool.rolling_24h_volume),
+                          displayTvl: Number(pool.tvl) / 1e6
+                        } as BE.Pool & { displayTvl: number }}
                         tokenMap={$tokenMap}
                         isEven={i % 2 === 0}
-                        isKongPool={pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID}
+                        isKongPool={
+                          pool.address_0 === KONG_CANISTER_ID ||
+                          pool.address_1 === KONG_CANISTER_ID
+                        }
                         onAddLiquidity={handleAddLiquidity}
                         onShowDetails={() => handleShowDetails(pool)}
                       />
@@ -463,9 +434,7 @@
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
                           <div class="text-sm text-[#8890a4] mb-1">Price</div>
                           <div class="font-medium text-white">
-                            ${Number(pool.price) < 0.01
-                              ? Number(pool.price).toFixed(6)
-                              : Number(pool.price).toFixed(2)}
+                            {getPoolPriceUsd(pool)}
                           </div>
                         </div>
                         <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
@@ -586,10 +555,6 @@
            hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
            backdrop-blur-sm;
     min-width: 0; /* Prevent flex items from growing beyond container */
-  }
-
-  .earn-card[disabled] {
-    @apply opacity-75 cursor-not-allowed hover:border-[#2a2d3d] hover:bg-[#1a1b23]/60 hover:shadow-none;
   }
 
   .card-content {

@@ -70,6 +70,7 @@ declare global {
       balance_1: bigint;
       lp_fee_1: bigint;
       price: number;
+      price_usd: string;
       lp_fee_bps: number;
       rolling_24h_volume: bigint;
       rolling_24h_lp_fee: bigint;

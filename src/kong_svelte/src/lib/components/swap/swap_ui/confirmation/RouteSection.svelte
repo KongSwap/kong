@@ -6,8 +6,10 @@
   export let routingPath: string[] = [];
 
   $: tokens = routingPath
-    .map(symbol => $tokenStore.tokens.find(t => t.symbol === symbol))
-    .filter((t): t is FE.Token => t !== undefined);
+    ? routingPath
+      .map(symbol => $tokenStore.tokens.find(t => t.symbol === symbol))
+      .filter((t): t is FE.Token => t !== undefined)
+    : [];
 
   let selectedToken: FE.Token | null = null;
 </script>

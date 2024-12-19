@@ -5,9 +5,18 @@
     availableWallets,
     selectedWalletId,
   } from "$lib/services/auth";
+  import { onMount } from "svelte";
+  import { isMobileBrowser } from '$lib/utils/browser';
 
   const dispatch = createEventDispatcher();
   let connecting = false;
+  let filteredWallets = availableWallets;
+
+  onMount(() => {
+    if (isMobileBrowser()) {
+      filteredWallets = availableWallets.filter(wallet => wallet.id !== 'plug');
+    }
+  });
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
@@ -29,7 +38,7 @@
 
 <div class="wallet-provider">
   <div class="wallet-list">
-    {#each availableWallets as wallet}
+    {#each filteredWallets as wallet}
       <button
         class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
         on:click={() => handleConnect(wallet.id)}
