@@ -6,15 +6,14 @@
     selectedWalletId,
   } from "$lib/services/auth";
   import { onMount } from "svelte";
+  import { isMobileBrowser } from '$lib/utils/browser';
 
   const dispatch = createEventDispatcher();
   let connecting = false;
   let filteredWallets = availableWallets;
 
   onMount(() => {
-    // Simpler Safari detection
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    if (isSafari) {
+    if (isMobileBrowser()) {
       filteredWallets = availableWallets.filter(wallet => wallet.id !== 'plug');
     }
   });

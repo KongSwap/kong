@@ -3,9 +3,10 @@
 # Get network parameter, default to local if not provided
 NETWORK=${1:-local}
 
-# Map 'staging' to 'ic' if needed
-if [ "${NETWORK}" = "staging" ]; then
-    NETWORK="ic"
+# Error if not specified network
+if [ "${NETWORK}" = "" ]; then
+    echo "Error: Network parameter is required to copy .env file!"
+    exit 1
 fi
 
 # Debug output

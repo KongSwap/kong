@@ -114,9 +114,6 @@ export function hasInsufficientBalance(
         const balance0 = store.balances[token0.canister_id];
         const balance1 = store.balances[token1.canister_id];
 
-        // Return false if balances aren't loaded yet
-        if (!balance0?.in_tokens || !balance1?.in_tokens) return false;
-
         // Use BigNumber for precise decimal arithmetic
         const amount0Decimal = new BigNumber(cleanAmount0)
             .times(new BigNumber(10).pow(token0.decimals))
@@ -129,6 +126,13 @@ export function hasInsufficientBalance(
         // Clean and convert balances
         const balance0Decimal = new BigNumber(balance0.in_tokens.toString());
         const balance1Decimal = new BigNumber(balance1.in_tokens.toString());
+
+        console.log('Balance Debug:', {
+            balance0Decimal,
+            balance1Decimal,
+            decimals0: token0.decimals,
+            decimals1: token1.decimals
+        });
 
         // Add fees if needed
         const fee0 = new BigNumber(token0.fee_fixed || 0);
