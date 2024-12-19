@@ -11,7 +11,7 @@
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import PoolRow from "$lib/components/liquidity/pools/PoolRow.svelte";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import {
     ArrowUp,
@@ -136,6 +136,13 @@
       poolSearchTerm.set(searchTerm.trim().toLowerCase());
     }, 300);
   }
+
+  onDestroy(() => {
+    clearTimeout(searchDebounceTimer);
+    // reset search properties
+    searchTerm = "";
+    poolSearchTerm.set("");
+  });
 </script>
 
 <section

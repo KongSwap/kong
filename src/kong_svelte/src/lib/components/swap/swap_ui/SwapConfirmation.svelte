@@ -49,14 +49,12 @@
     // Set up periodic quote updates
     quoteUpdateInterval = setInterval(async () => {
       if (!isLoading) { // Only update if not processing a swap
-        console.log("Updating quote");
         await updateQuote();
       }
     }, QUOTE_UPDATE_INTERVAL);
   });
 
   async function handleConfirm() {
-    console.log("Confirm button clicked");
     if (isLoading) {
       console.log("Already processing, returning");
       return;
@@ -71,12 +69,9 @@
     error = "";
     
     try {
-      console.log("Attempting to execute onConfirm");
       const result = await onConfirm();
-      console.log("onConfirm result:", result);
       
       if (result === true) {
-        console.log("Swap confirmed successfully");
         swapState.update(state => ({
           ...state,
           showConfirmation: false,
