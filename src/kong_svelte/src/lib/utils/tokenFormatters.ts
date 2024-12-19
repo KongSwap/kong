@@ -5,7 +5,7 @@
  * @returns Formatted balance string
  */
 export function formatBalance(rawBalance: string | undefined, decimals: number = 8): string {
-    if (!rawBalance) return "0";
+    if (!rawBalance || rawBalance === "") return "0";
     
     // Convert from raw integer (considering decimals)
     const value = Number(rawBalance) / Math.pow(10, decimals);

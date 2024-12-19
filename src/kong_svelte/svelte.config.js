@@ -52,9 +52,7 @@ const config = {
     },
   }),
   onwarn: (warning, handler) => {
-    if (warning.code.startsWith('a11y_')) {
-      return;
-    }
+    if (warning.code.includes("a11y")) return;
     handler(warning);
   },
 };
