@@ -690,7 +690,7 @@
   }
 
   .price-arrow.down {
-    @apply text-red-400;
+    @apply text-kong-accent-red;
   }
 
   .favorite-button {
@@ -707,7 +707,7 @@
   }
 
   .change-cell.negative {
-    @apply text-red-400;
+    @apply text-kong-accent-red;
   }
 
   .retry-button {
@@ -781,7 +781,7 @@
   }
 
   .token-change.negative {
-    @apply text-red-400;
+    @apply text-kong-accent-red;
   }
 
   .token-change.new {
