@@ -535,7 +535,7 @@
                                     <span class="token-symbol-mobile">{token.symbol}</span>
                                     {#if token.isHot}
                                       <div class="hot-badge-small" title="#{token.volumeRank} 24h volume">
-                                        <Flame size={14} class="hot-icon" />
+                                        <Flame size={14} class="hot-icon" fill="#FFA500" stroke="white" />
                                       </div>
                                     {/if}
                                   </div>

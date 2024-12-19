@@ -80,7 +80,10 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         'sveltekit/environment'
       ]
     },
-    modulePreload: false 
+    modulePreload: false,
+    commonjsOptions: {
+      include: []
+    }
   };
 
   // Add compression plugins and terser for non-local environments
@@ -122,7 +125,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           global: "globalThis",
         },
       },
-      exclude: ['@sveltejs/kit']
+      exclude: ['@sveltejs/kit', '$lib/utils/browser']
     },
     server: {
       proxy: {
@@ -160,6 +163,6 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./test/setup.ts'],
-    },
+    }
   };
 });

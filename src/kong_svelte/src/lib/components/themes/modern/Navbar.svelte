@@ -5,6 +5,10 @@
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import { onMount } from "svelte";
+  import { Droplet } from "lucide-svelte";
+  import { TokenService } from "$lib/services/tokens/TokenService";
+    import { tokenStore } from "$lib/services/tokens";
+  import { tooltip } from "$lib/actions/tooltip";
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
@@ -53,6 +57,11 @@
     } catch (err) {
       toastStore.error(`Failed to copy ${type} ID`);
     }
+  }
+
+  async function claimTokens() {
+    await TokenService.faucetClaim();
+    await tokenStore.loadBalances($auth.account.owner, true);
   }
 </script>
 
@@ -140,6 +149,7 @@
             class:spinning={isSpinning}
             on:click={handleSettingsClick}
             aria-label="Settings"
+            use:tooltip={{ text: "Settings", direction: "bottom" }}
           >
             <div class="btn-content">
               <svg
@@ -160,10 +170,21 @@
           </button>
 
           {#if $auth.isConnected}
+            {#if process.env.DFX_NETWORK === 'local' || process.env.DFX_NETWORK === 'staging' }
+              <button
+                class="nav-link"
+                on:click={() => claimTokens()}
+                use:tooltip={{ text: "Claim test tokens", direction: "bottom" }}
+              >
+                <div class="btn-content">
+                  <Droplet size={18} color="skyblue" />
+                </div>
+              </button>
+            {/if}
             <button
               class="nav-link copy-btn"
               on:click={() => copyToClipboard(principalId, 'Principal')}
-              title="Copy Principal ID"
+              use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
             >
               <div class="btn-content">
                 <svg

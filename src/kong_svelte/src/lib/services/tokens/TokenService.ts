@@ -15,7 +15,8 @@ import { tokenStore } from "./tokenStore";
 import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
-import BigNumber from "bignumber.js";
+import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
+import { toastStore } from "$lib/stores/toastStore";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -24,7 +25,7 @@ export class TokenService {
     { price: number; timestamp: number }
   >();
   private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  public static readonly TOKEN_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  public static readonly TOKEN_CACHE_DURATION =  20 * 1000; // 5 minutes
 
   public static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -109,30 +110,6 @@ export class TokenService {
       }
     }
     return [];
-  }
-
-  // Helper method to calculate volume
-  private static calculateVolume(token: FE.Token, pools: BE.Pool[]): number {
-    const tokenPools = pools.filter((p: BE.Pool) => 
-      p.address_0 === token.canister_id || p.address_1 === token.canister_id
-    );
-
-    return tokenPools.reduce((sum, pool) => {
-      if (pool.rolling_24h_volume) {
-        return sum + Number(pool.rolling_24h_volume.toString()) / (10 ** 6);
-      }
-      return sum;
-    }, 0);
-  }
-
-  // Helper method to calculate market cap
-  private static calculateMarketCap(token: FE.Token, price: number): string {
-    return token.canister_id === CKUSDT_CANISTER_ID ? 
-      (BigInt(token.metrics.total_supply) / BigInt(10 ** 6)).toString() : 
-      new BigNumber(token.metrics.total_supply)
-        .div(new BigNumber(10 ** token.decimals))
-        .times(new BigNumber(price))
-        .toString();
   }
 
   public static async clearTokenCache(): Promise<void> {
@@ -508,32 +485,21 @@ export class TokenService {
 
   public static async getIcpPrice(): Promise<number> {
     try {
-      const cached = this.priceCache.get('ICP_USD');
       const now = Date.now();
-      
-      if (cached && (now - cached.timestamp < this.CACHE_DURATION)) {
+      const cached = this.priceCache.get('ICP_USD');
+      if (cached && now - cached.timestamp < this.CACHE_DURATION) {
         return cached.price;
       }
-
-      // Fetch new price if cache is stale or missing
-      const response = await fetch('https://api.coincap.io/v2/assets/internet-computer');
-      
-      if (!response.ok) {
-        throw new Error(`CoinCap API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const price = Number(data.data.priceUsd);
-
+      const price = get(poolStore).pools.find(pool => pool.address_0 === ICP_CANISTER_ID && pool.address_1 === CKUSDT_CANISTER_ID)?.price;
       // Update cache
-      if (price > 0) {
+      if (Number(price) > 0) {
         this.priceCache.set('ICP_USD', {
           price,
           timestamp: now
         });
       }
 
-      return price;
+      return Number(price);
     } catch (error) {
       console.error('Error fetching ICP price from CoinCap:', error);
       
@@ -544,6 +510,19 @@ export class TokenService {
       }
       
       return 0;
+    }
+  }
+
+  public static async faucetClaim() {
+    const actor = auth.pnp.getActor(process.env.CANISTER_ID_KONG_FAUCET, kongFaucetIDL, { anon: false, requiresSigning: false });
+    const result = await actor.claim();
+    
+    if(result.Ok) {
+      console.log('Tokens minted successfully');
+      toastStore.success('Tokens minted successfully');
+    } else {
+      console.error('Error minting tokens:', result.Err);
+      toastStore.error('Error minting tokens');
     }
   }
 }

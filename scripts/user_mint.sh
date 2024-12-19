@@ -3,7 +3,7 @@
 network="--network $1"
 identity="--identity kong_token_minter"
 
-to_principal_id=$(dfx identity $network --identity kong_user1 get-principal)
+to_principal_id=v53f5-te3dj-sm5it-e2iaf-ymftm-l2mqj-cac7w-veisd-xxx6i-jdmau-zqe
 #to_principal_id=a3rqz-stbdu-qbi46-eiave-4nufu-pubny-ja6wg-cubyr-fa2p7-dggfx-cae
 
 # 100,000 ICP
