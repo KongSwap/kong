@@ -29,14 +29,14 @@
 
   $: tabs = [
     { id: 'identity', label: 'Identity' },
-    { id: 'wallet', label: 'Wallet Info' },
+    { id: 'wallet', label: 'Wallet Address' },
     ...(isMobile ? [] : [{ id: 'connection', label: 'Connection' }]),
   ];
 </script>
 
 <Modal 
   isOpen={show} 
-  title="Account Details" 
+  title="My Addresses" 
   onClose={() => accountStore.hideAccountDetails()}
   height="min(700px, 90vh)"
   width="min(700px, 95vw)"

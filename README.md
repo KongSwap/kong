@@ -89,7 +89,7 @@ The system is initially empty. You need to add tokens and liquidity pools. Modif
 Once everything is deployed and running, access the frontend at:
 
 ```
-http://oaq4p-2iaaa-aaaar-qahqa-cai.localhost:4943/
+http://edoy4-liaaa-aaaar-qakha-cai.localhost:4943/
 ```
 
 ## 🎉 Conclusion

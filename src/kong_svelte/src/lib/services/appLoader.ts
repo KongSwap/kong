@@ -73,17 +73,15 @@ export class AppLoader {
     try {
       // Initialize tokens after wallet connection
       const wallet = get(auth);
-
-      // Load pools first, then tokens
-      await poolStore.loadPools();
       
       // Load tokens and wait for completion
       await Promise.all([
         tokenStore.loadTokens(),
       ]);
 
+      await poolStore.loadPools();
+
       // If wallet is connected, load balances
-      console.log(wallet);
       if (wallet?.isConnected && wallet?.account?.owner) {
         await tokenStore.loadBalances(wallet.account.owner);
       }
@@ -97,13 +95,22 @@ export class AppLoader {
 
   private async initializeUpdateWorker(): Promise<void> {
     try {
-      // Initialize worker but don't wait for it to be fully ready
-      await updateWorkerService.initialize().catch(error => {
-        console.warn('Worker initialization failed, continuing with fallback updates:', error);
-      });
+      const workerInitialized = await updateWorkerService.initialize();
+      if (!workerInitialized) {
+        console.warn('Workers failed to initialize, running in fallback mode');
+        // Optionally update loading state or show a notification
+        this._loadingState.update(state => ({
+          ...state,
+          errors: [...state.errors, 'Background updates running in fallback mode']
+        }));
+      }
     } catch (error) {
       console.error("Failed to initialize worker:", error);
-      throw error;
+      // Don't throw the error - just log it and continue
+      this._loadingState.update(state => ({
+        ...state,
+        errors: [...state.errors, 'Background updates unavailable']
+      }));
     }
   }
 

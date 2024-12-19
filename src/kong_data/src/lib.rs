@@ -29,4 +29,4 @@ mod txs;
 mod user;
 
 pub const APP_NAME: &str = "Kong Data";
-pub const APP_VERSION: &str = "v0.0.13";
+pub const APP_VERSION: &str = "v0.0.14";

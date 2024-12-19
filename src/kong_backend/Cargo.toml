@@ -1,6 +1,6 @@
 [package]
 name = "kong_backend"
-version = "0.0.13"
+version = "0.0.14"
 edition = "2021"
 description = "Kong Swap backend canister"
 
@@ -9,6 +9,8 @@ name = "kong_backend"
 crate-type = ["cdylib"]
 
 [features]
+local = []
+staging = []
 prod = []
 
 [dependencies]

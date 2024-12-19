@@ -3,9 +3,8 @@
     import TokenImages from "$lib/components/common/TokenImages.svelte";
     import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
     import { flip } from "svelte/animate";
-    import type { Token } from "$lib/services/tokens/tokenStore";
 
-    export let tokens: Token[] = [];
+    export let tokens: FE.Token[] = [];
 </script>
 
 <div class="token-list">

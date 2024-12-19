@@ -6,15 +6,15 @@ use kong_lib::ic::get_time::get_time;
 use kong_lib::ic::id::caller_id;
 use kong_lib::ic::logging::error_log;
 
-use crate::ic::constants::{CKBTC, CKBTC_LEDGER, CKETH, CKETH_LEDGER, CKUSDC, CKUSDC_LEDGER, CKUSDT, CKUSDT_LEDGER, ICP, ICP_LEDGER};
+use crate::ic::constants::{CKBTC, CKBTC_LEDGER, CKETH, CKETH_LEDGER, CKUSDT, CKUSDT_LEDGER, ICP, ICP_LEDGER, KONG, KONG_LEDGER};
 use crate::ic::transfer::icrc1_transfer;
 use crate::stable_user::user_map::{get_user, update_user_token_claim};
 
 const ICP_CLAIM_AMOUNT: u128 = 1_000_000_000; // 10 ICP
 const CKUSDT_CLAIM_AMOUNT: u128 = 100_000_000; // 100 ckUSDT
-const CKUSDC_CLAIM_AMOUNT: u128 = 50_000_000; // 50 ckUSDC
 const CKBTC_CLAIM_AMOUNT: u128 = 200_000; // 0.002 ckBTC
 const CKETH_CLAIM_AMOUNT: u128 = 50_000_000_000_000_000; // 0.05 ckETH
+const KONG_CLAIM_AMOUNT: u128 = 100_000_000_000; // 1000 KONG
 
 #[update]
 pub async fn claim() -> Result<String, String> {
@@ -22,12 +22,12 @@ pub async fn claim() -> Result<String, String> {
     let icp_ledger = Principal::from_text(ICP_LEDGER).unwrap();
     let ckusdt_claim_amount: Nat = Nat::from(CKUSDT_CLAIM_AMOUNT);
     let ckusdt_ledger = Principal::from_text(CKUSDT_LEDGER).unwrap();
-    let ckusdc_claim_amount: Nat = Nat::from(CKUSDC_CLAIM_AMOUNT);
-    let ckusdc_ledger = Principal::from_text(CKUSDC_LEDGER).unwrap();
     let ckbtc_claim_amount: Nat = Nat::from(CKBTC_CLAIM_AMOUNT);
     let ckbtc_ledger = Principal::from_text(CKBTC_LEDGER).unwrap();
     let cketh_claim_amount: Nat = Nat::from(CKETH_CLAIM_AMOUNT);
     let cketh_ledger = Principal::from_text(CKETH_LEDGER).unwrap();
+    let kong_ledger = Principal::from_text(KONG_LEDGER).unwrap();
+    let kong_claim_amount: Nat = Nat::from(KONG_CLAIM_AMOUNT);
 
     let user = get_user().await?;
     let now = get_time();
@@ -41,9 +41,9 @@ pub async fn claim() -> Result<String, String> {
     match join!(
         transfer_token(ICP, &icp_claim_amount, &caller_id, &icp_ledger),
         transfer_token(CKUSDT, &ckusdt_claim_amount, &caller_id, &ckusdt_ledger),
-        transfer_token(CKUSDC, &ckusdc_claim_amount, &caller_id, &ckusdc_ledger),
         transfer_token(CKBTC, &ckbtc_claim_amount, &caller_id, &ckbtc_ledger),
         transfer_token(CKETH, &cketh_claim_amount, &caller_id, &cketh_ledger),
+        transfer_token(KONG, &kong_claim_amount, &caller_id, &kong_ledger),
     ) {
         (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
             update_user_token_claim()?;

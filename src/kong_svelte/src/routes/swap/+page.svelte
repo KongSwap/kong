@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { t } from '$lib/services/translations';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
@@ -50,7 +49,7 @@
       {/if}
     </div>
   {:else}
-    <p>{$t('common.loadingTokens')}</p>
+    <p>Loading tokens...</p>
   {/if}
 </section>
 

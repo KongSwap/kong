@@ -50,7 +50,8 @@ pub struct StableKongSettings {
     pub requests_archive_interval_secs: u64,
     pub txs_archive_interval_secs: u64,
     pub transfers_archive_interval_secs: u64,
-    pub lp_tokenss_interval_secs: u64,
+    pub lp_tokens_interval_secs: u64,
+    pub archive_to_kong_data: bool,
 }
 
 impl Default for StableKongSettings {
@@ -107,7 +108,8 @@ impl Default for StableKongSettings {
             requests_archive_interval_secs: 3600,        // archive requests every hour
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
-            lp_tokenss_interval_secs: 3600,              // archive lp_positions every hour
+            lp_tokens_interval_secs: 3600,               // archive lp_positions every hour
+            archive_to_kong_data: true,                  // replicate to kong_data
         }
     }
 }

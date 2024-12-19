@@ -5,10 +5,19 @@
     availableWallets,
     selectedWalletId,
   } from "$lib/services/auth";
-  import { t } from "$lib/services/translations";
+  import { onMount } from "svelte";
 
   const dispatch = createEventDispatcher();
   let connecting = false;
+  let filteredWallets = availableWallets;
+
+  onMount(() => {
+    // Simpler Safari detection
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isSafari) {
+      filteredWallets = availableWallets.filter(wallet => wallet.id !== 'plug');
+    }
+  });
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
@@ -30,7 +39,7 @@
 
 <div class="wallet-provider">
   <div class="wallet-list">
-    {#each availableWallets as wallet}
+    {#each filteredWallets as wallet}
       <button
         class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
         on:click={() => handleConnect(wallet.id)}

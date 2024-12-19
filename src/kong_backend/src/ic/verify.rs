@@ -14,7 +14,7 @@ use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 
 #[cfg(not(feature = "prod"))]
-const ICP_CANISTER_ID: &str = "IC.nppha-riaaa-aaaal-ajf2q-cai";
+const ICP_CANISTER_ID: &str = "IC.ryjl3-tyaaa-aaaaa-aaaba-cai";
 #[cfg(feature = "prod")]
 const ICP_CANISTER_ID: &str = "IC.ryjl3-tyaaa-aaaaa-aaaba-cai";
 const WUMBO_CANISTER_ID: &str = "IC.wkv3f-iiaaa-aaaap-ag73a-cai";

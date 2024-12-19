@@ -56,6 +56,14 @@
     }
   }
 
+  function formatUsdValueWithMinimum(value: string): string {
+    const numValue = parseFloat(value);
+    if (numValue > 0 && numValue < 0.01) {
+      return '<$0.01';
+    }
+    return formatUsdValue(value);
+  }
+
   $: token
 </script>
 
@@ -104,7 +112,7 @@
             {token.formattedBalance}
           </div>
           <div class="usd-value">
-            {formatUsdValue(token.formattedUsdValue)}
+            {formatUsdValueWithMinimum(token.formattedUsdValue)}
           </div>
         </div>
 

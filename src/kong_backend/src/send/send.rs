@@ -45,7 +45,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     let ts: u64 = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Send(args.clone()), ts));
 
-    let result = process_send(
+    process_send(
         request_id,
         user_id,
         to_user_id,
@@ -63,15 +63,10 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
         },
         |reply| {
             request_map::update_status(request_id, StatusCode::Success, None);
+            archive_to_kong_data(&reply);
             Ok(reply)
         },
-    );
-
-    request_map::get_by_request_and_user_id(Some(request_id), Some(user_id), None)
-        .first()
-        .map(archive_to_kong_data);
-
-    result
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -112,9 +107,7 @@ fn process_send(
     Ok(reply)
 }
 
-fn archive_to_kong_data(request: &StableRequest) {
-    request_map::archive_request_to_kong_data(request.request_id);
-    if let Reply::Send(reply) = &request.reply {
-        tx_map::archive_tx_to_kong_data(reply.tx_id);
-    };
+fn archive_to_kong_data(reply: &SendReply) {
+    request_map::archive_request_to_kong_data(reply.request_id);
+    tx_map::archive_tx_to_kong_data(reply.tx_id);
 }

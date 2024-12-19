@@ -6,9 +6,8 @@
   import { PoolService } from "$lib/services/pools/PoolService";
   import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
-  import { auth } from "$lib/services/auth";
   import { browser } from "$app/environment";
-    import { toastStore } from "$lib/stores/toastStore";
+  import { toastStore } from "$lib/stores/toastStore";
 
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
@@ -100,27 +99,8 @@
   async function handleInput(index: 0 | 1, value: string) {
     if (index === 0) {
         amount0 = value;
-        if (pool && value && token0 && token1) {
-            try {
-                const parsedAmount0 = parseTokenAmount(value, token0.decimals);
-                const result = await PoolService.calculateLiquidityAmounts(
-                    token0.symbol,
-                    BigInt(parsedAmount0),
-                    token1.symbol
-                );
-                if (result.Ok) {
-                    amount1 = formatTokenAmount(result.Ok.amount_1.toString(), token1.decimals);
-                }
-            } catch (err) {
-                console.error("Error calculating amounts:", err);
-                toastStore.error(err.message || "Failed to calculate amounts", 8000, "Error");
-            }
-        }
     } else {
         amount1 = value;
-        // Similar calculation for amount0 when amount1 changes
-        // You'd need to modify calculateLiquidityAmounts to support calculating amount0
-        // based on amount1 input, or create a new method for this
     }
     error = null;
   }
@@ -162,9 +142,7 @@
   async function pollStatus(requestId: bigint, attempt = 1) {
     try {
         const MAX_ATTEMPTS = 50;
-        console.log(`Polling for request status... (attempt ${attempt}/10)`);
         const status = await PoolService.pollRequestStatus(requestId);
-        console.log('Request status:', status);
         
         if (status.statuses.includes('Success')) {
             console.log('Success status found, showing toast');

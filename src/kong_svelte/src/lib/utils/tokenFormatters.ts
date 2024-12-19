@@ -1,5 +1,3 @@
-import { formatToNonZeroDecimal } from "./numberFormatUtils";
-
 /**
  * Formats a raw token balance considering its decimals
  * @param rawBalance The raw balance as a string (big integer format)
@@ -45,13 +43,13 @@ export function calculateTotalUsdValue(tx: FE.Transaction, formattedTokens: FE.T
     const payUsdValue =
       payToken.symbol === "ckUSDT"
         ? tx.pay_amount
-        : tx.pay_amount * (payToken.price || 0);
+        : tx.pay_amount * (Number(payToken.metrics.price) || 0);
   
     // Calculate USD value from receive side
     const receiveUsdValue =
       receiveToken.symbol === "ckUSDT"
         ? tx.receive_amount
-        : tx.receive_amount * (receiveToken.price || 0);
+        : tx.receive_amount * (Number(receiveToken.metrics.price) || 0);
   
     // Use the higher value
     return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
