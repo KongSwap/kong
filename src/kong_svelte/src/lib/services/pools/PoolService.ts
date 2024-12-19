@@ -1,7 +1,6 @@
 // services/PoolService.ts
 import { auth, requireWalletConnection } from "$lib/services/auth";
 import { get } from "svelte/store";
-import { PoolResponseSchema, UserPoolBalanceSchema } from "./poolSchema";
 import { IcrcService } from "../icrc/IcrcService";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { canisterIDLs } from "../pnp/PnpInitializer";
@@ -45,7 +44,6 @@ export class PoolService {
     poolId: string | number,
   ): Promise<BE.Pool> {
     try {
-      console.log("[PoolService] Getting pool details for ID:", poolId);
       const actor = await auth.pnp.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
@@ -58,10 +56,6 @@ export class PoolService {
         throw new Error(`Invalid pool ID: ${poolId}`);
       }
 
-      console.log(
-        "[PoolService] Fetching pool with numeric ID:",
-        numericPoolId,
-      );
       const pool = await actor.get_by_pool_id(numericPoolId);
 
       if (!pool) {
@@ -84,10 +78,9 @@ export class PoolService {
     token1Symbol: string,
   ): Promise<any> {
     try {
-      const actor = await auth.pnp.getActor(
+      const actor = await createAnonymousActorHelper(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
-        { anon: true, requiresSigning: false },
       );
       const result = await actor.add_liquidity_amounts(
         token0Symbol,
@@ -256,7 +249,12 @@ export class PoolService {
         tx_id_1: tx_id_1.map(id => ({ BlockIndex: id.BlockIndex.toString() }))
       });
 
-      const result = await actor.add_liquidity_async(addLiquidityArgs);
+      let result;
+      if(["oisy"].includes(auth.pnp.activeWallet.id)) {
+        result = await actor.add_liquidity(addLiquidityArgs);
+      } else {
+        result = await actor.add_liquidity_async(addLiquidityArgs);
+      }
 
       if ("Err" in result) {
         throw new Error(result.Err);
@@ -385,38 +383,14 @@ export class PoolService {
   public static async fetchUserPoolBalances(): Promise<FE.UserPoolBalance[]> {
     try {
       const wallet = get(auth);
-      console.log("[PoolService] Fetching user pool balances, wallet state:", {
-        isConnected: wallet.isConnected,
-        hasAccount: !!wallet.account,
-        accountOwner: wallet.account?.owner,
-      });
 
       if (!wallet.isConnected || !wallet.account?.owner) {
-        console.log(
-          "[PoolService] Wallet not connected or no account owner, returning empty balances",
-        );
+        // when wallet not connected, return empty balances
         return [];
       }
 
-      console.log("[PoolService] Creating actor...");
-      const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
-        canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
-      );
-
-      if (!actor) {
-        console.error("[PoolService] Actor creation failed");
-        throw new Error("Actor not available");
-      }
-
-      console.log(
-        "[PoolService] Actor created successfully, fetching balances...",
-      );
-      const balances = await actor.user_balances([]);
-      console.log("[PoolService] Balances fetched successfully:", balances);
-
-      return balances;
+      const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
+      return await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
     } catch (error) {
       if (error.message?.includes("Anonymous user")) {
         console.log(

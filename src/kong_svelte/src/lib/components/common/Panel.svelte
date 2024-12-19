@@ -5,6 +5,7 @@
     import ModernPanel from '$lib/components/themes/modern/Panel.svelte';
 
     export let variant: "green" | "yellow" | "blue" = "green";
+    export let pixelVariant: "green" | "yellow" = variant as "green" | "yellow";
     export let type: "main" | "secondary" = "main";
     export let width: string = "auto";
     export let height: string = "auto"; 
@@ -16,7 +17,7 @@
 
 {#if $themeStore === 'pixel'}
     <PixelPanel
-        {variant}
+        variant={pixelVariant}
         {type}
         {width}
         {height}

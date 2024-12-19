@@ -1,15 +1,11 @@
 <script lang="ts">
   import Button from "$lib/components/common/Button.svelte";
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
-  import { browser } from "$app/environment";
-  import { t } from "$lib/services/translations";
   import { auth } from "$lib/services/auth";
   import { fade } from "svelte/transition";
 
   export let activeTab: "swap" | "earn" | "stats";
   export let sidebarOpen: boolean;
-  export let isModalOpen: boolean;
   export let isMobile: boolean;
   export let onTabChange: (tab: "swap" | "earn" | "stats") => void;
   export let onConnect: () => void;
@@ -136,8 +132,8 @@
 
           <Button
             text={$auth.isConnected
-              ? $t("common.openDrawer")
-              : $t("common.connect")}
+              ? "Wallet"
+              : "Connect"}
             variant="yellow"
             size="medium"
             state={sidebarOpen ? "selected" : "default"}
@@ -162,7 +158,7 @@
     </button>
 
     <h2 class="menu-title">
-      {$t("common.navigation")}
+      Navigation
     </h2>
     {#each [...tabs, "stats"] as tab}
       <Button
@@ -177,8 +173,8 @@
     {/each}
     <Button
       text={$auth.isConnected
-        ? $t("common.openDrawer")
-        : $t("common.connect")}
+        ? "Wallet"
+        : "Connect"}
       variant="yellow"
       state={sidebarOpen ? "selected" : "default"}
       onClick={() => {

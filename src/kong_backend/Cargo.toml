@@ -9,6 +9,8 @@ name = "kong_backend"
 crate-type = ["cdylib"]
 
 [features]
+local = []
+staging = []
 prod = []
 
 [dependencies]

@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
 import viteCompression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
@@ -20,7 +21,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
     build: {
       emptyOutDir: true,
       sourcemap: true,
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
           manualChunks: (id) => {
@@ -87,7 +88,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           ],
         },
         workbox: {
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/.*\.js$/,
@@ -95,8 +96,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
               options: {
                 cacheName: 'js-cache',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 30 * 24 * 60 * 60
+                  maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
                 }
               }
             }
@@ -122,15 +122,11 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       alias: [
         {
           find: "@declarations",
-          replacement: fileURLToPath(
-            new URL("../declarations", import.meta.url)
-          ),
+          replacement: path.resolve(__dirname, "../declarations")
         },
         {
           find: "$lib",
-          replacement: fileURLToPath(
-            new URL("./src/lib", import.meta.url)
-          ),
+          replacement: path.resolve(__dirname, "./src/lib")
         },
       ],
     },
@@ -139,10 +135,11 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       format: 'es',
     },
     define: {
-      'process.env.CANISTER_ID_KONG_BACKEND': JSON.stringify(env.CANISTER_ID_KONG_BACKEND),
-      'process.env.CANISTER_ID_ICP_LEDGER': JSON.stringify(env.CANISTER_ID_ICP_LEDGER),
-      'process.env.DFX_NETWORK': JSON.stringify(env.DFX_NETWORK),
-      'process.env.IC_HOST': JSON.stringify(env.IC_HOST),
+      'process.env': JSON.stringify(env),
+      'import.meta.env': JSON.stringify({
+        ...env,
+        MODE: mode,
+      })
     },
     test: {
       environment: 'jsdom',

@@ -12,7 +12,7 @@ use crate::stable_token::lp_token::LPToken;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token_map;
 
-/// Adds a token to the system
+/// Adds a token to Kong
 ///
 /// # Arguments
 ///

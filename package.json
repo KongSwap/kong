@@ -6,15 +6,19 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "build": "npm -r build",
-    "prebuild": "npm -r prebuild",
-    "pretest": "npm -r prebuild",
-    "start": "npm -r start",
-    "test": "npm -r test"
+    "build": "npm run build --workspaces",
+    "kong:deploy:local": "cd scripts/local && ./deploy_kong.sh ",
+    "prebuild": "npm run prebuild --workspaces",
+    "pretest": "npm run prebuild --workspaces",
+    "start": "npm --workspace=src/kong_svelte start",
+    "test": "npm run test --workspaces"
   },
   "workspaces": [
     "src/kong_svelte"
   ],
   "type": "module",
-  "packageManager": "npm@9.7.0+sha256.b35018fbfa8f583668b2649e407922a721355cd81f61beeb4ac1d4258e585559"
+  "packageManager": "npm@9.7.0+sha256.b35018fbfa8f583668b2649e407922a721355cd81f61beeb4ac1d4258e585559",
+  "dependencies": {
+    "@dfinity/ledger-icp": "^2.6.4"
+  }
 }

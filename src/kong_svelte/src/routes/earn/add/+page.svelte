@@ -162,9 +162,7 @@
   async function pollStatus(requestId: bigint, attempt = 1) {
     try {
         const MAX_ATTEMPTS = 50;
-        console.log(`Polling for request status... (attempt ${attempt}/10)`);
         const status = await PoolService.pollRequestStatus(requestId);
-        console.log('Request status:', status);
         
         if (status.statuses.includes('Success')) {
             console.log('Success status found, showing toast');

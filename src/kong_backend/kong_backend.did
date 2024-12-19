@@ -550,21 +550,21 @@ service : {
     icrc21_canister_call_consent_message: (icrc21_consent_message_request) -> (icrc21_consent_message_response);
     icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
     
-    // tokens(wildcard) - returns all tokens or wildcard search
+    // tokens(opt wildcard) - returns all tokens or wildcard search
     tokens : (opt text) -> (TokensResult) query;
-    // pools(wildcard) - returns all pools or wildcard search
+    // pools(opt wildcard) - returns all pools or wildcard search
     pools : (opt text) -> (PoolsResult) query;
 
     // user() - returns user information
     get_user : () -> (UserResult) query;
-    // user_balances(lp_token_wildcard) - returns all user balances or specific LP token balances (current only supports balance of LP tokens)
-    user_balances : (opt text) -> (UserBalancesResult) query;
-    // messages(message_id) - returns specific message or all messages of the user
+    // user_balances(principal_id, opt lp_token_wildcard) - returns all user balances or specific LP token balances (current only supports balance of LP tokens)
+    user_balances : (text, opt text) -> (UserBalancesResult) query;
+    // messages(opt message_id) - returns specific message or all messages of the user
     messages : (opt nat64) -> (MessagesResult) query;
-    // txs(my_txs) - returns transactions of the user or all transactions
-    txs : (opt bool) -> (TxsResult) query;
-    // requests(request_id) - returns specific request or all requests of the user
+    // requests(opt request_id) - return specific request or most recent requests
     requests : (opt nat64) -> (RequestsResult) query;
+    // txs(opt principal_id) - return transactions filtered by principal id
+    txs : (opt text) -> (TxsResult) query;
 
     // add a new liquidity pool and token
     add_pool : (AddPoolArgs) -> (AddPoolResult);

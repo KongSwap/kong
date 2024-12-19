@@ -5,7 +5,6 @@
     availableWallets,
     selectedWalletId,
   } from "$lib/services/auth";
-  import { t } from "$lib/services/translations";
 
   const dispatch = createEventDispatcher();
   let connecting = false;

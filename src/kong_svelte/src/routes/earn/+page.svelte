@@ -44,17 +44,12 @@
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchTerm = "";
-
   const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
 
-  // Add type for cleanup function
-  type Cleanup = () => void;
+  // Create a writable store for the debounced search term
+  const searchTermStore = writable("");
 
-  onMount(async (): Promise<Cleanup> => {
-    if ($auth.isConnected) {
-      await poolStore.loadUserPoolBalances();
-    }
-
+  onMount(() => {
     window.addEventListener("resize", checkMobile);
     checkMobile();
 
@@ -71,12 +66,7 @@
   $: if (browser) {
     checkMobile();
   }
-
-  // Watch for auth changes and reload balances
-  $: if ($auth.isConnected) {
-    poolStore.loadUserPoolBalances();
-  }
-
+  
   const tokenMap = derived(formattedTokens, ($tokens) => {
     const map = new Map();
     if ($tokens) {
@@ -101,48 +91,103 @@
     showPoolDetails = true;
   }
 
-  // Debounce search input
+  // Update the search term store when debouncing
   $: {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+      searchTermStore.set(searchTerm.trim().toLowerCase());
     }, 300);
   }
 
-  // Filter pools by search (only when viewing all pools)
-  $: filteredPools = $displayPools.filter((pool) => {
-    // Filter out pools with price < $0.15 when viewing user pools
-    if ($activePoolView === "user" && Number(pool.price) < 0.15) {
-      return false;
+  // Create filteredPools as a derived store
+  const filteredPools = derived(
+    [displayPools, activePoolView, tokenMap, searchTermStore],
+    ([$displayPools, $activePoolView, $tokenMap, $searchTerm]) => {
+      if ($activePoolView === "user") {
+        return [];
+      }
+
+      if ($activePoolView !== "all") return $displayPools;
+
+      if (!$searchTerm) return $displayPools;
+
+      return $displayPools.filter((pool) => {
+        const token0 = $tokenMap.get(pool.address_0);
+        const token1 = $tokenMap.get(pool.address_1);
+
+        const searchMatches = [
+          pool.symbol_0.toLowerCase(),
+          pool.symbol_1.toLowerCase(),
+          `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
+          `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
+          pool.address_0?.toLowerCase() || "",
+          pool.address_1?.toLowerCase() || "",
+          token0?.name?.toLowerCase() || "",
+          token1?.name?.toLowerCase() || "",
+        ];
+
+        return searchMatches.some((match) => match.includes($searchTerm));
+      });
     }
+  );
 
-    if ($activePoolView !== "all") return true; // no search filtering when on user view
+  // Create sortedPools as a derived store
+  const sortedPools = derived(
+    [filteredPools, sortColumn, sortDirection],
+    ([$filteredPools, $sortColumn, $sortDirection]) => {
+      if (!$filteredPools) return [];
+      
+      // Find the Kong pool with highest TVL
+      let highestTVLKongPool = null;
+      let highestTVL = -1;
+      $filteredPools.forEach(pool => {
+        if ((pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) && 
+            Number(pool.tvl) > highestTVL) {
+          highestTVLKongPool = pool;
+          highestTVL = Number(pool.tvl);
+        }
+      });
+      
+      return [...$filteredPools].sort((a, b) => {
+        // If a is the highest TVL Kong pool, it goes first
+        if (a === highestTVLKongPool) return -1;
+        // If b is the highest TVL Kong pool, it goes first
+        if (b === highestTVLKongPool) return 1;
+        
+        // Normal sorting for all other pools
+        let valueA, valueB;
+        switch ($sortColumn) {
+          case 'price':
+            valueA = Number(a.price);
+            valueB = Number(b.price);
+            break;
+          case 'tvl':
+            valueA = Number(a.tvl);
+            valueB = Number(b.tvl);
+            break;
+          case 'rolling_24h_volume':
+            valueA = Number(a.rolling_24h_volume);
+            valueB = Number(b.rolling_24h_volume);
+            break;
+          case 'rolling_24h_apy':
+            valueA = Number(a.rolling_24h_apy);
+            valueB = Number(b.rolling_24h_apy);
+            break;
+          default:
+            return 0;
+        }
 
-    if (!debouncedSearchTerm) return true;
-
-    const token0 = $tokenMap.get(pool.address_0);
-    const token1 = $tokenMap.get(pool.address_1);
-
-    const searchMatches = [
-      pool.symbol_0.toLowerCase(),
-      pool.symbol_1.toLowerCase(),
-      `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase(),
-      `${pool.symbol_1}/${pool.symbol_0}`.toLowerCase(),
-      pool.address_0?.toLowerCase() || "",
-      pool.address_1?.toLowerCase() || "",
-      token0?.name?.toLowerCase() || "",
-      token1?.name?.toLowerCase() || "",
-    ];
-
-    return searchMatches.some((match) => match.includes(debouncedSearchTerm));
-  });
+        return $sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+      });
+    }
+  );
 
   function toggleSort(column: string) {
     if ($sortColumn === column) {
-      sortDirection.update((d) => (d === "asc" ? "desc" : "asc"));
+      sortDirection.set($sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       sortColumn.set(column);
-      sortDirection.set("asc");
+      sortDirection.set('desc'); // Default to descending when changing columns
     }
   }
 
@@ -150,38 +195,6 @@
     if ($sortColumn !== column) return ArrowUpDown;
     return $sortDirection === "asc" ? ArrowUp : ArrowDown;
   }
-
-  $: sortedPools = [...filteredPools].sort((a: BE.Pool, b: BE.Pool) => {
-    // Always put Kong pools first
-    const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
-    const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
-    
-    if (aHasKong && !bHasKong) return -1;
-    if (!aHasKong && bHasKong) return 1;
-
-    if ($activePoolView !== "all") return 0;
-
-    const direction = $sortDirection === "asc" ? 1 : -1;
-    const column = $sortColumn;
-
-    if (column === "rolling_24h_volume") {
-      return direction * (Number(a.rolling_24h_volume) - Number(b.rolling_24h_volume));
-    }
-    if (column === "tvl") {
-      return direction * (Number(a.tvl || 0) - Number(b.tvl || 0));
-    }
-    if (column === "rolling_24h_apy") {
-      return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
-    }
-    if (column === "price") {
-      return direction * (Number(a.price) - Number(b.price));
-    }
-    return 0;
-  }).map(pool => ({
-    ...pool,
-    tvl: Number(pool.tvl),
-    displayTvl: Number(pool.tvl),
-  }));
 
   function handlePoolClick(event) {
     const pool = event.detail;
@@ -217,7 +230,7 @@
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      debouncedSearchTerm = searchTerm.trim().toLowerCase();
+      poolStore.setSearch(searchTerm.trim().toLowerCase());
     }, 300);
   }
 </script>
@@ -271,8 +284,8 @@
     {/if}
 
     {#if $activeSection === "pools"}
-      <Panel className="flex-1">
-        <div class="h-full overflow-hidden flex flex-col">
+      <Panel className="flex-1 {$isMobile ? '' : '!p-0'}">
+        <div class="overflow-hidden flex flex-col">
           <!-- Header with full-width search and "My Pools" button -->
           <div class="flex flex-col sticky top-0 z-20">
             <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
@@ -312,16 +325,9 @@
                     on:input={handleSearch}
                   />
                 </div>
-                <div class="w-full">
-                  <div class="">
-                    <button class="primary-button bg-transparent border border-blue-500/40" on:click={() => goto("/earn/add")}>
-                      Add Position
-                    </button>
-                  </div>
-                </div>
               </div>
-
-              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d]">
+              <!-- Desktop view -->
+              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
@@ -411,66 +417,48 @@
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div
-                class="overflow-auto flex-1 max-h-[calc(100vh-20.5rem)] {$isMobile
-                  ? 'max-h-[calc(97vh-16.5rem)]'
+                class="overflow-auto flex-1 max-h-[calc(100vh-17.5rem)] {$isMobile
+                  ? 'max-h-[calc(101vh-21.5rem)] pb-20'
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
-                <table class="w-full hidden md:table relative">
-                  <thead class="sticky top-0 z-10">
+                <table class="pools-table w-full hidden md:table relative">
+                  <thead class="sticky top-0 z-10 bg-[#1E1F2A]">
                     <tr class="h-10 border-b border-[#2a2d3d]">
+                      <th class="text-left text-sm font-medium text-[#8890a4]">Pool</th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4]"
-                        >Pool</th
-                      >
-                      <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("price")}
                       >
                         Price
-                        <svelte:component
-                          this={getSortIcon("price")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("price")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("tvl")}
                       >
                         TVL
-                        <svelte:component
-                          this={getSortIcon("tvl")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("tvl")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_volume")}
                       >
                         Volume 24H
-                        <svelte:component
-                          this={getSortIcon("rolling_24h_volume")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_apy")}
                       >
                         APY
-                        <svelte:component
-                          this={getSortIcon("rolling_24h_apy")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
+                        <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
-                      <th
-                        class="text-left p-2 text-sm font-medium text-[#8890a4]"
-                        >Actions</th
-                      >
+                      <th class="text-left text-sm font-medium text-[#8890a4]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                  <tbody class="!px-4">
+                    {#each $sortedPools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
                         pool={{
                           ...pool,
@@ -488,8 +476,8 @@
                 </table>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="md:hidden space-y-4">
-                  {#each sortedPools as pool, i (pool.address_0 + pool.address_1)}
+                <div class="md:hidden space-y-4 mt-2">
+                  {#each $sortedPools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <div
                       class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 
                             {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) ? 'kong-special-card' : ''}"
@@ -636,7 +624,7 @@
   />
 {/if}
 
-<style>
+<style scoped lang="postcss">
   .earn-cards {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
     max-width: 100%;
@@ -649,10 +637,6 @@
            hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
            backdrop-blur-sm;
     min-width: 0; /* Prevent flex items from growing beyond container */
-  }
-
-  .earn-card[disabled] {
-    @apply opacity-75 cursor-not-allowed hover:border-[#2a2d3d] hover:bg-[#1a1b23]/60 hover:shadow-none;
   }
 
   .card-content {
@@ -785,30 +769,25 @@
     }
   }
 
-  /* Custom breakpoint for extra small screens */
-  @media (min-width: 350px) {
-    .xs\:flex-row {
-      flex-direction: row;
-    }
-    
-    .xs\:w-auto {
-      width: auto;
-    }
-    
-    .xs\:flex-1 {
-      flex: 1 1 0%;
-    }
-  }
-  
   .kong-special-card {
     background: rgba(0, 255, 128, 0.02);
-    
-    .token-info {
-      font-weight: 500;
-    }
 
     &:hover {
       background: rgba(0, 255, 128, 0.04);
+    }
+  }
+
+  .pools-table {
+    th, td {
+      padding: 0.5rem 0.5rem;
+      
+      &:first-child {
+        padding-left: 1rem;
+      }
+      
+      &:last-child {
+        padding-right: 1rem;
+      }
     }
   }
 </style>

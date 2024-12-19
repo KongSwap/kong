@@ -11,7 +11,6 @@ use crate::stable_memory::REQUEST_MAP;
 
 const MAX_REQUESTS: usize = 20;
 
-/// get requests filtered by user_id
 pub fn get_by_request_and_user_id(start_request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<usize>) -> Vec<StableRequest> {
     REQUEST_MAP.with(|m| {
         let map = m.borrow();

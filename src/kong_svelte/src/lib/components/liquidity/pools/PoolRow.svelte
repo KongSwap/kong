@@ -5,6 +5,8 @@
     import TokenImages from "$lib/components/common/TokenImages.svelte";
     import { onMount } from 'svelte';
     import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
+    import { tokenStore } from "$lib/services/tokens/tokenStore";
+    import { get } from "svelte/store";
   
     interface Pool {
       tvl: number;
@@ -14,7 +16,7 @@
       address_1: string;
       symbol_0: string;
       symbol_1: string;
-      price: number;
+      price: number | string;
     }
   
     export let pool: Pool;
@@ -46,6 +48,41 @@
     function handleAddLiquidity() {
       onAddLiquidity(pool.address_0, pool.address_1);
     }
+
+    function getTokenPrice(): string {
+      const store = get(tokenStore);
+      const token0 = tokenMap.get(pool.address_0);
+      const token1 = tokenMap.get(pool.address_1);
+      
+      // For ckUSDT pairs, use the pool price directly
+      if (token1?.symbol === "ckUSDT" || token0?.symbol === "ckUSDT") {
+        return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+      }
+      
+      // For ICP pairs
+      if (token1?.symbol === "ICP") {
+        const icpPrice = store.prices?.[pool.address_1];
+        const poolPrice = Number(pool.price);
+        if (icpPrice && !isNaN(poolPrice)) {
+          return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
+        }
+      } else if (token0?.symbol === "ICP") {
+        const icpPrice = store.prices?.[pool.address_0];
+        const poolPrice = Number(pool.price);
+        if (icpPrice && !isNaN(poolPrice)) {
+          return `$${formatToNonZeroDecimal(poolPrice * icpPrice)}`;
+        }
+      }
+      
+      // For other pairs, use token0's price from store
+      const price = store.prices?.[pool.address_0];
+      if (typeof price === 'number' && !isNaN(price)) {
+        return `$${formatToNonZeroDecimal(price)}`;
+      }
+      
+      // Fallback to pool price
+      return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+    }
   
 </script>
 
@@ -68,7 +105,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatToNonZeroDecimal(Number(tokenMap.get(pool.address_0)?.price) ?? 0)}
+          {getTokenPrice()}
         </div>
       </div>
     </td>
@@ -142,6 +179,7 @@
 <style lang="scss">
   tr {
     transition: colors 150ms;
+    padding: 0 1rem;
   }
 
   tr:hover {
@@ -161,10 +199,10 @@
   }
 
   td {
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
     color: #8890a4;
-    border-bottom: 1px solid #2a2d3d;
+    border-bottom: 1px solid #2a2d3da8;
     height: 64px;
   }
 
@@ -275,7 +313,7 @@
   .mobile-pool-card {
     background-color: #1a1b23;
     border-radius: 0.5rem;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
     border: 1px solid #2a2d3d;
   }
@@ -316,7 +354,7 @@
 
   @media (max-width: 640px) {
     .mobile-pool-card {
-      padding: 0.625rem;
+      padding: 0.625rem 1rem;
     }
     
     .token-info {
@@ -326,6 +364,5 @@
     .tvl-badge {
       font-size: 0.6875rem;
     }
-
   }
 </style>
