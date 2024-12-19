@@ -25,7 +25,7 @@
   let isLoading = false;
   let error = "";
   let quoteUpdateInterval: ReturnType<typeof setInterval>;
-  const QUOTE_UPDATE_INTERVAL = 2000; // 3 seconds
+  const QUOTE_UPDATE_INTERVAL = 1500; // 1.5 seconds
 
   $: payUsdValue = formatTokenAmount(payAmount.toString(), payToken?.decimals);
   $: receiveUsdValue = formatTokenAmount(receiveAmount.toString(), receiveToken?.decimals);
@@ -149,17 +149,22 @@
             payToken.symbol,
             ...quote.Ok.txs.map((tx) => tx.receive_symbol),
           ];
-          gasFees = [];
-          lpFees = [];
 
-          quote.Ok.txs.forEach((tx) => {
-            gasFees.push(
-              SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals),
-            );
-            lpFees.push(
-              SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals),
-            );
-          });
+          // Only update fees if they exist in the quote
+          const newGasFees = quote.Ok.txs.map(tx => 
+            SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals)
+          );
+          const newLpFees = quote.Ok.txs.map(tx => 
+            SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals)
+          );
+
+          // Only update if we have valid fees
+          if (newGasFees.length > 0) {
+            gasFees = newGasFees;
+          }
+          if (newLpFees.length > 0) {
+            lpFees = newLpFees;
+          }
         }
       } else {
         error = quote.Err;
