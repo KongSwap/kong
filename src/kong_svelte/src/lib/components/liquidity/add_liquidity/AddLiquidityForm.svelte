@@ -316,9 +316,7 @@
         amount0,
         amount1,
         token0,
-        token1,
-        token0Balance,
-        token1Balance
+        token1
     );
 
     $: buttonText = getButtonText(
@@ -386,6 +384,9 @@
         
         // Get the raw value and clean it
         let rawValue = input.value.replace(/,/g, '');
+        if (rawValue === '') {
+            return;
+        }
         
         if (!isValidNumber(rawValue)) {
             input.value = index === 0 ? displayValue0 : displayValue1;

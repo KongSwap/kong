@@ -472,9 +472,10 @@ export const portfolioValue = derived<
   if (!$formattedTokens) return "$0.00";
 
   const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
-    const balance = $tokenStore.balances[token.canister_id]?.in_tokens || 0n;
-    const price = Number(token.metrics?.price || 0);
-    const amount = Number(balance) / Math.pow(10, token.decimals);
+    const balance = $tokenStore?.balances[token.canister_id]
+    const balanceInTokens = balance?.in_tokens || 0n;
+    const price = Number(token?.metrics?.price || 0);
+    const amount = Number(balanceInTokens) / Math.pow(10, token.decimals);
     return sum + amount * price;
   }, 0);
 

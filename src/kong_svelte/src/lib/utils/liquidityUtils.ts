@@ -1,6 +1,8 @@
 import { BigNumber } from 'bignumber.js';
 import { formatTokenAmount } from './numberFormatUtils';
 import { IcrcService } from '../services/icrc/IcrcService';
+import { tokenStore } from '$lib/services/tokens';
+import { get } from 'svelte/store';
 
 /**
  * Validates if a token combination is allowed for liquidity provision
@@ -57,7 +59,7 @@ export async function calculateMaxAmount(
         // Get real token fee
         let tokenFee;
         try {
-            tokenFee = await IcrcService.getTokenFee(token);
+            tokenFee = BigInt(token.fee_fixed.toString());
         } catch (error) {
             console.error("Error getting token fee, falling back to fee_fixed:", error);
             if (!token.fee_fixed) {
@@ -66,7 +68,6 @@ export async function calculateMaxAmount(
             tokenFee = BigInt(token.fee_fixed.toString().replace(/_/g, ''));
         }
 
-        // Clean the balance
         const cleanBalance = balance.toString().replace(/_/g, '');
         const balanceBN = new BigNumber(cleanBalance);
 
@@ -103,14 +104,19 @@ export function hasInsufficientBalance(
     amount1: string,
     token0: FE.Token,
     token1: FE.Token,
-    token0Balance: string,
-    token1Balance: string
 ): boolean {
+    if(!token0 || !token1) return false;
     try {
         // Clean the input values first
         const cleanAmount0 = amount0.toString().replace(/[,_]/g, '');
         const cleanAmount1 = amount1.toString().replace(/[,_]/g, '');
-        
+        const store = get(tokenStore);
+        const balance0 = store.balances[token0.canister_id];
+        const balance1 = store.balances[token1.canister_id];
+
+        // Return false if balances aren't loaded yet
+        if (!balance0?.in_tokens || !balance1?.in_tokens) return false;
+
         // Use BigNumber for precise decimal arithmetic
         const amount0Decimal = new BigNumber(cleanAmount0)
             .times(new BigNumber(10).pow(token0.decimals))
@@ -121,12 +127,12 @@ export function hasInsufficientBalance(
             .integerValue(BigNumber.ROUND_FLOOR);
 
         // Clean and convert balances
-        const balance0Decimal = new BigNumber(token0Balance.toString().replace(/_/g, ''));
-        const balance1Decimal = new BigNumber(token1Balance.toString().replace(/_/g, ''));
+        const balance0Decimal = new BigNumber(balance0.in_tokens.toString());
+        const balance1Decimal = new BigNumber(balance1.in_tokens.toString());
 
         // Add fees if needed
-        const fee0 = new BigNumber(token0.fee || 0);
-        const fee1 = new BigNumber(token1.fee || 0);
+        const fee0 = new BigNumber(token0.fee_fixed || 0);
+        const fee1 = new BigNumber(token1.fee_fixed || 0);
 
         // Compare amounts with balances
         return amount0Decimal.plus(fee0).isGreaterThan(balance0Decimal) || 

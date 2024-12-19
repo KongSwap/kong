@@ -40,6 +40,7 @@ export function toMinimalUnit(amount: string, decimals: number): string {
 }
 
 export const formatToNonZeroDecimal = (number: number | string): string => {
+  if (!number || number === "") return "0";
   const num = typeof number === 'string' ? parseFloat(number) : number;
 
   // If the number is less than 0.01, format with more decimal places

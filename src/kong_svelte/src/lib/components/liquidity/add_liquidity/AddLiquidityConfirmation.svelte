@@ -100,7 +100,7 @@
             <div class="pool-info">
                 <div class="info-row">
                     <span>Total Value:</span>
-                    <span>${totalValue}</span>
+                    <span>${totalValue || 0}</span>
                 </div>
                 {#if pool}
                     <div class="info-row">
