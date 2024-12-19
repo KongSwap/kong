@@ -17,41 +17,27 @@
     
     // Calculate USD value for tokens using proper price lookup
     function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
-        console.log("Calculating USD value for:", {
-            amount,
-            tokenSymbol,
-            tokenStore: $tokenStore
-        });
-
         // Find token to get its canister_id
         const token = $tokenStore.tokens.find(t => t.symbol === tokenSymbol);
         
-        console.log("Found token:", token);
-
         if (!token?.canister_id || !amount) {
             console.log("Missing token data:", { token, amount });
             return '0';
         }
 
         // Get price from prices object using canister_id
-        const price = $tokenStore.prices[token.canister_id];
+        const price = token.metrics.price;
         
         if (!price) {
             console.log("No price found for token:", {
                 canisterId: token.canister_id,
-                prices: $tokenStore.prices
+                token: token
             });
             return '0';
         }
 
         // Calculate USD value
-        const usdValue = Number(amount) * price;
-        console.log("USD calculation:", {
-            amount: Number(amount),
-            price,
-            result: usdValue
-        });
-
+        const usdValue = Number(amount) * Number(price);
         return formatToNonZeroDecimal(usdValue);
     }
 

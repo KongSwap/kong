@@ -10,7 +10,7 @@
     type TokenWithAmount = FE.Token & { amount?: string };
     
     const dispatch = createEventDispatcher();
-    let activeTab: 'send' | 'receive' = 'receive';
+    let activeTab: 'send' | 'receive' = 'send';
 
     function handleClose() {
         dispatch('close');

@@ -25,6 +25,7 @@ export const parseTokens = async (
           metrics: {
             ...token.metrics,
             price: "0",
+            tvl: "0",
             price_change_24h: "0",
             volume_24h: "0",
             market_cap: "0",
@@ -53,14 +54,13 @@ export const parseTokens = async (
           metrics: {
             total_supply: token.metrics?.total_supply?.toString() || "0",
             price: existingToken?.metrics?.price || "0",
+            tvl: existingToken?.metrics?.tvl || "0",
             price_change_24h: existingToken?.metrics?.price_change_24h || "0",
             volume_24h: existingToken?.metrics?.volume_24h || "0",
             market_cap: existingToken?.metrics?.market_cap || "0",
             updated_at: existingToken?.metrics?.updated_at || Date.now().toString(),
           },
           total_24h_volume: existingToken?.metrics?.volume_24h || "0",
-          price: Number(existingToken?.metrics?.price || "0"),
-          tvl: existingToken?.tvl || 0,
           balance: existingToken?.balance || "0",
         };
         return result;

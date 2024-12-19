@@ -2,7 +2,6 @@
   import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
   import { fade, scale, fly } from "svelte/transition";
   import { backOut } from "svelte/easing";
-  import { onDestroy } from "svelte";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
@@ -64,6 +63,8 @@
 </script>
 
 {#if show && isValid}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center"
     transition:fade={{ duration: 300 }}

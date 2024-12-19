@@ -83,8 +83,8 @@
     mounted = true;
     identity = {
       ...identity,
-      principalId: auth.pnp.account.owner,
-      accountId: uint8ArrayToHexString(auth.pnp.account.subaccount)
+      principalId: auth.pnp?.account?.owner || '',
+      accountId: auth.pnp?.account?.subaccount ? uint8ArrayToHexString(auth.pnp.account.subaccount) : ''
     };
 
     console.log("PNP", auth.pnp);

@@ -16,20 +16,13 @@ class PriceWorkerImpl implements PriceWorkerApi {
   private updateInterval: number | null = null;
   private tokens: FE.Token[] = [];
   protected isPaused = false;
-  private lastKnownPrices: Record<string, number> = {};
   
   // Adjust intervals based on visibility
-  private readonly ACTIVE_UPDATE_INTERVAL = 15000;   // 30 seconds when active
+  private readonly ACTIVE_UPDATE_INTERVAL = 20000;   // 20 seconds when active
   private readonly BACKGROUND_UPDATE_INTERVAL = 60000; // 60 seconds when in background
 
   async setTokens(tokens: FE.Token[]): Promise<void> {
     this.tokens = tokens;
-    this.lastKnownPrices = Object.fromEntries(
-      tokens.map(token => [
-        token.canister_id, 
-        Number(token.metrics?.price || 0)
-      ])
-    );
   }
 
   async startUpdates(): Promise<void> {
@@ -67,59 +60,60 @@ class PriceWorkerImpl implements PriceWorkerApi {
           batch.map(async (token) => {
             try {
               // Get price first
+              const previousPrice = token.metrics?.price || 0;
               const currentPrice = token.canister_id === ICP_CANISTER_ID 
                 ? await TokenService.getIcpPrice()
                 : await TokenService.fetchPrice(token);
 
-              // Only proceed with other calculations if we have a valid price
-              if (currentPrice > 0) {
-                this.lastKnownPrices[token.canister_id] = currentPrice;
+              // Calculate metrics regardless of price change
+              const volume = this.calculateVolume(token, pools);
+              const marketCap = this.calculateMarketCap(token, currentPrice);
+              const tvl = this.calculateTvl(token, pools);
+              const existingToken = existingTokens.find(t => t.canister_id === token.canister_id);
 
-                // Update token with current price before calculating price change
-                const tokenWithPrice = {
-                  ...token,
-                  metrics: {
-                    ...token.metrics,
-                    price: currentPrice.toString()
-                  }
-                };
-
-                // Calculate price change with updated price
+              if (existingToken) {
+                // Calculate price change
                 const priceChange = token.canister_id === CKUSDT_CANISTER_ID 
                   ? 0 
-                  : await calculate24hPriceChange(tokenWithPrice);
+                  : await calculate24hPriceChange({
+                      ...token,
+                      metrics: {
+                        ...token.metrics,
+                        previous_price: previousPrice.toString(),
+                        price: currentPrice.toString()
+                      }
+                    });
 
-                const volume = this.calculateVolume(token, pools);
-                const marketCap = this.calculateMarketCap(token, currentPrice);
-                const existingToken = existingTokens.find(t => t.canister_id === token.canister_id);
-                if (existingToken) {
-                  const updatedToken = {
-                    ...existingToken,
-                    metrics: {
-                      ...existingToken.metrics,
-                      price: currentPrice.toString(),
-                      price_change_24h: priceChange.toString(),
-                      volume_24h: volume.toString(),
-                      market_cap: marketCap,
-                      total_supply: existingToken.metrics?.total_supply || "0",
-                      updated_at: new Date().toISOString()
-                    },
-                    timestamp: Date.now()
-                  };
+                const updatedToken = {
+                  ...existingToken,
+                  metrics: {
+                    ...existingToken.metrics,
+                    price: currentPrice.toString(),
+                    previous_price: previousPrice.toString(),
+                    price_change_24h: priceChange.toString(),
+                    volume_24h: volume.toString(),
+                    market_cap: marketCap,
+                    tvl: tvl.toString(),
+                    total_supply: existingToken.metrics?.total_supply || "0",
+                    updated_at: new Date().toISOString()
+                  },
+                  timestamp: Date.now()
+                };
 
-                  await kongDB.tokens.put(updatedToken);
-                }
+                // Always update the token in Dexie
+                await kongDB.tokens.put(updatedToken);
 
                 return {
                   id: token.canister_id,
                   price: currentPrice,
+                  previous_price: Number(previousPrice),
                   price_change_24h: priceChange,
                   volume: volume,
-                  market_cap: marketCap
+                  market_cap: marketCap,
+                  tvl: tvl
                 };
-              } else {
-                return null;
               }
+              return null;
             } catch (error) {
               console.error(`Price worker: Error updating token ${token.symbol}:`, error);
               return null;
@@ -131,13 +125,13 @@ class PriceWorkerImpl implements PriceWorkerApi {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      const validUpdates = allUpdates.filter(update => update && update.price > 0);
+      const validUpdates = allUpdates.filter(update => update !== null);
 
       if (validUpdates.length > 0) {
         self.postMessage({ type: 'price_update', updates: validUpdates });
       }
     } catch (error) {
-      console.error('Price worker: Error in price update:', error);
+      console.error('❌ Price worker error:', error);
     }
   }
 
@@ -165,6 +159,20 @@ class PriceWorkerImpl implements PriceWorkerApi {
         await this.postPriceUpdate();
       }
     }, interval);
+  }
+
+  private calculateTvl(token: FE.Token, pools: BE.Pool[]): number {
+    const tokenPools = pools.filter(pool => 
+      pool.address_0 === token.canister_id || 
+      pool.address_1 === token.canister_id
+    );
+
+    const totalTvl = tokenPools.reduce((sum, pool) => {
+      if (!pool.tvl) return sum;
+      return sum + new BigNumber(pool.tvl.toString()).div(new BigNumber(1e6)).toNumber();
+    }, 0);
+
+    return totalTvl;
   }
 
   // Helper method to calculate volume

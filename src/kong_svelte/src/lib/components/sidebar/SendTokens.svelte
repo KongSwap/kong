@@ -75,17 +75,21 @@
 
         addressType = detectAddressType(cleanAddress);
 
-        if (addressType === 'account') {
-            errorMessage = 'Only Principal IDs are currently supported. Account ID support coming soon!';
-            return false;
-        }
-
         if (addressType === null) {
             errorMessage = 'Invalid address format';
             return false;
         }
 
-        // Principal-specific validation
+        // Handle Account ID validation
+        if (addressType === 'account') {
+            if (cleanAddress.length !== 64 || !isValidHex(cleanAddress)) {
+                errorMessage = 'Invalid Account ID format';
+                return false;
+            }
+            return true;
+        }
+
+        // Handle Principal ID validation
         try {
             const principal = Principal.fromText(cleanAddress);
             if (principal.isAnonymous()) {
@@ -150,7 +154,28 @@
             const amountBigInt = BigInt(Math.floor(Number(amount) * 10 ** decimals).toString());
 
             toastStore.info(`Sending ${token.symbol}...`);
-            const result = await IcrcService.icrc1Transfer(token, recipientAddress, amountBigInt);
+            
+            let result;
+            if (addressType === 'account') {
+                // Send to Account ID
+                result = await IcrcService.icrc1Transfer(
+                    token,
+                    recipientAddress, // Account ID string
+                    amountBigInt,
+                    { 
+                        fee: BigInt(token.fee_fixed),
+                        useAccountId: true // New flag to indicate Account ID transfer
+                    }
+                );
+            } else {
+                // Send to Principal ID
+                result = await IcrcService.icrc1Transfer(
+                    token,
+                    recipientAddress, // Principal ID string
+                    amountBigInt,
+                    { fee: BigInt(token.fee_fixed) }
+                );
+            }
 
             if (result?.Ok) {
                 toastStore.success(`Successfully sent ${token.symbol}`);
@@ -186,11 +211,26 @@
     }
 
     $: validationMessage = (() => {
-        if (!recipientAddress) return { type: 'info', text: 'Enter a Principal ID (sending to Account IDs coming soon)' };
-        if (errorMessage) return { type: 'error', text: errorMessage };
-        if (addressType === 'principal') return { type: 'success', text: 'Valid Principal ID' };
-        if (addressType === 'account') return { type: 'error', text: 'Currently only sending to Principal IDs is supported' };
-        return { type: 'error', text: 'Invalid address format' };
+        if (!recipientAddress) return { 
+            type: 'info', 
+            text: 'Enter a Principal ID or Account ID' 
+        };
+        if (errorMessage) return { 
+            type: 'error', 
+            text: errorMessage 
+        };
+        if (addressType === 'principal') return { 
+            type: 'success', 
+            text: 'Valid Principal ID' 
+        };
+        if (addressType === 'account') return { 
+            type: 'success', 
+            text: 'Valid Account ID' 
+        };
+        return { 
+            type: 'error', 
+            text: 'Invalid address format' 
+        };
     })();
 
     async function handlePaste() {
@@ -211,7 +251,7 @@
             toastStore.success('QR code scanned successfully');
             showScanner = false;
         } else {
-            toastStore.error('Invalid QR code. Please scan a valid Principal ID');
+            toastStore.error('Invalid QR code. Please scan a valid Principal ID or Account ID');
         }
     }
 

@@ -4,20 +4,23 @@ import { Actor, HttpAgent } from "@dfinity/agent";
 const actorCache = new Map<string, any>();
 
 // Helper function to create anonymous actor
-export const createAnonymousActorHelper = async (canisterId: string, idl: any) => {
+export const createAnonymousActorHelper = (canisterId: string, idl: any) => {
   // Check cache first
-  const cacheKey = `${canisterId}-${idl.name || 'anonymous'}`;
+  const cacheKey = `${canisterId}-${idl.name || "anonymous"}`;
   if (actorCache.has(cacheKey)) {
     return actorCache.get(cacheKey);
   }
 
   const agent = HttpAgent.createSync({
-    host: process.env.DFX_NETWORK !== "ic" ? "http://localhost:4943" : "https://icp0.io",
+    host:
+      process.env.DFX_NETWORK !== "ic"
+        ? "http://localhost:4943"
+        : "https://icp0.io",
   });
 
   // Always fetch root key in local development
   if (process.env.DFX_NETWORK !== "ic") {
-    await agent.fetchRootKey().catch(console.error);
+    agent.fetchRootKey();
   }
 
   const actor = Actor.createActor(idl as any, {

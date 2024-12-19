@@ -80,7 +80,12 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         'sveltekit/environment'
       ]
     },
-    modulePreload: false 
+    modulePreload: false,
+    commonjsOptions: {
+      include: [/node_modules/],
+      requireReturnsDefault: "namespace" as const,
+      transformMixedEsModules: true
+    }
   };
 
   // Add compression plugins and terser for non-local environments
@@ -122,7 +127,8 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           global: "globalThis",
         },
       },
-      exclude: ['@sveltejs/kit']
+      include: ['dexie', 'comlink', 'borc', '@dfinity/agent'],
+      exclude: ['@sveltejs/kit', '$lib/utils/browser']
     },
     server: {
       proxy: {
@@ -143,11 +149,15 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           find: "$lib",
           replacement: path.resolve(__dirname, "./src/lib")
         },
+        {
+          find: 'dexie',
+          replacement: path.resolve(__dirname, 'node_modules/dexie/dist/dexie.mjs')
+        }
       ],
     },
     worker: {
       plugins: () => [sveltekit()],
-      format: 'es',
+      format: "es" as const,
     },
     define: {
       'process.env': JSON.stringify(env),
@@ -160,6 +170,6 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./test/setup.ts'],
-    },
+    }
   };
 });
