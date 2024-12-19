@@ -28,10 +28,11 @@
     "bignumber.js": "^9.1.2",
     "comlink": "^4.4.2",
     "date-fns": "^4.1.0",
-    "dexie": "^4.0.9",
+    "dexie": "^3.2.4",
     "html5-qrcode": "^2.3.8",
     "hyperid": "^3.3.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "borc": "^3.0.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.1",

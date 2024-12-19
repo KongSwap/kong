@@ -10,7 +10,7 @@ import { browser } from "$app/environment";
 import { TokenService } from "./tokens";
 
 // Export the list of available wallets
-export const availableWallets = walletsList;
+export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
 
 // Create stores for auth state
 export const selectedWalletId = writable<string | null>(null);
@@ -64,9 +64,7 @@ function createAuthStore(pnp: PNP) {
           selectedWalletId.set(walletId);
           isConnected.set(true);
           principalId.set(result.owner.toString());
-
           saveLastWallet(walletId);
-
           const balances = await TokenService.fetchBalances(
             null,
             result.owner.toString(),

@@ -1,7 +1,6 @@
 // src/lib/services/worker/updateWorkerService.ts
 
 /// <reference types="@sveltejs/kit" />
-/// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
@@ -13,6 +12,7 @@ import * as Comlink from "comlink";
 import type { PriceWorkerApi } from "$lib/workers/priceWorker";
 import type { StateWorkerApi } from "$lib/workers/stateWorker";
 import { appLoader } from "$lib/services/appLoader";
+import * as borc from 'borc';
 
 class UpdateWorkerService {
   private priceWorker: Worker | null = null;

@@ -15,7 +15,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node", "vite/client", "svelte"],
+    "types": ["vite/client", "svelte"],
     "checkJs": false,
     "typeRoots": [
       "./node_modules/@types",

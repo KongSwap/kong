@@ -82,7 +82,9 @@ export default defineConfig(({ mode }: ConfigEnv) => {
     },
     modulePreload: false,
     commonjsOptions: {
-      include: []
+      include: [/node_modules/],
+      requireReturnsDefault: "namespace" as const,
+      transformMixedEsModules: true
     }
   };
 
@@ -125,6 +127,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           global: "globalThis",
         },
       },
+      include: ['dexie', 'comlink', 'borc', '@dfinity/agent'],
       exclude: ['@sveltejs/kit', '$lib/utils/browser']
     },
     server: {
@@ -146,11 +149,15 @@ export default defineConfig(({ mode }: ConfigEnv) => {
           find: "$lib",
           replacement: path.resolve(__dirname, "./src/lib")
         },
+        {
+          find: 'dexie',
+          replacement: path.resolve(__dirname, 'node_modules/dexie/dist/dexie.mjs')
+        }
       ],
     },
     worker: {
       plugins: () => [sveltekit()],
-      format: 'es',
+      format: "es" as const,
     },
     define: {
       'process.env': JSON.stringify(env),
