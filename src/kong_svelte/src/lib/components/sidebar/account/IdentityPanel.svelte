@@ -81,51 +81,71 @@
     }
   };
 
-  function convertToSubaccount(raw: any): Uint8Array | undefined {
-    if (!raw) return undefined;
-    
-    // If it's already a Uint8Array, return it
-    if (raw instanceof Uint8Array) return raw;
-    
-    // If it's an array, convert it to Uint8Array
-    if (Array.isArray(raw)) {
-      return new Uint8Array(raw);
+  function convertToSubaccount(raw: any): SubAccount | undefined {
+    try {
+      if (!raw) return undefined;
+      
+      // If it's already a SubAccount, return it
+      if (raw instanceof SubAccount) return raw;
+      
+      // Convert to Uint8Array if needed
+      let bytes: Uint8Array;
+      if (raw instanceof Uint8Array) {
+        bytes = raw;
+      } else if (Array.isArray(raw)) {
+        bytes = new Uint8Array(raw);
+      } else if (typeof raw === 'number') {
+        bytes = new Uint8Array(32).fill(0);
+        bytes[31] = raw;
+      } else {
+        return undefined;
+      }
+      
+      // Ensure array is 32 bytes
+      if (bytes.length !== 32) {
+        const paddedBytes = new Uint8Array(32).fill(0);
+        paddedBytes.set(bytes.slice(0, 32));
+        bytes = paddedBytes;
+      }
+      
+      const subAccountResult = SubAccount.fromBytes(bytes);
+      if (subAccountResult instanceof Error) {
+        throw subAccountResult;
+      }
+      return subAccountResult;
+    } catch (error) {
+      console.error('Error converting subaccount:', error);
+      return undefined;
     }
-    
-    // If it's a number, create a 32-byte array with the number at the end
-    if (typeof raw === 'number') {
-      const bytes = new Uint8Array(32).fill(0);
-      bytes[31] = raw;
-      return bytes;
-    }
-    
-    // Default case: return undefined
-    return undefined;
   }
 
-  function createAccountIdentifier(principalStr: string, rawSubaccount: any): string {
+  function createAccountIdentifier(principalStr: string, rawSubaccount: any): { withSubaccount: string, default: string } {
     try {
       const principal = Principal.fromText(principalStr);
-      let subAccount: SubAccount | undefined = undefined;
       
-      if (rawSubaccount !== undefined && rawSubaccount !== null) {
-        if (rawSubaccount instanceof Uint8Array || Array.isArray(rawSubaccount)) {
-          const bytes = rawSubaccount instanceof Uint8Array ? rawSubaccount : new Uint8Array(rawSubaccount);
-          const subAccountResult = SubAccount.fromBytes(bytes);
-          if (subAccountResult instanceof Error) {
-              throw subAccountResult;
-          }
-          subAccount = subAccountResult;
-        }
-      }
-
-      return AccountIdentifier.fromPrincipal({
+      // Create account ID with provided subaccount
+      const subAccount = convertToSubaccount(rawSubaccount);
+      const withSubaccount = AccountIdentifier.fromPrincipal({
         principal,
         subAccount
       }).toHex();
+      
+      // Create account ID with default (zero) subaccount
+      const defaultAccountId = AccountIdentifier.fromPrincipal({
+        principal,
+        subAccount: undefined  // This will use the default subaccount
+      }).toHex();
+      
+      return {
+        withSubaccount,
+        default: defaultAccountId
+      };
     } catch (error) {
       console.error('Error creating account identifier:', error);
-      return '';
+      return {
+        withSubaccount: '',
+        default: ''
+      };
     }
   }
 
@@ -135,14 +155,28 @@
     const principal = auth.pnp.account.owner;
     const principalStr = typeof principal === 'string' ? principal : principal?.toText?.() || '';
     
-    // Update IDs first
+    // Log debug information
+    console.log('Account Debug:', {
+      principal: principalStr,
+      rawSubaccount: auth.pnp?.account?.subaccount,
+      subaccountArray: Array.from(auth.pnp?.account?.subaccount || [])
+    });
+    
+    const accountIds = createAccountIdentifier(principalStr, auth.pnp?.account?.subaccount);
+    
+    console.log('Generated Account IDs:', {
+      withSubaccount: accountIds.withSubaccount,
+      default: accountIds.default
+    });
+
     identity = {
       ...identity,
       principalId: principalStr,
-      accountId: createAccountIdentifier(principalStr, auth.pnp?.account?.subaccount)
+      accountId: accountIds.withSubaccount,
+      defaultAccountId: accountIds.default
     };
 
-    // Only generate QR codes if we have valid IDs
+    // Generate QR codes
     if (identity.principalId && identity.accountId) {
       const [principalQR, accountQR] = await Promise.all([
         generateQR(identity.principalId),
@@ -266,33 +300,73 @@
                 <div class="info-item">
                   <div class="value-container">
                     <div class="id-row flex items-center">
-                      <span class="value flex items-center text-yellow-400">
-                        Account ID temporarily unavailable
-                      </span>
-                      <div class="action-buttons">
-                        <button
-                          class="action-button"
-                          disabled={true}
-                        >
-                          <span>Copy</span>
-                        </button>
-                        <button
-                          class="action-button"
-                          disabled={true}
-                          title="Show QR Code"
-                        >
-                          <QrCode size={16} />
-                        </button>
+                      <div class="flex flex-col gap-4 w-full">
+                        <div class="flex flex-col">
+                          <span class="text-xs text-gray-400">Principal ID:</span>
+                          <div class="flex items-center justify-between">
+                            <span class="value flex items-center">
+                              {identity.principalId || '...'}
+                            </span>
+                            <div class="action-buttons">
+                              <button
+                                class="action-button"
+                                on:click={() => handleCopy(identity.principalId, 'principal')}
+                                disabled={$copyLoading}
+                              >
+                                {#if $principalCopied}
+                                  <span>Copied!</span>
+                                {:else}
+                                  <span>Copy</span>
+                                {/if}
+                              </button>
+                              <button
+                                class="action-button"
+                                on:click={() => identity.principalQR && openQrModal(identity.principalQR, 'principal')}
+                                title="Show QR Code"
+                              >
+                                <QrCode size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex flex-col">
+                          <span class="text-xs text-gray-400">Account ID:</span>
+                          <div class="flex items-center justify-between">
+                            <span class="value flex items-center">
+                              {identity.defaultAccountId || '...'}
+                            </span>
+                            <div class="action-buttons">
+                              <button
+                                class="action-button"
+                                on:click={() => handleCopy(identity.defaultAccountId, 'account')}
+                                disabled={$copyLoading}
+                              >
+                                {#if $accountCopied}
+                                  <span>Copied!</span>
+                                {:else}
+                                  <span>Copy</span>
+                                {/if}
+                              </button>
+                              <button
+                                class="action-button"
+                                on:click={() => identity.accountQR && openQrModal(identity.accountQR, 'account')}
+                                title="Show QR Code"
+                              >
+                                <QrCode size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div class="info-tooltip">
-                  <p class="text-yellow-400">⚠️ Account ID Feature Notice:</p>
+                  <p>Important Account ID Information:</p>
                   <ul>
-                    <li>Our team is working on resolving this</li>
-                    <li>Please use Principal ID for transactions in the meantime</li>
-                    <li>We apologize for any inconvenience</li>
+                    <li>If you don't see your ICP in the current Account ID, try the Default Account ID</li>
+                    <li>The Current Account ID includes a specific subaccount</li>
+                    <li>The Default Account ID is the most commonly used for receiving ICP</li>
                   </ul>
                 </div>
               </div>
