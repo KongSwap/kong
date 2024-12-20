@@ -24,7 +24,7 @@
     "@dfinity/identity": "2.2.0",
     "@dfinity/principal": "2.2.0",
     "@dfinity/utils": "2.7.1",
-    "@windoge98/plug-n-play": "0.0.15",
+    "@windoge98/plug-n-play": "0.0.22",
     "bignumber.js": "^9.1.2",
     "comlink": "^4.4.2",
     "date-fns": "^4.1.0",

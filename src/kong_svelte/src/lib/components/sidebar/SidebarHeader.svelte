@@ -132,7 +132,11 @@
             {#if isRefreshing}
               <LoadingIndicator />
             {:else}
-              {$portfolioValue || "0.00"}
+              {#if $portfolioValue}
+                {$portfolioValue}
+              {:else}
+                {"0.00"}
+              {/if}
             {/if}
           </p>
           <div class="refresh-overlay glow-box">

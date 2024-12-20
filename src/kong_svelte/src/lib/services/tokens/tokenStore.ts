@@ -469,7 +469,8 @@ export const portfolioValue = derived<
   [typeof tokenStore, Readable<FE.Token[]>],
   string
 >([tokenStore, formattedTokens], ([$tokenStore, $formattedTokens]) => {
-  if (!$formattedTokens) return "$0.00";
+  if($tokenStore.tokens.length === 0) return "$0.00";
+  if (!$formattedTokens || $formattedTokens?.length === 0 || $formattedTokens.length === undefined) return "$0.00";
 
   const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
     const balance = $tokenStore?.balances[token.canister_id]

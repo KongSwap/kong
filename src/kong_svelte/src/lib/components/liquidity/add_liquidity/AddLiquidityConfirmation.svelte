@@ -42,8 +42,8 @@
 
     $: token0Amount = amount0;
     $: token1Amount = amount1;
-    $: token0Value = (Number(amount0) * token0.metrics.price).toFixed(2);
-    $: token1Value = (Number(amount1) * token1.metrics.price).toFixed(2);
+    $: token0Value = (Number(amount0) * Number(token0.metrics.price)).toFixed(2);
+    $: token1Value = (Number(amount1) * Number(token1.metrics.price)).toFixed(2);
     $: totalValue = (Number(token0Value) + Number(token1Value)).toFixed(2);
     
     $: {
