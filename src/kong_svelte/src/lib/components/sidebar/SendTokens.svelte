@@ -10,6 +10,9 @@
     import { onMount, onDestroy } from 'svelte';
     import { Clipboard } from 'lucide-svelte';
     import { Camera } from 'lucide-svelte';
+    import { AccountIdentifier } from '@dfinity/ledger-icp';
+    import { SubAccount } from '@dfinity/ledger-icp';
+    import { auth } from "$lib/services/auth";
 
     export let token: FE.Token;
 
@@ -20,6 +23,20 @@
     let tokenFee: bigint;
     let showScanner = false;
     let hasCamera = false;
+    let selectedAccount: 'subaccount' | 'main' = 'main';
+    let accounts = {
+        subaccount: '',
+        main: ''
+    };
+
+    let balances = token?.symbol === 'ICP' 
+        ? {
+            default: BigInt(0),
+            subaccount: BigInt(0)
+        }
+        : {
+            default: BigInt(0)
+        };
 
     async function loadTokenFee() {
         try {
@@ -34,10 +51,20 @@
         loadTokenFee();
     }
 
-    $: maxAmount = new BigNumber(token.balance)
-        .dividedBy(new BigNumber(10).pow(token.decimals))
-        .minus(new BigNumber(tokenFee?.toString() || '10000').dividedBy(new BigNumber(10).pow(token.decimals)))
-        .toNumber();
+    $: maxAmount = token?.symbol === 'ICP' 
+        ? (selectedAccount === 'main' 
+            ? new BigNumber(balances.default.toString())
+                .dividedBy(new BigNumber(10).pow(token.decimals))
+                .minus(new BigNumber(tokenFee?.toString() || '10000').dividedBy(new BigNumber(10).pow(token.decimals)))
+                .toNumber()
+            : new BigNumber(balances.subaccount.toString())
+                .dividedBy(new BigNumber(10).pow(token.decimals))
+                .minus(new BigNumber(tokenFee?.toString() || '10000').dividedBy(new BigNumber(10).pow(token.decimals)))
+                .toNumber())
+        : new BigNumber(balances.default.toString())
+            .dividedBy(new BigNumber(10).pow(token.decimals))
+            .minus(new BigNumber(tokenFee?.toString() || '10000').dividedBy(new BigNumber(10).pow(token.decimals)))
+            .toNumber();
     let addressType: 'principal' | 'account' | null = null;
     let showConfirmation = false;
 
@@ -114,6 +141,12 @@
             return false;
         }
         
+        const currentBalance = selectedAccount === 'main' ? balances.default : balances.subaccount;
+        const maxAmount = new BigNumber(currentBalance.toString())
+            .dividedBy(new BigNumber(10).pow(token.decimals))
+            .minus(new BigNumber(tokenFee?.toString() || '10000').dividedBy(new BigNumber(10).pow(token.decimals)))
+            .toNumber();
+        
         if (numValue > maxAmount) {
             errorMessage = 'Insufficient balance';
             return false;
@@ -144,6 +177,77 @@
         showConfirmation = true;
     }
 
+    function getAccountIds(principalStr: string, rawSubaccount: any): { subaccount: string, main: string } {
+        try {
+            const principal = Principal.fromText(principalStr);
+            
+            // Create account ID with provided subaccount
+            const subAccount = convertToSubaccount(rawSubaccount);
+            const subaccountId = AccountIdentifier.fromPrincipal({
+                principal,
+                subAccount
+            }).toHex();
+            
+            // Create account ID with main (zero) subaccount
+            const mainAccountId = AccountIdentifier.fromPrincipal({
+                principal,
+                subAccount: undefined
+            }).toHex();
+            
+            return {
+                subaccount: subaccountId,
+                main: mainAccountId
+            };
+        } catch (error) {
+            console.error('Error creating account identifier:', error);
+            return {
+                subaccount: '',
+                main: ''
+            };
+        }
+    }
+
+    function convertToSubaccount(raw: any): SubAccount | undefined {
+        try {
+            if (!raw) return undefined;
+            
+            if (raw instanceof SubAccount) return raw;
+            
+            let bytes: Uint8Array;
+            if (raw instanceof Uint8Array) {
+                bytes = raw;
+            } else if (Array.isArray(raw)) {
+                bytes = new Uint8Array(raw);
+            } else if (typeof raw === 'number') {
+                bytes = new Uint8Array(32).fill(0);
+                bytes[31] = raw;
+            } else {
+                return undefined;
+            }
+            
+            if (bytes.length !== 32) {
+                const paddedBytes = new Uint8Array(32).fill(0);
+                paddedBytes.set(bytes.slice(0, 32));
+                bytes = paddedBytes;
+            }
+            
+            const subAccountResult = SubAccount.fromBytes(bytes);
+            if (subAccountResult instanceof Error) {
+                throw subAccountResult;
+            }
+            return subAccountResult;
+        } catch (error) {
+            console.error('Error converting subaccount:', error);
+            return undefined;
+        }
+    }
+
+    $: if (auth.pnp?.account?.owner) {
+        const principal = auth.pnp.account.owner;
+        const principalStr = typeof principal === 'string' ? principal : principal?.toText?.() || '';
+        accounts = getAccountIds(principalStr, auth.pnp?.account?.subaccount);
+    }
+
     async function confirmTransfer() {
         isValidating = true;
         errorMessage = '';
@@ -155,25 +259,31 @@
 
             toastStore.info(`Sending ${token.symbol}...`);
             
+            // Get the correct subaccount based on selection
+            const fromSubaccount = selectedAccount === 'subaccount' 
+                ? auth.pnp?.account?.subaccount 
+                : undefined;
+
             let result;
             if (addressType === 'account') {
-                // Send to Account ID
                 result = await IcrcService.icrc1Transfer(
                     token,
-                    recipientAddress, // Account ID string
+                    recipientAddress,
                     amountBigInt,
                     { 
                         fee: BigInt(token.fee_fixed),
-                        useAccountId: true // New flag to indicate Account ID transfer
+                        fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
                     }
                 );
             } else {
-                // Send to Principal ID
                 result = await IcrcService.icrc1Transfer(
                     token,
-                    recipientAddress, // Principal ID string
+                    recipientAddress,
                     amountBigInt,
-                    { fee: BigInt(token.fee_fixed) }
+                    { 
+                        fee: BigInt(token.fee_fixed),
+                        fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
+                    }
                 );
             }
 
@@ -181,6 +291,8 @@
                 toastStore.success(`Successfully sent ${token.symbol}`);
                 recipientAddress = '';
                 amount = '';
+                // Reload balances after successful transfer
+                await loadBalances();
             } else if (result?.Err) {
                 const errMsg = typeof result.Err === "object" 
                     ? Object.keys(result.Err)[0]
@@ -268,6 +380,53 @@
     onMount(() => {
         checkCameraAvailability();
     });
+
+    async function loadBalances() {
+        try {
+            if (!auth.pnp?.account?.owner || !token) return;
+            
+            if (token.symbol === 'ICP') {
+                const result = await IcrcService.getIcrc1Balance(
+                    token,
+                    auth.pnp.account.owner,
+                    auth.pnp?.account?.subaccount ? Array.from(auth.pnp.account.subaccount) : undefined,
+                    true
+                );
+                
+                if ('default' in result) {
+                    balances = result;
+                } else {
+                    balances = {
+                        default: result,
+                        subaccount: BigInt(0)
+                    };
+                }
+            } else {
+                const result = await IcrcService.getIcrc1Balance(
+                    token,
+                    auth.pnp.account.owner,
+                    undefined,
+                    false
+                );
+                balances = {
+                    default: result
+                };
+            }
+        } catch (error) {
+            console.error('Error loading balances:', error);
+            balances = token.symbol === 'ICP' 
+                ? { default: BigInt(0), subaccount: BigInt(0) }
+                : { default: BigInt(0) };
+        }
+    }
+
+    $: if (token && auth.pnp?.account?.owner) {
+        loadBalances();
+    }
+
+    $: if (selectedAccount) {
+        loadBalances();
+    }
 </script>
 
 <div class="container" transition:fade>
@@ -335,10 +494,45 @@
                     />
                 </div>
                 <div class="balance-info">
-                    <span>Balance: {formatTokenAmount(token.balance, token.decimals)} {token.symbol}</span>
+                    {#if token.symbol === 'ICP'}
+                        <div class="balance-row">
+                            <span>Default Account:</span>
+                            <span>{formatTokenAmount(balances.default, token.decimals)} {token.symbol}</span>
+                        </div>
+                        <div class="balance-row">
+                            <span>Subaccount:</span>
+                            <span>{formatTokenAmount(balances.subaccount, token.decimals)} {token.symbol}</span>
+                        </div>
+                        <div class="balance-row total">
+                            <span>Selected Balance:</span>
+                            <span>{formatTokenAmount(selectedAccount === 'main' ? balances.default : balances.subaccount, token.decimals)} {token.symbol}</span>
+                        </div>
+                    {:else}
+                        <div class="balance-row total">
+                            <span>Available Balance:</span>
+                            <span>{formatTokenAmount(balances.default, token.decimals)} {token.symbol}</span>
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>
+
+        {#if token.symbol === 'ICP'}
+            <div class="id-card">
+                <div class="id-header">
+                    <span>Source Account</span>
+                </div>
+                <div class="input-group">
+                    <select 
+                        bind:value={selectedAccount}
+                        class="account-select"
+                    >
+                        <option value="subaccount">Subaccount ({accounts.subaccount.slice(0, 6)}...{accounts.subaccount.slice(-6)})</option>
+                        <option value="main">Main Account ({accounts.main.slice(0, 6)}...{accounts.main.slice(-6)})</option>
+                    </select>
+                </div>
+            </div>
+        {/if}
 
         {#if errorMessage}
             <div class="error-message" transition:fade={{duration: 200}}>
@@ -605,5 +799,23 @@
             transform: translateY(100%);
             opacity: 0;
         }
+    }
+
+    .account-select {
+        @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white
+               border border-white/10 hover:border-white/20
+               focus:border-indigo-500 focus:outline-none;
+    }
+
+    .balance-row {
+        @apply flex justify-between text-sm text-white/60;
+        
+        &.total {
+            @apply mt-1 pt-1 border-t border-white/10 text-white/90 font-medium;
+        }
+    }
+
+    .account-info {
+        @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white/70;
     }
 </style>

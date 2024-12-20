@@ -25,7 +25,9 @@ export class IcrcService {
   public static async getIcrc1Balance(
     token: FE.Token,
     principal: Principal,
-  ): Promise<bigint> {
+    subaccount?: number[] | undefined,
+    separateBalances: boolean = false
+  ): Promise<{ default: bigint, subaccount: bigint } | bigint> {
     try {
       const actor = await auth.getActor(
         token.canister_id,
@@ -33,13 +35,30 @@ export class IcrcService {
         { anon: true, requiresSigning: false },
       );
 
-      return await actor.icrc1_balance_of({
+      // Get default balance
+      const defaultBalance = await actor.icrc1_balance_of({
         owner: principal,
         subaccount: [],
       });
+
+      // If we don't need separate balances or there's no subaccount, return total
+      if (!separateBalances || !subaccount) {
+        return defaultBalance;
+      }
+
+      // Get subaccount balance
+      const subaccountBalance = await actor.icrc1_balance_of({
+        owner: principal,
+        subaccount: [subaccount],
+      });
+
+      return {
+        default: defaultBalance,
+        subaccount: subaccountBalance
+      };
     } catch (error) {
       console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
-      return BigInt(0);
+      return separateBalances ? { default: BigInt(0), subaccount: BigInt(0) } : BigInt(0);
     }
   }
 
@@ -49,10 +68,13 @@ export class IcrcService {
     principal: Principal,
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
+    const subaccount = auth.pnp?.account?.subaccount 
+      ? Array.from(auth.pnp.account.subaccount)
+      : undefined;
 
     // Group tokens by subnet to minimize subnet key fetches
     const tokensBySubnet = tokens.reduce((acc, token) => {
-      const subnet = token.canister_id.split("-")[1]; // Simple subnet grouping
+      const subnet = token.canister_id.split("-")[1];
       if (!acc.has(subnet)) acc.set(subnet, []);
       acc.get(subnet).push(token);
       return acc;
@@ -62,7 +84,9 @@ export class IcrcService {
     await Promise.all(
       Array.from(tokensBySubnet.values()).map(async (subnetTokens) => {
         const balances = await Promise.all(
-          subnetTokens.map((token) => this.getIcrc1Balance(token, principal)),
+          subnetTokens.map((token) => 
+            this.getIcrc1Balance(token, principal, subaccount)
+          ),
         );
 
         subnetTokens.forEach((token, i) => {
@@ -226,12 +250,11 @@ export class IcrcService {
             ? { owner: Principal.fromText(to), subaccount: [] }
             : { owner: to, subaccount: [] },
         amount,
-        fee: [BigInt(token.fee_fixed)], // Use the actual token fee
+        fee: [BigInt(token.fee_fixed)],
         memo: opts.memo || [],
-        from_subaccount: opts.fromSubaccount || [],
+        from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
         created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
       });
-
 
       return result;
     } catch (error) {
