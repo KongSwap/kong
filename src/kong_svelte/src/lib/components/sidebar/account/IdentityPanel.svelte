@@ -266,22 +266,19 @@
                 <div class="info-item">
                   <div class="value-container">
                     <div class="id-row flex items-center">
-                      <span class="value flex items-center">{identity.accountId || '...'}</span>
+                      <span class="value flex items-center text-yellow-400">
+                        Account ID temporarily unavailable
+                      </span>
                       <div class="action-buttons">
                         <button
                           class="action-button"
-                          on:click={() => handleCopy(identity.accountId, 'account')}
-                          disabled={$copyLoading}
+                          disabled={true}
                         >
-                          {#if $accountCopied}
-                            <span>Copied!</span>
-                          {:else}
-                            <span>Copy</span>
-                          {/if}
+                          <span>Copy</span>
                         </button>
                         <button
                           class="action-button"
-                          on:click={() => identity.accountQR && openQrModal(identity.accountQR, 'account')}
+                          disabled={true}
                           title="Show QR Code"
                         >
                           <QrCode size={16} />
@@ -291,12 +288,11 @@
                   </div>
                 </div>
                 <div class="info-tooltip">
-                  <p>Your Account ID is a legacy address format that:</p>
+                  <p class="text-yellow-400">⚠️ Account ID Feature Notice:</p>
                   <ul>
-                    <li>Is primarily used for ICP token transfers</li>
-                    <li>Works with NNS and Internet Identity</li>
-                    <li>Is not compatible with most ICRC tokens</li>
-                    <li>May be required for some older applications</li>
+                    <li>Our team is working on resolving this</li>
+                    <li>Please use Principal ID for transactions in the meantime</li>
+                    <li>We apologize for any inconvenience</li>
                   </ul>
                 </div>
               </div>
