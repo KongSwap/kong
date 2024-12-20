@@ -254,6 +254,9 @@
     function calculateTotalUsdValue(): string {
         const amount0Usd = Number(calculateTokenUsdValue(estimatedAmounts.amount0, pool.symbol_0));
         const amount1Usd = Number(calculateTokenUsdValue(estimatedAmounts.amount1, pool.symbol_1));
+        if(isNaN(amount0Usd) || isNaN(amount1Usd)) {
+            return "0";
+        }
         return formatToNonZeroDecimal(amount0Usd + amount1Usd);
     }
 </script>
@@ -457,7 +460,7 @@
                                     </div>
                                 </div>
                                 <div class="total-value">
-                                    Total Value: <span class="value">${calculateTotalUsdValue()}</span>
+                                    Total Value: <span class="value">${calculateTotalUsdValue() || 0}</span>
                                 </div>
                             </div>
                         </div>

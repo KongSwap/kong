@@ -39,11 +39,10 @@ export class KongDB extends Dexie {
     this.version(CURRENT_VERSION).upgrade((tx) => {
       const previousVersion = tx.table("previous_version").get("version") || 0;
       if (Number(previousVersion) < CURRENT_VERSION) {
-        tx.db.delete().then(() => tx.db.open());
+        return tx.table("previous_version").put({
+          version: CURRENT_VERSION,
+        });
       }
-      return tx.table("previous_version").put({
-        version: CURRENT_VERSION,
-      });
     });
 
     this.tokens = this.table("tokens");
