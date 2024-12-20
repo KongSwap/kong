@@ -1,52 +1,40 @@
 <script lang="ts">
-    import {
-      formatToNonZeroDecimal,
-    } from "$lib/utils/numberFormatUtils";
-    import TokenImages from "$lib/components/common/TokenImages.svelte";
-    import { onMount } from 'svelte';
-    import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
-  
-    interface Pool {
-      tvl: number;
-      rolling_24h_volume: bigint;
-      rolling_24h_apy: number;
-      address_0: string;
-      address_1: string;
-      symbol_0: string;
-      symbol_1: string;
-      price: number;
-    }
-  
-    export let pool: Pool;
-    export let tokenMap: Map<string, any>;
-    export let isEven: boolean;
-    export let isKongPool = false;
-    export let onAddLiquidity: (token0: string, token1: string) => void;
-    export let onShowDetails: () => void;
-  
-    let isMobile = false;
-    let showDetailsButton = true;
-  
-    type Cleanup = () => void;
-  
-    onMount((): Cleanup => {
-      const checkMobile = () => {
-        isMobile = window.innerWidth < 768;
-        showDetailsButton = window.innerWidth >= 1150;
-      };
-      
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-      
-      return () => {
-        window.removeEventListener('resize', checkMobile);
-      };
-    });
-  
-    function handleAddLiquidity() {
-      onAddLiquidity(pool.address_0, pool.address_1);
-    }
-  
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { onMount } from "svelte";
+  import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
+  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
+
+  export let pool: BE.Pool;
+  export let tokenMap: Map<string, any>;
+  export let isEven: boolean;
+  export let isKongPool = false;
+  export let onAddLiquidity: (token0: string, token1: string) => void;
+  export let onShowDetails: () => void;
+
+  let isMobile = false;
+  let showDetailsButton = true;
+
+  type Cleanup = () => void;
+
+  onMount((): Cleanup => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 768;
+      showDetailsButton = window.innerWidth >= 1150;
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  });
+
+  function handleAddLiquidity() {
+    onAddLiquidity(pool.address_0, pool.address_1);
+  }
+
 </script>
 
 {#if !isMobile}
@@ -68,14 +56,14 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatToNonZeroDecimal(Number(tokenMap.get(pool.address_0)?.price) ?? 0)}
+          {getPoolPriceUsd(pool) || 0}
         </div>
       </div>
     </td>
     <td class="tvl-cell">
       <div class="tvl-info">
         <div class="tvl-value">
-          {formatUsdValue(Number(pool.tvl) / (10 ** 6))}
+          {formatUsdValue(Number(pool.tvl) / 10 ** 6)}
         </div>
       </div>
     </td>
@@ -95,17 +83,11 @@
     </td>
     <td class="actions-cell">
       <div class="actions">
-        <button
-          class="action-btn add-lp"
-          on:click={handleAddLiquidity}
-        >
+        <button class="action-btn add-lp" on:click={handleAddLiquidity}>
           Add LP
         </button>
         {#if showDetailsButton}
-          <button 
-            class="action-btn details"
-            on:click={onShowDetails}
-          >
+          <button class="action-btn details" on:click={onShowDetails}>
             Details
           </button>
         {/if}
@@ -128,10 +110,7 @@
         </div>
       </div>
       <div class="card-actions">
-        <button
-          class="action-btn details"
-          on:click={onShowDetails}
-        >
+        <button class="action-btn details" on:click={onShowDetails}>
           Details
         </button>
       </div>
@@ -142,6 +121,7 @@
 <style lang="scss">
   tr {
     transition: colors 150ms;
+    padding: 0 1rem;
   }
 
   tr:hover {
@@ -150,7 +130,7 @@
 
   tr.kong-special-row {
     background: rgba(0, 255, 128, 0.02);
-    
+
     td {
       font-weight: 500;
     }
@@ -161,10 +141,10 @@
   }
 
   td {
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
     color: #8890a4;
-    border-bottom: 1px solid #2a2d3d;
+    border-bottom: 1px solid #2a2d3da8;
     height: 64px;
   }
 
@@ -275,7 +255,7 @@
   .mobile-pool-card {
     background-color: #1a1b23;
     border-radius: 0.5rem;
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
     border: 1px solid #2a2d3d;
   }
@@ -316,9 +296,9 @@
 
   @media (max-width: 640px) {
     .mobile-pool-card {
-      padding: 0.625rem;
+      padding: 0.625rem 1rem;
     }
-    
+
     .token-info {
       gap: 0.5rem;
     }
@@ -326,6 +306,5 @@
     .tvl-badge {
       font-size: 0.6875rem;
     }
-
   }
 </style>

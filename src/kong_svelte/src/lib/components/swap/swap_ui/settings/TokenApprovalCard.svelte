@@ -1,19 +1,13 @@
 <script lang="ts">
 	import { getTokenLogo } from '$lib/services/tokens/tokenLogos';
   import Button from '$lib/components/common/Button.svelte';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
-  import { derived } from 'svelte/store';
 
   export let isApproved: boolean;
-  export let tokenId: string;
+  export let token: FE.Token;
   export let onApprove: () => Promise<void>;
   export let onRevoke: () => Promise<void>;
 
   let loading = false;
-
-  const token = derived(tokenStore, $tokenStore => {
-    return $tokenStore.tokens.find(t => t.canister_id === tokenId);
-  });
 
   async function handleAction(action: 'approve' | 'revoke') {
     if (loading) return;
@@ -32,24 +26,24 @@
 <div class="token-card" class:approved={isApproved}>
   <div class="token-info">
     <div class="token-logo-wrapper">
-      {#if $token}
+      {#if token}
         <img 
-          src={await getTokenLogo($token.canister_id)} 
-          alt={$token.symbol} 
+          src={await getTokenLogo(token.canister_id)} 
+          alt={token.symbol} 
           class="token-logo"
           loading="lazy"
         />
       {/if}
     </div>
     <div class="token-details">
-      {#if $token}
-        <span class="token-symbol">{$token.symbol}</span>
+      {#if token}
+        <span class="token-symbol">{token.symbol}</span>
         <div class="token-meta">
-          <span class="token-balance" title={`${$token.formattedBalance} ${$token.symbol}`}>
-            {$token.formattedBalance} {$token.symbol}
+          <span class="token-balance" title={`${token.formattedBalance} ${token.symbol}`}>
+            {token.formattedBalance} {token.symbol}
           </span>
-          <span class="token-value" title={`$${$token.formattedUsdValue}`}>
-            ${$token.formattedUsdValue}
+          <span class="token-value" title={`$${token.formattedUsdValue}`}>
+            ${token.formattedUsdValue}
           </span>
         </div>
       {/if}

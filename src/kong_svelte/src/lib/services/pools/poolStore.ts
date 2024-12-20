@@ -1,14 +1,19 @@
-import { derived, writable, type Readable } from 'svelte/store';
+import { derived, writable, type Readable, get, readable } from 'svelte/store';
 import { PoolService } from './PoolService';
 import { formatPoolData } from '$lib/utils/statsUtils';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
-import BigNumber from 'bignumber.js';
-import { get } from 'svelte/store';
 import { auth } from '../auth';
 import { eventBus } from '$lib/services/tokens/eventBus';
+import { kongDB } from '../db';
+import { KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { liveQuery } from "dexie";
+
+interface ExtendedPool extends BE.Pool {
+  displayTvl?: number;
+}
 
 interface PoolState {
-  pools: BE.Pool[];
+  pools: ExtendedPool[];
   userPoolBalances: FE.UserPoolBalance[];
   totals: {
     tvl: number;
@@ -21,7 +26,12 @@ interface PoolState {
 }
 
 // Create a stable reference for pools data
-const stablePoolsStore = writable<BE.Pool[]>([]);
+const stablePoolsStore = writable<ExtendedPool[]>([]);
+
+// Create a store for the search term and sort parameters
+export const poolSearchTerm = writable('');
+export const poolSortColumn = writable('rolling_24h_volume');
+export const poolSortDirection = writable<'asc' | 'desc'>('desc');
 
 function createPoolStore() {
   const CACHE_DURATION = 1000 * 60; // 30 second cache
@@ -38,22 +48,86 @@ function createPoolStore() {
     lastUpdate: null,
   });
 
-  // Cache management
-  const cache = {
-    pools: new Map<string, BE.Pool>(),
-    lastFetch: 0
+  // Remove the in-memory cache object and replace with DB check
+  const shouldRefetch = async () => {
+    const latestPool = await kongDB.pools
+      .orderBy('timestamp')
+      .reverse()
+      .first();
+    return !latestPool || Date.now() - latestPool.timestamp > CACHE_DURATION;
   };
 
-  const shouldRefetch = () => {
-    return Date.now() - cache.lastFetch > CACHE_DURATION;
-  };
+  // Create a derived store for filtered and sorted pools
+  const filteredAndSortedPools = derived(
+    [stablePoolsStore, poolSearchTerm, poolSortColumn, poolSortDirection],
+    ([$pools, $searchTerm, $sortColumn, $sortDirection]) => {
+      let result = [...$pools];
+
+      // Apply search filter
+      if ($searchTerm) {
+        const search = $searchTerm.toLowerCase();
+        result = result.filter(pool => {
+          return (
+            pool.symbol_0.toLowerCase().includes(search) ||
+            pool.symbol_1.toLowerCase().includes(search) ||
+            `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(search) ||
+            pool.address_0.toLowerCase().includes(search) ||
+            pool.address_1.toLowerCase().includes(search)
+          );
+        });
+      }
+
+      // Apply sorting
+      const direction = $sortDirection === 'asc' ? 1 : -1;
+      result.sort((a, b) => {
+        // Always put Kong pools first
+        const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
+        const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
+        
+        if (aHasKong && !bHasKong) return -1;
+        if (!aHasKong && bHasKong) return 1;
+
+        switch ($sortColumn) {
+          case 'rolling_24h_volume': {
+            const diff = BigInt(a.rolling_24h_volume) - BigInt(b.rolling_24h_volume);
+            return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+          }
+          case 'tvl': {
+            const diff = BigInt(a.tvl || 0) - BigInt(b.tvl || 0);
+            return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+          }
+          case 'rolling_24h_apy':
+            return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
+          case 'price':
+            return direction * (Number(a.price) - Number(b.price));
+          default:
+            return 0;
+        }
+      });
+
+      return result;
+    }
+  );
 
   return {
     subscribe,
+    filteredAndSortedPools,
     loadPools: async (forceRefresh = false) => {
-      // Determine if we should fetch new data
-      if (!forceRefresh && !shouldRefetch() && cache.pools.size > 0) {
-        return Array.from(cache.pools.values());
+      // Check DB first if no force refresh
+      if (!forceRefresh) {
+        const shouldFetch = await shouldRefetch();
+        if (!shouldFetch) {
+          const cachedPools = await kongDB.pools.toArray();
+          if (cachedPools.length > 0) {
+            stablePoolsStore.set(cachedPools);
+            update(state => ({
+              ...state,
+              pools: cachedPools,
+              isLoading: false
+            }));
+            return cachedPools;
+          }
+        }
       }
 
       update(state => ({ ...state, isLoading: true, error: null }));
@@ -67,16 +141,18 @@ function createPoolStore() {
         // Process pools data
         const pools = formatPoolData(poolsData.pools);
 
-        // Update cache
-        const newPoolsMap = new Map<string, BE.Pool>();
-        pools.forEach(pool => {
-          newPoolsMap.set(pool.id, pool);
+        // Store in DB instead of cache
+        await kongDB.transaction('rw', kongDB.pools, async () => {
+          // Clear existing pools
+          await kongDB.pools.clear();
+          // Add new pools
+          await kongDB.pools.bulkAdd(pools);
         });
 
-        // Update the stable store first
+        // Update the stable store
         stablePoolsStore.set(pools);
 
-        // Then update the main store
+        // Update the main store
         set({
           pools: pools,
           userPoolBalances: get(poolStore).userPoolBalances,
@@ -90,12 +166,6 @@ function createPoolStore() {
           lastUpdate: Date.now()
         });
 
-        // Update cache
-        cache.pools = newPoolsMap;
-        cache.lastFetch = Date.now();
-        console.log('[PoolStore] Pools data updated successfully');
-
-        // Emit event for token store to update if needed
         eventBus.emit('poolsUpdated', pools);
 
         return pools;
@@ -111,15 +181,17 @@ function createPoolStore() {
     },
 
     getPool: async (poolId: string) => {
-      // Check cache first
-      if (cache.pools.has(poolId)) {
-        return cache.pools.get(poolId);
+      // Check DB first
+      const cachedPool = await kongDB.pools.get(poolId);
+      if (cachedPool) {
+        return cachedPool;
       }
 
       try {
         const pool = await PoolService.getPoolDetails(poolId);
-        cache.pools.set(poolId, pool);
-        // Optionally, update the pools array if necessary
+        // Store in DB
+        await kongDB.pools.put(pool);
+        // Update the pools array
         update(state => ({
           ...state,
           pools: [...state.pools.filter(p => p.id !== poolId), pool]
@@ -154,18 +226,15 @@ function createPoolStore() {
           return;
         }
 
-        const [balancesResponse, tokenPrices] = await Promise.all([
+        const [balancesResponse] = await Promise.all([
           PoolService.fetchUserPoolBalances(),
-          tokens.prices
         ]);
 
-        if (!tokenPrices) {
-          throw new Error('Token prices are not available');
-        }
 
-        // Process the response
+        // Process the response with proper type checking
         const balances = Array.isArray(balancesResponse) ? balancesResponse : 
-                        balancesResponse && 'Ok' in balancesResponse ? balancesResponse.Ok : [];
+                        balancesResponse && typeof balancesResponse === 'object' && 'Ok' in balancesResponse ? 
+                        (balancesResponse as { Ok: any[] }).Ok : [];
         
         // Process each balance item
         const processedBalances = balances.map(item => {
@@ -183,6 +252,7 @@ function createPoolStore() {
             symbol_1: lpData.symbol_1,
             balance: lpData.balance,
             tvl: lpData.tvl,
+            price: lpData.price,
             amount_0: lpData.amount_0,
             amount_1: lpData.amount_1,
             usd_balance: lpData.usd_balance,
@@ -212,8 +282,8 @@ function createPoolStore() {
     },
 
     reset: () => {
-      cache.pools.clear();
-      cache.lastFetch = 0;
+      // Clear DB instead of cache
+      kongDB.pools.clear();
       set({
         pools: [],
         userPoolBalances: [],
@@ -227,7 +297,16 @@ function createPoolStore() {
         lastUpdate: null,
       });
       console.log('[PoolStore] Reset successful');
-    }
+    },
+
+    setSort: (column: string, direction: 'asc' | 'desc') => {
+      poolSortColumn.set(column);
+      poolSortDirection.set(direction);
+    },
+
+    setSearch: (term: string) => {
+      poolSearchTerm.set(term);
+    },
   };
 }
 
@@ -259,3 +338,108 @@ export const displayPools = derived(poolsList, ($pools) => {
     displayTvl: Number(pool.tvl) / 1e6
   }));
 });
+
+// Export the filtered and sorted pools store
+export const sortedPools = derived(
+  poolStore.filteredAndSortedPools,
+  ($pools) => $pools.map(pool => ({
+    ...pool,
+    tvl: BigInt(pool.tvl),
+    rolling_24h_volume: BigInt(pool.rolling_24h_volume),
+    displayTvl: Number(pool.tvl) / 1e6,
+  }))
+);
+
+// Dexie's liveQuery for livePools
+export const livePools = readable<ExtendedPool[]>([], set => {
+  const subscription = liveQuery(async () => {
+    const pools = await kongDB.pools
+      .orderBy('timestamp')
+      .reverse()
+      .toArray();
+
+    if (!pools?.length) {
+      return [];
+    }
+
+    return pools.map(pool => ({
+      ...pool,
+      displayTvl: Number(pool.tvl) / 1e6,
+    } as ExtendedPool));
+  }).subscribe({
+    next: value => set(value),
+    error: err => console.error('[livePools] Error:', err),
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
+});
+
+// Derived store for filtered and sorted pools
+export const filteredLivePools = derived(
+  [livePools, poolSearchTerm, poolSortColumn, poolSortDirection],
+  ([
+    $livePools,
+    $poolSearchTerm,
+    $poolSortColumn,
+    $poolSortDirection,
+  ]: [ExtendedPool[], string, string, 'asc' | 'desc']) => {
+    let result = [...$livePools];
+
+    // Apply search filter
+    if ($poolSearchTerm) {
+      const search = $poolSearchTerm.toLowerCase();
+      result = result.filter((pool: ExtendedPool) => {
+        return (
+          pool.symbol_0.toLowerCase().includes(search) ||
+          pool.symbol_1.toLowerCase().includes(search) ||
+          `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(search) ||
+          pool.address_0.toLowerCase().includes(search) ||
+          pool.address_1.toLowerCase().includes(search)
+        );
+      });
+    }
+
+    // Apply sorting
+    const direction = $poolSortDirection === 'asc' ? 1 : -1;
+    result.sort((a: ExtendedPool, b: ExtendedPool) => {
+      // Always put Kong pools first
+      const aHasKong =
+        a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
+      const bHasKong =
+        b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
+
+      if (aHasKong && !bHasKong) return -1;
+      if (!aHasKong && bHasKong) return 1;
+
+      switch ($poolSortColumn) {
+        case 'pool_name': {
+          const nameA = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
+          const nameB = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
+          return direction * nameA.localeCompare(nameB);
+        }
+        case 'rolling_24h_volume': {
+          const diff =
+            BigInt(a.rolling_24h_volume) - BigInt(b.rolling_24h_volume);
+          return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+        }
+        case 'tvl': {
+          const diff = BigInt(a.tvl || 0) - BigInt(b.tvl || 0);
+          return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
+        }
+        case 'rolling_24h_apy':
+          return (
+            direction *
+            (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy))
+          );
+        case 'price':
+          return direction * (Number(a.price) - Number(b.price));
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }
+);

@@ -1,9 +1,13 @@
-#[cfg(not(feature = "prod"))]
-pub const KONG_BACKEND: &str = "oaq4p-2iaaa-aaaar-qahqa-cai";
-#[cfg(feature = "prod")]
-pub const KONG_BACKEND: &str = "3ldz4-aiaaa-aaaar-qaina-cai";
+pub const KONG_BACKEND: &str = if cfg!(feature = "staging") {
+    "l4lgk-raaaa-aaaar-qahpq-cai"
+} else {
+    // local or prod
+    "2ipq2-uqaaa-aaaar-qailq-cai"
+};
 
-#[cfg(not(feature = "prod"))]
-pub const KONG_DATA: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
-#[cfg(feature = "prod")]
-pub const KONG_DATA: &str = "cbefx-hqaaa-aaaar-qakrq-cai";
+pub const KONG_DATA: &str = if cfg!(feature = "staging") {
+    "6ukzc-hiaaa-aaaah-qpxqa-cai"
+} else {
+    // local or prod
+    "cbefx-hqaaa-aaaar-qakrq-cai"
+};

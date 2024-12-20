@@ -58,7 +58,9 @@
             aria-label="View account details"
           >
             <span class="flex items-center justify-between w-full">
-              Account Details
+              <span class="flex items-center gap-1 opacity-90">
+                My Addresses
+              </span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -130,7 +132,11 @@
             {#if isRefreshing}
               <LoadingIndicator />
             {:else}
-              {$portfolioValue}
+              {#if $portfolioValue}
+                {$portfolioValue}
+              {:else}
+                {"0.00"}
+              {/if}
             {/if}
           </p>
           <div class="refresh-overlay glow-box">
@@ -199,6 +205,10 @@
     text-align: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+    min-height: 80px;  
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .portfolio-refresh-button {
@@ -212,6 +222,18 @@
     border-radius: 6px;
     transition: all 0.2s ease;
     z-index: 0;
+    min-height: 80px;  
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .portfolio-refresh-button :global(.loading-container) {
+    min-height: 32px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .portfolio-refresh-button:active {

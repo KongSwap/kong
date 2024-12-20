@@ -1,12 +1,16 @@
 [package]
 name = "kong_faucet"
-version = "0.0.13"
+version = "0.0.14"
 edition = "2021"
 description = "Kong Swap faucet canister"
 
 [lib]
 name = "kong_faucet"
 crate-type = ["cdylib"]
+
+[features]
+local = []
+staging = []
 
 [dependencies]
 kong_lib = { path = "../kong_lib" }

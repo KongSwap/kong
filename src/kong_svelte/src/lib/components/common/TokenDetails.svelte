@@ -7,8 +7,10 @@
 
     export let token: FE.Token;
     
+    type TokenWithAmount = FE.Token & { amount?: string };
+    
     const dispatch = createEventDispatcher();
-    let activeTab: 'send' | 'receive' = 'receive';
+    let activeTab: 'send' | 'receive' = 'send';
 
     function handleClose() {
         dispatch('close');
@@ -76,7 +78,7 @@
                     <IdentityPanel display="principal" />
                 {/if}
             {:else}
-                <SendTokens token={{ ...token, amount: token.balance ?? "0" }} />
+                <SendTokens token={{ ...token, amount: token.balance ?? "0" } as TokenWithAmount} />
             {/if}
         </div>
     </div>

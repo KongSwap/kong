@@ -26,8 +26,10 @@ declare global {
       metrics: {
         total_supply: string;
         price: string;
+        previous_price?: string;
         volume_24h: string;
         market_cap: string;
+        tvl: string;
         updated_at: string;
         price_change_24h?: string;
         historical_price?: number;
@@ -35,12 +37,9 @@ declare global {
       };
       logo_url: string;
       total_24h_volume: string;
-      price: number;
-      tvl: number;
       balance: string;
       timestamp?: number;
       isFavorite?: boolean;
-      usdValue?: number;
       formattedBalance?: string;
       formattedUsdValue?: string;
       marketCapRank?: number;
@@ -73,6 +72,14 @@ declare global {
       user: {
         principal_id: string;
       };
+    }
+
+    export interface AllowanceData {
+      address: string;
+      amount: bigint;
+      spender: string;
+      wallet_address: string;
+      timestamp: number;
     }
   }
 }

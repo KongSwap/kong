@@ -1,6 +1,6 @@
 [package]
 name = "kong_data"
-version = "0.0.13"
+version = "0.0.14"
 edition = "2021"
 
 [lib]
@@ -8,6 +8,8 @@ name = "kong_data"
 crate-type = ["cdylib"]
 
 [features]
+local = []
+staging = []
 prod = []
 
 [dependencies]

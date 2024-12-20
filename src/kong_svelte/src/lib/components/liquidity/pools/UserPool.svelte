@@ -17,41 +17,27 @@
     
     // Calculate USD value for tokens using proper price lookup
     function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
-        console.log("Calculating USD value for:", {
-            amount,
-            tokenSymbol,
-            tokenStore: $tokenStore
-        });
-
         // Find token to get its canister_id
         const token = $tokenStore.tokens.find(t => t.symbol === tokenSymbol);
         
-        console.log("Found token:", token);
-
         if (!token?.canister_id || !amount) {
             console.log("Missing token data:", { token, amount });
             return '0';
         }
 
         // Get price from prices object using canister_id
-        const price = $tokenStore.prices[token.canister_id];
+        const price = token.metrics.price;
         
         if (!price) {
             console.log("No price found for token:", {
                 canisterId: token.canister_id,
-                prices: $tokenStore.prices
+                token: token
             });
             return '0';
         }
 
         // Calculate USD value
-        const usdValue = Number(amount) * price;
-        console.log("USD calculation:", {
-            amount: Number(amount),
-            price,
-            result: usdValue
-        });
-
+        const usdValue = Number(amount) * Number(price);
         return formatToNonZeroDecimal(usdValue);
     }
 
@@ -268,6 +254,9 @@
     function calculateTotalUsdValue(): string {
         const amount0Usd = Number(calculateTokenUsdValue(estimatedAmounts.amount0, pool.symbol_0));
         const amount1Usd = Number(calculateTokenUsdValue(estimatedAmounts.amount1, pool.symbol_1));
+        if(isNaN(amount0Usd) || isNaN(amount1Usd)) {
+            return "0";
+        }
         return formatToNonZeroDecimal(amount0Usd + amount1Usd);
     }
 </script>
@@ -282,7 +271,7 @@
     <div class="pool-details">
         <div class="pool-header">
             <div class="token-info">
-                <TokenImages tokens={[token0, token1]} overlap={12} size={28} />
+                <TokenImages tokens={[token0, token1]} overlap={true} size={28} />
                 <h3 class="token-pair">{pool.symbol_0}/{pool.symbol_1}</h3>
             </div>
         </div>
@@ -471,7 +460,7 @@
                                     </div>
                                 </div>
                                 <div class="total-value">
-                                    Total Value: <span class="value">${calculateTotalUsdValue()}</span>
+                                    Total Value: <span class="value">${calculateTotalUsdValue() || 0}</span>
                                 </div>
                             </div>
                         </div>

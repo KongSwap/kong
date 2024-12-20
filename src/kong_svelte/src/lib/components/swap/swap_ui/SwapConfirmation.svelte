@@ -1,9 +1,5 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
-  import {
-    tokenStore,
-    getTokenDecimals,
-  } from "$lib/services/tokens/tokenStore";
   import { SwapService } from "$lib/services/swap/SwapService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
@@ -12,6 +8,8 @@
   import { onMount, onDestroy } from "svelte";
   import { formatTokenValue } from '$lib/utils/tokenFormatters';
   import { toastStore } from "$lib/stores/toastStore";
+  import { createEventDispatcher } from "svelte";
+    import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -26,20 +24,103 @@
 
   let isLoading = false;
   let error = "";
-  let initialQuoteLoaded = false;
-  let initialQuoteData = {
-    routingPath: [],
-    gasFees: [],
-    lpFees: [],
-    payToken: payToken,
-    receiveToken: receiveToken,
+  let quoteUpdateInterval: ReturnType<typeof setInterval>;
+  const QUOTE_UPDATE_INTERVAL = 1500; // 1.5 seconds
+
+  $: payUsdValue = formatTokenAmount(payAmount.toString(), payToken?.decimals);
+  $: receiveUsdValue = formatTokenAmount(receiveAmount.toString(), receiveToken?.decimals);
+
+  $: quoteData = {
+    routingPath,
+    gasFees,
+    lpFees,
+    payToken,
+    receiveToken,
   };
 
-  $: payUsdValue = formatTokenValue(payAmount.toString(), payToken?.price, payToken?.decimals);
-  $: receiveUsdValue = formatTokenValue(receiveAmount.toString(), receiveToken?.price, receiveToken?.decimals);
+  const dispatch = createEventDispatcher<{
+    quoteUpdate: { receiveAmount: string };
+  }>();
 
   onMount(async () => {
     cleanComponent();
+    await updateQuote(); // Initial quote update
+    
+    // Set up periodic quote updates
+    quoteUpdateInterval = setInterval(async () => {
+      if (!isLoading) { // Only update if not processing a swap
+        await updateQuote();
+      }
+    }, QUOTE_UPDATE_INTERVAL);
+  });
+
+  async function handleConfirm() {
+    if (isLoading) {
+      console.log("Already processing, returning");
+      return;
+    }
+
+    // Clear the quote update interval when starting the swap
+    if (quoteUpdateInterval) {
+      clearInterval(quoteUpdateInterval);
+    }
+
+    isLoading = true;
+    error = "";
+    
+    try {
+      const result = await onConfirm();
+      
+      if (result === true) {
+        swapState.update(state => ({
+          ...state,
+          showConfirmation: false,
+          isProcessing: false,
+          error: null,
+          showSuccessModal: true
+        }));
+        onClose?.();
+        return true;
+      } else {
+        console.log("Swap failed or returned non-true value");
+        error = "Swap failed";
+        toastStore.error(error);
+        return false;
+      }
+    } catch (e) {
+      console.error("Swap confirmation error:", e);
+      error = e.message || "An error occurred";
+      toastStore.error(error);
+      return false;
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  onDestroy(() => {
+    cleanComponent();
+    if (quoteUpdateInterval) {
+      clearInterval(quoteUpdateInterval);
+    }
+  });
+
+  function calculateTotalFee(lpFees) {
+    if (!lpFees || !Array.isArray(lpFees)) {
+      return 0;
+    }
+    
+    return lpFees.reduce((total, fee) => total + Number(fee), 0);
+  }
+
+  function cleanComponent() {
+    isLoading = false;
+    error = "";
+    if (quoteUpdateInterval) {
+      clearInterval(quoteUpdateInterval);
+    }
+  }
+
+  async function updateQuote() {
     try {
       const payDecimals = payToken.decimals;
       const payAmountBigInt = SwapService.toBigInt(payAmount, payDecimals);
@@ -51,37 +132,34 @@
       );
 
       if ("Ok" in quote) {
-        const receiveDecimals = receiveToken.decimals;
         receiveAmount = SwapService.fromBigInt(
           quote.Ok.receive_amount,
-          receiveDecimals,
+          receiveToken.decimals,
         );
 
-        if (quote.Ok.txs.length > 0 && !initialQuoteLoaded) {
-          initialQuoteLoaded = true;
+        dispatch('quoteUpdate', { receiveAmount });
+
+        if (quote.Ok.txs.length > 0) {
           routingPath = [
             payToken.symbol,
             ...quote.Ok.txs.map((tx) => tx.receive_symbol),
           ];
-          gasFees = [];
-          lpFees = [];
 
-          quote.Ok.txs.forEach((tx) => {
-            const receiveDecimals = getTokenDecimals(tx.receive_symbol);
-            gasFees.push(
-              SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals),
-            );
-            lpFees.push(
-              SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals),
-            );
-          });
-          initialQuoteData = {
-            routingPath: routingPath,
-            gasFees: gasFees,
-            lpFees: lpFees,
-            payToken: payToken,
-            receiveToken: receiveToken,
-          };
+          // Only update fees if they exist in the quote
+          const newGasFees = quote.Ok.txs.map(tx => 
+            SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals)
+          );
+          const newLpFees = quote.Ok.txs.map(tx => 
+            SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals)
+          );
+
+          // Only update if we have valid fees
+          if (newGasFees.length > 0) {
+            gasFees = newGasFees;
+          }
+          if (newLpFees.length > 0) {
+            lpFees = newLpFees;
+          }
         }
       } else {
         error = quote.Err;
@@ -93,92 +171,6 @@
       toastStore.error(error);
       setTimeout(() => onClose(), 2000);
     }
-  });
-
-  async function handleConfirm() {
-    if (isLoading) return;
-
-    isLoading = true;
-    error = "";
-    
-    try {
-      const success = await onConfirm();
-      
-      if (success) {
-        swapState.update(state => ({
-          ...state,
-          showConfirmation: false,
-          isProcessing: false,
-          error: null,
-          showSuccessModal: true
-        }));
-        onClose?.();
-      } else {
-        error = "Swap failed";
-        toastStore.error(error);
-        swapState.update(state => ({
-          ...state,
-          isProcessing: false,
-          error: "Swap failed"
-        }));
-      }
-    } catch (e) {
-      error = e.message || "An error occurred";
-      toastStore.error(error);
-      swapState.update(state => ({
-        ...state,
-        isProcessing: false,
-        error: e.message || "An error occurred"
-      }));
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  onDestroy(() => {
-    cleanComponent();
-  });
-
-  $: totalGasFee = calculateTotalFee(initialQuoteData.gasFees);
-  $: totalLPFee = calculateTotalFee(initialQuoteData.lpFees);
-
-  function calculateTotalFee(fees: string[]): number {
-    if (!routingPath.length || !fees.length) return 0;
-
-    return routingPath.slice(1).reduce((acc, _, i) => {
-      const token = $tokenStore.tokens.find(
-        (t) => t.symbol === routingPath[i + 1],
-      );
-      if (!token) return acc;
-
-      const decimals = token.decimals || 8;
-      const feeValue = parseFloat(fees[i]) || 0;
-
-      try {
-        const stepFee = SwapService.fromBigInt(
-          scaleDecimalToBigInt(feeValue, decimals),
-          decimals,
-        );
-        return acc + (Number(stepFee) || 0);
-      } catch (error) {
-        console.error("Error calculating fee:", error);
-        toastStore.error("Error calculating fee");
-        return acc;
-      }
-    }, 0);
-  }
-
-  function scaleDecimalToBigInt(decimal: number, decimals: number): bigint {
-    if (isNaN(decimal) || !isFinite(decimal)) return 0n;
-
-    const scaleFactor = 10n ** BigInt(decimals);
-    const scaledValue = decimal * Number(scaleFactor);
-    return BigInt(Math.floor(Math.max(0, scaledValue)));
-  }
-
-  function cleanComponent() {
-    isLoading = false;
-    error = "";
   }
 </script>
 
@@ -203,13 +195,15 @@
             {payAmount}
             {receiveToken}
             {receiveAmount}
+            {payUsdValue}
+            {receiveUsdValue}
           />
           <RouteSection
-            routingPath={initialQuoteData.routingPath}
+            routingPath={quoteData.routingPath}
           />
           <FeesSection
-            totalGasFee={totalGasFee}
-            totalLPFee={totalLPFee}
+            totalGasFee={calculateTotalFee(quoteData.gasFees)}
+            totalLPFee={calculateTotalFee(quoteData.lpFees)}
             {userMaxSlippage}
             {receiveToken}
           />
@@ -219,8 +213,10 @@
           <button
             class="swap-button"
             class:processing={isLoading}
+            class:shine-animation={!isLoading}
             on:click={handleConfirm}
             disabled={isLoading}
+            on:mousedown={() => console.log("Button pressed")}
           >
             <div class="button-content">
               <span class="button-text">
@@ -236,6 +232,8 @@
             </div>
             {#if !isLoading}
               <div class="button-glow"></div>
+              <div class="shine-effect"></div>
+              <div class="ready-glow"></div>
             {/if}
           </button>
         </div>
@@ -394,6 +392,64 @@
     0% { opacity: 0.9; }
     50% { opacity: 0.7; }
     100% { opacity: 0.9; }
+  }
+
+  .shine-effect {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transform: skewX(-20deg);
+    pointer-events: none;
+  }
+
+  .shine-animation .shine-effect {
+    animation: shine 3s infinite;
+  }
+
+  .ready-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 18px;
+    background: linear-gradient(
+      135deg,
+      rgba(55, 114, 255, 0.5),
+      rgba(111, 66, 193, 0.5)
+    );
+    opacity: 0;
+    filter: blur(8px);
+    transition: opacity 0.3s ease;
+  }
+
+  .shine-animation .ready-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes shine {
+    0%, 100% {
+      left: -100%;
+    }
+    35%, 65% {
+      left: 200%;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.02);
+    }
   }
 
   @media (max-width: 640px) {

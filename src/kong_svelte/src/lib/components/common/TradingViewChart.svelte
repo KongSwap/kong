@@ -7,7 +7,7 @@
   import { fetchChartData } from "$lib/services/indexer/api";
   import { poolStore } from "$lib/services/pools";
   import { debounce } from "lodash-es";
-  import { priceStore} from '$lib/services/price/priceService';
+  import { priceStore} from '$lib/price/priceService';
 
   // Convert props to runes syntax
   const props = $props<{
@@ -88,7 +88,6 @@
       }
     }
     debouncedFetchData.cancel();
-    priceStore.reset();
   });
 
   const initChart = async () => {
@@ -331,7 +330,7 @@
   </div>
 </div>
 
-<style lang="postcss">
+<style scoped lang="postcss">
 
   .chart-wrapper {
     position: absolute;
@@ -348,35 +347,6 @@
     inset: 0;
     width: 100%;
     height: 100%;
-  }
-
-  .loading-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 10;
-  }
-
-  .loading {
-    color: white;
-    font-size: 1.1em;
-    padding: 1em;
-    text-align: center;
-  }
-
-  .no-data-message {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-card);
-    padding: 1rem;
-    text-align: center;
   }
 
   :global(.layout__area--top) {
@@ -415,18 +385,6 @@
   :global(.inner-2JyOhh7Z-) {
     border: none !important;
     background-color: transparent !important;
-  }
-
-  .error-message {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-card);
-    padding: 1rem;
-    text-align: center;
   }
 
   :global(#drawing-toolbar) {

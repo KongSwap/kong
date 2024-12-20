@@ -1,226 +1,278 @@
 <script lang="ts">
-    import { onDestroy, onMount } from 'svelte';
-    import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-    import { fade, scale } from 'svelte/transition';
-    import { flip } from 'svelte/animate';
-    import { cubicOut } from 'svelte/easing';
-    import { formatBalance, formatTokenValue } from '$lib/utils/tokenFormatters';
-    import { browser } from '$app/environment';
-    import Portal from 'svelte-portal';
-    import { Star } from 'lucide-svelte';
-    import TokenImages from '$lib/components/common/TokenImages.svelte';
-  
-    const props = $props();
-    const { 
-      show = false,
-      onSelect,
-      onClose,
-      currentToken,
-      otherPanelToken = null,
-      expandDirection = 'down',
-      allowedCanisterIds = [],
-      restrictToSecondaryTokens = false
-    } = props;
-  
-    let searchQuery = $state("");
-    let searchInput: HTMLInputElement;
-    let dropdownElement: HTMLDivElement;
-    let hideZeroBalances = $state(false);
-    let isMobile = $state(false);
-    let sortDirection = $state('desc');
-    let standardFilter = $state("all");
-    let favorites = $derived($tokenStore.favoriteTokens);
-    let favoriteCount = $derived($formattedTokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
+  import { onDestroy, onMount } from "svelte";
+  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { scale } from "svelte/transition";
+  import { flip } from "svelte/animate";
+  import { cubicOut } from "svelte/easing";
+  import { browser } from "$app/environment";
+  import Portal from "svelte-portal";
+  import { Star } from "lucide-svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { formatBalance, formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { swapState } from "$lib/services/swap/SwapStateService";
 
-    const SECONDARY_TOKEN_IDS = [
-      'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
-      'cngnf-vqaaa-aaaar-qag4q-cai'  // ckUSDT
-    ];
+  const props = $props();
+  const {
+    show = false,
+    onSelect,
+    onClose,
+    currentToken,
+    otherPanelToken = null,
+    expandDirection = "down",
+    allowedCanisterIds = [],
+    restrictToSecondaryTokens = false,
+    tokens = $formattedTokens,
+  } = props;
 
-    // Check if we're on mobile
-    $effect(() => {
-      if (browser) {
+  let searchQuery = $state("");
+  let searchInput: HTMLInputElement;
+  let dropdownElement: HTMLDivElement;
+  let hideZeroBalances = $state(false);
+  let isMobile = $state(false);
+  let sortDirection = $state("desc");
+  let sortColumn = $state("value");
+  let standardFilter = $state("all");
+
+  // Get filtered tokens before any UI filters (search, favorites, etc)
+  let baseFilteredTokens = $derived(
+    tokens.filter((token) => {
+      // First validate the token
+      if (!token?.canister_id) {
+        console.warn("Invalid token found:", token);
+        return false;
+      }
+
+      // Then check if we should restrict to secondary tokens
+      if (restrictToSecondaryTokens) {
+        return SECONDARY_TOKEN_IDS.includes(token.canister_id);
+      }
+
+      // Then check allowed canister IDs if provided
+      if (allowedCanisterIds.length > 0) {
+        return allowedCanisterIds.includes(token.canister_id);
+      }
+      return true;
+    }),
+  );
+
+  // Get counts based on the base filtered tokens
+  let allTokensCount = $derived(baseFilteredTokens.length);
+  let ckTokensCount = $derived(
+    baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck"))
+      .length,
+  );
+  let favoritesCount = $derived(
+    baseFilteredTokens.filter((t) => tokenStore.isFavorite(t.canister_id))
+      .length,
+  );
+
+  // Then apply UI filters for display
+  let filteredTokens = $derived(
+    baseFilteredTokens
+      .map((token): TokenMatch | null => {
+        // Validate token before processing
+        if (!token?.canister_id || !token?.symbol || !token?.name) {
+          console.warn("Incomplete token data:", token);
+          return null;
+        }
+
+        const searchLower = searchQuery.toLowerCase();
+        const matches = findMatches(token, searchLower);
+
+        return matches.length > 0 ? { token, matches } : null;
+      })
+      .filter((match): match is TokenMatch => {
+        if (!match?.token?.canister_id) return false;
+
+        // Apply standard filter
+        switch (standardFilter) {
+          case "ck":
+            return match.token.symbol.toLowerCase().startsWith("ck");
+          case "favorites":
+            return tokenStore.isFavorite(match.token.canister_id);
+          case "all":
+          default:
+            // Apply balance filter if enabled
+            if (hideZeroBalances) {
+              const balance =
+                $tokenStore.balances[match.token.canister_id]?.in_tokens ||
+                BigInt(0);
+              return balance > 0;
+            }
+            return true;
+        }
+      })
+      .sort((a, b) => {
+        // Then sort by favorites
+        const aFavorite = tokenStore.isFavorite(a.token.canister_id);
+        const bFavorite = tokenStore.isFavorite(b.token.canister_id);
+        if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+
+        // Sort by sortColumn first
+        const aValue = Number(
+          $tokenStore.balances[a.token.canister_id]?.in_usd || 0,
+        );
+        const bValue = Number(
+          $tokenStore.balances[b.token.canister_id]?.in_usd || 0,
+        );
+        if (aValue !== bValue)
+          return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+
+        // Sort by volume last
+        const volumeA = Number(a.token.volume || 0);
+        const volumeB = Number(b.token.volume || 0);
+        if (volumeA !== volumeB)
+          return sortDirection === "desc"
+            ? volumeB - volumeA
+            : volumeA - volumeB;
+
+        // Then sort by best match if searching
+        if (searchQuery) {
+          const aMinIndex = Math.min(...a.matches.map((m) => m.index));
+          const bMinIndex = Math.min(...b.matches.map((m) => m.index));
+          if (aMinIndex !== bMinIndex) return aMinIndex - bMinIndex;
+        }
+
+        return 0;
+      }),
+  );
+
+  const SECONDARY_TOKEN_IDS = [
+    "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+    "cngnf-vqaaa-aaaar-qag4q-cai", // ckUSDT
+  ];
+
+  // Check if we're on mobile
+  $effect(() => {
+    if (browser) {
+      isMobile = window.innerWidth <= 768;
+      const handleResize = () => {
         isMobile = window.innerWidth <= 768;
-        const handleResize = () => {
-          isMobile = window.innerWidth <= 768;
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-      }
-    });
-
-    function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
-      e.preventDefault();
-      e.stopPropagation();
-      tokenStore.toggleFavorite(token.canister_id);
+      };
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
     }
+  });
 
-    type TokenMatch = {
-      token: FE.Token;
-      matches: {
-        type: 'symbol' | 'name' | 'canister' | 'standard';
-        text: string;
-        index: number;
-      }[];
-    };
+  function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+    e.preventDefault();
+    e.stopPropagation();
+    tokenStore.toggleFavorite(token.canister_id);
+  }
 
-    function findMatches(token: FE.Token, searchLower: string): TokenMatch['matches'] {
-      const matches: TokenMatch['matches'] = [];
-      
-      if (token.symbol?.toLowerCase().includes(searchLower)) {
-        matches.push({
-          type: 'symbol',
-          text: token.symbol,
-          index: token.symbol.toLowerCase().indexOf(searchLower)
-        });
-      }
-      
-      if (token.name?.toLowerCase().includes(searchLower)) {
-        matches.push({
-          type: 'name', 
-          text: token.name,
-          index: token.name.toLowerCase().indexOf(searchLower)
-        });
-      }
-      
-      if (token.canister_id?.toLowerCase().includes(searchLower)) {
-        matches.push({
-          type: 'canister',
-          text: token.canister_id,
-          index: token.canister_id.toLowerCase().indexOf(searchLower)
-        });
-      }
-      
-      return matches;
-    }
+  type TokenMatch = {
+    token: FE.Token;
+    matches: {
+      type: "symbol" | "name" | "canister" | "standard";
+      text: string;
+      index: number;
+    }[];
+  };
 
-    // Filter tokens based on search, balance, and allowed canister IDs
-    let filteredTokens = $derived(
-      $formattedTokens
-        .filter(token => {
-          // First check if we should restrict to secondary tokens
-          if (restrictToSecondaryTokens) {
-            return SECONDARY_TOKEN_IDS.includes(token.canister_id);
-          }
-          
-          // Then check allowed canister IDs if provided
-          if (allowedCanisterIds.length > 0) {
-            return allowedCanisterIds.includes(token.canister_id);
-          }
-          return true;
-        })
-        .map((token): TokenMatch | null => {
-          if (!token?.symbol || !token?.name) return null;
-          
-          const searchLower = searchQuery.toLowerCase();
-          const matches = findMatches(token, searchLower);
-          
-          return matches.length > 0 ? { token, matches } : null;
-        })
-        .filter((match): match is TokenMatch => {
-          if (!match) return false;
+  function findMatches(
+    token: FE.Token,
+    searchLower: string,
+  ): TokenMatch["matches"] {
+    const matches: TokenMatch["matches"] = [];
 
-          // Apply standard filter
-          switch (standardFilter) {
-            case "ck":
-              return match.token.symbol.toLowerCase().startsWith("ck");
-            case "favorites":
-              return tokenStore.isFavorite(match.token.canister_id);
-            case "all":
-            default:
-              // Apply balance filter if enabled
-              if (hideZeroBalances) {
-                const balance = $tokenStore.balances[match.token.canister_id]?.in_tokens || BigInt(0);
-                return balance > 0;
-              }
-              return true;
-          }
-        })
-        .sort((a, b) => {
-          // Sort by favorites first
-          const aFavorite = tokenStore.isFavorite(a.token.canister_id);
-          const bFavorite = tokenStore.isFavorite(b.token.canister_id);
-          if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
-          
-          // Then sort by best match (lowest index)
-          if (searchQuery) {
-            const aMinIndex = Math.min(...a.matches.map(m => m.index));
-            const bMinIndex = Math.min(...b.matches.map(m => m.index));
-            if (aMinIndex !== bMinIndex) return aMinIndex - bMinIndex;
-          }
-          
-          // Then sort by balance
-          const balanceA = Number($tokenStore.balances[a.token.canister_id]?.in_tokens || 0);
-          const balanceB = Number($tokenStore.balances[b.token.canister_id]?.in_tokens || 0);
-          return sortDirection === 'desc' ? balanceB - balanceA : balanceA - balanceB;
-        })
-    );
-
-    function getStaggerDelay(index: number) {
-      return index * 30; // 30ms delay between each item
-    }
-  
-    function handleSelect(token: FE.Token) {
-      onSelect({
-        ...token,
-        balance: BigInt(token.balance?.toString() || '0')
+    if (token.symbol?.toLowerCase().includes(searchLower)) {
+      matches.push({
+        type: "symbol",
+        text: token.symbol,
+        index: token.symbol.toLowerCase().indexOf(searchLower),
       });
-      searchQuery = "";
-    }
-  
-    function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
-      // Only stop propagation, don't prevent default to allow scrolling
-      e.stopPropagation();
-      
-      if (otherPanelToken?.canister_id !== token.canister_id) {
-        handleSelect(token);
-        onClose();
-      }
     }
 
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
-        onClose();
-      }
+    if (token.name?.toLowerCase().includes(searchLower)) {
+      matches.push({
+        type: "name",
+        text: token.name,
+        index: token.name.toLowerCase().indexOf(searchLower),
+      });
     }
 
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
+    if (token.canister_id?.toLowerCase().includes(searchLower)) {
+      matches.push({
+        type: "canister",
+        text: token.canister_id,
+        index: token.canister_id.toLowerCase().indexOf(searchLower),
+      });
     }
-  
-    // Focus search input when dropdown opens
-    $effect(() => {
-      if (show) {
-        setTimeout(() => {
-          searchInput?.focus();
-          window.addEventListener('click', handleClickOutside);
-          window.addEventListener('keydown', handleKeydown);
-        }, 0);
-      }
+
+    return matches;
+  }
+
+  function getStaggerDelay(index: number) {
+    return index * 30; // 30ms delay between each item
+  }
+
+  function handleSelect(token: FE.Token) {
+    onSelect({
+      ...token,
+      balance: BigInt(token.balance?.toString() || "0"),
     });
+    searchQuery = "";
+  }
 
-    // Cleanup event listeners
-    function cleanup() {
-      window.removeEventListener('click', handleClickOutside);
-      window.removeEventListener('keydown', handleKeydown);
+  function handleTokenClick(e: MouseEvent | TouchEvent, token: FE.Token) {
+    // Only stop propagation, don't prevent default to allow scrolling
+    e.stopPropagation();
+
+    if (otherPanelToken?.canister_id !== token.canister_id) {
+      handleSelect(token);
+      onClose();
     }
+  }
 
-    onDestroy(cleanup);
+  function handleClickOutside(event: MouseEvent) {
+    if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
+      onClose();
+    }
+  }
 
-    onMount(async () => {
-      await tokenStore.loadFavorites();
-    });
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      onClose();
+    }
+  }
+
+  // Focus search input when dropdown opens
+  $effect(() => {
+    if (show && browser) {
+      setTimeout(() => {
+        searchInput?.focus();
+        window.addEventListener("click", handleClickOutside);
+        window.addEventListener("keydown", handleKeydown);
+      }, 0);
+    }
+  });
+
+  // Cleanup event listeners
+  function cleanup() {
+    if (browser) {
+      window.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("keydown", handleKeydown);
+    }
+  }
+
+  onDestroy(cleanup);
+
+  onMount(async () => {
+    await tokenStore.loadFavorites();
+  });
 </script>
 
 {#if show}
   <Portal target="body">
-    <div 
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div
       class="modal-backdrop"
-      on:click|self={() => onClose()}
-      transition:fade={{ duration: 200 }}
+      on:click|self={() => swapState.closeTokenSelector()}
+      role="dialog"
     >
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div
         class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
         bind:this={dropdownElement}
@@ -229,14 +281,29 @@
           duration: 200,
           start: 0.95,
           opacity: 0,
-          easing: cubicOut
+          easing: cubicOut,
         }}
       >
         <div class="modal-content">
           <header class="modal-header">
             <h2 class="modal-title">Select Token</h2>
-            <button class="close-button" on:click={onClose}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <button
+              class="close-button"
+              on:click={() => swapState.closeTokenSelector()}
+              transition:fade={{ duration: 200 }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -260,13 +327,10 @@
 
               <div class="filter-bar">
                 <div class="filter-buttons">
-                  {#each [
-                    { id: 'all', label: 'All', count: $formattedTokens.length },
-                    { id: 'ck', label: 'CK', count: $formattedTokens.filter(t => t.symbol.toLowerCase().startsWith('ck')).length },
-                    { id: 'favorites', label: 'Favorites', count: favoriteCount }
-                  ] as tab}
+                  {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <button
-                      on:click={() => standardFilter = tab.id}
+                      on:click={() => (standardFilter = tab.id)}
                       class="filter-btn"
                       class:active={standardFilter === tab.id}
                       aria-label="Show {tab.label.toLowerCase()} tokens"
@@ -281,29 +345,30 @@
 
                 <div class="filter-options">
                   <label class="filter-toggle">
-                    <input
-                      type="checkbox"
-                      bind:checked={hideZeroBalances}
-                    />
+                    <input type="checkbox" bind:checked={hideZeroBalances} />
                     <span class="toggle-label">Hide zero balances</span>
                   </label>
 
-                  <div class="sort-toggle" on:click={() => {
-                    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
-                  }}>
+                  <div
+                    class="sort-toggle"
+                    on:click={() => {
+                      sortDirection = sortDirection === "desc" ? "asc" : "desc";
+                      sortColumn = sortColumn === "value" ? "volume" : "value";
+                    }}
+                  >
                     <span class="toggle-label">Sort by value</span>
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="16" 
-                      height="16" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
                       stroke-width="2"
                       class="sort-arrow"
-                      class:ascending={sortDirection === 'asc'}
+                      class:ascending={sortDirection === "asc"}
                     >
-                      <path d="M12 20V4M5 13l7 7 7-7"/>
+                      <path d="M12 20V4M5 13l7 7 7-7" />
                     </svg>
                   </div>
                 </div>
@@ -312,36 +377,50 @@
 
             <div class="scrollable-section">
               <div class="tokens-container">
-                {#each filteredTokens as {token, matches}, i (token.canister_id)}
+                {#each filteredTokens as { token, matches }, i (token.canister_id)}
+                  {@const balance = $tokenStore.balances[token?.canister_id]}
+
+                  <!-- svelte-ignore a11y-click-events-have-key-events -->
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
                   <div
                     animate:flip={{ duration: 200 }}
-                    in:fade={{ 
+                    in:fade={{
                       delay: getStaggerDelay(i),
                       duration: 150,
-                      easing: cubicOut
+                      easing: cubicOut,
                     }}
                     class="token-item"
-                    class:selected={currentToken?.canister_id === token.canister_id}
-                    class:disabled={otherPanelToken?.canister_id === token.canister_id}
+                    class:selected={currentToken?.canister_id ===
+                      token.canister_id}
+                    class:disabled={otherPanelToken?.canister_id ===
+                      token.canister_id}
                     on:click={(e) => handleTokenClick(e, token)}
                   >
                     <div class="token-info">
-                      <TokenImages 
-                        tokens={[token]} 
+                      <TokenImages
+                        tokens={[token]}
                         size={40}
                         containerClass="token-logo-container"
                       />
                       <div class="token-details">
                         <div class="token-symbol-row">
-                          <button 
+                          <!-- svelte-ignore a11y-click-events-have-key-events -->
+                          <!-- svelte-ignore a11y-no-static-element-interactions -->
+                          <button
                             class="favorite-button"
-                            class:active={tokenStore.isFavorite(token.canister_id)}
+                            class:active={tokenStore.isFavorite(
+                              token.canister_id,
+                            )}
                             on:click={(e) => handleFavoriteClick(e, token)}
-                            title={tokenStore.isFavorite(token.canister_id) ? "Remove from favorites" : "Add to favorites"}
+                            title={tokenStore.isFavorite(token.canister_id)
+                              ? "Remove from favorites"
+                              : "Add to favorites"}
                           >
-                            <Star 
-                              size={14} 
-                              fill={tokenStore.isFavorite(token.canister_id) ? "#ffd700" : "none"} 
+                            <Star
+                              size={14}
+                              fill={tokenStore.isFavorite(token.canister_id)
+                                ? "#ffd700"
+                                : "none"}
                             />
                           </button>
                           <span class="token-symbol">{token.symbol}</span>
@@ -358,15 +437,31 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right">
-                      {#if $tokenStore.balances[token.canister_id]}
-                        <span class="token-balance">
-                          {formatBalance($tokenStore.balances[token.canister_id].in_tokens.toString(), token.decimals)}
+                    <div class="token-right text-kong-text-primary text-sm">
+                      <span class="token-balance flex flex-col text-right">
+                        {balance
+                          ? formatBalance(
+                              balance.in_tokens.toString(),
+                              token.decimals,
+                            )
+                          : "0"}
+                        <span class="token-balance-label text-xs">
+                          {balance ? formatUsdValue(balance.in_usd) : "0"}
                         </span>
-                      {/if}
+                      </span>
                       {#if currentToken?.canister_id === token.canister_id}
                         <div class="selected-indicator">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
                             <polyline points="20 6 9 17 4 12"></polyline>
                           </svg>
                         </div>
@@ -400,7 +495,9 @@
     background-color: #1a1b23;
     border: 1px solid #2a2d3d;
     border-radius: 0.75rem;
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    box-shadow:
+      0 20px 25px -5px rgb(0 0 0 / 0.1),
+      0 8px 10px -6px rgb(0 0 0 / 0.1);
     overflow: hidden;
     width: 400px;
     height: min(600px, 85vh);
@@ -575,7 +672,7 @@
   }
 
   .filter-btn::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 0;
     left: 0;
@@ -757,12 +854,6 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-  }
-
-  .token-balance {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
   }
 
   .selected-indicator {

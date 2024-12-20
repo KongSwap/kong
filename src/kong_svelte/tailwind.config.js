@@ -1,44 +1,46 @@
 /** @type {import('tailwindcss').Config} */
+import typography from '@tailwindcss/typography';
+
 export default {
-  content: ['./src/**/*.{html,js,svelte,ts}', './node_modules/layerchart/**/*.{svelte,js}'],
+  content: [
+    "./src/**/*.{html,js,svelte,ts}",
+    "./node_modules/layerchart/**/*.{svelte,js}",
+  ],
   theme: {
     extend: {
       fontFamily: {
-        alumni: ['Space Grotesk', "sans-serif"],
-        play: ["Press Start 2P", "monospace"]
+        alumni: ["Space Grotesk", "sans-serif"],
+        play: ["Press Start 2P", "monospace"],
       },
       colors: {
         "k-light-blue": "#00A1FA",
-        "primary-blue": "#3B82F6"
+        "primary-blue": "#3B82F6",
+        kong: {
+          "bg-dark": "#0B0E17",
+          primary: "#3B82F6",
+          "primary-hover": "#3D5BF9",
+          secondary: "#22D3EE", // Teal for vibrancy
+          "secondary-hover": "#0EA5E9", // Darker teal hover
+          "accent-blue": "#00A1FA",
+          "accent-red": "#d11b1b",
+          "accent-green": "#00cc81",
+          "accent-green-hover": "rgb(0 185 145)",
+          "accent-blue-hover": "#00A1FA",
+          "accent-red-hover": "rgb(175 48 48)",
+          "text-primary": "#FFFFFF",
+          "text-secondary": "#9BA1B0",
+          "text-disabled": "#6B7280",
+          "text-accent-green": "#00d3a5",
+          "text-accent-blue": "#00A1FA",
+          "text-accent-red": "#FF4B4B", 
+          border: "#2A2F3D",
+          "border-light": "#374151",
+          success: "#1FC7A4",
+          error: "#EF4444",
+          warning: "#F59E0B",
+        },
       },
-      scale: {
-        '80': '0.8', // Define a custom scale value
-      },
-    }
-  },
-  plugins: [
-    require('@tailwindcss/typography'),
-    function({ addUtilities }) {
-      const outlineThicknesses = [1, 2, 3, 4, 5]; // Define the thicknesses you want
-      const newUtilities = outlineThicknesses.reduce((acc, thickness) => {
-        acc[`.text-outline-${thickness}`] = {
-          'text-shadow': `
-            -${thickness}px -${thickness}px 0 #000,  
-             ${thickness}px -${thickness}px 0 #000,
-            -${thickness}px  ${thickness}px 0 #000,
-             ${thickness}px  ${thickness}px 0 #000
-          `,
-        };
-        return acc;
-      }, {});
-      addUtilities(newUtilities, ['responsive', 'hover']);
     },
-    function({ addComponents }) {
-      addComponents({
-        '.primary-button': {
-          '@apply px-3 sm:px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:bg-blue-600 w-full sm:w-auto': {}
-        }
-      });
-    }
-  ]
+  },
+  plugins: [typography],
 };

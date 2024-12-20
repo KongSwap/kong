@@ -189,7 +189,7 @@ export interface _SERVICE {
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
   'requests' : ActorMethod<[[] | [bigint], [] | [number]], RequestsResult>,
   'txs' : ActorMethod<
-    [[] | [boolean], [] | [bigint], [] | [number], [] | [number]],
+    [[] | [string], [] | [bigint], [] | [number], [] | [number]],
     TxsResult
   >,
 }

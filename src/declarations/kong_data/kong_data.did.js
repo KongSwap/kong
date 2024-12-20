@@ -211,7 +211,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'txs' : IDL.Func(
         [
-          IDL.Opt(IDL.Bool),
+          IDL.Opt(IDL.Text),
           IDL.Opt(IDL.Nat64),
           IDL.Opt(IDL.Nat32),
           IDL.Opt(IDL.Nat16),
