@@ -59,3 +59,7 @@ export const CKSHIB_CANISTER_ID = 'fxffn-xiaaa-aaaar-qagoa-cai';
 export const DOD_CANISTER_ID = 'cp4zx-yiaaa-aaaah-aqzea-cai';
 export const PACA_CANISTER_ID = '6zn6a-cyaaa-aaaai-q3m3q-cai';
 export const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
+
+// new ones for default logo
+export const CLOUD_CANISTER_ID = 'pcj6u-uaaaa-aaaak-aewnq-cai';
+export const ICS_CANISTER_ID = 'ca6gz-lqaaa-aaaaq-aacwa-cai';

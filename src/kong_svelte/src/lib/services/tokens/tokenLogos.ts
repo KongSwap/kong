@@ -10,6 +10,8 @@ import {
   CHAT_CANISTER_ID,
   CTZ_CANISTER_ID,
   DOLR_CANISTER_ID,
+  CLOUD_CANISTER_ID,
+  ICS_CANISTER_ID,
 } from "$lib/constants/canisterConstants";
 import { kongDB } from '../db';
 import { writable } from 'svelte/store';
@@ -22,6 +24,8 @@ export const DEFAULT_LOGOS = {
   [CHAT_CANISTER_ID]: '/tokens/openchat_logo.png',
   [CTZ_CANISTER_ID]: '/tokens/catalyze_logo.png',
   [DOLR_CANISTER_ID]: '/tokens/yral_logo.png', // The yral token with DOLR as ticker
+  [CLOUD_CANISTER_ID]: '/tokens/cloud_logo.png',
+  [ICS_CANISTER_ID]: '/tokens/ics_logo.png',
   DEFAULT: '/tokens/not_verified.webp'
 } as const;
 

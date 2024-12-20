@@ -24,7 +24,7 @@ type FilteredTokensResult = {
 
 export function getPriceChangeClass(token: FE.Token): string {
   if (!token?.metrics?.price_change_24h) return '';
-  const change = Number(token.metrics.price_change_24h);
+  const change = Number(token?.metrics?.price_change_24h);
   if (change > 0) return 'text-kong-accent-green';
   if (change < 0) return 'text-kong-accent-red';
   return '';
@@ -46,8 +46,17 @@ export function createFilteredTokens(
       
       let tokens = [...$liveTokens];
       
-      // Create volume rank map
+      // Create rank maps first, before any filtering
       const volumeRankMap = createVolumeRankMap(tokens);
+      const marketCapRankMap = createMarketCapRankMap(tokens);
+
+      // Add ranks to all tokens before filtering
+      tokens = tokens.map(token => ({
+        ...token,
+        marketCapRank: marketCapRankMap.get(token.canister_id),
+        volumeRank: volumeRankMap.get(token.canister_id),
+        isHot: volumeRankMap.get(token.canister_id) !== undefined && volumeRankMap.get(token.canister_id)! <= 5
+      }));
 
       // Apply filters
       const filterResult = applyFilters(tokens, {
@@ -68,18 +77,12 @@ export function createFilteredTokens(
 
       tokens = filterResult.tokens;
       
-      // Create market cap rank map
-      const marketCapRankMap = createMarketCapRankMap(tokens);
-
       // Apply sorting
       tokens = applySorting(tokens, {
         sortColumn: $sortColumn,
         sortDirection: $sortDirection,
         marketCapRankMap
       });
-
-      // Add ranks and hot status
-      tokens = addTokenMetadata(tokens, { volumeRankMap, marketCapRankMap });
 
       return { 
         tokens, 
@@ -165,6 +168,12 @@ function applySorting(tokens: FE.Token[], options: {
         case "volume_24h": return Number(token?.metrics?.volume_24h?.replace(/[^0-9.-]+/g, "")) || 0;
         case "marketCap": return Number(token?.metrics?.market_cap?.toString().replace(/[^0-9.-]+/g, "")) || 0;
         case "name": return token.name;
+        case "token_name": return token.name;
+        case "tvl": {
+          const tvlA = Number(a.metrics?.tvl || 0);
+          const tvlB = Number(b.metrics?.tvl || 0);
+          return sortDirection === "asc" ? tvlA - tvlB : tvlB - tvlA;
+        }
         default: return token[sortColumn] || 0;
       }
     };
@@ -172,9 +181,12 @@ function applySorting(tokens: FE.Token[], options: {
     const aValue = getValue(a);
     const bValue = getValue(b);
 
-    return sortDirection === "asc" 
-      ? (typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue)
-      : (typeof bValue === 'string' ? bValue.localeCompare(aValue) : bValue - aValue);
+    if (typeof aValue === 'string') {
+      return sortDirection === "asc" 
+        ? aValue.localeCompare(bValue) 
+        : bValue.localeCompare(aValue);
+    }
+    return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
   });
 }
 
@@ -199,14 +211,17 @@ export function formatPoolData(pools: BE.Pool[]): BE.Pool[] {
   if (pools.length === 0) return pools;
   const store = get(tokenStore);
 
-  return pools.map((pool, index) => {
+  const poolsMap =  pools.map((pool, index) => {
     const apy = formatToNonZeroDecimal(pool.rolling_24h_apy);
+    const baseToken = store.tokens.find(token => token.canister_id === pool.address_1);
     return {
       ...pool,
+      price_usd: (Number(pool.price) * Number(baseToken?.metrics.price)).toString(),
       id: `${pool.symbol_0}-${pool.symbol_1}-${index}`,
       apy,
     };
   });
+  return poolsMap;
 }
 
 export function filterPools(pools: BE.Pool[], query: string): BE.Pool[] {
@@ -224,4 +239,39 @@ export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[
     token.symbol.toLowerCase().includes(lowerCaseQuery) ||
     token.name.toLowerCase().includes(lowerCaseQuery)
   );
+}
+
+export function getPoolPriceUsd(pool: BE.Pool): string {
+  const store = get(tokenStore);
+  const token0 = store.tokens.find(token => token.canister_id === pool.address_0);
+  const token1 = store.tokens.find(token => token.canister_id === pool.address_1);
+
+  // For ckUSDT pairs, use the pool price directly
+  if (token1?.symbol === "ckUSDT" || token0?.symbol === "ckUSDT") {
+    return `$${formatToNonZeroDecimal(Number(pool.price))}`;
+  }
+
+  // For ICP pairs
+  if (token1?.symbol === "ICP") {
+    const icpPrice = token1?.metrics?.price;
+    const poolPrice = Number(pool.price);
+    if (icpPrice && !isNaN(poolPrice)) {
+      return `$${formatToNonZeroDecimal(poolPrice * Number(icpPrice))}`;
+    }
+  } else if (token0?.symbol === "ICP") {
+    const icpPrice = token0?.metrics?.price;
+    const poolPrice = Number(pool.price);
+    if (icpPrice && !isNaN(poolPrice)) {
+      return `$${formatToNonZeroDecimal(poolPrice * Number(icpPrice))}`;
+    }
+  }
+
+  // For other pairs, use token0's price from store
+  const price = token0?.metrics?.price;
+  if (typeof price === "number" && !isNaN(price)) {
+    return `$${formatToNonZeroDecimal(price)}`;
+  }
+
+  // Fallback to pool price
+  return `$${formatToNonZeroDecimal(Number(pool.price))}`;
 }

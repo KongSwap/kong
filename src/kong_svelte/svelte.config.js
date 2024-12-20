@@ -9,7 +9,7 @@ const config = {
     adapter: adapter({
       pages: "dist",
       assets: "dist",
-      fallback: "200.html",
+      fallback: "index.html",
       precompress: false,
       strict: true,
     }),
@@ -52,9 +52,7 @@ const config = {
     },
   }),
   onwarn: (warning, handler) => {
-    if (warning.code.startsWith('a11y_')) {
-      return;
-    }
+    if (warning.code.includes("a11y")) return;
     handler(warning);
   },
 };

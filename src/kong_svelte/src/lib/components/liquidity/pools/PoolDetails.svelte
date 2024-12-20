@@ -97,7 +97,7 @@
           <div class="stats-grid">
             <div class="stat-item full-width">
               <span class="stat-label">TVL</span>
-              <span class="stat-value">${formatUsdValue(Number(pool.tvl) / (10 ** 6))}</span>
+              <span class="stat-value">${formatBigIntToUSD(pool.tvl)}</span>
             </div>
             <div class="stat-item full-width">
               <span class="stat-label">24h Volume</span>
@@ -142,11 +142,11 @@
 
 <style lang="postcss">
   .pool-details {
-    @apply flex flex-col gap-4;
+    @apply flex flex-col gap-3;
   }
 
   .pool-header {
-    @apply flex flex-col gap-4 mb-4;
+    @apply flex flex-col gap-2 mb-2;
   }
 
   .header-content {
@@ -166,7 +166,7 @@
   }
 
   .action-btn {
-    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 flex-1;
+    @apply px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 flex-1;
   }
 
   .action-btn.add-liquidity {
@@ -180,15 +180,15 @@
   }
 
   .stats-grid {
-    @apply flex flex-col gap-4 mb-4;
+    @apply flex flex-col gap-2 mb-3;
   }
 
   .stat-row {
-    @apply flex gap-4;
+    @apply flex gap-2;
   }
 
   .stat-item {
-    @apply flex flex-col gap-1 p-3 rounded-lg bg-[#2a2d3d]/50;
+    @apply flex flex-col gap-0.5 p-2 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .stat-item.full-width {
@@ -204,11 +204,11 @@
   }
 
   .tabs {
-    @apply flex gap-2 p-1 bg-[#2a2d3d]/30 rounded-lg mb-4;
+    @apply flex gap-2 p-0.5 bg-[#2a2d3d]/30 rounded-lg mb-3;
   }
 
   .tab-button {
-    @apply flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
+    @apply flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200
            text-white/70 hover:text-white hover:bg-white/5;
   }
 
@@ -217,15 +217,15 @@
   }
 
   .pool-reserves h4 {
-    @apply text-sm text-[#8890a4] mb-3;
+    @apply text-sm text-[#8890a4] mb-2;
   }
 
   .reserves-grid {
-    @apply flex flex-col gap-2;
+    @apply flex flex-col gap-1.5;
   }
 
   .reserve-item {
-    @apply flex items-center gap-3 p-3 rounded-lg bg-[#2a2d3d]/50;
+    @apply flex items-center gap-2 p-2 rounded-lg bg-[#2a2d3d]/50;
   }
 
   .reserve-info {
@@ -243,7 +243,7 @@
   /* Desktop styles */
   @media (min-width: 640px) {
     .pool-header {
-      @apply flex-row justify-between items-center;
+      @apply flex-row justify-between items-center mb-2;
     }
 
     .quick-actions {
@@ -251,11 +251,11 @@
     }
 
     .action-btn {
-      @apply w-auto flex-initial min-w-[120px];
+      @apply w-auto flex-initial min-w-[100px];
     }
 
     .stats-grid {
-      @apply grid grid-cols-2;
+      @apply grid grid-cols-2 gap-2;
     }
 
     .stat-item.full-width {
