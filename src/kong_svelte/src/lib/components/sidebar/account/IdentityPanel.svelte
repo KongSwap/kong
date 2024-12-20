@@ -1,14 +1,15 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { onMount } from "svelte";
+  import { onMount, afterUpdate } from "svelte";
   import QRCode from 'qrcode';
   import { writable } from 'svelte/store';
   import { toastStore } from "$lib/stores/toastStore";
-  import { uint8ArrayToHexString } from "@dfinity/utils";
   import Modal from "$lib/components/common/Modal.svelte";
   import { QrCode } from 'lucide-svelte';
+  import { Principal } from '@dfinity/principal';
+  import { AccountIdentifier } from '@dfinity/ledger-icp';
+  import { SubAccount } from '@dfinity/ledger-icp';
 
-  // Create a local store for QR modal state since the global store isn't working
   const qrModalStore = writable({
     isOpen: false,
     qrData: '',
@@ -16,7 +17,6 @@
   });
 
   export let display: 'both' | 'principal' | 'account' = 'both';
-
   let principalCopied = writable(false);
   let accountCopied = writable(false);
   let copyLoading = writable(false);
@@ -38,11 +38,13 @@
     accountQR: ''
   };
 
-  async function generateQR(text: string): Promise<string> {
-    if (!text) return '';
+  async function generateQR(text: string | undefined): Promise<string> {
+    if (!text || typeof text !== 'string' || text.trim() === '') return '';
+    
     try {
       qrLoading.set(true);
-      return await QRCode.toDataURL(text, {
+      const safeText = text.toString().trim();
+      return await QRCode.toDataURL(safeText, {
         width: 200,
         margin: 1,
         color: {
@@ -79,25 +81,91 @@
     }
   };
 
+  function convertToSubaccount(raw: any): Uint8Array | undefined {
+    if (!raw) return undefined;
+    
+    // If it's already a Uint8Array, return it
+    if (raw instanceof Uint8Array) return raw;
+    
+    // If it's an array, convert it to Uint8Array
+    if (Array.isArray(raw)) {
+      return new Uint8Array(raw);
+    }
+    
+    // If it's a number, create a 32-byte array with the number at the end
+    if (typeof raw === 'number') {
+      const bytes = new Uint8Array(32).fill(0);
+      bytes[31] = raw;
+      return bytes;
+    }
+    
+    // Default case: return undefined
+    return undefined;
+  }
+
+  function createAccountIdentifier(principalStr: string, rawSubaccount: any): string {
+    try {
+      const principal = Principal.fromText(principalStr);
+      let subAccount: SubAccount | undefined = undefined;
+      
+      if (rawSubaccount !== undefined && rawSubaccount !== null) {
+        if (rawSubaccount instanceof Uint8Array || Array.isArray(rawSubaccount)) {
+          const bytes = rawSubaccount instanceof Uint8Array ? rawSubaccount : new Uint8Array(rawSubaccount);
+          const subAccountResult = SubAccount.fromBytes(bytes);
+          if (subAccountResult instanceof Error) {
+              throw subAccountResult;
+          }
+          subAccount = subAccountResult;
+        }
+      }
+
+      return AccountIdentifier.fromPrincipal({
+        principal,
+        subAccount
+      }).toHex();
+    } catch (error) {
+      console.error('Error creating account identifier:', error);
+      return '';
+    }
+  }
+
+  async function updateIdentity() {
+    if (!auth.pnp?.account?.owner) return;
+    
+    const principal = auth.pnp.account.owner;
+    const principalStr = typeof principal === 'string' ? principal : principal?.toText?.() || '';
+    
+    // Update IDs first
+    identity = {
+      ...identity,
+      principalId: principalStr,
+      accountId: createAccountIdentifier(principalStr, auth.pnp?.account?.subaccount)
+    };
+
+    // Only generate QR codes if we have valid IDs
+    if (identity.principalId && identity.accountId) {
+      const [principalQR, accountQR] = await Promise.all([
+        generateQR(identity.principalId),
+        generateQR(identity.accountId)
+      ]);
+
+      identity = {
+        ...identity,
+        principalQR,
+        accountQR
+      };
+    }
+  }
+
   onMount(async () => {
     mounted = true;
-    identity = {
-      ...identity,
-      principalId: auth.pnp?.account?.owner || '',
-      accountId: auth.pnp?.account?.subaccount ? uint8ArrayToHexString(auth.pnp.account.subaccount) : ''
-    };
-
-    console.log("PNP", auth.pnp);
-
-    const principalQR = await generateQR(identity.principalId.toString());
-    const accountQR = await generateQR(identity.accountId);
-
-    identity = {
-      ...identity,
-      principalQR,
-      accountQR
-    };
+    await updateIdentity();
   });
+
+  // Replace afterUpdate with a subscription to auth changes
+  $: if (mounted && auth.pnp?.account?.owner) {
+    updateIdentity();
+  }
 
   function openQrModal(qr: string, type: 'principal' | 'account') {
     const title = type === 'principal' ? 'Principal ID' : 'Account ID';
@@ -130,7 +198,6 @@
 
 <div class="tab-panel">
     <div class="detail-section">
-
       {#if display === 'both'}
         <div class="tabs">
           <button
@@ -147,7 +214,6 @@
           </button>
         </div>
       {/if}
-
       <div class="info-grid mt-4">
         {#if (activeTab === 'principal' || display === 'principal') && (display !== 'account')}
           <div class="info-section">
