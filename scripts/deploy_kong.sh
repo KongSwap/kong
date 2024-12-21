@@ -1,37 +1,41 @@
 #!/usr/bin/env bash
 
-# Get the directory where the script is located
+# Setup directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd ".." && pwd )"
-
-# Debug output
 echo "=============== DEPLOY SCRIPT INFO ==============="
 echo "Script directory: $SCRIPT_DIR"
 echo "Project root: $PROJECT_ROOT"
-echo "Current directory before cd: $(pwd)"
-
-# Change to project root directory
 echo "==============================================="
 
+# Set network and prepare environment
+NETWORK=${1:-local}
+echo "Building and deploying KONG canisters to ${NETWORK}"
+
 # Check required commands
-for cmd in cargo npm dfx jq; do
+for cmd in rustc cargo npm dfx jq; do
     if ! command -v $cmd >/dev/null; then
         echo "$cmd is not installed"
         exit 1
     fi
 done
 
-# Check required identities
-for identity in kong kong_token_minter kong_user1; do
-    if ! dfx identity list | grep -q "$identity"; then
-        echo "User $identity does not exist. Run create_identity.sh"
-        exit 1
-    fi
-done
+# check wasm32-unknown-unknown target installed
+if ! rustup target list | grep -q "wasm32-unknown-unknown"; then
+    echo "wasm32-unknown-unknown target not installed"
+    echo "Run \"rustup target add wasm32-unknown-unknown\""
+    exit 1
+fi
 
-# Set network and prepare environment
-NETWORK=${1:-local}
-echo "Building and deploying KONG canisters to ${NETWORK}"
+# Check required identities for local and staging networks
+if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
+    for identity in kong kong_token_minter kong_user1 kong_user2; do
+        if ! dfx identity list | grep -q "$identity"; then
+            echo "User $identity does not exist. Run \"create_identity.sh\""
+            exit 1
+        fi
+    done
+fi
 
 # Copy correct environment file using absolute path
 if [ -f "copy_env.sh" ]; then
