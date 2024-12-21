@@ -123,3 +123,10 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
 
     serde_json::to_string(&results).map_err(|e| format!("Failed to serialize remove_liquidity: {}", e))
 }
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_pool_tvl(symbol: String) -> Result<String, String> {
+    let mut pool = pool_map::get_by_token(&symbol)?;
+    pool.update_tvl();
+    Ok(format!("Pool {} TVL updated", symbol))
+}
