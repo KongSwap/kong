@@ -3,8 +3,6 @@ use ic_stable_structures::{storable::Bound, Storable};
 use num::BigRational;
 use serde::{Deserialize, Serialize};
 
-use super::pool_map;
-
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision, nat_zero};
 use crate::ic::ckusdt::ckusdt_amount;
@@ -141,8 +139,9 @@ impl StablePool {
         price_rounded(&self.get_price()?)
     }
 
+    /// make sure to call pool_map::update after calling this function
     /// sets tvl = balance_0 + balance_1 in ckUSDT
-    pub fn update_tvl(&mut self) {
+    pub fn set_tvl(&mut self) {
         let token_0 = self.token_0();
         let token_1 = self.token_1();
         // TVL_0 = balance_0 + lp_fee_0 + kong_fee_0
@@ -151,15 +150,14 @@ impl StablePool {
         let tvl_0_ckusdt = ckusdt_amount(&token_0, &tvl_0).unwrap_or(nat_zero());
         let tvl_1_ckusdt = ckusdt_amount(&token_1, &tvl_1).unwrap_or(nat_zero());
         self.tvl = nat_add(&tvl_0_ckusdt, &tvl_1_ckusdt);
-        pool_map::update(self);
     }
 
+    /// make sure to call pool_map::update after calling this function
     pub fn set_on_kong(&mut self, on_kong: bool) {
         self.token_0().set_on_kong(on_kong);
         self.token_1().set_on_kong(on_kong);
         self.lp_token().set_on_kong(on_kong);
         self.on_kong = on_kong;
-        pool_map::update(self);
     }
 }
 

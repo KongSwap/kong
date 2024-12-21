@@ -131,6 +131,8 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_pool_tvl(symbol: String) -> Result<String, String> {
     let mut pool = pool_map::get_by_token(&symbol)?;
-    pool.update_tvl();
-    Ok(format!("Pool {} TVL updated", symbol))
+    pool.set_tvl();
+    pool_map::update(&pool);
+
+    serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
 }

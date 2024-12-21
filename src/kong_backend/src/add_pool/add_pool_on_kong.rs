@@ -27,6 +27,7 @@ use crate::stable_pool::pool_map;
 fn add_pool_on_kong(symbol: String, on_kong: bool) -> Result<String, String> {
     let mut pool = pool_map::get_by_token(&symbol)?;
     pool.set_on_kong(on_kong);
+    pool_map::update(&pool);
 
     serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
 }

@@ -508,7 +508,7 @@ fn update_liquidity_pool(
         balance_1: nat_add(&pool.balance_1, amount_1),
         ..pool.clone()
     };
-    update_pool.update_tvl();
+    update_pool.set_tvl();
     pool_map::update(&update_pool);
     request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 

@@ -19,7 +19,7 @@ use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
 pub fn swap_mid_price(pay_token: &StableToken, pay_amount: &Nat, receive_token: &StableToken) -> Result<Nat, String> {
-    let (_, _, mid_price, _, _) = swap_amounts(pay_token, &nat_zero(), receive_token)?;
+    let (_, _, mid_price, _, _) = swap_amounts(pay_token, None, receive_token)?;
     let receive_amount_pay_token_decimal = nat_multiply_f64(pay_amount, mid_price).ok_or("Failed to calculate receive amount")?;
     let receive_amount = nat_to_decimal_precision(&receive_amount_pay_token_decimal, pay_token.decimals(), receive_token.decimals());
     Ok(receive_amount)
@@ -28,7 +28,7 @@ pub fn swap_mid_price(pay_token: &StableToken, pay_amount: &Nat, receive_token: 
 /// pay_amount is zero if mid price is requested
 pub fn swap_amounts(
     pay_token: &StableToken,
-    pay_amount: &Nat,
+    pay_amount: Option<&Nat>,
     receive_token: &StableToken,
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
     let pay_token_id = pay_token.token_id();
@@ -36,15 +36,13 @@ pub fn swap_amounts(
 
     // if tokens are the same return the same amount
     if pay_token_id == receive_token_id {
-        return Ok((pay_amount.clone(), 1.0, 1.0, 0.0, Vec::new()));
+        // if pay_amount is None, set receive_amount = 0 and return 1.0
+        let receive_amount = pay_amount.unwrap_or(&nat_zero()).clone();
+        return Ok((receive_amount, 1.0, 1.0, 0.0, Vec::new()));
     }
 
     // if called from swap_mid_price, no need to check user's fee level
-    let user_fee_level = if nat_is_zero(pay_amount) {
-        None
-    } else {
-        Some(user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level)
-    };
+    let user_fee_level = pay_amount.map(|_| user_map::get_by_caller().ok().flatten().unwrap_or_default().fee_level);
 
     // swaps stores all the swap permutations
     let mut swaps: Vec<(Nat, f64, f64, f64, Vec<SwapCalc>)> = Vec::new();
@@ -69,7 +67,7 @@ pub fn swap_amounts(
         }
     }
 
-    let max_swap = if nat_is_zero(pay_amount) {
+    let max_swap = if pay_amount.is_none() {
         // return the swap with the highest mid_price
         swaps
             .into_iter()
@@ -85,27 +83,27 @@ pub fn swap_amounts(
 #[allow(clippy::complexity)]
 fn one_step_swaps(
     pay_token_id: u32,
-    pay_amount: &Nat,
+    pay_amount: Option<&Nat>,
     receive_token_id: u32,
     user_fee_level: Option<u8>,
 ) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
     if let Some(pool) = pool_map::get_by_token_ids(pay_token_id, receive_token_id) {
         let swap = swap_amount_0(&pool, pay_amount, user_fee_level, None, None)?;
         let receive_amount = swap.receive_amount_with_fees_and_gas();
-        let price = swap.get_price().ok_or("Invalid price")?;
+        let price = swap.get_price().unwrap_or(BigRational::zero());
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
+        let mid_price = swap.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, vec![swap])));
     } else if let Some(pool) = pool_map::get_by_token_ids(receive_token_id, pay_token_id) {
         let swap = swap_amount_1(&pool, pay_amount, user_fee_level, None, None)?;
         let receive_amount = swap.receive_amount_with_fees_and_gas();
-        let price = swap.get_price().ok_or("Invalid price")?;
+        let price = swap.get_price().unwrap_or(BigRational::zero());
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let mid_price = swap.get_mid_price().ok_or("Invalid mid price")?;
+        let mid_price = swap.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, vec![swap])));
     };
     Ok(None)
@@ -114,7 +112,7 @@ fn one_step_swaps(
 #[allow(clippy::complexity)]
 fn two_step_swaps(
     pay_token_id: u32,
-    pay_amount: &Nat,
+    pay_amount: Option<&Nat>,
     receive_token_id: u32,
     user_fee_level: Option<u8>,
 ) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
@@ -148,7 +146,7 @@ fn two_step_swaps(
             // swap ckUSDT to token1 (reverse order of pool)
             let swap2 = swap_amount_1(
                 pool2,
-                &swap1.receive_amount_with_fees_and_gas(),
+                Some(&swap1.receive_amount_with_fees_and_gas()),
                 user_fee_level,
                 Some(swap2_lp_fee),
                 None,
@@ -175,7 +173,7 @@ fn two_step_swaps(
             // swap ICP to token1 (reverse order of pool)
             let swap2 = swap_amount_1(
                 pool2,
-                &swap1.receive_amount_with_fees_and_gas(),
+                Some(&swap1.receive_amount_with_fees_and_gas()),
                 user_fee_level,
                 Some(swap2_lp_fee),
                 None,
@@ -205,15 +203,15 @@ fn two_step_swaps(
             return Err("Pool not found".to_string());
         };
         let receive_amount = swap2.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
+        let swap1_price = swap1.get_price().unwrap_or(BigRational::zero());
+        let swap2_price = swap2.get_price().unwrap_or(BigRational::zero());
         let price = swap1_price * swap2_price;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
+        let swap1_mid_price = swap1.get_mid_price().unwrap_or(BigRational::zero());
+        let swap2_mid_price = swap2.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price = swap1_mid_price * swap2_mid_price;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         txs.push(swap1);
         txs.push(swap2);
         return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
@@ -237,21 +235,21 @@ fn two_step_swaps(
         // swap ICP to token1 (reverse order of pool)
         let swap2 = swap_amount_1(
             pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
+            Some(&swap1.receive_amount_with_fees_and_gas()),
             user_fee_level,
             Some(swap2_lp_fee),
             None,
         )?;
         let receive_amount = swap2.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
+        let swap1_price = swap1.get_price().unwrap_or(BigRational::zero());
+        let swap2_price = swap2.get_price().unwrap_or(BigRational::zero());
         let price = swap1_price * swap2_price;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
+        let swap1_mid_price = swap1.get_mid_price().unwrap_or(BigRational::zero());
+        let swap2_mid_price = swap2.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price = swap1_mid_price * swap2_mid_price;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         txs.push(swap1);
         txs.push(swap2);
         return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
@@ -275,21 +273,21 @@ fn two_step_swaps(
         // swap ICP to ckUSDT
         let swap2 = swap_amount_0(
             pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
+            Some(&swap1.receive_amount_with_fees_and_gas()),
             user_fee_level,
             Some(swap2_lp_fee),
             None,
         )?;
         let receive_amount = swap2.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
+        let swap1_price = swap1.get_price().unwrap_or(BigRational::zero());
+        let swap2_price = swap2.get_price().unwrap_or(BigRational::zero());
         let price = swap1_price * swap2_price;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
+        let swap1_mid_price = swap1.get_mid_price().unwrap_or(BigRational::zero());
+        let swap2_mid_price = swap2.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price = swap1_mid_price * swap2_mid_price;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         txs.push(swap1);
         txs.push(swap2);
         return Ok(Some((receive_amount, price_f64, mid_price_f64, slippage_f64, txs)));
@@ -300,7 +298,7 @@ fn two_step_swaps(
 #[allow(clippy::complexity)]
 fn three_step_swaps(
     pay_token_id: u32,
-    pay_amount: &Nat,
+    pay_amount: Option<&Nat>,
     receive_token_id: u32,
     user_fee_level: Option<u8>,
 ) -> Result<Option<(Nat, f64, f64, f64, Vec<SwapCalc>)>, String> {
@@ -341,7 +339,7 @@ fn three_step_swaps(
         // swap ckUSDT to ICP (reverse order of pool)
         let swap2 = swap_amount_1(
             pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
+            Some(&swap1.receive_amount_with_fees_and_gas()),
             user_fee_level,
             Some(swap2_lp_fee),
             Some(&nat_zero()), // swap2 do not take gas fees
@@ -350,23 +348,23 @@ fn three_step_swaps(
         // swap ICP to token1 (reverse order of pool)
         let swap3 = swap_amount_1(
             pool3,
-            &swap2.receive_amount_with_fees_and_gas(),
+            Some(&swap2.receive_amount_with_fees_and_gas()),
             user_fee_level,
             Some(swap3_lp_fee),
             None,
         )?;
         let receive_amount = swap3.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
-        let swap3_price = swap3.get_price().ok_or("Invalid swap3 price")?;
+        let swap1_price = swap1.get_price().unwrap_or(BigRational::zero());
+        let swap2_price = swap2.get_price().unwrap_or(BigRational::zero());
+        let swap3_price = swap3.get_price().unwrap_or(BigRational::zero());
         let price = swap1_price * swap2_price * swap3_price;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
-        let swap3_mid_price = swap3.get_mid_price().ok_or("Invalid swap3 mid price")?;
+        let swap1_mid_price = swap1.get_mid_price().unwrap_or(BigRational::zero());
+        let swap2_mid_price = swap2.get_mid_price().unwrap_or(BigRational::zero());
+        let swap3_mid_price = swap3.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price = swap1_mid_price * swap2_mid_price * swap3_mid_price;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         txs.push(swap1);
         txs.push(swap2);
         txs.push(swap3);
@@ -401,7 +399,7 @@ fn three_step_swaps(
         // swap ICP to ckUSDT
         let swap2 = swap_amount_0(
             pool2,
-            &swap1.receive_amount_with_fees_and_gas(),
+            Some(&swap1.receive_amount_with_fees_and_gas()),
             user_fee_level,
             Some(swap2_lp_fee),
             Some(&nat_zero()), // swap2 do not take gas fees
@@ -410,23 +408,23 @@ fn three_step_swaps(
         // swap ckUSDT to token1 (reverse order of pool)
         let swap3 = swap_amount_1(
             pool3,
-            &swap2.receive_amount_with_fees_and_gas(),
+            Some(&swap2.receive_amount_with_fees_and_gas()),
             user_fee_level,
             Some(swap3_lp_fee),
             None,
         )?;
         let receive_amount = swap3.receive_amount_with_fees_and_gas();
-        let swap1_price = swap1.get_price().ok_or("Invalid swap1 price")?;
-        let swap2_price = swap2.get_price().ok_or("Invalid swap2 price")?;
-        let swap3_price = swap3.get_price().ok_or("Invalid swap3 price")?;
+        let swap1_price = swap1.get_price().unwrap_or(BigRational::zero());
+        let swap2_price = swap2.get_price().unwrap_or(BigRational::zero());
+        let swap3_price = swap3.get_price().unwrap_or(BigRational::zero());
         let price = swap1_price * swap2_price * swap3_price;
         let price_f64 = price_rounded(&price).ok_or("Invalid price")?;
-        let swap1_mid_price = swap1.get_mid_price().ok_or("Invalid swap1 mid price")?;
-        let swap2_mid_price = swap2.get_mid_price().ok_or("Invalid swap2 mid price")?;
-        let swap3_mid_price = swap3.get_mid_price().ok_or("Invalid swap3 mid price")?;
+        let swap1_mid_price = swap1.get_mid_price().unwrap_or(BigRational::zero());
+        let swap2_mid_price = swap2.get_mid_price().unwrap_or(BigRational::zero());
+        let swap3_mid_price = swap3.get_mid_price().unwrap_or(BigRational::zero());
         let mid_price = swap1_mid_price * swap2_mid_price * swap3_mid_price;
         let mid_price_f64 = price_rounded(&mid_price).ok_or("Invalid mid price")?;
-        let slippage_f64 = get_slippage(&price, &mid_price).ok_or("Invalid slippage")?;
+        let slippage_f64 = get_slippage(&price, &mid_price).unwrap_or(0_f64);
         txs.push(swap1);
         txs.push(swap2);
         txs.push(swap3);
@@ -439,7 +437,7 @@ fn three_step_swaps(
 /// use_lp_fee and use_gas_fee are used to overwrite the default LP and gas fees, if None, then use the pool's default
 fn swap_amount_0(
     pool: &StablePool,
-    amount_0: &Nat,
+    amount_0: Option<&Nat>,
     user_fee_level: Option<u8>, // user specific fee level, 0 = 100% fee (no discount), 100 = 0% fee (max discount)
     use_lp_fee: Option<u8>,     // overwrite for LP fee in case of 2-legged synthetic swaps
     use_gas_fee: Option<&Nat>,  // overwrite for gas fee in case of synethetic swaps
@@ -455,11 +453,6 @@ fn swap_amount_0(
     let reserve_1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
 
     if nat_is_zero(&reserve_0) || nat_is_zero(&reserve_1) {
-        return Err("Zero balance in pool".to_string());
-    }
-
-    if nat_is_zero(amount_0) {
-        // return "mid" swap price if amount_1 is zero
         return Ok(SwapCalc {
             pool_id: pool.pool_id,
             pay_token_id: token_id_0,
@@ -470,6 +463,22 @@ fn swap_amount_0(
             gas_fee: nat_zero(),
         });
     }
+
+    let amount_0 = match amount_0 {
+        None => {
+            // return "mid" swap price if amount_0 is none
+            return Ok(SwapCalc {
+                pool_id: pool.pool_id,
+                pay_token_id: token_id_0,
+                pay_amount: nat_zero(),
+                receive_token_id: token_id_1,
+                receive_amount: nat_zero(),
+                lp_fee: nat_zero(),
+                gas_fee: nat_zero(),
+            });
+        }
+        Some(amount) => amount,
+    };
 
     // convert amount_0 and pool balances to the max_decimals precision
     let max_decimals = std::cmp::max(token_0.decimals(), token_1.decimals());
@@ -520,7 +529,7 @@ fn swap_amount_0(
 /// use_lp_fee and use_gas_fee are used to overwrite the default LP and gas fees, if None, then use the pool's default
 fn swap_amount_1(
     pool: &StablePool,
-    amount_1: &Nat,
+    amount_1: Option<&Nat>,
     user_fee_level: Option<u8>,
     use_lp_fee: Option<u8>,
     use_gas_fee: Option<&Nat>,
@@ -536,11 +545,6 @@ fn swap_amount_1(
     let reserve_1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
 
     if nat_is_zero(&reserve_0) || nat_is_zero(&reserve_1) {
-        return Err(format!("Pool {} insufficent balances", pool.symbol()));
-    }
-
-    if nat_is_zero(amount_1) {
-        // return "mid" swap price if amount_1 is zero
         return Ok(SwapCalc {
             pool_id: pool.pool_id,
             pay_token_id: token_id_1,
@@ -551,6 +555,22 @@ fn swap_amount_1(
             gas_fee: nat_zero(),
         });
     }
+
+    let amount_1 = match amount_1 {
+        None => {
+            // return "mid" swap price if amount_1 is none
+            return Ok(SwapCalc {
+                pool_id: pool.pool_id,
+                pay_token_id: token_id_1,
+                pay_amount: nat_zero(),
+                receive_token_id: token_id_0,
+                receive_amount: nat_zero(),
+                lp_fee: nat_zero(),
+                gas_fee: nat_zero(),
+            });
+        }
+        Some(amount) => amount,
+    };
 
     // convert amount_1 and pool balances to the max_decimals precision
     let max_decimals = std::cmp::max(token_0.decimals(), token_1.decimals());

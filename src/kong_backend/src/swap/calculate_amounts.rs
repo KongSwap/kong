@@ -13,7 +13,7 @@ pub fn calculate_amounts(
     user_receive_amount: Option<&Nat>,
     user_max_slippage: f64,
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
-    let (receive_amount_with_fees_and_gas, price, mid_price, slippage, txs) = swap_amounts(pay_token, pay_amount, receive_token)?;
+    let (receive_amount_with_fees_and_gas, price, mid_price, slippage, txs) = swap_amounts(pay_token, Some(pay_amount), receive_token)?;
 
     // check if receive_amount_with_fees_and_gas is within user's specified
     if let Some(user_receive_amount) = user_receive_amount {
