@@ -141,7 +141,7 @@ impl StablePool {
         price_rounded(&self.get_price()?)
     }
 
-    /// sets balance = balance_0 + balance_1 in ckUSDT
+    /// sets tvl = balance_0 + balance_1 in ckUSDT
     pub fn update_tvl(&mut self) {
         let token_0 = self.token_0();
         let token_1 = self.token_1();
