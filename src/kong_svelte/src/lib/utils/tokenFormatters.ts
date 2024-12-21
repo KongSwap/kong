@@ -66,7 +66,7 @@ export function formatUsdValue(value: number | string): string {
 
     // For extremely small values (< 0.00001), show scientific notation
     if (valueNumber < 0.00001 && valueNumber > 0) {
-        return `$${valueNumber.toExponential(4)}`;
+        return `< $0.01`;
     }
     
     // For very small values (< 0.01), show up to 6 decimals

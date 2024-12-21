@@ -112,7 +112,7 @@
             {token.formattedBalance}
           </div>
           <div class="usd-value">
-            {formatUsdValueWithMinimum(token.formattedUsdValue)}
+            {formatUsdValue(token.formattedUsdValue)}
           </div>
         </div>
 

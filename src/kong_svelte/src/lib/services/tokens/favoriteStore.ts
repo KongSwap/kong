@@ -3,6 +3,7 @@ import { kongDB } from "$lib/services/db";
 import { auth } from "$lib/services/auth";
 import { toastStore } from "$lib/stores/toastStore";
 import { eventBus } from './eventBus';
+import { browser } from '$app/environment';
 
 interface FavoriteState {
   favorites: Record<string, string[]>;  // wallet_id -> canister_ids[]
@@ -21,6 +22,8 @@ function createFavoriteStore() {
   };
 
   const loadFavorites = async () => {
+    if (!browser) return;
+    
     const walletId = getCurrentWalletId();
     store.update(s => ({ ...s, isLoading: true }));
     
@@ -45,6 +48,8 @@ function createFavoriteStore() {
   };
 
   const toggleFavorite = async (canister_id: string) => {
+    if (!browser) return;
+    
     const walletId = getCurrentWalletId();
     const state = get(store);
     const currentFavorites = state.favorites[walletId] || [];
@@ -99,10 +104,11 @@ function createFavoriteStore() {
     }
   };
 
-  // Subscribe to the auth store to reload favorites on wallet change
-  auth.subscribe(($auth) => {
-    loadFavorites();
-  });
+  if (browser) {
+    auth.subscribe(($auth) => {
+      loadFavorites();
+    });
+  }
 
   return {
     subscribe: store.subscribe,
