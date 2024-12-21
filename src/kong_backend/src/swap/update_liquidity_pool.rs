@@ -75,7 +75,7 @@ pub fn update_liquidity_pool(
                         pool.rolling_24h_lp_fee = nat_add(&pool.rolling_24h_lp_fee, &ckusdt_lp_fee);
                     }
                 }
-                pool.update_tvl();
+                pool.set_tvl();
                 pool.rolling_24h_num_swaps = nat_add(&pool.rolling_24h_num_swaps, &Nat::from(1_u128));
                 // APY = (total_fees / total_liquidity) * 365 * 100
                 pool.rolling_24h_apy = round_f64(

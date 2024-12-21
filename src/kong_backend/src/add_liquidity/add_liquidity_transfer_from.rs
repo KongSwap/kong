@@ -112,7 +112,7 @@ pub fn calculate_amounts(token_0: &str, amount_0: &Nat, token_1: &str, amount_1:
     let lp_token_id = lp_token.token_id();
     let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
 
-    if nat_is_zero(&reserve_0) && nat_is_zero(&reserve_1) {
+    if nat_is_zero(&reserve_0) || nat_is_zero(&reserve_1) {
         // new pool as there are no balances - take user amounts as initial ratio
         // initialize LP tokens as sqrt(amount_0 * amount_1)
         // convert the amounts to the same decimal precision as the LP token
@@ -354,7 +354,7 @@ pub fn update_liquidity_pool(
 
             pool.balance_0 = nat_add(&pool.balance_0, &amount_0);
             pool.balance_1 = nat_add(&pool.balance_1, &amount_1);
-            pool.update_tvl();
+            pool.set_tvl();
             pool_map::update(&pool);
             request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 

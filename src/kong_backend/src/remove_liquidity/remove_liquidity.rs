@@ -340,7 +340,7 @@ fn update_liquidity_pool(request_id: u64, pool: &StablePool, amount_0: &Nat, lp_
         lp_fee_1: nat_subtract(&pool.lp_fee_1, lp_fee_1).unwrap_or(nat_zero()),
         ..pool.clone()
     };
-    update_pool.update_tvl();
+    update_pool.set_tvl();
     pool_map::update(&update_pool);
     request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 }
