@@ -582,7 +582,7 @@ pub async fn insert_tx_on_database(
     Ok(())
 }
 
-pub async fn update_txs_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_txs<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"txs.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?

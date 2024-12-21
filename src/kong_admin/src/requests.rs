@@ -466,7 +466,7 @@ pub async fn insert_request_on_database(v: &StableRequest, db_client: &Client) -
     Ok(())
 }
 
-pub async fn update_requests_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_requests<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"requests.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?

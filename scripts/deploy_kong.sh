@@ -15,7 +15,7 @@ NETWORK=${1:-local}
 echo "Building and deploying KONG canisters to ${NETWORK}"
 
 # Check required commands
-for cmd in rustc cargo npm dfx jq; do
+for cmd in rustc cargo npm dfx jq sha256sum; do
     if ! command -v $cmd >/dev/null; then
         echo "$cmd is not installed"
         exit 1
@@ -125,7 +125,7 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 fi
 
 if [[ "${NETWORK}" == "ic" ]]; then
-    # calculate sha256sum for SNS proposal
-    echo "sha256sum for kong_backend.wasm.gz"
+    # calculate sha256 for SNS proposal
+    echo "SHA256 for kong_backend.wasm.gz:"
     sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
 fi

@@ -8,7 +8,9 @@ use super::swap_calc::SwapCalc;
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::math_helpers::round_f64;
 use crate::helpers::nat_helpers::nat_zero;
-use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_to_decimal_precision};
+use crate::helpers::nat_helpers::{
+    nat_add, nat_divide, nat_is_zero, nat_multiply, nat_multiply_f64, nat_subtract, nat_to_decimal_precision,
+};
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_token::stable_token::StableToken;
@@ -16,11 +18,14 @@ use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
-pub fn swap_mid_price(pay_token: &StableToken, receive_token: &StableToken) -> Result<f64, String> {
-    let (_, mid_price, _, _, _) = swap_amounts(pay_token, &nat_zero(), receive_token)?;
-    Ok(mid_price)
+pub fn swap_mid_price(pay_token: &StableToken, pay_amount: &Nat, receive_token: &StableToken) -> Result<Nat, String> {
+    let (_, _, mid_price, _, _) = swap_amounts(pay_token, &nat_zero(), receive_token)?;
+    let receive_amount_pay_token_decimal = nat_multiply_f64(pay_amount, mid_price).ok_or("Failed to calculate receive amount")?;
+    let receive_amount = nat_to_decimal_precision(&receive_amount_pay_token_decimal, pay_token.decimals(), receive_token.decimals());
+    Ok(receive_amount)
 }
 
+/// pay_amount is zero if mid price is requested
 pub fn swap_amounts(
     pay_token: &StableToken,
     pay_amount: &Nat,
@@ -64,7 +69,16 @@ pub fn swap_amounts(
         }
     }
 
-    let max_swap = swaps.into_iter().max_by(|a, b| a.0.cmp(&b.0)).ok_or("Invalid swap")?;
+    let max_swap = if nat_is_zero(pay_amount) {
+        // return the swap with the highest mid_price
+        swaps
+            .into_iter()
+            .max_by(|a, b| a.2.partial_cmp(&b.2).unwrap())
+            .ok_or("Invalid swap")?
+    } else {
+        // return the swap with the highest receive amount
+        swaps.into_iter().max_by(|a, b| a.0.cmp(&b.0)).ok_or("Invalid swap")?
+    };
     Ok(max_swap)
 }
 
@@ -107,9 +121,9 @@ fn two_step_swaps(
     let mut txs = Vec::new();
     // test for 2-step swap via ckUSDT or ICP
     let ckusdt_token_id = token_map::get_ckusdt()?.token_id();
-    let icp_token_id = token_map::get_icp()?.token_id();
     let pool1_ckusdt = pool_map::get_by_token_ids(pay_token_id, ckusdt_token_id);
     let pool2_ckusdt = pool_map::get_by_token_ids(receive_token_id, ckusdt_token_id);
+    let icp_token_id = token_map::get_icp()?.token_id();
     let pool1_icp = pool_map::get_by_token_ids(pay_token_id, icp_token_id);
     let pool2_icp = pool_map::get_by_token_ids(receive_token_id, icp_token_id);
     if pool1_ckusdt.is_some() && pool2_ckusdt.is_some() || pool1_icp.is_some() && pool2_icp.is_some() {

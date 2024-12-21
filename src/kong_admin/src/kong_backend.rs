@@ -4,9 +4,7 @@ use ic_agent::Agent;
 
 use super::kong_update::KongUpdate;
 
-const KONG_BACKEND_LOCAL: &str = "l4lgk-raaaa-aaaar-qahpq-cai";
-// don't use prod canister unless you know what you're doing
-//const KONG_BACKEND_PROD: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
+const KONG_BACKEND_LOCAL: &str = "2ipq2-uqaaa-aaaar-qailq-cai";
 
 #[derive(Clone)]
 pub struct KongBackend {
@@ -42,7 +40,6 @@ impl KongUpdate for KongBackend {
         call_result.map_err(|e| anyhow::anyhow!(e))
     }
 
-    #[allow(dead_code)]
     async fn update_users(&self, users: &str) -> Result<String> {
         let result = self
             .agent
@@ -53,7 +50,6 @@ impl KongUpdate for KongBackend {
         call_result.map_err(|e| anyhow::anyhow!(e))
     }
 
-    #[allow(dead_code)]
     async fn update_tokens(&self, tokens: &str) -> Result<String> {
         let result = self
             .agent
@@ -64,7 +60,6 @@ impl KongUpdate for KongBackend {
         call_result.map_err(|e| anyhow::anyhow!(e))
     }
 
-    #[allow(dead_code)]
     async fn update_pools(&self, pools: &str) -> Result<String> {
         let result = self
             .agent

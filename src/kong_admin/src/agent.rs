@@ -11,6 +11,7 @@ pub async fn create_agent(url: &str, identity: impl 'static + Identity, is_mainn
     Ok(agent)
 }
 
+#[allow(dead_code)]
 pub fn create_random_identity() -> impl Identity {
     let signing_key = SigningKey::new(thread_rng());
     ic_agent::identity::BasicIdentity::from_signing_key(signing_key)

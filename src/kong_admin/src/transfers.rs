@@ -131,7 +131,7 @@ pub async fn insert_transfer_on_database(
     Ok(())
 }
 
-pub async fn update_transfers_on_kong_data<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_transfers<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
     let dir_path = "./backups";
     let re_pattern = Regex::new(r"transfers.*.json").unwrap();
     let mut files = fs::read_dir(dir_path)?

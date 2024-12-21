@@ -4,7 +4,7 @@ use std::path::Path;
 
 use super::kong_update::KongUpdate;
 
-pub async fn update_kong_settings_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_kong_settings<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/kong_settings.json");
     let file = File::open(path)?;
     println!("processing: {:?}", path.file_name().unwrap());

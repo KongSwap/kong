@@ -67,7 +67,7 @@ pub async fn insert_lp_token_on_database(
     Ok(())
 }
 
-pub async fn update_lp_tokens_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_lp_tokens<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/lp_tokens.json");
     let file = File::open(path)?;
     println!("processing: {:?}", path.file_name().unwrap());
