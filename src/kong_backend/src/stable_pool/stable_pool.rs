@@ -150,7 +150,8 @@ impl StablePool {
         let tvl_1 = nat_add(&nat_add(&self.balance_1, &self.lp_fee_1), &self.kong_fee_1);
         let tvl_0_ckusdt = ckusdt_amount(&token_0, &tvl_0).unwrap_or(nat_zero());
         let tvl_1_ckusdt = ckusdt_amount(&token_1, &tvl_1).unwrap_or(nat_zero());
-        self.tvl = nat_add(&tvl_0_ckusdt, &tvl_1_ckusdt)
+        self.tvl = nat_add(&tvl_0_ckusdt, &tvl_1_ckusdt);
+        pool_map::update(self);
     }
 
     pub fn set_on_kong(&mut self, on_kong: bool) {

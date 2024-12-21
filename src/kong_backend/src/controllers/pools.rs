@@ -96,6 +96,10 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
     let token_1 = pool.token_1().address_with_chain();
     let mut results = Vec::new();
     for (remove_lp_token_amount, user_id, principal_id) in lp_users {
+        // skip if user has no LP position
+        if remove_lp_token_amount == nat_zero() {
+            continue;
+        }
         let args = RemoveLiquidityArgs {
             token_0: token_0.clone(),
             token_1: token_1.clone(),

@@ -171,15 +171,15 @@ async fn check_arguments_with_user(args: &RemoveLiquidityArgs, user_id: u32) -> 
     let lp_token = pool.lp_token();
     let lp_token_id = lp_token.token_id();
 
-    if nat_is_zero(balance_0) || nat_is_zero(balance_1) {
-        return Err("Zero balance in pool".to_string());
+    if nat_is_zero(balance_0) && nat_is_zero(balance_1) {
+        return Err("Zero balances in pool".to_string());
     }
 
     // Check the user has enough LP tokens
     let user_lp_token_amount =
         lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
     let remove_lp_token_amount = if user_lp_token_amount == nat_zero() || args.remove_lp_token_amount > user_lp_token_amount {
-        return Err("Insufficient LP balance".to_string());
+        return Err("User has insufficient LP balance".to_string());
     } else {
         args.remove_lp_token_amount.clone()
     };

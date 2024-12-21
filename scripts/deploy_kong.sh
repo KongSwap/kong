@@ -3,9 +3,11 @@
 # Setup directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd ".." && pwd )"
+DFX_ROOT="${PROJECT_ROOT}/.dfx"
 echo "=============== DEPLOY SCRIPT INFO ==============="
-echo "Script directory: $SCRIPT_DIR"
 echo "Project root: $PROJECT_ROOT"
+echo "Dfx root: $DFX_ROOT"
+echo "Script directory: $SCRIPT_DIR"
 echo "==============================================="
 
 # Set network and prepare environment
@@ -120,4 +122,10 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
     [ -f "deploy_tokens_pools.sh" ] && {
         bash "deploy_tokens_pools.sh" "${NETWORK}"
     } || echo "Warning: deploy_tokens_pools.sh not found"
+fi
+
+if [[ "${NETWORK}" == "ic" ]]; then
+    # calculate sha256sum for SNS proposal
+    echo "sha256sum for kong_backend.wasm.gz"
+    sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
 fi
