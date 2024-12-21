@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Usage: ./upgrade_kong.sh [PACKAGE] [NETWORK]
+# Usage: ./upgrade_kong.sh [NETWORK] [PACKAGE]
 #
-# PACKAGE: all, kong_backend, kong_data, kong_svelte
 # NETWORK: local, staging, ic
+# PACKAGE: all, kong_backend, kong_data, kong_svelte
 #
 
-PACKAGE=${1:-all}
-NETWORK=${2:-local}
+NETWORK=${1:-local}
+PACKAGE=${2:-all}
 IDENTITY="--identity kong"
 
 echo "Upgrading KONG canisters to ${NETWORK}"

@@ -22,6 +22,7 @@ pub fn read_settings() -> Result<Settings, Box<dyn std::error::Error>> {
     Ok(settings)
 }
 
+#[allow(dead_code)]
 pub fn write_settings(settings: &Settings) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::create("./settings.json")?;
     serde_json::to_writer_pretty(file, settings)?;

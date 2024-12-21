@@ -1,10 +1,11 @@
+use crate::settings::read_settings;
 use agent::{create_agent, create_identity_from_pem_file};
-use kong_data::KongData;
 use std::env;
 use tokio_postgres::NoTls;
-use updates::get_db_updates;
 
-use crate::settings::read_settings;
+use kong_backend::KongBackend;
+use kong_data::KongData;
+use updates::get_db_updates;
 
 mod agent;
 mod claims;
@@ -56,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let identity = create_identity_from_pem_file(dfx_pem_file);
     let agent = create_agent(replica_url, identity, is_mainnet).await?;
+    let kong_backend = KongBackend::new(&agent).await;
     let kong_data = KongData::new(&agent, is_mainnet).await;
 
     let tokens_map = tokens::load_tokens_from_database(&db_client).await?;
@@ -63,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.contains(&"--updates".to_string()) {
         get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
-    } else if args.contains(&"--backup".to_string()) {
+    } else if args.contains(&"--database".to_string()) {
         // Dump to database
         users::update_users_on_database(&db_client).await?;
         let tokens_map = tokens::update_tokens_on_database(&db_client).await?;
@@ -73,29 +75,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         claims::update_claims_on_database(&db_client, &tokens_map).await?;
         transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
         txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
-
-        // Dump to kong_data
-        //kong_settings::update_kong_settings(&kong_data).await?;
-        users::update_users_on_kong_data(&kong_data).await?;
-        tokens::update_tokens_on_kong_data(&kong_data).await?;
-        pools::update_pools_on_kong_data(&kong_data).await?;
-        lp_tokens::update_lp_tokens_on_kong_data(&kong_data).await?;
-        requests::update_requests_on_kong_data(&kong_data).await?;
-        claims::update_claims_on_kong_data(&kong_data).await?;
-        transfers::update_transfers_on_kong_data(&kong_data).await?;
-        txs::update_txs_on_kong_data(&kong_data).await?;
-
+    } else if args.contains(&"--kong_backend".to_string()) {
         // Dump to kong_backend
-        // let kong_backend = KongBackend::new(&agent).await;
         // kong_settings::update_kong_settings(&kong_backend).await?;
-        // users::update_users(&kong_backend).await?;
-        // tokens::update_tokens(&kong_backend).await?;
-        // pools::update_pools(&kong_backend).await?;
+        users::update_users(&kong_backend).await?;
+        tokens::update_tokens(&kong_backend).await?;
+        pools::update_pools(&kong_backend).await?;
         // lp_tokens::update_lp_tokens(&kong_backend).await?;
         // requests::update_requests(&kong_backend).await?;
         // claims::update_claims(&kong_backend).await?;
         // transfers::update_transfers(&kong_backend).await?;
         // txs::update_txs(&kong_backend).await?;
+    } else if args.contains(&"--kong_data".to_string()) {
+        // Dump to kong_data
+        //kong_settings::update_kong_settings(&kong_data).await?;
+        users::update_users(&kong_data).await?;
+        tokens::update_tokens(&kong_data).await?;
+        pools::update_pools(&kong_data).await?;
+        lp_tokens::update_lp_tokens(&kong_data).await?;
+        requests::update_requests(&kong_data).await?;
+        claims::update_claims_on_kong_data(&kong_data).await?;
+        transfers::update_transfers(&kong_data).await?;
+        txs::update_txs(&kong_data).await?;
     }
 
     Ok(())

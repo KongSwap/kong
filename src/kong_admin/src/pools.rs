@@ -136,7 +136,7 @@ pub async fn load_pools_from_database(db_client: &Client) -> Result<BTreeMap<u32
     Ok(pools_map)
 }
 
-pub async fn update_pools_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_pools<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/pools.json");
     let file = File::open(path)?;
     println!("processing: {:?}", path.file_name().unwrap());

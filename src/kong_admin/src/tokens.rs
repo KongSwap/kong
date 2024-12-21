@@ -151,7 +151,7 @@ pub async fn load_tokens_from_database(db_client: &Client) -> Result<BTreeMap<u3
     Ok(tokens_map)
 }
 
-pub async fn update_tokens_on_kong_data<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_tokens<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/tokens.json");
     let file = File::open(path)?;
     println!("processing: {:?}", path.file_name().unwrap());
