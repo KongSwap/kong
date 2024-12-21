@@ -121,3 +121,5 @@ if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
         bash "deploy_tokens_pools.sh" "${NETWORK}"
     } || echo "Warning: deploy_tokens_pools.sh not found"
 fi
+
+sha256sum "${root_dir}"/.dfx/ic/canisters/kong_backend/kong_backend.wasm.gz
