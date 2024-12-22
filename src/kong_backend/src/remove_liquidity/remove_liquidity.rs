@@ -518,6 +518,7 @@ fn return_tokens(
 
 pub fn archive_to_kong_data(reply: &RemoveLiquidityReply) {
     if kong_settings_map::get().archive_to_kong_data {
+        request_map::archive_request_to_kong_data(reply.request_id);
         for claim_id in reply.claim_ids.iter() {
             claim_map::archive_claim_to_kong_data(*claim_id);
         }
