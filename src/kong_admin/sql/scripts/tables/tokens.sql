@@ -1,7 +1,7 @@
 CREATE TYPE token_type AS ENUM ('IC', 'LP');
 
 CREATE TABLE tokens (
-    token_id INT REFERENCES tokens(token_id) PRIMARY KEY,
+    token_id INT PRIMARY KEY,
     token_type token_type NOT NULL,
     name TEXT,
     symbol TEXT,

@@ -46,7 +46,7 @@ pub async fn get_db_updates(
         }
     }
 
-    println!("DB updates {} updated", db_updates.len());
+    println!("--- DB updates {} records updated ---", db_updates.len());
 
     if last_update_id > 0 {
         _ = kong_data.remove_db_updates(last_update_id).await?;
