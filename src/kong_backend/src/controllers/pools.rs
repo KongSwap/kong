@@ -44,12 +44,9 @@ fn update_pools(tokens: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid pools: {}", e)),
     };
 
-    POOL_MAP.with(|user_map| {
-        let mut map = user_map.borrow_mut();
-        for (k, v) in pools {
-            map.insert(k, v);
-        }
-    });
+    for (_, v) in pools {
+        pool_map::insert(&v)?;
+    }
 
     Ok("Pools updated".to_string())
 }

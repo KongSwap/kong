@@ -58,7 +58,6 @@ pub async fn send_receive_token(
         }
         Err(e) => {
             let message = match claim_map::insert(
-                receive_token,
                 &StableClaim::new(
                     user_id,
                     receive_token_id,
@@ -67,6 +66,7 @@ pub async fn send_receive_token(
                     Some(to_address.clone()),
                     ts,
                 ),
+                receive_token,
             ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);

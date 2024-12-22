@@ -47,7 +47,6 @@ pub async fn return_pay_token(
         }
         Err(e) => {
             let message = match claim_map::insert(
-                pay_token,
                 &StableClaim::new(
                     user_id,
                     token_id,
@@ -56,6 +55,7 @@ pub async fn return_pay_token(
                     Some(Address::PrincipalId(*to_principal_id)),
                     ts,
                 ),
+                pay_token,
             ) {
                 Ok(claim_id) => {
                     claim_ids.push(claim_id);

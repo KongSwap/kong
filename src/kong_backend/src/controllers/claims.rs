@@ -2,8 +2,10 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
+use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim, StableClaimId};
 use crate::stable_memory::CLAIM_MAP;
+use crate::stable_token::token_map;
 
 const MAX_CLAIMS: usize = 1_000;
 
@@ -35,12 +37,10 @@ fn update_claims(stable_claims: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid claims: {}", e)),
     };
 
-    CLAIM_MAP.with(|claim_map| {
-        let mut map = claim_map.borrow_mut();
-        for (k, v) in claims {
-            map.insert(k, v);
-        }
-    });
+    for (_, v) in claims {
+        let token = token_map::get_by_token_id(v.token_id).ok_or("Token not found")?;
+        claim_map::insert(&v, &token)?;
+    }
 
     Ok("Claims updated".to_string())
 }

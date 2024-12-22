@@ -3,14 +3,11 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
+use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use crate::stable_memory::TX_MAP;
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
-use crate::stable_tx::tx_map;
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
-use crate::stable_db_update::db_update_map;
-use crate::txs::txs_reply::TxsReply;
-use crate::txs::txs_reply_helpers::to_txs_reply;
 
 const MAX_TXS: usize = 1_000;
 
@@ -72,14 +69,4 @@ fn update_tx(stable_tx_json: String) -> Result<String, String> {
     db_update_map::insert(&update);
 
     Ok("Tx updated".to_string())
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn get_txs(tx_id: Option<u64>, user_id: Option<u32>, token_id: Option<u32>, num_txs: Option<u16>) -> Result<Vec<TxsReply>, String> {
-    let num_txs = num_txs.map(|n| n as usize);
-    let txs = tx_map::get_by_user_and_token_id(tx_id, user_id, token_id, num_txs)
-        .iter()
-        .map(to_txs_reply)
-        .collect();
-    Ok(txs)
 }

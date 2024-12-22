@@ -14,4 +14,5 @@ pub struct LPReply {
     pub fee: Nat,
     pub total_supply: Nat,
     pub on_kong: bool,
+    pub metadata: Option<String>,
 }

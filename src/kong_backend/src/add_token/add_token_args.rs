@@ -6,4 +6,5 @@ use serde::{Deserialize, Serialize};
 pub struct AddTokenArgs {
     pub token: String,
     pub on_kong: Option<bool>,
+    pub metadata: Option<String>,
 }

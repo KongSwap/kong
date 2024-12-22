@@ -25,30 +25,6 @@ type TransferIdReply = record {
     transfer : TransferReply
 };
 
-type RequestRequest = variant {
-    AddPool : AddPoolArgs;
-    AddLiquidity : AddLiquidityArgs;
-    RemoveLiquidity : RemoveLiquidityArgs;
-    Swap : SwapArgs;
-};
-
-type RequestReply = variant {
-    Pending;
-    AddPool : AddPoolReply;
-    AddLiquidity : AddLiquidityReply;
-    RemoveLiquidity : RemoveLiquidityReply;
-    Swap : SwapReply;
-};
-
-type RequestsReply = record {
-    request_id : nat64;
-    statuses : vec text;
-    request : RequestRequest;
-    reply : RequestReply;
-    ts : nat64;
-};
-type RequestsResult = variant { Ok : vec RequestsReply; Err : text };
-
 type AddPoolArgs = record {
     token_0 : text;
     amount_0 : nat;
@@ -194,11 +170,6 @@ service : {
     icrc10_supported_standards : () -> (vec Icrc10SupportedStandards) query;
     icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
 
-    // requests(opt request_id, opt num_requests) - return requests by request id.
-    requests : (opt nat64, opt nat16) -> (RequestsResult) query;
     // txs(opt principal_id, opt tx_id, opt token_id, opt num_txs) - returns transactions filtered by principal id, transaction id or token
     txs : (opt text, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
-
-    get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
-    get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 }

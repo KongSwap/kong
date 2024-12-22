@@ -63,6 +63,7 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
         transfer_ids: to_transfer_ids(&add_pool_tx.transfer_ids),
         claim_ids: add_pool_tx.claim_ids.clone(),
         on_kong: add_pool_tx.on_kong,
+        metadata: add_pool_tx.metadata.clone(),
         ts: add_pool_tx.ts,
     }
 }
@@ -76,7 +77,6 @@ pub fn create_add_pool_reply_failed(
     request_id: u64,
     transfer_ids: &[u64],
     claim_ids: &[u64],
-    on_kong: bool,
     ts: u64,
 ) -> AddPoolReply {
     AddPoolReply {
@@ -97,7 +97,8 @@ pub fn create_add_pool_reply_failed(
         lp_token_symbol: "LP token not added".to_string(),
         transfer_ids: to_transfer_ids(transfer_ids),
         claim_ids: claim_ids.to_vec(),
-        on_kong,
+        on_kong: false,
+        metadata: None,
         ts,
     }
 }

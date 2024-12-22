@@ -15,5 +15,6 @@ pub struct AddPoolTx {
     pub transfer_ids: Vec<u64>,
     pub claim_ids: Vec<u64>,
     pub on_kong: bool,
+    pub metadata: Option<String>,
     pub ts: u64,
 }

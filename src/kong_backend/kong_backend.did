@@ -222,6 +222,7 @@ type LPTokenReply = record {
     fee : nat;
     total_supply : nat;
     on_kong : bool;
+    metadata : opt text;
 };
 type ICTokenReply = record {
     token_id : nat32;
@@ -236,6 +237,7 @@ type ICTokenReply = record {
     icrc2 : bool;
     icrc3 : bool;
     on_kong : bool;
+    metadata : opt text;
 };
 type TokensResult = variant { Ok : vec TokenReply; Err : text };
 
@@ -262,13 +264,14 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
+    on_kong : bool;             // flag indicating if displayed on Kong Swap
+    metadata : opt text;        // metadata for pool
     tvl : nat;                  // USD value of TVL
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;
     rolling_24h_apy : float64;
     lp_token_symbol : text;
-    on_kong : bool;             // flag indicating if displayed on Kong Swap
 };
 type PoolsResult = variant { Ok : PoolsReply; Err : text };
 

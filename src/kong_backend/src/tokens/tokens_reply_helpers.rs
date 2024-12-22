@@ -26,6 +26,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             fee: token.fee(),
             total_supply: lp_token_map::get_total_supply(token_id),
             on_kong: token.on_kong(),
+            metadata: lp_token.metadata.clone(),
         }),
         IC(ic_token) => TokensReply::IC(ICReply {
             token_id,
@@ -40,6 +41,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             icrc2: ic_token.icrc2,
             icrc3: ic_token.icrc3,
             on_kong: token.on_kong(),
+            metadata: ic_token.metadata.clone(),
         }),
     }
 }

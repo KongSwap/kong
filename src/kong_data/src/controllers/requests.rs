@@ -3,13 +3,10 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
-use crate::requests::request_reply::RequestReply;
-use crate::requests::request_reply_helpers::to_request_reply;
-use crate::stable_memory::REQUEST_MAP;
-use crate::stable_request::request_map;
-use crate::stable_request::stable_request::{StableRequest, StableRequestId};
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
 use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
+use crate::stable_memory::REQUEST_MAP;
+use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
 const MAX_REQUESTS: usize = 100;
 
@@ -72,14 +69,4 @@ fn update_request(stable_request_json: String) -> Result<String, String> {
     db_update_map::insert(&update);
 
     Ok("Request updated".to_string())
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn get_requests(request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<u16>) -> Result<Vec<RequestReply>, String> {
-    let num_requests = num_requests.map(|n| n as usize);
-    let requests = request_map::get_by_request_and_user_id(request_id, user_id, num_requests)
-        .iter()
-        .map(to_request_reply)
-        .collect();
-    Ok(requests)
 }
