@@ -34,12 +34,12 @@ async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
         return Err(format!("Token {} already exists", args.token));
     }
 
-    // Default on_kong to false
+    // defaults
     let on_kong = args.on_kong.unwrap_or(false);
 
     // Only IC tokens of format IC.CanisterId supported
     match token_map::get_chain(&args.token) {
-        Some(chain) if chain == IC_CHAIN => to_add_token_reply(&add_ic_token(&args.token, on_kong).await?),
+        Some(chain) if chain == IC_CHAIN => to_add_token_reply(&add_ic_token(&args.token, on_kong, args.metadata).await?),
         Some(chain) if chain == LP_CHAIN => Err("LP tokens not supported".to_string()),
         Some(_) | None => Err("Chain not specified or supported".to_string()),
     }
@@ -65,22 +65,22 @@ async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
 /// - Creating the `ICToken` fails.
 /// - Inserting the token into the token map fails.
 /// - Retrieving the inserted token fails.
-pub async fn add_ic_token(token: &str, on_kong: bool) -> Result<StableToken, String> {
+pub async fn add_ic_token(token: &str, on_kong: bool, metadata: Option<String>) -> Result<StableToken, String> {
     // Retrieves the address of the token.
     let address = token_map::get_address(token).ok_or_else(|| format!("Invalid address {}", token))?;
 
     // Converts the address to a `Principal`.
     let canister_id = Principal::from_text(address).map_err(|e| format!("Invalid canister id {}: {}", token, e))?;
 
-    let ic_token = StableToken::IC(ICToken::new(&canister_id, on_kong).await?);
+    let ic_token = StableToken::IC(ICToken::new(&canister_id, on_kong, metadata).await?);
     let token_id = token_map::insert(&ic_token)?;
 
     // Retrieves the inserted token by its token_id
     token_map::get_by_token_id(token_id).ok_or_else(|| format!("Failed to add token {}", token))
 }
 
-pub fn add_lp_token(token_0: &StableToken, token_1: &StableToken, on_kong: bool) -> Result<StableToken, String> {
-    let lp_token = StableToken::LP(LPToken::new(token_0, token_1, on_kong));
+pub fn add_lp_token(token_0: &StableToken, token_1: &StableToken, on_kong: bool, metadata: Option<String>) -> Result<StableToken, String> {
+    let lp_token = StableToken::LP(LPToken::new(token_0, token_1, on_kong, metadata));
     let token_id = token_map::insert(&lp_token)?;
 
     // Retrieves the inserted token by its token_id

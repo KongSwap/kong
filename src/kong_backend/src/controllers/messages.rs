@@ -41,12 +41,9 @@ fn update_messages(stable_messages: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid messages: {}", e)),
     };
 
-    MESSAGE_MAP.with(|message_map| {
-        let mut map = message_map.borrow_mut();
-        for (k, v) in messages {
-            map.insert(k, v);
-        }
-    });
+    for (_, v) in messages {
+        message_map::insert(&v)?;
+    }
 
     Ok("Messages updated".to_string())
 }

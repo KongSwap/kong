@@ -13,6 +13,7 @@ CREATE TABLE tokens (
     icrc2 BOOLEAN,
     icrc3 BOOLEAN,
     on_kong BOOLEAN NOT NULL,
+    metadata TEXT,
     raw_json JSONB NOT NULL,
     UNIQUE (canister_id, address)
 );

@@ -2,6 +2,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
+use crate::stable_lp_token::lp_token_map;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
 use crate::stable_memory::LP_TOKEN_MAP;
 
@@ -35,12 +36,9 @@ fn update_lp_tokens(stable_lp_tokens: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid LP tokens: {}", e)),
     };
 
-    LP_TOKEN_MAP.with(|user_map| {
-        let mut map = user_map.borrow_mut();
-        for (k, v) in lp_tokens {
-            map.insert(k, v);
-        }
-    });
+    for (_, v) in lp_tokens {
+        lp_token_map::insert(&v)?;
+    }
 
     Ok("LP tokens updated".to_string())
 }

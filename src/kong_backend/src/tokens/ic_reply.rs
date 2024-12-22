@@ -15,4 +15,5 @@ pub struct ICReply {
     pub icrc2: bool,
     pub icrc3: bool,
     pub on_kong: bool,
+    pub metadata: Option<String>,
 }

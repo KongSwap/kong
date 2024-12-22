@@ -16,4 +16,5 @@ pub struct AddPoolArgs {
     pub lp_fee_bps: Option<u8>,
     pub kong_fee_bps: Option<u8>,
     pub on_kong: Option<bool>,
+    pub metadata: Option<String>,
 }

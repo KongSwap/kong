@@ -6,7 +6,7 @@ CREATE TABLE claims (
     token_id INT REFERENCES tokens(token_id) NOT NULL,
     status claim_status NOT NULL,
     amount DOUBLE PRECISION NOT NULL,
-    request_id BIGINT NOT NULL,
+    request_id BIGINT REFERENCES requests(request_id) NOT NULL,
     to_address TEXT,
     attempt_request_id BIGINT[],
     transfer_ids BIGINT[],
