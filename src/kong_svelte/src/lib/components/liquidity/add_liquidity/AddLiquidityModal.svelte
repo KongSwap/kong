@@ -140,10 +140,9 @@
         error = null;
         isProcessingOutput = true;
 
-        const [balance0, balance1] = await Promise.all([
-          tokenStore.loadBalance(token0, $auth?.account?.owner?.toString(), true), 
-          tokenStore.loadBalance(token1, $auth?.account?.owner?.toString(), true)
-        ]);
+        const store = get(tokenStore);
+        const balance0 = store.balances[token0.canister_id];
+        const balance1 = store.balances[token1.canister_id];
 
         if (index === 0) {
           const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -198,14 +197,6 @@
       }
     }
 
-    async function handleSubmit() {
-      showReview = true;
-    }
-
-    function handleCancel() {
-      showReview = false;
-    }
-
     async function handleConfirm() {
       showReview = false;
       loading = true;
@@ -224,11 +215,6 @@
 
           const requestId = await PoolService.addLiquidity(params);
 
-          await Promise.all([
-            tokenStore.loadBalance(token0, $auth?.account?.owner?.toString(), true),
-            tokenStore.loadBalance(token1, $auth?.account?.owner?.toString(), true)
-          ])
-
           // Poll for request status
           const checkStatus = async () => {
               try {
@@ -243,7 +229,6 @@
                   )) {
                       loading = false;
                       previewMode = false;
-                      console.log("requestStatus", requestStatus)
                       error = requestStatus.statuses[requestStatus.statuses.length - 2]
                       // Add failed status to steps
                       statusSteps = statusSteps.map(step => ({

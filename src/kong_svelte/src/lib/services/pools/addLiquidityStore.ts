@@ -82,43 +82,6 @@ function createAddLiquidityStore() {
     }
   }
 
-  async function updateBalances(state: AddLiquidityState) {
-    if (!state.token0 || !state.token1) return;
-
-    try {
-      const wallet = get(auth);
-      const balances = await TokenService.fetchBalances([state.token0, state.token1], wallet.account?.owner?.toString());
-      update(s => ({
-        ...s,
-        token0Balance: balances[state.token0.canister_id]?.in_tokens.toString() || "0",
-        token1Balance: balances[state.token1.canister_id]?.in_tokens.toString() || "0"
-      }));
-    } catch (err) {
-      console.error("Error fetching balances:", err);
-    }
-  }
-
-  function updateStatusSteps(rawStatuses: string[]) {
-    update(s => {
-      const newSteps = s.statusSteps.map(step => {
-        const matches = {
-          'Sending Tokens': ['Token 0 sent', 'Token 1 sent'],
-          'Updating LPs': ['Liquidity pool updated', 'User LP token amount updated'],
-          'Success': ['Success']
-        }[step.label];
-
-        return {
-          ...step,
-          completed: matches?.every(match => 
-            rawStatuses.some(status => status.includes(match))
-          ) || false
-        };
-      });
-
-      return { ...s, statusSteps: newSteps };
-    });
-  }
-
   return {
     subscribe,
     setToken: (index: 0 | 1, token: FE.Token) => {

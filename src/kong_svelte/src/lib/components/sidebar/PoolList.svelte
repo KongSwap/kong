@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { fade, fly, slide } from "svelte/transition";
+  import { fade, slide } from "svelte/transition";
   import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
@@ -8,6 +8,7 @@
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { ChevronRight } from "lucide-svelte";
 
   export const pools: any[] = [];
   export let filterPair: {token0?: string, token1?: string} = {}; // Filter by specific token pair
@@ -28,8 +29,6 @@
   let isSearching = false;
   let searchResultsReady = false;
   let initialFilterApplied = false;
-
-  const MIN_USD_VALUE = 0.15; // Minimum USD value threshold ($0.15)
 
   // Process pool balances when they update
   $: balances = $poolStore.userPoolBalances;
@@ -327,8 +326,7 @@
                   </div>
                 </div>
                 <div class="view-details">
-                  <span class="details-text">View Details</span>
-                  <span class="details-arrow">→</span>
+                  <span class="details-arrow"><ChevronRight size={24} /></span>
                 </div>
               </div>
             </div>
@@ -441,7 +439,7 @@
   }
 
   .view-details {
-    @apply text-sm text-blue-400 ml-4 flex items-center gap-1;
+    @apply text-sm text-kong-primary ml-4 flex items-center gap-1;
   }
 
   .details-text {
@@ -469,7 +467,7 @@
   }
 
   .primary-button {
-    @apply px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg
+    @apply px-4 py-2 bg-kong-primary text-white text-sm font-medium rounded-lg
            transition-all duration-200 hover:bg-blue-600;
   }
 
@@ -479,7 +477,7 @@
   }
 
   .error-state {
-    @apply text-red-400;
+    @apply text-kong-accent-red;
   }
 
   .loading-state {

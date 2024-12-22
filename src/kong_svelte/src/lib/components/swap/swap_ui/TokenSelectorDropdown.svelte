@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { scale } from "svelte/transition";
+  import { scale, fade } from "svelte/transition";
   import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
   import { browser } from "$app/environment";
@@ -110,10 +110,10 @@
 
         // Sort by sortColumn first
         const aValue = Number(
-          $tokenStore.balances[a.token.canister_id]?.in_usd || 0,
+          parseFloat(a.token.formattedUsdValue.replaceAll(',', '')) || 0,
         );
         const bValue = Number(
-          $tokenStore.balances[b.token.canister_id]?.in_usd || 0,
+          parseFloat(b.token.formattedUsdValue.replaceAll(',', '')) || 0,
         );
         if (aValue !== bValue)
           return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
@@ -207,9 +207,15 @@
   }
 
   function handleSelect(token: FE.Token) {
+    // Get the current balance from the store before updating
+    const existingBalance = $tokenStore.balances[token.canister_id]?.in_tokens;
+    
+    // Only update if we have a valid balance
+    const balance = existingBalance || token.balance || BigInt(0);
+    
     onSelect({
-      ...token,
-      balance: BigInt(token.balance?.toString() || "0"),
+        ...token,
+        balance: balance,
     });
     searchQuery = "";
   }
@@ -268,7 +274,10 @@
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
       class="modal-backdrop"
-      on:click|self={() => swapState.closeTokenSelector()}
+      on:click|self={() => {
+        swapState.closeTokenSelector();
+        onClose();
+      }}
       role="dialog"
     >
       <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -276,7 +285,7 @@
       <div
         class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
         bind:this={dropdownElement}
-        on:click|stopPropagation
+        on:click|preventDefault
         transition:scale={{
           duration: 200,
           start: 0.95,
@@ -290,8 +299,10 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <button
               class="close-button"
-              on:click={() => swapState.closeTokenSelector()}
-              transition:fade={{ duration: 200 }}
+              on:click|self={() => {
+                swapState.closeTokenSelector();
+                onClose();
+              }}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -439,14 +450,9 @@
                     </div>
                     <div class="token-right text-kong-text-primary text-sm">
                       <span class="token-balance flex flex-col text-right">
-                        {balance
-                          ? formatBalance(
-                              balance.in_tokens.toString(),
-                              token.decimals,
-                            )
-                          : "0"}
+                        {token.formattedBalance || "0"}
                         <span class="token-balance-label text-xs">
-                          {balance ? formatUsdValue(balance.in_usd) : "0"}
+                          {formatUsdValue(token.formattedUsdValue || "0")}
                         </span>
                       </span>
                       {#if currentToken?.canister_id === token.canister_id}

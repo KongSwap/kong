@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher, onMount } from 'svelte';
+    import { createEventDispatcher } from 'svelte';
     import Modal from '$lib/components/common/Modal.svelte';
     import TokenImages from '$lib/components/common/TokenImages.svelte';
     import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
@@ -9,6 +9,9 @@
     import { auth } from '$lib/services/auth';
     import { poolStore } from "$lib/services/pools/poolStore";
     import { toastStore } from '$lib/stores/toastStore';
+    import ButtonV2 from '$lib/components/common/ButtonV2.svelte';
+    import { goto } from '$app/navigation';
+    import { sidebarStore } from '$lib/stores/sidebarStore';
 
     const dispatch = createEventDispatcher();
 
@@ -29,10 +32,6 @@
         const price = token.metrics.price;
         
         if (!price) {
-            console.log("No price found for token:", {
-                canisterId: token.canister_id,
-                token: token
-            });
             return '0';
         }
 
@@ -156,11 +155,10 @@
             // Poll for request completion
             let isComplete = false;
             let attempts = 0;
-            const maxAttempts = 30; // 30 seconds timeout
+            const maxAttempts = 50; // 50 seconds timeout
             
             while (!isComplete && attempts < maxAttempts) {
                 const requestStatus = await PoolService.pollRequestStatus(BigInt(requestId));
-                console.log('Current status:', requestStatus);
                 
                 // Check for the complete success sequence
                 const expectedStatuses = [
@@ -225,12 +223,6 @@
 
     let activeTab: 'info' | 'remove' | 'earnings' = 'info';
 
-    // Add price calculation
-    function calculateUsdValue(amount: string, token: any): string {
-        if (!token?.usdValue || !amount) return '0';
-        return formatToNonZeroDecimal(Number(amount) * token.usd_value);
-    }
-
     // Calculate earnings based on APY
     function calculateEarnings(timeframe: number): string {
         // Use APY from the actual pool
@@ -258,6 +250,18 @@
             return "0";
         }
         return formatToNonZeroDecimal(amount0Usd + amount1Usd);
+    }
+
+    // Add function to generate add liquidity URL
+    function getAddLiquidityUrl(): string {
+        if (!token0?.canister_id || !token1?.canister_id) return '/earn/add';
+        return `/earn/add?token0=${token0.canister_id}&token1=${token1.canister_id}`;
+    }
+
+    async function handleAddMoreLiquidity() {
+        showModal = false;
+        await sidebarStore.collapse();
+        await goto(getAddLiquidityUrl());
     }
 </script>
 
@@ -348,6 +352,18 @@
                                 })}
                             </span>
                         </div>
+                    </div>
+                    
+                    <div class="add-more-button-container w-full">
+                        <ButtonV2
+                            onClick={handleAddMoreLiquidity}
+                            variant="solid"
+                            theme="primary"
+                            size="lg"
+                            fullWidth={true}
+                        >
+                            Add More Liquidity
+                        </ButtonV2>
                     </div>
                 </div>
             {:else if activeTab === 'earnings'}
@@ -672,5 +688,9 @@
     .apy-value {
         @apply text-2xl sm:text-4xl font-bold;
         text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+    }
+
+    .add-more-button-container {
+        @apply mt-4 sm:mt-6 px-3 sm:px-0;
     }
 </style>

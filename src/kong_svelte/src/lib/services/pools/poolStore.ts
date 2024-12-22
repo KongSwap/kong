@@ -7,6 +7,7 @@ import { eventBus } from '$lib/services/tokens/eventBus';
 import { kongDB } from '../db';
 import { KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { liveQuery } from "dexie";
+import { browser } from '$app/environment';
 
 interface ExtendedPool extends BE.Pool {
   displayTvl?: number;
@@ -280,10 +281,10 @@ function createPoolStore() {
         }));
       }
     },
-
     reset: () => {
-      // Clear DB instead of cache
-      kongDB.pools.clear();
+      if(browser) {
+        kongDB.pools.clear();
+      }
       set({
         pools: [],
         userPoolBalances: [],

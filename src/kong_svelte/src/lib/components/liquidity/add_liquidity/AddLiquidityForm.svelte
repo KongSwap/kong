@@ -31,8 +31,8 @@
     export let amount1: string = null;
     export let loading: boolean = false;
     export let error: string | null = null;
-    export let token0Balance: string = "0";
-    export let token1Balance: string = "0";
+    export let token0Balance: string;
+    export let token1Balance: string;
     export let onTokenSelect: (index: 0 | 1) => void;
     export let onInput: (index: 0 | 1, value: string) => void;
     export let onSubmit: () => Promise<void>;
@@ -49,6 +49,24 @@
         ICP_CANISTER_ID,
         CKUSDT_CANISTER_ID
     ];
+
+    let userIsTyping = false;
+    let typingTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    let finalLoading = false;
+    let finalLoadingState = "";
+    $: {
+        if (userIsTyping) {
+            finalLoading = false;
+            finalLoadingState = "";
+        } else {
+            finalLoading = loading;
+            finalLoadingState = loadingState;
+        }
+    }
+
+    $: token0Balance = $tokenStore.balances[token0?.canister_id]?.in_tokens?.toString() || "0";
+    $: token1Balance = $tokenStore.balances[token1?.canister_id]?.in_tokens?.toString() || "0";
 
     function handleTokenSelect(index: 0 | 1, token: FE.Token) {
         const otherToken = index === 0 ? token1 : token0;
@@ -103,12 +121,6 @@
         }
     }
 
-    $: {
-        if ($poolStore.userPoolBalances) {
-            console.log('Pool balances updated:', $poolStore.userPoolBalances);
-        }
-    }
-
     // Constants for formatting and animations
     const DEFAULT_DECIMALS = 8;
     const ANIMATION_BASE_DURATION = 200;
@@ -133,9 +145,8 @@
     // Create debounced version of the input handler with shorter delay
     const debouncedHandleInput = debounce(async (index: 0 | 1, value: string, currentToken: FE.Token, otherToken: FE.Token) => {
         try {
-            loading = true;
-            error = null;
-            loadingState = `Calculating required ${otherToken.symbol} amount...`;
+            // loading = true;
+            // loadingState = `Calculating required ${otherToken.symbol} amount...`;
             
             // Clean the value by removing underscores before parsing
             const cleanValue = value.replace(/_/g, '');
@@ -168,8 +179,8 @@
             console.error("Error in debouncedHandleInput:", err);
             error = err.message;
         } finally {
-            loading = false;
-            loadingState = '';
+            // loading = false;
+            // loadingState = '';
         }
     }, 500);
 
@@ -290,6 +301,7 @@
 
     // Get pool when both tokens are selected
     $: if (token0 && token1) {
+        tokenStore.loadBalancesForTokens([token0, token1], auth.pnp.account?.owner?.toString());
         pool = $poolStore.pools.find(p => 
             (p.address_0 === token0.canister_id && p.address_1 === token1.canister_id) ||
             (p.address_0 === token1.canister_id && p.address_1 === token0.canister_id)
@@ -297,10 +309,6 @@
     } else {
         pool = null;
     }
-
-    // Format display amounts
-    $: displayAmount0 = formatDisplayValue(amount0, token0?.decimals || DEFAULT_DECIMALS);
-    $: displayAmount1 = formatDisplayValue(amount1, token1?.decimals || DEFAULT_DECIMALS);
 
     function openTokenSelector(index: 0 | 1) {
         if (index === 0) {
@@ -319,16 +327,18 @@
         token1
     );
 
-    $: buttonText = getButtonText(
-        token0,
-        token1,
-        poolExists,
-        hasInsufficientBalance(),
-        amount0,
-        amount1,
-        loading,
-        loadingState
-    );
+    $: buttonText = userIsTyping
+        ? "Entering Amounts..."
+        : getButtonText(
+            token0,
+            token1,
+            poolExists,
+            hasInsufficientBalance(),
+            amount0,
+            amount1,
+            finalLoading,
+            finalLoadingState
+        );
 
     $: isValid = token0 && token1 && 
         parseFloat(amount0.replace(/[,_]/g, '')) > 0 && 
@@ -339,31 +349,6 @@
     async function handleSubmit() {
         if (!isValid || loading) return;
         showConfirmation = true;
-    }
-
-    // Debounce the balance updates
-    const debouncedBalanceUpdate = debounce(async () => {
-        const owner = $auth?.account?.owner;
-        if (!token0 || !token1 || !owner) return;
-        
-        try {
-            loadingState = 'Fetching token balances...';
-            await Promise.all([
-                tokenStore.loadBalance(token0, owner.toString(), true),
-                tokenStore.loadBalance(token1, owner.toString(), true)
-            ]);
-        } catch (error) {
-            console.error("Error updating balances:", error);
-        } finally {
-            loadingState = '';
-        }
-    }, 1000);
-
-    // Update balances when tokens change
-    $: {
-        if (token0 || token1) {
-            debouncedBalanceUpdate();
-        }
     }
 
     // Cleanup debounced function
@@ -446,6 +431,13 @@
         requestAnimationFrame(() => {
             input.setSelectionRange(newPosition, newPosition);
         });
+
+        // Mark user as typing and start/reset a brief timer
+        userIsTyping = true;
+        if (typingTimeout) clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            userIsTyping = false;
+        }, 300);
     }
 </script>
 
