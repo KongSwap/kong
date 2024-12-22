@@ -168,15 +168,10 @@
 
       const result = await PoolService.addLiquidity(addLiquidityArgs);
 
-      await Promise.all([
-        tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
-        tokenStore.loadBalance(token1, auth.pnp.account.principalId, true),
-      ]);
 
       if (typeof result === "bigint") {
         // Reset state before navigation
-        amount0 = "0";
-        amount1 = "0";
+  
         addLiquidityStore.reset();
         // Add a small delay to ensure UI updates before navigation
         await new Promise((resolve) => setTimeout(resolve, 100));

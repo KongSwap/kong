@@ -5,21 +5,40 @@
     availableWallets,
     selectedWalletId,
   } from "$lib/services/auth";
-  import { onMount } from "svelte";
-  import { isMobileBrowser } from '$lib/utils/browser';
-
+  import { isPwa, isMobileBrowser, isPlugAvailable } from '$lib/utils/browser';
+  
   const dispatch = createEventDispatcher();
   let connecting = false;
-  let filteredWallets = availableWallets;
+  let plugDialog: any;
+  let dialogOpen = false;
 
-  onMount(() => {
-    if (isMobileBrowser()) {
-      filteredWallets = availableWallets.filter(wallet => wallet.id !== 'plug');
-    }
-  });
+  const isOnMobile = isMobileBrowser();
+
+  // Filter out Plug wallet on mobile unless it's a PWA
+  $: filteredWallets = isOnMobile && !isPwa() 
+    ? availableWallets
+    : availableWallets;
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
+
+    // Show modal on mobile if IC object is not present
+    if (isOnMobile && walletId === 'plug' && !isPlugAvailable()) {
+      // Dynamically import the dialog component when needed
+      if (!plugDialog) {
+        const module = await import('$lib/components/wallet/PlugMobileDialog.svelte');
+        plugDialog = module.default;
+      }
+      dialogOpen = true;
+      return;
+    }
+
+    // Redirect to Plug website on desktop if Plug is not installed
+    if (!isOnMobile && walletId === 'plug' && !isPlugAvailable()) {
+      window.open('https://plugwallet.ooo/', '_blank');
+      return;
+    }
+
     try {
       connecting = true;
       selectedWalletId.set(walletId);
@@ -55,6 +74,13 @@
     {/each}
   </div>
 </div>
+
+{#if plugDialog}
+  <svelte:component 
+    this={plugDialog} 
+    bind:open={dialogOpen} 
+  />
+{/if}
 
 <style>
   .wallet-provider {

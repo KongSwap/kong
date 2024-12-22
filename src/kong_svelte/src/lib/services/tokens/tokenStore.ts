@@ -97,10 +97,17 @@ function createTokenStore() {
         currentStore.tokens,
         walletId,
       );
+
       store.update((s) => ({
         ...s,
-        balances,
+        balances: {
+          ...s.balances,
+          ...balances,
+        },
       }));
+      
+      const finalState = get(store);
+      console.log("Final balances state:", finalState.balances);
       return balances;
     } catch (error) {
       console.error("Error loading balances:", error);
@@ -185,7 +192,10 @@ function createTokenStore() {
           const balances = await loadBalances(wallet.account.owner);
           store.update((s) => ({
             ...s,
-            balances,
+            balances: {
+              ...s.balances,
+              ...balances,
+            },
           }));
         }
 

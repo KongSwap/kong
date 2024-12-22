@@ -259,8 +259,15 @@ export class TokenService {
         }
       }));
 
+      let finalBalance;
+      if(typeof balance === 'object') {
+        finalBalance = balance.default;
+      } else {
+        finalBalance = balance;
+      }
+
       return {
-        in_tokens: balance,
+        in_tokens: finalBalance,
         in_usd: formatToNonZeroDecimal(usdValue),
       };
     } catch (error) {

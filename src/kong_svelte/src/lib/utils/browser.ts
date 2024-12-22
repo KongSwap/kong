@@ -1,4 +1,3 @@
-
 export function isMobileBrowser(): boolean {
   if (!navigator) return false;
   
@@ -14,3 +13,26 @@ export function isMobileBrowser(): boolean {
   const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
   return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
 } 
+
+export function isPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  // iOS detection
+  const isInStandaloneMode = ('standalone' in window.navigator) && 
+                            ((window.navigator as any).standalone === true);
+  
+  // Android/Desktop PWA detection
+  const isDisplayModeStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  
+  // Chrome on Android detection
+  const isAndroidPwa = document.referrer.includes('android-app://');
+  
+  return isInStandaloneMode || isDisplayModeStandalone || isAndroidPwa;
+} 
+
+export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+export const isPlugAvailable = () => {
+  if (typeof window === 'undefined') return false;
+  return !!(window as any).ic;
+};

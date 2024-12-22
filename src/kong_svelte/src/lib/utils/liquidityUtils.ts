@@ -1,6 +1,5 @@
 import { BigNumber } from 'bignumber.js';
 import { formatTokenAmount } from './numberFormatUtils';
-import { IcrcService } from '../services/icrc/IcrcService';
 import { tokenStore } from '$lib/services/tokens';
 import { get } from 'svelte/store';
 
@@ -124,15 +123,8 @@ export function hasInsufficientBalance(
             .integerValue(BigNumber.ROUND_FLOOR);
 
         // Clean and convert balances
-        const balance0Decimal = new BigNumber(balance0.in_tokens.toString());
-        const balance1Decimal = new BigNumber(balance1.in_tokens.toString());
-
-        console.log('Balance Debug:', {
-            balance0Decimal,
-            balance1Decimal,
-            decimals0: token0.decimals,
-            decimals1: token1.decimals
-        });
+        const balance0Decimal = new BigNumber(balance0?.in_tokens?.toString() || "0");
+        const balance1Decimal = new BigNumber(balance1?.in_tokens?.toString() || "0");
 
         // Add fees if needed
         const fee0 = new BigNumber(token0.fee_fixed || 0);

@@ -67,5 +67,5 @@ function createModalStore() {
         removeAll
     };
 }
-
 export const modalStore = createModalStore();
+

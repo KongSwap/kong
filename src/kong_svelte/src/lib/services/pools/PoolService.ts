@@ -8,6 +8,7 @@ import { PoolSerializer } from "./PoolSerializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { toastStore } from "$lib/stores/toastStore";
+import { TokenService, tokenStore } from "../tokens";
 
 export class PoolService {
   protected static instance: PoolService;
@@ -119,19 +120,11 @@ export class PoolService {
         { anon: false, requiresSigning: false },
       );
 
-      console.log("Calling remove_liquidity_amounts with:", {
-        token0Symbol,
-        token1Symbol,
-        lpTokenBigInt: lpTokenBigInt.toString(),
-      });
-
       const result = await actor.remove_liquidity_amounts(
         token0Symbol,
         token1Symbol,
         lpTokenBigInt,
       );
-
-      console.log("Backend response:", result);
 
       if (!result.Ok) {
         throw new Error(result.Err || "Failed to calculate removal amounts");
@@ -196,10 +189,7 @@ export class PoolService {
         tx_id_1 = [];
         actor = actorResult;
 
-        console.log("ICRC2 Approvals granted:", {
-          approval0: approval0?.toString(),
-          approval1: approval1?.toString(),
-        });
+
       } else {
         // Handle ICRC1 tokens
         const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
@@ -223,13 +213,6 @@ export class PoolService {
         tx_id_0 = transfer0Result?.Ok ? [{ BlockIndex: transfer0Result.Ok }] : [];
         tx_id_1 = transfer1Result?.Ok ? [{ BlockIndex: transfer1Result.Ok }] : [];
         actor = actorResult;
-
-        console.log("ICRC1 Transfers:", {
-          transfer0: transfer0Result?.Ok?.toString(),
-          transfer1: transfer1Result?.Ok?.toString(),
-          tx_id_0,
-          tx_id_1
-        });
       }
 
       const addLiquidityArgs = {
@@ -241,13 +224,6 @@ export class PoolService {
         tx_id_1,
       };
 
-      console.log("Adding liquidity with args:", {
-        ...addLiquidityArgs,
-        amount_0: addLiquidityArgs.amount_0.toString(),
-        amount_1: addLiquidityArgs.amount_1.toString(),
-        tx_id_0: tx_id_0.map(id => ({ BlockIndex: id.BlockIndex.toString() })),
-        tx_id_1: tx_id_1.map(id => ({ BlockIndex: id.BlockIndex.toString() }))
-      });
 
       let result;
       if(["oisy"].includes(auth.pnp.activeWallet.id)) {
@@ -288,7 +264,6 @@ export class PoolService {
           { anon: false, requiresSigning: false },
         );
         const result = await actor.requests([requestId]);
-        console.log("Request status:", result);
 
         if (!result.Ok || result.Ok.length === 0) {
           toastStore.dismiss(toastId);
@@ -341,19 +316,13 @@ export class PoolService {
     token1: string;
     lpTokenAmount: number | bigint;
   }): Promise<string> {
-    await requireWalletConnection();
+    requireWalletConnection();
     try {
       // Ensure we're using BigInt for the amount
       const lpTokenBigInt =
         typeof params.lpTokenAmount === "number"
           ? BigInt(Math.floor(params.lpTokenAmount * 1e8))
           : params.lpTokenAmount;
-
-      console.log("Calling remove_liquidity_async with:", {
-        token_0: params.token0,
-        token_1: params.token1,
-        remove_lp_token_amount: lpTokenBigInt.toString(),
-      });
 
       const actor = await auth.pnp.getActor(
         kongBackendCanisterId,
@@ -369,7 +338,6 @@ export class PoolService {
       if (!result.Ok) {
         throw new Error(result.Err || "Failed to remove liquidity");
       }
-
       return result.Ok.toString();
     } catch (error) {
       console.error("Error removing liquidity:", error);
