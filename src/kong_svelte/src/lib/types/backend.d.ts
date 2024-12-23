@@ -34,6 +34,19 @@ declare global {
     }
   
     type Token = { IC?: ICToken, LP?: LPToken };
+  
+    interface Pool {
+      address_0: string;
+      address_1: string;
+      symbol_0: string;
+      symbol_1: string;
+      amount_0: string;
+      amount_1: string;
+      price: number;
+      tvl: string;
+      rolling_24h_volume: string;
+      rolling_24h_apy: string;
+    }
   }
 }
 

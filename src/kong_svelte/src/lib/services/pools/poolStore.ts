@@ -110,6 +110,41 @@ function createPoolStore() {
     }
   );
 
+  const processPoolData = (pool: BE.Pool) => {
+    // Add validation and fallback for price
+    if (!pool.price || Number(pool.price) === 0) {
+      // For ICP pairs, calculate price from amounts
+      if (pool.symbol_0 === 'ICP' || pool.symbol_1 === 'ICP') {
+        const icpIndex = pool.symbol_0 === 'ICP' ? 0 : 1;
+        
+        // Add null checks before converting to BigInt
+        const amount0 = pool.amount_0;
+        const amount1 = pool.amount_1;
+        
+        if (!amount0 || !amount1) {
+          pool.price = 0;
+          return pool;
+        }
+        
+        try {
+          const icpAmount = BigInt(icpIndex === 0 ? amount0 : amount1);
+          const tokenAmount = BigInt(icpIndex === 0 ? amount1 : amount0);
+          
+          if (icpAmount > 0n && tokenAmount > 0n) {
+            const calculatedPrice = Number(icpAmount) / Number(tokenAmount);
+            pool.price = calculatedPrice;
+          } else {
+            pool.price = 0;
+          }
+        } catch (error) {
+          console.error('[PoolStore] Error calculating price:', error);
+          pool.price = 0;
+        }
+      }
+    }
+    return pool;
+  };
+
   return {
     subscribe,
     filteredAndSortedPools,
@@ -139,8 +174,8 @@ function createPoolStore() {
           throw new Error('Invalid pools data received');
         }
 
-        // Process pools data
-        const pools = formatPoolData(poolsData.pools);
+        // Process pools data with price validation
+        const pools = formatPoolData(poolsData.pools).map(processPoolData);
 
         // Store in DB instead of cache
         await kongDB.transaction('rw', kongDB.pools, async () => {

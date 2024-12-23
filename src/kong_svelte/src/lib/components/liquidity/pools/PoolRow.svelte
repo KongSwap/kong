@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
 
   export let pool: BE.Pool;
   export let tokenMap: Map<string, any>;
@@ -35,6 +36,12 @@
     onAddLiquidity(pool.address_0, pool.address_1);
   }
 
+  function getDisplayPriceUsd(pool: BE.Pool): string {
+    if($liveTokens) {
+      const poolPrice = getPoolPriceUsd(pool)
+      return parseFloat(poolPrice) * $liveTokens.find(token => token.symbol === pool.symbol_1)?.metrics?.price;
+    }
+  }
 </script>
 
 {#if !isMobile}
@@ -56,7 +63,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          {getPoolPriceUsd(pool)}
+          ${formatToNonZeroDecimal(getDisplayPriceUsd(pool))}
         </div>
       </div>
     </td>

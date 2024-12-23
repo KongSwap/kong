@@ -275,9 +275,9 @@
                 theme="primary"
                 variant="solid"
                 size="lg"
-                isDisabled={false}
+                isDisabled={$auth.isConnected}
                 onClick={() => {
-                  sidebarStore.toggleExpand();
+                  sidebarStore.open();
                 }}
               />
             </div>
