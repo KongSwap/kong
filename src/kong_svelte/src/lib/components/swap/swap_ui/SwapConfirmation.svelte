@@ -9,7 +9,7 @@
   import { formatTokenValue } from '$lib/utils/tokenFormatters';
   import { toastStore } from "$lib/stores/toastStore";
   import { createEventDispatcher } from "svelte";
-    import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
+    import { formatBalance } from "$lib/utils/numberFormatUtils";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -27,8 +27,8 @@
   let quoteUpdateInterval: ReturnType<typeof setInterval>;
   const QUOTE_UPDATE_INTERVAL = 1500; // 1.5 seconds
 
-  $: payUsdValue = formatTokenAmount(payAmount.toString(), payToken?.decimals);
-  $: receiveUsdValue = formatTokenAmount(receiveAmount.toString(), receiveToken?.decimals);
+  $: payUsdValue = formatBalance(payAmount.toString(), payToken?.decimals);
+  $: receiveUsdValue = formatBalance(receiveAmount.toString(), receiveToken?.decimals);
 
   $: quoteData = {
     routingPath,

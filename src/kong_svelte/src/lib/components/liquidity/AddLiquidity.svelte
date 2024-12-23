@@ -2,7 +2,7 @@
   import { fade } from "svelte/transition";
   import { onMount } from "svelte";
   import {
-    formatTokenAmount,
+    formatBalance,
     parseTokenAmount,
   } from "$lib/utils/numberFormatUtils";
   import Portal from "svelte-portal";
@@ -109,10 +109,10 @@
           const otherDecimals = index === 0 ? token1.decimals : token0.decimals;
 
           if (index === 0) {
-            amount1 = formatTokenAmount(otherAmount, otherDecimals);
+            amount1 = formatBalance(otherAmount, otherDecimals);
             console.log("Updated amount1 to:", amount1);
           } else {
-            amount0 = formatTokenAmount(otherAmount, otherDecimals);
+            amount0 = formatBalance(otherAmount, otherDecimals);
             console.log("Updated amount0 to:", amount0);
           }
         } else if (result.Err) {
@@ -266,7 +266,7 @@
 
         if (result.Ok) {
           amount0 = "1";
-          amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
+          amount1 = formatBalance(result.Ok.amount_1, token1.decimals);
         } else if (result.Err) {
           console.error(
             "Error calculating initial liquidity amounts:",

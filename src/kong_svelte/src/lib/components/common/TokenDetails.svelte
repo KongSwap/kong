@@ -1,9 +1,10 @@
 <script lang="ts">
     import Modal from '$lib/components/common/Modal.svelte';
-    import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
+    import { formatUsdValue } from '$lib/utils/tokenFormatters';
     import SendTokens from '$lib/components/sidebar/SendTokens.svelte';
     import IdentityPanel from '$lib/components/sidebar/account/IdentityPanel.svelte';
     import { createEventDispatcher } from 'svelte';
+    import { formatBalance } from '$lib/utils/numberFormatUtils';
 
     export let token: FE.Token;
     

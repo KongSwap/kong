@@ -6,7 +6,7 @@
     import { get } from "svelte/store";
     import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
     import { debounce } from "lodash-es";
-    import { parseTokenAmount, formatTokenAmount } from "$lib/utils/numberFormatUtils";
+    import { parseTokenAmount, formatBalance } from "$lib/utils/numberFormatUtils";
     import { goto, replaceState } from '$app/navigation';
     import { page } from '$app/stores';
     import Modal from "$lib/components/common/Modal.svelte";
@@ -161,10 +161,10 @@
               balance1.in_tokens - BigInt(token1.fee_fixed),
               token0.token,
             );
-            amount0 = formatTokenAmount(reverseAmount.Ok.amount_1, token0.decimals).toString();
-            amount1 = formatTokenAmount((balance1.in_tokens - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
+            amount0 = formatBalance(reverseAmount.Ok.amount_1, token0.decimals).toString();
+            amount1 = formatBalance((balance1.in_tokens - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
           } else {
-            amount1 = formatTokenAmount((requiredAmount1 - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
+            amount1 = formatBalance((requiredAmount1 - BigInt(token1.fee_fixed)).toString(), token1.decimals).toString();
           }
         } else {
           const requiredAmount = await PoolService.addLiquidityAmounts(
@@ -183,10 +183,10 @@
               balance0.in_tokens - BigInt(token0.fee_fixed),
               token1.token,
             );
-            amount0 = formatTokenAmount((balance0.in_tokens - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
-            amount1 = formatTokenAmount(reverseAmount.Ok.amount_1, token1.decimals).toString();
+            amount0 = formatBalance((balance0.in_tokens - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
+            amount1 = formatBalance(reverseAmount.Ok.amount_1, token1.decimals).toString();
           } else {
-            amount0 = formatTokenAmount((requiredAmount0 - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
+            amount0 = formatBalance((requiredAmount0 - BigInt(token0.fee_fixed)).toString(), token0.decimals).toString();
           }
         }
       } catch (err) {

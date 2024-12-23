@@ -2,7 +2,7 @@
 
 <script lang="ts">
 	import { poolsList } from '$lib/services/pools/poolStore';
-	import { formatToNonZeroDecimal, formatTokenAmount } from '$lib/utils/numberFormatUtils';
+	import { formatToNonZeroDecimal, formatBalance } from '$lib/utils/numberFormatUtils';
 	import { tokenStore } from '$lib/services/tokens/tokenStore';
 	import { CKUSDT_CANISTER_ID } from '$lib/constants/canisterConstants';
 	import BigNumber from 'bignumber.js';
@@ -25,7 +25,7 @@
 	let pool = $derived($poolsList.find(p => p.address_0 === token.canister_id && p.address_1 === CKUSDT_CANISTER_ID));
 	let poolPrice = $derived(pool?.price ? parseFloat(pool.price.toString()) : 0);
 	let usdValue = $derived(formatToNonZeroDecimal(parseFloat(value.toString()) * poolPrice));
-	let formattedBalance = $derived(formatTokenAmount((BigInt(rawBalance) - BigInt(token.fee_fixed)).toString(), token.decimals));
+	let formattedBalance = $derived(formatBalance((BigInt(rawBalance) - BigInt(token.fee_fixed)).toString(), token.decimals));
 
 	const dispatch = createEventDispatcher();
 
@@ -35,7 +35,7 @@
 
 	function setMax() {
 		const maxBn = new BigNumber(rawBalance.toString()).minus(token.fee_fixed.toString()).toString();
-		const formattedMax = formatTokenAmount(maxBn, token.decimals);
+		const formattedMax = formatBalance(maxBn, token.decimals);
 		value = formattedMax;
 		dispatchInput(formattedMax);
 	}

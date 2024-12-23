@@ -4,7 +4,7 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { PoolService } from "$lib/services/pools/PoolService";
-  import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { poolStore } from "$lib/services/pools/poolStore";
   import { browser } from "$app/environment";
   import { toastStore } from "$lib/stores/toastStore";

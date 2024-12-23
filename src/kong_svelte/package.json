@@ -12,7 +12,7 @@
     "postbuild": "npx @sveltejs/kit sync",
     "check": "npx @sveltejs/kit sync && npx svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --write \"src/**/*.{json,js,jsx,ts,tsx,css,scss,svelte}\"",
-    "test": "vitest",
+    "test": "vitest --reporter=basic",
     "preview": "vite preview",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "copy-tv": "cp -r node_modules/tradingview/charting_library static/charting_library"

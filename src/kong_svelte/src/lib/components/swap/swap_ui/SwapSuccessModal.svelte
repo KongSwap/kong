@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+  import { formatBalance } from '$lib/utils/numberFormatUtils';
   import { fade, scale, fly } from "svelte/transition";
   import { backOut } from "svelte/easing";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
@@ -33,8 +33,8 @@
   async function copyTradeDetails() {
     if (!isValid) return;
 
-    const formattedPaidAmount = formatTokenAmount(payAmount, payToken.decimals).toString();
-    const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
+    const formattedPaidAmount = formatBalance(payAmount, payToken.decimals).toString();
+    const formattedReceivedAmount = formatBalance(receiveAmount, receiveToken.decimals).toString();
 
     const tradeDetails = 
       `🍌 Trade completed on KongSwap!\n\n` +
@@ -52,8 +52,8 @@
   async function shareOnX() {
     if (!isValid) return;
 
-    const formattedPaidAmount = formatTokenAmount(payAmount, payToken.decimals).toString();
-    const formattedReceivedAmount = formatTokenAmount(receiveAmount, receiveToken.decimals).toString();
+    const formattedPaidAmount = formatBalance(payAmount, payToken.decimals).toString();
+    const formattedReceivedAmount = formatBalance(receiveAmount, receiveToken.decimals).toString();
 
     const tweetText = encodeURIComponent(
       `🍌 Just swapped ${formattedPaidAmount} ${payToken.symbol} for ${formattedReceivedAmount} ${receiveToken.symbol} on @KongSwap!\n\nTrade now: https://www.kongswap.io/swap?from=${payToken.canister_id}&to=${receiveToken.canister_id}`
@@ -89,7 +89,7 @@
             <div class="flex items-center justify-between mb-3">
               <div class="text-sm text-indigo-200/70">Sent</div>
               <div class="font-medium text-indigo-100">
-                {formatTokenAmount(payAmount, payToken.decimals).toString()} {payToken.symbol}
+                {formatBalance(payAmount, payToken.decimals).toString()} {payToken.symbol}
               </div>
             </div>
 
@@ -100,7 +100,7 @@
             <div class="flex items-center justify-between">
               <div class="text-sm text-indigo-200/70">Received</div>
               <div class="font-medium text-indigo-100">
-                {formatTokenAmount(receiveAmount, receiveToken.decimals).toString()} {receiveToken.symbol}
+                {formatBalance(receiveAmount, receiveToken.decimals).toString()} {receiveToken.symbol}
               </div>
             </div>
           </div>

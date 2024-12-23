@@ -1,6 +1,6 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { goto } from "$app/navigation";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
@@ -122,14 +122,14 @@
                 <TokenImages tokens={[token0]} size={24} />
                 <div class="reserve-info">
                   <span class="token-symbol">{pool.symbol_0}</span>
-                  <span class="token-amount">{formatTokenAmount(pool.balance_0.toString(), token0?.decimals || 8)}</span>
+                  <span class="token-amount">{formatBalance(pool.balance_0.toString(), token0?.decimals || 8)}</span>
                 </div>
               </div>
               <div class="reserve-item">
                 <TokenImages tokens={[token1]} size={24} />
                 <div class="reserve-info">
                   <span class="token-symbol">{pool.symbol_1}</span>
-                  <span class="token-amount">{formatTokenAmount(pool.balance_1.toString(), token1?.decimals || 8)}</span>
+                  <span class="token-amount">{formatBalance(pool.balance_1.toString(), token1?.decimals || 8)}</span>
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 <script lang="ts">  
+	import { formatBalance } from '$lib/utils/numberFormatUtils';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { Star } from 'lucide-svelte';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { createEventDispatcher } from 'svelte';

@@ -29,9 +29,8 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+    import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 
-  // Utils
-  import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -46,8 +45,6 @@
   export let initialToToken: FE.Token | null = null;
   export let currentMode: "normal" | "pro";
 
-  // Constants
-  const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
   const PANELS: PanelConfig[] = [
     { id: "pay", type: "pay", title: "You Pay" },
     { id: "receive", type: "receive", title: "You Receive" },
@@ -280,7 +277,7 @@
         receiveToken: $swapState.receiveToken,
         receiveAmount: $swapState.receiveAmount,
         userMaxSlippage,
-        backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        backendPrincipal: KONG_BACKEND_CANISTER_ID,
         lpFees: $swapState.lpFees,
       });
 

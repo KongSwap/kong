@@ -3,7 +3,7 @@ import { auth } from "$lib/services/auth";
 import { PoolService } from "../../services/pools/PoolService";
 import {
   formatToNonZeroDecimal,
-  formatTokenAmount,
+  formatBalance,
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
 import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
@@ -194,7 +194,7 @@ export class TokenService {
     return tokens.reduce((acc, token, index) => {
       const balance = balances.get(token.canister_id) || BigInt(0);
       const price = prices[index] || 0;
-      const tokenAmount = formatTokenAmount(balance.toString(), token.decimals);
+      const tokenAmount = formatBalance(balance.toString(), token.decimals);
       const usdValue = parseFloat(tokenAmount) * price;
       
       acc[token.canister_id] = {
@@ -246,7 +246,7 @@ export class TokenService {
         Principal.fromText(principalId),
       );
 
-      const actualBalance = formatTokenAmount(balance.toString(), token.decimals);
+      const actualBalance = formatBalance(balance.toString(), token.decimals);
       const price = await this.fetchPrice(token);
       const usdValue = parseFloat(actualBalance) * price;
 

@@ -4,7 +4,7 @@
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
     import Modal from '$lib/components/common/Modal.svelte';
-    import { formatTokenAmount, toMinimalUnit } from '$lib/utils/numberFormatUtils';
+    import { formatBalance } from '$lib/utils/numberFormatUtils';
     import BigNumber from 'bignumber.js';
     import QrScanner from '$lib/components/common/QrScanner.svelte';
     import { onMount, onDestroy } from 'svelte';
@@ -497,20 +497,20 @@
                     {#if token.symbol === 'ICP'}
                         <div class="balance-row">
                             <span>Default Account:</span>
-                            <span>{formatTokenAmount(balances.default, token.decimals)} {token.symbol}</span>
+                            <span>{formatBalance(balances.default, token.decimals)} {token.symbol}</span>
                         </div>
                         <div class="balance-row">
                             <span>Subaccount:</span>
-                            <span>{formatTokenAmount(balances.subaccount, token.decimals)} {token.symbol}</span>
+                            <span>{formatBalance(balances.subaccount, token.decimals)} {token.symbol}</span>
                         </div>
                         <div class="balance-row total">
                             <span>Selected Balance:</span>
-                            <span>{formatTokenAmount(selectedAccount === 'main' ? balances.default : balances.subaccount, token.decimals)} {token.symbol}</span>
+                            <span>{formatBalance(selectedAccount === 'main' ? balances.default : balances.subaccount, token.decimals)} {token.symbol}</span>
                         </div>
                     {:else}
                         <div class="balance-row total">
                             <span>Available Balance:</span>
-                            <span>{formatTokenAmount(balances.default, token.decimals)} {token.symbol}</span>
+                            <span>{formatBalance(balances.default, token.decimals)} {token.symbol}</span>
                         </div>
                     {/if}
                 </div>
@@ -577,7 +577,7 @@
                         </div>
                         <div class="detail-item">
                             <span class="label">Network Fee</span>
-                            <span class="value">{formatTokenAmount(tokenFee?.toString() || '10000', token.decimals)} {token.symbol}</span>
+                            <span class="value">{formatBalance(tokenFee?.toString() || '10000', token.decimals)} {token.symbol}</span>
                         </div>
                         <div class="detail-item">
                             <span class="label">Receiver Gets</span>

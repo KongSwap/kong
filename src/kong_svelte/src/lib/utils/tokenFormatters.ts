@@ -1,61 +1,4 @@
 /**
- * Formats a raw token balance considering its decimals
- * @param rawBalance The raw balance as a string (big integer format)
- * @param decimals The number of decimals for the token
- * @returns Formatted balance string
- */
-export function formatBalance(rawBalance: string | undefined, decimals: number = 8): string {
-    if (!rawBalance || rawBalance === "") return "0";
-    
-    // Convert from raw integer (considering decimals)
-    const value = Number(rawBalance) / Math.pow(10, decimals);
-    
-    // Format with appropriate decimal places
-    if (value === 0) return "0";
-    
-    // For very small values (< 0.000001), show up to 8 decimals
-    if (value < 0.000001 && value > 0) {
-        return value.toFixed(8).replace(/\.?0+$/, '');
-    }
-    
-    // For small values (< 0.01), show up to 6 decimals
-    if (value < 0.01) {
-        return value.toFixed(6).replace(/\.?0+$/, '');
-    }
-    
-    // For normal values, show up to 4 decimals
-    return value.toLocaleString(undefined, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 4
-    }).replace(/\.?0+$/, '');
-}
-
-export function calculateTotalUsdValue(tx: FE.Transaction, formattedTokens: FE.Token[]): string {
-    const payToken = formattedTokens?.find(
-      (t) => t.token_id === tx.pay_token_id,
-    );
-    const receiveToken = formattedTokens?.find(
-      (t) => t.token_id === tx.receive_token_id,
-    );
-    if (!payToken || !receiveToken) return "0.00";
-  
-    // Calculate USD value from pay side
-    const payUsdValue =
-      payToken.symbol === "ckUSDT"
-        ? tx.pay_amount
-        : tx.pay_amount * (Number(payToken.metrics.price) || 0);
-  
-    // Calculate USD value from receive side
-    const receiveUsdValue =
-      receiveToken.symbol === "ckUSDT"
-        ? tx.receive_amount
-        : tx.receive_amount * (Number(receiveToken.metrics.price) || 0);
-  
-    // Use the higher value
-    return formatUsdValue(Math.max(payUsdValue, receiveUsdValue));
-  }
-
-/**
  * Formats a USD value with appropriate decimal places and suffixes
  * @param value The USD value to format
  * @returns Formatted USD string
@@ -128,36 +71,4 @@ export function toRawAmount(amount: string | number, decimals: number = 8): stri
 export function fromRawAmount(rawAmount: string, decimals: number = 8): number {
     if (!rawAmount) return 0;
     return Number(rawAmount) / Math.pow(10, decimals);
-}
-
-/**
- * Formats a gas/fee amount for display
- * @param fee The fee amount in raw format
- * @param token The token information
- * @returns Formatted fee string
- */
-export function formatGasFee(fee: string | number | undefined, decimals: number = 8): string {
-    if (!fee) return "0";
-    const value = typeof fee === 'string' ? Number(fee) : fee;
-    const actualFee = value / Math.pow(10, decimals);
-    
-    // Always show at least 8 decimals for fees to be precise
-    return actualFee.toFixed(8).replace(/\.?0+$/, '');
-}
-
-/**
- * Formats a number as a percentage with appropriate decimal places
- * @param value The value to format as a percentage
- * @returns Formatted percentage string
- */
-export function formatPercentage(value: number): string {
-    if (!value && value !== 0) return '0%';
-    
-    // For very small values, show more decimals
-    if (Math.abs(value) < 0.01) {
-        return `${value.toFixed(4)}%`;
-    }
-    
-    // For normal values, show 2 decimal places
-    return `${value.toFixed(2)}%`;
 }

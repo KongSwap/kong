@@ -8,7 +8,6 @@ import { PoolSerializer } from "./PoolSerializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { toastStore } from "$lib/stores/toastStore";
-import { TokenService, tokenStore } from "../tokens";
 
 export class PoolService {
   protected static instance: PoolService;

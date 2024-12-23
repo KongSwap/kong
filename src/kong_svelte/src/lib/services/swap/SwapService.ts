@@ -7,9 +7,10 @@ import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "./swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
-import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
+import { formatBalance } from "$lib/utils/numberFormatUtils";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { requireWalletConnection } from "$lib/services/auth";
+import { TokenService } from "$lib/services/tokens/TokenService";
 
 interface SwapExecuteParams {
   swapId: string;

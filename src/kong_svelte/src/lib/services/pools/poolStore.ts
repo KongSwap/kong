@@ -353,6 +353,12 @@ export const sortedPools = derived(
 
 // Dexie's liveQuery for livePools
 export const livePools = readable<ExtendedPool[]>([], set => {
+  // Only run IndexedDB queries in the browser environment
+  if (!browser) {
+    // Return a no-op unsubscribe function during SSR
+    return () => {};
+  }
+
   const subscription = liveQuery(async () => {
     const pools = await kongDB.pools
       .orderBy('timestamp')

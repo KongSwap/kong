@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { closeOnOutsideClick } from '../../src/lib/utils/clickUtils';
+import { closeOnOutsideClick } from '$lib/utils/clickUtils';
 
 describe('closeOnOutsideClick', () => {
   let node: HTMLDivElement;

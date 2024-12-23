@@ -3,6 +3,7 @@ import { poolStore } from "$lib/services/pools/poolStore";
 import { get, writable, type Readable } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import { updateWorkerService } from "$lib/services/updateWorkerService";
+import { TokenService } from "$lib/services/tokens/TokenService";
 
 interface LoadingState {
   isLoading: boolean;

@@ -151,19 +151,19 @@
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if !$isMobile}
       <div class="earn-cards">
-        <div
+        <button
           class="earn-card"
           class:active={$activeSection === "pools"}
           on:click={() => activeSection.set("pools")}
         >
           <div class="card-content">
             <h3>Pools</h3>
-            <div class="apy">Up to {$highestApr.toFixed(2)}% APY</div>
+            <div class="apy">Up to {$highestApr.toLocaleString(undefined, { maximumFractionDigits: 2 })}% APY</div>
           </div>
           <div class="stat-icon-wrapper">
             <Droplets class="stat-icon" />
           </div>
-        </div>
+        </button>
 
         <div class="earn-card" aria-disabled="true">
           <div class="card-content">

@@ -3,7 +3,7 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import { tokenStore, fromTokenDecimals } from "$lib/services/tokens/tokenStore";
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
@@ -147,7 +147,7 @@
     if (tokenInfo) {
       const balance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
       if (balance !== undefined) {
-        displayBalance = formatWithCommas(formatTokenAmount(
+        displayBalance = formatWithCommas(formatBalance(
           balance.toString(),
           decimals,
         ));
@@ -166,7 +166,7 @@
         ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
         : 0n;
 
-      return formatTokenAmount(
+      return formatBalance(
         new BigNumber(balance.toString())
           .minus(fromTokenDecimals(amount || "0", decimals))
           .minus(feesInTokens.toString())
@@ -290,7 +290,7 @@
 
         maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
         
-        const formattedMax = formatTokenAmount(maxAmount.toString(), tokenInfo.decimals);
+        const formattedMax = formatBalance(maxAmount.toString(), tokenInfo.decimals);
         if (!formattedMax || formattedMax === "NaN") {
           console.error("Invalid formatted amount", formattedMax);
           toastStore.error("Failed to format amount");

@@ -3,7 +3,7 @@
     import { fly, fade } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
-    import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
+    import { formatBalance } from '$lib/utils/numberFormatUtils';
     import { TokenService, tokenStore } from '$lib/services/tokens';
     import { onMount } from 'svelte';
     import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
@@ -60,9 +60,9 @@
                 formattedDate: formatTimestamp(data.ts),
                 symbol_0: data.symbol_0,
                 symbol_1: data.symbol_1,
-                amount_0: formatTokenAmount(data.amount_0.toString(), 8),
-                amount_1: formatTokenAmount(data.amount_1.toString(), 8),
-                lp_amount: formatTokenAmount(data.add_lp_token_amount.toString(), 8)
+                amount_0: formatBalance(data.amount_0.toString(), 8),
+                amount_1: formatBalance(data.amount_1.toString(), 8),
+                lp_amount: formatBalance(data.add_lp_token_amount.toString(), 8)
             };
         } else if ('Swap' in tx) {
             const data = tx.Swap;
@@ -72,8 +72,8 @@
                 formattedDate: formatTimestamp(data.ts),
                 pay_symbol: data.pay_symbol,
                 receive_symbol: data.receive_symbol,
-                pay_amount: formatTokenAmount(data.pay_amount.toString(), 8),
-                receive_amount: formatTokenAmount(data.receive_amount.toString(), 8),
+                pay_amount: formatBalance(data.pay_amount.toString(), 8),
+                receive_amount: formatBalance(data.receive_amount.toString(), 8),
                 price: data.price,
                 slippage: data.slippage
             };
@@ -85,9 +85,9 @@
                 formattedDate: formatTimestamp(data.ts),
                 symbol_0: data.symbol_0,
                 symbol_1: data.symbol_1,
-                amount_0: formatTokenAmount(data.amount_0.toString(), 8),
-                amount_1: formatTokenAmount(data.amount_1.toString(), 8),
-                lp_amount: formatTokenAmount(data.remove_lp_token_amount.toString(), 8)
+                amount_0: formatBalance(data.amount_0.toString(), 8),
+                amount_1: formatBalance(data.amount_1.toString(), 8),
+                lp_amount: formatBalance(data.remove_lp_token_amount.toString(), 8)
             };
         }
         console.log('Unhandled transaction type:', tx);

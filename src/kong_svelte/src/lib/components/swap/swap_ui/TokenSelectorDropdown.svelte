@@ -8,7 +8,7 @@
   import Portal from "svelte-portal";
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatBalance, formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
 
   const props = $props();
