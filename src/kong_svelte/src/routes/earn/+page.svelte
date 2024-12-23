@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sidebarStore } from '$lib/stores/sidebarStore';
   import { writable, derived } from "svelte/store";
   import {
     poolsList,
@@ -483,11 +484,7 @@
                   <button
                     class="px-6 py-2 bg-primary-blue text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
                     on:click={() => {
-                      toastStore.info(
-                        "Connect your wallet to view your liquidity positions",
-                        undefined,
-                        "Connect Wallet",
-                      );
+                      sidebarStore.open();
                     }}
                   >
                     Connect Wallet

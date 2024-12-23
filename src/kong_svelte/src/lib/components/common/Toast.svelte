@@ -161,7 +161,8 @@
 
   .toast-outer {
     @apply w-full flex pointer-events-auto;
-    max-width: min(calc(100vw - 2rem), 24rem);
+    min-width: 20rem;
+    max-width: min(calc(100vw - 2rem), 28rem);
   }
 
   .toast-container {
@@ -202,6 +203,7 @@
     }
 
     .toast-outer {
+      min-width: 0;
       max-width: none;
       @apply px-2;
     }

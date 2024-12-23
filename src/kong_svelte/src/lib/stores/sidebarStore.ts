@@ -30,7 +30,8 @@ function createSidebarStore() {
         toggleExpand: () => {
             update(state => ({
                 ...state,
-                isExpanded: false,  // Always collapse when toggling
+                isExpanded: !state.isExpanded,  // Actually toggle the state
+                isOpen: true,  // Make sure sidebar is open
                 width: 527  // Keep consistent width
             }));
         },

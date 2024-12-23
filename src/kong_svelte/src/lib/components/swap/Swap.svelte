@@ -67,7 +67,6 @@
   let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
-  let showWalletModal = false;
 
   // Subscribe to swap status changes
   $: {
@@ -295,7 +294,7 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      showWalletModal = true;
+      sidebarStore.open();
       return;
     }
 
@@ -721,18 +720,6 @@
       title="Slippage Settings"
     >
       <Settings />
-    </Modal>
-  </Portal>
-{/if}
-
-{#if showWalletModal}
-  <Portal target="body">
-    <Modal
-      isOpen={showWalletModal}
-      onClose={() => (showWalletModal = false)}
-      title="Connect Wallet"
-    >
-      <WalletProvider on:login={handleWalletLogin} />
     </Modal>
   </Portal>
 {/if}

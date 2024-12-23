@@ -275,13 +275,9 @@
                 theme="primary"
                 variant="solid"
                 size="lg"
-                isDisabled={$auth.isConnected}
+                isDisabled={false}
                 onClick={() => {
-                  toastStore.info(
-                    "Connect your wallet to view your favorite tokens",
-                    undefined,
-                    "Connect Wallet",
-                  );
+                  sidebarStore.toggleExpand();
                 }}
               />
             </div>
