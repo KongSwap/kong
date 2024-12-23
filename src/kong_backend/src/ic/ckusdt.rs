@@ -5,7 +5,7 @@ use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
-use crate::swap::swap_amounts::swap_mid_price;
+use crate::swap::swap_amounts::swap_mid_amounts;
 
 pub const CKUSDT_TOKEN_ID: u32 = 1;
 pub const CKUSDT_SYMBOL: &str = "ckUSDT";
@@ -36,7 +36,8 @@ pub fn is_ckusdt(token: &str) -> bool {
 /// Calculate the ckusdt amount for a given token and amount
 pub fn ckusdt_amount(token: &StableToken, amount: &Nat) -> Result<Nat, String> {
     let ckusdt_token = token_map::get_ckusdt()?;
-    swap_mid_price(token, amount, &ckusdt_token)
+    let (receive_amount, _, _) = swap_mid_amounts(token, amount, &ckusdt_token)?;
+    Ok(receive_amount)
 }
 
 /// Convert a Nat amount to a f64 with the correct number of decimals for ckUSDT
