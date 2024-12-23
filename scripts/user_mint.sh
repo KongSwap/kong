@@ -6,19 +6,9 @@ identity="--identity kong_token_minter"
 to_principal_id=$(dfx identity $network --identity kong_user1 get-principal)
 #to_principal_id=c4etj-7mp7x-5vmzi-kpthz-5h4ve-l3vss-mbs3r-kwihx-tifdo-jwlaz-nae
 
-# 100,000 ICP
-amount=10_000_000_000_000
-token="icp"
-token_ledger="${token}_ledger"
-
-dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
-	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
-	amount=$amount;
-},)"
-
-# 1,000,000 ckUSDT
+# 1,000,000 ksUSDT
 amount=1_000_000_000_000
-token="ckusdt"
+token="ksusdt"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -26,9 +16,19 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 5 ckBTC
+# 100,000 ksICP
+amount=10_000_000_000_000
+token="ksicp"
+token_ledger="${token}_ledger"
+
+dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
+	to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+	amount=$amount;
+},)"
+
+# 5 ksBTC
 amount=500_000_000
-token="ckbtc"
+token="ksbtc"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -36,9 +36,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 60 ckETH
+# 60 ksETH
 amount=60_000_000_000_000_000_000
-token="cketh"
+token="kseth"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
@@ -46,9 +46,9 @@ dfx canister call $network $identity $token_ledger icrc1_transfer "(record {
 	amount=$amount;
 },)"
 
-# 5,000,000 KONG
+# 5,000,000 ksKONG
 amount=500_000_000_000_000
-token="kong"
+token="kskong"
 token_ledger="${token}_ledger"
 
 dfx canister call $network $identity $token_ledger icrc1_transfer "(record {

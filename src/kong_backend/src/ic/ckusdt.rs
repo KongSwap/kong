@@ -5,17 +5,25 @@ use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
-use crate::swap::swap_amounts::swap_mid_price;
+use crate::swap::swap_amounts::swap_mid_amounts;
 
 pub const CKUSDT_TOKEN_ID: u32 = 1;
-pub const CKUSDT_SYMBOL: &str = "ckUSDT";
-pub const CKUSDT_SYMBOL_WITH_CHAIN: &str = "IC.ckUSDT";
-pub const CKUSDT_ADDRESS: &str = if cfg!(feature = "staging") {
+pub const CKUSDT_SYMBOL: &str = if cfg!(any(feature = "local", feature = "staging")) {
+    "ksUSDT"
+} else {
+    "ckUSDT"
+};
+pub const CKUSDT_SYMBOL_WITH_CHAIN: &str = if cfg!(any(feature = "local", feature = "staging")) {
+    "IC.ksUSDT"
+} else {
+    "IC.ckUSDT"
+};
+pub const CKUSDT_ADDRESS: &str = if cfg!(any(feature = "local", feature = "staging")) {
     "zdzgz-siaaa-aaaar-qaiba-cai"
 } else {
     "cngnf-vqaaa-aaaar-qag4q-cai"
 };
-pub const CKUSDT_ADDRESS_WITH_CHAIN: &str = if cfg!(feature = "staging") {
+pub const CKUSDT_ADDRESS_WITH_CHAIN: &str = if cfg!(any(feature = "local", feature = "staging")) {
     "IC.zdzgz-siaaa-aaaar-qaiba-cai"
 } else {
     "IC.cngnf-vqaaa-aaaar-qag4q-cai"
@@ -36,7 +44,8 @@ pub fn is_ckusdt(token: &str) -> bool {
 /// Calculate the ckusdt amount for a given token and amount
 pub fn ckusdt_amount(token: &StableToken, amount: &Nat) -> Result<Nat, String> {
     let ckusdt_token = token_map::get_ckusdt()?;
-    swap_mid_price(token, amount, &ckusdt_token)
+    let (receive_amount, _, _) = swap_mid_amounts(token, amount, &ckusdt_token)?;
+    Ok(receive_amount)
 }
 
 /// Convert a Nat amount to a f64 with the correct number of decimals for ckUSDT
