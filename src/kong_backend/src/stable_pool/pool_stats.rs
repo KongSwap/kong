@@ -40,7 +40,13 @@ pub fn update_pool_stats() {
     });
 
     let pools = pool_map::get_on_kong();
+    let thousand = Nat::from(1000_u32);
     for mut pool in pools {
+        // skip pools with less than $1000 TVL
+        if pool.tvl <= thousand {
+            continue;
+        }
+
         if let Some((num_swaps, volume, lp_fee)) = pool_24h_stats.get(&pool.pool_id).cloned() {
             pool.rolling_24h_num_swaps = num_swaps;
             pool.rolling_24h_volume = volume;
