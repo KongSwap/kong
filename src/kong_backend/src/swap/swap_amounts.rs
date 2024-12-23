@@ -64,11 +64,8 @@ pub fn swap_amounts(
     // 2-step swap
     two_step_swaps(pay_token_id, pay_amount, receive_token_id, user_fee_level, &mut swaps)?;
 
-    // only do 3-step swap if no swaps already found. Calculation for 3-swap is expensive
-    if swaps.is_empty() {
-        // 3-step swap
-        three_step_swaps(pay_token_id, pay_amount, receive_token_id, user_fee_level, &mut swaps)?;
-    }
+    // 3-step swap
+    three_step_swaps(pay_token_id, pay_amount, receive_token_id, user_fee_level, &mut swaps)?;
 
     let max_swap = if pay_amount.is_none() {
         // return the swap with the highest mid_price
