@@ -9,8 +9,8 @@ use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
 use crate::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
 use crate::stable_lp_token::lp_token_map;
 use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP, USER_MAP};
-use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
+use crate::stable_pool::{pool_map, pool_stats};
 use crate::stable_token::token::Token;
 use crate::stable_user::stable_user::StableUserId;
 
@@ -132,4 +132,18 @@ fn update_pool_tvl(symbol: String) -> Result<String, String> {
     pool_map::update(&pool);
 
     serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
+}
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn query_pool_stats() -> Result<String, String> {
+    pool_stats::update_pool_stats();
+
+    Ok("Pool stats updated".to_string())
+}
+
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_pool_stats() -> Result<String, String> {
+    pool_stats::update_pool_stats();
+
+    Ok("Pool stats updated".to_string())
 }
