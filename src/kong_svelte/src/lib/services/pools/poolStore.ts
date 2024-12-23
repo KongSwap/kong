@@ -386,18 +386,13 @@ export const livePools = readable<ExtendedPool[]>([], set => {
 // Derived store for filtered and sorted pools
 export const filteredLivePools = derived(
   [livePools, poolSearchTerm, poolSortColumn, poolSortDirection],
-  ([
-    $livePools,
-    $poolSearchTerm,
-    $poolSortColumn,
-    $poolSortDirection,
-  ]: [ExtendedPool[], string, string, 'asc' | 'desc']) => {
+  ([$livePools, $poolSearchTerm, $poolSortColumn, $poolSortDirection]) => {
     let result = [...$livePools];
 
-    // Apply search filter
+    // 1. Filter by search term
     if ($poolSearchTerm) {
       const search = $poolSearchTerm.toLowerCase();
-      result = result.filter((pool: ExtendedPool) => {
+      result = result.filter((pool) => {
         return (
           pool.symbol_0.toLowerCase().includes(search) ||
           pool.symbol_1.toLowerCase().includes(search) ||
@@ -408,9 +403,9 @@ export const filteredLivePools = derived(
       });
     }
 
-    // Apply sorting
+    // 2. Sort
     const direction = $poolSortDirection === 'asc' ? 1 : -1;
-    result.sort((a: ExtendedPool, b: ExtendedPool) => {
+    result.sort((a, b) => {
       // Always put Kong pools first
       const aHasKong =
         a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;

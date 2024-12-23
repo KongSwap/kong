@@ -134,7 +134,7 @@
   </div>
 {/if}
 
-<style>
+<style lang="postcss">
   .modal-container {
     background: linear-gradient(to bottom right, rgba(13, 17, 23, 0.97), rgba(23, 27, 43, 0.97));
     box-shadow: 0 0 40px rgba(66, 153, 225, 0.1);
@@ -153,47 +153,29 @@
   }
 
   .blue-button {
-    background: linear-gradient(135deg, 
-      rgba(55, 114, 255, 0.8) 0%, 
-      rgba(55, 114, 255, 0.9) 100%
-    );
+    @apply bg-kong-primary;
   }
 
   .blue-button:hover {
-    background: linear-gradient(135deg, 
-      rgba(55, 114, 255, 0.9) 0%, 
-      rgba(55, 114, 255, 1) 100%
-    );
+    @apply bg-kong-primary;
     transform: translateY(-1px);
   }
 
   .share-button {
-    background: linear-gradient(135deg,
-      rgba(29, 161, 242, 0.8) 0%,
-      rgba(29, 161, 242, 0.9) 100%
-    );
+    @apply bg-kong-accent-blue;
   }
 
   .share-button:hover {
-    background: linear-gradient(135deg,
-      rgba(29, 161, 242, 0.9) 0%,
-      rgba(29, 161, 242, 1) 100%
-    );
+    @apply bg-kong-accent-blue;
     transform: translateY(-1px);
   }
 
   .red-button {
-    background: linear-gradient(135deg, 
-      rgba(239, 68, 68, 0.8) 0%, 
-      rgba(239, 68, 68, 0.9) 100%
-    );
+    @apply bg-kong-accent-red;
   }
 
   .red-button:hover {
-    background: linear-gradient(135deg, 
-      rgba(239, 68, 68, 0.9) 0%, 
-      rgba(239, 68, 68, 1) 100%
-    );
+    @apply bg-kong-accent-red;
     transform: translateY(-1px);
   }
 

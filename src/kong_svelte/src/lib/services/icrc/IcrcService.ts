@@ -168,9 +168,6 @@ export class IcrcService {
         amount: approveArgs.amount,
         timestamp: Date.now(),
       });
-      toastStore.success(
-        `Successfully approved ${token.symbol} for trading`,
-      );
 
       if ("Err" in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);

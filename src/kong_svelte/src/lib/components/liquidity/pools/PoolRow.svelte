@@ -56,7 +56,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          {getPoolPriceUsd(pool) || 0}
+          {getPoolPriceUsd(pool)}
         </div>
       </div>
     </td>

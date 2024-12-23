@@ -262,7 +262,6 @@ export class SwapService {
       let approvalId: bigint | false;
       const toastId = toastStore.info(
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
-        0,
       );
       if (payToken.icrc2) {
         const requiredAllowance = payAmount;
@@ -296,7 +295,6 @@ export class SwapService {
           error: "Transaction failed during transfer/approval",
         });
         toastStore.error("Transaction failed during transfer/approval");
-        toastStore.dismiss(toastId);
         return false;
       }
 
@@ -319,7 +317,6 @@ export class SwapService {
           { anon: false, requiresSigning: true },
         );
         const result = await actor.swap(swapParams);
-        toastStore.dismiss(toastId);
 
         if ("Ok" in result) {
           console.log("Sync swap success, result.Ok:", result.Ok);
@@ -401,7 +398,6 @@ export class SwapService {
 
         if (result.Ok) {
           this.monitorTransaction(result?.Ok, swapId);
-          toastStore.dismiss(toastId);
         } else {
           console.error("Swap error:", result.Err);
           return false;
@@ -427,9 +423,9 @@ export class SwapService {
     let attempts = 0;
     let lastStatus = ""; // Track the last status
     let swapStatus = swapStatusStore.getSwap(swapId);
-    const toastId = toastStore.info(
+    toastStore.info(
       `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
-      11000,
+      { duration: 10000 },
     );
 
     const poll = async () => {
@@ -441,7 +437,6 @@ export class SwapService {
           error: "Swap timed out",
         });
         toastStore.error("Swap timed out");
-        toastStore.dismiss(toastId);
         return;
       }
 
@@ -456,7 +451,14 @@ export class SwapService {
             const latestStatus = res.statuses[res.statuses.length - 1];
             if (latestStatus !== lastStatus) {
               lastStatus = latestStatus;
-              toastStore.info(`Swap Status: ${latestStatus}`, 3000);
+              console.log("LATEST STATUS", latestStatus);
+              if (latestStatus.includes("Success")) {
+                toastStore.success(`Swap completed successfully`);
+              } else if (res.statuses.length == 1) {
+                toastStore.info(`${latestStatus}`);
+              } else if (latestStatus.includes("Failed")) {
+                toastStore.error(`${latestStatus}`);
+              }
             }
           }
 
@@ -469,9 +471,7 @@ export class SwapService {
             });
             toastStore.error(
               res.statuses.find((s) => s.includes("Failed")),
-              8000,
             );
-            toastStore.dismiss(toastId);
             return;
           }
 
@@ -528,7 +528,6 @@ export class SwapService {
                 console.error(
                   "Missing token or wallet info for balance update",
                 );
-                toastStore.dismiss(toastId);
                 return;
               }
 
@@ -566,7 +565,6 @@ export class SwapService {
                 }, delay);
               });
 
-              toastStore.dismiss(toastId);
               return;
             } else if (swapStatus.status === "Failed") {
               this.stopPolling();
@@ -576,7 +574,6 @@ export class SwapService {
                 error: "Swap failed",
               });
               toastStore.error("Swap failed");
-              toastStore.dismiss(toastId);
               return;
             }
           }
@@ -602,7 +599,6 @@ export class SwapService {
           error: "Failed to monitor swap status",
         });
         toastStore.error("Failed to monitor swap status");
-        toastStore.dismiss(toastId);
         return;
       }
     };
