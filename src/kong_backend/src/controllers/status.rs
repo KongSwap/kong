@@ -127,12 +127,7 @@ pub fn get_number_of_transfers_archive() -> u64 {
 }
 
 pub fn get_number_of_unclaimed_claims() -> usize {
-    CLAIM_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .filter(|(_, v)| v.status == ClaimStatus::Unclaimed || v.status == ClaimStatus::TooManyAttempts)
-            .count()
-    })
+    CLAIM_MAP.with(|m| m.borrow().iter().filter(|(_, v)| v.status == ClaimStatus::Unclaimed).count())
 }
 
 pub fn get_number_of_lp_positions() -> u64 {
