@@ -55,21 +55,21 @@ ICP_FEE=${ICP_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${ICP_AMOUNT} * ${ICP_CKUSDT} / ${ICP_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 10000000000" | bc)  # 10 seconds from now
 
-APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${ICP_LEDGER} icrc2_approve "(record {
     amount = $(echo "${ICP_AMOUNT} + ${ICP_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
-APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKUSDT_AMOUNT} + ${CKUSDT_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity_async "(record {
     token_0 = \"${ICP_TOKEN}\";
@@ -88,21 +88,21 @@ CKUSDC_FEE=${CKUSDC_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${CKUSDC_AMOUNT} * ${CKUSDC_CKUSDT} / ${CKUSDC_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 10000000000" | bc)  # 10 seconds from now
 
-APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDC_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDC_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKUSDC_AMOUNT} + ${CKUSDC_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
-APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKUSDT_AMOUNT} + ${CKUSDT_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity_async "(record {
     token_0 = \"${CKUSDC_TOKEN}\";
@@ -121,21 +121,21 @@ CKBTC_FEE=${CKBTC_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${CKBTC_AMOUNT} * ${CKBTC_CKUSDT} / ${CKBTC_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 10000000000" | bc)  # 10 seconds from now
 
-APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKBTC_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKBTC_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKBTC_AMOUNT} + ${CKBTC_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
-APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKUSDT_AMOUNT} + ${CKUSDT_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity_async "(record {
     token_0 = \"${CKBTC_TOKEN}\";
@@ -154,21 +154,21 @@ CKETH_FEE=${CKETH_FEE//_/}
 CKUSDT_AMOUNT=$(echo "scale=0; ${CKETH_AMOUNT} * ${CKETH_CKUSDT} / ${CKETH_CKUSDT_DECIMALS}" | bc -l)
 EXPIRES_AT=$(echo "$(date +%s)*1000000000 + 10000000000" | bc)  # 10 seconds from now
 
-APPROVE_TOKEN_0_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKETH_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKETH_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKETH_AMOUNT} + ${CKETH_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-})" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
-APPROVE_TOKEN_1_BLOCK_ID=$(dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
+dfx canister call ${NETWORK} ${IDENTITY} ${CKUSDT_LEDGER} icrc2_approve "(record {
     amount = $(echo "${CKUSDT_AMOUNT} + ${CKUSDT_FEE}" | bc);
     expires_at = opt ${EXPIRES_AT};
     spender = record {
         owner = principal \"${KONG_CANISTER}\";
     };
-},)" | awk -F'=' '{print $2}' | awk '{print $1}')
+})"
 
 dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} add_liquidity_async "(record {
 	token_0 = \"${CKETH_TOKEN}\";
