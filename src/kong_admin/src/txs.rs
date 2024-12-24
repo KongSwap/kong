@@ -511,8 +511,8 @@ pub async fn insert_tx_on_database(
                 db_client
                     .execute(
                         "INSERT INTO swap_pool_tx
-                        (tx_id, pool_id, pay_token_id, pay_amount, receive_token_id, receive_amount, lp_fee, gas_fee)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                        (tx_id, pool_id, pay_token_id, pay_amount, receive_token_id, receive_amount, lp_fee, gas_fee, ts)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, to_timestamp($9))",
                         &[
                             &tx_id,
                             &pool_id,
@@ -522,6 +522,7 @@ pub async fn insert_tx_on_database(
                             &receive_amount,
                             &lp_fee,
                             &gas_fee,
+                            &ts,
                         ],
                     )
                     .await?;
