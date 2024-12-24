@@ -73,14 +73,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let identity = create_identity_from_pem_file(dfx_pem_file);
     let agent = create_agent(replica_url, identity, is_mainnet).await?;
-    let kong_backend = KongBackend::new(&agent).await;
-    let kong_data = KongData::new(&agent, is_mainnet).await;
 
     if args.contains(&"--updates".to_string()) {
+        let kong_data = KongData::new(&agent, is_mainnet).await;
         get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
     } else if args.contains(&"--kong_backend".to_string()) {
+        let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
-        // kong_settings::update_kong_settings(&kong_backend).await?;
         users::update_users(&kong_backend).await?;
         tokens::update_tokens(&kong_backend).await?;
         pools::update_pools(&kong_backend).await?;
@@ -90,8 +89,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // transfers::update_transfers(&kong_backend).await?;
         // txs::update_txs(&kong_backend).await?;
     } else if args.contains(&"--kong_data".to_string()) {
+        let kong_data = KongData::new(&agent, is_mainnet).await;
         // Dump to kong_data
-        //kong_settings::update_kong_settings(&kong_data).await?;
         users::update_users(&kong_data).await?;
         tokens::update_tokens(&kong_data).await?;
         pools::update_pools(&kong_data).await?;
