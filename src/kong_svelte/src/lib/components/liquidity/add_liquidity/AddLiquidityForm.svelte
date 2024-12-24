@@ -104,7 +104,7 @@
     );
 
     if (!result.isValid) {
-      toastStore.error(result.error, undefined, 'Invalid Token Pair');
+      toastStore.error(result.error);
       if (index === 0) {
         token0 = result.newToken;
       } else {

@@ -39,7 +39,7 @@
   function getDisplayPriceUsd(pool: BE.Pool): string {
     if($liveTokens) {
       const poolPrice = getPoolPriceUsd(pool)
-      return parseFloat(poolPrice) * $liveTokens.find(token => token.symbol === pool.symbol_1)?.metrics?.price;
+      return formatToNonZeroDecimal(Number(poolPrice) * Number($liveTokens.find(token => token.symbol === pool.symbol_1)?.metrics?.price));
     }
   }
 </script>

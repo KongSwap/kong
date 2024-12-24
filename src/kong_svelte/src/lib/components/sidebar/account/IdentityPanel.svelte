@@ -29,13 +29,15 @@
     accountId: string;
     principalQR: string;
     accountQR: string;
+    defaultAccountId: string;
   }
 
   let identity: UserIdentity = {
     principalId: '',
     accountId: '',
     principalQR: '',
-    accountQR: ''
+    accountQR: '',
+    defaultAccountId: ''
   };
 
   async function generateQR(text: string | undefined): Promise<string> {
@@ -72,7 +74,7 @@
         accountCopied.set(true);
         setTimeout(() => accountCopied.set(false), 2000);
       }
-      toastStore.success('Copied to clipboard!', 2000);
+      toastStore.success('Copied to clipboard!');
     } catch (error) {
       console.error('Failed to copy:', error);
       toastStore.error('Failed to copy to clipboard');

@@ -4,7 +4,7 @@
     import QRCode from 'qrcode';
     import { onMount } from 'svelte';
     import { auth } from "$lib/services/auth";
-    import Modal from "./Modal.svelte";
+    import Modal from "$lib/components/common/Modal.svelte";
     import { Clipboard } from 'lucide-svelte';
 
     interface UserIdentity {

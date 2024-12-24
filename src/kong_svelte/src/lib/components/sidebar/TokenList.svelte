@@ -107,14 +107,20 @@
         return false;
       })
       .sort((a, b) => {
+        // First sort by favorites
         if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
         
-        const aBalance = $tokenStore.balances[a.token.canister_id]?.in_usd || 0n;
-        const bBalance = $tokenStore.balances[b.token.canister_id]?.in_usd || 0n;
+        // Get USD values from balances
+        const aUsdValue = $tokenStore.balances[a.token.canister_id]?.in_usd || 0n;
+        const bUsdValue = $tokenStore.balances[b.token.canister_id]?.in_usd || 0n;
+        
+        // Convert to strings first to handle BigInt comparison properly
+        const aValue = aUsdValue.toString();
+        const bValue = bUsdValue.toString();
         
         return sortDirection === 'desc' 
-          ? Number(bBalance) - Number(aBalance)
-          : Number(aBalance) - Number(bBalance);
+          ? bValue.localeCompare(aValue)
+          : aValue.localeCompare(bValue);
       })
       .map(({ token }) => token);
   }

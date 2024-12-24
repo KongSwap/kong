@@ -31,7 +31,7 @@
     if (!isRefreshing) {
       isRefreshing = true;
       try {
-        await loadBalances($auth?.account?.owner, true);
+        await loadBalances($auth?.account?.owner, { forceRefresh: true });
       } finally {
         isRefreshing = false;
       }

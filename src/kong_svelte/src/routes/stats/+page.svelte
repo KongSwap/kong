@@ -15,6 +15,7 @@
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import StatsTableRow from "$lib/components/stats/StatsTableRow.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
 
   // Optional: A simple search store to filter tokens locally
   const searchTerm = writable("");
@@ -50,7 +51,10 @@
       let filtered = [...$liveTokens];
 
       // Filter by favorites if enabled
-      if ($showFavoritesOnly && $auth.isConnected) {
+      if ($showFavoritesOnly) {
+        if (!$auth.isConnected) {
+          return []; // Return empty array to trigger the connect wallet view
+        }
         filtered = filtered.filter(token => $favoriteTokenIds.includes(token.canister_id));
       }
 
@@ -215,15 +219,16 @@
   });
 
   // Add this function to handle favorite toggle events
-  function handleFavoriteToggle(event: CustomEvent) {
+  async function handleFavoriteToggle(event: CustomEvent<{canisterId: string; isFavorite: boolean}>) {
     const { canisterId, isFavorite } = event.detail;
-    favoriteTokenIds.update(ids => {
-      if (isFavorite) {
-        return [...ids, canisterId];
-      } else {
-        return ids.filter(id => id !== canisterId);
-      }
-    });
+    
+    if (isFavorite) {
+      favoriteCount.set($favoriteCount - 1);
+      favoriteTokenIds.set($favoriteTokenIds.filter(id => id !== canisterId));
+    } else {
+      favoriteCount.set($favoriteCount + 1);
+      favoriteTokenIds.set([...$favoriteTokenIds, canisterId]);
+    }
   }
 
   onMount(() => {
@@ -234,6 +239,7 @@
     if ($auth.isConnected) {
       FavoriteService.loadFavorites().then(favorites => {
         favoriteTokenIds.set(favorites);
+        favoriteCount.set(favorites.length);
       });
     }
 
@@ -242,13 +248,14 @@
     };
   });
 
-  // Update favorite count whenever favoriteTokenIds changes
-  $: favoriteCount.set($favoriteTokenIds.length);
-
   // Update the favorites button click handler
   async function handleFavoritesClick() {
-    if (!$auth.isConnected) return;
-    showFavoritesOnly.update(v => !v);
+    showFavoritesOnly.set(true);
+    
+    if ($auth.isConnected && !$showFavoritesOnly) {
+      const favorites = await FavoriteService.loadFavorites();
+      favoriteTokenIds.set(favorites);
+    }
   }
 
   // Update StatsTableRow to pass the favorite status
@@ -262,10 +269,7 @@
     {#if $isMobile}
       <div class="flex gap-4 sticky top-0 z-30">
         <button
-          class="flex-1 px-4 py-2 rounded-lg transition-colors duration-200
-                 {$activeStatsSection === 'tokens'
-            ? 'bg-kong-primary text-white'
-            : 'bg-[#2a2d3d] text-[#8890a4]'}"
+          class="flex-1 px-4 py-2 rounded-lg transition-colors duration-200 {$activeStatsSection === 'tokens' ? 'bg-kong-primary text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
           on:click={() => activeStatsSection.set("tokens")}
         >
           Tokens
@@ -344,12 +348,21 @@
           </div>
 
           {#if $filteredTokens.length === 0}
-            <div
-              class="flex flex-col items-center justify-center h-64 text-center"
-            >
-              <p class="text-gray-400">
-                No tokens found matching your search criteria
-              </p>
+            <div class="flex flex-col items-center justify-center h-64 text-center">
+              {#if $showFavoritesOnly && !$auth.isConnected}
+                <p class="text-gray-400 mb-4">Connect your wallet to view and manage your favorite tokens</p>
+                <ButtonV2 
+                  variant="solid"
+                  theme="primary"
+                  onClick={() => sidebarStore.open()}
+                >
+                  Connect Wallet
+                </ButtonV2>
+              {:else}
+                <p class="text-gray-400">
+                  No tokens found matching your search criteria
+                </p>
+              {/if}
             </div>
           {:else}
             <div

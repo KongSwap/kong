@@ -80,7 +80,7 @@ export class SwapService {
     return false;
   }
 
-  private static toBigInt(value: string | number | BigNumber, decimals?: number): bigint {
+  public static toBigInt(value: string | number | BigNumber, decimals?: number): bigint {
     try {
       // If decimals provided, handle scaling
       if (decimals !== undefined) {

@@ -1,6 +1,5 @@
 <script lang="ts">
     import { Search, Star } from "lucide-svelte";
-    import { tokenStore } from "$lib/services/tokens/tokenStore";
     import Modal from "$lib/components/common/Modal.svelte";
     import TokenRowCompact from "$lib/components/sidebar/TokenRowCompact.svelte";
     import { FavoriteService } from "$lib/services/tokens/favoriteService";
@@ -12,7 +11,7 @@
     export let onClose: () => void;
     export let onSelect: (token: FE.Token) => void;
 
-    let standardFilter = $state("all");
+    let standardFilter = "all";
     let favoriteCount = 0;
     let filteredTokens: FE.Token[] = [];
 
@@ -71,7 +70,7 @@
       </div>
       <button
         class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        on:click={onClose}
+        onclick={onClose}
       >
         ✕
       </button>

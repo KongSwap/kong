@@ -36,7 +36,7 @@
         >
             {#if token}
                 <div class="token-info">
-                    <TokenImages token={token} size={24} />
+                    <TokenImages tokens={[token]} size={24} />
                     <span class="token-symbol">{token.symbol}</span>
                 </div>
             {:else}

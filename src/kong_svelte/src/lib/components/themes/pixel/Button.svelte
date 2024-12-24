@@ -59,9 +59,7 @@
 
   async function updateCachedUrls() {
     try {
-      const [left, middle, right] = await Promise.all([
-      ]);
-      cachedUrls = { left, middle, right };
+      cachedUrls = { left: '', middle: '', right: '' };
     } catch (error) {
       console.error('Error updating cached URLs:', error);
     }

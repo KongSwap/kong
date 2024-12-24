@@ -1,15 +1,14 @@
 <script lang="ts">
   import { fade, fly } from 'svelte/transition';
-  import { Star, MoreVertical, ArrowDown, ArrowUp } from 'lucide-svelte';
+  import { Star, MoreVertical } from 'lucide-svelte';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
   import { formatUsdValue, formatTokenBalance } from '$lib/utils/tokenFormatters';
-  import { formatBalance } from '$lib/utils/numberFormatUtils';
-  import { createEventDispatcher } from 'svelte';
   import TokenDetails from '$lib/components/common/TokenDetails.svelte';
   import { FavoriteService } from '$lib/services/tokens/favoriteService';
   import { tokenStore } from '$lib/services/tokens';
+  
   export let token: any;
-  const dispatch = createEventDispatcher();
+
   let showDetails = false;
   let isHovered = false;
   let isPressed = false;
@@ -51,14 +50,6 @@
     if (showMenu) {
       showMenu = false;
     }
-  }
-
-  function formatUsdValueWithMinimum(value: string): string {
-    const numValue = parseFloat(value);
-    if (numValue > 0 && numValue < 0.01) {
-      return '<$0.01';
-    }
-    return formatUsdValue(value);
   }
 
   $: {
@@ -162,6 +153,8 @@
     transform-origin: center;
     will-change: transform;
     transition: background-color 0.1s ease;
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease;
   }
 
   .token-content {

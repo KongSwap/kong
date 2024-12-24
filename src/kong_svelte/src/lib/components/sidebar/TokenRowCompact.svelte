@@ -24,7 +24,7 @@
 
 {#if token}
 <div class="base">
-  <button class="content" onclick={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
+  <div class="content" onclick={onClick} aria-label="Select {token.name} ({token.symbol})">
     <div class="left">
       <div class="img-container">
         <TokenImages tokens={[token]} size={24} />
@@ -34,7 +34,7 @@
           <button 
             class="favorite-button"
             class:active={isFavorite}
-            on:click={handleFavoriteClick}
+            onclick={handleFavoriteClick}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Star size={14} fill={isFavorite ? "#ffd700" : "none"} />
@@ -50,7 +50,7 @@
         <span class="price">{formatUsdValue(token.metrics.price)}</span>
       {/if}
     </div>
-  </button>
+  </div>
 </div>
 {/if}
 

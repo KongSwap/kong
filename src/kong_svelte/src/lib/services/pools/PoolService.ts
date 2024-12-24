@@ -252,7 +252,6 @@ export class PoolService {
     
     const toastId = toastStore.info(
       "Processing liquidity operation...",
-      0
     );
 
     try {
@@ -276,7 +275,7 @@ export class PoolService {
           const currentStatus = status.statuses[status.statuses.length - 1];
           if (currentStatus !== lastStatus) {
             lastStatus = currentStatus;
-            toastStore.info(`Status: ${currentStatus}`, 3000);
+            toastStore.info(`Status: ${currentStatus}`);
           }
         }
 
@@ -290,7 +289,7 @@ export class PoolService {
         if (status.statuses.find(s => s.includes("Failed"))) {
           const failureMessage = status.statuses.find(s => s.includes("Failed"));
           toastStore.dismiss(toastId);
-          toastStore.error(failureMessage || "Operation failed", 5000);
+          toastStore.error(failureMessage || "Operation failed");
           throw new Error(failureMessage || "Operation failed");
         }
 
@@ -300,11 +299,11 @@ export class PoolService {
 
       // If we exit the loop without success/failure
       toastStore.dismiss(toastId);
-      toastStore.error("Operation timed out", 5000);
+      toastStore.error("Operation timed out");
       throw new Error("Polling timed out");
     } catch (error) {
       toastStore.dismiss(toastId);
-      toastStore.error(error.message || "Error polling request status", 5000);
+      toastStore.error(error.message || "Error polling request status");
       console.error("Error polling request status:", error);
       throw error;
     }

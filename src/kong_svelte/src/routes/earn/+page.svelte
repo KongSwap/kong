@@ -26,7 +26,6 @@
   import { auth } from "$lib/services/auth";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
-  import { toastStore } from "$lib/stores/toastStore";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
 

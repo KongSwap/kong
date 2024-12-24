@@ -47,7 +47,7 @@
         <button
           class="tab-button"
           class:active={activeTab === tab.id}
-          on:click={() => accountStore.setActiveTab(tab.id)}
+          on:click={() => accountStore.setActiveTab(tab.id as 'details' | 'identity' | 'wallet' | 'connection')}
         >
           {tab.label}
         </button>
