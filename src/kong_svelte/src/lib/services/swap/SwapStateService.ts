@@ -7,6 +7,7 @@ import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { BigNumber } from 'bignumber.js';
+import { livePools } from '../pools/poolStore';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -159,6 +160,25 @@ function createSwapStore(): SwapStore {
       }
 
       try {
+        const pools = get(livePools);
+        const hasValidPool = pools.some(pool => 
+          (pool.symbol_0 === currentState.payToken?.symbol && pool.symbol_1 === currentState.receiveToken?.symbol) ||
+          (pool.symbol_0 === currentState.receiveToken?.symbol && pool.symbol_1 === currentState.payToken?.symbol)
+        );
+        if (!hasValidPool) {
+          update(state => ({
+            ...state,
+            error: "Pool does not exist",
+            isCalculating: false
+          }));
+          return;
+        } else {
+          update(state => ({
+            ...state,
+            error: null,
+            isCalculating: false
+          }));
+        }
         const quote = await SwapService.getSwapQuote(
           currentState.payToken,
           currentState.receiveToken,

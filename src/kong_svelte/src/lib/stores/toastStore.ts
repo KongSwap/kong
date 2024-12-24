@@ -37,7 +37,7 @@ function createToastStore() {
                 type: 'success', 
                 message, 
                 title: options.title,
-                duration: options.duration 
+                duration: options.duration || 5000 
             });
         },
         error: (message: string, options: ToastOptions = {}): string => {
@@ -45,7 +45,7 @@ function createToastStore() {
                 type: 'error', 
                 message, 
                 title: options.title,
-                duration: options.duration || 8000 // Longer default for errors
+                duration: options.duration || 10000 // Longer default for errors
             });
         },
         warning: (message: string, options: ToastOptions = {}): string => {
@@ -53,7 +53,7 @@ function createToastStore() {
                 type: 'warning', 
                 message, 
                 title: options.title,
-                duration: options.duration 
+                duration: options.duration || 10000
             });
         },
         info: (message: string, options: ToastOptions = {}): string => {
@@ -61,7 +61,7 @@ function createToastStore() {
                 type: 'info', 
                 message, 
                 title: options.title,
-                duration: options.duration 
+                duration: options.duration || 5000
             });
         },
         dismiss: (id: string) => {

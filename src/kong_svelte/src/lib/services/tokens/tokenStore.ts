@@ -94,7 +94,12 @@ export const tokenStore = createTokenStore();
 export const portfolioValue = derived(tokenStore, ($tokenStore) => {
   const balances = $tokenStore.balances;
   return $tokenStore.tokens.reduce((acc, token) => {
-    return acc + Number(token.metrics?.price || 0) * Number(balances[token.canister_id]?.in_usd || 0);
+    const balance = balances[token.canister_id]?.in_usd;
+    // Only add if balance exists and is not '0'
+    if (balance && balance !== '0') {
+      return acc + Number(balance);
+    }
+    return acc;
   }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 });
 

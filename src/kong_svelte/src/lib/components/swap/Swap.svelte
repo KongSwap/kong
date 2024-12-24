@@ -8,7 +8,6 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import Settings from "$lib/components/settings/Settings.svelte";
   import Portal from 'svelte-portal';
-  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import { Principal } from "@dfinity/principal";
 
   // Svelte imports
@@ -35,6 +34,7 @@
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+    import { livePools } from "$lib/services/pools/poolStore";
 
 
   // Types
@@ -145,15 +145,19 @@
     Number($swapState.payAmount) >
       Number(getTokenBalance($swapState.payToken.canister_id));
 
-  $: buttonText = getButtonText(
-    showSuccessModal,
-    $swapState.isProcessing,
-    $swapState.error,
-    insufficientFunds,
-    $swapState.swapSlippage > userMaxSlippage,
-    $auth?.account?.owner,
-    $swapState.payAmount,
-  );
+  $: buttonText = (() => {
+    if (!$swapState.payToken || !$swapState.receiveToken) return "Select Tokens";
+    if (showSuccessModal) return "Swap";
+    if ($swapState.isProcessing) return "Processing...";
+    if ($swapState.error) return $swapState.error;
+    if (insufficientFunds) return "Insufficient Funds";
+    if (!hasValidPool) return "Pool Does Not Exist";
+    if ($swapState.swapSlippage > userMaxSlippage)
+      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
+    if (!$auth?.account?.owner) return "Click to Connect Wallet";
+    if (!$swapState.payAmount) return "Enter Amount";
+    return "SWAP";
+  })();
 
   // Initialize tokens when they become available
   $: if ($liveTokens.length > 0 && !isInitialized) {
@@ -199,24 +203,23 @@
       : "0";
   }
 
-  function getButtonText(
-    showSuccessModal: boolean,
-    isProcessing: boolean,
-    error: string | null,
-    insufficientFunds: boolean,
-    highSlippage: boolean,
-    isWalletConnected: boolean | undefined,
-    payAmount: string | null,
-  ): string {
-    if (showSuccessModal) return "Swap";
-    if (isProcessing) return "Processing...";
-    if (error) return error;
-    if (insufficientFunds) return "Insufficient Funds";
-    if (highSlippage)
-      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
-    if (!isWalletConnected) return "Click to Connect Wallet";
-    if (!payAmount) return "Enter Amount";
-    return "SWAP";
+  // Modify the poolExists function to add more debugging
+  function poolExists(payToken: FE.Token | null, receiveToken: FE.Token | null): boolean {
+    if (!payToken || !receiveToken) {
+      return false;
+    }
+    
+    if ($livePools.length === 0) {
+      return true; // Return true when pools aren't loaded yet
+    }
+    
+    const exists = $livePools.some(pool => 
+      (pool.symbol_0 === payToken.symbol && pool.symbol_1 === receiveToken.symbol) ||
+      (pool.symbol_0 === receiveToken.symbol && pool.symbol_1 === payToken.symbol)
+    );
+  
+    
+    return exists;
   }
 
   function getButtonTooltip(
@@ -224,7 +227,9 @@
     slippageTooHigh: boolean,
     error: string | null,
   ): string {
+    if (!$swapState.payToken || !$swapState.receiveToken) return "Select tokens to trade";
     if (!owner) return "Connect to trade";
+    if (!hasValidPool) return "Pool does not exist";
     if (insufficientFunds) {
       const balance = getTokenBalance($swapState.payToken?.canister_id);
       return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
@@ -321,6 +326,11 @@
       return;
     }
 
+    if (!hasValidPool) {
+      toastStore.error("This pool does not exist");
+      return;
+    }
+
     if ($swapState.swapSlippage > userMaxSlippage) {
       toggleSettingsModal();
       return;
@@ -375,9 +385,17 @@
 
   function handleTokenSelect(panelType: PanelType) {
     if (panelType === "pay") {
-      swapState.update((s) => ({ ...s, showPayTokenSelector: true }));
+      swapState.update((s) => ({ 
+        ...s, 
+        showPayTokenSelector: true,
+        error: null // Reset error state when selecting new token
+      }));
     } else {
-      swapState.update((s) => ({ ...s, showReceiveTokenSelector: true }));
+      swapState.update((s) => ({ 
+        ...s, 
+        showReceiveTokenSelector: true,
+        error: null // Reset error state when selecting new token
+      }));
     }
   }
 
@@ -391,9 +409,13 @@
     const tempPayAmount = $swapState.payAmount;
     const tempReceiveAmount = $swapState.receiveAmount;
 
-    // Update tokens
-    swapState.setPayToken($swapState.receiveToken);
-    swapState.setReceiveToken(tempPayToken);
+    // Update tokens and reset error state
+    swapState.update(s => ({
+      ...s,
+      payToken: s.receiveToken,
+      receiveToken: tempPayToken,
+      error: null // Reset error state when reversing tokens
+    }));
 
     // Set the new pay amount
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -434,6 +456,7 @@
     if (
       !state.payToken ||
       !state.receiveToken ||
+      !hasValidPool ||
       !state.payAmount ||
       state.payAmount === "0"
     ) {
@@ -556,6 +579,19 @@
     previousPayToken = null;
     previousReceiveToken = null;
   }
+
+  // Add a reactive statement to check pool existence
+  $: hasValidPool = poolExists($swapState.payToken, $swapState.receiveToken);
+
+  // Add a reactive statement to update button state when tokens change
+  $: {
+    if ($swapState.payToken || $swapState.receiveToken) {
+      swapState.update(s => ({
+        ...s,
+        error: null // Reset error state when tokens change
+      }));
+    }
+  }
 </script>
 
 <!-- Template content -->
@@ -649,15 +685,18 @@
         <div class="swap-footer">
           <button
             class="swap-button"
-            class:error={$swapState.error ||
-              $swapState.swapSlippage > userMaxSlippage ||
-              insufficientFunds}
+            class:error={$swapState.error || 
+              $swapState.swapSlippage > userMaxSlippage || 
+              insufficientFunds || 
+              !hasValidPool}
             class:processing={$swapState.isProcessing}
-            class:ready={!$swapState.error &&
-              $swapState.swapSlippage <= userMaxSlippage &&
-              !insufficientFunds}
+            class:ready={!$swapState.error && 
+              $swapState.swapSlippage <= userMaxSlippage && 
+              !insufficientFunds && 
+              hasValidPool}
             class:shine-animation={buttonText === "SWAP"}
             on:click={handleButtonAction}
+            disabled={!hasValidPool || $swapState.isProcessing || insufficientFunds}
             title={getButtonTooltip(
               $auth?.account?.owner,
               $swapState.swapSlippage > userMaxSlippage,

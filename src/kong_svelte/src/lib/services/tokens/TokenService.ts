@@ -229,7 +229,6 @@ export class TokenService {
     // Ensure pools are loaded first
     const poolData = await PoolService.fetchPoolsData();
     if (!poolData?.pools?.length) {
-      // console.warn('No pools available for price calculation');
       return tokens.reduce(
         (acc, token) => {
           if (token.canister_id) {
@@ -510,13 +509,14 @@ export class TokenService {
         throw new Error('Failed to create token actor');
       }
 
-      const [name, symbol, decimals, fee, supportedStandards, metadata] = await Promise.all([
+      const [name, symbol, decimals, fee, supportedStandards, metadata, totalSupply] = await Promise.all([
         actor.icrc1_name(),
         actor.icrc1_symbol(),
         actor.icrc1_decimals(),
         actor.icrc1_fee(),
         actor.icrc1_supported_standards(),
-        actor.icrc1_metadata()
+        actor.icrc1_metadata(),
+        actor.icrc1_total_supply()
       ]);
 
       const getLogo = (metadata: Array<[string, any]>): string => {
@@ -533,7 +533,6 @@ export class TokenService {
         return '';
       };
 
-      console.log("logo", getLogo(metadata as Array<[string, any]>));
       const tokens = await kongDB.tokens.toArray();
       const tokenId = tokens.length + 1000;
       return {
@@ -555,7 +554,7 @@ export class TokenService {
         metrics: {
           price: "0",
           volume_24h: "0",
-          total_supply: "0",
+          total_supply: totalSupply.toString(),
           market_cap: "0",
           tvl: "0",
           updated_at: new Date().toISOString(),
@@ -570,6 +569,7 @@ export class TokenService {
       };
     } catch (error) {
       console.error('Error fetching token metadata:', error);
+      toastStore.error('Error fetching token metadata');
       return null;
     }
   }

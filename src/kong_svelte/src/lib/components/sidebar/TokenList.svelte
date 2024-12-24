@@ -6,11 +6,6 @@
   import { FavoriteService } from '$lib/services/tokens/favoriteService';
   import AddCustomTokenModal from './AddCustomTokenModal.svelte';
 
-  type ProcessedToken = FE.Token & {
-    isFavorite?: boolean;
-    balances: string;
-  };
-
   export let tokens: FE.Token[] = [];
   let searchQuery = '';
   let searchInput: HTMLInputElement;
@@ -58,7 +53,8 @@
     const tokensWithFavorites = await Promise.all(
       $formattedTokens.map(async (token) => {
         const isFavorite = await FavoriteService.isFavorite(token.canister_id);
-        return { token, isFavorite };
+        const usdValue = $tokenStore.balances[token.canister_id]?.in_usd || 0n;
+        return { token, isFavorite, usdValue };
       })
     );
 
@@ -112,17 +108,13 @@
         // First sort by favorites
         if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
         
-        // Get USD values from balances
-        const aUsdValue = $tokenStore.balances[a.token.canister_id]?.in_usd || 0n;
-        const bUsdValue = $tokenStore.balances[b.token.canister_id]?.in_usd || 0n;
-        
-        // Convert to strings first to handle BigInt comparison properly
-        const aValue = aUsdValue.toString();
-        const bValue = bUsdValue.toString();
+        // Use the stored usdValue directly
+        const aValue = Number(a.usdValue);
+        const bValue = Number(b.usdValue);
         
         return sortDirection === 'desc' 
-          ? bValue.localeCompare(aValue)
-          : aValue.localeCompare(bValue);
+          ? bValue - aValue
+          : aValue - bValue;
       })
       .map(({ token }) => token);
   }
@@ -193,15 +185,6 @@
   <div class="tokens-header">
     
     <div class="controls-wrapper">
-      <div class="header-actions">
-        <button 
-          class="add-token-button" 
-          on:click={() => showAddTokenModal = true}
-        >
-          Add Custom Token
-        </button>
-      </div>
-
       <div class="search-section">
         <div class="search-input-wrapper">
           <input
@@ -315,6 +298,15 @@
           {/if}
         </div>
       {/if}
+
+      <div class="add-token-section">
+        <button 
+          class="add-token-button" 
+          on:click={() => showAddTokenModal = true}
+        >
+          Add Custom Token
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -446,6 +438,8 @@
 
   .tokens-container {
     height: 100%;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #2a2d3d transparent;
@@ -523,13 +517,15 @@
     font-family: monospace;
   }
 
-  .header-actions {
-    padding: 1rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  .add-token-section {
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: auto;
   }
 
   .add-token-button {
-    padding: 0.5rem 1rem;
+    width: 100%;
+    padding: 0.75rem;
     background: rgba(59, 130, 246, 0.1);
     border: 1px solid rgba(59, 130, 246, 0.2);
     border-radius: 0.5rem;
