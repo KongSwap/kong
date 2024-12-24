@@ -136,14 +136,14 @@ fn update_pool_tvl(symbol: String) -> Result<String, String> {
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn query_pool_stats() -> Result<String, String> {
-    pool_stats::update_pool_stats();
+    pool_stats::update_pool_stats()?;
 
     Ok("Pool stats updated".to_string())
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_pool_stats() -> Result<String, String> {
-    pool_stats::update_pool_stats();
+    pool_stats::update_pool_stats()?;
 
     Ok("Pool stats updated".to_string())
 }

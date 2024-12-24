@@ -44,7 +44,7 @@ pub fn is_ckusdt(token: &str) -> bool {
 /// Calculate the ckusdt amount for a given token and amount
 pub fn ckusdt_amount(token: &StableToken, amount: &Nat) -> Result<Nat, String> {
     let ckusdt_token = token_map::get_ckusdt()?;
-    let (receive_amount, _, _) = swap_mid_amounts(token, amount, &ckusdt_token)?;
+    let receive_amount = swap_mid_amounts(token, amount, &ckusdt_token)?;
     Ok(receive_amount)
 }
 

@@ -19,16 +19,17 @@ use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
 /// calculate the receive_amount of a swap using mid price
-/// returns the receive_amount, mid_price and the pools used
-pub fn swap_mid_amounts(
-    pay_token: &StableToken,
-    pay_amount: &Nat,
-    receive_token: &StableToken,
-) -> Result<(Nat, f64, Vec<SwapCalc>), String> {
-    let (_, _, mid_price, _, swaps) = swap_amounts(pay_token, None, receive_token)?;
+/// returns the receive_amount
+pub fn swap_mid_amounts(pay_token: &StableToken, pay_amount: &Nat, receive_token: &StableToken) -> Result<Nat, String> {
+    let mid_price = swap_mid_price(pay_token, receive_token)?;
     let receive_amount_pay_token_decimal = nat_multiply_f64(pay_amount, mid_price).ok_or("Failed to mid price")?;
     let receive_amount = nat_to_decimal_precision(&receive_amount_pay_token_decimal, pay_token.decimals(), receive_token.decimals());
-    Ok((receive_amount, mid_price, swaps))
+    Ok(receive_amount)
+}
+
+pub fn swap_mid_price(pay_token: &StableToken, receive_token: &StableToken) -> Result<f64, String> {
+    let (_, _, mid_price, _, _) = swap_amounts(pay_token, None, receive_token)?;
+    Ok(mid_price)
 }
 
 /// calculate the receive_amount of a swap using pool price (bid/offer, fee and gas included)
