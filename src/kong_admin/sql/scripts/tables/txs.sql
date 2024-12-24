@@ -82,7 +82,8 @@ CREATE TABLE swap_pool_tx (
     receive_token_id INT REFERENCES tokens(token_id) NOT NULL,
     receive_amount DOUBLE PRECISION NOT NULL,
     lp_fee DOUBLE PRECISION NOT NULL,
-    gas_fee DOUBLE PRECISION NOT NULL
+    gas_fee DOUBLE PRECISION NOT NULL,
+    ts TIMESTAMP NOT NULL
 );
 
 CREATE TABLE send_tx (
