@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { liveTokens } from '$lib/services/tokens/tokenStore';
   import { onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
@@ -10,12 +10,12 @@
   let toToken: FE.Token | null = null;
   let currentMode: 'normal' | 'pro' = 'normal';
 
-  $: if ($tokenStore.tokens && $tokenStore.tokens.length > 0) {
+  $: if ($liveTokens && $liveTokens.length > 0) {
     const fromCanisterId = $page.url.searchParams.get('from');
     const toCanisterId = $page.url.searchParams.get('to');
     
-    fromToken = fromCanisterId ? $tokenStore.tokens.find(t => t.canister_id === fromCanisterId) || null : null;
-    toToken = toCanisterId ? $tokenStore.tokens.find(t => t.canister_id === toCanisterId) || null : null;
+    fromToken = fromCanisterId ? $liveTokens.find(t => t.canister_id === fromCanisterId) || null : null;
+    toToken = toCanisterId ? $liveTokens.find(t => t.canister_id === toCanisterId) || null : null;
   }
 
   const handleModeChange = (event: CustomEvent<{ mode: 'normal' | 'pro' }>) => {
@@ -28,7 +28,7 @@
 </script>
 
 <section class="swap-container">
-  {#if $tokenStore.tokens}
+  {#if $liveTokens}
     <div class="swap-wrapper">
       {#if currentMode === 'normal'}
       <div class="swap-normal">

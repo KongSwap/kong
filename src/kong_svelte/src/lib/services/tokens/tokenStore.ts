@@ -9,54 +9,9 @@ import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import { type TokenState } from "./types";
 
-/**
- * A minimal Dexie liveQuery store for tokens.
- * 
- * 1) Subscribes to kongDB.tokens.toArray() 
- *    so we always have a real-time array of FE.Token[] from IndexedDB.
- * 2) If any code updates or merges tokens in Dexie, 
- *    we immediately see those changes in this store.
- */
-
-// 1. Basic liveQuery that returns the raw tokens from Dexie
-export const liveTokens = readable<FE.Token[]>([], (set) => {
-  const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
-    next: (tokens) => {
-      set(tokens);
-      tokenStore.update((state) => ({
-        ...state,
-        tokens: tokens
-      }));
-    },
-    error: (error) => {
-      console.error("Error loading tokens from Dexie liveQuery:", error);
-      set([]); 
-    },
-  });
-  return () => subscription.unsubscribe();
-});
-
-// 2. Optionally, derive a “formattedTokens” store to add 
-//    any display logic (balances, user favorites, etc.)
-//    For demonstration, simply returning them as-is or with 
-//    trivial property added:
-export const formattedTokens = derived(liveTokens, ($liveTokens) => {
-  return $liveTokens.map((t) => ({
-    ...t,
-    // Example: ensuring price is displayed with 2 decimal places
-    formattedPrice: Number(t.metrics?.price || 0).toFixed(2),
-  }));
-});
-
-const getCurrentWalletId = (): string => {
-  const wallet = get(auth);
-  return wallet?.account?.owner?.toString() || "anonymous";
-};
-
 
 function createTokenStore() {
   const initialState: TokenState = {
-    tokens: [],
     balances: {},
     isLoading: false,
     error: null,
@@ -91,17 +46,60 @@ function createTokenStore() {
 
 export const tokenStore = createTokenStore();
 
-export const portfolioValue = derived(tokenStore, ($tokenStore) => {
-  const balances = $tokenStore.balances;
-  return $tokenStore.tokens.reduce((acc, token) => {
-    const balance = balances[token.canister_id]?.in_usd;
-    // Only add if balance exists and is not '0'
-    if (balance && balance !== '0') {
-      return acc + Number(balance);
-    }
-    return acc;
-  }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/**
+ * A minimal Dexie liveQuery store for tokens.
+ * 
+ * 1) Subscribes to kongDB.tokens.toArray() 
+ *    so we always have a real-time array of FE.Token[] from IndexedDB.
+ * 2) If any code updates or merges tokens in Dexie, 
+ *    we immediately see those changes in this store.
+ */
+
+// 1. Basic liveQuery that returns the raw tokens from Dexie
+export const liveTokens = readable<FE.Token[]>([], (set) => {
+  const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
+    next: (tokens) => {
+      set(tokens);
+    },
+    error: (error) => {
+      console.error("Error loading tokens from Dexie liveQuery:", error);
+      set([]); 
+    },
+  });
+  return () => subscription.unsubscribe();
 });
+
+// 2. Optionally, derive a “formattedTokens” store to add 
+//    any display logic (balances, user favorites, etc.)
+//    For demonstration, simply returning them as-is or with 
+//    trivial property added:
+export const formattedTokens = derived(liveTokens, ($liveTokens) => {
+  return $liveTokens.map((t) => ({
+    ...t,
+    // Example: ensuring price is displayed with 2 decimal places
+    formattedPrice: Number(t.metrics?.price || 0).toFixed(2),
+  }));
+});
+
+const getCurrentWalletId = (): string => {
+  const wallet = get(auth);
+  return wallet?.account?.owner?.toString() || "anonymous";
+};
+
+export const portfolioValue = derived(
+  [tokenStore, liveTokens],
+  ([$tokenStore, $liveTokens]: [TokenState, FE.Token[]]) => {
+    const balances = $tokenStore.balances;
+    return $liveTokens.reduce((acc, token) => {
+      const balance = balances[token.canister_id]?.in_usd;
+      // Only add if balance exists and is not '0'
+      if (balance && balance !== 's0') {
+        return acc + Number(balance);
+      }
+      return acc;
+    }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+);
 
 export const loadTokens = async (forceRefresh = false) => {
   try {

@@ -1,5 +1,4 @@
 export interface TokenState {
-  tokens: FE.Token[];
   balances: Record<string, FE.TokenBalance>;
   isLoading: boolean;
   error: Error | null;
