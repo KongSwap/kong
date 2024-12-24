@@ -155,8 +155,7 @@ export class PoolService {
     token_1: FE.Token;
     amount_1: bigint;
   }): Promise<bigint> {
-    await requireWalletConnection();
-
+    requireWalletConnection();
     try {
       if (!params.token_0 || !params.token_1) {
         throw new Error("Invalid token configuration");
@@ -363,6 +362,117 @@ export class PoolService {
       }
       console.error("[PoolService] Error fetching user pool balances:", error);
       throw error;
+    }
+  }
+
+  static async getPool(token0: string, token1: string): Promise<BE.Pool | null> {
+    try {
+      const actor = await createAnonymousActorHelper(
+        kongBackendCanisterId,
+        canisterIDLs.kong_backend
+      );
+      const result = await actor.get_pool(token0, token1);
+      return result.Ok || null;
+    } catch (err) {
+      console.error("Error getting pool:", err);
+      return null;
+    }
+  }
+
+  static async approveTokens(token: FE.Token, amount: bigint) {
+    try {
+      await IcrcService.checkAndRequestIcrc2Allowances(token, amount);
+    } catch (error) {
+      console.error("Error approving tokens:", error);
+      throw new Error(`Failed to approve ${token.symbol}: ${error.message}`);
+    }
+  }
+
+  static async createPool(params: {
+    token_0: FE.Token;
+    amount_0: bigint;
+    token_1: FE.Token;
+    amount_1: bigint;
+    initial_price: number;
+  }) {
+    requireWalletConnection();
+    
+    try {
+      let tx_id_0: Array<{ BlockIndex: bigint }> = [];
+      let tx_id_1: Array<{ BlockIndex: bigint }> = [];
+      let actor;
+
+      // Handle ICRC2 tokens
+      if (params.token_0.icrc2 && params.token_1.icrc2) {
+        const [approval0, approval1, actorResult] = await Promise.all([
+          IcrcService.checkAndRequestIcrc2Allowances(
+            params.token_0,
+            params.amount_0,
+          ),
+          IcrcService.checkAndRequestIcrc2Allowances(
+            params.token_1,
+            params.amount_1,
+          ),
+          auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
+            anon: false,
+            requiresSigning: false,
+          }),
+        ]);
+
+        // For ICRC2 tokens, we don't need to pass transfer block indexes
+        tx_id_0 = [];
+        tx_id_1 = [];
+        actor = actorResult;
+      } else {
+        // Handle ICRC1 tokens
+        const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
+          IcrcService.icrc1Transfer(
+            params.token_0,
+            KONG_BACKEND_CANISTER_ID,
+            params.amount_0,
+          ),
+          IcrcService.icrc1Transfer(
+            params.token_1,
+            KONG_BACKEND_CANISTER_ID,
+            params.amount_1,
+          ),
+          auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
+            anon: false,
+            requiresSigning: false,
+          }),
+        ]);
+
+        // Keep block IDs as BigInt
+        tx_id_0 = transfer0Result?.Ok ? [{ BlockIndex: transfer0Result.Ok }] : [];
+        tx_id_1 = transfer1Result?.Ok ? [{ BlockIndex: transfer1Result.Ok }] : [];
+        actor = actorResult;
+      }
+
+      const result = await actor.add_pool({
+        token_0: "IC." + params.token_0.canister_id,
+        amount_0: params.amount_0,
+        token_1: "IC." + params.token_1.canister_id,
+        amount_1: params.amount_1,
+        tx_id_0: tx_id_0,
+        tx_id_1: tx_id_1,
+        on_kong: [true],
+        lp_fee_bps: [30] // Hardcoded LP fee basis points
+      });
+
+      if ('Err' in result) {
+        throw new Error(result.Err);
+      }
+
+      // After pool creation, we need to add it to Kong's list
+      await actor.add_pool(
+        `${params.token_0.symbol}_${params.token_1.symbol}`, 
+        true
+      );
+
+      return result.Ok;
+    } catch (error) {
+      console.error("Error creating pool:", error);
+      throw new Error(error.message || "Failed to create pool");
     }
   }
 }

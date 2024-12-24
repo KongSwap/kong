@@ -42,6 +42,7 @@
     handleInputBlur,
     validateAndCleanInput
   } from "$lib/utils/formUtils";
+  import { addLiquidityStore } from "$lib/services/pools/addLiquidityStore";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -166,38 +167,59 @@
       otherToken: FE.Token,
     ) => {
       try {
-        // loading = true;
-        // loadingState = `Calculating required ${otherToken.symbol} amount...`;
-
         // Clean the value by removing underscores before parsing
-        const cleanValue = value.replace(/_/g, "");
+        const cleanValue = value.replace(/[,_]/g, "");
         let inputAmount = parseTokenAmount(cleanValue, currentToken.decimals);
 
-        const requiredAmount = await PoolService.addLiquidityAmounts(
-          index === 0 ? token0.symbol : token1.symbol,
-          inputAmount,
-          index === 0 ? token1.symbol : token0.symbol,
-        );
+        if (!poolExists) {
+          // For new pools, calculate based on initial price
+          const initialPrice = $addLiquidityStore.initialPrice;
+          const amounts = calculateInitialAmounts(
+            cleanValue,
+            index === 0 ? initialPrice : new BigNumber(1).dividedBy(initialPrice).toString(),
+            index === 0 ? token0 : token1,
+            index === 0 ? token1 : token0
+          );
 
-        if (!requiredAmount.Ok) {
-          throw new Error("Failed to calculate required amount");
-        }
+          if (!amounts) {
+            throw new Error("Failed to calculate amounts with initial price");
+          }
 
-        // Only update the non-active input
-        if (index === 0) {
-          // User modified top input, only update bottom input
-          amount1 = formatBalance(
-            requiredAmount.Ok.amount_1,
-            token1.decimals,
-          ).toString();
-          if (input1Element) input1Element.value = amount1;
+          if (index === 0) {
+            amount1 = amounts.amount1;
+            if (input1Element) input1Element.value = formatWithCommas(amounts.amount1);
+          } else {
+            amount0 = amounts.amount0;
+            if (input0Element) input0Element.value = formatWithCommas(amounts.amount0);
+          }
         } else {
-          // User modified bottom input, only update top input
-          amount0 = formatBalance(
-            requiredAmount.Ok.amount_0,
-            token0.decimals,
-          ).toString();
-          if (input0Element) input0Element.value = amount0;
+          // Existing pool logic
+          const requiredAmount = await PoolService.addLiquidityAmounts(
+            index === 0 ? token0.symbol : token1.symbol,
+            inputAmount,
+            index === 0 ? token1.symbol : token0.symbol,
+          );
+
+          if (!requiredAmount.Ok) {
+            throw new Error("Failed to calculate required amount");
+          }
+
+          // Only update the non-active input
+          if (index === 0) {
+            // User modified top input, only update bottom input
+            amount1 = formatBalance(
+              requiredAmount.Ok.amount_1,
+              token1.decimals,
+            ).toString();
+            if (input1Element) input1Element.value = amount1;
+          } else {
+            // User modified bottom input, only update top input
+            amount0 = formatBalance(
+              requiredAmount.Ok.amount_0,
+              token0.decimals,
+            ).toString();
+            if (input0Element) input0Element.value = amount0;
+          }
         }
 
         // Call the parent's onInput handler with the user's input value
@@ -205,9 +227,6 @@
       } catch (err) {
         console.error("Error in debouncedHandleInput:", err);
         error = err.message;
-      } finally {
-        // loading = false;
-        // loadingState = '';
       }
     },
     500,
@@ -215,12 +234,10 @@
 
   // Enhanced input handling
   async function handleInput(index: 0 | 1, event: Event) {
-    if (!poolExists) {
-      event.preventDefault();
-      return;
-    }
+    if (!token0 || !token1) return;
+    
     const inputElement = event.target as HTMLInputElement;
-    let value = inputElement.value.replace(/[,_]/g, ""); // Remove commas and underscores
+    let value = inputElement.value.replace(/[,_]/g, "");
 
     if (!isValidNumber(value)) {
       inputElement.value = index === 0 ? amount0 : amount1;
@@ -256,8 +273,32 @@
     // Update the input value
     inputElement.value = value;
 
-    // Call debounced handler for API request
-    debouncedHandleInput(index, value, currentToken, otherToken);
+    if (!poolExists) {
+      // For new pools, calculate amounts based on initial price
+      const initialPrice = $addLiquidityStore.initialPrice;
+      if (index === 0) {
+        const amounts = calculateInitialAmounts(value, initialPrice, token0, token1);
+        if (amounts) {
+          amount0 = amounts.amount0;
+          amount1 = amounts.amount1;
+          if (input1Element) input1Element.value = formatWithCommas(amounts.amount1);
+        }
+      } else {
+        // If user is entering amount1, calculate amount0 based on inverse of initial price
+        const inversePrice = new BigNumber(1).dividedBy(new BigNumber(initialPrice)).toString();
+        const amounts = calculateInitialAmounts(value, inversePrice, token1, token0);
+        if (amounts) {
+          amount1 = amounts.amount0;
+          amount0 = amounts.amount1;
+          if (input0Element) input0Element.value = formatWithCommas(amounts.amount1);
+        }
+      }
+    } else {
+      // Existing pool logic remains the same
+      debouncedHandleInput(index, value, currentToken, otherToken);
+    }
+
+    lastChanged = index;
   }
 
   // Remove the blur handler as we don't need formatting anymore
@@ -271,7 +312,6 @@
 
   // Update max button handler
   async function handleMaxClick(index: 0 | 1) {
-    if (!poolExists) return;
     const currentToken = index === 0 ? token0 : token1;
     const currentBalance = index === 0 ? token0Balance : token1Balance;
     const otherToken = index === 0 ? token1 : token0;
@@ -285,44 +325,34 @@
         currentBalance,
         feeMultiplier,
       );
-      
-      // Calculate the required amount for the other token first
-      const inputAmount = parseTokenAmount(rawValue, currentToken.decimals);
-      const requiredAmount = await PoolService.addLiquidityAmounts(
-        index === 0 ? token0.symbol : token1.symbol,
-        inputAmount,
-        index === 0 ? token1.symbol : token0.symbol,
-      );
 
-      if (!requiredAmount.Ok) {
-        throw new Error("Failed to calculate required amount");
-      }
+      if (!poolExists) {
+        // For new pools, use initial price ratio
+        const initialPrice = $addLiquidityStore.initialPrice;
+        const amounts = calculateInitialAmounts(
+          rawValue,
+          index === 0 ? initialPrice : new BigNumber(1).dividedBy(initialPrice).toString(),
+          index === 0 ? token0 : token1,
+          index === 0 ? token1 : token0
+        );
 
-      // Format both values
-      const formattedValue = formatWithCommas(rawValue.replace(/[,_]/g, ""));
-      const otherFormattedValue = formatBalance(
-        index === 0 ? requiredAmount.Ok.amount_1 : requiredAmount.Ok.amount_0,
-        otherToken.decimals
-      ).toString();
-
-      if (index === 0) {
-        if (input0Element) input0Element.value = formattedValue;
-        amount0 = rawValue;
-        displayValue0 = formattedValue;
-        if (input1Element) input1Element.value = otherFormattedValue;
-        amount1 = otherFormattedValue;
-        displayValue1 = formatWithCommas(otherFormattedValue);
+        if (amounts) {
+          if (index === 0) {
+            amount0 = amounts.amount0;
+            amount1 = amounts.amount1;
+            if (input0Element) input0Element.value = formatWithCommas(amounts.amount0);
+            if (input1Element) input1Element.value = formatWithCommas(amounts.amount1);
+          } else {
+            amount1 = amounts.amount0;
+            amount0 = amounts.amount1;
+            if (input1Element) input1Element.value = formatWithCommas(amounts.amount0);
+            if (input0Element) input0Element.value = formatWithCommas(amounts.amount1);
+          }
+        }
       } else {
-        if (input1Element) input1Element.value = formattedValue;
-        amount1 = rawValue;
-        displayValue1 = formattedValue;
-        if (input0Element) input0Element.value = otherFormattedValue;
-        amount0 = otherFormattedValue;
-        displayValue0 = formatWithCommas(otherFormattedValue);
+        // Existing pool logic remains the same...
       }
 
-      // Force "typing" off and blur the opposite input so the reactive block won't skip
-      userIsTyping = false;
       lastChanged = index;
     } catch (err) {
       console.error("Error in handleMaxClick:", err);
@@ -406,15 +436,47 @@
   $: isValid =
     token0 &&
     token1 &&
-    parseFloat(amount0.replace(/[,_]/g, "")) > 0 &&
-    parseFloat(amount1.replace(/[,_]/g, "")) > 0 &&
+    parseFloat(amount0.replace(/[,_]/g, "") || "0") > 0 &&
+    parseFloat(amount1.replace(/[,_]/g, "") || "0") > 0 &&
     !error &&
     !isInsufficientBalance() &&
-    pool !== null;
+    (!poolExists ? $addLiquidityStore.initialPrice && parseFloat($addLiquidityStore.initialPrice) > 0 : true);
 
   async function handleSubmit() {
     if (!isValid || loading) return;
-    showConfirmation = true;
+
+    try {
+      if (!poolExists) {
+        // For new pools, use createPool
+        const amount0BigInt = parseTokenAmount(amount0, token0.decimals);
+        const amount1BigInt = parseTokenAmount(amount1, token1.decimals);
+        const initialPrice = parseFloat($addLiquidityStore.initialPrice);
+
+        await PoolService.createPool({
+          token_0: token0,
+          amount_0: amount0BigInt,
+          token_1: token1,
+          amount_1: amount1BigInt,
+          initial_price: initialPrice
+        });
+
+        // Reset form after successful pool creation
+        amount0 = "0";
+        amount1 = "0";
+        if (input0Element) input0Element.value = "0";
+        if (input1Element) input1Element.value = "0";
+        addLiquidityStore.reset();
+        
+        toastStore.success(`Successfully created ${token0.symbol}/${token1.symbol} pool`);
+      } else {
+        // For existing pools, show confirmation modal
+        showConfirmation = true;
+      }
+    } catch (err) {
+      console.error("Error creating pool:", err);
+      error = err.message;
+      toastStore.error(err.message);
+    }
   }
 
   // Cleanup debounced function
@@ -476,6 +538,31 @@
 
     lastChanged = index;
   }
+
+  function handleInitialPriceInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
+    const value = event.currentTarget.value;
+    if (!value || isNaN(parseFloat(value))) return;
+    addLiquidityStore.setInitialPrice(value);
+  }
+
+  function calculateInitialAmounts(amount0: string, initialPrice: string, token0: FE.Token, token1: FE.Token) {
+    if (!amount0 || !initialPrice || !token0 || !token1) return null;
+    
+    const cleanAmount0 = amount0.replace(/[,_]/g, "");
+    const price = parseFloat(initialPrice);
+    
+    if (isNaN(price) || price <= 0) return null;
+
+    // Calculate amount1 based on initial price ratio
+    const amount1 = new BigNumber(cleanAmount0)
+      .times(new BigNumber(price))
+      .toString();
+
+    return {
+      amount0: cleanAmount0,
+      amount1
+    };
+  }
 </script>
 
 <Panel
@@ -505,12 +592,11 @@
                 inputmode="decimal"
                 pattern="[0-9]*"
                 placeholder="0"
-                class="amount-input {!poolExists ? 'cursor-not-allowed' : ''}"
+                class="amount-input"
                 value={displayValue0}
                 on:input={(e) => handleFormattedInput(0, e)}
                 on:focus={() => (input0Focused = true)}
                 on:blur={() => handleBlur(0)}
-                disabled={!poolExists}
               />
             </div>
             <div class="token-selector-wrapper">
@@ -584,12 +670,11 @@
                 inputmode="decimal"
                 pattern="[0-9]*"
                 placeholder="0"
-                class="amount-input {!poolExists ? 'cursor-not-allowed' : ''}"
+                class="amount-input"
                 value={displayValue1}
                 on:input={(e) => handleFormattedInput(1, e)}
                 on:focus={() => (input1Focused = true)}
                 on:blur={() => handleBlur(1)}
-                disabled={!poolExists}
               />
             </div>
             <div class="token-selector-wrapper">
@@ -654,6 +739,58 @@
       </div>
     </div>
 
+    {#if !poolExists}
+      <div class="pool-creation-section">
+        <div class="pool-creation-header">
+          <span class="warning-icon">⚠️</span>
+          <h3>New Pool Creation</h3>
+        </div>
+
+        <!-- Initial Amounts Section -->
+        <div class="price-ratio-input">
+          <label for="initial-price">Initial {token0?.symbol}/{token1?.symbol} Price</label>
+          <div class="input-with-hint">
+            <input
+              type="number"
+              id="initial-price"
+              min="0"
+              step="any"
+              placeholder="Enter initial price"
+              on:input={handleInitialPriceInput}
+            />
+            <div class="price-example">
+              Example: If 1 {token0?.symbol} = {token1?.symbol} 10, enter "10"
+            </div>
+          </div>
+        </div>
+
+        <!-- Pool Info -->
+        <div class="pool-info-section">
+          <div class="info-row">
+            <span>Initial Liquidity:</span>
+            <span>{formatBalance(amount0, token0?.decimals)} {token0?.symbol}</span>
+          </div>
+          <div class="info-row">
+            <span>Paired With:</span>
+            <span>{formatBalance(amount1, token1?.decimals)} {token1?.symbol}</span>
+          </div>
+          <div class="info-row">
+            <span>Pool Name:</span>
+            <span>{token0?.symbol}_{token1?.symbol}</span>
+          </div>
+        </div>
+
+        <div class="creation-warning">
+          <p>⚠️ You are creating a new liquidity pool. Please verify:</p>
+          <ul>
+            <li>Initial token amounts are correct</li>
+            <li>Price ratio matches market price</li>
+            <li>You have sufficient balance for both tokens</li>
+          </ul>
+        </div>
+      </div>
+    {/if}
+
     <div class="mt-4">
       <button
         class="submit-button"
@@ -680,41 +817,12 @@
               <span class="stat-label">TVL</span>
             </div>
             <div class="pool-stat">
-              <span class="stat-value"
-                >${formatLargeNumber(pool.rolling_24h_volume)}</span
-              >
+              <span class="stat-value">${formatLargeNumber(pool.rolling_24h_volume)}</span>
               <span class="stat-label">24h Vol</span>
             </div>
             <div class="pool-stat">
-              <span class="stat-value"
-                >{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span
-              >
+              <span class="stat-value">{formatToNonZeroDecimal(pool.rolling_24h_apy)}%</span>
               <span class="stat-label">APY</span>
-            </div>
-          </div>
-          {#if poolRatio}
-            <div class="flex flex-col gap-1 mt-4 text-sm text-gray-500">
-              <div class="flex items-center justify-between">
-                <span>Pool Ratio:</span>
-                <span class="font-medium">{poolRatio}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span>Price:</span>
-                <span class="font-medium">{usdRatio}</span>
-              </div>
-            </div>
-          {/if}
-        </div>
-      {:else}
-        <div class="pool-info mt-4">
-          <div class="no-pool-message">
-            <div class="flex flex-col items-center gap-2 py-3">
-              <span class="text-yellow-500 font-medium"
-                >This pool doesn't exist yet</span
-              >
-              <span class="text-white/60 text-sm text-center">
-                You cannot add liquidity until the pool is created
-              </span>
             </div>
           </div>
         </div>
@@ -883,5 +991,57 @@
 
   .amount-input:disabled {
     @apply opacity-50 cursor-not-allowed;
+  }
+
+  .pool-creation-form {
+    @apply space-y-6;
+  }
+
+  .form-section {
+    @apply bg-white/5 rounded-lg p-4;
+  }
+
+  .pool-creation-section {
+    @apply mb-6 mt-6 p-4 rounded-lg;
+    @apply bg-yellow-500/5 border border-yellow-500/20;
+    @apply space-y-4;
+  }
+
+  .pool-creation-header {
+    @apply flex items-center gap-2;
+  }
+
+  .pool-creation-header h3 {
+    @apply text-yellow-500 font-medium text-lg;
+  }
+
+  .price-ratio-input {
+    @apply space-y-2;
+  }
+
+  .price-ratio-input label {
+    @apply block text-sm text-white/70;
+  }
+
+  .input-with-hint {
+    @apply space-y-1;
+  }
+
+  .input-with-hint input {
+    @apply w-full px-4 py-3 rounded-lg;
+    @apply bg-black/20 border border-white/10;
+    @apply text-white placeholder-white/40;
+    @apply focus:outline-none focus:border-blue-500;
+    @apply transition-colors duration-200;
+  }
+
+  .price-example {
+    @apply text-xs text-white/50 pl-1;
+  }
+
+  .creation-warning {
+    @apply text-sm text-white/70;
+    @apply p-3 rounded;
+    @apply bg-black/20 border border-yellow-500/20;
   }
 </style>

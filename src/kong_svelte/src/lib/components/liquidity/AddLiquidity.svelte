@@ -12,6 +12,7 @@
   import { addLiquidityStore } from "$lib/services/pools/addLiquidityStore";
   import { goto } from "$app/navigation";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
+  import { toastStore } from "$lib/stores/toastStore";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -127,26 +128,40 @@
       const parsedAmount0 = parseTokenAmount(amount0, token0.decimals);
       const parsedAmount1 = parseTokenAmount(amount1, token1.decimals);
 
-      const addLiquidityArgs = {
-        token_0: token0,
-        amount_0: parsedAmount0,
-        token_1: token1,
-        amount_1: parsedAmount1,
-      };
+      if (!$addLiquidityStore.poolExists) {
+        // Handle new pool creation
+        if (!$addLiquidityStore.initialPrice || parseFloat($addLiquidityStore.initialPrice) <= 0) {
+          throw new Error("Please set a valid initial price");
+        }
 
-      const result = await PoolService.addLiquidity(addLiquidityArgs);
+        const createPoolArgs = {
+          token_0: token0,
+          amount_0: parsedAmount0,
+          token_1: token1,
+          amount_1: parsedAmount1,
+          initial_price: parseFloat($addLiquidityStore.initialPrice)
+        };
 
-
-      if (typeof result === "bigint") {
-        // Reset state before navigation
-  
-        addLiquidityStore.reset();
-        // Add a small delay to ensure UI updates before navigation
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        goto("/earn");
+        await PoolService.createPool(createPoolArgs);
+        toastStore.success("Successfully created new pool");
       } else {
-        error = result;
+        // Handle adding liquidity to existing pool
+        const addLiquidityArgs = {
+          token_0: token0,
+          amount_0: parsedAmount0,
+          token_1: token1,
+          amount_1: parsedAmount1,
+        };
+
+        await PoolService.addLiquidity(addLiquidityArgs);
+        toastStore.success("Successfully added liquidity");
       }
+
+      // Reset state and navigate
+      addLiquidityStore.reset();
+      // Add a small delay to ensure UI updates before navigation
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      goto("/earn");
     } catch (err) {
       console.error("Error submitting liquidity:", err);
       // If it's a wallet connection issue, show a more user-friendly message
@@ -164,16 +179,14 @@
     goto("/earn");
   }
 
+  // Combine the button text logic into a single reactive statement
   $: buttonText = error
     ? error
     : !token0 || !token1
-      ? "Select Tokens"
-      : !amount0 ||
-          !amount1 ||
-          parseFloat(amount0) <= 0 ||
-          parseFloat(amount1) <= 0
-        ? "Enter Amounts"
-        : "Add Liquidity";
+    ? "Select Tokens"
+    : !$addLiquidityStore.poolExists
+    ? "Create Pool"
+    : "Add Liquidity";
 
   // Add store subscription
   $: tokenSelectorState = $addLiquidityStore;
@@ -230,6 +243,24 @@
       }
     }
   });
+
+  $: {
+    if (token0 && token1) {
+      addLiquidityStore.checkPoolExists(token0, token1);
+    }
+  }
+
+  // Add handler for initial price input
+  function handleInitialPriceInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
+    const value = event.currentTarget.value;
+    if (!value || isNaN(parseFloat(value))) return;
+    addLiquidityStore.setInitialPrice(value);
+  }
+
+  // Remove the duplicate buttonText declaration and keep the disabled logic
+  $: buttonDisabled = !$addLiquidityStore.poolExists && 
+    (!$addLiquidityStore.initialPrice || 
+     parseFloat($addLiquidityStore.initialPrice) <= 0);
 </script>
 
 <div class="swap-wrapper">
@@ -271,6 +302,93 @@
         </div>
       {/each}
     </div>
+
+    {#if token0 && token1 && !$addLiquidityStore.poolExists}
+      <div class="new-pool-warning">
+        <div class="warning-header">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-text">New Pool Creation</span>
+        </div>
+        
+        <div class="pool-creation-form">
+          <!-- Initial Amounts Section -->
+          <div class="form-section">
+            <h3 class="section-title">Initial Pool Liquidity</h3>
+            <div class="token-amounts">
+              <div class="token-amount">
+                <label>Initial {token0?.symbol} Amount</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="any"
+                  placeholder={`Enter ${token0?.symbol} amount`}
+                  bind:value={amount0}
+                />
+                <p class="balance-hint">Balance: {token0Balance} {token0?.symbol}</p>
+              </div>
+              
+              <div class="token-amount">
+                <label>Initial {token1?.symbol} Amount</label>
+                <input 
+                  type="number"
+                  min="0" 
+                  step="any"
+                  placeholder={`Enter ${token1?.symbol} amount`}
+                  bind:value={amount1}
+                />
+                <p class="balance-hint">Balance: {token1Balance} {token1?.symbol}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Price Ratio Section -->
+          <div class="form-section">
+            <h3 class="section-title">Initial Price Ratio</h3>
+            <div class="price-inputs">
+              <div class="price-input">
+                <label>Price ({token1?.symbol} per {token0?.symbol})</label>
+                <input
+                  type="number"
+                  id="initial-price"
+                  min="0"
+                  step="any"
+                  placeholder="Enter price ratio"
+                  on:input={handleInitialPriceInput}
+                />
+                <p class="price-hint">
+                  Example: If 1 {token0?.symbol} = 10 {token1?.symbol}, enter "10"
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pool Info Section -->
+          <div class="form-section">
+            <h3 class="section-title">Pool Information</h3>
+            <div class="pool-info">
+              <div class="info-row">
+                <span class="label">Pool Name:</span>
+                <span class="value">{token0?.symbol}/{token1?.symbol}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Pool Symbol:</span>
+                <span class="value">{token0?.symbol}_{token1?.symbol}_LP</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Warning Messages -->
+          <div class="warnings">
+            <p class="warning-item">
+              ⚠️ You are creating a new liquidity pool. Make sure the initial price ratio is correct.
+            </p>
+            <p class="warning-item">
+              ⚠️ The ratio of tokens you add will set the initial price for the pool.
+            </p>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <div class="swap-footer">
       <button
@@ -537,5 +655,111 @@
     100% {
       opacity: 0.8;
     }
+  }
+
+  .new-pool-warning {
+    @apply mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20;
+  }
+
+  .warning-header {
+    @apply flex items-center gap-2 mb-2;
+  }
+
+  .warning-text {
+    @apply text-yellow-500 font-medium;
+  }
+
+  .warning-description {
+    @apply text-white/70 text-sm;
+  }
+
+  .initial-price-input {
+    @apply mt-4;
+  }
+
+  .initial-price-input label {
+    @apply block text-sm text-white/70 mb-1;
+  }
+
+  .initial-price-input input {
+    @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2;
+    @apply text-white placeholder-white/40;
+    @apply focus:outline-none focus:border-blue-500;
+    @apply transition-colors duration-200;
+  }
+
+  .initial-price-input input:invalid {
+    @apply border-red-500/50;
+  }
+
+  .price-hint {
+    @apply text-xs text-white/50 mt-1;
+  }
+
+  .pool-creation-form {
+    @apply mt-4 space-y-6;
+  }
+
+  .form-section {
+    @apply bg-white/5 rounded-lg p-4;
+  }
+
+  .section-title {
+    @apply text-lg font-medium text-white mb-3;
+  }
+
+  .token-amounts {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .token-amount {
+    @apply space-y-2;
+  }
+
+  .balance-hint {
+    @apply text-xs text-white/50;
+  }
+
+  .price-inputs {
+    @apply space-y-4;
+  }
+
+  .price-input {
+    @apply space-y-2;
+  }
+
+  .pool-info {
+    @apply space-y-3;
+  }
+
+  .info-row {
+    @apply flex justify-between items-center;
+  }
+
+  .label {
+    @apply text-white/70;
+  }
+
+  .value {
+    @apply text-white font-medium;
+  }
+
+  .warnings {
+    @apply mt-4 space-y-2;
+  }
+
+  .warning-item {
+    @apply text-sm text-yellow-500;
+  }
+
+  input {
+    @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2;
+    @apply text-white placeholder-white/40;
+    @apply focus:outline-none focus:border-blue-500;
+    @apply transition-colors duration-200;
+  }
+
+  input:invalid {
+    @apply border-red-500/50;
   }
 </style>
