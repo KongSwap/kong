@@ -3,7 +3,8 @@
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from 'svelte';
-    import { FavoriteService } from '$lib/services/tokens/favoriteService';
+  import { FavoriteService } from '$lib/services/tokens/favoriteService';
+  import AddCustomTokenModal from './AddCustomTokenModal.svelte';
 
   type ProcessedToken = FE.Token & {
     isFavorite?: boolean;
@@ -17,6 +18,7 @@
   let sortDirection = 'desc';
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
+  let showAddTokenModal = false;
   
   onMount(async () => {
     await FavoriteService.loadFavorites();
@@ -191,6 +193,15 @@
   <div class="tokens-header">
     
     <div class="controls-wrapper">
+      <div class="header-actions">
+        <button 
+          class="add-token-button" 
+          on:click={() => showAddTokenModal = true}
+        >
+          Add Custom Token
+        </button>
+      </div>
+
       <div class="search-section">
         <div class="search-input-wrapper">
           <input
@@ -307,6 +318,12 @@
     </div>
   </div>
 </div>
+
+{#if showAddTokenModal}
+  <AddCustomTokenModal 
+    on:close={() => showAddTokenModal = false} 
+  />
+{/if}
 
 <style lang="postcss">
   .token-list {
@@ -504,5 +521,26 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-family: monospace;
+  }
+
+  .header-actions {
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .add-token-button {
+    padding: 0.5rem 1rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 0.5rem;
+    color: rgb(59, 130, 246);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .add-token-button:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
   }
 </style>

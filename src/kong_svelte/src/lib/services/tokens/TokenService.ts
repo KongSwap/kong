@@ -1,5 +1,5 @@
 // TokenService.ts
-import { auth } from "$lib/services/auth";
+import { auth, canisterIDLs } from "$lib/services/auth";
 import { PoolService } from "../../services/pools/PoolService";
 import {
   formatToNonZeroDecimal,
@@ -500,6 +500,77 @@ export class TokenService {
     } else {
       console.error("Error minting tokens:", result.Err);
       toastStore.error("Error minting tokens");
+    }
+  }
+
+  public static async fetchTokenMetadata(canisterId: string): Promise<FE.Token | null> {
+    try {
+      const actor = await createAnonymousActorHelper(canisterId, canisterIDLs.icrc2);
+      if (!actor) {
+        throw new Error('Failed to create token actor');
+      }
+
+      const [name, symbol, decimals, fee, supportedStandards, metadata] = await Promise.all([
+        actor.icrc1_name(),
+        actor.icrc1_symbol(),
+        actor.icrc1_decimals(),
+        actor.icrc1_fee(),
+        actor.icrc1_supported_standards(),
+        actor.icrc1_metadata()
+      ]);
+
+      const getLogo = (metadata: Array<[string, any]>): string => {
+        for (const [key, value] of metadata) {
+          if (key === 'icrc1:logo' || key === 'icrc1_logo' || key === 'icrc1:icrc1_logo') {
+            // The value is an object that contains the logo data
+            if (typeof value === 'object' && value !== null) {
+              // Access the Text value inside the object
+              const logoValue = Object.values(value)[0];
+              return typeof logoValue === 'string' ? logoValue : '';
+            }
+          }
+        }
+        return '';
+      };
+
+      console.log("logo", getLogo(metadata as Array<[string, any]>));
+      const tokens = await kongDB.tokens.toArray();
+      const tokenId = tokens.length + 1000;
+      return {
+        canister_id: canisterId,
+        name: name.toString(),
+        symbol: symbol.toString(),
+        decimals: Number(decimals),
+        address: canisterId,
+        fee: fee.toString(),
+        fee_fixed: fee.toString(),
+        token: canisterId,
+        icrc1: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
+        icrc2: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
+        icrc3: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-3") ? true : false,
+        on_kong: false,
+        pool_symbol: "",
+        pools: [],
+        timestamp: Date.now(),
+        metrics: {
+          price: "0",
+          volume_24h: "0",
+          total_supply: "0",
+          market_cap: "0",
+          tvl: "0",
+          updated_at: new Date().toISOString(),
+          price_change_24h: "0"
+        },
+        balance: "0",
+        logo_url: getLogo(metadata as Array<[string, any]>),
+        token_type: "IC",
+        token_id: tokenId,
+        chain: "IC",
+        total_24h_volume: "0"
+      };
+    } catch (error) {
+      console.error('Error fetching token metadata:', error);
+      return null;
     }
   }
 }

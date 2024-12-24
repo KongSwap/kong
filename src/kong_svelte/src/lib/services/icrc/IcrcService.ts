@@ -3,8 +3,6 @@ import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
-import { tokenStore } from "$lib/services/tokens/tokenStore";
-import { eventBus } from "$lib/services/tokens/eventBus";
 import { allowanceStore } from "../tokens/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 
@@ -69,7 +67,7 @@ export class IcrcService {
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount 
-      ? Array.from(auth.pnp.account.subaccount)
+      ? Array.from(auth.pnp.account.subaccount) as number[]
       : undefined;
 
     // Group tokens by subnet to minimize subnet key fetches
@@ -90,7 +88,10 @@ export class IcrcService {
         );
 
         subnetTokens.forEach((token, i) => {
-          results.set(token.canister_id, balances[i]);
+          const balance = balances[i];
+          results.set(token.canister_id, 
+            typeof balance === 'bigint' ? balance : balance.default
+          );
         });
       }),
     );
@@ -249,6 +250,15 @@ export class IcrcService {
       return result;
     } catch (error) {
       return { Err: error };
+    }
+  }
+
+  public static async createIcrc1TokenActor(canisterId: string) {
+    try {
+      return await auth.pnp.createActor(canisterId, canisterIDLs.icrc2);
+    } catch (error) {
+      console.error('Error creating ICRC1 token actor:', error);
+      return null;
     }
   }
 }
