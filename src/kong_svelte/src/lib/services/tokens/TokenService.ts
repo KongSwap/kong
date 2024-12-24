@@ -31,7 +31,6 @@ export class TokenService {
   public static readonly TOKEN_CACHE_DURATION = 1 * 60 * 1000; // 1 minute
 
   public static async fetchTokens(): Promise<FE.Token[]> {
-    // 1. Get cached tokens first
     let cachedTokens: FE.Token[] = [];
     try {
       cachedTokens = (await kongDB.tokens
@@ -42,7 +41,6 @@ export class TokenService {
       console.error("Error fetching cached tokens:", error);
     }
 
-    // 3. Fetch fresh data from network (which may or may not have price fields)
     let freshTokens: FE.Token[] = [];
     try {
       freshTokens = await this.fetchFromNetwork();

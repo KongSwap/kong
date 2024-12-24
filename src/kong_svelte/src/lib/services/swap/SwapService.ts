@@ -1,5 +1,5 @@
 // src/lib/services/swap/SwapService.ts
-import { tokenStore, getTokenDecimals, liveTokens, loadBalances } from "$lib/services/tokens/tokenStore";
+import { getTokenDecimals, liveTokens, loadBalances } from "$lib/services/tokens/tokenStore";
 import { toastStore } from "$lib/stores/toastStore";
 import { get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
@@ -7,10 +7,8 @@ import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "./swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
-import { formatBalance } from "$lib/utils/numberFormatUtils";
-import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";
-import { TokenService } from "$lib/services/tokens/TokenService";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -151,7 +149,7 @@ export class SwapService {
         throw new Error("Invalid tokens provided for swap quote");
       }
       const actor = await auth.getActor(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
         { anon: true },
       );
@@ -192,7 +190,7 @@ export class SwapService {
       throw new Error(quote.Err);
     }
 
-    const tokens = get(tokenStore).tokens;
+    const tokens = get(liveTokens);
     const receiveToken = tokens.find(
       (t) => t.address === params.receiveToken.address,
     );
@@ -241,7 +239,7 @@ export class SwapService {
   }): Promise<BE.SwapAsyncResponse> {
     try {
       const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
@@ -259,7 +257,7 @@ export class SwapService {
   public static async requests(requestIds: bigint[]): Promise<RequestResponse> {
     try {
       const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
@@ -362,7 +360,7 @@ export class SwapService {
 
       if (["oisy"].includes(auth.pnp.activeWallet.id)) {
         const actor = auth.pnp.getActor(
-          kongBackendCanisterId,
+          KONG_BACKEND_CANISTER_ID,
           canisterIDLs.kong_backend,
           { anon: false, requiresSigning: true },
         );
@@ -520,10 +518,10 @@ export class SwapService {
 
             if (swapStatus.status === "Success") {
               this.stopPolling();
-              const token0 = get(tokenStore).tokens.find(
+              const token0 = get(liveTokens).find(
                 (t) => t.symbol === swapStatus.pay_symbol,
               );
-              const token1 = get(tokenStore).tokens.find(
+              const token1 = get(liveTokens).find(
                 (t) => t.symbol === swapStatus.receive_symbol,
               );
 
@@ -550,7 +548,7 @@ export class SwapService {
               });
 
               // Load updated balances immediately and after delays
-              const tokens = get(tokenStore).tokens;
+              const tokens = get(liveTokens);
               const payToken = tokens.find(
                 (t) => t.symbol === swapStatus.pay_symbol,
               );

@@ -25,9 +25,7 @@
     tokenStore,
     getTokenDecimals,
     liveTokens,
-
     loadTokens
-
   } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
@@ -349,8 +347,8 @@
   // Initialization functions
   async function initializeComponent(): Promise<void> {
     try {
-      const tokens = get(tokenStore);
-      if (!tokens.tokens.length) {
+      const tokens = get(liveTokens);
+      if (!tokens.length) {
         await loadTokens();
       }
       

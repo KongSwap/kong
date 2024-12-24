@@ -207,10 +207,4 @@
     -webkit-overflow-scrolling: touch;
     z-index: 4;
   }
-
-  .skyline-placeholder {
-    width: 100%;
-    height: 200px;
-    background-color: #666;
-  }
 </style>

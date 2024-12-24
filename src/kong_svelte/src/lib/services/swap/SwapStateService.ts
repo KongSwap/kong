@@ -2,7 +2,7 @@ import { writable, derived, type Readable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 import { fromTokenDecimals } from '$lib/services/tokens/tokenStore';
 import { tokenStore } from '$lib/services/tokens/tokenStore';
-import { getTokenDecimals } from "$lib/services/tokens/tokenStore";
+import { liveTokens } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
@@ -107,7 +107,7 @@ function createSwapStore(): SwapStore {
     isInputExceedingBalance,
 
     initializeTokens(initialFromToken: FE.Token | null, initialToToken: FE.Token | null) {
-      const tokens = get(tokenStore);
+      const tokens = get(liveTokens);
       
       // If we have initial tokens, use them directly
       if (initialFromToken && initialToToken) {
@@ -124,9 +124,9 @@ function createSwapStore(): SwapStore {
       }
 
       // If we have tokens loaded, set defaults
-      if (tokens.tokens.length > 0) {
-        const defaultPayToken = tokens.tokens.find(t => t.canister_id === ICP_CANISTER_ID);
-        const defaultReceiveToken = tokens.tokens.find(t => t.canister_id === KONG_CANISTER_ID);
+      if (tokens.length > 0) {
+        const defaultPayToken = tokens.find(t => t.canister_id === ICP_CANISTER_ID);
+        const defaultReceiveToken = tokens.find(t => t.canister_id === KONG_CANISTER_ID);
 
         update(state => ({
           ...state,
