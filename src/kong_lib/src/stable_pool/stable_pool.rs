@@ -42,15 +42,7 @@ pub struct StablePool {
 }
 
 impl StablePool {
-    pub fn new(
-        token_id_0: u32,
-        token_id_1: u32,
-        lp_fee_bps: u8,
-        kong_fee_bps: u8,
-        lp_token_id: u32,
-        on_kong: bool,
-        metadata: Option<String>,
-    ) -> Self {
+    pub fn new(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32, on_kong: bool) -> Self {
         Self {
             pool_id: 0,
             token_id_0,
