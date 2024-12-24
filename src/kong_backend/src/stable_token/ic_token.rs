@@ -16,11 +16,10 @@ pub struct ICToken {
     pub icrc2: bool,
     pub icrc3: bool,
     pub on_kong: bool,
-    pub metadata: Option<String>,
 }
 
 impl ICToken {
-    pub async fn new(canister_id: &Principal, on_kong: bool, metadata: Option<String>) -> Result<Self, String> {
+    pub async fn new(canister_id: &Principal, on_kong: bool) -> Result<Self, String> {
         let name = get_name(canister_id).await?;
         let symbol = get_symbol(canister_id).await?;
         let decimals = get_decimals(canister_id).await?;
@@ -45,7 +44,6 @@ impl ICToken {
             icrc2,
             icrc3,
             on_kong,
-            metadata,
         })
     }
 

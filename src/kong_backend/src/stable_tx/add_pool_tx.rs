@@ -15,7 +15,6 @@ pub struct AddPoolTx {
     pub transfer_ids: Vec<u64>,
     pub claim_ids: Vec<u64>,
     pub on_kong: bool,
-    pub metadata: Option<String>,
     pub ts: u64,
 }
 
@@ -31,7 +30,6 @@ impl AddPoolTx {
         transfer_ids: &[u64],
         claim_ids: &[u64],
         on_kong: bool,
-        metadata: Option<String>,
         ts: u64,
     ) -> Self {
         Self {
@@ -46,7 +44,6 @@ impl AddPoolTx {
             transfer_ids: transfer_ids.to_vec(),
             claim_ids: claim_ids.to_vec(),
             on_kong,
-            metadata,
             ts,
         }
     }

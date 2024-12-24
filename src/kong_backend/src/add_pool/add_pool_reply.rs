@@ -25,6 +25,5 @@ pub struct AddPoolReply {
     pub transfer_ids: Vec<TransferIdReply>,
     pub claim_ids: Vec<u64>,
     pub on_kong: bool,
-    pub metadata: Option<String>,
     pub ts: u64,
 }

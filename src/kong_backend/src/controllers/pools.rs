@@ -125,6 +125,15 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
     serde_json::to_string(&results).map_err(|e| format!("Failed to serialize remove_liquidity: {}", e))
 }
 
+/// used to force a pool stats update
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn update_pool_stats() -> Result<String, String> {
+    pool_stats::update_pool_stats()?;
+
+    Ok("Pool stats updated".to_string())
+}
+
+/// used to force a pool tvl update
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn update_pool_tvl(symbol: String) -> Result<String, String> {
     let mut pool = pool_map::get_by_token(&symbol)?;
@@ -132,18 +141,4 @@ fn update_pool_tvl(symbol: String) -> Result<String, String> {
     pool_map::update(&pool);
 
     serde_json::to_string(&pool).map_err(|e| format!("Failed to serialize: {}", e))
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn query_pool_stats() -> Result<String, String> {
-    pool_stats::update_pool_stats()?;
-
-    Ok("Pool stats updated".to_string())
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn update_pool_stats() -> Result<String, String> {
-    pool_stats::update_pool_stats()?;
-
-    Ok("Pool stats updated".to_string())
 }

@@ -1,12 +1,27 @@
+use candid::{Nat, Principal};
+
 use super::stable_token::StableToken;
 use super::stable_token::StableToken::{IC, LP};
 
+use crate::helpers::nat_helpers::nat_zero;
+
 pub trait Token {
     fn token_id(&self) -> u32;
+    fn name(&self) -> String;
     fn chain(&self) -> String;
     fn address(&self) -> String;
+    fn address_with_chain(&self) -> String;
+    fn canister_id(&self) -> Option<&Principal>;
     fn symbol(&self) -> String;
+    fn symbol_with_chain(&self) -> String;
     fn decimals(&self) -> u8;
+    fn fee(&self) -> Nat;
+    #[allow(dead_code)]
+    fn is_icrc1(&self) -> bool;
+    fn is_icrc2(&self) -> bool;
+    #[allow(dead_code)]
+    fn is_icrc3(&self) -> bool;
+    fn on_kong(&self) -> bool;
 }
 
 impl Token for StableToken {
@@ -14,6 +29,13 @@ impl Token for StableToken {
         match self {
             LP(token) => token.token_id,
             IC(token) => token.token_id,
+        }
+    }
+
+    fn name(&self) -> String {
+        match self {
+            LP(token) => token.name().to_string(),
+            IC(token) => token.name.to_string(),
         }
     }
 
@@ -32,11 +54,26 @@ impl Token for StableToken {
         }
     }
 
+    fn address_with_chain(&self) -> String {
+        format!("{}.{}", self.chain(), self.address())
+    }
+
+    fn canister_id(&self) -> Option<&Principal> {
+        match self {
+            LP(_) => None,
+            IC(token) => Some(&token.canister_id),
+        }
+    }
+
     fn symbol(&self) -> String {
         match self {
             LP(token) => token.symbol.to_string(),
             IC(token) => token.symbol.to_string(),
         }
+    }
+
+    fn symbol_with_chain(&self) -> String {
+        format!("{}.{}", self.chain(), self.symbol())
     }
 
     fn decimals(&self) -> u8 {
@@ -45,4 +82,47 @@ impl Token for StableToken {
             IC(token) => token.decimals,
         }
     }
+
+    fn fee(&self) -> Nat {
+        match self {
+            LP(_) => nat_zero(),
+            IC(token) => token.fee.clone(),
+        }
+    }
+
+    fn is_icrc1(&self) -> bool {
+        match self {
+            LP(_) => false,
+            IC(token) => token.icrc1,
+        }
+    }
+
+    fn is_icrc2(&self) -> bool {
+        match self {
+            LP(_) => false,
+            IC(token) => token.icrc2,
+        }
+    }
+
+    fn is_icrc3(&self) -> bool {
+        match self {
+            LP(_) => false,
+            IC(token) => token.icrc3,
+        }
+    }
+
+    fn on_kong(&self) -> bool {
+        match self {
+            LP(token) => token.on_kong,
+            IC(token) => token.on_kong,
+        }
+    }
+}
+
+pub fn symbol(token_0: &StableToken, token_1: &StableToken) -> String {
+    format!("{}_{}", token_0.symbol(), token_1.symbol())
+}
+
+pub fn address(token_0: &StableToken, token_1: &StableToken) -> String {
+    format!("{}_{}", token_0.token_id(), token_1.token_id())
 }

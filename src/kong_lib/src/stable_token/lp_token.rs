@@ -13,11 +13,10 @@ pub struct LPToken {
     pub address: String, // unique identifier for the token
     pub decimals: u8,
     pub on_kong: bool,
-    pub metadata: Option<String>,
 }
 
 impl LPToken {
-    pub fn new(token_0: &StableToken, token_1: &StableToken, decimals: u8, on_kong: bool, metadata: Option<String>) -> Self {
+    pub fn new(token_0: &StableToken, token_1: &StableToken, decimals: u8, on_kong: bool) -> Self {
         let symbol = token::symbol(token_0, token_1);
         // LP token's address is the combination of token_0's token_id and token_1's token_id
         // which is unique making it a unique identifier for the LP token
@@ -28,7 +27,6 @@ impl LPToken {
             address,
             decimals,
             on_kong,
-            metadata,
         }
     }
 
