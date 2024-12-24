@@ -16,7 +16,6 @@ pub struct ICToken {
     pub icrc2: bool,
     pub icrc3: bool,
     pub on_kong: bool,
-    pub metadata: Option<String>,
 }
 
 impl ICToken {
@@ -45,7 +44,6 @@ impl ICToken {
             icrc2,
             icrc3,
             on_kong,
-            metadata,
         })
     }
 

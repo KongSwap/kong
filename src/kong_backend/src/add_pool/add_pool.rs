@@ -54,20 +54,8 @@ enum TokenIndex {
 /// * `Err(String)` - An error message if the operation fails.
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
-    let (
-        user_id,
-        token_0,
-        add_amount_0,
-        tx_id_0,
-        token_1,
-        add_amount_1,
-        tx_id_1,
-        lp_fee_bps,
-        kong_fee_bps,
-        add_lp_token_amount,
-        on_kong,
-        metadata,
-    ) = check_arguments(&args).await?;
+    let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
+        check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
 
@@ -84,7 +72,6 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         kong_fee_bps,
         &add_lp_token_amount,
         on_kong,
-        metadata,
         ts,
     )
     .await
@@ -121,27 +108,10 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
 /// *   `kong_fee_bps` - The liquidity pool Kong fee basis points.
 /// *   `add_lp_token_amount` - The amount of LP token to be added to the pool.
 /// *   `on_kong` - Whether the pool is on Kong.
-/// *   `metadata` - Metadata for the pool and token.
 /// * `Err(String)` - An error message if the operation fails.
 async fn check_arguments(
     args: &AddPoolArgs,
-) -> Result<
-    (
-        u32,
-        StableToken,
-        Nat,
-        Option<Nat>,
-        StableToken,
-        Nat,
-        Option<Nat>,
-        u8,
-        u8,
-        Nat,
-        bool,
-        Option<String>,
-    ),
-    String,
-> {
+) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat, bool), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
         return Err("Invalid zero amounts".to_string());
     }
@@ -164,7 +134,6 @@ async fn check_arguments(
 
     // add a token and pool to Kong
     let on_kong = args.on_kong.unwrap_or(false);
-    let metadata = args.metadata.clone();
 
     // check tx_id_0 and tx_id_1 are valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
@@ -202,7 +171,7 @@ async fn check_arguments(
         Err(_) => {
             // token_0 needs to be added. Only IC tokens of format IC.CanisterId supported
             match token_map::get_chain(&args.token_0) {
-                Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0, on_kong, metadata.clone()).await?,
+                Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0, on_kong).await?,
                 Some(chain) if chain == LP_CHAIN => return Err("Token_0 LP tokens not supported".to_string()),
                 Some(_) | None => return Err("Token_0 chain not specified or supported".to_string()),
             }
@@ -237,7 +206,6 @@ async fn check_arguments(
         kong_fee_bps,
         add_lp_token_amount,
         on_kong,
-        metadata,
     ))
 }
 
@@ -266,7 +234,6 @@ async fn process_add_pool(
     kong_fee_bps: u8,
     add_lp_token_amount: &Nat,
     on_kong: bool,
-    metadata: Option<String>,
     ts: u64,
 ) -> Result<AddPoolReply, String> {
     let caller_id = caller_id();
@@ -340,7 +307,7 @@ async fn process_add_pool(
     // add LP token
     request_map::update_status(request_id, StatusCode::AddLPToken, None);
     // default to None for LP token metadata
-    let lp_token = match add_lp_token(token_0, token_1, on_kong, None) {
+    let lp_token = match add_lp_token(token_0, token_1, on_kong) {
         Ok(lp_token) => {
             request_map::update_status(request_id, StatusCode::AddLPTokenSuccess, None);
             lp_token
@@ -374,7 +341,6 @@ async fn process_add_pool(
         kong_fee_bps,
         lp_token.token_id(),
         on_kong,
-        metadata.clone(),
     ) {
         Ok(pool) => {
             request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
@@ -414,7 +380,6 @@ async fn process_add_pool(
         &transfer_ids,
         &Vec::new(),
         on_kong,
-        metadata,
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
@@ -701,9 +666,8 @@ fn add_new_pool(
     kong_fee_bps: u8,
     lp_token_id: u32,
     on_kong: bool,
-    metadata: Option<String>,
 ) -> Result<StablePool, String> {
-    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong, metadata);
+    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong);
     let pool_id = pool_map::insert(&pool)?;
 
     // Retrieves the inserted pool by its pool_id
