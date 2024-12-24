@@ -144,13 +144,6 @@ export class IcrcService {
         },
       };
 
-      console.log("ICRC2_APPROVE ARGS:", {
-        ...approveArgs,
-        amount: approveArgs.amount.toString(),
-        expires_at: approveArgs.expires_at[0].toString(),
-      });
-
-
       const approveActor = auth.pnp.getActor(
         token.canister_id,
         canisterIDLs.icrc2,

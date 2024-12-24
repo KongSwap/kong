@@ -2,20 +2,20 @@
 import Dexie, {
   type Table,
   type Transaction,
-  type DBCoreTransaction,
 } from "dexie";
 import type { KongImage, FavoriteToken } from "$lib/services/tokens/types";
 import type { Settings } from "$lib/services/settings/types";
 
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 7;
 
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
-  tokens!: Table<FE.Token, string>; // Table<KongImage, primary key type>
+  tokens!: Table<FE.Token>;
   images!: Table<KongImage, number>; // Table<KongImage, primary key type>
-  favorite_tokens!: Table<FavoriteToken, string>; // Table<FavoriteToken, primary key type>
+  favorite_tokens!: Table<FavoriteToken & { id?: number }>;
   settings!: Table<Settings, string>; // Add settings table
   pools!: Table<BE.Pool, string>;
+  pool_totals: Table<FE.PoolTotal, string>;
   transactions: Table<FE.Transaction, number>;
   allowances: Table<FE.AllowanceData, string>;
   previous_version: Table<number, string>;
@@ -23,31 +23,42 @@ export class KongDB extends Dexie {
   constructor() {
     super("kong_db"); // Database name
 
-    // Increase version number for new schema
-    this.version(CURRENT_VERSION).stores({
-      tokens: "canister_id, timestamp, *metrics.price",
+    this.version(CURRENT_VERSION - 1).stores({
+      tokens: "canister_id",
       images: "++id, canister_id, timestamp",
       pools: "id, address_0, address_1, timestamp",
+      pool_totals: "++id, tvl, rolling_24h_volume, fees_24h, timestamp",
       transactions: "id",
-      favorite_tokens: "[canister_id+wallet_id], wallet_id, timestamp",
+      favorite_tokens: "++id, wallet_id, canister_id",
       settings: "principal_id, timestamp",
       allowances: "[address+wallet_address], wallet_address, timestamp",
       previous_version: "version",
     });
 
-    // Add upgrade logic
-    this.version(CURRENT_VERSION).upgrade((tx) => {
-      const previousVersion = tx.table("previous_version").get("version") || 0;
-      if (Number(previousVersion) < CURRENT_VERSION) {
-        return tx.table("previous_version").put({
-          version: CURRENT_VERSION,
-        });
-      }
+    // Increase version number and add all necessary indexes
+    this.version(CURRENT_VERSION).stores({
+      tokens: "canister_id, timestamp",
+      images: "++id, canister_id, timestamp",
+      pools: "id, address_0, address_1, timestamp",
+      pool_totals: "++id, tvl, rolling_24h_volume, fees_24h, timestamp",
+      transactions: "id",
+      favorite_tokens: "++id, wallet_id, canister_id, timestamp, [wallet_id+canister_id]",
+      settings: "principal_id, timestamp",
+      allowances: "[address+wallet_address], wallet_address, timestamp",
+      previous_version: "version",
+    }).upgrade(tx => {
+      // Clear tables that need schema upgrades
+      return Promise.all([
+        tx.table('favorite_tokens').clear(),
+        tx.table('tokens').clear()
+      ]).then(() => {
+        console.log('Cleared tables for schema upgrade');
+      });
     });
 
-    this.tokens = this.table("tokens");
     this.images = this.table("images");
     this.pools = this.table("pools");
+    this.pool_totals = this.table("pool_totals");
     this.favorite_tokens = this.table("favorite_tokens");
     this.settings = this.table("settings");
     this.transactions = this.table("transactions");

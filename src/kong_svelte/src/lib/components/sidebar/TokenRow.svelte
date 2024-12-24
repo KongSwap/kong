@@ -2,11 +2,12 @@
   import { fade, fly } from 'svelte/transition';
   import { Star, MoreVertical, ArrowDown, ArrowUp } from 'lucide-svelte';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { formatUsdValue, formatTokenBalance } from '$lib/utils/tokenFormatters';
+  import { formatBalance } from '$lib/utils/numberFormatUtils';
   import { createEventDispatcher } from 'svelte';
   import TokenDetails from '$lib/components/common/TokenDetails.svelte';
-  import { currentWalletFavorites } from '$lib/services/tokens/favoriteStore';
-
+  import { FavoriteService } from '$lib/services/tokens/favoriteService';
+  import { tokenStore } from '$lib/services/tokens';
   export let token: any;
   const dispatch = createEventDispatcher();
   let showDetails = false;
@@ -14,18 +15,26 @@
   let isPressed = false;
   let showMenu = false;
   let localFavorite = false; // Local state for immediate feedback
+  let formattedBalance = '';
+  let lastLogTime = 0;
+  const LOG_THROTTLE = 1000; // 1 second
   
-  $: isFavorite = $currentWalletFavorites.includes(token.canister_id);
-  $: {
-    // Sync local state with store when store changes
+  let isFavorite = false;
+
+  // Replace the reactive statement with an async function
+  async function updateFavoriteStatus() {
+    isFavorite = await FavoriteService.isFavorite(token.canister_id);
     localFavorite = isFavorite;
   }
 
-  function handleFavoriteClick(e: MouseEvent) {
+  $: if (token) {
+    updateFavoriteStatus();
+  }
+
+  async function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
     // Toggle local state immediately for UI feedback
-    localFavorite = !localFavorite;
-    dispatch('toggleFavorite', { canisterId: token.canister_id });
+    localFavorite = await FavoriteService.toggleFavorite(token.canister_id);
   }
 
   function handleRowClick() {
@@ -52,7 +61,29 @@
     return formatUsdValue(value);
   }
 
-  $: token
+  $: {
+    const balance = $tokenStore.balances[token.canister_id]?.in_tokens;
+    formattedBalance = formatTokenBalance(
+      balance?.toString() || "0",
+      token.decimals
+    );
+    
+    // Throttle logging
+    const now = Date.now();
+    if (now - lastLogTime > LOG_THROTTLE) {
+      lastLogTime = now;
+      // Only log if needed for debugging
+      // console.log('Balance update:', formattedBalance);
+    }
+  }
+
+  // If you need to debug, use this instead of direct console.logs
+  function debugLog(value: any) {
+    const now = Date.now();
+    if (now - lastLogTime > LOG_THROTTLE) {
+      lastLogTime = now;
+    }
+  }
 </script>
 
 <svelte:window on:click={handleClickOutside} />
@@ -97,10 +128,10 @@
       <div class="token-right">
         <div class="value-info">
           <div class="balance">
-            {token.formattedBalance}
+            {formattedBalance}
           </div>
           <div class="usd-value">
-            {formatUsdValue(token.formattedUsdValue)}
+            {formatUsdValue($tokenStore.balances[token.canister_id]?.in_usd || '0')}
           </div>
         </div>
 

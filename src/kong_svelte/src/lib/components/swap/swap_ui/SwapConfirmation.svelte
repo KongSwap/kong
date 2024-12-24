@@ -216,7 +216,7 @@
             class:shine-animation={!isLoading}
             on:click={handleConfirm}
             disabled={isLoading}
-            on:mousedown={() => console.log("Button pressed")}
+            on:mousedown={() => {}}
           >
             <div class="button-content">
               <span class="button-text">

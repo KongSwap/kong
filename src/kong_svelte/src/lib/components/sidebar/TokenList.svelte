@@ -3,7 +3,7 @@
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from 'svelte';
-  import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+    import { FavoriteService } from '$lib/services/tokens/favoriteService';
 
   type ProcessedToken = FE.Token & {
     isFavorite?: boolean;
@@ -19,7 +19,7 @@
   let debouncedSearchQuery = '';
   
   onMount(async () => {
-    await tokenStore.loadFavorites();
+    await FavoriteService.loadFavorites();
   });
   
   // At the start of the component, add validation logging
@@ -50,82 +50,77 @@
   // Add to script section
   let searchMatches: Record<string, SearchMatch> = {};
 
-  // Filtered tokens using formattedTokens
-  $: filteredTokens = $formattedTokens
-    .filter(token => {
-      // First check zero balances if enabled
-      if (hideZeroBalances && (!token.balance || BigInt(token.balance) <= 0n)) {
-        return false;
-      }
-      
-      if (!debouncedSearchQuery) {
-        searchMatches[token.canister_id] = { type: null, query: '' };
-        return true;
-      }
-      
-      const query = debouncedSearchQuery.trim().toLowerCase();
-      
-      // Check canister ID first
-      const canisterId = token.canister_id;
-      if (canisterId.toLowerCase().includes(query)) {
-        searchMatches[token.canister_id] = {
-          type: 'canister',
-          query,
-          matchedText: canisterId
-        };
-        return true;
-      }
-      
-      // Check name
-      if (token.name?.toLowerCase().includes(query)) {
-        searchMatches[token.canister_id] = {
-          type: 'name',
-          query,
-          matchedText: token.name
-        };
-        return true;
-      }
-      
-      // Check symbol
-      if (token.symbol?.toLowerCase().includes(query)) {
-        searchMatches[token.canister_id] = {
-          type: 'symbol',
-          query,
-          matchedText: token.symbol
-        };
-        return true;
-      }
-      
-      return false;
-    })
-    .sort((a, b) => {
-      const aIsFavorite = tokenStore.isFavorite(a.canister_id);
-      const bIsFavorite = tokenStore.isFavorite(b.canister_id);
-      
-      if (aIsFavorite !== bIsFavorite) {
-        return aIsFavorite ? -1 : 1;
-      }
-      
-      // Parse the values properly, handling 'k', 'M', etc.
-      const parseValue = (str: string) => {
-        if (!str) return 0;
-        const num = str.replace(/,/g, '');
-        if (num.endsWith('k')) {
-          return parseFloat(num) * 1000;
-        }
-        if (num.endsWith('M')) {
-          return parseFloat(num) * 1000000;
-        }
-        return parseFloat(num);
-      };
-      
-      const aValue = parseValue(a.formattedUsdValue || '0');
-      const bValue = parseValue(b.formattedUsdValue || '0');
-      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
-    });
+  let filteredTokens: FE.Token[] = [];
 
-  function handleAddLiquidity() {
-    console.log('Add liquidity clicked');
+  async function updateFilteredTokens() {
+    const tokensWithFavorites = await Promise.all(
+      $formattedTokens.map(async (token) => {
+        const isFavorite = await FavoriteService.isFavorite(token.canister_id);
+        return { token, isFavorite };
+      })
+    );
+
+    filteredTokens = tokensWithFavorites
+      .filter(({ token }) => {
+        if (hideZeroBalances && (!token.balance || BigInt(token.balance) <= 0n)) {
+          return false;
+        }
+        
+        if (!debouncedSearchQuery) {
+          searchMatches[token.canister_id] = { type: null, query: '' };
+          return true;
+        }
+        
+        const query = debouncedSearchQuery.trim().toLowerCase();
+        
+        // Check canister ID first
+        const canisterId = token.canister_id;
+        if (canisterId.toLowerCase().includes(query)) {
+          searchMatches[token.canister_id] = {
+            type: 'canister',
+            query,
+            matchedText: canisterId
+          };
+          return true;
+        }
+        
+        // Check name
+        if (token.name?.toLowerCase().includes(query)) {
+          searchMatches[token.canister_id] = {
+            type: 'name',
+            query,
+            matchedText: token.name
+          };
+          return true;
+        }
+        
+        // Check symbol
+        if (token.symbol?.toLowerCase().includes(query)) {
+          searchMatches[token.canister_id] = {
+            type: 'symbol',
+            query,
+            matchedText: token.symbol
+          };
+          return true;
+        }
+        
+        return false;
+      })
+      .sort((a, b) => {
+        if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+        
+        const aBalance = $tokenStore.balances[a.token.canister_id]?.in_usd || 0n;
+        const bBalance = $tokenStore.balances[b.token.canister_id]?.in_usd || 0n;
+        
+        return sortDirection === 'desc' 
+          ? Number(bBalance) - Number(aBalance)
+          : Number(aBalance) - Number(bBalance);
+      })
+      .map(({ token }) => token);
+  }
+
+  $: if ($formattedTokens || debouncedSearchQuery || hideZeroBalances || sortDirection) {
+    updateFilteredTokens();
   }
 
   // Handle keyboard shortcuts
@@ -265,7 +260,7 @@
           <TokenRow
             {token}
             on:toggleFavorite={async ({ detail }) => {
-              await tokenStore.toggleFavorite(detail.canisterId);
+              await FavoriteService.toggleFavorite(detail.canisterId);
               filteredTokens = [...filteredTokens];
             }}
           />

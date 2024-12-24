@@ -1,63 +1,58 @@
-// src/kong_svelte/src/lib/features/tokens/tokenStore.ts
+// src/kong_svelte/src/lib/services/tokens/tokenStore.ts
+import { readable, derived, writable } from "svelte/store";
+import { liveQuery } from "dexie";
 import { kongDB } from "$lib/services/db";
-import { writable, derived, get, type Readable } from "svelte/store";
-import BigNumber from "bignumber.js";
-import { TokenService } from "./TokenService";
-import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-import { toastStore } from "$lib/stores/toastStore";
-import { auth } from "$lib/services/auth";
-import { liveQuery, type Observable } from "dexie";
-import { Principal } from "@dfinity/principal";
-import { getHistoricalPrice } from "$lib/price/priceService";
 import { browser } from "$app/environment";
+import { TokenService } from "./TokenService";
+import BigNumber from "bignumber.js";
+import { get } from "svelte/store";
+import { auth } from "$lib/services/auth";
+import { type TokenState } from "./types";
 
-BigNumber.config({
-  DECIMAL_PLACES: 36,
-  ROUNDING_MODE: BigNumber.ROUND_DOWN,
-  EXPONENTIAL_AT: [-50, 50],
+/**
+ * A minimal Dexie liveQuery store for tokens.
+ * 
+ * 1) Subscribes to kongDB.tokens.toArray() 
+ *    so we always have a real-time array of FE.Token[] from IndexedDB.
+ * 2) If any code updates or merges tokens in Dexie, 
+ *    we immediately see those changes in this store.
+ */
+
+// 1. Basic liveQuery that returns the raw tokens from Dexie
+export const liveTokens = readable<FE.Token[]>([], (set) => {
+  const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
+    next: (tokens) => {
+      set(tokens);
+      tokenStore.update((state) => ({
+        ...state,
+        tokens: tokens
+      }));
+    },
+    error: (error) => {
+      console.error("Error loading tokens from Dexie liveQuery:", error);
+      set([]); 
+    },
+  });
+  return () => subscription.unsubscribe();
 });
 
-// Helper functions to handle token-specific decimal precision
-const toTokenDecimals = (
-  amount: BigNumber | string | number,
-  decimals: number,
-): BigNumber => {
-  return new BigNumber(amount).dividedBy(new BigNumber(10 ** decimals));
+// 2. Optionally, derive a “formattedTokens” store to add 
+//    any display logic (balances, user favorites, etc.)
+//    For demonstration, simply returning them as-is or with 
+//    trivial property added:
+export const formattedTokens = derived(liveTokens, ($liveTokens) => {
+  return $liveTokens.map((t) => ({
+    ...t,
+    // Example: ensuring price is displayed with 2 decimal places
+    formattedPrice: Number(t.metrics?.price || 0).toFixed(2),
+  }));
+});
+
+const getCurrentWalletId = (): string => {
+  const wallet = get(auth);
+  return wallet?.account?.owner?.toString() || "anonymous";
 };
 
-export const fromTokenDecimals = (
-  amount: BigNumber | string | number,
-  decimals: number,
-): BigNumber => {
-  return new BigNumber(amount).multipliedBy(new BigNumber(10 ** decimals));
-};
-
-// Modify the debounce utility to preserve the return type
-const debounce = <T extends (...args: any[]) => any>(fn: T, ms = 300): T => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return ((...args: Parameters<T>): ReturnType<T> => {
-    clearTimeout(timeoutId);
-    return new Promise((resolve) => {
-      timeoutId = setTimeout(() => resolve(fn(...args)), ms);
-    }) as ReturnType<T>;
-  }) as T;
-};
-
-const DEBUG = true;
-
-interface TokenState {
-  tokens: FE.Token[];
-  balances: Record<string, FE.TokenBalance>;
-  isLoading: boolean;
-  error: string | null;
-  totalValueUsd: string;
-  lastTokensFetch: number | null;
-  activeSwaps: Record<string, any>;
-  favoriteTokens: Record<string, string[]>;
-  lastBalanceUpdate: Record<string, number>;
-  lastPriceUpdate: Record<string, number>;
-  priceChangeClasses: Record<string, string>;
-}
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -65,522 +60,176 @@ function createTokenStore() {
     balances: {},
     isLoading: false,
     error: null,
-    totalValueUsd: "0.00",
     lastTokensFetch: null,
     activeSwaps: {},
-    favoriteTokens: {},
-    lastBalanceUpdate: {},
-    lastPriceUpdate: {},
-    priceChangeClasses: {}
+    pendingBalanceRequests: new Set<string>()
   };
   const store = writable<TokenState>(initialState);
-
-  const getCurrentWalletId = (): string => {
-    const wallet = get(auth);
-    return wallet?.account?.owner?.toString() || "anonymous";
-  };
-
-  const loadBalances = async (
-    principal: Principal,
-    forceRefresh: boolean = false,
-  ) => {
-    const currentStore = get(store);
-    if (!principal) {
-      console.warn("No principal provided to loadBalances");
-      return {};
-    }
-    const walletId = principal.toString();
-
-    if (!walletId) return {};
-    try {
-      const balances = await TokenService.fetchBalances(
-        currentStore.tokens,
-        walletId,
-      );
-
-      store.update((s) => ({
-        ...s,
-        balances: {
-          ...s.balances,
-          ...balances,
-        },
-      }));
-      
-      const finalState = get(store);
-      console.log("Final balances state:", finalState.balances);
-      return balances;
-    } catch (error) {
-      console.error("Error loading balances:", error);
-      toastStore.error("Failed to load balances");
-      return {};
-    }
-  };
-
-  const loadBalancesForTokens = async (
-    tokens: FE.Token[],
-    principal: Principal,
-  ) => {
-    if (!principal) {
-      console.warn("No principal provided to loadBalancesForTokens");
-      return {};
-    }
-    try {
-      const balances = await TokenService.fetchBalances(
-        tokens,
-        principal.toString(),
-      );
-      store.update((s) => ({
-        ...s,
-        balances: {
-          ...s.balances,
-          ...balances,
-        },
-      }));
-      return balances;
-    } catch (error) {
-      console.error("Error loading balances:", error);
-      toastStore.error("Failed to load balances");
-      return {};
-    }
-  };
-
-
 
   return {
     subscribe: store.subscribe,
     update: store.update,
-    loadTokens: async (forceRefresh = false) => {
-      store.update((s) => ({ ...s, isLoading: true }));
-      try {
-        const baseTokens = await TokenService.fetchTokens();
-        if (!baseTokens || baseTokens.length === 0) {
-          throw new Error("No tokens fetched from service");
-        }
-
-        // Only update IndexedDB in the browser
-        if (browser) {
-          await Promise.all(
-            baseTokens.map(async (token) => {
-              await kongDB.tokens.put({
-                ...token,
-                timestamp: Date.now(),
-                metrics: {
-                  ...token.metrics,
-                  price: token.metrics?.price || "0",
-                  price_change_24h: token.metrics?.price_change_24h || "0",
-                  volume_24h: token.metrics?.volume_24h || "0",
-                  market_cap: token.metrics?.market_cap || "0",
-                  total_supply: token.metrics?.total_supply || "0"
-                }
-              });
-            })
-          );
-        }
-
-        // Update store directly
-        store.update((s) => ({
-          ...s,
-          isLoading: false,
-          error: null,
-          tokens: baseTokens,
-          lastTokensFetch: Date.now(),
-        }));
-
-        // Load balances if we have a wallet
-        const wallet = get(auth);
-        if (browser && wallet.account && wallet.account.owner) {
-          const balances = await loadBalances(wallet.account.owner);
-          store.update((s) => ({
-            ...s,
-            balances: {
-              ...s.balances,
-              ...balances,
-            },
-          }));
-        }
-
-        return baseTokens;
-      } catch (error: any) {
-        console.error("Error loading tokens:", error);
-        store.update((s) => ({
-          ...s,
-          error: error.message,
-          isLoading: false,
-          tokens: s.tokens || [], // Keep existing tokens on error
-        }));
-        throw error;
-      }
+    isPendingBalanceRequest: (canisterId: string) => {
+      return get(store).pendingBalanceRequests.has(canisterId);
     },
-    loadBalances,
-    loadBalancesForTokens,
-    loadBalance: debounce(
-      async (
-        token: FE.Token,
-        principalId?: string,
-        forceRefresh = false,
-      ): Promise<FE.TokenBalance> => {
-        let balance: FE.TokenBalance;
-        if (!token?.canister_id) {
-          return (balance = {
-            in_tokens: BigInt(0),
-            in_usd: formatToNonZeroDecimal(0),
-          });
-        } else {
-          balance = await TokenService.fetchBalance(
-            token,
-            principalId,
-            forceRefresh,
-          );
-        }
-        store.update((s) => ({
-          ...s,
-          balances: {
-            ...s.balances,
-            [token.canister_id]: balance,
-          },
-          lastBalanceUpdate: {
-            ...s.lastBalanceUpdate,
-            [token.canister_id]: Date.now(),
-          },
-        }));
-        return {
-          in_tokens: balance.in_tokens || BigInt(0),
-          in_usd: balance.in_usd || "0",
-        };
-      },
-    ),
-    loadFavorites: async () => {
-      const walletId = getCurrentWalletId();
-      const favorites = await kongDB.favorite_tokens
-        .where("wallet_id")
-        .equals(walletId)
-        .toArray();
-      store.update((s) => ({
-        ...s,
-        favoriteTokens: {
-          [walletId]: favorites.map((f) => f.canister_id),
-        },
-      }));
-      return favorites.map((f) => f.canister_id);
-    },
-    toggleFavorite: async (canister_id: string) => {
-      try {
-        const wallet = get(auth);
-        const walletId = wallet?.account?.owner?.toString() || "anonymous";
-        const store = get(tokenStore);
-        const currentFavorites = store?.favoriteTokens[walletId] || [];
-        const isFavorite = currentFavorites.includes(canister_id);
-
-        if (isFavorite) {
-          await kongDB.favorite_tokens
-            .where(["canister_id", "wallet_id"])
-            .equals([canister_id, walletId])
-            .delete();
-          tokenStore.update((s) => ({
-            ...s,
-            favoriteTokens: {
-              ...s.favoriteTokens,
-              [walletId]: currentFavorites.filter((id) => id !== canister_id),
-            },
-          }));
-        } else {
-          await kongDB.favorite_tokens.add({
-            canister_id,
-            wallet_id: walletId,
-            timestamp: Date.now(),
-          });
-          tokenStore.update((s) => ({
-            ...s,
-            favoriteTokens: {
-              ...s.favoriteTokens,
-              [walletId]: [...currentFavorites, canister_id],
-            },
-          }));
-        }
-      } catch (error) {
-        console.error("Error toggling favorite token:", error);
-        toastStore.error("Failed to update favorite token");
-      }
-    },
-    isFavorite: (canister_id: string | null | undefined): boolean => {
-      if (!canister_id) return false;
-      const currentState = get(store);
-      const wallet = get(auth);
-      const walletId = wallet?.account?.owner?.toString() || "anonymous";
-      return currentState.favoriteTokens[walletId]?.includes(canister_id) ?? false;
-    },
-    getFavorites: (walletId: string = getCurrentWalletId()) => {
-      const currentState = get(store);
-      return currentState.favoriteTokens[walletId] || [];
-    },
-    clearUserData: () => {
-      store.update((s) => ({
-        ...initialState,
-        tokens: s.tokens,
-      }));
-    },
-    clearCache: async () => {
-      await kongDB.tokens.clear();
-      await kongDB.favorite_tokens
-        .where("wallet_id")
-        .equals(getCurrentWalletId())
-        .delete();
-      store.set(initialState);
-    },
-    getToken: (canister_id: string): FE.Token | null => {
-      return (
-        get(store).tokens.find((token) => token.canister_id === canister_id) ||
-        null
-      );
-    },
-    updateBalances: (
-      newBalances: Record<string, { in_tokens: bigint; in_usd: string }>,
-    ) => {
-      store.update((state) => {
-        const updatedState = {
-          ...state,
-          balances: { ...newBalances },
-        };
-        return updatedState;
+    addPendingRequest: (canisterId: string) => {
+      store.update(s => {
+        const pendingBalanceRequests = new Set(s.pendingBalanceRequests);
+        pendingBalanceRequests.add(canisterId);
+        return { ...s, pendingBalanceRequests };
       });
     },
-    handlePriceUpdate: (updates: any[]) => {
-      updateTokenMetrics(updates);
-    },
+    removePendingRequest: (canisterId: string) => {
+      store.update(s => {
+        const pendingBalanceRequests = new Set(s.pendingBalanceRequests);
+        pendingBalanceRequests.delete(canisterId);
+        return { ...s, pendingBalanceRequests };
+      });
+    }
   };
 }
 
-export const cleanup = () => {};
 export const tokenStore = createTokenStore();
 
-// Create a wrapper to convert Dexie Observable to Svelte Readable
-function observableToReadable<T>(
-  observable: Observable<T>,
-): Readable<T | undefined> {
-  return {
-    subscribe: (run) => {
-      const subscription = observable.subscribe({
-        next: (value) => run(value),
-        error: (error) => console.error("Observable error:", error),
-      });
-      return () => subscription.unsubscribe();
-    },
-  };
-}
+export const portfolioValue = derived(tokenStore, ($tokenStore) => {
+  const balances = $tokenStore.balances;
+  return $tokenStore.tokens.reduce((acc, token) => {
+    return acc + Number(token.metrics?.price || 0) * Number(balances[token.canister_id]?.in_usd || 0);
+  }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+});
 
-export const liveTokens = observableToReadable(
-  liveQuery(async () => {
-    try {
-      // Only access IndexedDB in the browser
-      if (!browser) {
-        return [];
-      }
-
-      // First get cached tokens to show immediately
-      const cachedTokens = await kongDB.tokens.toArray();
-
-      // If we have cached tokens, return them immediately
-      if (cachedTokens.length > 0) {
-        return cachedTokens;
-      }
-
-      // If no cached tokens, get from store
-      const store = get(tokenStore);
-      if (store.tokens.length > 0) {
-        await Promise.all(
-          store.tokens.map((token) =>
-            kongDB.tokens.put({
-              ...token,
-              timestamp: Date.now(),
-            }),
-          ),
-        );
-        return store.tokens;
-      }
-
-      return [];
-    } catch (error) {
-      console.error("Error in liveQuery:", error);
-      return [];
+export const loadTokens = async (forceRefresh = false) => {
+  try {
+    const baseTokens = await TokenService.fetchTokens();
+    if (!baseTokens || baseTokens.length === 0) {
+      throw new Error("No tokens fetched from service");
     }
-  }),
-);
 
-export const formattedTokens = derived<
-  [typeof tokenStore, Readable<FE.Token[] | undefined>],
-  FE.Token[]
->([tokenStore, liveTokens], ([$tokenStore, $liveTokens]) => {
-  if (!$liveTokens) return [];
+    if (browser) {
+      await kongDB.tokens.bulkPut(baseTokens);
+    }
 
-  const wallet = get(auth);
-  const walletId = wallet?.account?.owner?.toString() || "anonymous";
-  const favorites = $tokenStore?.favoriteTokens[walletId] || [];
+    return baseTokens;
+  } catch (error: any) {
+    console.error("Error loading tokens:", error);
+    throw error;
+  }
+};
+  
 
-  return ($liveTokens as FE.Token[])
-    .map((token) => {
-      const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
-      const amount = toTokenDecimals(balance.toString(), token.decimals);
-      const price = token.metrics?.price || 0;
+export const loadBalances = async (owner: string, opts?: { tokens?: FE.Token[], forceRefresh?: boolean }) => {
+  // Get owner ID once and store it
+  let { tokens, forceRefresh } = opts || { tokens: await kongDB.tokens.toArray(), forceRefresh: false };
+  const currentWalletId = getCurrentWalletId();
+  
+  if(!currentWalletId || currentWalletId === "anonymous") {
+    return {};
+  }
 
-      // Format balance with appropriate decimals based on value
-      let formattedBalance;
-      const numericAmount = Number(amount);
-      if (numericAmount === 0) {
-        formattedBalance = "0";
-      } else if (numericAmount < 0.000001) {
-        formattedBalance = amount.toFormat(8);
-      } else if (numericAmount < 0.01) {
-        formattedBalance = amount.toFormat(6);
-      } else {
-        formattedBalance = amount.toFormat(4);
+  try {
+    const balances = await TokenService.fetchBalances(tokens, owner, forceRefresh);
+    
+    tokenStore.update(state => ({
+      ...state,
+      balances: {
+        ...state.balances,
+        ...balances
       }
-
-      // Remove trailing zeros
-      formattedBalance = formattedBalance.replace(/\.?0+$/, "");
-
-      // Preserve all original token properties and add formatted ones
-      return {
-        ...token,
-        balance: balance.toString(),
-        formattedBalance,
-        formattedUsdValue: formatToNonZeroDecimal(
-          amount.times(price).toString(),
-        ),
-        total_24h_volume: token.metrics.volume_24h || "0",
-        isFavorite: favorites.includes(token.canister_id),
-      } as FE.Token;
-    })
-    .sort((a, b) => {
-      // Sort by favorites first
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-
-      // Then sort by 24h trading volume
-      const aVolume = Number(a.metrics.volume_24h || 0);
-      const bVolume = Number(b.metrics.volume_24h || 0);
-      return bVolume - aVolume;
-    });
-});
-
-export const favoriteTokens = derived(tokenStore, ($store) => {
-  const wallet = get(auth);
-
-  if (!$store || !wallet) return [];
-
-  const walletId = wallet.account?.owner?.toString() || "anonymous";
-  return (
-    $store?.tokens?.filter((token) =>
-      $store.favoriteTokens[walletId]?.includes(token.canister_id),
-    ) ?? []
-  );
-});
-
-export const portfolioValue = derived<
-  [typeof tokenStore, Readable<FE.Token[]>],
-  string
->([tokenStore, formattedTokens], ([$tokenStore, $formattedTokens]) => {
-  if($tokenStore.tokens.length === 0) return "$0.00";
-  if (!$formattedTokens || $formattedTokens?.length === 0 || $formattedTokens.length === undefined) return "$0.00";
-
-  const total = ($formattedTokens as FE.Token[]).reduce((sum, token) => {
-    const balance = $tokenStore?.balances[token.canister_id]
-    const balanceInTokens = balance?.in_tokens || 0n;
-    const price = Number(token?.metrics?.price || 0);
-    const amount = Number(balanceInTokens) / Math.pow(10, token.decimals);
-    return sum + amount * price;
-  }, 0);
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(total);
-});
-
-export const isTokenFavorite = (canister_id: string): boolean => {
-  const state = get(tokenStore);
-  const wallet = get(auth);
-  const walletId = wallet?.account?.owner?.toString();
-  return state.favoriteTokens[walletId]?.includes(canister_id) ?? false;
+    }));
+    
+    return balances;
+  } catch (error) {
+    console.error("Error loading balances:", error);
+    return {};
+  }
 };
 
-export const getFavoritesForWallet = derived(tokenStore, ($store) => {
-  const wallet = get(auth);
-  const walletId = wallet?.account?.owner?.toString() || "anonymous";
-  return $store?.favoriteTokens[walletId] || [];
-});
-export const getTokenDecimals = (canister_id: string): number => {
-  const token = tokenStore.getToken(canister_id);
+export const loadBalance = async (canisterId: string, forceRefresh = false) => {
+  // Add defensive check for canisterId
+  if (!canisterId) {
+    console.warn('Invalid canister ID provided to loadBalance');
+    return {};
+  }
+
+  try {
+    // Early return if we're already loading this balance
+    if (get(tokenStore).pendingBalanceRequests.has(canisterId)) {
+      return {};
+    }
+
+    const owner = getCurrentWalletId();
+    if (owner === "anonymous") {
+      return {};
+    }
+
+    // Mark this request as pending
+    tokenStore.addPendingRequest(canisterId);
+
+    const token = await kongDB.tokens.get(canisterId);
+    if (!token) {
+      console.warn(`Token not found for canister ID: ${canisterId}`);
+      tokenStore.removePendingRequest(canisterId);
+      return {};
+    }
+
+    const currentBalance = get(tokenStore).balances[canisterId];
+    if (!forceRefresh && currentBalance !== undefined) {
+      tokenStore.removePendingRequest(canisterId);
+      return { [canisterId]: currentBalance };
+    }
+
+    const balances = await TokenService.fetchBalances([token], owner, forceRefresh);
+    
+    tokenStore.update(state => ({
+      ...state,
+      balances: {
+        ...state.balances,
+        [canisterId]: balances[canisterId]
+      }
+    }));
+
+    // Remove from pending requests after completion
+    tokenStore.removePendingRequest(canisterId);
+    
+    return balances;
+  } catch (error) {
+    console.error('Error loading balance:', error);
+    // Make sure to remove from pending even on error
+    tokenStore.removePendingRequest(canisterId);
+    return {};
+  }
+};
+
+export const getTokenDecimals = async (canisterId: string) => {
+  const token = await kongDB.tokens.get(canisterId);
   return token?.decimals || 0;
 };
 
-export function updateTokenMetrics(updates: Array<{
-  id: string;
-  price: number;
-  previous_price: number;
-  price_change_24h: number;
-  volume?: number;
-  market_cap?: string;
-}>) {
-  tokenStore.update(store => {
-    const newPriceChangeClasses = { ...store.priceChangeClasses };
-    
-    const updatedTokens = store.tokens.map(token => {
-      const update = updates.find(u => u.id === token.canister_id);
-      if (update) {
-        const prev = Number(update.previous_price)
-        // Check if price has changed at all
-        if (update.price !== prev) {          
-          const flashClass = update.price > prev ? 'flash-green' : 'flash-red';
-          newPriceChangeClasses[token.canister_id] = flashClass;
-            
-          // Remove animation class after delay
-          setTimeout(() => {
-            tokenStore.update(s => {
-              const updatedClasses = { ...s.priceChangeClasses };
-              delete updatedClasses[token.canister_id];
-              return {
-                ...s,
-                priceChangeClasses: updatedClasses
-              };
-            });
-          }, 2000);
-        }
 
-        return {
-          ...token,
-          metrics: {
-            ...token.metrics,
-            previous_price: update.previous_price.toString(),
-            price: update.price.toString(),
-            price_change_24h: update.price_change_24h.toString(),
-            volume_24h: update.volume?.toString() || token.metrics?.volume_24h,
-            market_cap: update.market_cap || token.metrics?.market_cap
-          }
-        };
-      }
-      return token;
-    });
+export const toTokenDecimals = (amount: bigint | string, decimals: number): BigNumber => {
+  if (typeof amount === 'string') {
+    // Handle empty string or invalid number
+    if (!amount || isNaN(Number(amount))) {
+      return new BigNumber(0);
+    }
+    return new BigNumber(amount).div(Math.pow(10, decimals));
+  }
+  return new BigNumber(amount.toString()).div(Math.pow(10, decimals));
+};
 
-    return {
-      ...store,
-      tokens: updatedTokens,
-      priceChangeClasses: newPriceChangeClasses
-    };
-  });
-}
-
-export function handlePriceUpdate(updates: any[]) {
-  updateTokenMetrics(updates);
-}
-
-export const isValidToken = (token: any): token is FE.Token => {
-  return (
-    token &&
-    typeof token === 'object' &&
-    typeof token.canister_id === 'string' &&
-    typeof token.symbol === 'string' &&
-    typeof token.name === 'string'
-  );
+export const fromTokenDecimals = (amount: BigNumber | string, decimals: number): bigint => {
+  try {
+    const amountBN = typeof amount === 'string' ? new BigNumber(amount || '0') : amount;
+    if (amountBN.isNaN()) {
+      return BigInt(0);
+    }
+    const multiplier = new BigNumber(10).pow(decimals);
+    const result = amountBN.times(multiplier);
+    // Remove any decimal places and convert to string for BigInt
+    const wholePart = result.integerValue(BigNumber.ROUND_DOWN).toString();
+    return BigInt(wholePart);
+  } catch (error) {
+    console.error('Error converting to token decimals:', error);
+    return BigInt(0);
+  }
 };

@@ -4,7 +4,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { tokenStore } from "./tokens/tokenStore";
+import { loadBalances, loadTokens } from "./tokens/tokenStore";
 import { poolStore } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
@@ -12,7 +12,7 @@ import * as Comlink from "comlink";
 import type { PriceWorkerApi } from "$lib/workers/priceWorker";
 import type { StateWorkerApi } from "$lib/workers/stateWorker";
 import { appLoader } from "$lib/services/appLoader";
-import * as borc from 'borc';
+import { kongDB } from "./db";
 
 class UpdateWorkerService {
   private priceWorker: Worker | null = null;
@@ -28,7 +28,7 @@ class UpdateWorkerService {
   }
 
   async initialize() {
-    const INIT_TIMEOUT = 60000; // 60 seconds timeout
+    const INIT_TIMEOUT = 120000; // 120 seconds timeout
     try {
       await Promise.race([
         this.initializeWorker(),
@@ -75,12 +75,12 @@ class UpdateWorkerService {
     // Set up message handlers
     this.priceWorker.onmessage = this.handlePriceWorkerMessage.bind(this);
 
-    const tokens = get(tokenStore);
-    if (!tokens?.tokens?.length) {
-      await tokenStore.loadTokens();
+    const tokens = await kongDB.tokens.toArray();
+    if (!tokens?.length) {
+      await loadTokens();
     }
 
-    await this.priceWorkerApi.setTokens(tokens.tokens);
+    await this.priceWorkerApi.setTokens(tokens);
     await this.priceWorkerApi.startUpdates();
 
     // Initialize state worker after price worker is ready
@@ -128,7 +128,7 @@ class UpdateWorkerService {
 
     try {
       await Promise.all([
-        tokenStore.loadBalances(walletId),
+        loadBalances(walletId),
         poolStore.loadPools(true),
       ]);
     } catch (error) {
@@ -140,28 +140,12 @@ class UpdateWorkerService {
     const wallet = get(auth);
     const walletId = wallet?.account?.owner?.toString();
     if (walletId) {
-      await tokenStore.loadBalances(walletId);
+      await loadBalances(walletId);
     }
   }
 
   private async updatePools() {
     await poolStore.loadPools();
-  }
-
-  private async waitForTokens(): Promise<void> {
-    const tokens = get(tokenStore);
-    if (tokens?.tokens?.length) {
-      return;
-    }
-
-    return new Promise<void>((resolve) => {
-      const unsubscribe = tokenStore.subscribe((value) => {
-        if (value?.tokens?.length) {
-          unsubscribe();
-          resolve();
-        }
-      });
-    });
   }
 
   private async startUpdates() {
@@ -172,13 +156,12 @@ class UpdateWorkerService {
 
     try {
       console.log("Starting worker updates...");
-      await this.waitForTokens();
       await this.priceWorkerApi.startUpdates();
 
       appLoader.updateLoadingState({
         isLoading: true,
         assetsLoaded: 0,
-        totalAssets: get(tokenStore).tokens?.length || 0,
+        totalAssets: (await kongDB.tokens.toArray())?.length || 0,
       });
 
       await Promise.all(
@@ -217,9 +200,6 @@ class UpdateWorkerService {
   private async handlePriceWorkerMessage(event: MessageEvent) {
     if (event.data.type === 'price_update') {
       const { updates } = event.data;
-      if (updates?.length > 0) {
-        tokenStore.handlePriceUpdate(updates);
-      }
     }
   }
 

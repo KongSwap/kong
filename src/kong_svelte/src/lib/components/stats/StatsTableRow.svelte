@@ -4,9 +4,9 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { favoriteStore } from "$lib/services/tokens/favoriteStore";
+  import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { goto } from "$app/navigation";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { onMount } from "svelte";
 
   interface StatsToken extends FE.Token {
     isHot?: boolean;
@@ -19,26 +19,52 @@
   export let priceClass: string;
   export let trendClass: string;
   export let kongCanisterId: string;
+
+  const handleFavoriteClick = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!isConnected) return;
+    
+    const success = await FavoriteService.toggleFavorite(token.canister_id);
+    if (success) {
+      isFavorite = !isFavorite;
+      const event = new CustomEvent('favoriteToggled', {
+        detail: { canisterId: token.canister_id, isFavorite: !isFavorite }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+
+  onMount(async () => {
+    if (isConnected) {
+      isFavorite = await FavoriteService.isFavorite(token.canister_id);
+    }
+  });
 </script>
 
 <tr
-  class="border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer"
+  class="stats-row h-[44px] border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer {parseFloat(token.metrics?.price || '0') > parseFloat(token.metrics?.previous_price || '0') ? 'flash-green' : 'flash-red'}"
   class:kong-special-row={token.canister_id === kongCanisterId}
   on:click={() => goto(`/stats/${token.canister_id}`)}
 >
-  <td class="text-center text-[#8890a4] w-[50px]">#{token.marketCapRank || "-"}</td>
-  <td class="pl-2 w-[300px]">
+  <td class="col-rank text-center text-[#8890a4]">#{token.marketCapRank || "-"}</td>
+  <td class="col-token pl-2">
     <div class="flex items-center gap-2 h-full">
       {#if isConnected}
         <button
           class="favorite-button {isFavorite ? 'active' : ''}"
-          on:click|stopPropagation={() => favoriteStore.toggleFavorite(token.canister_id)}
+          on:click={handleFavoriteClick}
+          use:tooltip={{
+            text: isFavorite ? "Remove from favorites" : "Add to favorites",
+            direction: "right",
+            textSize: "sm",
+          }}
         >
-          {#if isFavorite}
-            <Star class="star-icon filled" size={16} color="yellow" fill="yellow" />
-          {:else}
-            <Star class="star-icon" size={16} />
-          {/if}
+          <Star 
+            class="star-icon" 
+            size={16} 
+            color={isFavorite ? "#FFD700" : "#8890a4"} 
+            fill={isFavorite ? "#FFD700" : "transparent"} 
+          />
         </button>
       {/if}
       <TokenImages tokens={[token]} containerClass="self-center" size={24} />
@@ -59,9 +85,8 @@
       {/if}
     </div>
   </td>
-  <td class="price-cell text-right pr-8 w-[180px]">
+  <td class="col-price price-cell text-right">
     <span
-      class={$tokenStore.priceChangeClasses[token.canister_id] || ""}
       use:tooltip={{
         text: `$${Number(token?.metrics?.price).toLocaleString(undefined, {
           minimumFractionDigits: 2,
@@ -74,25 +99,25 @@
       ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
     </span>
   </td>
-  <td class="change-cell text-right pr-8 w-[80px] {trendClass}">
+  <td class="col-change text-right text-nowrap">
     {#if token?.metrics?.price_change_24h === null || token?.metrics?.price_change_24h === "n/a"}
       <span class="text-slate-400">0.00%</span>
     {:else if Number(token?.metrics?.price_change_24h) === 0}
       <span class="text-slate-400">0.00%</span>
     {:else}
-      <span>
+      <span class={trendClass}>
         {Number(token?.metrics?.price_change_24h) > 0 ? "+" : ""}
         {formatToNonZeroDecimal(token?.metrics?.price_change_24h)}%
       </span>
     {/if}
   </td>
-  <td class="text-right pr-8 w-[100px]">
+  <td class="col-volume text-right">
     <span>{formatUsdValue(token?.metrics?.volume_24h)}</span>
   </td>
-  <td class="text-right pr-8 w-[100px]">
+  <td class="col-mcap text-right">
     <span>{formatUsdValue(token?.metrics?.market_cap)}</span>
   </td>
-  <td class="actions-cell text-right w-[120px] py-2 pr-3">
+  <td class="col-tvl text-right pr-3">
     <span>{formatUsdValue(token?.metrics?.tvl || 0)}</span>
   </td>
 </tr>
@@ -107,14 +132,15 @@
   }
 
   .favorite-button {
-    @apply flex items-center justify-center w-6 h-6 rounded-lg hover:bg-white/10 transition-none;
+    @apply flex items-center justify-center w-6 h-6 rounded-lg hover:bg-white/10 transition-colors duration-200;
   }
 
-  .action-button {
-    @apply px-4 py-1.5 text-sm rounded
-           bg-white/5 text-white/60 hover:bg-white/10 hover:text-white
-           focus:outline-none focus:ring-2 focus:ring-white/20
-           min-w-[80px] float-right my-1 mr-2;
+  .favorite-button:hover .star-icon {
+    @apply text-yellow-400;
+  }
+
+  .favorite-button.active:hover .star-icon {
+    @apply text-yellow-600;
   }
 
   .kong-special-row {

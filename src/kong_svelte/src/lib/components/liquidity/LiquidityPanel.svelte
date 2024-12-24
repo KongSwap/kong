@@ -12,22 +12,13 @@
     const dispatch = createEventDispatcher();
 
     // Add debug logs
-    $: console.log("LiquidityPanel props:", { title, token, amount, disabled });
-
     function handleAmountChange(e: Event) {
         const input = (e.target as HTMLInputElement).value;
-        console.log("LiquidityPanel amount change:", {
-            input,
-            currentAmount: amount,
-            event: e
-        });
         dispatch('amountChange', { value: input });
     }
 
     function handleTokenSelect(event: MouseEvent) {
-        console.log("Token select clicked:", event);
         const button = event.currentTarget as HTMLElement;
-        console.log("Dispatching token select with button:", button);
         dispatch('tokenSelect', { button });
     }
 </script>

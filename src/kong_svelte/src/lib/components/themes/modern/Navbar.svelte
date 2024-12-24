@@ -7,7 +7,7 @@
   import { onMount } from "svelte";
   import { Droplet } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
-    import { tokenStore } from "$lib/services/tokens";
+    import { loadBalances } from "$lib/services/tokens";
   import { tooltip } from "$lib/actions/tooltip";
 
   export let activeTab: "swap" | "earn" | "stats";
@@ -24,13 +24,11 @@
 
   $: if ($auth.isConnected && $auth.account) {
     principalId = $auth.account.owner;
-    console.log("Navbar - Principal ID updated:", principalId);
   }
 
   onMount(() => {
     if ($auth.account) {
       principalId = $auth.account.owner;
-      console.log("Navbar - Principal ID:", principalId);
     }
   });
 
@@ -61,7 +59,7 @@
 
   async function claimTokens() {
     await TokenService.faucetClaim();
-    await tokenStore.loadBalances($auth.account.owner, true);
+    await loadBalances($auth.account.owner, true);
   }
 </script>
 

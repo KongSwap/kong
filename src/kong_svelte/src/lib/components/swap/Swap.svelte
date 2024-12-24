@@ -9,6 +9,7 @@
   import Settings from "$lib/components/settings/Settings.svelte";
   import Portal from 'svelte-portal';
   import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
+  import { Principal } from "@dfinity/principal";
 
   // Svelte imports
   import { fade } from "svelte/transition";
@@ -24,12 +25,16 @@
   import {
     tokenStore,
     getTokenDecimals,
+    liveTokens,
+
+    loadTokens
+
   } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-    import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 
 
   // Types
@@ -67,6 +72,7 @@
   let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
+  let showWalletModal = false;
 
   // Subscribe to swap status changes
   $: {
@@ -150,9 +156,26 @@
   );
 
   // Initialize tokens when they become available
-  $: if ($tokenStore.tokens.length > 0 && !isInitialized) {
+  $: if ($liveTokens.length > 0 && !isInitialized) {
     isInitialized = true;
-    swapState.initializeTokens(initialFromToken, initialToToken);
+    
+    // If initial tokens are provided, verify they exist in liveTokens
+    const fromToken = initialFromToken 
+      ? $liveTokens.find(t => t.canister_id === initialFromToken.canister_id)
+      : $liveTokens.find(t => t.canister_id === CKUSDT_CANISTER_ID); // ICP
+
+    const toToken = initialToToken
+      ? $liveTokens.find(t => t.canister_id === initialToToken.canister_id)
+      : $liveTokens.find(t => t.canister_id === KONG_CANISTER_ID); // ckUSDT
+
+    // Update swap state with verified tokens
+    swapState.update(state => ({
+      ...state,
+      payToken: fromToken || null,
+      receiveToken: toToken || null,
+      payAmount: '',
+      receiveAmount: ''
+    }));
   }
 
   // Initialize on mount
@@ -170,7 +193,7 @@
   function getTokenBalance(tokenId: string): string {
     if (!tokenId) return "0";
     const balance = $tokenStore.balances[tokenId]?.in_tokens ?? BigInt(0);
-    const token = $tokenStore.tokens.find((t) => t.canister_id === tokenId);
+    const token = $liveTokens.find((t) => t.canister_id === tokenId);
     return token
       ? (Number(balance) / Math.pow(10, token.decimals)).toString()
       : "0";
@@ -276,7 +299,7 @@
         receiveToken: $swapState.receiveToken,
         receiveAmount: $swapState.receiveAmount,
         userMaxSlippage,
-        backendPrincipal: KONG_BACKEND_CANISTER_ID,
+        backendPrincipal: Principal.fromText(KONG_BACKEND_CANISTER_ID),
         lpFees: $swapState.lpFees,
       });
 
@@ -315,9 +338,19 @@
 
   // Initialization functions
   async function initializeComponent(): Promise<void> {
-    const tokens = get(tokenStore);
-    if (!tokens.tokens.length) {
-      await tokenStore.loadTokens();
+    try {
+      const tokens = get(tokenStore);
+      if (!tokens.tokens.length) {
+        await loadTokens();
+      }
+      
+      // Force token initialization if needed
+      if (!isInitialized && $liveTokens.length > 0) {
+        isInitialized = true;
+        swapState.initializeTokens(initialFromToken, initialToToken);
+      }
+    } catch (error) {
+      console.error('Error initializing component:', error);
     }
   }
 

@@ -4,6 +4,7 @@
   import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { Star } from 'lucide-svelte';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { FavoriteService } from '$lib/services/tokens/favoriteService';
   import { createEventDispatcher } from 'svelte';
 
   interface TokenRowProps {
@@ -13,12 +14,12 @@
   let { token, onClick }: TokenRowProps = $props();
   const dispatch = createEventDispatcher();
 
-  function handleFavoriteClick(e: MouseEvent) {
+  async function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
-    tokenStore.toggleFavorite(token.canister_id);
+    await FavoriteService.toggleFavorite(token.canister_id);
   }
 
-  let isFavorite = $derived(tokenStore.isFavorite(token.canister_id));
+  let isFavorite = $derived(FavoriteService.isFavorite(token.canister_id));
 </script>
 
 {#if token}

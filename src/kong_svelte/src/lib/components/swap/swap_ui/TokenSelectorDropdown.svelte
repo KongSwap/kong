@@ -8,8 +8,9 @@
   import Portal from "svelte-portal";
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { formatUsdValue, formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
+    import { FavoriteService } from "$lib/services/tokens/favoriteService";
 
   const props = $props();
   const {
@@ -32,6 +33,24 @@
   let sortDirection = $state("desc");
   let sortColumn = $state("value");
   let standardFilter = $state("all");
+
+  // First, create a reactive store for favorites
+  let favoriteTokens = $state(new Map<string, boolean>());
+
+  // Update favorites when baseFilteredTokens changes
+  $effect(() => {
+    void updateFavorites();
+  });
+
+  async function updateFavorites() {
+    const newFavorites = new Map<string, boolean>();
+    await Promise.all(
+      baseFilteredTokens.map(async (token) => {
+        newFavorites.set(token.canister_id, await FavoriteService.isFavorite(token.canister_id));
+      })
+    );
+    favoriteTokens = newFavorites;
+  }
 
   // Get filtered tokens before any UI filters (search, favorites, etc)
   let baseFilteredTokens = $derived(
@@ -61,16 +80,11 @@
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck"))
       .length,
   );
-  let favoritesCount = $derived(
-    baseFilteredTokens.filter((t) => tokenStore.isFavorite(t.canister_id))
-      .length,
-  );
 
   // Then apply UI filters for display
   let filteredTokens = $derived(
     baseFilteredTokens
       .map((token): TokenMatch | null => {
-        // Validate token before processing
         if (!token?.canister_id || !token?.symbol || !token?.name) {
           console.warn("Incomplete token data:", token);
           return null;
@@ -89,52 +103,50 @@
           case "ck":
             return match.token.symbol.toLowerCase().startsWith("ck");
           case "favorites":
-            return tokenStore.isFavorite(match.token.canister_id);
+            return favoriteTokens.get(match.token.canister_id) || false;
           case "all":
           default:
-            // Apply balance filter if enabled
             if (hideZeroBalances) {
-              const balance =
-                $tokenStore.balances[match.token.canister_id]?.in_tokens ||
-                BigInt(0);
-              return balance > 0;
+              const balance = getTokenBalance(match.token);
+              return balance > BigInt(0);
             }
             return true;
         }
       })
       .sort((a, b) => {
-        // Then sort by favorites
-        const aFavorite = tokenStore.isFavorite(a.token.canister_id);
-        const bFavorite = tokenStore.isFavorite(b.token.canister_id);
+        // Sort by favorites
+        const aFavorite = favoriteTokens.get(a.token.canister_id) || false;
+        const bFavorite = favoriteTokens.get(b.token.canister_id) || false;
         if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
 
-        // Sort by sortColumn first
-        const aValue = Number(
-          parseFloat(a.token.formattedUsdValue.replaceAll(',', '')) || 0,
-        );
-        const bValue = Number(
-          parseFloat(b.token.formattedUsdValue.replaceAll(',', '')) || 0,
-        );
-        if (aValue !== bValue)
-          return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
-
-        // Sort by volume last
-        const volumeA = Number(a.token.volume || 0);
-        const volumeB = Number(b.token.volume || 0);
-        if (volumeA !== volumeB)
-          return sortDirection === "desc"
-            ? volumeB - volumeA
-            : volumeA - volumeB;
-
-        // Then sort by best match if searching
-        if (searchQuery) {
-          const aMinIndex = Math.min(...a.matches.map((m) => m.index));
-          const bMinIndex = Math.min(...b.matches.map((m) => m.index));
-          if (aMinIndex !== bMinIndex) return aMinIndex - bMinIndex;
+                // Secondary token sorting
+                const isASecondary = SECONDARY_TOKEN_IDS.includes(a.token.canister_id);
+        const isBSecondary = SECONDARY_TOKEN_IDS.includes(b.token.canister_id);
+        
+        if (isASecondary || isBSecondary) {
+          if (isASecondary && !isBSecondary) return -1;
+          if (!isASecondary && isBSecondary) return 1;
+          return SECONDARY_TOKEN_IDS.indexOf(a.token.canister_id) - SECONDARY_TOKEN_IDS.indexOf(b.token.canister_id);
         }
 
-        return 0;
-      }),
+        // Get USD values from tokenStore balances
+        const aBalance = $tokenStore.balances[a.token.canister_id]?.in_usd || 0n;
+        const bBalance = $tokenStore.balances[b.token.canister_id]?.in_usd || 0n;
+        
+        // Convert BigInts to numbers for comparison
+        const aValue = Number(aBalance);
+        const bValue = Number(bBalance);
+
+        // Sort based on direction
+        if (sortColumn === 'value') {
+          return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+        }
+
+        // Sort by volume if that's selected
+        const volumeA = Number(a.token.metrics?.volume_24h || 0);
+        const volumeB = Number(b.token.metrics?.volume_24h || 0);
+        return sortDirection === 'desc' ? volumeB - volumeA : volumeA - volumeB;
+      })
   );
 
   const SECONDARY_TOKEN_IDS = [
@@ -154,10 +166,23 @@
     }
   });
 
-  function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+  async function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
     e.preventDefault();
     e.stopPropagation();
-    tokenStore.toggleFavorite(token.canister_id);
+    const isFavorite = favoriteTokens.get(token.canister_id) || false;
+    
+    if (isFavorite) {
+      await FavoriteService.removeFavorite(token.canister_id);
+    } else {
+      await FavoriteService.addFavorite(token.canister_id);
+    }
+    
+    // Update the local state immediately
+    favoriteTokens.set(token.canister_id, !isFavorite);
+    favoriteTokens = new Map(favoriteTokens); // Trigger reactivity
+    
+    // Then refresh all favorites to ensure sync
+    void updateFavorites();
   }
 
   type TokenMatch = {
@@ -207,15 +232,10 @@
   }
 
   function handleSelect(token: FE.Token) {
-    // Get the current balance from the store before updating
-    const existingBalance = $tokenStore.balances[token.canister_id]?.in_tokens;
-    
-    // Only update if we have a valid balance
-    const balance = existingBalance || token.balance || BigInt(0);
-    
+    const balance = getTokenBalance(token);
     onSelect({
-        ...token,
-        balance: balance,
+      ...token,
+      balance
     });
     searchQuery = "";
   }
@@ -264,8 +284,15 @@
   onDestroy(cleanup);
 
   onMount(async () => {
-    await tokenStore.loadFavorites();
+    await FavoriteService.loadFavorites();
   });
+
+  function getTokenBalance(token: FE.Token): bigint {
+    const balance = $tokenStore.balances[token.canister_id];
+    return balance?.in_tokens || BigInt(0);
+  }
+
+  let favoritesCount = $derived(Array.from(favoriteTokens.values()).filter(Boolean).length);
 </script>
 
 {#if show}
@@ -299,7 +326,8 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <button
               class="close-button"
-              on:click|self={() => {
+              on:click={(e) => {
+                e.stopPropagation();
                 swapState.closeTokenSelector();
                 onClose();
               }}
@@ -419,17 +447,15 @@
                           <!-- svelte-ignore a11y-no-static-element-interactions -->
                           <button
                             class="favorite-button"
-                            class:active={tokenStore.isFavorite(
-                              token.canister_id,
-                            )}
+                            class:active={favoriteTokens.get(token.canister_id)}
                             on:click={(e) => handleFavoriteClick(e, token)}
-                            title={tokenStore.isFavorite(token.canister_id)
+                            title={favoriteTokens.get(token.canister_id)
                               ? "Remove from favorites"
                               : "Add to favorites"}
                           >
                             <Star
                               size={14}
-                              fill={tokenStore.isFavorite(token.canister_id)
+                              fill={favoriteTokens.get(token.canister_id)
                                 ? "#ffd700"
                                 : "none"}
                             />
@@ -450,9 +476,9 @@
                     </div>
                     <div class="token-right text-kong-text-primary text-sm">
                       <span class="token-balance flex flex-col text-right">
-                        {token.formattedBalance || "0"}
+                        {formatTokenBalance(balance?.in_tokens?.toString() || "0", token.decimals)}
                         <span class="token-balance-label text-xs">
-                          {formatUsdValue(token.formattedUsdValue || "0")}
+                          {formatUsdValue(balance?.in_usd || "0")}
                         </span>
                       </span>
                       {#if currentToken?.canister_id === token.canister_id}

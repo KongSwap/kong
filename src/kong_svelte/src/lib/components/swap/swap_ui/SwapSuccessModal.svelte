@@ -89,7 +89,7 @@
             <div class="flex items-center justify-between mb-3">
               <div class="text-sm text-indigo-200/70">Sent</div>
               <div class="font-medium text-indigo-100">
-                {formatBalance(payAmount, payToken.decimals).toString()} {payToken.symbol}
+                {payAmount} {payToken.symbol}
               </div>
             </div>
 
@@ -100,7 +100,7 @@
             <div class="flex items-center justify-between">
               <div class="text-sm text-indigo-200/70">Received</div>
               <div class="font-medium text-indigo-100">
-                {formatBalance(receiveAmount, receiveToken.decimals).toString()} {receiveToken.symbol}
+                {receiveAmount} {receiveToken.symbol}
               </div>
             </div>
           </div>

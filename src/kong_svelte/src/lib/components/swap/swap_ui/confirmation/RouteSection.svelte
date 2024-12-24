@@ -1,13 +1,13 @@
 <script lang="ts">
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
 
   export let routingPath: string[] = [];
 
   $: tokens = routingPath
     ? routingPath
-      .map(symbol => $tokenStore.tokens.find(t => t.symbol === symbol))
+      .map(symbol => $liveTokens.find(t => t.symbol === symbol))
       .filter((t): t is FE.Token => t !== undefined)
     : [];
 

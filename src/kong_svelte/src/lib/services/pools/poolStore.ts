@@ -35,7 +35,6 @@ export const poolSortColumn = writable('rolling_24h_volume');
 export const poolSortDirection = writable<'asc' | 'desc'>('desc');
 
 function createPoolStore() {
-  const CACHE_DURATION = 1000 * 60; // 30 second cache
   const { subscribe, set, update } = writable<PoolState>({
     pools: [],
     userPoolBalances: [],
@@ -49,14 +48,6 @@ function createPoolStore() {
     lastUpdate: null,
   });
 
-  // Remove the in-memory cache object and replace with DB check
-  const shouldRefetch = async () => {
-    const latestPool = await kongDB.pools
-      .orderBy('timestamp')
-      .reverse()
-      .first();
-    return !latestPool || Date.now() - latestPool.timestamp > CACHE_DURATION;
-  };
 
   // Create a derived store for filtered and sorted pools
   const filteredAndSortedPools = derived(
@@ -110,62 +101,10 @@ function createPoolStore() {
     }
   );
 
-  const processPoolData = (pool: BE.Pool) => {
-    // Add validation and fallback for price
-    if (!pool.price || Number(pool.price) === 0) {
-      // For ICP pairs, calculate price from amounts
-      if (pool.symbol_0 === 'ICP' || pool.symbol_1 === 'ICP') {
-        const icpIndex = pool.symbol_0 === 'ICP' ? 0 : 1;
-        
-        // Add null checks before converting to BigInt
-        const amount0 = pool.amount_0;
-        const amount1 = pool.amount_1;
-        
-        if (!amount0 || !amount1) {
-          pool.price = 0;
-          return pool;
-        }
-        
-        try {
-          const icpAmount = BigInt(icpIndex === 0 ? amount0 : amount1);
-          const tokenAmount = BigInt(icpIndex === 0 ? amount1 : amount0);
-          
-          if (icpAmount > 0n && tokenAmount > 0n) {
-            const calculatedPrice = Number(icpAmount) / Number(tokenAmount);
-            pool.price = calculatedPrice;
-          } else {
-            pool.price = 0;
-          }
-        } catch (error) {
-          console.error('[PoolStore] Error calculating price:', error);
-          pool.price = 0;
-        }
-      }
-    }
-    return pool;
-  };
-
   return {
     subscribe,
     filteredAndSortedPools,
     loadPools: async (forceRefresh = false) => {
-      // Check DB first if no force refresh
-      if (!forceRefresh) {
-        const shouldFetch = await shouldRefetch();
-        if (!shouldFetch) {
-          const cachedPools = await kongDB.pools.toArray();
-          if (cachedPools.length > 0) {
-            stablePoolsStore.set(cachedPools);
-            update(state => ({
-              ...state,
-              pools: cachedPools,
-              isLoading: false
-            }));
-            return cachedPools;
-          }
-        }
-      }
-
       update(state => ({ ...state, isLoading: true, error: null }));
 
       try {
@@ -175,7 +114,7 @@ function createPoolStore() {
         }
 
         // Process pools data with price validation
-        const pools = formatPoolData(poolsData.pools).map(processPoolData);
+        const pools = await formatPoolData(poolsData.pools)
 
         // Store in DB instead of cache
         await kongDB.transaction('rw', kongDB.pools, async () => {
@@ -184,7 +123,14 @@ function createPoolStore() {
           // Add new pools
           await kongDB.pools.bulkAdd(pools);
         });
-
+        await kongDB.pool_totals.put({
+          id: 'current',
+          total_tvl: BigInt(poolsData.total_tvl),
+          total_24h_volume: BigInt(poolsData.total_24h_volume),
+          total_24h_lp_fee: BigInt(poolsData.total_24h_lp_fee),
+          total_24h_num_swaps: BigInt(poolsData.total_24h_num_swaps),
+          timestamp: Date.now()
+        });
         // Update the stable store
         stablePoolsStore.set(pools);
 
@@ -242,15 +188,7 @@ function createPoolStore() {
     loadUserPoolBalances: async () => {
       update(state => ({ ...state, isLoading: true, error: null }));
       const pnp = get(auth);
-      const tokens = get(tokenStore);
       
-      console.log('[PoolStore] Loading user pool balances...');
-      console.log('[PoolStore] Auth state:', { 
-        isConnected: pnp.isConnected, 
-        hasAccount: !!pnp.account,
-        accountOwner: pnp.account?.owner 
-      });
-
       try {
         if (!pnp.isConnected) {
           update(state => ({
@@ -480,3 +418,34 @@ export const filteredLivePools = derived(
     return result;
   }
 );
+
+export const livePoolTotals = readable<FE.PoolTotal[]>([], set => {
+  if (!browser) {
+    set([]);
+    return;
+  }
+
+  const subscription = liveQuery(async () => {
+    const totals = await kongDB.pool_totals.toArray();
+    if (!totals?.length) {
+      return [{
+        id: 'current',
+        total_tvl: BigInt(0),
+        total_24h_volume: BigInt(0),
+        total_24h_lp_fee: BigInt(0),
+        total_24h_num_swaps: BigInt(0),
+        timestamp: Date.now()
+      }];
+    }
+    return totals;
+  }).subscribe({
+    next: value => {
+      set(value);
+    },
+    error: err => console.error('[livePoolTotals] Error:', err),
+  });
+
+  return () => {
+    if (subscription) subscription.unsubscribe();
+  };
+});

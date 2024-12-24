@@ -4,7 +4,7 @@
   import { auth } from "$lib/services/auth";
   import { poolStore } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
@@ -40,8 +40,8 @@
           return hasBalance;
         })
         .map(poolBalance => {
-          const token0 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_0);
-          const token1 = $tokenStore.tokens.find(t => t.symbol === poolBalance.symbol_1);
+          const token0 = $liveTokens.find(t => t.symbol === poolBalance.symbol_0);
+          const token1 = $liveTokens.find(t => t.symbol === poolBalance.symbol_1);
           
           // Create searchable text with more variations and aliases
           const searchableText = [
@@ -304,8 +304,8 @@
               <div class="pool-left">
                 <TokenImages 
                   tokens={[
-                    $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_0),
-                    $tokenStore.tokens.find(token => token.symbol === poolItem.symbol_1)
+                    $liveTokens.find(token => token.symbol === poolItem.symbol_0),
+                    $liveTokens.find(token => token.symbol === poolItem.symbol_1)
                   ]} 
                   size={36}
                 />

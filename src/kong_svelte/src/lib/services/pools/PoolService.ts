@@ -360,9 +360,6 @@ export class PoolService {
       return await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
     } catch (error) {
       if (error.message?.includes("Anonymous user")) {
-        console.log(
-          "[PoolService] Anonymous user detected, returning empty balances",
-        );
         return [];
       }
       console.error("[PoolService] Error fetching user pool balances:", error);

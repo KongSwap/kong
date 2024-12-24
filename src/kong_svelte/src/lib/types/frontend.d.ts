@@ -59,7 +59,7 @@ declare global {
       usd_balance: number;
     }
 
-    export interface Transaction {
+    interface Transaction {
       mid_price: number;
       pay_amount: number;
       pay_token_id: number;
@@ -74,11 +74,20 @@ declare global {
       };
     }
 
-    export interface AllowanceData {
+    interface AllowanceData {
       address: string;
       amount: bigint;
       spender: string;
       wallet_address: string;
+      timestamp: number;
+    }
+
+    interface PoolTotal {
+      id?: string;
+      total_tvl: bigint;
+      total_24h_volume: bigint;
+      total_24h_lp_fee: bigint;
+      total_24h_num_swaps: bigint;
       timestamp: number;
     }
   }

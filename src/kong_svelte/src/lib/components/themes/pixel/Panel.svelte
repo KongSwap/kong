@@ -1,6 +1,5 @@
 <script lang="ts">
     import { browser } from "$app/environment";
-    import { assetCache } from "$lib/services/assetCache";
     import { onMount } from "svelte";
 
     export let variant: "green" | "yellow" = "green";
@@ -33,13 +32,7 @@
 
     async function updateCachedUrls() {
         try {
-            const promises = Object.entries(imagePaths).map(async ([part, path]) => {
-                const url = await assetCache.getAsset(path);
-                return [part, url];
-            });
-            
-            const results = await Promise.all(promises);
-            cachedUrls = Object.fromEntries(results);
+          return [];
         } catch (error) {
             console.error('Error updating cached URLs:', error);
         }

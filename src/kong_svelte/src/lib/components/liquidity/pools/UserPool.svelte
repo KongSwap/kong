@@ -3,10 +3,9 @@
     import Modal from '$lib/components/common/Modal.svelte';
     import TokenImages from '$lib/components/common/TokenImages.svelte';
     import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
-    import { tokenStore } from '$lib/services/tokens/tokenStore';
+    import { liveTokens, loadBalance } from '$lib/services/tokens/tokenStore';
     import { PoolService } from '$lib/services/pools';
     import { poolsList } from "$lib/services/pools/poolStore";
-    import { auth } from '$lib/services/auth';
     import { poolStore } from "$lib/services/pools/poolStore";
     import { toastStore } from '$lib/stores/toastStore';
     import ButtonV2 from '$lib/components/common/ButtonV2.svelte';
@@ -21,7 +20,7 @@
     // Calculate USD value for tokens using proper price lookup
     function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
         // Find token to get its canister_id
-        const token = $tokenStore.tokens.find(t => t.symbol === tokenSymbol);
+        const token = $liveTokens.find(t => t.symbol === tokenSymbol);
         
         if (!token?.canister_id || !amount) {
             console.log("Missing token data:", { token, amount });
@@ -48,8 +47,8 @@
     let isCalculating = false;
 
     // Get token objects for images
-    $: token0 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0);
-    $: token1 = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1);
+    $: token0 = $liveTokens.find(t => t.symbol === pool.symbol_0);
+    $: token1 = $liveTokens.find(t => t.symbol === pool.symbol_1);
 
     // Get the actual pool data with APY
     $: actualPool = $poolsList.find(p => 
@@ -105,8 +104,8 @@
             );
 
             // Get token decimals from tokenStore
-            const token0Decimals = $tokenStore.tokens.find(t => t.symbol === pool.symbol_0)?.decimals || 8;
-            const token1Decimals = $tokenStore.tokens.find(t => t.symbol === pool.symbol_1)?.decimals || 8;
+            const token0Decimals = $liveTokens.find(t => t.symbol === pool.symbol_0)?.decimals || 8;
+            const token1Decimals = $liveTokens.find(t => t.symbol === pool.symbol_1)?.decimals || 8;
             
             // First adjust for decimals, then store as string
             estimatedAmounts = {
@@ -131,19 +130,9 @@
         try {
             error = null;
             isRemoving = true;
-            toastStore.info('Removing liquidity...', 3000);
+            toastStore.info('Removing liquidity...');
             const numericAmount = parseFloat(removeLiquidityAmount);
-            
-            console.log('Removing liquidity:', {
-                token0: pool.symbol_0,
-                token1: pool.symbol_1,
-                lpTokenAmount: numericAmount
-            });
-
-            // Convert to proper decimal places for backend
             const lpTokenBigInt = BigInt(Math.floor(numericAmount * 1e8));
-            
-            // Get the request ID from remove_liquidity_async
             const requestId = await PoolService.removeLiquidity({
                 token0: pool.symbol_0,
                 token1: pool.symbol_1,
@@ -181,10 +170,10 @@
 
                 if (hasAllStatuses) {
                     isComplete = true;
-                    toastStore.success('Successfully removed liquidity from the pool', 5000, 'Success');
+                    toastStore.success('Successfully removed liquidity from the pool');
                     await Promise.all([
-                        tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
-                        tokenStore.loadBalance(token1, auth.pnp.account.principalId, true),
+                        loadBalance(token0.canister_id, true),
+                        loadBalance(token1.canister_id, true),
                         poolStore.loadUserPoolBalances()
                     ]);
                     break;
@@ -202,8 +191,8 @@
 
             // Refresh the balances
             await Promise.all([
-                tokenStore.loadBalance(token0, auth.pnp.account.principalId, true),
-                tokenStore.loadBalance(token1, auth.pnp.account.principalId, true),
+                loadBalance(token0.canister_id, true),
+                loadBalance(token1.canister_id, true),
                 poolStore.loadUserPoolBalances()
             ]);
 

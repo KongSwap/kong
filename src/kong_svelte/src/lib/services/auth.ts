@@ -1,4 +1,4 @@
-import { writable, get } from "svelte/store";
+import { writable } from "svelte/store";
 import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
@@ -7,7 +7,7 @@ import { pnp } from "./pnp/PnpInitializer";
 import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { TokenService } from "./tokens";
+import { loadBalances } from "./tokens";
 
 // Export the list of available wallets
 export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
@@ -65,11 +65,7 @@ function createAuthStore(pnp: PNP) {
           isConnected.set(true);
           principalId.set(result.owner.toString());
           saveLastWallet(walletId);
-          const balances = await TokenService.fetchBalances(
-            null,
-            result.owner.toString(),
-          );
-          tokenStore.updateBalances(balances);
+          loadBalances(result.owner.toString());
           return result;
         } else {
           console.error("Invalid connection result format:", result);

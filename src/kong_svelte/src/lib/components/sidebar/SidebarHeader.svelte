@@ -5,7 +5,7 @@
   import "./colors.css";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { RefreshCw, Maximize2, Minimize2 } from "lucide-svelte";
-  import { tokenStore, portfolioValue } from "$lib/services/tokens/tokenStore";
+  import { loadBalances, portfolioValue } from "$lib/services/tokens/tokenStore";
   import { auth } from "$lib/services/auth";
 
   export let onClose: () => void;
@@ -31,7 +31,7 @@
     if (!isRefreshing) {
       isRefreshing = true;
       try {
-        await tokenStore.loadBalances($auth?.account?.owner, true);
+        await loadBalances($auth?.account?.owner, true);
       } finally {
         isRefreshing = false;
       }
@@ -133,9 +133,9 @@
               <LoadingIndicator />
             {:else}
               {#if $portfolioValue}
-                {$portfolioValue}
+                ${$portfolioValue}
               {:else}
-                {"0.00"}
+                ${"0.00"}
               {/if}
             {/if}
           </p>

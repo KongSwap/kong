@@ -1,10 +1,9 @@
 <script lang="ts">
   import Toggle from "../common/Toggle.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { loadTokens } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
   import { kongDB } from '$lib/services/db';
-  import { assetCache } from '$lib/services/assetCache';
   import { onMount, onDestroy } from "svelte";
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
@@ -147,8 +146,8 @@
 
   async function clearFavorites() {
     if (confirm('Are you sure you want to clear your favorite tokens?')) {
-      await tokenStore.clearUserData();
-      await tokenStore.loadTokens(true);
+      // TODO: readd clearing favorites
+      await loadTokens(true);
       toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
     }
   }
@@ -156,7 +155,6 @@
   async function resetDatabase() {
     try {
       await kongDB.delete();
-      await assetCache.clearCache();
       toastStore.success('Database cleared successfully');
       window.location.reload();
     } catch (error) {

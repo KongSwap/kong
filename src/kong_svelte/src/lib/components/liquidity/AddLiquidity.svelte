@@ -11,8 +11,7 @@
   import LiquidityPanel from "./LiquidityPanel.svelte";
   import { addLiquidityStore } from "$lib/services/pools/addLiquidityStore";
   import { goto } from "$app/navigation";
-  import { tokenStore } from "$lib/services/tokens";
-  import { auth } from "$lib/services/auth";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -44,14 +43,7 @@
   ];
 
   async function handleInput(index: 0 | 1, event: CustomEvent) {
-    console.log("handleInput called with:", {
-      index,
-      event,
-      detail: event.detail,
-    });
-
     const input = event.detail?.value;
-    console.log("Got input value:", input);
 
     if (!input) {
       if (index === 0) amount0 = "0";
@@ -62,30 +54,16 @@
     // Update the amount immediately
     if (index === 0) {
       amount0 = input;
-      console.log("Set amount0 to:", amount0);
     } else {
       amount1 = input;
-      console.log("Set amount1 to:", amount1);
     }
 
     // Only calculate if we have both tokens and input is not empty
     if (token0 && token1 && input !== "") {
       try {
-        console.log("Starting calculation with tokens:", { token0, token1 });
         const parsedAmount = parseTokenAmount(
           input,
           index === 0 ? token0.decimals : token1.decimals,
-        );
-        console.log("Parsed amount:", parsedAmount.toString());
-
-        // Log which token we're calculating from/to
-        console.log(
-          "Calculating from:",
-          index === 0 ? token0.token : token1.token,
-        );
-        console.log(
-          "Calculating to:",
-          index === 0 ? token1.token : token0.token,
         );
 
         const result = await PoolService.calculateLiquidityAmounts(
@@ -94,14 +72,8 @@
           index === 0 ? token1.token : token0.token,
         );
 
-        console.log("Got result:", result);
 
         if (result.Ok) {
-          console.log("Result amounts:", {
-            amount_0: result.Ok.amount_0.toString(),
-            amount_1: result.Ok.amount_1.toString(),
-          });
-
           // When index is 0 (top token), we want amount_1 for the bottom token
           // When index is 1 (bottom token), we want amount_0 for the top token
           const otherAmount =
@@ -110,10 +82,8 @@
 
           if (index === 0) {
             amount1 = formatBalance(otherAmount, otherDecimals);
-            console.log("Updated amount1 to:", amount1);
           } else {
             amount0 = formatBalance(otherAmount, otherDecimals);
-            console.log("Updated amount0 to:", amount0);
           }
         } else if (result.Err) {
           console.error("Error calculating liquidity:", result.Err);
@@ -140,7 +110,6 @@
   }
 
   function handleTokenSelected(token: FE.Token, index: 0 | 1) {
-    console.log("Token selected:", { token, index });
     if (index === 0) {
       token0 = token;
     } else {
@@ -148,7 +117,6 @@
     }
 
     addLiquidityStore.closeTokenSelector();
-    console.log("After token selection:", { token0, token1 });
   }
 
   async function handleSubmit() {
@@ -194,22 +162,6 @@
 
   function handleBack() {
     goto("/earn");
-  }
-
-  $: {
-    console.log("Button text calculation:", {
-      token0,
-      token1,
-      amount0,
-      amount1,
-      amount0Type: typeof amount0,
-      amount1Type: typeof amount1,
-      amount0Value: Number(amount0),
-      amount1Value: Number(amount1),
-      condition1: !token0 || !token1,
-      condition2: amount0 === "" || amount1 === "",
-      condition3: Number(amount0) === 0 || Number(amount1) === 0,
-    });
   }
 
   $: buttonText = error
@@ -354,7 +306,7 @@
 {#if $addLiquidityStore.showToken0Selector}
   <Portal target="body">
     <TokenSelectorDropdown
-      tokens={$tokenStore.tokens}
+      tokens={$liveTokens}
       position={$addLiquidityStore.tokenSelectorPosition}
       onClose={() => addLiquidityStore.closeTokenSelector()}
       onSelect={(token) => handleTokenSelected(token, 0)}
@@ -365,7 +317,7 @@
 {#if $addLiquidityStore.showToken1Selector}
   <Portal target="body">
     <TokenSelectorDropdown
-      tokens={$tokenStore.tokens}
+      tokens={$liveTokens}
       position={$addLiquidityStore.tokenSelectorPosition}
       onClose={() => addLiquidityStore.closeTokenSelector()}
       onSelect={(token) => handleTokenSelected(token, 1)}

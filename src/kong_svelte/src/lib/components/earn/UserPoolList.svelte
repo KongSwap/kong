@@ -2,7 +2,7 @@
   import { fade, slide } from "svelte/transition";
   import { poolStore } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { createEventDispatcher } from "svelte";
@@ -29,10 +29,10 @@
           return hasBalance;
         })
         .map((poolBalance) => {
-          const token0 = $tokenStore.tokens.find(
+          const token0 = $liveTokens.find(
             (t) => t.symbol === poolBalance.symbol_0,
           );
-          const token1 = $tokenStore.tokens.find(
+          const token1 = $liveTokens.find(
             (t) => t.symbol === poolBalance.symbol_1,
           );
 
@@ -119,10 +119,10 @@
           <div class="pool-left">
             <TokenImages
               tokens={[
-                $tokenStore.tokens.find(
+                $liveTokens.find(
                   (token) => token.symbol === poolItem.symbol_0,
                 ),
-                $tokenStore.tokens.find(
+                $liveTokens.find(
                   (token) => token.symbol === poolItem.symbol_1,
                 ),
               ]}

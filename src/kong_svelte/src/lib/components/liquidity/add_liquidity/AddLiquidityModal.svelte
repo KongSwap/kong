@@ -2,7 +2,7 @@
     import { TokenService } from "$lib/services/tokens/TokenService";
     import { PoolService } from "$lib/services/pools/PoolService";
     import { onMount } from "svelte";
-    import { tokenStore, formattedTokens } from "$lib/services/tokens/tokenStore";
+    import { tokenStore, loadBalances, formattedTokens } from "$lib/services/tokens/tokenStore";
     import { get } from "svelte/store";
     import AddLiquidityForm from "$lib/components/liquidity/add_liquidity/AddLiquidityForm.svelte";
     import { debounce } from "lodash-es";
@@ -80,7 +80,7 @@
 
     onMount(async () => {
       try {
-        await Promise.all([initializeFromParams(), tokenStore.loadBalances($auth?.account?.owner)]);
+        await Promise.all([initializeFromParams(), loadBalances($auth?.account?.owner)]);
         tokens = get(formattedTokens);
       } catch (err) {
         console.error("Error initializing:", err);

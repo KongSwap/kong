@@ -45,20 +45,6 @@
     $: token0Value = (Number(amount0) * Number(token0.metrics.price)).toFixed(2);
     $: token1Value = (Number(amount1) * Number(token1.metrics.price)).toFixed(2);
     $: totalValue = (Number(token0Value) + Number(token1Value)).toFixed(2);
-    
-    $: {
-        if (pool) {
-            console.log('Pool Debug:', {
-                pool_balance_0: pool.balance_0,
-                pool_balance_1: pool.balance_1,
-                token0_price: token0.metrics.price,
-                token1_price: token1.metrics.price,
-                pool_value: (Number(pool.balance_0) * Number(token0.metrics.price) + Number(pool.balance_1) * Number(token1.metrics.price)).toFixed(2),
-                your_value: totalValue
-            });
-        }
-    }
-    
     $: poolRate = pool ? formatToNonZeroDecimal(Number(pool.balance_1) / Number(pool.balance_0)) : "0";
 </script>
 

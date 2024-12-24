@@ -1,17 +1,15 @@
 export interface TokenState {
   tokens: FE.Token[];
   balances: Record<string, FE.TokenBalance>;
-  prices: Record<string, number>;
   isLoading: boolean;
-  error: string | null;
-  totalValueUsd: string;
-  lastTokensFetch: number | null;
+  error: Error | null;
+  lastTokensFetch: Date | null;
   activeSwaps: Record<string, any>;
-  favoriteTokens: Record<string, string[]>;
-  lastBalanceUpdate: Record<string, number>;
+  pendingBalanceRequests: Set<string>;
 }
 
 export interface FavoriteToken {
+  id?: number;
   wallet_id: string;
   canister_id: string;
   timestamp: number;

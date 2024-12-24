@@ -8,6 +8,9 @@
     AlertTriangle as IconWarning,
     Info as IconInfo,
   } from "lucide-svelte";
+  
+  // Replace Timeout import with direct type definition
+  type TimeoutId = ReturnType<typeof setTimeout>;
 
   // Memoize the icon and class mappings
   const ICONS = {
@@ -35,7 +38,7 @@
   const DEFAULT_TITLE = "Notification";
 
   // Use a Set to track active timeouts
-  const activeTimeouts = new Set<number>();
+  const activeTimeouts = new Set<TimeoutId>();
 
   function dismissToast(id: string) {
     toastStore.dismiss(id);
@@ -102,8 +105,9 @@
     >
       <div
         class="toast-container flex flex-row items-start gap-3 p-4 rounded-lg relative w-full
-          transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-default
+          transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg cursor-pointer
           bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl shadow-lg {TYPE_CLASSES[toast.type] || ''}"
+        on:click={() => dismissToast(toast.id)}
       >
         <!-- Toast Type Icon -->
         {#if ICONS[toast.type]}
@@ -153,7 +157,7 @@
 
 <style lang="postcss">
   .toast-wrapper {
-    @apply fixed top-20 right-4 flex flex-col items-end gap-3 max-w-md z-[999999];
+    @apply fixed bottom-4 right-4 flex flex-col items-end gap-3 max-w-md z-[999999];
     isolation: isolate;
     transform: translateZ(0);
     pointer-events: none;

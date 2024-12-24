@@ -2,7 +2,6 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
   import { tooltip } from '$lib/actions/tooltip';
-  import { assetCache } from '$lib/services/assetCache';
   import { onMount } from 'svelte';
 
   export let variant: 'blue' | 'green' | 'yellow' = 'blue';
@@ -61,9 +60,6 @@
   async function updateCachedUrls() {
     try {
       const [left, middle, right] = await Promise.all([
-        assetCache.getAsset(getImagePath('l')),
-        assetCache.getAsset(getImagePath('mid')),
-        assetCache.getAsset(getImagePath('r'))
       ]);
       cachedUrls = { left, middle, right };
     } catch (error) {

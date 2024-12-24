@@ -72,3 +72,25 @@ export function fromRawAmount(rawAmount: string, decimals: number = 8): number {
     if (!rawAmount) return 0;
     return Number(rawAmount) / Math.pow(10, decimals);
 }
+
+export function formatTokenBalance(amount: string | bigint, decimals: number): string {
+    if (!amount) return '0';
+    
+    const value = typeof amount === 'string' ? BigInt(amount) : amount;
+    const divisor = BigInt(10 ** decimals);
+    const integerPart = value / divisor;
+    const fractionalPart = value % divisor;
+    
+    let result = integerPart.toString();
+    
+    if (fractionalPart > 0) {
+        let fraction = fractionalPart.toString().padStart(decimals, '0');
+        // Remove trailing zeros
+        fraction = fraction.replace(/0+$/, '');
+        if (fraction.length > 0) {
+            result += '.' + fraction;
+        }
+    }
+    
+    return result;
+}

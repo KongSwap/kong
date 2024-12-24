@@ -4,7 +4,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-  import { favoriteStore } from "$lib/services/tokens/favoriteStore";
+  import { FavoriteService } from "$lib/services/tokens/favoriteService";
 
   interface StatsToken extends FE.Token {
     marketCapRank?: number;
@@ -28,7 +28,7 @@
       {#if isConnected}
         <button
           class="favorite-button-mobile"
-          on:click|stopPropagation={(e) => favoriteStore.toggleFavorite(token.canister_id)}
+          on:click|stopPropagation={(e) => FavoriteService.toggleFavorite(token.canister_id)}
         >
           {#if isFavorite}
             <Star class="star-icon filled" size={14} color="yellow" fill="yellow" />
@@ -47,7 +47,7 @@
             </div>
           {/if}
         </div>
-        <div class="token-metrics-row">
+        <div class="token-metrics-row text-nowrap">
           <span>MCap: {formatUsdValue(token?.metrics?.market_cap)}</span>
           <span class="separator">|</span>
           <span>Vol: {formatUsdValue(token?.metrics?.volume_24h)}</span>
@@ -55,7 +55,7 @@
       </div>
     </div>
     <div class="token-card-right">
-      <div class="font-medium text-white">
+      <div class="font-medium text-white text-right">
         <span class={priceClass}>
           ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
         </span>
@@ -102,7 +102,7 @@
   }
 
   .token-symbol-mobile {
-    @apply text-sm text-white font-medium text-base;
+    @apply text-white font-medium text-base;
   }
 
   .token-metrics-row {
@@ -114,7 +114,7 @@
   }
 
   .token-card-right {
-    @apply flex flex-col items-end justify-center ml-2;
+    @apply flex flex-col items-end justify-end;
   }
 
   .token-change {

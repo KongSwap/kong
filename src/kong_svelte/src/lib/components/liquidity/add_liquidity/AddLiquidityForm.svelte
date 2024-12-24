@@ -14,7 +14,7 @@
   import { Tween } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import { auth } from "$lib/services/auth";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { loadBalances, tokenStore, liveTokens } from "$lib/services/tokens/tokenStore";
   import debounce from "lodash-es/debounce";
   import { toastStore } from "$lib/stores/toastStore";
   import { BigNumber } from "bignumber.js";
@@ -100,7 +100,7 @@
       otherToken,
       ALLOWED_TOKEN_SYMBOLS,
       DEFAULT_TOKEN,
-      $tokenStore.tokens
+      $liveTokens
     );
 
     if (!result.isValid) {
@@ -357,9 +357,9 @@
 
   // Get pool when both tokens are selected
   $: if (token0 && token1) {
-    tokenStore.loadBalancesForTokens(
-      [token0, token1],
+    loadBalances(
       auth.pnp.account?.owner?.toString(),
+      { tokens: [token0, token1], forceRefresh: false }
     );
     pool = getPoolForTokenPair(token0, token1, $poolStore.pools);
 

@@ -18,7 +18,6 @@
   let token0Balance = "0";
   let token1Balance = "0";
   let pool: BE.Pool | null = null;
-  let previewMode = false;
   let showConfirmation = false;
 
   $: {
@@ -58,7 +57,7 @@
       ) || null;
     } catch (err) {
       console.error('Error fetching pool info:', err);
-      toastStore.error(err.message || "Failed to fetch pool info", 8000, "Error");
+      toastStore.error(err.message || "Failed to fetch pool info");
       pool = null;
     }
   }
@@ -107,7 +106,6 @@
 
   async function handleSubmit() {
     try {
-        console.log("Starting handleSubmit...");
         if (!token0 || !token1 || !amount0 || !amount1) {
             error = "Please fill in all fields";
             return;
@@ -123,7 +121,7 @@
             amount_1: parseTokenAmount(amount1, token1.decimals),
         };
 
-        toastStore.info("Adding liquidity...", 7000);
+        toastStore.info("Adding liquidity...");
         const requestId = await PoolService.addLiquidity(params);
 
         // Start polling
@@ -132,7 +130,7 @@
 
     } catch (err) {
         console.error("Error adding liquidity:", err);
-        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        toastStore.error(err.message || "Failed to add liquidity");
         loading = false;
         error = err.message;
         showConfirmation = false;
@@ -146,7 +144,7 @@
         
         if (status.statuses.includes('Success')) {
             console.log('Success status found, showing toast');
-            toastStore.success("Successfully added liquidity to the pool", 5000, "Success");
+            toastStore.success("Successfully added liquidity to the pool");
             await poolStore.loadUserPoolBalances();
             showConfirmation = false;
             loading = false;
@@ -157,13 +155,13 @@
         )) {
             console.log('Error status found, throwing error');
             const errorMsg = status.statuses[status.statuses.length - 1];
-            toastStore.error(errorMsg, 8000, "Error");
+            toastStore.error(errorMsg);
             showConfirmation = false;
             loading = false;
             throw new Error(errorMsg);
         } else if (attempt >= MAX_ATTEMPTS) {
             console.log('Maximum polling attempts reached');
-            toastStore.error(`Operation timed out after ${MAX_ATTEMPTS} attempts`, 8000, "Error");
+            toastStore.error(`Operation timed out after ${MAX_ATTEMPTS} attempts`);
             showConfirmation = false;
             loading = false;
             throw new Error("Operation timed out");
@@ -175,7 +173,7 @@
         }
     } catch (err) {
         console.error("Error during polling:", err);
-        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        toastStore.error(err.message || "Failed to add liquidity");
         showConfirmation = false;
         loading = false;
         throw err;

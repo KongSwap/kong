@@ -6,6 +6,7 @@ import { getTokenDecimals } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
 import { KONG_CANISTER_ID, ICP_CANISTER_ID } from '$lib/constants/canisterConstants';
+import { BigNumber } from 'bignumber.js';
 
 export interface SwapState {
   payToken: FE.Token | null;
@@ -92,7 +93,9 @@ function createSwapStore(): SwapStore {
       if (!$swapState.payToken || !$swapState.payAmount) return false;
       
       const balance = $tokenStore.balances[$swapState.payToken.canister_id]?.in_tokens || BigInt(0);
-      return fromTokenDecimals($swapState.payAmount, $swapState.payToken.decimals).toNumber() > Number(balance);
+      const payAmountBN = new BigNumber($swapState.payAmount);
+      const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken.decimals);
+      return Number(payAmountInTokens) > Number(balance);
     }
   );
 
