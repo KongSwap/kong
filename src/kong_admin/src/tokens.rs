@@ -102,7 +102,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
         .execute(
             "INSERT INTO tokens 
                 (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ON CONFLICT (token_id) DO UPDATE SET
                     token_type = $2,
                     name = $3,
