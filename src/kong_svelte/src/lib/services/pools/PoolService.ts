@@ -2,11 +2,10 @@
 import { auth, requireWalletConnection } from "$lib/services/auth";
 import { get } from "svelte/store";
 import { IcrcService } from "../icrc/IcrcService";
-import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
+import { KONG_BACKEND_CANISTER_ID, KONG_DATA_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { canisterIDLs } from "../pnp/PnpInitializer";
 import { PoolSerializer } from "./PoolSerializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
-import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { toastStore } from "$lib/stores/toastStore";
 import { TokenService, tokenStore } from "../tokens";
 
@@ -24,8 +23,8 @@ export class PoolService {
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
       const actor = await createAnonymousActorHelper(
-        kongBackendCanisterId,
-        canisterIDLs.kong_backend,
+        KONG_DATA_PRINCIPAL,
+        canisterIDLs.kong_data,
       );
       const result = await actor.pools([]);
       if (!result.Ok) {
@@ -46,7 +45,7 @@ export class PoolService {
   ): Promise<BE.Pool> {
     try {
       const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
       );
 
@@ -80,7 +79,7 @@ export class PoolService {
   ): Promise<any> {
     try {
       const actor = await createAnonymousActorHelper(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
       );
       const result = await actor.add_liquidity_amounts(
@@ -115,7 +114,7 @@ export class PoolService {
           : lpTokenAmount;
 
       const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
@@ -178,7 +177,7 @@ export class PoolService {
             params.token_1,
             params.amount_1,
           ),
-          auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
+          auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend, {
             anon: false,
             requiresSigning: false,
           }),
@@ -203,7 +202,7 @@ export class PoolService {
             KONG_BACKEND_CANISTER_ID,
             params.amount_1,
           ),
-          auth.pnp.getActor(kongBackendCanisterId, canisterIDLs.kong_backend, {
+          auth.pnp.getActor(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend, {
             anon: false,
             requiresSigning: false,
           }),
@@ -259,7 +258,7 @@ export class PoolService {
     try {
       while (attempts < MAX_ATTEMPTS) {
         const actor = await auth.pnp.getActor(
-          kongBackendCanisterId,
+          KONG_BACKEND_CANISTER_ID,
           canisterIDLs.kong_backend,
           { anon: false, requiresSigning: false },
         );
@@ -325,7 +324,7 @@ export class PoolService {
           : params.lpTokenAmount;
 
       const actor = await auth.pnp.getActor(
-        kongBackendCanisterId,
+        KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
         { anon: false, requiresSigning: false },
       );
@@ -357,7 +356,7 @@ export class PoolService {
         return [];
       }
 
-      const actor = await createAnonymousActorHelper(kongBackendCanisterId, canisterIDLs.kong_backend);
+      const actor = await createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
       return await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
     } catch (error) {
       if (error.message?.includes("Anonymous user")) {
