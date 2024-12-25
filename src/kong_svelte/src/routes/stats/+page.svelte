@@ -17,6 +17,15 @@
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { sidebarStore } from "$lib/stores/sidebarStore";
 
+  // Utility to allow only one update per x milliseconds
+  function debounce<T>(fn: (val: T) => void, delay: number) {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    return (val: T) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => fn(val), delay);
+    };
+  }
+
   // Optional: A simple search store to filter tokens locally
   const searchTerm = writable("");
   const showFavoritesOnly = writable(false);
@@ -184,8 +193,12 @@
   // Simple input handler
   function handleSearch(event: Event) {
     const input = event.target as HTMLInputElement;
-    searchTerm.set(input.value);
+    debouncedSearch(input.value);
   }
+
+  const debouncedSearch = debounce((value: string) => {
+    searchTerm.set(value);
+  }, 400);
 
   const ITEM_HEIGHT = 84; // height of each mobile card in pixels
   const visibleItems = derived([scrollY, filteredTokens], ([$scrollY, $tokens]) => {
@@ -223,11 +236,13 @@
     const { canisterId, isFavorite } = event.detail;
     
     if (isFavorite) {
-      favoriteCount.set($favoriteCount - 1);
-      favoriteTokenIds.set($favoriteTokenIds.filter(id => id !== canisterId));
+      const newSet = new Set($favoriteTokenIds);
+      newSet.add(canisterId);
+      favoriteTokenIds.set(Array.from(newSet));
     } else {
-      favoriteCount.set($favoriteCount + 1);
-      favoriteTokenIds.set([...$favoriteTokenIds, canisterId]);
+      const newSet = new Set($favoriteTokenIds);
+      newSet.delete(canisterId);
+      favoriteTokenIds.set(Array.from(newSet));
     }
   }
 
