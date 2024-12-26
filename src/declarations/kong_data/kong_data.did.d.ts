@@ -59,6 +59,20 @@ export interface AddPoolReply {
   'lp_fee_bps' : number,
   'on_kong' : boolean,
 }
+export interface ICTokenReply {
+  'fee' : bigint,
+  'decimals' : number,
+  'token' : string,
+  'token_id' : number,
+  'chain' : string,
+  'name' : string,
+  'canister_id' : string,
+  'icrc1' : boolean,
+  'icrc2' : boolean,
+  'icrc3' : boolean,
+  'symbol' : string,
+  'on_kong' : boolean,
+}
 export interface ICTransferReply {
   'is_send' : boolean,
   'block_index' : bigint,
@@ -71,6 +85,52 @@ export interface Icrc10SupportedStandards { 'url' : string, 'name' : string }
 export interface Icrc28TrustedOriginsResponse {
   'trusted_origins' : Array<string>,
 }
+export interface LPTokenReply {
+  'fee' : bigint,
+  'decimals' : number,
+  'token' : string,
+  'token_id' : number,
+  'chain' : string,
+  'name' : string,
+  'address' : string,
+  'pool_id_of' : number,
+  'total_supply' : bigint,
+  'symbol' : string,
+  'on_kong' : boolean,
+}
+export interface PoolReply {
+  'tvl' : bigint,
+  'lp_token_symbol' : string,
+  'name' : string,
+  'lp_fee_0' : bigint,
+  'lp_fee_1' : bigint,
+  'balance_0' : bigint,
+  'balance_1' : bigint,
+  'rolling_24h_volume' : bigint,
+  'rolling_24h_apy' : number,
+  'address_0' : string,
+  'address_1' : string,
+  'rolling_24h_num_swaps' : bigint,
+  'symbol_0' : string,
+  'symbol_1' : string,
+  'pool_id' : number,
+  'price' : number,
+  'chain_0' : string,
+  'chain_1' : string,
+  'symbol' : string,
+  'rolling_24h_lp_fee' : bigint,
+  'lp_fee_bps' : number,
+  'on_kong' : boolean,
+}
+export interface PoolsReply {
+  'total_24h_lp_fee' : bigint,
+  'total_tvl' : bigint,
+  'total_24h_volume' : bigint,
+  'pools' : Array<PoolReply>,
+  'total_24h_num_swaps' : bigint,
+}
+export type PoolsResult = { 'Ok' : PoolsReply } |
+  { 'Err' : string };
 export interface RemoveLiquidityArgs {
   'token_0' : string,
   'token_1' : string,
@@ -96,24 +156,6 @@ export interface RemoveLiquidityReply {
   'remove_lp_token_amount' : bigint,
   'symbol' : string,
 }
-export type RequestReply = { 'AddLiquidity' : AddLiquidityReply } |
-  { 'Swap' : SwapReply } |
-  { 'AddPool' : AddPoolReply } |
-  { 'RemoveLiquidity' : RemoveLiquidityReply } |
-  { 'Pending' : null };
-export type RequestRequest = { 'AddLiquidity' : AddLiquidityArgs } |
-  { 'Swap' : SwapArgs } |
-  { 'AddPool' : AddPoolArgs } |
-  { 'RemoveLiquidity' : RemoveLiquidityArgs };
-export interface RequestsReply {
-  'ts' : bigint,
-  'request_id' : bigint,
-  'request' : RequestRequest,
-  'statuses' : Array<string>,
-  'reply' : RequestReply,
-}
-export type RequestsResult = { 'Ok' : Array<RequestsReply> } |
-  { 'Err' : string };
 export interface SwapArgs {
   'receive_token' : string,
   'max_slippage' : [] | [number],
@@ -159,6 +201,10 @@ export interface SwapTxReply {
   'lp_fee' : bigint,
   'gas_fee' : bigint,
 }
+export type TokenReply = { 'IC' : ICTokenReply } |
+  { 'LP' : LPTokenReply };
+export type TokensResult = { 'Ok' : Array<TokenReply> } |
+  { 'Err' : string };
 export interface TransferIdReply {
   'transfer_id' : bigint,
   'transfer' : TransferReply,
@@ -173,21 +219,14 @@ export type TxsReply = { 'AddLiquidity' : AddLiquidityReply } |
 export type TxsResult = { 'Ok' : Array<TxsReply> } |
   { 'Err' : string };
 export interface _SERVICE {
-  'get_requests' : ActorMethod<
-    [[] | [bigint], [] | [number], [] | [number]],
-    RequestsResult
-  >,
-  'get_txs' : ActorMethod<
-    [[] | [bigint], [] | [bigint], [] | [number], [] | [number]],
-    TxsResult
-  >,
   'icrc10_supported_standards' : ActorMethod<
     [],
     Array<Icrc10SupportedStandards>
   >,
   'icrc1_name' : ActorMethod<[], string>,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'requests' : ActorMethod<[[] | [bigint], [] | [number]], RequestsResult>,
+  'pools' : ActorMethod<[[] | [string]], PoolsResult>,
+  'tokens' : ActorMethod<[[] | [string]], TokensResult>,
   'txs' : ActorMethod<
     [[] | [string], [] | [bigint], [] | [number], [] | [number]],
     TxsResult
