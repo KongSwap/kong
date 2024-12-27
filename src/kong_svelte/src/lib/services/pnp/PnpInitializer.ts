@@ -7,6 +7,7 @@ import {
 import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
 import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
 import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
+import { idlFactory as icpIDL } from "../../../../../declarations/icp_ledger";
 
 export type CanisterType =
   | "kong_backend"
@@ -21,6 +22,7 @@ export const canisterIDLs = {
   icrc1: icrc2IDL,
   icrc2: icrc2IDL,
   kong_data: kongDataIDL,
+  ICP: icpIDL,
 };
 
 let globalPnp: PNP | null = null;
