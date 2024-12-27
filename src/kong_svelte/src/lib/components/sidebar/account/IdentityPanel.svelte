@@ -286,11 +286,11 @@
             </div>
 
             <div class="info-tooltip mt-4">
-              <p>Your Principal ID is your unique digital identity that:</p>
+              <p>About Principal ID:</p>
               <ul>
-                <li>Is used for ICRC token transfers and DeFi operations</li>
-                <li>Acts as your universal username across IC applications</li>
-                <li>Controls access to your assets and data</li>
+                <li>Your general wallet address used across all Internet Computer dapps</li>
+                <li>Used for sending/receiving ICRC tokens (ICP's ERC-20 variant)</li>
+                <li>Principal ID is used to generate the Account ID</li>
               </ul>
             </div>
           </div>
@@ -299,7 +299,7 @@
         {#if (activeTab === 'account' || display === 'account') && (display !== 'principal')}
           <div class="id-card">
             <div class="id-header">
-              <span>Default Account ID</span>
+              <span>Account ID</span>
               <div class="header-actions">
                 <button 
                   type="button"
@@ -332,39 +332,13 @@
               </div>
             </div>
 
-            {#if identity.accountId !== identity.defaultAccountId}
-              <div class="id-header mt-6">
-                <span>Subaccount ID</span>
-                <div class="header-actions">
-                  <button 
-                    type="button"
-                    class="action-button"
-                    on:click={() => handleCopy(identity.accountId, 'subaccount')}
-                  >
-                    <Clipboard class="w-4 h-4" />
-                    <span class="button-text">Copy</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="input-group">
-                <div class="input-wrapper">
-                  <input
-                    type="text"
-                    readonly
-                    value={identity.accountId || '...'}
-                    class="monospace-input"
-                  />
-                </div>
-              </div>
-            {/if}
-
             <div class="info-tooltip mt-4">
-              <p>Important Account ID Information:</p>
+              <p>About Account ID:</p>
               <ul>
-                <li>The Default Account ID is commonly used for receiving ICP</li>
-                <li>Your Subaccount ID is a separate account under your control</li>
-                <li>Always verify which account ID you're using for transactions</li>
+                <li>Use this when moving ICP to/from exchanges</li>
+                <li>A unique identifier derived from your Principal ID</li>
+                <li>Required for ICP token transactions</li>
+                <li class="text-yellow-400">Cannot be used for ICRC token transactions</li>
               </ul>
             </div>
           </div>
