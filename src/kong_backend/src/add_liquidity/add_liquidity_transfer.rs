@@ -47,12 +47,13 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     .await
     .map_or_else(
         |e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            _ = archive_to_kong_data(request_id);
             Err(e)
         },
         |reply: AddLiquidityReply| {
             request_map::update_status(request_id, StatusCode::Success, None);
-            archive_to_kong_data(&reply);
+            _ = archive_to_kong_data(request_id);
             Ok(reply)
         },
     )
@@ -83,13 +84,10 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
         )
         .await
         {
-            Ok(reply) => {
-                // archive to kong_data
-                archive_to_kong_data(&reply);
-                request_map::update_status(request_id, StatusCode::Success, None)
-            }
-            Err(e) => request_map::update_status(request_id, StatusCode::Failed, Some(&e)),
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
         };
+        _ = archive_to_kong_data(request_id);
     });
 
     Ok(request_id)
