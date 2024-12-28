@@ -59,7 +59,7 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
 
-    process_add_pool(
+    let result = match process_add_pool(
         request_id,
         user_id,
         &token_0,
@@ -75,18 +75,19 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            _ = archive_to_kong_data(request_id);
-            Err(e)
-        },
-        |reply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            _ = archive_to_kong_data(request_id);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 /// Check the arguments are valid, create new token_0 if it does not exist and calculate the amounts to be added to the pool
