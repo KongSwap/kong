@@ -7,6 +7,7 @@ use super::send_reply_helpers::{create_send_reply_failed, create_send_reply_with
 
 use crate::chains::chains::LP_CHAIN;
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::transfer::transfer;
 use crate::stable_request::request_map;
 use crate::stable_request::{reply::Reply, request::Request, stable_request::StableRequest, status::StatusCode};
@@ -58,12 +59,13 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     )
     .map_or_else(
         |e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            _ = archive_to_kong_data(request_id);
             Err(e)
         },
         |reply| {
             request_map::update_status(request_id, StatusCode::Success, None);
-            archive_to_kong_data(&reply);
+            _ = archive_to_kong_data(request_id);
             Ok(reply)
         },
     )
@@ -107,7 +109,18 @@ fn process_send(
     Ok(reply)
 }
 
-fn archive_to_kong_data(reply: &SendReply) {
-    request_map::archive_request_to_kong_data(reply.request_id);
-    tx_map::archive_tx_to_kong_data(reply.tx_id);
+fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
+    if kong_settings_map::get().archive_to_kong_data {
+        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
+        let request = requests.first().ok_or("Request not found")?;
+        request_map::archive_request_to_kong_data(request.request_id);
+        match request.reply {
+            Reply::Send(ref reply) => {
+                tx_map::archive_tx_to_kong_data(reply.tx_id);
+            }
+            _ => Err("Invalid reply type".to_string())?,
+        }
+    }
+
+    Ok(())
 }

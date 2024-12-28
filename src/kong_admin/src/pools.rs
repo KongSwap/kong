@@ -39,12 +39,13 @@ pub async fn update_pools_on_database(
     db_client: &Client,
     tokens_map: &BTreeMap<u32, u8>,
 ) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
-    let file = File::open("./backups/pools.json")?;
-    let reader = BufReader::new(file);
-    let pools_map: BTreeMap<StablePoolId, StablePool> = serde_json::from_reader(reader)?;
+    if let Ok(file) = File::open("./backups/pools.json") {
+        let reader = BufReader::new(file);
+        let pools_map: BTreeMap<StablePoolId, StablePool> = serde_json::from_reader(reader)?;
 
-    for v in pools_map.values() {
-        insert_pool_on_database(v, db_client, tokens_map).await?;
+        for v in pools_map.values() {
+            insert_pool_on_database(v, db_client, tokens_map).await?;
+        }
     }
 
     load_pools_from_database(db_client).await
@@ -138,12 +139,13 @@ pub async fn load_pools_from_database(db_client: &Client) -> Result<BTreeMap<u32
 
 pub async fn update_pools<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/pools.json");
-    let file = File::open(path)?;
-    println!("processing: {:?}", path.file_name().unwrap());
-    let mut reader = BufReader::new(file);
-    let mut contents = String::new();
-    reader.read_to_string(&mut contents)?;
-    kong_update.update_pools(&contents).await?;
+    if let Ok(file) = File::open(path) {
+        println!("processing: {:?}", path.file_name().unwrap());
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_update.update_pools(&contents).await?;
+    };
 
     Ok(())
 }

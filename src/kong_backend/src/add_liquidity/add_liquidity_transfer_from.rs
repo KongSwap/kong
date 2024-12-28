@@ -35,12 +35,13 @@ pub async fn add_liquidity_transfer_from(args: AddLiquidityArgs) -> Result<AddLi
         .await
         .map_or_else(
             |e| {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                request_map::update_status(request_id, StatusCode::Failed, None);
+                _ = archive_to_kong_data(request_id);
                 Err(e)
             },
             |reply| {
                 request_map::update_status(request_id, StatusCode::Success, None);
-                archive_to_kong_data(&reply);
+                _ = archive_to_kong_data(request_id);
                 Ok(reply)
             },
         )
@@ -53,14 +54,10 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
 
     ic_cdk::spawn(async move {
         match process_add_liquidity(request_id, user_id, &pool, &add_amount_0, &add_amount_1, ts).await {
-            Ok(reply) => {
-                request_map::update_status(request_id, StatusCode::Success, None);
-                archive_to_kong_data(&reply);
-            }
-            Err(e) => {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            }
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
         };
+        _ = archive_to_kong_data(request_id);
     });
 
     Ok(request_id)
@@ -512,15 +509,24 @@ async fn return_token(
     }
 }
 
-pub fn archive_to_kong_data(reply: &AddLiquidityReply) {
+pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        request_map::archive_request_to_kong_data(reply.request_id);
-        for claim_id in reply.claim_ids.iter() {
-            claim_map::archive_claim_to_kong_data(*claim_id);
+        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
+        let request = requests.first().ok_or("Request not found")?;
+        request_map::archive_request_to_kong_data(request.request_id);
+        match request.reply {
+            Reply::AddLiquidity(ref reply) => {
+                for claim_id in reply.claim_ids.iter() {
+                    claim_map::archive_claim_to_kong_data(*claim_id);
+                }
+                for transfer_id_reply in reply.transfer_ids.iter() {
+                    transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+                }
+                tx_map::archive_tx_to_kong_data(reply.tx_id);
+            }
+            _ => Err("Invalid reply type".to_string())?,
         }
-        for transfer_id_reply in reply.transfer_ids.iter() {
-            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
-        }
-        tx_map::archive_tx_to_kong_data(reply.tx_id);
     }
+
+    Ok(())
 }

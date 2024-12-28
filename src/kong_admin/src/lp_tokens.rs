@@ -23,12 +23,13 @@ pub fn serialize_lp_tokens(lp_token: &StableLPToken) -> serde_json::Value {
 }
 
 pub async fn update_lp_tokens_on_database(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backups/lp_tokens.json")?;
-    let reader = BufReader::new(file);
-    let lp_token_ledger_map: BTreeMap<StableLPTokenId, StableLPToken> = serde_json::from_reader(reader)?;
+    if let Ok(file) = File::open("./backups/lp_tokens.json") {
+        let reader = BufReader::new(file);
+        let lp_token_ledger_map: BTreeMap<StableLPTokenId, StableLPToken> = serde_json::from_reader(reader)?;
 
-    for v in lp_token_ledger_map.values() {
-        insert_lp_token_on_database(v, db_client, tokens_map).await?;
+        for v in lp_token_ledger_map.values() {
+            insert_lp_token_on_database(v, db_client, tokens_map).await?;
+        }
     }
 
     Ok(())
@@ -69,12 +70,13 @@ pub async fn insert_lp_token_on_database(
 
 pub async fn update_lp_tokens<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/lp_tokens.json");
-    let file = File::open(path)?;
-    println!("processing: {:?}", path.file_name().unwrap());
-    let mut reader = BufReader::new(file);
-    let mut contents = String::new();
-    reader.read_to_string(&mut contents)?;
-    kong_update.update_lp_tokens(&contents).await?;
+    if let Ok(file) = File::open(path) {
+        println!("processing: {:?}", path.file_name().unwrap());
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_update.update_lp_tokens(&contents).await?;
+    };
 
     Ok(())
 }

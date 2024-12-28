@@ -16,6 +16,7 @@ use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::transfer::icrc2_transfer_from;
 use crate::stable_kong_settings::kong_settings_map;
+use crate::stable_request::request;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
@@ -41,12 +42,13 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     .await
     .map_or_else(
         |e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            _ = archive_to_kong_data(request_id);
             Err(e)
         },
         |reply| {
             request_map::update_status(request_id, StatusCode::Success, None);
-            archive_to_kong_data(&reply);
+            _ = archive_to_kong_data(request_id);
             Ok(reply)
         },
     )
@@ -72,14 +74,10 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
         )
         .await
         {
-            Ok(reply) => {
-                request_map::update_status(request_id, StatusCode::Success, None);
-                archive_to_kong_data(&reply);
-            }
-            Err(e) => {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            }
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
         };
+        _ = archive_to_kong_data(request_id);
     });
 
     Ok(request_id)

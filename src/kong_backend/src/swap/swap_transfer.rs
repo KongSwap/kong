@@ -34,12 +34,13 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
         .await
         .map_or_else(
             |e| {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
+                request_map::update_status(request_id, StatusCode::Failed, None);
+                _ = archive_to_kong_data(request_id);
                 Err(e)
             },
             |reply| {
                 request_map::update_status(request_id, StatusCode::Success, None);
-                archive_to_kong_data(&reply);
+                _ = archive_to_kong_data(request_id);
                 Ok(reply)
             },
         )
@@ -56,14 +57,10 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
 
     ic_cdk::spawn(async move {
         match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
-            Ok(reply) => {
-                request_map::update_status(request_id, StatusCode::Success, None);
-                archive_to_kong_data(&reply);
-            }
-            Err(e) => {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            }
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
         };
+        _ = archive_to_kong_data(request_id);
     });
 
     Ok(request_id)
