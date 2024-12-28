@@ -7,18 +7,19 @@
   export let isDisabled: boolean = false;
   export let fullWidth: boolean = false;
   export let uppercase: boolean = false;
-  export let onClick: () => void = () => {};
+  export let disabled: boolean = false;
+  export let className: string = "";
 
   // Theme-based styles
   const baseThemeClasses = {
-    primary: "text-kong-text-primary",
+    primary: "text-white",
     secondary: "text-kong-secondary",
     success: "text-kong-success",
     error: "text-kong-error",
     warning: "text-kong-warning",
-    "accent-green": "text-kong-accent-green",
-    "accent-blue": "text-kong-accent-blue",
-    "accent-red": "text-kong-accent-red",
+    "accent-green": "text-white",
+    "accent-blue": "text-kong-white",
+    "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",
   };
 
@@ -92,9 +93,9 @@
   type={type}
   class="rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
     {baseThemeClasses[theme]} {variantClasses[variant]} {sizeClasses[size]} 
-    {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''}"
+    {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''} {className}"
   disabled={isDisabled}
-  on:click={onClick}
+  on:click
 >
   <div class="relative z-10">
     {#if label}

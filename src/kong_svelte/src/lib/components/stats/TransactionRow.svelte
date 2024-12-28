@@ -38,19 +38,19 @@
 </script>
 
 <tr
-  class="border-b border-slate-700/70 transition-all duration-300"
+  class="border-b border-kong-border/70 transition-all duration-300"
   class:new-transaction={isNew}
 >
   <td class="px-4 py-3">
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
       <span
-        class="px-2 py-0.5 text-xs bg-slate-700 rounded-full whitespace-nowrap"
+        class="px-2 py-0.5 text-xs bg-kong-primary/80 text-white rounded-full whitespace-nowrap"
       >
         {tx.user?.principal_id?.slice(0, 8)}
       </span>
       {#if tx.pay_token_id === token.token_id}
         <!-- Sell Transaction -->
-        <span class="text-white/80 flex flex-wrap items-center gap-1 text-sm">
+        <span class="text-kong-text-primary/80 flex flex-wrap items-center gap-1 text-sm">
           <span class="text-red-500">Sold</span>
           {formatToNonZeroDecimal(tx.pay_amount)}
           <TokenImages tokens={[token]} size={16} />
@@ -71,7 +71,7 @@
         </span>
       {:else}
         <!-- Buy Transaction -->
-        <span class="text-white/80 flex flex-wrap items-center gap-1 text-sm">
+        <span class="text-kong-text-primary/80 flex flex-wrap items-center gap-1 text-sm">
           <span class="text-green-500">Bought</span>
           {formatToNonZeroDecimal(tx.receive_amount)}
           <TokenImages tokens={[token]} size={16} />

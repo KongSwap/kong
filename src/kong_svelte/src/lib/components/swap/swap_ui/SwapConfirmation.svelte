@@ -178,7 +178,7 @@
   isOpen={true}
   title="Review Swap"
   {onClose}
-  variant="green"
+  variant="solid"
   height="auto"
 >
   {#if error}
@@ -296,7 +296,7 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: rgba(239, 68, 68, 0.2);
+    @apply bg-kong-bg-dark;
     color: rgb(239, 68, 68);
     display: flex;
     align-items: center;

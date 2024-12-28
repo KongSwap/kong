@@ -19,6 +19,7 @@
   const LOG_THROTTLE = 1000; // 1 second
   
   let isFavorite = false;
+  let showTokenDetails = false;
 
   // Replace the reactive statement with an async function
   async function updateFavoriteStatus() {
@@ -140,13 +141,15 @@
   </div>
 </div>
 
-{#if showDetails}
-  <div>
-    <TokenDetails {token} on:close={() => showDetails = false} />
-  </div>
+{#if showTokenDetails}
+  <TokenDetails 
+    token={token}
+    isOpen={showTokenDetails}
+    on:close={() => showTokenDetails = false}
+  />
 {/if}
 
-<style>
+<style scoped lang="postcss">
   .token-row {
     flex: 1;
     cursor: pointer;
@@ -188,12 +191,12 @@
   .favorite-button {
     padding: 4px;
     border-radius: 8px;
-    color: rgba(255, 255, 255, 0.5);
+    color: text-kong-text-primary/50;
     background-color: rgba(255, 255, 255, 0.05);
   }
 
   .favorite-button:hover {
-    color: rgba(255, 255, 255, 1);
+    @apply text-white;
     transform: scale(1.1);
     background-color: rgba(255, 255, 255, 0.1);
   }
@@ -206,12 +209,12 @@
   .token-symbol {
     font-size: 18px;
     font-weight: bold;
-    color: rgba(255, 255, 255, 0.95);
+    color: text-kong-text-primary;
   }
 
   .token-name {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.75);
+    color: text-kong-text-primary/70;
   }
 
   .token-right {
@@ -229,12 +232,12 @@
   .balance {
     font-size: 16px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.95);
+    color: text-kong-text-primary;
   }
 
   .usd-value {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.75);
+    color: text-kong-text-primary/70;
   }
 
   .menu-container {
@@ -242,7 +245,7 @@
   }
 
   .menu-button {
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
     border: none;
     cursor: pointer;
     display: flex;

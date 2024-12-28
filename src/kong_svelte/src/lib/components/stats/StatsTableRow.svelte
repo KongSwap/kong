@@ -124,11 +124,11 @@
 
 <style lang="postcss">
   .token-name {
-    @apply text-white font-medium truncate max-w-[120px] md:max-w-none;
+    @apply text-kong-text-primary font-medium truncate max-w-[120px] md:max-w-none;
   }
 
   .token-symbol {
-    @apply text-xs md:text-sm text-white/60 hidden sm:inline;
+    @apply text-xs md:text-sm text-kong-text-primary/60 hidden sm:inline;
   }
 
   .favorite-button {

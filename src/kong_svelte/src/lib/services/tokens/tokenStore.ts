@@ -46,16 +46,6 @@ function createTokenStore() {
 
 export const tokenStore = createTokenStore();
 
-/**
- * A minimal Dexie liveQuery store for tokens.
- * 
- * 1) Subscribes to kongDB.tokens.toArray() 
- *    so we always have a real-time array of FE.Token[] from IndexedDB.
- * 2) If any code updates or merges tokens in Dexie, 
- *    we immediately see those changes in this store.
- */
-
-// 1. Basic liveQuery that returns the raw tokens from Dexie
 export const liveTokens = readable<FE.Token[]>([], (set) => {
   const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
     next: (tokens) => {
@@ -69,10 +59,6 @@ export const liveTokens = readable<FE.Token[]>([], (set) => {
   return () => subscription.unsubscribe();
 });
 
-// 2. Optionally, derive a “formattedTokens” store to add 
-//    any display logic (balances, user favorites, etc.)
-//    For demonstration, simply returning them as-is or with 
-//    trivial property added:
 export const formattedTokens = derived(liveTokens, ($liveTokens) => {
   return $liveTokens.map((t) => ({
     ...t,

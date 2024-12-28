@@ -11,11 +11,11 @@
 
   export let isOpen = false;
   export let title: string;
-  export let onClose: () => void;
-  export let variant: "green" | "yellow" = "green";
+  export let variant: "solid" | "transparent" = "solid";
   export let width = "600px";
   export let height = "80vh";
   export let minHeight: string = "auto";
+  export let onClose: () => void = () => {};
 
   let isMobile = false;
   let modalWidth = width;
@@ -72,22 +72,27 @@
     if (Math.abs(currentX) > SLIDE_THRESHOLD) {
       // Slide out completely before closing
       modalElement.style.transform = `translateX(${Math.sign(currentX) * window.innerWidth}px)`;
-      setTimeout(onClose, 300);
+      setTimeout(handleClose, 300);
     } else {
       // Spring back to original position
       modalElement.style.transform = 'translateX(0)';
     }
   }
 
+  function handleClose() {
+    onClose();
+    dispatch('close');
+  }
+
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
-      onClose();
+      handleClose();
     }
   }
 
   function handleEscape(event: KeyboardEvent) {
     if (event.key === "Escape") {
-      onClose();
+      handleClose();
     }
   }
 
@@ -114,6 +119,7 @@
       <div
         bind:this={modalElement}
         class="modal-container"
+        style="width: {modalWidth}; height: {modalHeight};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
         on:mouseup={handleDragEnd}
@@ -127,20 +133,33 @@
           opacity: 0,
           easing: cubicOut,
         }}
-        style="width: {modalWidth}; height: {modalHeight};"
       >
         <Panel
-          {variant}
-          width={modalWidth}
-          height={modalHeight}
+          variant="solid"
+          width="100%"
+          height="100%"
           className="modal-panel"
         >
           <div class="modal-content" style="height: {height}; min-height: {minHeight};">
+            <div 
+              class="drag-handle" 
+              style="touch-action: pan-x;" 
+              on:mousedown={handleDragStart}
+              on:mousemove={handleDragMove}
+              on:mouseup={handleDragEnd}
+              on:mouseleave={handleDragEnd}
+              on:touchstart={handleDragStart}
+              on:touchmove={handleDragMove}
+              on:touchend={handleDragEnd}
+            >
+              <!-- Place your "pull-down" bar or similar here -->
+            </div>
+
             <header class="modal-header">
-              <h2 id="modal-title" class="modal-title">{title}</h2>
+              <h2 id="modal-title" class="text-xl">{title}</h2>
               <button
                 class="action-button close-button !border-0 !shadow-none group relative"
-                on:click={onClose}
+                on:click={handleClose}
                 aria-label="Close modal"
               >
                 <svg
@@ -161,7 +180,7 @@
               </button>
             </header>
 
-            <div class="modal-body">
+            <div class="modal-body overflow-y-auto">
               <slot />
             </div>
           </div>
@@ -211,21 +230,12 @@
     flex-shrink: 0;
   }
 
-  .modal-title {
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 2rem;
-    font-weight: 500;
-    color: white;
-    margin: 0;
-    letter-spacing: 0.02em;
-  }
-
   .modal-body {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     margin: 0rem;
     padding: 0rem;
   }
@@ -266,13 +276,6 @@
       padding-bottom: 1rem;
     }
 
-    .modal-title {
-      font-size: 1.75rem;
-    }
-
-    .modal-body {
-      margin: 0rem;
-    }
 
     .modal-container {
       cursor: grab;

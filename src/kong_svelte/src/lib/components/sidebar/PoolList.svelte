@@ -166,7 +166,7 @@
   }
 
   function handleAddLiquidity() {
-    goto('/earn/add');
+    goto('/pools/add');
   }
 
   function handlePoolItemClick(poolItem) {

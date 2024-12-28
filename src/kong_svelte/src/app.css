@@ -6,10 +6,90 @@
 @tailwind utilities;
 
 body {
-  background-color: #5bb2cf;
+  @apply bg-kong-bg-dark;
   font-family: "Exo 2", sans-serif;
+  color: var(--text-primary);
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
   min-height: 100vh;
+}
+
+:root {
+  /* Light theme defaults */
+  --bg-dark: 240 248 255;        /* #F0F8FF - Light sky blue */
+  --primary: 37 99 235;          /* #2563EB */
+  --primary-hover: 29 78 216;    /* #1D4ED8 */
+  --secondary: 8 145 178;        /* #0891B2 */
+  --secondary-hover: 14 116 144; /* #0E7490 */
+  --accent-blue: 2 132 199;      /* #0284C7 */
+  --accent-red: 220 38 38;       /* #DC2626 */
+  --accent-green: 5 150 105;     /* #059669 */
+  --accent-green-hover: 4 120 87;/* #047857 */
+  --accent-blue-hover: 3 105 161;/* #0369A1 */
+  --accent-red-hover: 185 28 28; /* #B91C1C */
+  --text-primary: 51 51 51;      /* #333333 */
+  --text-secondary: 75 85 99;    /* #4B5563 */
+  --text-disabled: 156 163 175;  /* #9CA3AF */
+  --border: 229 231 235;         /* #E5E7EB */
+  --border-light: 243 244 246;   /* #F3F4F6 */
+  --logo-brightness: 0.75;
+  --logo-invert: 1;
+  --logo-hover-brightness: 0.65;
+}
+
+/* Dark theme overrides */
+:root.dark {
+  --bg-dark: 11 14 23;           /* #0B0E17 */
+  --primary: 59 130 246;         /* #3B82F6 */
+  --primary-hover: 61 91 249;    /* #3D5BF9 */
+  --secondary: 34 211 238;       /* #22D3EE */
+  --secondary-hover: 14 165 233; /* #0EA5E9 */
+  --accent-blue: 0 161 250;      /* #00A1FA */
+  --accent-red: 209 27 27;       /* #d11b1b */
+  --accent-green: 0 204 129;     /* #00cc81 */
+  --accent-green-hover: 0 185 145;
+  --accent-blue-hover: 0 161 250;/* #00A1FA */
+  --accent-red-hover: 175 48 48;
+  --text-primary: 255 255 255;   /* #FFFFFF */
+  --text-secondary: 155 161 176; /* #9BA1B0 */
+  --text-disabled: 107 114 128;  /* #6B7280 */
+  --border: 42 47 61;           /* #2A2F3D */
+  --border-light: 55 65 81;     /* #374151 */
+  --logo-brightness: 1;
+  --logo-invert: 0;
+  --logo-hover-brightness: 0.9;
+}
+
+/* Replace the pattern overlay with a sky gradient for light theme */
+:root:not(.dark) .page-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    180deg, 
+    rgb(179, 217, 255) 0%,
+    rgb(220, 237, 255) 85%,
+    rgb(240, 248, 255) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Add subtle cloud-like effect for light theme */
+:root:not(.dark) .nebula {
+  opacity: 0.12;
+  filter: blur(100px);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.1)
+  );
+  transform: translateY(-20%); /* Move clouds higher up */
+}
+
+/* Add a subtle shadow above the grass */
+:root:not(.dark) .content-wrapper {
+  position: relative;
+  z-index: 1;
 }

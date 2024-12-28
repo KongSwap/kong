@@ -148,7 +148,7 @@
             await poolStore.loadUserPoolBalances();
             showConfirmation = false;
             loading = false;
-            goto("/earn");
+            goto("/pools");
         } else if (status.statuses.some(s => 
             s.toLowerCase().includes('failed') || 
             s.toLowerCase().includes('error')
@@ -181,7 +181,7 @@
   }
 
   function handleBack() {
-    goto("/earn");
+    goto("/pools");
   }
 </script>
 

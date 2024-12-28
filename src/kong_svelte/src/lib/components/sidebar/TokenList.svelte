@@ -354,13 +354,13 @@
     background: transparent;
     border: none;
     padding: 0.75rem 0;
-    color: white;
+    @apply text-kong-text-primary;
     font-size: 1rem;
     transition: border-color 0.2s;
   }
 
   .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    @apply text-kong-text-primary/50;
   }
 
   .search-input:focus {
@@ -383,7 +383,7 @@
   }
 
   .action-button:hover {
-    color: white;
+    @apply text-kong-text-primary;
   }
 
   .filter-bar {
@@ -402,12 +402,12 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
     cursor: pointer;
   }
 
   .filter-toggle:hover {
-    color: white;
+    @apply text-kong-text-primary;
   }
 
   .sort-toggle {
@@ -421,7 +421,7 @@
   }
 
   .sort-toggle:hover {
-    color: white;
+    @apply text-kong-text-primary;
   }
 
   .sort-arrow {
@@ -475,7 +475,7 @@
     justify-content: center;
     gap: 0.75rem;
     min-height: 160px;
-    color: rgba(255, 255, 255, 0.4);
+    @apply text-kong-text-primary/40;
     font-size: 0.875rem;
   }
 
@@ -483,14 +483,14 @@
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
     border-radius: 0.5rem;
     transition: all 0.2s;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .clear-search-button:hover {
-    color: white;
+    @apply text-kong-text-primary;
     border-color: rgba(255, 255, 255, 0.2);
   }
 

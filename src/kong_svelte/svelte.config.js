@@ -27,7 +27,7 @@ const config = {
           path === "/swap" ||
           path === "/pools" ||
           path === "/stats" ||
-          path === "/earn"
+          path === "/pools"
         ) {
           return;
         }

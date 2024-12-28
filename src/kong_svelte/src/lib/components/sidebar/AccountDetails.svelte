@@ -96,7 +96,7 @@
   }
 
   .content-wrapper::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
+    @apply bg-kong-bg-dark;
     border-radius: 3px;
   }
 
@@ -107,7 +107,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 2px;
-    background: rgba(255, 255, 255, 0.1);
+    @apply bg-kong-bg-dark;
     padding: 2px;
     border-radius: 6px;
     width: 100%;
@@ -118,7 +118,7 @@
     padding: 0.75rem 0.5rem;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.8);
+    @apply text-kong-text-secondary;
     font-size: clamp(0.75rem, 2vw, 0.875rem);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -127,7 +127,7 @@
   }
 
   .tab-button.active {
-    background-color: rgba(0, 0, 0, 0.48);
-    color: white;
+    @apply bg-kong-primary;
+    @apply text-white;
   }
 </style>

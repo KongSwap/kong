@@ -413,7 +413,7 @@
 </script>
 
 <Panel
-  variant="green"
+  variant="transparent"
   width="auto"
   className="token-panel w-full max-w-[690px]"
 >
@@ -421,9 +421,9 @@
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg"
   >
     <header>
-      <div class="flex items-center justify-between gap-4 min-h-[2.5rem] mb-5">
+      <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
         <h2
-          class="text-[clamp(1.5rem,4vw,2rem)] font-semibold text-white m-0 tracking-tight leading-none"
+          class="text-2xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
@@ -434,12 +434,12 @@
               title="Price Impact"
             >
               <span
-                class="text-[0.875rem] font-medium text-white/70 uppercase tracking-wide"
+                class="text-[0.875rem] font-medium text-kong-text-primary uppercase tracking-wide"
               >
                 Impact
               </span>
               <span
-                class="text-[1rem] font-semibold text-white"
+                class="text-[1rem] font-semibold text-kong-text-primary"
                 class:high={$animatedSlippage >= HIGH_IMPACT_THRESHOLD}
               >
                 {$animatedSlippage.toFixed(2)}%
@@ -468,7 +468,7 @@
             inputmode="decimal"
             pattern="[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-white text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
+            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary"
             class:opacity-0={isLoading && panelType === "receive"}
             value={formattedDisplayAmount}
             on:input={handleInput}
@@ -528,21 +528,21 @@
       </div>
     </div>
 
-    <footer class="text-white text-[clamp(0.75rem,2vw,0.875rem)]">
+    <footer class="text-kong-text-primary text-[clamp(0.75rem,2vw,0.875rem)]">
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide mobile-text">Value</span>
-          <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
+          <span class="text-kong-text-primary font-normal tracking-wide mobile-text">Value</span>
+          <span class="pl-1 text-kong-text-primary font-medium tracking-wide mobile-text">
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
         {#if token}
           <div class="flex items-center gap-2">
-            <span class="text-white/50 font-normal tracking-wide mobile-text">
+            <span class="text-kong-text-primary font-normal tracking-wide mobile-text">
               Available:
             </span>
             <button
-              class="pl-1 text-white/70 font-semibold tracking-tight mobile-text"
+              class="pl-1 text-kong-text-primary font-semibold tracking-tight mobile-text"
               class:clickable={title === "You Pay" && !disabled}
               on:click={handleMaxClick}
             >
@@ -604,9 +604,8 @@
   }
 
   .token-symbol {
-    font-size: 15px;
-    color: white;
-    font-weight: 500;
+    color: rgb(var(--text-primary));
+    @apply font-semibold text-xl;
   }
 
   @media (max-width: 420px) {
@@ -622,14 +621,14 @@
 
   .select-token-text {
     font-size: 2rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgb(var(--text-primary) / 0.7);
     text-align: left;
   }
 
   .chevron {
     width: 1.25rem;
     height: 1.25rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgb(var(--text-primary) / 0.5);
   }
 
   /* Mobile optimizations */
@@ -652,7 +651,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgb(var(--text-primary) / 0.5);
     animation: bounce 1.4s infinite ease-in-out both;
   }
 

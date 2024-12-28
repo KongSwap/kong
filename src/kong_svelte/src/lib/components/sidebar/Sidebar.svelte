@@ -90,6 +90,7 @@
         <Panel
           width="100%"
           height="100%"
+          variant="solid"
           className="sidebar-panel"
         >
           <div class="sidebar-layout">
@@ -127,7 +128,7 @@
   </div>
 {/if}
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .sidebar-root {
     position: fixed;
     inset: 0;

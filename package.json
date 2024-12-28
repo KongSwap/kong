@@ -21,7 +21,8 @@
     "@dfinity/ledger-icp": "2.6.5",
     "@dfinity/nns": "8.1.0",
     "@dfinity/principal": "2.2.0",
-    "@dfinity/utils": "2.8.0"
+    "@dfinity/utils": "2.8.0",
+    "date-fns": "^4.1.0"
   },
   "workspaces": [
     "src/kong_svelte"

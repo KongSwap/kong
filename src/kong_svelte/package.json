@@ -20,17 +20,18 @@
   "dependencies": {
     "@windoge98/plug-n-play": "0.0.22",
     "bignumber.js": "^9.1.2",
+    "chart.js": "^4.4.7",
+    "chartjs-adapter-date-fns": "^3.0.0",
     "comlink": "^4.4.2",
     "date-fns": "^4.1.0",
     "dexie": "4.0.10",
     "html5-qrcode": "^2.3.8",
     "hyperid": "^3.3.0",
-    "qrcode": "^1.5.4",
-    "borc": "^3.0.0"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.1",
-    "@sveltejs/kit": "2.15.0",
+    "@sveltejs/kit": "2.15.1",
     "@sveltejs/vite-plugin-svelte": "4.0.2",
     "@tailwindcss/forms": "^0.5.9",
     "@tailwindcss/typography": "^0.5.15",
@@ -61,7 +62,7 @@
     "vite": "5.4.11",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-environment": "^1.1.3",
-    "vite-plugin-pwa": "0.21.0",
+    "vite-plugin-pwa": "0.21.1",
     "vitest": "^2.1.3",
     "zod": "^3.23.8"
   }

@@ -1,26 +1,48 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-// Always use modern theme, ignoring stored value
-const storedMode = browser ? localStorage.getItem('themeMode') : 'dark';
+type Theme = 'dark' | 'light';
 
-// Create a readonly store that always returns 'modern'
-export const themeStore = writable('modern');
-export const themeModeStore = writable(storedMode || 'dark');
+function createThemeStore() {
+  const { subscribe, set } = writable<Theme>('dark');
 
-// Subscribe to changes and update localStorage
-if (browser) {
-  themeStore.subscribe(() => {
-    localStorage.setItem('theme', 'modern');
-    document.documentElement.setAttribute('data-theme', 'modern');
-  });
+  function validateTheme(theme: string | null): Theme {
+    return theme === 'dark' || theme === 'light' ? theme : 'dark';
+  }
 
-  themeModeStore.subscribe((value) => {
-    localStorage.setItem('themeMode', value);
-    if (value === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+  return {
+    subscribe,
+    setTheme: (theme: Theme) => {
+      if (browser) {
+        localStorage.setItem('theme', theme);
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(theme);
+        set(theme);
+      }
+    },
+    toggleTheme: () => {
+      if (browser) {
+        const currentTheme = validateTheme(localStorage.getItem('theme'));
+        const newTheme: Theme = currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', newTheme);
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(newTheme);
+        set(newTheme);
+      }
+    },
+    initTheme: () => {
+      if (browser) {
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme: Theme = validateTheme(savedTheme) || (prefersDark ? 'dark' : 'light');
+        
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(theme);
+        set(theme);
+        localStorage.setItem('theme', theme);
+      }
     }
-  });
+  };
 }
+
+export const themeStore = createThemeStore();

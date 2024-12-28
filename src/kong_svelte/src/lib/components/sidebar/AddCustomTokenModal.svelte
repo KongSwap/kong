@@ -85,7 +85,7 @@
   {onClose}
   title="Add Custom Token"
 >
-  <div class="add-token-modal">
+  <div class="add-token-modal" on:click|stopPropagation>
     {#if step === 'input'}
       <form on:submit|preventDefault={handleSearch} class="form-content">
         <div class="input-section">

@@ -6,7 +6,6 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import Panel from "$lib/components/common/Panel.svelte";
-  import type { Pool } from "$lib/services/pools";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import { goto } from "$app/navigation";
 
@@ -19,10 +18,11 @@
       symbol_0: string;
       symbol_1: string;
     }[];
+    className?: string;
   }>();
 
   // Function to get paginated pools
-  function getPaginatedPools(pools: BE.Pool[]): { pools: Pool[] } {
+  function getPaginatedPools(pools: BE.Pool[]): { pools: BE.Pool[] } {
     if (!props.token) return { pools: [] };
 
     const filteredPools = pools
@@ -49,7 +49,7 @@
 
   // Add helper function to calculate pool share
   function calculatePoolShare(
-    pool: Pool,
+    pool: BE.Pool,
     userBalance:
       | {
           balance: string;
@@ -71,7 +71,7 @@
   }
 </script>
 
-<Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
+<Panel variant="transparent" type="main" className={props.className}>
   <div class="flex flex-col h-[600px] w-full">
     <div class="p-4 border-b border-slate-700/70">
       <h2 class="text-2xl font-semibold text-white/80">Token Pools</h2>

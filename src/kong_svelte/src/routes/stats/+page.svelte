@@ -279,299 +279,280 @@
   }
 </script>
 
-<section class="flex flex-col w-full h-[100dvh] px-4">
-  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
-    {#if $isMobile}
-      <div class="flex gap-4 sticky top-0 z-30">
-        <button
-          class="flex-1 px-4 py-2 rounded-lg transition-colors duration-200 {$activeStatsSection === 'tokens' ? 'bg-kong-primary text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
-          on:click={() => activeStatsSection.set("tokens")}
-        >
-          Tokens
-        </button>
-        <button
-          class="flex-1 px-4 py-2 rounded-lg transition-colors duration-200
-                 {$activeStatsSection === 'marketStats'
-            ? 'bg-kong-primary text-white'
-            : 'bg-[#2a2d3d] text-[#8890a4]'}"
-          on:click={() => activeStatsSection.set("marketStats")}
-        >
-          Market Stats
-        </button>
-      </div>
-    {/if}
-
-    {#if !$isMobile || ($isMobile && $activeStatsSection === "marketStats")}
-      <StatsCards
-        volume24h={Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6}
-        totalLiquidity={Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6}
-        totalFees={Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6}
-        isMobile={$isMobile}
-      />
-    {/if}
-
-    {#if $activeStatsSection === "tokens"}
-      <Panel
-        variant="green"
-        type="main"
-        className="content-panel flex-1 !p-0 mt-2"
-        height="100%"
-      >
-        <div class="flex flex-col h-full">
-          <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
-            <div
-              class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2"
-            >
-              <div class="flex bg-transparent">
-                <button
-                  class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
-                    ? 'text-[#8890a4] hover:text-white'
-                    : 'text-white'}"
-                  on:click={() => showFavoritesOnly.set(false)}
-                >
-                  All Tokens
-                </button>
-                <button
-                  class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
-                    ? 'text-white'
-                    : 'text-[#8890a4] hover:text-white'}"
-                  on:click={handleFavoritesClick}
-                >
-                  My Favorites
-                  {#if $auth.isConnected}
-                    <span
-                      class="ml-1 px-2 py-0.5 text-white/80 bg-blue-400/60 rounded text-xs"
-                    >
-                      {$favoriteCount}
-                    </span>
-                  {/if}
-                </button>
-              </div>
-
-              <div class="flex-1 px-4 py-2">
-                <input
-                  type="text"
-                  placeholder={$isMobile
-                    ? "Search tokens..."
-                    : "Search tokens by name, symbol, or canister ID"}
-                  class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
-                  on:input={handleSearch}
-                  disabled={$showFavoritesOnly}
-                />
-              </div>
-            </div>
+<section class="flex flex-col w-full max-h-[calc(100dvh-8rem)] px-4">
+  <div class="z-10 flex flex-col lg:flex-row w-full h-full mx-auto gap-4 max-w-[1300px]">
+    <Panel variant="transparent" type="main" className="content-panel flex-1 !p-0" height="100%">
+      <div class="flex flex-col h-full">
+        <!-- Stats Section -->
+        {#if !$isMobile || ($isMobile && $activeStatsSection === "marketStats")}
+          <div class="sticky top-0 z-20">
+            <StatsCards
+              volume24h={Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6}
+              totalLiquidity={Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6}
+              totalFees={Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6}
+              isMobile={$isMobile}
+            />
           </div>
+        {/if}
 
-          {#if $filteredTokens.length === 0}
-            <div class="flex flex-col items-center justify-center h-64 text-center">
-              {#if $showFavoritesOnly && !$auth.isConnected}
-                <p class="text-gray-400 mb-4">Connect your wallet to view and manage your favorite tokens</p>
-                <ButtonV2 
-                  variant="solid"
-                  theme="primary"
-                  onClick={() => sidebarStore.open()}
-                >
-                  Connect Wallet
-                </ButtonV2>
-              {:else}
-                <p class="text-gray-400">
-                  No tokens found matching your search criteria
-                </p>
-              {/if}
-            </div>
-          {:else}
-            <div
-              class="flex-1 custom-scrollbar {$isMobile
-                ? 'h-[calc(99vh-11rem)]'
-                : 'h-[calc(100vh-1rem)]'}"
-            >
-              {#if !$isMobile}
-                <!-- Desktop table view -->
-                <div class="flex flex-col h-full">
-                  <!-- Header outside scroll area -->
-                  <table
-                    bind:this={tableHeader}
-                    class="w-full border-collapse min-w-[800px] md:min-w-0 sticky top-0 z-20"
+        <!-- Table Section -->
+        {#if $activeStatsSection === "tokens"}
+          <div class="flex flex-col h-full">
+            <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
+              <div
+                class="hidden sm:flex items-center gap-3 pb-1 border-b border-kong-border pt-2"
+              >
+                <div class="flex bg-transparent">
+                  <button
+                    class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
+                      ? 'text-[#8890a4] hover:text-kong-text-primary'
+                      : 'text-kong-text-primary'}"
+                    on:click={() => showFavoritesOnly.set(false)}
                   >
-                    <thead class="bg-[#1E1F2A] sticky top-0 z-20">
-                      <tr class="h-10 border-b border-[#2a2d3d] bg-white/[0.02]">
-                        <th
-                          class="col-rank text-center py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("marketCapRank")}
-                        >
-                          #
-                          <svelte:component
-                            this={getSortIcon("marketCapRank")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="col-token text-left py-2 pl-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("token_name")}
-                        >
-                          Token
-                          <svelte:component
-                            this={getSortIcon("token_name")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="col-price text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("price")}
-                        >
-                          Price
-                          <svelte:component
-                            this={getSortIcon("price")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="col-change text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("price_change_24h")}
-                        >
-                          24h
-                          <svelte:component
-                            this={getSortIcon("price_change_24h")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="col-volume text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("volume_24h")}
-                        >
-                          Vol
-                          <svelte:component
-                            this={getSortIcon("volume_24h")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="col-mcap text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("marketCap")}
-                        >
-                          MCap
-                          <svelte:component
-                            this={getSortIcon("marketCap")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="col-tvl text-right py-2 pr-3 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
-                          on:click={() => toggleSort("tvl")}
-                        >
-                          TVL
-                          <svelte:component
-                            this={getSortIcon("tvl")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                      </tr>
-                    </thead>
-
-                      <tbody class="!px-4"  bind:this={tableBody}>
-                        {#each $filteredTokens as token (token.canister_id)}
-                          <StatsTableRow
-                            {token}
-                            isConnected={$auth.isConnected}
-                            isFavorite={isTokenFavorited(token.canister_id)}
-                            priceClass={getPriceClass(token)}
-                            trendClass={getTrendClass(token)}
-                            kongCanisterId={KONG_CANISTER_ID}
-                          />
-                        {/each}
-                      </tbody>
-                    </table>
+                    All Tokens
+                  </button>
+                  <button
+                    class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
+                      ? 'text-kong-text-primary'
+                      : 'text-[#8890a4] hover:text-kong-text-primary'}"
+                    on:click={handleFavoritesClick}
+                  >
+                    My Favorites
+                    {#if $auth.isConnected}
+                      <span
+                        class="ml-1 px-2 py-0.5 text-kong-text-primary/80 bg-blue-400/60 rounded text-xs"
+                      >
+                        {$favoriteCount}
+                      </span>
+                    {/if}
+                  </button>
                 </div>
-              {:else}
-                <!-- Mobile view with virtualization -->
-                <div class="mobile-container">
-                  {#if $isMobile}
-                    <!-- Mobile sorting options -->
-                    <div
-                      class="flex items-center gap-2 mb-2 bg-[#1a1b23] p-4 z-10 border-b border-[#2a2d3d]"
+
+                <div class="flex-1 px-4 py-2">
+                  <input
+                    type="text"
+                    placeholder={$isMobile
+                      ? "Search tokens..."
+                      : "Search tokens by name, symbol, or canister ID"}
+                    class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
+                    on:input={handleSearch}
+                    disabled={$showFavoritesOnly}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {#if $filteredTokens.length === 0}
+              <div class="flex flex-col items-center justify-center h-64 text-center">
+                {#if $showFavoritesOnly && !$auth.isConnected}
+                  <p class="text-gray-400 mb-4">Connect your wallet to view and manage your favorite tokens</p>
+                  <ButtonV2 
+                    variant="solid"
+                    theme="primary"
+                    on:click={() => sidebarStore.open()}
+                  >
+                    Connect Wallet
+                  </ButtonV2>
+                {:else}
+                  <p class="text-gray-400">
+                    No tokens found matching your search criteria
+                  </p>
+                {/if}
+              </div>
+            {:else}
+              <div
+                class="flex-1 custom-scrollbar {$isMobile
+                  ? 'h-[calc(100vh-8rem)]'
+                  : 'h-[calc(100vh-1rem)]'}"
+              >
+                {#if !$isMobile}
+                  <!-- Desktop table view -->
+                  <div class="flex flex-col h-full">
+                    <!-- Header outside scroll area -->
+                    <table
+                      bind:this={tableHeader}
+                      class="w-full border-collapse min-w-[800px] md:min-w-0 sticky top-0 z-20"
                     >
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore ===
-                        'marketCap'
-                          ? 'bg-primary-blue text-white'
-                          : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("marketCap")}
-                      >
-                        MCap
-                        <svelte:component
-                          this={getSortIcon("marketCap")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore ===
-                        'volume_24h'
-                          ? 'bg-primary-blue text-white'
-                          : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("volume_24h")}
-                      >
-                        Vol
-                        <svelte:component
-                          this={getSortIcon("volume_24h")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore ===
-                        'tvl'
-                          ? 'bg-primary-blue text-white'
-                          : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("tvl")}
-                      >
-                        TVL
-                        <svelte:component
-                          this={getSortIcon("tvl")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore ===
-                        'price_change_24h'
-                          ? 'bg-primary-blue text-white'
-                          : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("price_change_24h")}
-                      >
-                        24h
-                        <svelte:component
-                          this={getSortIcon("price_change_24h")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                    </div>
-                  {/if}
-                  <div class="mobile-scroll-container" on:scroll={handleScroll}>
-                    <div class="relative" style="height: {$filteredTokens.length * ITEM_HEIGHT}px">
-                      {#each $visibleItems as {token, y} (token.canister_id)}
-                        <div
-                          class="absolute w-full"
-                          style="transform: translateY({y}px)"
-                          on:click={() => goto(`/stats/${token.canister_id}`)}
-                        >
-                          <div class="mx-4">
-                            <TokenCardMobile
+                      <thead class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]">
+                        <tr class="h-10 border-b border-kong-border">
+                          <th
+                            class="col-rank text-center py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("marketCapRank")}
+                          >
+                            #
+                            <svelte:component
+                              this={getSortIcon("marketCapRank")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                          <th
+                            class="col-token text-left py-2 pl-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("token_name")}
+                          >
+                            Token
+                            <svelte:component
+                              this={getSortIcon("token_name")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                          <th
+                            class="col-price text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("price")}
+                          >
+                            Price
+                            <svelte:component
+                              this={getSortIcon("price")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                          <th
+                            class="col-change text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("price_change_24h")}
+                          >
+                            24h
+                            <svelte:component
+                              this={getSortIcon("price_change_24h")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                          <th
+                            class="col-volume text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("volume_24h")}
+                          >
+                            Vol
+                            <svelte:component
+                              this={getSortIcon("volume_24h")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                          <th
+                            class="col-mcap text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("marketCap")}
+                          >
+                            MCap
+                            <svelte:component
+                              this={getSortIcon("marketCap")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                          <th
+                            class="col-tvl text-right py-2 pr-3 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            on:click={() => toggleSort("tvl")}
+                          >
+                            TVL
+                            <svelte:component
+                              this={getSortIcon("tvl")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </th>
+                        </tr>
+                      </thead>
+
+                        <tbody class="!px-4"  bind:this={tableBody}>
+                          {#each $filteredTokens as token (token.canister_id)}
+                            <StatsTableRow
                               {token}
                               isConnected={$auth.isConnected}
                               isFavorite={isTokenFavorited(token.canister_id)}
                               priceClass={getPriceClass(token)}
                               trendClass={getTrendClass(token)}
+                              kongCanisterId={KONG_CANISTER_ID}
                             />
-                          </div>
-                        </div>
-                      {/each}
-                    </div>
+                          {/each}
+                        </tbody>
+                      </table>
                   </div>
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </Panel>
-    {/if}
+                {:else}
+                  <!-- Mobile view with virtualization -->
+                  <Panel variant="transparent" type="main" className="!p-0" height="100%">
+                    <div class="flex flex-col h-full !p-0 !overflow-hidden">
+                      {#if $isMobile}
+                        <!-- Mobile sorting options -->
+                        <div 
+                          class="sticky top-0 left-0 right-0 flex items-center gap-2 p-4 z-50 border-b border-kong-border bg-kong-bg-dark backdrop-blur-md"
+                          style="position: -webkit-sticky;"
+                        >
+                          <button
+                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap'
+                              ? 'bg-kong-primary text-white'
+                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                            on:click={() => toggleSort("marketCap")}
+                          >
+                            MCap
+                            <svelte:component
+                              this={getSortIcon("marketCap")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </button>
+                          <button
+                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'volume_24h'
+                              ? 'bg-kong-primary text-white'
+                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                            on:click={() => toggleSort("volume_24h")}
+                          >
+                            Vol
+                            <svelte:component
+                              this={getSortIcon("volume_24h")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </button>
+                          <button
+                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'tvl'
+                              ? 'bg-kong-primary text-white'
+                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                            on:click={() => toggleSort("tvl")}
+                          >
+                            TVL
+                            <svelte:component
+                              this={getSortIcon("tvl")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </button>
+                          <button
+                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'price_change_24h'
+                              ? 'bg-kong-primary text-white'
+                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                            on:click={() => toggleSort("price_change_24h")}
+                          >
+                            24h
+                            <svelte:component
+                              this={getSortIcon("price_change_24h")}
+                              class="inline w-3.5 h-3.5 ml-1"
+                            />
+                          </button>
+                        </div>
+                      {/if}
+                      
+                      <div class="h-full overflow-auto mt-2" on:scroll={handleScroll}>
+                        <div class="relative" style="height: {$filteredTokens.length * ITEM_HEIGHT}px; padding-bottom: 60px;">
+                          {#each $filteredTokens as token, index (token.canister_id)}
+                            <div
+                              class="absolute w-full"
+                              style="transform: translateY({index * ITEM_HEIGHT}px)"
+                              on:click={() => goto(`/stats/${token.canister_id}`)}
+                            >
+                              <div class="mx-4">
+                                <TokenCardMobile
+                                  {token}
+                                  isConnected={$auth.isConnected}
+                                  isFavorite={isTokenFavorited(token.canister_id)}
+                                  priceClass={getPriceClass(token)}
+                                  trendClass={getTrendClass(token)}
+                                />
+                              </div>
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                    </div>
+                  </Panel>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    </Panel>
   </div>
 </section>
 
@@ -582,19 +563,6 @@
 
   .custom-scrollbar {
     @apply h-full overflow-auto;
-  }
-
-  .mobile-container {
-    @apply flex flex-col h-full overflow-hidden;
-  }
-
-  .mobile-scroll-container {
-    @apply flex-1 overflow-y-auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  thead tr {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
   }
 
   th {

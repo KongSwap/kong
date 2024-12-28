@@ -4,7 +4,7 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import "./colors.css";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
-  import { RefreshCw, Maximize2, Minimize2 } from "lucide-svelte";
+  import { RefreshCw } from "lucide-svelte";
   import { loadBalances, portfolioValue } from "$lib/services/tokens/tokenStore";
   import { auth } from "$lib/services/auth";
 
@@ -53,7 +53,7 @@
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet information">
         <div class="flex items-center gap-2 flex-1 max-w-[calc(100%-72px)]">
           <button
-            class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-white font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
+            class="flex items-center bg-black/25 p-2 rounded-md border border-gray-700 w-full h-10 text-kong-text-primary font-mono text-sm transition-all duration-200 ease-in-out shadow-inner"
             on:click={() => accountStore.showAccountDetails()}
             aria-label="View account details"
           >
@@ -78,7 +78,7 @@
         </div>
         <div class="flex gap-2">
           <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
+            class="border border-gray-700 p-1.5 rounded-md text-kong-text-primary cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={handleDisconnect}
             aria-label="Disconnect wallet"
           >
@@ -99,7 +99,7 @@
             </svg>
           </button>
           <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
+            class="border border-gray-700 p-1.5 rounded-md text-kong-text-primary cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={onClose}
             aria-label="Close sidebar"
           >
@@ -140,14 +140,14 @@
             {/if}
           </p>
           <div class="refresh-overlay glow-box">
-            <RefreshCw size={24} class="text-lime-400 glow" />
+            <RefreshCw size={24} class="text-kong-accent-green glow" />
           </div>
         </button>
       </div>
       <nav class="grid grid-cols-3 rounded-lg overflow-hidden">
         {#each tabs as tab (tab)}
           <button
-            class="tab-button relative py-2.5 px-4 text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-white"
+            class="tab-button relative py-2.5 px-4 text-gray-300 font-semibold text-lg transition-all duration-200 hover:text-kong-text-primary"
             class:active-tab={activeTab === tab}
             on:click={() => setActiveTab(tab)}
             role="tab"
@@ -166,10 +166,10 @@
       </nav>
     {:else}
       <div class="flex items-center justify-between gap-2 flex-nowrap" role="group" aria-label="Wallet selection">
-        <h1 id="wallet-select-title" class="font-mono text-lg text-gray-500 m-0 font-semibold py-1.5">Select Wallet</h1>
+        <h1 id="wallet-select-title" class="font-mono text-lg text-kong-text-secondary m-0 font-semibold py-1.5">Select Wallet</h1>
         <div class="flex gap-2">
           <button
-            class="border border-gray-700 p-1.5 rounded-md text-white cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
+            class="border border-gray-700 p-1.5 rounded-md text-kong-text-primary cursor-pointer flex items-center justify-center transition-all duration-150 ease shadow-sm w-10 h-10 hover:transform hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-700"
             on:click={onClose}
             aria-label="Close sidebar"
           >

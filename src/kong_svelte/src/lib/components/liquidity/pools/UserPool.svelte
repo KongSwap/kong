@@ -243,8 +243,8 @@
 
     // Add function to generate add liquidity URL
     function getAddLiquidityUrl(): string {
-        if (!token0?.canister_id || !token1?.canister_id) return '/earn/add';
-        return `/earn/add?token0=${token0.canister_id}&token1=${token1.canister_id}`;
+        if (!token0?.canister_id || !token1?.canister_id) return '/pools/add';
+        return `/pools/add?token0=${token0.canister_id}&token1=${token1.canister_id}`;
     }
 
     async function handleAddMoreLiquidity() {

@@ -19,8 +19,6 @@
     ArrowDown,
     ArrowUpDown,
     Droplets,
-    Lock,
-    Wallet,
   } from "lucide-svelte";
   import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
   import { auth } from "$lib/services/auth";
@@ -77,7 +75,7 @@
   });
 
   function handleAddLiquidity(token0: string, token1: string) {
-    goto(`/earn/add?token0=${token0}&token1=${token1}`);
+    goto(`/pools/add?token0=${token0}&token1=${token1}`);
   }
 
   function handleShowDetails(pool) {
@@ -146,53 +144,11 @@
 </script>
 
 <section
-  class="flex flex-col w-full h-full px-4 pb-4 {$isMobile ? 'pb-24' : ''}"
+  class="flex flex-col w-full h-[calc(100vh-7rem)] px-4 pb-4"
 >
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
-    {#if !$isMobile}
-      <div class="earn-cards">
-        <button
-          class="earn-card"
-          class:active={$activeSection === "pools"}
-          on:click={() => activeSection.set("pools")}
-        >
-          <div class="card-content">
-            <h3>Pools</h3>
-            <div class="apy">Up to {$highestApr.toLocaleString(undefined, { maximumFractionDigits: 2 })}% APY</div>
-          </div>
-          <div class="stat-icon-wrapper">
-            <Droplets class="stat-icon" />
-          </div>
-        </button>
-
-        <div class="earn-card" aria-disabled="true">
-          <div class="card-content">
-            <h3>Staking</h3>
-            <div class="coming-soon-label">
-              <span class="coming-soon-icon">🚀</span>
-              <span class="coming-soon-text">Coming Soon</span>
-            </div>
-          </div>
-          <div class="stat-icon-wrapper">
-            <Lock class="stat-icon" />
-          </div>
-        </div>
-
-        <div class="earn-card" aria-disabled="true">
-          <div class="card-content">
-            <h3>Borrowing & Lending</h3>
-            <div class="coming-soon-label">
-              <span class="coming-soon-icon">💰</span>
-              <span class="coming-soon-text">Coming Soon</span>
-            </div>
-          </div>
-          <div class="stat-icon-wrapper">
-            <Wallet class="stat-icon" />
-          </div>
-        </div>
-      </div>
-    {/if}
-
+    <!-- Add page heading -->
+  
     {#if $activeSection === "pools"}
       <Panel className="flex-1 {$isMobile ? '' : '!p-0'}">
         <div class="overflow-hidden flex flex-col">
@@ -202,60 +158,60 @@
               <!-- Mobile-only buttons -->
               <div class="flex flex-col gap-3 sm:hidden">
                 <div class="w-full">
-                  <div class="bg-[#1A1B24] border border-[#2a2d3d] rounded-lg w-full">
+                  <div class="bg-kong-bg-dark border border-kong-border rounded-lg w-full">
                     <div class="flex items-center w-full">
-                      <div class="flex w-full border-r border-[#2a2d3d]">
+                      <div class="flex w-full border-r border-kong-border">
                         <button
                           class="px-4 py-2 w-1/2 transition-colors duration-200 {$activePoolView === 'all'
-                            ? 'text-white'
-                            : 'text-[#8890a4] hover:text-white'}"
+                            ? 'text-kong-text-primary'
+                            : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                           on:click={() => ($activePoolView = "all")}
                         >
                           All Pools
                         </button>
                         <button
                           class="px-4 py-2 w-1/2 transition-colors duration-200 {$activePoolView === 'user'
-                            ? 'text-white'
-                            : 'text-[#8890a4] hover:text-white'}"
+                            ? 'text-kong-text-primary'
+                            : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                           on:click={() => ($activePoolView = "user")}
                         >
-                        My Pools <span class="text-xs ml-1 font-bold py-0 text-black bg-blue-400/90 px-1.5 rounded">{$userPoolBalances.length}</span>
+                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary px-1.5 rounded">{$userPoolBalances.length}</span>
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="w-full bg-[#1a1b23] border border-[#2a2d3d] rounded-lg px-4 py-2">
+                <div class="w-full bg-kong-bg-dark border border-kong-border rounded-lg px-4 py-2">
                   <input
                     type="text"
                     placeholder={$isMobile == true ? "Search pools..." : "Search pools by name, symbol, or canister ID"}
-                    class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
+                    class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
                     bind:value={searchTerm}
                     on:input={handleSearch}
                   />
                 </div>
               </div>
               <!-- Desktop view -->
-              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2">
+              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-kong-border pt-2">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
                       <button
                         class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'all'
-                          ? 'text-white'
-                          : 'text-[#8890a4] hover:text-white'}"
+                          ? 'text-kong-text-primary'
+                          : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                         on:click={() => ($activePoolView = "all")}
                       >
                         All Pools
                       </button>
                       <button
                         class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'user'
-                          ? 'text-white'
-                          : 'text-[#8890a4] hover:text-white'}"
+                          ? 'text-kong-text-primary'
+                          : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                         on:click={() => ($activePoolView = "user")}
                       >
-                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-blue-400/60 px-1.5 rounded">{$userPoolBalances.length}</span>
+                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded">{$userPoolBalances.length}</span>
                       </button>
                     </div>
 
@@ -263,7 +219,7 @@
                       <input
                         type="text"
                         placeholder={$isMobile == true ? "Search pools..." : "Search pools by name, symbol, or canister ID"}
-                        class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
+                        class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
                         bind:value={searchTerm}
                         on:input={handleSearch}
                       />
@@ -272,8 +228,8 @@
                 </div>
 
                 <button
-                  class="flex items-center gap-2 rounded-none !rounded-tr-lg px-4 py-2 text-white/80 hover:text-primary-blue"
-                  on:click={() => goto("/earn/add")}
+                  class="flex items-center gap-2 rounded-none !rounded-tr-lg px-4 py-2 text-kong-text-primary/80 hover:text-kong-primary"
+                  on:click={() => goto("/pools/add")}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -296,11 +252,11 @@
             <!-- Mobile Sort Controls -->
             {#if $isMobile && $activePoolView === "all"}
               <div
-                class="flex items-center justify-between mt-2 py-1 rounded-lg"
+                class="flex items-center justify-between py-1 rounded-lg sticky z-20 bg-kong-bg-dark border-b border-kong-border"
               >
                 <select
                   bind:value={$poolSortColumn}
-                  class="bg-transparent text-white text-sm focus:outline-none"
+                  class="bg-transparent text-kong-text-primary text-sm focus:outline-none"
                 >
                   <option value="rolling_24h_volume">Volume 24H</option>
                   <option value="tvl">TVL</option>
@@ -323,59 +279,59 @@
             {/if}
           </div>
 
-          <div class="overflow-auto flex-1 custom-scrollbar">
+          <div class="h-full custom-scrollbar overflow-y-auto">
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
               <div
-                class="overflow-auto flex-1 max-h-[calc(100vh-17.5rem)] {$isMobile
-                  ? 'max-h-[calc(101vh-21.5rem)] pb-20'
+                class="overflow-auto {$isMobile
+                  ? ''
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
                 <table class="pools-table w-full hidden md:table relative">
-                  <thead class="sticky top-0 z-10 bg-[#1E1F2A]">
-                    <tr class="h-10 border-b border-[#2a2d3d]">
+                  <thead class="sticky top-0 z-10 bg-kong-bg-dark">
+                    <tr class="h-10 border-b border-kong-border bg-kong-bg-dark">
                       <th
-                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("pool_name")}
                       >
                         Pool
                         <svelte:component this={getSortIcon("pool_name")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("price")}
                       >
                         Price
                         <svelte:component this={getSortIcon("price")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("tvl")}
                       >
                         TVL
                         <svelte:component this={getSortIcon("tvl")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_volume")}
                       >
                         Volume 24H
                         <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
                       <th
-                        class="text-left text-sm font-medium text-[#8890a4] cursor-pointer"
+                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_apy")}
                       >
                         APY
                         <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-3.5 h-3.5 ml-1" />
                       </th>
-                      <th class="text-left text-sm font-medium text-[#8890a4]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody class="!px-4">
+                  <tbody class="!px-4 h-full">
                     {#each $filteredLivePools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
+                        on:click={() => goto(`/pools/create?token0=${pool.address_0}&token1=${pool.address_1}`)}
                         pool={{
                           ...pool,
                           tvl: BigInt(pool.tvl),
@@ -396,10 +352,10 @@
                 </table>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="md:hidden space-y-4 mt-2">
+                <div class="md:hidden space-y-4 mt-2 h-full">
                   {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <div
-                      class="bg-[#1a1b23] p-4 rounded-lg border border-[#2a2d3d] hover:border-[#60A5FA]/30 transition-all duration-200 
+                      class="bg-kong-bg-dark p-4 rounded-lg border border-kong-border hover:border-[#60A5FA]/30 transition-all duration-200 
                             {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) ? 'kong-special-card' : ''}"
                     >
                       <div class="flex items-center justify-between mb-4">
@@ -412,10 +368,10 @@
                             size={32}
                           />
                           <div>
-                            <div class="text-xs text-white">
+                            <div class="text-xs text-kong-text-primary">
                               {pool.symbol_0}/{pool.symbol_1}
                             </div>
-                            <div class="text-xs text-[#8890a4]">
+                            <div class="text-xs text-kong-text-secondary">
                               Pool Tokens
                             </div>
                           </div>
@@ -423,7 +379,7 @@
                         <div class="flex items-center gap-2">
                           <button
                             on:click={() => handleShowDetails(pool)}
-                            class="px-4 py-2 text-sm bg-[#2a2d3d] text-white rounded-lg hover:bg-[#2a2d3d]/90 transition-colors duration-200"
+                            class="px-4 py-2 text-sm bg-kong-bg-dark text-kong-text-primary rounded-lg hover:bg-kong-bg-dark/90 transition-colors duration-200"
                           >
                             Details
                           </button>
@@ -431,30 +387,30 @@
                       </div>
 
                       <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
-                          <div class="text-sm text-[#8890a4] mb-1">Price</div>
-                          <div class="font-medium text-white">
+                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
+                          <div class="text-sm text-kong-text-secondary mb-1">Price</div>
+                          <div class="font-medium text-kong-text-primary">
                             {getPoolPriceUsd(pool)}
                           </div>
                         </div>
-                        <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
-                          <div class="text-sm text-[#8890a4] mb-1">TVL</div>
-                          <div class="font-medium text-white">
+                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
+                          <div class="text-sm text-kong-text-secondary mb-1">TVL</div>
+                          <div class="font-medium text-kong-text-primary">
                             ${formatLargeNumber(Number(pool.tvl), false)}
                           </div>
                         </div>
-                        <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
-                          <div class="text-sm text-[#8890a4] mb-1">
+                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
+                          <div class="text-sm text-kong-text-secondary mb-1">
                             Volume 24H
                           </div>
-                          <div class="font-medium text-white">
+                          <div class="font-medium text-kong-text-primary">
                             ${formatLargeNumber(
                               Number(pool.rolling_24h_volume),
                             )}
                           </div>
                         </div>
-                        <div class="bg-[#2a2d3d]/50 p-3 rounded-lg">
-                          <div class="text-sm text-[#8890a4] mb-1">APY</div>
+                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
+                          <div class="text-sm text-kong-text-secondary mb-1">APY</div>
                           <div class="font-medium text-[#60A5FA]">
                             {Number(pool.rolling_24h_apy).toFixed(2)}%
                           </div>
@@ -481,7 +437,7 @@
                     Connect your wallet to view your liquidity positions
                   </p>
                   <button
-                    class="px-6 py-2 bg-primary-blue text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
+                    class="px-6 py-2 bg-kong-primary text-white rounded-lg hover:bg-[#60A5FA]/90 transition-colors duration-200"
                     on:click={() => {
                       sidebarStore.open();
                     }}
@@ -498,33 +454,6 @@
   </div>
 </section>
 
-{#if $isMobile}
-  <nav class="mobile-nav">
-    <div class="mobile-nav-container">
-      <button
-        class="mobile-nav-item"
-        class:active={$activeSection === "pools"}
-        on:click={() => activeSection.set("pools")}
-      >
-        <span class="nav-icon">💧</span>
-        <span class="nav-label">Pools</span>
-      </button>
-
-      <button class="mobile-nav-item disabled" disabled>
-        <span class="nav-icon">🔒</span>
-        <span class="nav-label">Staking</span>
-        <span class="soon-label">Soon</span>
-      </button>
-
-      <button class="mobile-nav-item disabled" disabled>
-        <span class="nav-icon">💰</span>
-        <span class="nav-label">Borrow & Lend</span>
-        <span class="soon-label">Soon</span>
-      </button>
-    </div>
-  </nav>
-{/if}
-
 {#if showPoolDetails && selectedPool}
   <PoolDetails
     pool={selectedPool}
@@ -539,110 +468,11 @@
 {/if}
 
 <style scoped lang="postcss">
-  .earn-cards {
-    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
-    max-width: 100%;
-  }
-
-  .earn-card {
-    @apply relative flex items-center justify-between p-4 lg:p-6 rounded-lg transition-all duration-200
-           bg-[#1a1b23]/60 border border-[#2a2d3d] text-left
-           hover:bg-[#1e1f2a]/80 hover:border-[#60A5FA]/30 
-           hover:shadow-[0_0_10px_rgba(96,165,250,0.1)]
-           backdrop-blur-sm;
-    min-width: 0; /* Prevent flex items from growing beyond container */
-  }
-
-  .card-content {
-    @apply flex-1 min-w-0; /* Allow content to shrink */
-  }
-
-  .card-content h3 {
-    @apply text-[#8890a4] text-xs lg:text-sm font-medium;
-    white-space: nowrap;
-  }
-
-  .apy {
-    @apply text-[#60A5FA] font-medium text-lg lg:text-2xl mt-2;
-  }
-
-  .stat-icon-wrapper {
-    @apply p-3 lg:p-4 rounded-lg bg-[#2a2d3d] text-[#60A5FA] ml-3 flex-shrink-0;
-  }
-
-  .coming-soon-label {
-    @apply flex items-center gap-1 lg:gap-2 mt-2;
-  }
-
-  .coming-soon-text {
-    @apply text-[#60A5FA] text-sm lg:text-base;
-    white-space: nowrap;
-  }
-
-  .coming-soon-icon {
-    @apply text-lg lg:text-xl;
-  }
-
-  .mobile-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    border-top: 1px solid #2a2d3d;
-    z-index: 50;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
-    border-color: rgb(42 45 61 / var(--tw-border-opacity, 1));
-    background-color: rgb(26 27 35 / 0.9);
-  }
-
-  .mobile-nav-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    height: 4rem;
-  }
-
-  .mobile-nav-item {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    color: #8890a4;
-    transition: color 0.2s;
-  }
-
-  .mobile-nav-item.active {
-    color: #60a5fa;
-  }
-
-  .mobile-nav-item.disabled {
-    opacity: 0.6;
-  }
-
-  .nav-icon {
-    font-size: 1.25rem;
-  }
-
-  .nav-label {
-    font-size: 0.71rem;
-    font-weight: 500;
-  }
-
-  .soon-label {
-    position: absolute;
-    top: 0.75rem;
-    font-size: 0.625rem;
-    color: #60a5fa;
-  }
-
   table th {
     padding: 0.5rem 0.5rem;
     color: #8890a4;
     font-weight: 500;
     font-size: 0.875rem;
-    background-color: #1a1b23;
   }
 
   /* Custom Scrollbar */
@@ -672,16 +502,6 @@
 
   /* For Firefox */
   /* The above scrollbar-color property supports Firefox. The first color is the thumb, the second is the track. */
-
-  @media (max-width: 350px) {
-    .mobile-nav-container {
-      height: 5rem;
-    }
-    
-    .nav-label {
-      font-size: 0.65rem;
-    }
-  }
 
   .kong-special-card {
     background: rgba(0, 255, 128, 0.02);

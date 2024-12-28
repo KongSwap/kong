@@ -7,6 +7,7 @@
     import { formatBalance } from '$lib/utils/numberFormatUtils';
 
     export let token: FE.Token;
+    export let isOpen = true;
     
     type TokenWithAmount = FE.Token & { amount?: string };
     
@@ -19,10 +20,10 @@
 </script>
 
 <Modal
-    isOpen={true}
-    onClose={handleClose}
+    {isOpen}
     title={token.name}
     width="min(800px, 95vw)"
+    onClose={handleClose}
 >
     <div class="token-details">
         <!-- Token Header -->
@@ -92,7 +93,7 @@
     }
 
     .token-header {
-        @apply px-6 py-4 border-b border-white/10;
+        @apply px-6 py-4 border-b border-kong-border;
     }
 
     .token-info {
@@ -118,11 +119,11 @@
     }
 
     .token-symbol {
-        @apply text-lg font-bold text-white;
+        @apply text-lg font-bold text-kong-text-primary;
     }
 
     .token-name {
-        @apply text-sm text-white/70 -mt-0.5;
+        @apply text-sm text-kong-text-primary/70 -mt-0.5;
     }
 
     .balance-info {
@@ -130,27 +131,27 @@
     }
 
     .balance-value {
-        @apply text-lg font-semibold text-white;
+        @apply text-lg font-semibold text-kong-text-primary;
     }
 
     .balance-usd {
-        @apply text-sm text-white/60;
+        @apply text-sm text-kong-text-primary/60;
     }
 
     .action-tabs {
         @apply flex gap-1 p-1 mt-4
-               bg-black/20 rounded-lg;
+               bg-kong-bg-dark rounded-lg;
     }
 
     .tab-button {
         @apply flex-1 px-4 py-2.5
-               text-sm font-medium text-white/60 
+               text-sm font-medium text-kong-text-primary/60 
                rounded-md transition-all
-               hover:text-white hover:bg-white/5;
+               hover:text-kong-text-primary hover:bg-kong-bg-dark/5;
     }
 
     .tab-button.active {
-        @apply bg-white/10 text-white;
+        @apply bg-kong-bg-dark/10 text-kong-text-primary;
     }
 
     .tab-content {

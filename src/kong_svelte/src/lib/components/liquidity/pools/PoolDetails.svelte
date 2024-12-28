@@ -37,7 +37,7 @@
 
   function handleAddLiquidity() {
     if (pool.address_0 && pool.address_1) {
-      goto(`/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`);
+      goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`);
     }
   }
 

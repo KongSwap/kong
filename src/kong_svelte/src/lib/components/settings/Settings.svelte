@@ -8,6 +8,8 @@
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
+  import { fly } from 'svelte/transition';
+  import { themeStore } from '$lib/stores/themeStore';
 
   let soundEnabled = true;
   let settingsSubscription: () => void;
@@ -15,6 +17,8 @@
   let slippageInputValue = '2.0';
   let isMobile = false;
   let isCustomSlippage = false;
+  let showSlippageInfo = false;
+  let customInputFocused = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];
@@ -57,9 +61,6 @@
     slippageInputValue = value.toString();
     isCustomSlippage = false;
     toastStore.success(`Slippage updated to ${value}%`);
-    if (value > 10) {
-      toastStore.warning('Hmm... high slippage. Trade carefully!');
-    }
   }
 
   function handleSlippageChange(e: Event) {
@@ -70,9 +71,6 @@
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
-      if (boundedValue > 10) {
-        toastStore.warning('Hmm... high slippage. Trade carefully!');
-      }
     }
   }
 
@@ -96,14 +94,11 @@
         settingsStore.updateSetting('max_slippage', value);
         slippageValue = value;
         isCustomSlippage = !quickSlippageValues.includes(value);
-        if (value > 10) {
-          toastStore.warning('Hmm... high slippage. Trade carefully!');
-        }
       }
     }
   }
 
-  function handleSlippageBlur() {
+  function handleSlippageBlur(e: Event) {
     if (!$auth.isConnected) {
       // Reset to default value
       slippageInputValue = '2.0';
@@ -127,9 +122,6 @@
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
       if (boundedValue !== value) {
         toastStore.success(`Slippage bounded to ${boundedValue}%`);
-      }
-      if (boundedValue > 10) {
-        toastStore.warning('Hmm... high slippage. Trade carefully!');
       }
     }
   }
@@ -176,42 +168,139 @@
       return () => window.removeEventListener('resize', handleResize);
     }
   });
+
+  // Helper function to determine slippage risk level
+  function getSlippageRiskLevel(value: number): 'safe' | 'warning' | 'danger' {
+    if (value <= 2) return 'safe';
+    if (value <= 5) return 'warning';
+    return 'danger';
+  }
+
+  function handleThemeToggle() {
+    themeStore.toggleTheme();
+  }
 </script>
 
 <div class="settings-container">
   <div class="setting-sections">
+    <!-- Theme Section -->
+    <div class="setting-row">
+      <div class="flex items-center gap-2">
+        <span class="setting-label">Theme</span>
+        {#if $themeStore === 'dark'}
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-kong-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-kong-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        {/if}
+      </div>
+      <Toggle 
+        checked={$themeStore === 'dark'} 
+        on:change={(e) => handleThemeToggle()} 
+      />
+    </div>
+
     <!-- Slippage Section -->
     <div class="setting-section">
       <div class="setting-header">
-        <h3>Slippage Tolerance</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-medium text-kong-text-primary">Slippage Tolerance</h3>
+          <button 
+            class="info-button"
+            on:click={() => showSlippageInfo = !showSlippageInfo}
+            aria-label="Slippage information"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10" stroke-width="2"/>
+              <path stroke-width="2" d="M12 16v-4M12 8h.01"/>
+            </svg>
+          </button>
+        </div>
+        <span class="text-sm text-kong-text-secondary">Maximum price difference during trades</span>
       </div>
+      
+      {#if showSlippageInfo}
+        <div class="info-panel" transition:fly={{ y: -10, duration: 200 }}>
+          <p>Slippage tolerance is the maximum price difference you're willing to accept between the estimated and actual price of your trade.</p>
+          <ul class="mt-2 space-y-1">
+            <li class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-green-500/50"></span>
+              <span>0.1-2%: Recommended for stable pairs</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-yellow-500/50"></span>
+              <span>2-5%: Use caution, higher risk</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-red-500/50"></span>
+              <span>5%+: High risk of unfavorable trades</span>
+            </li>
+          </ul>
+        </div>
+      {/if}
+
       <div class="slippage-content">
         <div class="quick-slippage-buttons">
           {#each quickSlippageValues as value}
             <button
               class="quick-slippage-button"
               class:active={slippageValue === value}
+              class:warning={getSlippageRiskLevel(value) === 'warning'}
+              class:danger={getSlippageRiskLevel(value) === 'danger'}
               on:click={() => handleQuickSlippageSelect(value)}
             >
-              {value}%
+              <span class="value">{value}%</span>
+              {#if slippageValue === value}
+                <span class="active-indicator"></span>
+              {/if}
             </button>
           {/each}
-          <div class="custom-slippage-input" class:active={isCustomSlippage}>
+          <div 
+            class="custom-slippage-input" 
+            class:active={isCustomSlippage}
+            class:focused={customInputFocused}
+            class:warning={getSlippageRiskLevel(slippageValue) === 'warning'}
+            class:danger={getSlippageRiskLevel(slippageValue) === 'danger'}
+          >
             <input
               type="text"
               class="slippage-input"
               value={slippageInputValue}
               on:input={handleSlippageInput}
               on:change={handleSlippageChange}
-              on:blur={handleSlippageBlur}
+              on:blur={(e) => {
+                customInputFocused = false;
+                handleSlippageBlur(e);
+              }}
+              on:focus={() => customInputFocused = true}
               placeholder="Custom"
             />
             <span class="percentage-symbol">%</span>
           </div>
         </div>
-        {#if slippageValue > 10}
-          <div class="warning-text">
-            Warning: High slippage may result in unfavorable trades
+        
+        {#if slippageValue > 0}
+          <div class="slippage-indicator" class:warning={getSlippageRiskLevel(slippageValue) === 'warning'} class:danger={getSlippageRiskLevel(slippageValue) === 'danger'}>
+            <div class="indicator-bar" style="width: {Math.min(slippageValue * 10, 100)}%"></div>
+          </div>
+        {/if}
+
+        {#if slippageValue > 5}
+          <div class="warning-message danger" transition:fly={{ y: 10, duration: 200 }}>
+            <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>High slippage may result in unfavorable trades</span>
+          </div>
+        {:else if slippageValue > 2}
+          <div class="warning-message warning" transition:fly={{ y: 10, duration: 200 }}>
+            <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Consider using lower slippage for better rates</span>
           </div>
         {/if}
       </div>
@@ -231,9 +320,9 @@
     </div>
 
     <div class="setting-row">
-      <span class="setting-label">Clear App Data</span>
+      <span class="setting-label">Reset App</span>
       <button class="action-button warning" on:click={resetDatabase}>
-        Clear Data
+        Reset
       </button>
     </div>
   </div>
@@ -241,25 +330,31 @@
 
 <style lang="postcss">
   .settings-container {
-    @apply w-full text-white;
+    @apply w-full text-kong-text-primary max-w-2xl mx-auto overflow-y-auto h-full;
   }
 
   .setting-sections {
-    @apply grid gap-4 max-w-full;
+    @apply grid gap-6 max-w-full h-full overflow-y-auto;
   }
 
   .setting-section {
-    @apply grid gap-4 bg-black/20 rounded-lg p-4 
-           border border-white/10 backdrop-blur-sm
-           w-full max-w-full overflow-hidden;
+    @apply grid gap-4 bg-kong-bg-dark/40 rounded-2xl p-6 
+           border border-kong-border backdrop-blur-sm
+           w-full max-w-full overflow-hidden
+           transition-all duration-200 shadow-lg shadow-black/10
+           hover:border-kong-border-light;
   }
 
   .setting-header {
-    @apply grid grid-flow-col auto-cols-max items-center gap-2 border-b border-white/15 pb-3;
+    @apply flex flex-col gap-1 border-b border-kong-border pb-4;
   }
 
   .setting-header h3 {
-    @apply text-lg font-semibold text-white;
+    @apply text-kong-text-primary;
+  }
+
+  .setting-header span {
+    @apply text-kong-text-secondary;
   }
 
   .slippage-content {
@@ -267,80 +362,82 @@
   }
 
   .quick-slippage-buttons {
-    @apply flex flex-wrap gap-2 flex-1;
+    @apply grid grid-cols-2 sm:grid-cols-5 gap-2 w-full;
   }
 
   .quick-slippage-button {
-    @apply px-6 py-2.5 rounded-lg 
-           bg-gray-800 text-white/90 text-base font-medium
-           border border-gray-700 transition-all duration-200
-           hover:bg-gray-700 hover:border-gray-600
-           focus:outline-none focus:ring-2 focus:ring-blue-500/50
-           flex-1 min-w-[80px] text-center;
+    @apply relative px-6 py-3 rounded-xl 
+           bg-kong-bg-dark/20 text-kong-text-primary text-base font-medium
+           border border-kong-border transition-all duration-200
+           hover:bg-kong-bg-dark/30 hover:border-kong-border-light
+           focus:outline-none focus:ring-2 focus:ring-kong-primary/30
+           flex items-center justify-center gap-2;
   }
 
-  .quick-slippage-button.active {
-    @apply bg-blue-600 text-white border-blue-500
-           ring-2 ring-blue-500/50;
+  .quick-slippage-button .value {
+    @apply relative z-10;
+  }
+
+  .quick-slippage-button .active-indicator {
+    @apply absolute inset-0 rounded-xl bg-kong-primary/10
+           border border-kong-primary/30 ring-2 ring-kong-primary/20;
   }
 
   .custom-slippage-input {
-    @apply flex items-center gap-2
-           px-4 py-2 rounded-lg bg-gray-800 
-           border-2 border-dashed border-gray-600 transition-all duration-200
-           hover:bg-gray-700 hover:border-gray-500
-           min-w-[120px] flex-1;
-  }
-
-  .custom-slippage-input.active {
-    @apply border-blue-500 bg-blue-600/80 border-solid
-           ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/20;
+    @apply col-span-2 sm:col-span-1 flex items-center gap-2
+           px-4 py-3 rounded-xl bg-kong-bg-dark/20 
+           border border-kong-border transition-all duration-200
+           hover:bg-kong-bg-dark/30 hover:border-kong-border-light;
   }
 
   .slippage-input {
-    @apply w-full bg-transparent text-white/90 text-base font-medium
-           focus:outline-none text-right pr-1;
+    @apply w-full bg-transparent text-kong-text-primary text-base font-medium
+           focus:outline-none text-right pr-1
+           placeholder:text-kong-text-disabled;
   }
 
   .percentage-symbol {
-    @apply text-white/70 font-medium;
+    @apply text-kong-text-secondary font-medium;
   }
 
-  .warning-text {
-    @apply text-yellow-500 text-sm font-medium;
+  .warning-message {
+    @apply flex items-center gap-2 mt-3 px-3 py-2 
+           bg-kong-error/10 border border-kong-error/20 
+           rounded-lg text-kong-error/90 text-sm;
+  }
+
+  .warning-icon {
+    @apply w-5 h-5 flex-shrink-0;
   }
 
   .setting-row {
-    @apply flex items-center justify-between py-3 px-4 
-           bg-black/20 rounded-lg border border-white/10
-           hover:bg-black/30 transition-all duration-200;
+    @apply flex items-center justify-between py-4 px-6 
+           bg-kong-bg-dark/40 rounded-2xl border border-kong-border
+           hover:bg-kong-bg-dark/30 hover:border-kong-border-light
+           transition-all duration-200 shadow-lg shadow-black/10;
   }
 
   .setting-label {
-    @apply text-white/90 text-base font-medium;
+    @apply text-kong-text-primary text-base font-medium;
   }
 
   .action-button {
-    @apply w-[140px] px-4 py-2 rounded-lg 
-           bg-blue-600 text-white text-sm font-medium
-           border border-blue-500 transition-all duration-200
-           hover:bg-blue-500 hover:border-blue-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500/50
-           text-center whitespace-nowrap;
+    @apply w-[140px] px-4 py-2.5 rounded-xl
+           bg-kong-primary/10 text-kong-text-primary text-sm font-medium
+           border border-kong-primary/30 transition-all duration-200
+           hover:bg-kong-primary/20 hover:border-kong-primary/40
+           focus:outline-none focus:ring-2 focus:ring-kong-primary/30
+           text-center whitespace-nowrap shadow-lg shadow-kong-primary/5;
   }
 
   .action-button.warning {
-    @apply bg-red-600 border-red-500
-           hover:bg-red-500 hover:border-red-400
-           focus:ring-red-500/50;
+    @apply bg-kong-error/10 border-kong-error/30
+           hover:bg-kong-error/20 hover:border-kong-error/40
+           focus:ring-kong-error/30 shadow-lg shadow-kong-error/5;
   }
 
   .action-button:hover {
-    @apply transform -translate-y-0.5 shadow-lg shadow-blue-500/20;
-  }
-
-  .action-button.warning:hover {
-    @apply shadow-red-500/20;
+    @apply transform -translate-y-0.5;
   }
 
   @media (max-width: 768px) {
@@ -359,5 +456,59 @@
     .action-button {
       @apply w-[120px] px-3 py-1.5;
     }
+  }
+
+  .info-button {
+    @apply p-1 rounded-lg text-kong-text-secondary hover:text-kong-text-primary 
+           hover:bg-kong-bg-dark/20 transition-colors duration-200;
+  }
+
+  .info-panel {
+    @apply p-4 rounded-xl bg-kong-bg-dark/20 border border-kong-border
+           text-sm text-kong-text-secondary leading-relaxed;
+  }
+
+  .slippage-indicator {
+    @apply w-full h-1 mt-4 rounded-full bg-kong-bg-dark/20 overflow-hidden;
+  }
+
+  .indicator-bar {
+    @apply h-full bg-green-500/50 transition-all duration-200;
+  }
+
+  .slippage-indicator.warning .indicator-bar {
+    @apply bg-yellow-500/50;
+  }
+
+  .slippage-indicator.danger .indicator-bar {
+    @apply bg-red-500/50;
+  }
+
+  .quick-slippage-button.warning {
+    @apply hover:border-yellow-500/30;
+  }
+
+  .quick-slippage-button.danger {
+    @apply hover:border-red-500/30;
+  }
+
+  .custom-slippage-input.focused {
+    @apply ring-2 ring-kong-primary/30;
+  }
+
+  .custom-slippage-input.warning {
+    @apply hover:border-yellow-500/30;
+  }
+
+  .custom-slippage-input.danger {
+    @apply hover:border-red-500/30;
+  }
+
+  .warning-message.warning {
+    @apply bg-yellow-500/10 border-yellow-500/20 text-yellow-500/90;
+  }
+
+  .warning-message.danger {
+    @apply bg-red-500/10 border-red-500/20 text-red-500/90;
   }
 </style>

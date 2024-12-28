@@ -90,7 +90,7 @@ export class TokenService {
     try {
       const currentTime = Date.now();
       const token = await kongDB.tokens
-        .where("canisterId")
+        .where("canister_id")
         .equals(canisterId)
         .and(
           (token) => currentTime - token.timestamp < this.TOKEN_CACHE_DURATION,

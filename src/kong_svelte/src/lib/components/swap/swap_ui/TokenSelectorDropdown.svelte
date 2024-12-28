@@ -474,7 +474,7 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right text-kong-text-primary text-sm">
+                    <div class="token-right text-white text-sm">
                       <span class="token-balance flex flex-col text-right">
                         {formatTokenBalance(balance?.in_tokens?.toString() || "0", token.decimals)}
                         <span class="token-balance-label text-xs">
@@ -524,15 +524,15 @@
 
   .dropdown-container {
     position: relative;
-    background-color: #1a1b23;
-    border: 1px solid #2a2d3d;
-    border-radius: 0.75rem;
-    box-shadow:
-      0 20px 25px -5px rgb(0 0 0 / 0.1),
-      0 8px 10px -6px rgb(0 0 0 / 0.1);
+    background: rgba(26, 29, 46, 0.4);
+    backdrop-filter: blur(11px);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    width: 400px;
+    width: 480px;
     height: min(600px, 85vh);
+    border-radius: 16px;
   }
 
   .dropdown-container.mobile {
@@ -552,36 +552,29 @@
   }
 
   .modal-header {
+    @apply p-4 border-b border-white/10;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem;
-    border-bottom: 1px solid #2a2d3d;
-    background-color: #15161c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .modal-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: white;
-    margin: 0;
-    line-height: 1.25;
+    @apply text-lg font-semibold text-white;
   }
 
   .close-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
+    width: 2.0rem;
+    height: 2.0rem;
     border-radius: 0.5rem;
     color: white;
     transition: all 0.2s;
   }
 
   .close-button:hover {
-    background-color: rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);
   }
 
@@ -609,19 +602,18 @@
   }
 
   .scrollable-section::-webkit-scrollbar-track {
-    background: #15161c;
+    background: rgba(26, 29, 46, 0.4);
     border-radius: 0.25rem;
   }
 
   .scrollable-section::-webkit-scrollbar-thumb {
-    background: #2a2d3d;
+    background: rgba(255, 255, 255, 0.06);
     border-radius: 0.25rem;
   }
 
   .search-section {
     z-index: 10;
-    border-bottom: 1px solid #2a2d3d;
-    background-color: #15161c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .search-input-wrapper {
@@ -648,15 +640,14 @@
   }
 
   .filter-bar {
-    border-bottom: 1px solid #2a2d3d;
-    background-color: #15161c;
+    @apply pb-1 border-b border-white/10;
   }
 
   .filter-buttons {
     display: flex;
     width: 100%;
     margin-bottom: 0.5rem;
-    border-bottom: 1px solid #2a2d3d;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .filter-btn {
@@ -699,19 +690,15 @@
   }
 
   .filter-btn.active {
-    color: #eab308;
-    background-color: rgba(234, 179, 8, 0.05);
+    @apply text-kong-primary bg-kong-primary/10;
   }
 
   .filter-btn::after {
+    @apply absolute bottom-0 left-0 w-full h-px;
+    @apply bg-kong-primary;
     content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
     width: 100%;
-    height: 2px;
     transform: scaleX(0);
-    background-color: #eab308;
     transition: transform 0.2s;
     transform-origin: center;
   }
@@ -818,16 +805,26 @@
     position: relative;
   }
 
-  .token-item.disabled:hover {
-    background-color: transparent;
+  .token-item.disabled .token-right {
+    /* Hide the balance info when disabled */
+    visibility: hidden;
   }
 
   .token-item.disabled::after {
     content: "Selected in other panel";
     position: absolute;
     right: 1rem;
-    font-size: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.5);
+    background-color: rgb(37, 41, 62); /* Match dropdown background */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+  }
+
+  .token-item.disabled:hover {
+    background-color: transparent;
   }
 
   .token-info {

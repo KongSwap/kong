@@ -167,7 +167,7 @@ export class PoolService {
 
       // Handle ICRC2 tokens
       if (params.token_0.icrc2 && params.token_1.icrc2) {
-        const [approval0, approval1, actorResult] = await Promise.all([
+        const [_approval0, _approval1, actorResult] = await Promise.all([
           IcrcService.checkAndRequestIcrc2Allowances(
             params.token_0,
             params.amount_0,
@@ -255,10 +255,9 @@ export class PoolService {
 
     try {
       while (attempts < MAX_ATTEMPTS) {
-        const actor = await auth.pnp.getActor(
+        const actor = createAnonymousActorHelper(
           kongBackendCanisterId,
-          canisterIDLs.kong_backend,
-          { anon: false, requiresSigning: false },
+          canisterIDLs.kong_backend
         );
         const result = await actor.requests([requestId]);
 
@@ -274,7 +273,11 @@ export class PoolService {
           const currentStatus = status.statuses[status.statuses.length - 1];
           if (currentStatus !== lastStatus) {
             lastStatus = currentStatus;
-            toastStore.info(`Status: ${currentStatus}`);
+            if(currentStatus.includes("Success")) {
+              toastStore.success(currentStatus);
+            } else {
+              toastStore.info(currentStatus);
+            }
           }
         }
 
@@ -462,12 +465,6 @@ export class PoolService {
       if ('Err' in result) {
         throw new Error(result.Err);
       }
-
-      // After pool creation, we need to add it to Kong's list
-      await actor.add_pool(
-        `${params.token_0.symbol}_${params.token_1.symbol}`, 
-        true
-      );
 
       return result.Ok;
     } catch (error) {

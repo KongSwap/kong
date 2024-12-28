@@ -7,7 +7,6 @@
   import { fetchChartData } from "$lib/services/indexer/api";
   import { poolStore } from "$lib/services/pools";
   import { debounce } from "lodash-es";
-  import { priceStore} from '$lib/price/priceService';
 
   // Convert props to runes syntax
   const props = $props<{
@@ -92,19 +91,39 @@
 
   const initChart = async () => {
     if (!chartContainer || !props.quoteToken?.token_id || !props.baseToken?.token_id) {
+      console.log('Missing required props for chart initialization');
       isLoading = false;
       return;
     }
 
     try {
+      console.log('Loading TradingView library...');
       await loadTradingViewLibrary();
 
       const isMobile = window.innerWidth < 768;
-      const datafeed = new KongDatafeed(props.quoteToken.token_id, props.baseToken.token_id);
-
+      
       // Get container dimensions
       const containerWidth = chartContainer.clientWidth;
       const containerHeight = chartContainer.clientHeight;
+      
+      console.log('Container dimensions:', { containerWidth, containerHeight });
+
+      if (!containerWidth || !containerHeight) {
+        console.warn('Container has zero dimensions');
+        return;
+      }
+
+      // Get current price from poolStore
+      const currentPrice = $poolStore.pools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
+      console.log('Current price:', currentPrice);
+
+      // Pass current price to datafeed
+      const datafeed = new KongDatafeed(
+        props.quoteToken.token_id, 
+        props.baseToken.token_id,
+        currentPrice
+      );
+
       const chartConfig = getChartConfig({
         symbol: props.symbol || `${props.baseToken.symbol}/${props.quoteToken.symbol}`,
         datafeed,
@@ -112,11 +131,14 @@
         containerWidth,
         containerHeight,
         isMobile,
+        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       });
 
+      console.log('Creating TradingView widget...');
       const widget = new window.TradingView.widget(chartConfig);
 
       widget.onChartReady(() => {
+        console.log('Chart is ready');
         widget._ready = true;
         chartStore.set(widget);
         isLoading = false;
@@ -251,8 +273,23 @@
       }
     }
 
+    const themeObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class' && chart && chart._ready) {
+          const isDark = document.documentElement.classList.contains('dark');
+          chart.changeTheme(isDark ? 'dark' : 'light');
+        }
+      });
+    });
+
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
     return () => {
       resizeObserver.disconnect();
+      themeObserver.disconnect();
       if (chart) {
         try {
           chart.remove();
@@ -267,12 +304,12 @@
 
 <div class="chart-wrapper h-full" bind:this={chartWrapper}>
   <div
-    class="chart-container"
+    class="chart-container h-full w-full"
     bind:this={chartContainer}
   >
     {#if hasNoData}
       <div
-        class="absolute inset-0 bg-[#14161A] flex flex-col items-center justify-center p-4 text-center"
+        class="absolute inset-0 bg-transparent flex flex-col items-center justify-center p-4 text-center"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -297,7 +334,7 @@
       </div>
     {:else if isLoading}
       <div
-        class="absolute inset-0 bg-[#14161A] flex items-center justify-center"
+        class="absolute inset-0 bg-transparent flex items-center justify-center"
       >
         <svg
           class="animate-spin h-8 w-8 text-blue-500"
@@ -333,28 +370,26 @@
 <style scoped lang="postcss">
 
   .chart-wrapper {
-    position: absolute;
-    inset: 0;
+    position: relative;
     width: 100%;
     height: 100%;
-    background: var(--bg-card);
+    background: transparent;
     border-radius: 12px;
     overflow: hidden;
   }
 
   .chart-container {
-    position: absolute;
-    inset: 0;
+    position: relative;
     width: 100%;
     height: 100%;
   }
 
   :global(.layout__area--top) {
-    background: linear-gradient(180deg, rgba(22, 16, 40, 1) 0%, rgba(1, 1, 1, 1) 100%) !important;
+    background: transparent !important;
   }
 
   :global(.layout__area--left) {
-    background: linear-gradient(180deg, rgba(22, 16, 40, 1) 0%, rgba(1, 1, 1, 1) 100%) !important;
+    background: transparent !important;
   }
 
   :global(.tools-group),
@@ -370,7 +405,7 @@
   :global(.button-1VVj8kLG-:hover),
   :global(.toggleButton-3zv4iS2j-:hover),
   :global(.button-2pZNJ24z-:hover) {
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: theme('colors.kong.border') !important;
   }
 
   :global(.tools-group.active),
@@ -378,7 +413,7 @@
   :global(.button-1VVj8kLG-.active),
   :global(.toggleButton-3zv4iS2j-.isActive-3zv4iS2j-),
   :global(.button-2pZNJ24z-.active) {
-    background-color: rgba(255, 255, 255, 0.2) !important;
+    background-color: theme('colors.kong.border-light') !important;
   }
 
   :global(.group-2JyOhh7Z-),
@@ -404,5 +439,109 @@
     width: 100% !important;
     height: 100% !important;
     font-family: inherit !important;
+  }
+
+  :global(.chart-theme-dark) {
+    --tv-color-platform-background: transparent;
+    --tv-color-pane-background: transparent;
+    --tv-color-toolbar-button-background-hover: theme('colors.kong.border');
+    --tv-color-toolbar-button-background-expanded: theme('colors.kong.border-light');
+    --tv-color-toolbar-button-background-active: theme('colors.kong.border-light');
+    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
+    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
+    --tv-color-toolbar-divider-background: theme('colors.kong.border');
+  }
+
+  :global(.chart-theme-light) {
+    --tv-color-platform-background: transparent;
+    --tv-color-pane-background: transparent;
+    --tv-color-toolbar-button-background-hover: rgba(0, 0, 0, 0.1);
+    --tv-color-toolbar-button-background-expanded: rgba(0, 0, 0, 0.1);
+    --tv-color-toolbar-button-background-active: rgba(0, 0, 0, 0.1);
+    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
+    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
+    --tv-color-toolbar-divider-background: rgba(0, 0, 0, 0.1);
+  }
+
+  :global(.tradingview-widget-container) {
+    --tv-color-platform-background: transparent !important;
+  }
+
+  /* Override TradingView's default styles for better theme integration */
+  :global(.layout__area--top),
+  :global(.layout__area--left) {
+    background: transparent !important;
+  }
+
+  :global(.chart-container) {
+    background: transparent !important;
+  }
+
+  /* Update loading and no-data states to use theme colors */
+  .chart-wrapper :global(.loading-indicator) {
+    @apply text-kong-text-primary;
+  }
+
+  .chart-wrapper :global(.no-data-message) {
+    @apply text-kong-text-secondary;
+  }
+
+  :global(.chart-theme-dark),
+  :global(.chart-theme-light) {
+    --tv-color-platform-background: transparent;
+    --tv-color-pane-background: transparent;
+  }
+
+  /* Make chart background transparent */
+  :global(.chart-container),
+  :global(.tv-lightweight-charts),
+  :global(.layout__area--center),
+  :global(.chart-markup-table),
+  :global(.chart-container-border),
+  :global(.chart-gui-wrapper),
+  :global(.layout__area--center),
+  :global(.chart-markup-table),
+  :global(.pane-legend-line.main) {
+    background-color: transparent !important;
+  }
+
+  /* Override specific TradingView elements */
+  :global(.group-wWM3zP_M-),
+  :global(.container-wWM3zP_M-) {
+    background-color: transparent !important;
+  }
+
+  /* Style toolbar buttons */
+  :global(.button-2ioYhFEY-),
+  :global(.button-1VVj8kLG-),
+  :global(.button-2pZNJ24z-) {
+    background-color: transparent !important;
+  }
+
+  :global(.button-2ioYhFEY-:hover),
+  :global(.button-1VVj8kLG-:hover),
+  :global(.button-2pZNJ24z-:hover) {
+    background-color: theme('colors.kong.border') !important;
+  }
+
+  :global(.button-2ioYhFEY-.active),
+  :global(.button-1VVj8kLG-.active),
+  :global(.button-2pZNJ24z-.active) {
+    background-color: theme('colors.kong.border-light') !important;
+  }
+
+  /* Additional theme-specific styles */
+  :global(.dark) {
+    --tv-color-toolbar-button-background-hover: theme('colors.kong.border');
+    --tv-color-toolbar-button-background-active: theme('colors.kong.border-light');
+    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
+    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
+  }
+
+  :global(.light) {
+    --tv-color-toolbar-button-background-hover: rgba(0, 0, 0, 0.1);
+    --tv-color-toolbar-button-background-active: rgba(0, 0, 0, 0.2);
+    --tv-color-toolbar-button-text: theme('colors.kong.text.primary');
+    --tv-color-toolbar-button-text-hover: theme('colors.kong.text.primary');
   }
 </style>

@@ -10,6 +10,9 @@
   import { updateWorkerService } from "$lib/services/updateWorkerService";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from '$lib/components/common/QRModal.svelte';
+  import { themeStore } from '$lib/stores/themeStore';
+  import { browser } from '$app/environment';
+  import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
 
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
@@ -34,6 +37,10 @@
 
   onMount(() => {
     init();
+    if (browser) {
+      // Initialize theme from localStorage or system preference
+      themeStore.initTheme();
+    }
   });
 
   onDestroy(() => {
@@ -48,6 +55,9 @@
 
 <div class="app-container">
   <PageWrapper page={$page.url.pathname}>
+      <div class="ticker-section">
+      <TokenTicker />
+    </div>
     <div class="nav-container">
       <Navbar />
     </div>
@@ -69,7 +79,7 @@
     width: 100%;
     height: 100%;
     display: flex;
-    background-color: #010101;
+    @apply dark:bg-[#010101] light:bg-gray-200 transition-colors duration-200;
   }
 
   .nav-container {

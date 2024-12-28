@@ -78,11 +78,10 @@
     <div class="main-content" class:mobile={isMobile}>
       <!-- Chart Area -->
       <Panel
-        variant="green"
+        variant="transparent"
         type="main"
-        className={`chart-area !p-0`}
+        className={`chart-area !p-0 max-h-[30rem]`}
         width="100%"
-        height="100%"
       >
         <div
           class="chart-wrapper !p-0"

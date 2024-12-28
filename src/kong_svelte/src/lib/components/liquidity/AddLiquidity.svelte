@@ -161,7 +161,7 @@
       addLiquidityStore.reset();
       // Add a small delay to ensure UI updates before navigation
       await new Promise((resolve) => setTimeout(resolve, 100));
-      goto("/earn");
+      goto("/pools");
     } catch (err) {
       console.error("Error submitting liquidity:", err);
       // If it's a wallet connection issue, show a more user-friendly message
@@ -176,7 +176,7 @@
   }
 
   function handleBack() {
-    goto("/earn");
+    goto("/pools");
   }
 
   // Combine the button text logic into a single reactive statement

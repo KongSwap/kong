@@ -46,7 +46,7 @@
 
 {#if !isMobile}
   <!-- Desktop view (table row) -->
-  <tr class="{isEven ? 'even' : ''} {isKongPool ? 'kong-special-row' : ''}">
+  <tr class="cursor-pointer {isEven ? 'even' : ''} {isKongPool ? 'kong-special-row' : ''}" on:click>
     <td class="pool-cell">
       <div class="pool-info">
         <TokenImages
@@ -88,18 +88,6 @@
         </div>
       </div>
     </td>
-    <td class="actions-cell">
-      <div class="actions">
-        <button class="action-btn add-lp" on:click={handleAddLiquidity}>
-          Add LP
-        </button>
-        {#if showDetailsButton}
-          <button class="action-btn details" on:click={onShowDetails}>
-            Details
-          </button>
-        {/if}
-      </div>
-    </td>
   </tr>
 {:else}
   <!-- Mobile view (simplified card) -->
@@ -116,42 +104,36 @@
           <span class="tvl-badge">TVL: ${pool.tvl}</span>
         </div>
       </div>
-      <div class="card-actions">
-        <button class="action-btn details" on:click={onShowDetails}>
-          Details
-        </button>
-      </div>
     </div>
   </div>
 {/if}
 
-<style lang="scss">
+<style lang="postcss">
   tr {
     transition: colors 150ms;
     padding: 0 1rem;
   }
 
   tr:hover {
-    background-color: #1a1b23;
+    @apply bg-kong-border;
   }
 
   tr.kong-special-row {
-    background: rgba(0, 255, 128, 0.02);
+    @apply bg-kong-accent-green/20 !important;
 
     td {
       font-weight: 500;
     }
 
     &:hover {
-      background: rgba(0, 255, 128, 0.04);
+      @apply bg-kong-accent-green;
     }
   }
 
   td {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
-    color: #8890a4;
-    border-bottom: 1px solid #2a2d3da8;
+    @apply border-b border-kong-border;
     height: 64px;
   }
 
@@ -161,10 +143,6 @@
   .apy-cell {
     width: 15%;
     text-align: left;
-  }
-
-  .actions-cell {
-    text-align: right;
   }
 
   .pool-info {
@@ -185,17 +163,12 @@
     text-align: right;
   }
 
-  .actions-cell {
-    width: 10%;
-  }
-
   .pool-details {
     display: flex;
     flex-direction: column;
   }
 
   .pool-name {
-    color: white;
     font-weight: 500;
     font-size: 1rem;
   }
@@ -213,49 +186,8 @@
   .tvl-value,
   .volume-value,
   .apy-value {
-    color: white;
     font-weight: 500;
     font-size: 1rem;
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-
-  .action-btn {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border-radius: 0.375rem;
-    transition: all 150ms;
-    white-space: nowrap;
-  }
-
-  .add-lp {
-    background-color: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .add-lp:hover {
-    background-color: rgba(59, 130, 246, 0.3);
-    border-color: rgba(59, 130, 246, 0.5);
-    color: #93c5fd;
-  }
-
-  .details {
-    background-color: rgba(107, 114, 128, 0.2);
-    color: #9ca3af;
-    border: 1px solid rgba(107, 114, 128, 0.3);
-  }
-
-  .details:hover {
-    background-color: rgba(107, 114, 128, 0.3);
-    border-color: rgba(107, 114, 128, 0.5);
-    color: #d1d5db;
   }
 
   /* Mobile Card Styles */
@@ -264,7 +196,7 @@
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
-    border: 1px solid #2a2d3d;
+    @apply border border-kong-border;
   }
 
   .card-header {
@@ -286,19 +218,11 @@
   }
 
   .token-pair {
-    color: white;
     font-weight: 500;
   }
 
   .tvl-badge {
     font-size: 0.75rem;
-    color: #8890a4;
-  }
-
-  .card-actions {
-    display: flex;
-    align-items: center;
-    height: 100%;
   }
 
   @media (max-width: 640px) {

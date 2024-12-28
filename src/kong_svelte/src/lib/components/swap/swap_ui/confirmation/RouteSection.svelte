@@ -60,7 +60,7 @@
 
   .route-header {
     text-align: center;
-    color: rgba(255,255,255,0.9);
+    @apply text-kong-text-primary;
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 12px;
@@ -83,8 +83,7 @@
   }
 
   .token-block {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    @apply bg-kong-bg-dark/20 border border-kong-bg-dark/20;
     border-radius: 12px;
     padding: 6px 12px;
     cursor: pointer;
@@ -93,8 +92,7 @@
   }
 
   .token-block:hover {
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.2);
+    @apply bg-kong-bg-dark/50 border border-kong-bg-dark/20;
   }
 
   .token-inner {
@@ -105,19 +103,19 @@
   }
 
   .token-symbol {
-    color: #ffffff;
+    @apply text-kong-text-primary;
     font-size: 14px;
     font-weight: 500;
   }
 
   .arrow {
-    color: rgba(255,255,255,0.6);
+    @apply text-kong-text-secondary;
     font-size: 18px;
     padding: 0 2px;
   }
 
   .no-route {
-    color: rgba(255,255,255,0.6);
+    @apply text-kong-text-secondary;
     text-align: center;
     padding: 12px;
   }

@@ -55,7 +55,7 @@
       </div>
     </div>
     <div class="token-card-right">
-      <div class="font-medium text-white text-right">
+      <div class="font-medium text-kong-text-primary text-right">
         <span class={priceClass}>
           ${formatToNonZeroDecimal(token?.metrics?.price || 0)}
         </span>
@@ -71,12 +71,10 @@
 <style lang="postcss">
   .token-card {
     @apply flex items-center justify-between p-3 rounded-lg relative;
-    background: #1a1b23;
-    border: 1px solid #2a2d3d;
+    @apply bg-kong-bg-dark border border-kong-border;
 
     &.kong-special-card {
-      background: rgba(0, 255, 128, 0.02);
-      border-left: 2px solid #00d3a533;
+      @apply bg-kong-bg-dark border-kong-accent-green;
       
       .token-symbol-mobile {
         @apply text-base;
@@ -86,7 +84,7 @@
   }
 
   .token-rank {
-    @apply absolute top-1 left-2 text-xs text-[#8890a4]/70;
+    @apply absolute top-1 left-2 text-xs text-kong-text-secondary;
   }
 
   .token-card-main {
@@ -102,15 +100,15 @@
   }
 
   .token-symbol-mobile {
-    @apply text-white font-medium text-base;
+    @apply text-kong-text-primary font-medium text-base;
   }
 
   .token-metrics-row {
-    @apply flex items-center gap-2 text-xs text-[#8890a4] mt-0.5;
+    @apply flex items-center gap-2 text-xs text-kong-text-secondary mt-0.5;
   }
 
   .separator {
-    @apply text-[#8890a4]/50 mx-0.5;
+    @apply text-kong-text-secondary mx-0.5;
   }
 
   .token-card-right {
@@ -123,7 +121,7 @@
 
   .favorite-button-mobile {
     @apply flex items-center justify-center w-6 h-6 rounded-lg 
-           hover:bg-white/5 active:bg-white/10 transition-colors duration-150;
+           hover:bg-kong-bg-dark active:bg-kong-bg-dark/10 transition-colors duration-150;
   }
 
   .hot-icon {

@@ -20,17 +20,38 @@ function createToastStore() {
 
     const add = (toast: Omit<Toast, 'id' | 'timestamp'>): string => {
         const id = crypto.randomUUID();
+        
+        // Create timeout if duration is specified
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        if (toast.duration) {
+            timeoutId = setTimeout(() => {
+                dismiss(id);
+            }, toast.duration);
+        }
+
         update(toasts => [...toasts, {
             ...toast,
             id,
             timestamp: Date.now(),
+            timeoutId // Store the timeout ID
         }]);
         return id;
+    };
+
+    const dismiss = (id: string) => {
+        update(toasts => {
+            const toast = toasts.find(t => t.id === id);
+            if (toast?.timeoutId) {
+                clearTimeout(toast.timeoutId);
+            }
+            return toasts.filter(t => t.id !== id);
+        });
     };
 
     return {
         subscribe,
         add,
+        dismiss,
         // Convenience methods with options
         success: (message: string, options: ToastOptions = {}): string => {
             return add({ 
@@ -62,15 +83,6 @@ function createToastStore() {
                 message, 
                 title: options.title,
                 duration: options.duration || 5000
-            });
-        },
-        dismiss: (id: string) => {
-            update(toasts => {
-                const toast = toasts.find(t => t.id === id);
-                if (toast?.timeoutId) {
-                    clearTimeout(toast.timeoutId);
-                }
-                return toasts.filter(t => t.id !== id);
             });
         },
     };

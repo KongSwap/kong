@@ -82,7 +82,7 @@
   />
 {/if}
 
-<style>
+<style lang="postcss">
   .wallet-provider {
     display: flex;
     flex-direction: column;
@@ -98,14 +98,8 @@
   }
 
   .wallet-option {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    width: 100%;
-    padding: 16px 20px;
-    background: rgba(30, 41, 59, 0.5);
-    border-radius: 12px;
-    border: 1px solid rgba(51, 65, 85, 0.3);
+    @apply flex items-center gap-5 w-full p-5;
+    @apply bg-kong-text-primary/5 rounded-xl border border-kong-border;
     backdrop-filter: blur(8px);
     text-align: left;
     position: relative;
@@ -113,8 +107,8 @@
   }
 
   .wallet-option:hover:not(:disabled) {
-    background: rgba(51, 65, 85, 0.6);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    @apply bg-kong-text-primary/10 border-kong-border-light;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
   }
 
   .wallet-option:disabled {
@@ -123,14 +117,12 @@
   }
 
   .wallet-option.recommended {
-    background: rgba(79, 70, 229, 0.4);
-    border-color: rgba(99, 102, 241, 0.4);
+    @apply bg-kong-primary/20 border-kong-primary/30;
   }
 
   .wallet-option.recommended:hover:not(:disabled) {
-    background: rgba(99, 102, 241, 0.5);
-    border-color: rgba(129, 140, 248, 0.6);
-    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+    @apply bg-kong-primary/30 border-kong-primary/40;
+    box-shadow: 0 4px 20px rgb(var(--primary) / 0.2);
   }
 
   .wallet-icon {
@@ -138,6 +130,11 @@
     height: 48px;
     border-radius: 8px;
     transition: transform 0.2s;
+    @apply dark:brightness-100 brightness-[0.85];
+  }
+
+  .wallet-option:hover .wallet-icon {
+    @apply dark:brightness-100 brightness-90;
   }
 
   .wallet-info {
@@ -147,20 +144,20 @@
   }
 
   .wallet-name {
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-kong-text-primary;
     font-weight: 500;
     font-size: 18px;
     letter-spacing: 0.05em;
   }
 
   .wallet-description {
+    @apply text-kong-text-secondary;
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
     transition: color 0.2s;
   }
 
   .wallet-option.recommended:hover .wallet-description {
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-kong-text-primary;
   }
 
   .wallet-list::-webkit-scrollbar {
@@ -172,11 +169,11 @@
   }
 
   .wallet-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.05);
+    @apply bg-kong-text-primary/5;
     border-radius: 9999px;
   }
 
   .wallet-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.15);
+    @apply bg-kong-text-primary/10;
   }
 </style>

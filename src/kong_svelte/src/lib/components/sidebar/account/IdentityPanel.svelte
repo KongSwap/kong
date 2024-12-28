@@ -207,16 +207,20 @@
     const title = type === 'principal' ? 'Principal ID' : 'Account ID';
     qrModalStore.update(state => ({ isOpen: true, qrData: qr, title }));
   }
+
+  function closeQrModal() {
+    qrModalStore.update(state => ({ ...state, isOpen: false }));
+  }
 </script>
 
 {#if $qrModalStore.isOpen}
   <Modal
     isOpen={$qrModalStore.isOpen}
-    onClose={() => qrModalStore.update(state => ({ ...state, isOpen: false }))}
+    onClose={closeQrModal}
     title={$qrModalStore.title}
     width="min(90vw, 500px)"
     height="auto"
-    variant="green"
+    variant="solid"
   >
     <div class="qr-modal-content">
       <div class="qr-display">
@@ -304,7 +308,7 @@
                     <div class="id-row flex items-center">
                       <div class="flex flex-col gap-4 w-full">
                         <div class="flex flex-col">
-                          <span class="text-xs text-gray-400">Principal ID:</span>
+                          <span class="text-xs text-kong-text-secondary">Principal ID:</span>
                           <div class="flex items-center justify-between">
                             <span class="value flex items-center">
                               {identity.principalId || '...'}
@@ -332,7 +336,7 @@
                           </div>
                         </div>
                         <div class="flex flex-col">
-                          <span class="text-xs text-gray-400">Account ID:</span>
+                          <span class="text-xs text-kong-text-secondary">Account ID:</span>
                           <div class="flex items-center justify-between">
                             <span class="value flex items-center">
                               {identity.defaultAccountId || '...'}
@@ -379,7 +383,7 @@
     </div>
 </div>
 
-<style scoped>
+<style scoped lang="postcss">
   .tab-panel {
     animation: fadeIn 0.3s ease;
     padding-bottom: 4rem;
@@ -389,19 +393,12 @@
     padding-bottom: 1rem;
   }
 
-  .detail-section h3 {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-  }
-
   .tabs {
     display: flex;
     gap: 0.25rem;
     margin-bottom: 1rem;
     padding: 0.25rem;
-    background: rgba(0, 0, 0, 0.2);
+    @apply bg-kong-bg-dark;
     border-radius: 0.5rem;
   }
 
@@ -409,14 +406,14 @@
     flex: 1;
     padding: 0.5rem;
     font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-secondary;
     border-radius: 0.375rem;
     transition: all 0.2s;
   }
 
   .tab-button.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
+    @apply bg-kong-primary;
+    @apply text-white;
   }
 
   .info-grid {
@@ -431,12 +428,18 @@
   }
 
   .info-item {
-    background: rgba(0, 0, 0, 0.3);
+    @apply bg-kong-bg-dark hover:bg-kong-primary hover:text-white !important;
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0.75rem;
     height: 100%;
   }
+
+  .info-item:hover {
+    @apply bg-kong-primary text-white !important;
+    color: white !important;
+  }
+
 
   .value-container {
     display: flex;
@@ -449,8 +452,8 @@
   .value {
     font-family: monospace;
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.9);
     word-break: break-all;
+    color: inherit !important;
     user-select: text;
     flex: 1;
     min-width: 200px;
@@ -463,8 +466,8 @@
     padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
+    @apply text-kong-text-primary;
+    @apply bg-kong-primary;
     border-radius: 0.375rem;
     transition: all 0.2s;
     white-space: nowrap;
@@ -476,7 +479,7 @@
   }
 
   .action-button:hover {
-    background: rgba(255, 255, 255, 0.2);
+    @apply bg-kong-primary text-white;
   }
 
   .action-button:disabled {
@@ -503,13 +506,13 @@
   .info-tooltip {
     margin-top: 1rem;
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
+    @apply bg-kong-bg-dark;
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .info-tooltip p {
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-kong-text-primary;
     font-size: 0.875rem;
     margin-bottom: 0.5rem;
   }
@@ -517,7 +520,7 @@
   .info-tooltip ul {
     list-style-type: disc;
     padding-left: 1.5rem;
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
     font-size: 0.875rem;
   }
 
@@ -576,7 +579,7 @@
 
   .qr-description {
     text-align: center;
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-kong-text-primary;
     font-size: 0.95rem;
     width: 88%;
     line-height: 1.5;
@@ -597,13 +600,6 @@
     gap: 1rem;
   }
 
-  .info-item {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 0.75rem;
-  }
-
   .value-container {
     display: flex;
     flex-direction: column;
@@ -613,7 +609,7 @@
   .value {
     font-family: monospace;
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-kong-text-primary;
     word-break: break-all;
     user-select: text;
     width: 100%;
@@ -642,8 +638,8 @@
     padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
+    @apply text-kong-text-primary;
+    @apply bg-kong-bg-dark;
     border-radius: 0.375rem;
     transition: all 0.2s;
     white-space: nowrap;
@@ -655,7 +651,7 @@
   }
 
   .action-button:hover {
-    background: rgba(255, 255, 255, 0.2);
+    @apply bg-kong-bg-dark/20;
   }
 
   .action-button:disabled {
@@ -674,7 +670,7 @@
   .value {
     font-family: monospace;
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.9);
+    @apply text-kong-text-primary;
     word-break: break-all;
     user-select: text;
     flex: 1;
@@ -692,8 +688,8 @@
     padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
+    @apply text-kong-text-primary;
+    @apply bg-kong-bg-dark;
     border-radius: 0.375rem;
     transition: all 0.2s;
     white-space: nowrap;

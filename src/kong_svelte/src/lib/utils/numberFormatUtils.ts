@@ -12,8 +12,10 @@ const TRAILING_ZERO_DECIMALS = /\.0+$/;
 export function formatBalance(
   amount: string | number | bigint | BigNumber,
   decimals: number,
+  displayDecimals: number = 4
 ): string {
-  const value = new BigNumber(amount.toString()).dividedBy(
+  const formattedAmount = typeof amount === 'string' ? amount : amount.toString();
+  const value = new BigNumber(formattedAmount).dividedBy(
     new BigNumber(10).pow(decimals),
   );
 
@@ -30,7 +32,7 @@ export function formatBalance(
   }
 
   // For normal values, show up to 4 decimals
-  return value.toFormat(4).replace(/\.?0+$/, "");
+  return value.toFormat(displayDecimals).replace(/\.?0+$/, "");
 }
 
 /**

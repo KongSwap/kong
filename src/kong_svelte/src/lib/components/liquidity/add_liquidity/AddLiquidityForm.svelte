@@ -43,6 +43,7 @@
     validateAndCleanInput
   } from "$lib/utils/formUtils";
   import { addLiquidityStore } from "$lib/services/pools/addLiquidityStore";
+  import { goto } from "$app/navigation";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -446,34 +447,9 @@
     if (!isValid || loading) return;
 
     try {
-      if (!poolExists) {
-        // For new pools, use createPool
-        const amount0BigInt = parseTokenAmount(amount0, token0.decimals);
-        const amount1BigInt = parseTokenAmount(amount1, token1.decimals);
-        const initialPrice = parseFloat($addLiquidityStore.initialPrice);
-
-        await PoolService.createPool({
-          token_0: token0,
-          amount_0: amount0BigInt,
-          token_1: token1,
-          amount_1: amount1BigInt,
-          initial_price: initialPrice
-        });
-
-        // Reset form after successful pool creation
-        amount0 = "0";
-        amount1 = "0";
-        if (input0Element) input0Element.value = "0";
-        if (input1Element) input1Element.value = "0";
-        addLiquidityStore.reset();
-        
-        toastStore.success(`Successfully created ${token0.symbol}/${token1.symbol} pool`);
-      } else {
-        // For existing pools, show confirmation modal
-        showConfirmation = true;
-      }
+      showConfirmation = true;
     } catch (err) {
-      console.error("Error creating pool:", err);
+      console.error("Error in handleSubmit:", err);
       error = err.message;
       toastStore.error(err.message);
     }
@@ -566,7 +542,6 @@
 </script>
 
 <Panel
-  variant="green"
   width="auto"
   className="liquidity-panel w-full max-w-[690px]"
 >
@@ -740,54 +715,14 @@
     </div>
 
     {#if !poolExists}
-      <div class="pool-creation-section">
-        <div class="pool-creation-header">
-          <span class="warning-icon">⚠️</span>
-          <h3>New Pool Creation</h3>
-        </div>
-
-        <!-- Initial Amounts Section -->
-        <div class="price-ratio-input">
-          <label for="initial-price">Initial {token0?.symbol}/{token1?.symbol} Price</label>
-          <div class="input-with-hint">
-            <input
-              type="number"
-              id="initial-price"
-              min="0"
-              step="any"
-              placeholder="Enter initial price"
-              on:input={handleInitialPriceInput}
-            />
-            <div class="price-example">
-              Example: If 1 {token0?.symbol} = {token1?.symbol} 10, enter "10"
-            </div>
-          </div>
-        </div>
-
-        <!-- Pool Info -->
-        <div class="pool-info-section">
-          <div class="info-row">
-            <span>Initial Liquidity:</span>
-            <span>{formatBalance(amount0, token0?.decimals)} {token0?.symbol}</span>
-          </div>
-          <div class="info-row">
-            <span>Paired With:</span>
-            <span>{formatBalance(amount1, token1?.decimals)} {token1?.symbol}</span>
-          </div>
-          <div class="info-row">
-            <span>Pool Name:</span>
-            <span>{token0?.symbol}_{token1?.symbol}</span>
-          </div>
-        </div>
-
-        <div class="creation-warning">
-          <p>⚠️ You are creating a new liquidity pool. Please verify:</p>
-          <ul>
-            <li>Initial token amounts are correct</li>
-            <li>Price ratio matches market price</li>
-            <li>You have sufficient balance for both tokens</li>
-          </ul>
-        </div>
+      <div class="no-pool-section">
+        <p class="text-white/70 mb-4">No liquidity pool exists for this token pair.</p>
+        <button
+          class="create-pool-button"
+          on:click={() => goto("/pools/create")}
+        >
+          Create New Pool
+        </button>
       </div>
     {/if}
 
@@ -1043,5 +978,17 @@
     @apply text-sm text-white/70;
     @apply p-3 rounded;
     @apply bg-black/20 border border-yellow-500/20;
+  }
+
+  .no-pool-section {
+    @apply mb-6 mt-6 p-4 rounded-lg;
+    @apply bg-yellow-500/5 border border-yellow-500/20;
+    @apply text-center;
+  }
+
+  .create-pool-button {
+    @apply px-6 py-3 rounded-lg;
+    @apply bg-yellow-500 text-black font-medium;
+    @apply hover:bg-yellow-400 transition-colors duration-200;
   }
 </style>
