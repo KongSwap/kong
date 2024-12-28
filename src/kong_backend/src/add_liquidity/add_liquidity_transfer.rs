@@ -32,7 +32,7 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
             request_map::update_status(request_id, StatusCode::Failed, Some(e));
         })?;
 
-    process_add_liquidity(
+    let result = match process_add_liquidity(
         request_id,
         user_id,
         token_0.as_ref(),
@@ -45,18 +45,19 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            _ = archive_to_kong_data(request_id);
-            Err(e)
-        },
-        |reply: AddLiquidityReply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            _ = archive_to_kong_data(request_id);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64, String> {

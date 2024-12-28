@@ -46,7 +46,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     let ts: u64 = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Send(args.clone()), ts));
 
-    process_send(
+    let result = match process_send(
         request_id,
         user_id,
         to_user_id,
@@ -56,19 +56,19 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
         &lp_token_symbol,
         amount,
         ts,
-    )
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            _ = archive_to_kong_data(request_id);
-            Err(e)
-        },
-        |reply| {
+    ) {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            _ = archive_to_kong_data(request_id);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 #[allow(clippy::too_many_arguments)]

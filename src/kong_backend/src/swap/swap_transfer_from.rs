@@ -16,7 +16,6 @@ use crate::ic::get_time::get_time;
 use crate::ic::id::caller_id;
 use crate::ic::transfer::icrc2_transfer_from;
 use crate::stable_kong_settings::kong_settings_map;
-use crate::stable_request::request;
 use crate::stable_request::{request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
@@ -28,7 +27,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
-    process_swap(
+    let result = match process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -40,18 +39,19 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            _ = archive_to_kong_data(request_id);
-            Err(e)
-        },
-        |reply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            _ = archive_to_kong_data(request_id);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {

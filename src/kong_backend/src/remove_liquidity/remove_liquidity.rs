@@ -12,6 +12,7 @@ use crate::stable_claim::{claim_map, stable_claim::StableClaim};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_lp_token::{lp_token_map, stable_lp_token::StableLPToken};
 use crate::stable_pool::{pool_map, stable_pool::StablePool};
+use crate::stable_request::reply;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token};
 use crate::stable_transfer::{stable_transfer::StableTransfer, transfer_map, tx_id::TxId};
@@ -39,7 +40,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     let caller_id = caller_id();
 
-    process_remove_liquidity(
+    let result = match process_remove_liquidity(
         request_id,
         user_id,
         &caller_id,
@@ -52,18 +53,19 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            _ = archive_to_kong_data(request_id);
-            Err(e)
-        },
-        |reply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            _ = archive_to_kong_data(request_id);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 /// used by remove_lp_positions() to remove_liquidity for user_id and tokens returned to to_principal_id
@@ -78,7 +80,7 @@ pub async fn remove_liquidity_from_pool(
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
 
-    process_remove_liquidity(
+    let result = match process_remove_liquidity(
         request_id,
         user_id,
         to_principal_id,
@@ -91,18 +93,19 @@ pub async fn remove_liquidity_from_pool(
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            _ = archive_to_kong_data(request_id);
-            Err(e)
-        },
-        |reply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            _ = archive_to_kong_data(request_id);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 #[update]
