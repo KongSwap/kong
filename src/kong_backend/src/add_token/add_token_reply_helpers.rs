@@ -12,7 +12,6 @@ pub fn to_add_token_reply(token: &StableToken) -> Result<AddTokenReply, String> 
             chain: token.chain(),
             name: token.name(),
             symbol: token.symbol(),
-            token: token.address_with_chain(),
             canister_id: token.address(),
             decimals: token.decimals(),
             fee: token.fee(),

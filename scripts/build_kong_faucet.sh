@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ -n "$1" ]; then
+    KONG_BUILDENV=$1
+fi
+
 if [ "$KONG_BUILDENV" == "ic" ]; then
     cargo build --features "prod" --target wasm32-unknown-unknown --release -p kong_faucet --locked
 elif [ "$KONG_BUILDENV" == "staging" ]; then

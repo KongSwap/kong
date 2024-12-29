@@ -219,7 +219,6 @@ type LPTokenReply = record {
     name : text;
     chain : text;
     symbol : text;
-    token : text;
     pool_id_of : nat32;
     address : text;
     decimals : nat8;
@@ -232,7 +231,6 @@ type ICTokenReply = record {
     name : text;
     chain : text;
     symbol : text;
-    token : text;
     canister_id : text;
     decimals : nat8;	
     fee : nat;

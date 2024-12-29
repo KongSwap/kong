@@ -16,7 +16,6 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             chain: token.chain(),
             name: token.name(),
             symbol: token.symbol(),
-            token: token.address_with_chain(),
             address: token.address(),
             pool_id_of: match lp_token.pool_of() {
                 Some(pool) => pool.pool_id,
@@ -32,7 +31,6 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             chain: token.chain(),
             name: token.name(),
             symbol: token.symbol(),
-            token: token.address_with_chain(),
             canister_id: token.address(),
             decimals: token.decimals(),
             fee: token.fee(),
