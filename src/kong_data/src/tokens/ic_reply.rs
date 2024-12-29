@@ -7,7 +7,6 @@ pub struct ICReply {
     pub name: String,
     pub chain: String,
     pub symbol: String,
-    pub token: String,
     pub canister_id: String,
     pub decimals: u8,
     pub fee: Nat,

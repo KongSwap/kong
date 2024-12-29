@@ -7,7 +7,6 @@ pub struct LPReply {
     pub name: String,
     pub chain: String,
     pub symbol: String,
-    pub token: String,
     pub address: String,
     pub pool_id_of: u32,
     pub decimals: u8,
