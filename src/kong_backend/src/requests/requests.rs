@@ -12,5 +12,6 @@ async fn requests(request_id: Option<u64>) -> Result<Vec<RequestReply>, String> 
         .iter()
         .map(to_request_reply)
         .collect();
+
     Ok(requests)
 }
