@@ -6,7 +6,7 @@
   import { getTVLChartConfig } from "./charts/tvlChartConfig";
   import { getBalanceChartConfig } from "./charts/balanceChartConfig";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { poolStore } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/services/pools/poolStore";
 
   let tvlChartCanvas: HTMLCanvasElement;
   let balanceChartCanvas: HTMLCanvasElement;
@@ -54,7 +54,7 @@
 
   // Get the pool based on selected tokens
   $: currentPool = $liquidityStore.token0 && $liquidityStore.token1 
-    ? $poolStore.pools.find(p => 
+    ? $livePools.find(p => 
         (p.address_0 === $liquidityStore.token0?.canister_id && p.address_1 === $liquidityStore.token1?.canister_id) ||
         (p.address_1 === $liquidityStore.token0?.canister_id && p.address_0 === $liquidityStore.token1?.canister_id)
       )

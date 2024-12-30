@@ -30,13 +30,7 @@
   onClose={() => accountStore.hideAccountDetails()}
   height="auto"
 >
-  <div class="account-details">
-    <div class="content-wrapper">
-      <div class="tab-content">
-        <IdentityPanel />
-      </div>
-    </div>
-  </div>
+  <IdentityPanel />
 </Modal>
 
 <style>

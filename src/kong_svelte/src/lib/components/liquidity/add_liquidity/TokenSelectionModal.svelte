@@ -59,7 +59,7 @@
     }
 </script>
 
-<Modal isOpen={show} {onClose} title="Select Token" variant="green">
+<Modal isOpen={show} {onClose} title="Select Token" variant="solid">
   <div class="bg-white dark:bg-emerald-800 dark:bg-opacity-80 dark:backdrop-blur-md rounded-2xl w-full max-w-md p-6 space-y-4">
     <div class="flex justify-between items-center">
       <div>

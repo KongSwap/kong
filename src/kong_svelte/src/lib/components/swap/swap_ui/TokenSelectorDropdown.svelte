@@ -510,7 +510,7 @@
   </Portal>
 {/if}
 
-<style>
+<style scoped lang="postcss">
   .modal-backdrop {
     position: fixed;
     inset: 0;

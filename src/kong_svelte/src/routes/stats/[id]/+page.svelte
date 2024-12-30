@@ -5,6 +5,7 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import { poolStore, type Pool } from "$lib/services/pools";
+  import { livePools } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
@@ -80,7 +81,7 @@
     if (initialPoolSet) return;
 
     // Get all pools containing this token
-    const relevantPools = $poolStore.pools.filter((p) => {
+    const relevantPools = $livePools.filter((p) => {
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
       const hasTVL = Number(p.tvl) > 0;
@@ -90,7 +91,7 @@
 
     if (relevantPools.length === 0) {
       // If no pools with volume, fall back to pools with just TVL
-      const poolsWithTvl = $poolStore.pools.filter((p) => {
+      const poolsWithTvl = $livePools.filter((p) => {
         const hasToken =
           p.address_0 === token.canister_id ||
           p.address_1 === token.canister_id;
@@ -193,7 +194,7 @@
       return;
     }
 
-    relevantPools = $poolStore.pools
+    relevantPools = $livePools
       .filter((p) => {
         const hasToken =
           p.address_0 === token.canister_id ||

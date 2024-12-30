@@ -8,7 +8,7 @@
     value: string;
     icon: any;
     hideOnMobile?: boolean;
-  }>;
+  }> = [];
 </script>
 
 <div class="flex flex-col gap-2 px-4 w-full">

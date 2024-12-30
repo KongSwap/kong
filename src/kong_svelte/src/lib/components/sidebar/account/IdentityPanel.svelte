@@ -15,7 +15,6 @@
     title: ''
   };
 
-  export let display: 'both' | 'principal' | 'account' = 'both';
   let principalCopied = false;
   let accountCopied = false;
   let copyLoading = false;
@@ -188,19 +187,31 @@
   }
 
   async function getQRCode(type: 'principal' | 'account') {
-    const text = type === 'principal' ? identity.principalId : identity.accountId;
-    if (!identity[`${type}QR`]) {
-      identity[`${type}QR`] = await generateQR(text);
+    const text = type === 'principal' ? identity.principalId : identity.defaultAccountId;
+    try {
+      return await QRCode.toDataURL(text, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+    } catch (err) {
+      console.error("QR generation failed:", err);
+      return "";
     }
-    return identity[`${type}QR`];
   }
 
   async function openQrModal(type: 'principal' | 'account') {
     qrLoading = true;
-    const qrData = await getQRCode(type);
-    const title = type === 'principal' ? 'Principal ID' : 'Account ID';
-    qrModal = { isOpen: true, qrData, title };
-    qrLoading = false;
+    try {
+      const qrData = await getQRCode(type);
+      const title = type === 'principal' ? 'Principal ID' : 'Account ID';
+      qrModal = { isOpen: true, qrData, title };
+    } finally {
+      qrLoading = false;
+    }
   }
 
   function closeQrModal() {
@@ -222,235 +233,206 @@
 </script>
 
 <!-- Identity Panel -->
-<div class="">
-  <!-- QR Code Modal -->
+<div class="container">
   {#if qrModal.isOpen}
     <Modal
       isOpen={qrModal.isOpen}
       onClose={closeQrModal}
       title={qrModal.title}
-      width="min(90vw, 400px)"
+      width="min(400px, 75vw)"
       height="auto"
       variant="solid"
     >
-      <div class="qr-modal-content flex flex-col items-center gap-4 p-4">
-        <div class="qr-code-wrapper relative w-full max-w-xs aspect-square bg-kong-bg-light rounded-lg shadow-md">
-          <img src={qrModal.qrData} alt={qrModal.title} class="w-full h-full object-contain p-4" />
+      <div class="modal-content">
+        <div class="qr-wrapper">
+          <img 
+            src={qrModal.qrData} 
+            alt={qrModal.title} 
+            class="qr-code" 
+          />
         </div>
-        <p class="text-center text-kong-text-secondary text-sm">
+        <p class="modal-text">
           Scan this QR code to share your {qrModal.title.toLowerCase()}.
         </p>
       </div>
     </Modal>
   {/if}
 
-  <div class=" px-4">
-    {#if display === 'both'}
-      <div class="tabs mb-4 flex justify-center">
-        <nav class="inline-flex overflow-hidden bg-kong-bg-light/50 rounded-md">
-          <button
-            class="tab-button px-3 py-1.5 text-xs font-medium text-kong-text-secondary hover:bg-kong-bg-dark transition-colors rounded-l-md"
-            class:active-tab={activeTab === 'principal'}
-            on:click={() => (activeTab = 'principal')}
-          >
-            Principal ID
-          </button>
-          <button
-            class="tab-button px-3 py-1.5 text-xs font-medium text-kong-text-secondary hover:bg-kong-bg-dark transition-colors rounded-r-md"
-            class:active-tab={activeTab === 'account'}
-            on:click={() => (activeTab = 'account')}
-          >
-            Account ID
-          </button>
-        </nav>
+  <div class="card">
+    <div class="card-header">
+      <span>Identity Type</span>
+    </div>
+    <div class="input-group">
+      <div class="input-wrapper">
+        <select 
+          bind:value={activeTab}
+          class="select-input"
+        >
+          <option value="principal">Principal ID</option>
+          <option value="account">Account ID</option>
+        </select>
       </div>
-    {/if}
+    </div>
+  </div>
 
-    <div class="grid gap-6">
-      <!-- Principal ID Section -->
-      {#if (activeTab === 'principal' || display === 'principal')}
-        <div class="id-section flex flex-col gap-4">
-          <div class="id-card bg-kong-bg-light/50 rounded-lg border border-kong-border p-4">
-            <h2 class="text-sm font-medium text-kong-text-secondary mb-3">Your Principal ID</h2>
-            <div class="flex flex-col gap-2">
-              <div class="id-display bg-kong-bg-dark/50 rounded-md p-3 border border-kong-border">
-                <span class="font-mono text-xs text-kong-text-secondary break-all select-text tracking-wider leading-relaxed">
-                  {identity.principalId || '...'}
-                </span>
-              </div>
-              <div class="actions flex justify-end gap-2">
-                <button
-                  class="action-button flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-                         bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-secondary transition-colors border border-kong-border"
-                  on:click={() => handleCopy(identity.principalId, 'principal')}
-                  disabled={copyLoading}
-                >
-                  {#if principalCopied}
-                    <Check size={14} class="text-kong-accent-green" />
-                    Copied
-                  {:else}
-                    <Copy size={14} />
-                    Copy
-                  {/if}
-                </button>
-                <button
-                  class="action-button flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-                         bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-secondary transition-colors border border-kong-border"
-                  on:click={() => openQrModal('principal')}
-                >
-                  <QrCode size={14} />
-                  QR Code
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="info-card mt-4 p-3 bg-kong-bg-light/50 rounded-lg border border-kong-border">
-            <p class="text-xs text-kong-text-secondary">
-              Your <strong>Principal ID</strong> is your unique identity on the Internet Computer. It:
-            </p>
-            <ul class="list-disc pl-4 text-kong-text-secondary text-xs mt-2 space-y-1">
+  <div class="card">
+    <div class="card-header">
+      <span>{activeTab === 'principal' ? 'Principal ID' : 'Account ID'}</span>
+      <div class="header-actions">
+        <button
+          class="icon-button"
+          on:click={() => handleCopy(activeTab === 'principal' ? identity.principalId : identity.defaultAccountId, activeTab)}
+          disabled={copyLoading}
+        >
+          {#if (activeTab === 'principal' ? principalCopied : accountCopied)}
+            <Check class="w-4 h-4 text-kong-success" />
+            <span class="button-text">Copied</span>
+          {:else}
+            <Copy class="w-4 h-4" />
+            <span class="button-text">Copy</span>
+          {/if}
+        </button>
+        <button
+          class="icon-button"
+          on:click={() => openQrModal(activeTab)}
+          disabled={qrLoading}
+        >
+          <QrCode class="w-4 h-4" />
+          <span class="button-text">QR Code</span>
+        </button>
+      </div>
+    </div>
+    <div class="input-group">
+      <div class="input-wrapper">
+        <input
+          type="text"
+          readonly
+          value={activeTab === 'principal' ? identity.principalId : identity.defaultAccountId}
+          class="text-input"
+        />
+      </div>
+
+      <div class="info-card">
+        <div class="info-content">
+          {#if activeTab === 'principal'}
+            <p class="info-title">Your <strong>Principal ID</strong> is your unique identity on the Internet Computer.</p>
+            <ul class="info-list">
               <li>Acts as your universal username across IC applications</li>
               <li>Controls access to your assets and data</li>
               <li>Is required for interacting with most dApps</li>
             </ul>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Account ID Section -->
-      {#if (activeTab === 'account' || display === 'account')}
-        <div class="id-section flex flex-col gap-4">
-          <div class="id-card bg-kong-bg-light/50 rounded-lg border border-kong-border p-4">
-            <h2 class="text-sm font-medium text-kong-text-secondary mb-3">Your Account ID</h2>
-            <div class="flex flex-col gap-2">
-              <div class="id-display bg-kong-bg-dark/50 rounded-md p-3 border border-kong-border">
-                <span class="font-mono text-xs text-kong-text-secondary break-all select-text tracking-wider leading-relaxed">
-                  {identity.defaultAccountId || '...'}
-                </span>
-              </div>
-              <div class="actions flex justify-end gap-2">
-                <button
-                  class="action-button flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-                         bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-secondary transition-colors border border-kong-border"
-                  on:click={() => handleCopy(identity.defaultAccountId, 'account')}
-                  disabled={copyLoading}
-                >
-                  {#if accountCopied}
-                    <Check size={14} class="text-kong-accent-green" />
-                    Copied
-                  {:else}
-                    <Copy size={14} />
-                    Copy
-                  {/if}
-                </button>
-                <button
-                  class="action-button flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-                         bg-kong-bg-light hover:bg-kong-bg-dark text-kong-text-secondary transition-colors border border-kong-border"
-                  on:click={() => openQrModal('account')}
-                >
-                  <QrCode size={14} />
-                  QR Code
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="info-card mt-4 p-3 bg-kong-bg-light/50 rounded-lg border border-kong-border">
-            <p class="text-xs text-kong-text-secondary">
-              Your <strong>Account ID</strong> is used for holding and transferring tokens. Important notes:
-            </p>
-            <ul class="list-disc pl-4 text-kong-text-secondary text-xs mt-2 space-y-1">
+          {:else}
+            <p class="info-title">Your <strong>Account ID</strong> is used for holding and transferring tokens.</p>
+            <ul class="info-list">
               <li>If you don't see your tokens, ensure you're using the correct Account ID</li>
               <li>The Account ID includes a specific subaccount</li>
               <li>The Default Account ID is commonly used for receiving ICP</li>
             </ul>
-          </div>
+          {/if}
         </div>
-      {/if}
+      </div>
     </div>
   </div>
 </div>
 
 <style scoped lang="postcss">
-  .qr-modal-content {
-    position: relative;
-    z-index: 1;
+  .container {
+    @apply flex flex-col gap-4 p-4;
   }
 
-  .qr-code-wrapper {
-    background-color: #fff;
+  .card {
+    @apply bg-kong-bg-light rounded-md px-4 py-3
+           border border-kong-border hover:border-kong-border
+           transition-all duration-200;
+
+    &:first-child {
+      @apply mt-0;
+    }
   }
 
-  .tabs {
-    display: flex;
-    justify-content: center;
+  .card-header {
+    @apply flex justify-between items-center mb-3 
+           text-kong-text-primary font-medium;
   }
 
-  .tab-button {
-    @apply text-sm text-kong-text-secondary;
-    background-color: transparent;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-    border: 1px solid transparent;
+  .header-actions {
+    @apply flex items-center gap-2;
   }
 
-  .tab-button:hover {
-    @apply bg-kong-bg-dark text-kong-text-secondary;
+  .input-group {
+    @apply flex flex-col gap-2;
   }
 
-  .tab-button.active-tab {
-    @apply bg-kong-primary text-white border-kong-primary border-b-2 border-b-white/50;
+  .input-wrapper {
+    @apply relative flex items-center;
   }
 
-  /* ID Sections */
-  .id-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  .select-input {
+    @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
+           text-kong-text-primary border border-kong-border
+           hover:border-kong-border focus:border-kong-primary
+           focus:ring-1 focus:ring-kong-primary/20 focus:outline-none
+           transition-all duration-200;
   }
 
-  .id-card {
-    @apply bg-kong-bg-dark text-kong-text-secondary;
-    border-radius: 0.5rem;
-    padding: 1rem;
+  .icon-button {
+    @apply flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium
+           rounded-md bg-kong-bg-dark text-kong-text-secondary
+           hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200;
+
+    .button-text {
+      @apply font-medium;
+    }
   }
 
-  .id-card h2 {
-    margin-bottom: 0.5rem;
-    @apply text-kong-text-secondary;
+  .qr-wrapper {
+    @apply flex justify-center p-4 bg-white rounded-md
+           border border-kong-border;
+  }
+
+  .qr-code {
+    @apply w-48 h-48 object-contain;
+  }
+
+  .text-input {
+    @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
+           text-kong-text-primary border border-kong-border
+           hover:border-kong-border transition-all duration-200
+           font-mono text-xs tracking-wider leading-relaxed;
   }
 
   .info-card {
-    @apply bg-kong-bg-dark text-kong-text-secondary;
-    border-radius: 0.5rem;
-    padding: 1rem;
+    @apply p-3 bg-kong-bg-light rounded-md
+           border border-kong-border;
   }
 
-  /* Actions */
-  .actions {
-    display: flex;
-    align-items: center;
+  .info-content {
+    @apply space-y-2;
   }
 
-  .action-button {
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  .info-title {
+    @apply text-sm text-kong-text-secondary;
+
+    strong {
+      @apply text-kong-text-primary font-medium;
+    }
   }
 
-  .action-button:hover:not(:disabled) {
-    @apply transform scale-[1.02] transition-transform;
+  .info-list {
+    @apply list-disc pl-4 space-y-1;
+
+    li {
+      @apply text-xs text-kong-text-secondary;
+    }
   }
 
-  .id-display {
-    @apply relative;
-    word-break: break-all;
-    line-height: 1.4;
+  .modal-content {
+    @apply p-6 flex flex-col items-center gap-4;
   }
 
-  .tracking-wider {
-    letter-spacing: 0.075em;
-  }
-
-  .leading-relaxed {
-    line-height: 1.625;
+  .modal-text {
+    @apply text-center text-sm text-kong-text-secondary;
   }
 </style>

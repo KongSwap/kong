@@ -8,7 +8,7 @@
   import { poolStore } from "$lib/services/pools/poolStore";
   import { browser } from "$app/environment";
   import { toastStore } from "$lib/stores/toastStore";
-
+  import { livePools } from "$lib/services/pools/poolStore";
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
   let amount0 = "";
@@ -50,7 +50,7 @@
 
   async function fetchPoolInfo() {
     try {
-      const pools = $poolStore.pools;
+      const pools = $livePools;
       pool = pools.find(
         p => (p.address_0 === token0?.canister_id && p.address_1 === token1?.canister_id) ||
              (p.address_0 === token1?.canister_id && p.address_1 === token0?.canister_id)
@@ -168,7 +168,7 @@
         } else {
             console.log('Still pending, polling again in .5s');
             return new Promise((resolve) => {
-                setTimeout(() => resolve(pollStatus(requestId, attempt + 1)), 400);
+                setTimeout(() => resolve(pollStatus(requestId, attempt + 1)), 500);
             });
         }
     } catch (err) {

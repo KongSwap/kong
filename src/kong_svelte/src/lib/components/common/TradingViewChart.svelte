@@ -5,7 +5,7 @@
   import { loadTradingViewLibrary } from "$lib/services/tradingview/widget";
   import { getChartConfig } from "$lib/services/tradingview/config";
   import { fetchChartData } from "$lib/services/indexer/api";
-  import { poolStore } from "$lib/services/pools";
+  import { livePools } from "$lib/services/pools/poolStore";
   import { debounce } from "lodash-es";
 
   // Convert props to runes syntax
@@ -37,7 +37,7 @@
   });
 
   // Watch for pool store changes and type the pools array
-  const pools = $derived(($poolStore?.pools || []) as BE.Pool[]);
+  const pools = $derived(($livePools || []) as BE.Pool[]);
 
   // Update selected pool and routing path when pools or selectedPoolId changes
   const selectedPool = $derived(pools.find((p) => Number(p.pool_id) === selectedPoolId) as BE.Pool | undefined);
@@ -114,7 +114,7 @@
       }
 
       // Get current price from poolStore
-      const currentPrice = $poolStore.pools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
+      const currentPrice = $livePools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
       console.log('Current price:', currentPrice);
 
       // Pass current price to datafeed

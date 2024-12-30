@@ -135,7 +135,7 @@
 
 <style scoped lang="postcss">
   .token-input-container {
-    @apply bg-white/[0.02] rounded-xl p-4;
+    @apply bg-white/[0.02] rounded-xl p-3;
     @apply border border-white/[0.04] backdrop-blur-md;
     @apply transition-all duration-200;
     @apply hover:border-white/[0.06] hover:bg-white/[0.03];
@@ -143,15 +143,15 @@
 
   .amount-input {
     @apply w-full min-w-0 bg-transparent border-none;
-    @apply text-kong-text-primary text-[2.5rem] font-medium tracking-tight;
+    @apply text-[clamp(1.5rem,4vw,2.5rem)] font-medium tracking-tight;
     @apply relative z-10 p-0;
     @apply opacity-100 focus:outline-none focus:text-kong-text-primary;
     @apply disabled:text-kong-text-primary/70 placeholder:text-kong-text-primary/30;
   }
 
   .balance-info {
-    @apply flex justify-between mt-2;
-    @apply text-[clamp(0.8rem,2vw,0.875rem)] text-kong-text-primary/50;
+    @apply flex flex-wrap justify-between mt-2 gap-2;
+    @apply text-[clamp(0.75rem,2vw,0.875rem)] text-kong-text-primary/50;
   }
 
   .input-with-token {
@@ -159,16 +159,16 @@
   }
 
   .token-logo {
-    @apply w-8 h-8 rounded-full bg-black/20 object-contain flex-shrink-0;
+    @apply w-6 h-6 rounded-full bg-black/20 object-contain flex-shrink-0;
     @apply border border-white/[0.03];
   }
 
   .percentage-buttons {
-    @apply flex gap-2 ml-4;
+    @apply flex flex-wrap gap-1;
   }
 
   .percentage-buttons button {
-    @apply px-2 py-1 text-xs rounded-md bg-white/[0.03] text-kong-text-primary/70
+    @apply px-1.5 py-0.5 text-xs rounded-md bg-white/[0.03] text-kong-text-primary/70
            hover:bg-white/[0.06] hover:text-kong-text-primary transition-all duration-200
            disabled:opacity-40 disabled:hover:bg-white/[0.03] disabled:hover:text-kong-text-primary/70;
     @apply border border-white/[0.04];

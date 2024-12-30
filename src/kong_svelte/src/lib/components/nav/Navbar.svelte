@@ -677,7 +677,7 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     @apply border border-kong-border;
-    border-radius: 16px;
+    @apply rounded-md;
     box-shadow: 
       0 8px 32px rgb(0 0 0 / 0.2),
       0 0 0 1px rgb(var(--text-primary) / 0.02);
@@ -696,15 +696,12 @@
 
   .dropdown-item {
     width: 100%;
-    padding: 20px;
     display: grid;
     grid-template-columns: 80px 1fr;
     align-items: center;
     text-align: left;
-    border-radius: 12px;
+    @apply relative rounded-md overflow-hidden text-left px-4 py-4;
     transition: all 0.15s ease;
-    position: relative;
-    overflow: hidden;
   }
 
   .dropdown-item-icon {
@@ -714,7 +711,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    @apply rounded-md;
     @apply bg-kong-text-primary/5;
     color: theme(colors.kong.text-primary);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

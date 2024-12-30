@@ -3,7 +3,7 @@
 	import { sidebarStore } from '$lib/stores/sidebarStore';
   import { writable, derived } from "svelte/store";
   import {
-    poolsList,
+    livePools,
     liveUserPools,
     filteredLivePools,
     poolSearchTerm,
@@ -70,7 +70,7 @@
     return map;
   });
 
-  const highestApr = derived(poolsList, ($pools) => {
+  const highestApr = derived(livePools, ($pools) => {
     if (!$pools || $pools.length === 0) return 0;
     return Math.max(...$pools.map((pool) => Number(pool.rolling_24h_apy)));
   });
@@ -91,7 +91,7 @@
 
   function handlePoolClick(event) {
     const pool = event.detail;
-    const fullPool = $poolsList.find(
+    const fullPool = $livePools.find(
       (p) =>
         p.symbol_0 === pool.symbol_0 &&
         p.symbol_1 === pool.symbol_1 &&
@@ -126,12 +126,12 @@
   stats={[
     {
       label: "Volume 24H",
-      value: `${formatUsdValue(formatBalance($poolsList.reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0), 6, 2))}`,
+      value: `${formatUsdValue(formatBalance($livePools.reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0), 6, 2))}`,
       icon: TrendingUp
     },
     {
       label: "TVL",
-      value: `${formatUsdValue(formatBalance($poolsList.reduce((acc, pool) => acc + Number(pool.tvl), 0), 6, 2))}`,
+      value: `${formatUsdValue(formatBalance($livePools.reduce((acc, pool) => acc + Number(pool.tvl), 0), 6, 2))}`,
       icon: TrendingUp
     },
     {
@@ -247,7 +247,7 @@
                 {/if}
               </div>
               <!-- Desktop view -->
-              <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-kong-border pt-2">
+              <div class="hidden sm:flex er-b border-kong-border py-1">
                 <div class="flex-1">
                   <div class="flex items-center">
                     <div class="flex bg-transparent">

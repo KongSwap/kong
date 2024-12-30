@@ -55,14 +55,14 @@
   }
 </script>
 
-<div class="wallet-provider">
-  <div class="wallet-list">
-    {#each filteredWallets as wallet}
-      <button
-        class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
-        on:click={() => handleConnect(wallet.id)}
-        disabled={connecting}
-      >
+<div class="wallet-list">
+  {#each filteredWallets as wallet}
+    <button
+      class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
+      on:click={() => handleConnect(wallet.id)}
+      disabled={connecting}
+    >
+      <div class="wallet-content">
         <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
         <div class="wallet-info">
           <span class="wallet-name">{wallet.name}</span>
@@ -70,9 +70,12 @@
             <span class="wallet-description">Sign in with Google</span>
           {/if}
         </div>
-      </button>
-    {/each}
-  </div>
+      </div>
+      <svg class="wallet-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </button>
+  {/each}
 </div>
 
 {#if plugDialog}
@@ -83,53 +86,46 @@
 {/if}
 
 <style lang="postcss">
-  .wallet-provider {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding-top: 1.25rem;
-  }
-
   .wallet-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow-y: auto;
+    @apply flex flex-col gap-3;
   }
 
   .wallet-option {
-    @apply flex items-center gap-5 w-full p-5;
-    @apply bg-kong-text-primary/5 rounded-xl border border-kong-border;
-    backdrop-filter: blur(8px);
-    text-align: left;
-    position: relative;
-    transition: all 0.2s;
+    @apply flex items-center justify-between w-full px-4 py-4;
+    @apply bg-kong-bg-dark/10 rounded-xl border border-kong-text-primary/10;
+    @apply transition-all duration-200;
+    backdrop-filter: blur(2px);
+  }
+
+  .wallet-content {
+    @apply flex items-center gap-4;
   }
 
   .wallet-option:hover:not(:disabled) {
-    @apply bg-kong-text-primary/10 border-kong-border-light;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+    @apply border-kong-primary bg-kong-primary/25;
+    box-shadow: 
+      0 4px 24px -2px rgb(0 0 0 / 0.12),
+      0 2px 8px -2px rgb(0 0 0 / 0.06);
   }
 
   .wallet-option:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    @apply opacity-50 cursor-not-allowed;
   }
 
   .wallet-option.recommended {
-    @apply bg-kong-primary/20 border-kong-primary/30;
+    @apply bg-kong-primary/10 border-kong-primary/20;
   }
 
   .wallet-option.recommended:hover:not(:disabled) {
-    @apply bg-kong-primary/30 border-kong-primary/40;
-    box-shadow: 0 4px 20px rgb(var(--primary) / 0.2);
+    @apply bg-kong-primary/25 border-kong-primary/30;
+    box-shadow: 
+      0 4px 24px -2px rgb(var(--primary) / 0.15),
+      0 2px 8px -2px rgb(var(--primary) / 0.1);
   }
 
   .wallet-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
-    transition: transform 0.2s;
+    @apply w-12 h-12 rounded-xl;
+    @apply transition-transform duration-200;
     @apply dark:brightness-100 brightness-[0.85];
   }
 
@@ -138,42 +134,23 @@
   }
 
   .wallet-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    @apply flex flex-col gap-1;
   }
 
   .wallet-name {
-    @apply text-kong-text-primary;
-    font-weight: 500;
-    font-size: 18px;
-    letter-spacing: 0.05em;
+    @apply text-kong-text-primary font-medium text-lg;
   }
 
   .wallet-description {
-    @apply text-kong-text-secondary;
-    font-size: 14px;
-    transition: color 0.2s;
+    @apply text-kong-text-secondary text-sm;
   }
 
-  .wallet-option.recommended:hover .wallet-description {
-    @apply text-kong-text-primary;
+  .wallet-arrow {
+    @apply text-kong-text-secondary opacity-50;
+    @apply transition-transform duration-200;
   }
 
-  .wallet-list::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .wallet-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .wallet-list::-webkit-scrollbar-thumb {
-    @apply bg-kong-text-primary/5;
-    border-radius: 9999px;
-  }
-
-  .wallet-list::-webkit-scrollbar-thumb:hover {
-    @apply bg-kong-text-primary/10;
+  .wallet-option:hover .wallet-arrow {
+    @apply transform translate-x-1 opacity-100;
   }
 </style>

@@ -357,11 +357,11 @@
           <div class="flex flex-col h-full">
             <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
               <div
-                class="hidden sm:flex items-center gap-3 pb-1 border-b border-kong-border pt-2"
+                class="hidden sm:flex items-center gap-3 py-1 border-b border-kong-border"
               >
                 <div class="flex bg-transparent">
                   <button
-                    class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
+                    class="px-4 py-1 transition-colors duration-200 {$showFavoritesOnly
                       ? 'text-kong-text-secondary hover:text-kong-text-primary'
                       : 'text-kong-text-primary'}"
                     on:click={() => showFavoritesOnly.set(false)}

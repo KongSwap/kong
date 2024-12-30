@@ -82,7 +82,7 @@
   .token-selector-button {
     @apply flex-1 flex items-center justify-center;
     @apply bg-white/[0.02] hover:bg-white/[0.04];
-    @apply rounded-xl px-6 py-4;
+    @apply rounded-xl px-4 py-3;
     @apply border border-white/[0.03];
     @apply transition-all duration-200;
     backdrop-filter: blur(11px);
@@ -99,15 +99,15 @@
   }
 
   .token-logo {
-    @apply w-9 h-9 rounded-full bg-white/[0.02] object-contain p-0.5;
+    @apply w-7 h-7 rounded-full bg-white/[0.02] object-contain p-0.5;
     @apply border border-white/[0.03];
   }
 
   .token-symbol {
-    @apply text-xl text-kong-text-primary/90 font-medium tracking-tight;
+    @apply text-lg text-kong-text-primary/90 font-medium tracking-tight;
   }
 
   .select-token-text {
-    @apply text-2xl text-kong-text-primary/50 font-medium tracking-tight;
+    @apply text-lg text-kong-text-primary/50 font-medium tracking-tight;
   }
 </style> 

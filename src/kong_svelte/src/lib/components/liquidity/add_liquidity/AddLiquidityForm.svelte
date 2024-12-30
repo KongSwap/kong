@@ -5,7 +5,7 @@
     parseTokenAmount,
     formatToNonZeroDecimal,
   } from "$lib/utils/numberFormatUtils";
-  import { poolStore } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/services/pools/poolStore";
   import Portal from "svelte-portal";
   import TokenSelectorDropdown from "$lib/components/swap/swap_ui/TokenSelectorDropdown.svelte";
   import { PoolService } from "$lib/services/pools/PoolService";
@@ -392,7 +392,7 @@
       auth.pnp.account?.owner?.toString(),
       { tokens: [token0, token1], forceRefresh: false }
     );
-    pool = getPoolForTokenPair(token0, token1, $poolStore.pools);
+    pool = getPoolForTokenPair(token0, token1, $livePools);
 
     // Recalculate amounts when tokens change
     if (lastChanged !== null && (parseFloat(amount0?.replace(/[,_]/g, '') || '0') > 0 || parseFloat(amount1?.replace(/[,_]/g, '') || '0') > 0)) {

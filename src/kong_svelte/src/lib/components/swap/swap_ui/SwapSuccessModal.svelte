@@ -69,12 +69,12 @@
     on:click={handleClose}
   >
     <div
-      class="modal-container p-7 rounded-2xl max-w-md w-full mx-4 shadow-2xl relative overflow-hidden"
+      class="modal-container p-7 rounded-md max-w-md w-full mx-4 shadow-2xl relative overflow-hidden"
       transition:scale={{ duration: 400, easing: backOut }}
       on:click|stopPropagation
     >
       <!-- Animated gradient border -->
-      <div class="absolute inset-0 bg-kong-bg-dark/30 rounded-2xl animate-gradient-x" />
+      <div class="absolute inset-0 bg-kong-bg-dark/30 rounded-md animate-gradient-x" />
       
       <!-- Glowing success indicator -->
       <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-40 h-40 bg-kong-primary/20 rounded-full blur-3xl animate-pulse" />

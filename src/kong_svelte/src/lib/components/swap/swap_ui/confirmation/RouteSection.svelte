@@ -83,8 +83,7 @@
   }
 
   .token-block {
-    @apply bg-kong-bg-dark/20 border border-kong-bg-dark/20;
-    border-radius: 12px;
+    @apply bg-kong-bg-dark border border-kong-bg-dark rounded;
     padding: 6px 12px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -92,7 +91,7 @@
   }
 
   .token-block:hover {
-    @apply bg-kong-bg-dark/50 border border-kong-bg-dark/20;
+    @apply bg-kong-bg-dark border border-kong-bg-dark;
   }
 
   .token-inner {

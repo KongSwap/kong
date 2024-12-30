@@ -42,7 +42,7 @@
     const dataKey = safeSerialize({ 
       tokens: tokens.map(t => t.canister_id),
       balances: Object.keys(balances),
-      userPools: userPools.map(p => p.canister_id)
+      userPools: userPools.map(p => p.pool_id)
     });
     
     if (currentData?.key === dataKey) {

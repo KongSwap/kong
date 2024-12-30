@@ -151,7 +151,7 @@
           variant={variant}
           width="100%"
           height="100%"
-          className="{className}"
+          className="!py-0 {className}"
         >
           <div class="modal-content" style="height: {height}; min-height: {minHeight};">
             {#if loading}
@@ -173,10 +173,10 @@
               <!-- Place your "pull-down" bar or similar here -->
             </div>
 
-            <header class="flex justify-between items-center px-4 pt-1">
+            <header class="flex justify-between items-center px-4">
               <slot name="title">
                 {#if typeof title === 'string'}
-                  <h2 class="text-lg font-medium">{title}</h2>
+                  <h2 class="text-lg font-semibold">{title}</h2>
                 {:else}
                   <div bind:this={titleElement}></div>
                 {/if}
@@ -204,7 +204,7 @@
               </button>
             </header>
 
-            <div class="modal-body overflow-y-auto flex flex-col">
+            <div class="modal-body flex flex-col">
               <slot />
             </div>
           </div>
@@ -226,7 +226,6 @@
     z-index: 99999;
     display: grid;
     place-items: center;
-    overflow: auto;
     will-change: opacity;
   }
 
@@ -239,7 +238,7 @@
   }
 
   .modal-content {
-    height: 100%;
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     min-height: var(--min-height, auto);
@@ -255,6 +254,7 @@
     scrollbar-color: var(--kong-primary) transparent;
     margin: 0rem;
     padding: 0rem;
+    min-height: 100%;
   }
 
   .action-button {

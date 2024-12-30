@@ -54,11 +54,11 @@
       <!-- Left Section -->
       <div class="left-section flex items-center gap-2">
         <button
-          class="wallet-button flex items-center text-kong-text-primary hover:text-kong-primary transition-colors"
+          class="wallet-button flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
           on:click={() => accountStore.showAccountDetails()}
           use:tooltip={{ text: "View Account Details" }}
         >
-          <Wallet size={16} />
+          <Wallet size={16} />  Addresses
         </button>
 
         <button
@@ -125,28 +125,36 @@
         </button>
       </div>
     {:else}
-      <div class="flex items-center justify-between w-full">
-        <h1 class="font-mono text-lg text-kong-text-secondary font-semibold">
-          Select Wallet
-        </h1>
-        <button
-          class="close-button p-2 rounded-t-lg border border-gray-700 hover:bg-gray-800/30 transition-all duration-200"
-          on:click={onClose}
-          use:tooltip={{ text: "Close Sidebar" }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+      <div class="flex flex-col px-4 py-6">
+        <div class="flex flex-col">
+          <div class="flex items-center gap-3 mb-1">
+            <button
+              class="back-button p-1.5 -ml-1.5 rounded-xl hover:bg-kong-primary/25 border border-transparent hover:border-kong-primary transition-all duration-200"
+              on:click={onClose}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+                class="text-kong-text-secondary hover:text-kong-text-primary transition-colors"
+              >
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+            </button>
+            <h1 class="text-2xl font-semibold text-kong-text-primary">
+              Connect Wallet
+            </h1>
+          </div>
+          <p class="text-sm text-kong-text-secondary">
+            Choose your preferred wallet to connect
+          </p>
+        </div>
       </div>
     {/if}
   </div>
@@ -194,7 +202,7 @@
   }
 
   .header-content {
-    @apply flex items-center justify-between p-2.5;
+    @apply flex items-center justify-between;
   }
 
   .left-section {

@@ -5,7 +5,7 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { liveTokens, loadBalance } from "$lib/services/tokens/tokenStore";
   import { PoolService } from "$lib/services/pools";
-  import { poolsList } from "$lib/services/pools/poolStore";
+  import { livePools } from "$lib/services/pools/poolStore";
   import { poolStore } from "$lib/services/pools/poolStore";
   import { toastStore } from "$lib/stores/toastStore";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
@@ -51,7 +51,7 @@
   $: token1 = $liveTokens.find((t) => t.symbol === pool.symbol_1);
 
   // Get the actual pool data with APY
-  $: actualPool = $poolsList.find(
+  $: actualPool = $livePools.find(
     (p) => p.symbol_0 === pool.symbol_0 && p.symbol_1 === pool.symbol_1,
   );
 
@@ -269,7 +269,7 @@
   variant="transparent"
   width="min(420px, 95vw)"
   height="auto"
-  className="!p-0 !flex !flex-col !rounded-2xl !overflow-hidden"
+  className="!p-0 !flex !flex-col !rounded-md !overflow-hidden"
 >
   <div slot="title" class="flex items-center gap-3">
     <TokenImages tokens={[token0, token1]} size={24} overlap={true} />

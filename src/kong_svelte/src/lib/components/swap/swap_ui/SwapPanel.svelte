@@ -415,7 +415,7 @@
 <Panel
   variant="transparent"
   width="auto"
-  className="token-panel w-full max-w-[690px]"
+  className="token-panel w-full max-w-[690px] !rounded-xl !p-4"
 >
   <div
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg"

@@ -19,7 +19,7 @@ body {
 
 /* Light theme defaults (muted blue tones) */
 :root {
-  --bg-dark: 226 237 248;          /* #E2EDF8 - Muted blue background */
+  --bg-dark: 216 237 248;          /* #E2EDF8 - Muted blue background */
   --bg-light: 235 244 252;         /* #EBF4FC - Lighter muted blue */
   --primary: 37 99 235;            /* #2563EB (unchanged) */
   --primary-hover: 29 78 216;      /* #1D4ED8 (unchanged) */

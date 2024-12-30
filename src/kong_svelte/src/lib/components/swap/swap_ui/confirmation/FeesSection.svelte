@@ -91,8 +91,7 @@
 
   .info-icon {
     font-size: 12px;
-    @apply bg-kong-bg-dark/20;
-    border-radius: 50%;
+    @apply bg-kong-bg-dark rounded;
     width: 16px;
     height: 16px;
     display: inline-flex;
@@ -111,13 +110,11 @@
     top: 100%;
     left: 0;
     margin-top: 6px;
-    @apply bg-kong-bg-dark;
-    @apply text-kong-text-primary;
+    @apply bg-kong-bg-dark text-kong-text-primary rounded;
     font-size: 12px;
     padding: 8px;
-    border-radius: 8px;
     width: 180px;
-    @apply shadow-kong-bg-dark/50;
+    @apply shadow-kong-bg-dark;
     line-height: 1.4;
     z-index: 10;
   }

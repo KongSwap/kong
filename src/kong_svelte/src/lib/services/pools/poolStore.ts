@@ -13,7 +13,6 @@ interface ExtendedPool extends BE.Pool {
 }
 
 interface PoolState {
-  pools: ExtendedPool[];
   totals: {
     tvl: number;
     rolling_24h_volume: number;
@@ -34,7 +33,6 @@ export const poolSortDirection = writable<'asc' | 'desc'>('desc');
 
 function createPoolStore() {
   const { subscribe, set, update } = writable<PoolState>({
-    pools: [],
     totals: {
       tvl: 0,
       rolling_24h_volume: 0,
@@ -45,62 +43,8 @@ function createPoolStore() {
     lastUpdate: null,
   });
 
-
-  // Create a derived store for filtered and sorted pools
-  const filteredAndSortedPools = derived(
-    [stablePoolsStore, poolSearchTerm, poolSortColumn, poolSortDirection],
-    ([$pools, $searchTerm, $sortColumn, $sortDirection]) => {
-      let result = [...$pools];
-
-      // Apply search filter
-      if ($searchTerm) {
-        const search = $searchTerm.toLowerCase();
-        result = result.filter(pool => {
-          return (
-            pool.symbol_0.toLowerCase().includes(search) ||
-            pool.symbol_1.toLowerCase().includes(search) ||
-            `${pool.symbol_0}/${pool.symbol_1}`.toLowerCase().includes(search) ||
-            pool.address_0.toLowerCase().includes(search) ||
-            pool.address_1.toLowerCase().includes(search)
-          );
-        });
-      }
-
-      // Apply sorting
-      const direction = $sortDirection === 'asc' ? 1 : -1;
-      result.sort((a, b) => {
-        // Always put Kong pools first
-        const aHasKong = a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
-        const bHasKong = b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
-        
-        if (aHasKong && !bHasKong) return -1;
-        if (!aHasKong && bHasKong) return 1;
-
-        switch ($sortColumn) {
-          case 'rolling_24h_volume': {
-            const diff = BigInt(a.rolling_24h_volume) - BigInt(b.rolling_24h_volume);
-            return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
-          }
-          case 'tvl': {
-            const diff = BigInt(a.tvl || 0) - BigInt(b.tvl || 0);
-            return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
-          }
-          case 'rolling_24h_apy':
-            return direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy));
-          case 'price':
-            return direction * (Number(a.price) - Number(b.price));
-          default:
-            return 0;
-        }
-      });
-
-      return result;
-    }
-  );
-
   return {
     subscribe,
-    filteredAndSortedPools,
     loadPools: async (forceRefresh = false) => {
       update(state => ({ ...state, isLoading: true, error: null }));
 
@@ -127,25 +71,9 @@ function createPoolStore() {
           total_24h_lp_fee: BigInt(poolsData.total_24h_lp_fee),
           total_24h_num_swaps: BigInt(poolsData.total_24h_num_swaps),
           timestamp: Date.now()
-        });
-        // Update the stable store
-        stablePoolsStore.set(pools);
-
-        // Update the main store
-        set({
-          pools: pools,
-          totals: {
-            tvl: Number(poolsData.total_tvl) / 1e6,
-            rolling_24h_volume: Number(poolsData.total_24h_volume) / 1e6,
-            fees_24h: Number(poolsData.total_24h_lp_fee) / 1e6
-          },
-          isLoading: false,
-          error: null,
-          lastUpdate: Date.now()
-        });
+        });;
 
         eventBus.emit('poolsUpdated', pools);
-
         return pools;
       } catch (error) {
         console.error('[PoolStore] Error loading pools:', error);
@@ -170,10 +98,6 @@ function createPoolStore() {
         // Store in DB
         await kongDB.pools.put(pool);
         // Update the pools array
-        update(state => ({
-          ...state,
-          pools: [...state.pools.filter(p => p.id !== poolId), pool]
-        }));
         return pool;
       } catch (error) {
         console.error('[PoolStore] Error fetching pool:', error);
@@ -234,7 +158,6 @@ function createPoolStore() {
         kongDB.pools.clear();
       }
       set({
-        pools: [],
         totals: {
           tvl: 0,
           rolling_24h_volume: 0,
@@ -260,37 +183,10 @@ function createPoolStore() {
 
 export const poolStore = createPoolStore();
 
-// Derived stores with debug logging
-export const poolTotals: Readable<{ tvl: number; rolling_24h_volume: number; fees_24h: number }> = derived(poolStore, ($store, set) => {
-  set($store.totals);
-});
-
 // Use the stable store for pools list to prevent unnecessary re-renders
 export const poolsList: Readable<BE.Pool[]> = derived(stablePoolsStore, ($pools, set) => {
   set($pools);
 });
-
-export const poolsLoading: Readable<boolean> = derived(poolStore, $store => $store.isLoading);
-
-export const poolsError: Readable<string | null> = derived(poolStore, $store => $store.error);
-
-export const displayPools = derived(poolsList, ($pools) => {
-  return $pools.map(pool => ({
-    ...pool,
-    displayTvl: Number(pool.tvl) / 1e6
-  }));
-});
-
-// Export the filtered and sorted pools store
-export const sortedPools = derived(
-  poolStore.filteredAndSortedPools,
-  ($pools) => $pools.map(pool => ({
-    ...pool,
-    tvl: BigInt(pool.tvl),
-    rolling_24h_volume: BigInt(pool.rolling_24h_volume),
-    displayTvl: Number(pool.tvl) / 1e6,
-  }))
-);
 
 // Dexie's liveQuery for livePools
 export const livePools = readable<ExtendedPool[]>([], set => {
