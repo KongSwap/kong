@@ -83,14 +83,14 @@
 <Modal 
   {isOpen}
   {onClose}
-  title="Add Custom Token"
+  title="Import Token"
+  height="auto"
 >
-  <div class="add-token-modal" on:click|stopPropagation>
+  <div class="fl" on:click|stopPropagation>
     {#if step === 'input'}
       <form on:submit|preventDefault={handleSearch} class="form-content">
         <div class="input-section">
           <div class="input-group">
-            <label for="canisterId">Token Canister ID</label>
             <input
               id="canisterId"
               type="text"

@@ -76,32 +76,38 @@
 <div class="swap-pro-container">
   <div class="layout-container">
     <div class="main-content" class:mobile={isMobile}>
-      <!-- Chart Area -->
-      <Panel
-        variant="transparent"
-        type="main"
-        className={`chart-area !p-0 max-h-[30rem]`}
-        width="100%"
-      >
-        <div
-          class="chart-wrapper !p-0"
-          class:minimized={isChartMinimized}
+      <!-- Left side with chart and transaction feed -->
+      <div class="left-panels">
+        <!-- Chart Area -->
+        <Panel
+          variant="transparent"
+          type="main"
+          className="chart-area !p-0"
+          width="100%"
         >
-          {#if baseToken && quoteToken}
-            <TradingViewChart 
-              poolId={selectedPool ? Number(selectedPool.pool_id) : undefined}
-              quoteToken={quoteToken}
-              baseToken={baseToken}
-            />
-          {:else}
-            <div class="flex items-center justify-center h-full text-white">
-              Select tokens to view chart
-            </div>
-          {/if}
-        </div>
-      </Panel>
+          <div
+            class="chart-wrapper !p-0"
+            class:minimized={isChartMinimized}
+          >
+            {#if baseToken && quoteToken}
+              <TradingViewChart 
+                poolId={selectedPool ? Number(selectedPool.pool_id) : undefined}
+                quoteToken={quoteToken}
+                baseToken={baseToken}
+              />
+            {:else}
+              <div class="flex items-center justify-center h-full text-white">
+                Select tokens to view chart
+              </div>
+            {/if}
+          </div>
+        </Panel>
 
-      <!-- Right side panels -->
+
+          <TransactionFeed token={toToken} className="!p-0 mt-1" />
+      </div>
+
+      <!-- Right side with swap interface -->
       <div class="right-panels" class:mobile={isMobile}>
         <div class="swap-section">
           <Swap
@@ -112,9 +118,6 @@
             on:tokenChange={handleTokenChange}
           />
         </div>
-
-        <!-- Transaction History Section -->
-        <TransactionFeed token={toToken} />
       </div>
     </div>
   </div>
@@ -220,5 +223,39 @@
       width: 400px;
       flex: 0 0 400px;
     }
+  }
+
+  .left-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
+  }
+
+  :global(.chart-area) {
+    flex: 3;  /* Takes up 3 parts of available space */
+    max-height: 400px;
+  }
+
+  :global(.transaction-feed-panel) {
+    flex: 2;  /* Takes up 2 parts of available space */
+    min-height: 200px;
+  }
+
+  /* Mobile styles */
+  .main-content.mobile .left-panels {
+    width: 100%;
+    overflow: visible;
+  }
+
+  .main-content.mobile :global(.chart-area) {
+    height: 60vh;
+    min-height: 300px;
+    max-height: 500px;
+  }
+
+  .main-content.mobile :global(.transaction-feed-panel) {
+    height: 400px;
   }
 </style>

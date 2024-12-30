@@ -48,7 +48,6 @@
     handleMouseLeave();
   }
 
-  // Create a derived store that sorts tokens by volume
   const sortedTokens = derived(liveTokens, ($tokens) => {
     return [...$tokens].sort((a, b) => {
       const volumeA = Number(a.metrics?.volume_24h || 0);
@@ -56,17 +55,6 @@
       return volumeB - volumeA;
     });
   });
-
-  // Optional: Add this to check if we have tokens
-  $: console.log("Number of tokens:", $liveTokens.length);
-
-  // Add these utility functions
-  function formatPrice(price: number): string {
-    return price.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    });
-  }
 
   function getChangeClass(change: number): string {
     return change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
@@ -115,6 +103,32 @@
           </button>
         {/if}
       {/each}
+      {#each $liveTokens.sort((a, b) => Number(b.metrics.volume_24h) - Number(a.metrics.volume_24h)).slice(0, 20) as token}
+        {#if token.metrics}
+          <button
+            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 py-1.5"
+            on:click={() => goto(`/stats/${token.address}`)}
+            on:mouseenter={(e) => handleMouseEnter(e, token)}
+            on:mouseleave={handleMouseLeave}
+          >
+            <span class="font-medium text-kong-text-primary">{token.symbol}</span>
+            <span class="text-kong-text-secondary">${formatToNonZeroDecimal(Number(token.metrics.price))}</span>
+            <span
+              class="flex items-center gap-0.5 {getChangeClass(
+                Number(token.metrics.price_change_24h),
+              )}"
+            >
+              {#if Number(token.metrics.price_change_24h) > 0}
+                <ArrowUp class="inline" size={12} />
+              {:else if Number(token.metrics.price_change_24h) < 0}
+                <ArrowDown class="inline" size={12} />
+              {/if}
+              {formatChange(Number(token.metrics.price_change_24h))}
+            </span>
+            <span class="divider"></span>
+          </button>
+        {/if}
+      {/each}
     </div>
   </div>
 </div>
@@ -133,14 +147,14 @@
       >
       <div class="flex items-center gap-2">
         <span class="text-kong-text-primary font-medium"
-          >${formatPrice(Number(hoveredToken.metrics.price))}</span
+          >${formatToNonZeroDecimal(Number(hoveredToken.metrics.price))}</span
         >
         <span
           class="text-sm {getChangeClass(
             Number(hoveredToken.metrics.price_change_24h),
           )}"
         >
-          {formatChange(Number(hoveredToken.metrics.price_change_24h))}
+          {formatToNonZeroDecimal(Number(hoveredToken.metrics.price_change_24h))}
         </span>
       </div>
     </div>
@@ -154,18 +168,17 @@
 {/if}
 
 <style lang="postcss">
-  /* Only keeping styles that can't be handled by Tailwind */
   @keyframes scroll {
-    from {
-      transform: translateX(0%);
+    0% {
+      transform: translateX(0);
     }
-    to {
+    100% {
       transform: translateX(-50%);
     }
   }
 
   .animate-scroll {
-    animation: scroll 40s linear infinite;
+    animation: scroll 80s linear infinite;
   }
 
   .animate-scroll:hover,

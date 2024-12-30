@@ -5,17 +5,18 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { livePoolTotals } from "$lib/services/pools/poolStore";
-  import { ArrowUp, ArrowDown, Star, ArrowUpDown, Flame } from "lucide-svelte";
+  import { ArrowUp, ArrowDown, ArrowUpDown, TrendingUp } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/services/auth";
   import { browser } from "$app/environment";
-  import StatsCards from "$lib/components/stats/StatsCards.svelte";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import StatsTableRow from "$lib/components/stats/StatsTableRow.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+  import PageHeader from "$lib/components/common/PageHeader.svelte";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   // Utility to allow only one update per x milliseconds
   function debounce<T>(fn: (val: T) => void, delay: number) {
@@ -41,10 +42,10 @@
 
   // Update favorite tokens when auth changes
   $: if ($auth.isConnected) {
-    FavoriteService.getFavoriteCount().then(count => {
+    FavoriteService.getFavoriteCount().then((count) => {
       favoriteCount.set(count);
     });
-    FavoriteService.loadFavorites().then(favorites => {
+    FavoriteService.loadFavorites().then((favorites) => {
       favoriteTokenIds.set(favorites);
     });
   } else {
@@ -54,8 +55,22 @@
 
   // Filter tokens by symbol/name/canister_id
   const filteredTokens = derived(
-    [liveTokens, searchTerm, sortColumnStore, sortDirectionStore, showFavoritesOnly, favoriteTokenIds],
-    ([$liveTokens, $search, $sortColumn, $sortDirection, $showFavoritesOnly, $favoriteTokenIds]) => {
+    [
+      liveTokens,
+      searchTerm,
+      sortColumnStore,
+      sortDirectionStore,
+      showFavoritesOnly,
+      favoriteTokenIds,
+    ],
+    ([
+      $liveTokens,
+      $search,
+      $sortColumn,
+      $sortDirection,
+      $showFavoritesOnly,
+      $favoriteTokenIds,
+    ]) => {
       const s = $search.trim().toLowerCase();
       let filtered = [...$liveTokens];
 
@@ -64,7 +79,9 @@
         if (!$auth.isConnected) {
           return []; // Return empty array to trigger the connect wallet view
         }
-        filtered = filtered.filter(token => $favoriteTokenIds.includes(token.canister_id));
+        filtered = filtered.filter((token) =>
+          $favoriteTokenIds.includes(token.canister_id),
+        );
       }
 
       // Filter by search term
@@ -73,19 +90,23 @@
           const symbol = token.symbol?.toLowerCase() || "";
           const name = token.name?.toLowerCase() || "";
           const canisterID = token.canister_id.toLowerCase();
-          return symbol.includes(s) || name.includes(s) || canisterID.includes(s);
+          return (
+            symbol.includes(s) || name.includes(s) || canisterID.includes(s)
+          );
         });
       }
 
       // First sort by market cap to determine ranks
-      const rankedTokens = filtered.sort((a, b) => {
-        const aMarketCap = Number(a.metrics?.market_cap || 0);
-        const bMarketCap = Number(b.metrics?.market_cap || 0);
-        return bMarketCap - aMarketCap;
-      }).map((token, index) => ({
-        ...token,
-        marketCapRank: index + 1
-      }));
+      const rankedTokens = filtered
+        .sort((a, b) => {
+          const aMarketCap = Number(a.metrics?.market_cap || 0);
+          const bMarketCap = Number(b.metrics?.market_cap || 0);
+          return bMarketCap - aMarketCap;
+        })
+        .map((token, index) => ({
+          ...token,
+          marketCapRank: index + 1,
+        }));
 
       // Sort the filtered tokens
       const sortedTokens = rankedTokens.sort((a, b) => {
@@ -124,15 +145,15 @@
         if (b.canister_id === KONG_CANISTER_ID) return 1;
         return 0;
       });
-    }
+    },
   );
 
-  const isMobile = writable(false);
+  let isMobile = false;
 
   onMount(() => {
     const checkMobile = () => {
       if (browser) {
-        isMobile.set(window.innerWidth < 768);
+        isMobile = window.innerWidth < 768;
       }
     };
     checkMobile();
@@ -143,7 +164,7 @@
   });
 
   $: if (browser) {
-    isMobile.set(window.innerWidth < 768);
+    isMobile = window.innerWidth < 768;
   }
 
   function toggleSort(column: string) {
@@ -201,40 +222,45 @@
   }, 400);
 
   const ITEM_HEIGHT = 84; // height of each mobile card in pixels
-  const visibleItems = derived([scrollY, filteredTokens], ([$scrollY, $tokens]) => {
-    const start = Math.floor($scrollY / ITEM_HEIGHT);
-    const end = Math.min(start + 20, $tokens.length); // Show 20 items at a time
-    return $tokens.slice(start, end).map((token, index) => ({
-      token,
-      y: (start + index) * ITEM_HEIGHT
-    }));
-  });
+  const visibleItems = derived(
+    [scrollY, filteredTokens],
+    ([$scrollY, $tokens]) => {
+      const start = Math.floor($scrollY / ITEM_HEIGHT);
+      const end = Math.min(start + 20, $tokens.length); // Show 20 items at a time
+      return $tokens.slice(start, end).map((token, index) => ({
+        token,
+        y: (start + index) * ITEM_HEIGHT,
+      }));
+    },
+  );
 
   let tableBody: HTMLElement;
   let tableHeader: HTMLElement;
-  
+
   onMount(() => {
     const syncHeaderScroll = () => {
       if (tableHeader && tableBody) {
         tableHeader.scrollLeft = tableBody.scrollLeft;
       }
     };
-    
+
     if (tableBody) {
-      tableBody.addEventListener('scroll', syncHeaderScroll);
+      tableBody.addEventListener("scroll", syncHeaderScroll);
     }
-    
+
     return () => {
       if (tableBody) {
-        tableBody.removeEventListener('scroll', syncHeaderScroll);
+        tableBody.removeEventListener("scroll", syncHeaderScroll);
       }
     };
   });
 
   // Add this function to handle favorite toggle events
-  async function handleFavoriteToggle(event: CustomEvent<{canisterId: string; isFavorite: boolean}>) {
+  async function handleFavoriteToggle(
+    event: CustomEvent<{ canisterId: string; isFavorite: boolean }>,
+  ) {
     const { canisterId, isFavorite } = event.detail;
-    
+
     if (isFavorite) {
       const newSet = new Set($favoriteTokenIds);
       newSet.add(canisterId);
@@ -248,25 +274,31 @@
 
   onMount(() => {
     // Add event listener for favorite toggles
-    window.addEventListener('favoriteToggled', handleFavoriteToggle as EventListener);
-    
+    window.addEventListener(
+      "favoriteToggled",
+      handleFavoriteToggle as EventListener,
+    );
+
     // Initial load of favorites
     if ($auth.isConnected) {
-      FavoriteService.loadFavorites().then(favorites => {
+      FavoriteService.loadFavorites().then((favorites) => {
         favoriteTokenIds.set(favorites);
         favoriteCount.set(favorites.length);
       });
     }
 
     return () => {
-      window.removeEventListener('favoriteToggled', handleFavoriteToggle as EventListener);
+      window.removeEventListener(
+        "favoriteToggled",
+        handleFavoriteToggle as EventListener,
+      );
     };
   });
 
   // Update the favorites button click handler
   async function handleFavoritesClick() {
     showFavoritesOnly.set(true);
-    
+
     if ($auth.isConnected && !$showFavoritesOnly) {
       const favorites = await FavoriteService.loadFavorites();
       favoriteTokenIds.set(favorites);
@@ -277,24 +309,49 @@
   function isTokenFavorited(tokenId: string): boolean {
     return $favoriteTokenIds.includes(tokenId);
   }
+
+  function formatLargeNumber(num: number): string {
+    return num > 1000000
+      ? (num / 1000000).toFixed(2) + "M"
+      : (num / 1000).toFixed(2) + "K";
+  }
 </script>
 
-<section class="flex flex-col w-full max-h-[calc(100dvh-8rem)] px-4">
-  <div class="z-10 flex flex-col lg:flex-row w-full h-full mx-auto gap-4 max-w-[1300px]">
-    <Panel variant="transparent" type="main" className="content-panel flex-1 !p-0" height="100%">
-      <div class="flex flex-col h-full">
-        <!-- Stats Section -->
-        {#if !$isMobile || ($isMobile && $activeStatsSection === "marketStats")}
-          <div class="sticky top-0 z-20">
-            <StatsCards
-              volume24h={Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6}
-              totalLiquidity={Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6}
-              totalFees={Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6}
-              isMobile={$isMobile}
-            />
-          </div>
-        {/if}
+<PageHeader
+  title="Market Stats"
+  description="Track token performance and market activity"
+  icon={TrendingUp}
+  stats={[
+    {
+      label: "Volume 24H",
+      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6)}`,
+      icon: TrendingUp,
+    },
+    {
+      label: "TVL",
+      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6)}`,
+      icon: TrendingUp,
+    },
+    {
+      label: "Fees 24H",
+      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6)}`,
+      icon: TrendingUp,
+      hideOnMobile: true,
+    },
+  ]}
+/>
 
+<section class="flex flex-col w-full px-2 max-h-[calc(100vh-15rem)] mt-4">
+  <div
+    class="z-10 flex flex-col lg:flex-row w-full mx-auto gap-4 max-w-[1300px] h-[calc(100vh-15rem)]"
+  >
+    <Panel
+      variant="transparent"
+      type="main"
+      className="content-panel flex-1 !p-0"
+      height="100%"
+    >
+      <div class="flex flex-col h-full">
         <!-- Table Section -->
         {#if $activeStatsSection === "tokens"}
           <div class="flex flex-col h-full">
@@ -305,7 +362,7 @@
                 <div class="flex bg-transparent">
                   <button
                     class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
-                      ? 'text-[#8890a4] hover:text-kong-text-primary'
+                      ? 'text-kong-text-secondary hover:text-kong-text-primary'
                       : 'text-kong-text-primary'}"
                     on:click={() => showFavoritesOnly.set(false)}
                   >
@@ -314,13 +371,13 @@
                   <button
                     class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
                       ? 'text-kong-text-primary'
-                      : 'text-[#8890a4] hover:text-kong-text-primary'}"
+                      : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                     on:click={handleFavoritesClick}
                   >
                     My Favorites
                     {#if $auth.isConnected}
                       <span
-                        class="ml-1 px-2 py-0.5 text-kong-text-primary/80 bg-blue-400/60 rounded text-xs"
+                        class="ml-1 px-2 py-0.5 text-kong-text-primary/80 bg-kong-primary/60 rounded text-xs"
                       >
                         {$favoriteCount}
                       </span>
@@ -331,7 +388,7 @@
                 <div class="flex-1 px-4 py-2">
                   <input
                     type="text"
-                    placeholder={$isMobile
+                    placeholder={isMobile
                       ? "Search tokens..."
                       : "Search tokens by name, symbol, or canister ID"}
                     class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
@@ -343,10 +400,14 @@
             </div>
 
             {#if $filteredTokens.length === 0}
-              <div class="flex flex-col items-center justify-center h-64 text-center">
+              <div
+                class="flex flex-col items-center justify-center h-64 text-center"
+              >
                 {#if $showFavoritesOnly && !$auth.isConnected}
-                  <p class="text-gray-400 mb-4">Connect your wallet to view and manage your favorite tokens</p>
-                  <ButtonV2 
+                  <p class="text-gray-400 mb-4">
+                    Connect your wallet to view and manage your favorite tokens
+                  </p>
+                  <ButtonV2
                     variant="solid"
                     theme="primary"
                     on:click={() => sidebarStore.open()}
@@ -361,11 +422,11 @@
               </div>
             {:else}
               <div
-                class="flex-1 custom-scrollbar {$isMobile
+                class="flex-1 custom-scrollbar {isMobile
                   ? 'h-[calc(100vh-8rem)]'
                   : 'h-[calc(100vh-1rem)]'}"
               >
-                {#if !$isMobile}
+                {#if !isMobile}
                   <!-- Desktop table view -->
                   <div class="flex flex-col h-full">
                     <!-- Header outside scroll area -->
@@ -373,10 +434,12 @@
                       bind:this={tableHeader}
                       class="w-full border-collapse min-w-[800px] md:min-w-0 sticky top-0 z-20"
                     >
-                      <thead class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]">
+                      <thead
+                        class="bg-kong-bg-dark sticky top-0 z-20 !backdrop-blur-[12px]"
+                      >
                         <tr class="h-10 border-b border-kong-border">
                           <th
-                            class="col-rank text-center py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-rank text-center py-2 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("marketCapRank")}
                           >
                             #
@@ -386,7 +449,7 @@
                             />
                           </th>
                           <th
-                            class="col-token text-left py-2 pl-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-token text-left py-2 pl-2 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("token_name")}
                           >
                             Token
@@ -396,7 +459,7 @@
                             />
                           </th>
                           <th
-                            class="col-price text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-price text-right py-2 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("price")}
                           >
                             Price
@@ -406,7 +469,7 @@
                             />
                           </th>
                           <th
-                            class="col-change text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-change text-right py-2 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("price_change_24h")}
                           >
                             24h
@@ -416,7 +479,7 @@
                             />
                           </th>
                           <th
-                            class="col-volume text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-volume text-right py-2 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("volume_24h")}
                           >
                             Vol
@@ -426,7 +489,7 @@
                             />
                           </th>
                           <th
-                            class="col-mcap text-right py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-mcap text-right py-2 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("marketCap")}
                           >
                             MCap
@@ -436,7 +499,7 @@
                             />
                           </th>
                           <th
-                            class="col-tvl text-right py-2 pr-3 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
+                            class="col-tvl text-right py-2 pr-3 text-no-wrap text-sm font-medium text-kong-text-secondary text-nowrap cursor-pointer hover:bg-white/5 transition-colors duration-200"
                             on:click={() => toggleSort("tvl")}
                           >
                             TVL
@@ -448,34 +511,42 @@
                         </tr>
                       </thead>
 
-                        <tbody class="!px-4"  bind:this={tableBody}>
-                          {#each $filteredTokens as token (token.canister_id)}
-                            <StatsTableRow
-                              {token}
-                              isConnected={$auth.isConnected}
-                              isFavorite={isTokenFavorited(token.canister_id)}
-                              priceClass={getPriceClass(token)}
-                              trendClass={getTrendClass(token)}
-                              kongCanisterId={KONG_CANISTER_ID}
-                            />
-                          {/each}
-                        </tbody>
-                      </table>
+                      <tbody class="!px-4" bind:this={tableBody}>
+                        {#each $filteredTokens as token (token.canister_id)}
+                          <StatsTableRow
+                            {token}
+                            isConnected={$auth.isConnected}
+                            isFavorite={isTokenFavorited(token.canister_id)}
+                            priceClass={getPriceClass(token)}
+                            trendClass={getTrendClass(token)}
+                            kongCanisterId={KONG_CANISTER_ID}
+                          />
+                        {/each}
+                      </tbody>
+                    </table>
                   </div>
                 {:else}
                   <!-- Mobile view with virtualization -->
-                  <Panel variant="transparent" type="main" className="!p-0" height="100%">
-                    <div class="flex flex-col h-full !p-0 !overflow-hidden">
-                      {#if $isMobile}
+                  <Panel
+                    variant="transparent"
+                    type="main"
+                    className="!p-0"
+                    height="100%"
+                  >
+                    <div
+                      class="flex flex-col justify-between h-full !p-0 !overflow-hidden"
+                    >
+                      {#if isMobile}
                         <!-- Mobile sorting options -->
-                        <div 
+                        <div
                           class="sticky top-0 left-0 right-0 flex items-center gap-2 p-4 z-50 border-b border-kong-border bg-kong-bg-dark backdrop-blur-md"
                           style="position: -webkit-sticky;"
                         >
                           <button
-                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap'
+                            class="flex items-center px-3 py-1.5 text-sm rounded {$sortColumnStore ===
+                            'marketCap'
                               ? 'bg-kong-primary text-white'
-                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                              : 'bg-kong-bg-dark text-kong-text-secondary'}"
                             on:click={() => toggleSort("marketCap")}
                           >
                             MCap
@@ -485,9 +556,10 @@
                             />
                           </button>
                           <button
-                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'volume_24h'
+                            class="flex items-center px-3 py-1.5 text-sm rounded {$sortColumnStore ===
+                            'volume_24h'
                               ? 'bg-kong-primary text-white'
-                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                              : 'bg-kong-bg-dark text-kong-text-secondary'}"
                             on:click={() => toggleSort("volume_24h")}
                           >
                             Vol
@@ -497,9 +569,10 @@
                             />
                           </button>
                           <button
-                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'tvl'
+                            class="flex items-center px-3 py-1.5 text-sm rounded {$sortColumnStore ===
+                            'tvl'
                               ? 'bg-kong-primary text-white'
-                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                              : 'bg-kong-bg-dark text-kong-text-secondary'}"
                             on:click={() => toggleSort("tvl")}
                           >
                             TVL
@@ -509,9 +582,10 @@
                             />
                           </button>
                           <button
-                            class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'price_change_24h'
+                            class="flex items-center px-3 py-1.5 text-sm rounded {$sortColumnStore ===
+                            'price_change_24h'
                               ? 'bg-kong-primary text-white'
-                              : 'bg-kong-bg-dark text-[#8890a4]'}"
+                              : 'bg-kong-bg-dark text-kong-text-secondary'}"
                             on:click={() => toggleSort("price_change_24h")}
                           >
                             24h
@@ -522,20 +596,31 @@
                           </button>
                         </div>
                       {/if}
-                      
-                      <div class="h-full overflow-auto mt-2" on:scroll={handleScroll}>
-                        <div class="relative" style="height: {$filteredTokens.length * ITEM_HEIGHT}px; padding-bottom: 60px;">
+
+                      <div
+                        class="h-full overflow-auto mt-2"
+                        on:scroll={handleScroll}
+                      >
+                        <div
+                          class="relative"
+                          style="height: {$filteredTokens.length *
+                            ITEM_HEIGHT}px; padding-bottom: 60px;"
+                        >
                           {#each $filteredTokens as token, index (token.canister_id)}
                             <div
                               class="absolute w-full"
-                              style="transform: translateY({index * ITEM_HEIGHT}px)"
-                              on:click={() => goto(`/stats/${token.canister_id}`)}
+                              style="transform: translateY({index *
+                                ITEM_HEIGHT}px)"
+                              on:click={() =>
+                                goto(`/stats/${token.canister_id}`)}
                             >
                               <div class="mx-4">
                                 <TokenCardMobile
                                   {token}
                                   isConnected={$auth.isConnected}
-                                  isFavorite={isTokenFavorited(token.canister_id)}
+                                  isFavorite={isTokenFavorited(
+                                    token.canister_id,
+                                  )}
                                   priceClass={getPriceClass(token)}
                                   trendClass={getTrendClass(token)}
                                 />

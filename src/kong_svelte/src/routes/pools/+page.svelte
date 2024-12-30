@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { formatBalance } from '$lib/utils/numberFormatUtils';
 	import { sidebarStore } from '$lib/stores/sidebarStore';
   import { writable, derived } from "svelte/store";
   import {
     poolsList,
-    userPoolBalances,
+    liveUserPools,
     filteredLivePools,
     poolSearchTerm,
     poolSortColumn,
@@ -19,24 +20,24 @@
     ArrowDown,
     ArrowUpDown,
     Droplets,
+    Flame,
+    TrendingUp,
   } from "lucide-svelte";
+  import PageHeader from "$lib/components/common/PageHeader.svelte";
   import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
   import { auth } from "$lib/services/auth";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
+    import { formatUsdValue } from '$lib/utils/tokenFormatters';
 
   // Navigation state
   const activeSection = writable("pools");
-  // activePoolView: "all" or "user"
   const activePoolView = writable("all");
-
-  // Modal state
   let showPoolDetails = false;
   let selectedPool = null;
   let selectedUserPool = null;
-
   let isMobile = writable(false);
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
@@ -74,15 +75,6 @@
     return Math.max(...$pools.map((pool) => Number(pool.rolling_24h_apy)));
   });
 
-  function handleAddLiquidity(token0: string, token1: string) {
-    goto(`/pools/add?token0=${token0}&token1=${token1}`);
-  }
-
-  function handleShowDetails(pool) {
-    selectedPool = pool;
-    showPoolDetails = true;
-  }
-
   function toggleSort(column: string) {
     if ($poolSortColumn === column) {
       poolSortDirection.set($poolSortDirection === 'asc' ? 'desc' : 'asc');
@@ -112,22 +104,6 @@
     }
   }
 
-  function formatLargeNumber(
-    rawNum: number,
-    isPreFormatted: boolean = false,
-  ): string {
-    const num = isPreFormatted ? Number(rawNum) : Number(rawNum) / 1e6;
-
-    if (num >= 1e9) {
-      return (num / 1e9).toFixed(2) + "B";
-    } else if (num >= 1e6) {
-      return (num / 1e6).toFixed(2) + "M";
-    } else if (num >= 1e3) {
-      return (num / 1e3).toFixed(2) + "K";
-    }
-    return num.toFixed(2);
-  }
-
   function handleSearch() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
@@ -143,12 +119,32 @@
   });
 </script>
 
-<section
-  class="flex flex-col w-full h-[calc(100vh-7rem)] px-4 pb-4"
->
+<PageHeader
+  title="Liquidity Pools"
+  description="Provide liquidity to earn trading fees and rewards"
+  icon={Droplets}
+  stats={[
+    {
+      label: "Volume 24H",
+      value: `${formatUsdValue(formatBalance($poolsList.reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0), 6, 2))}`,
+      icon: TrendingUp
+    },
+    {
+      label: "TVL",
+      value: `${formatUsdValue(formatBalance($poolsList.reduce((acc, pool) => acc + Number(pool.tvl), 0), 6, 2))}`,
+      icon: TrendingUp
+    },
+    {
+      label: "Highest APY",
+      value: `${$highestApr.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+      icon: Flame,
+      hideOnMobile: true
+    }
+  ]}
+/>
+
+<section class="flex flex-col w-full h-[calc(100vh-13.8rem)] px-2 pb-4 mt-4">
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
-    <!-- Add page heading -->
-  
     {#if $activeSection === "pools"}
       <Panel className="flex-1 {$isMobile ? '' : '!p-0'}">
         <div class="overflow-hidden flex flex-col">
@@ -156,41 +152,99 @@
           <div class="flex flex-col sticky top-0 z-20">
             <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
               <!-- Mobile-only buttons -->
-              <div class="flex flex-col gap-3 sm:hidden">
-                <div class="w-full">
-                  <div class="bg-kong-bg-dark border border-kong-border rounded-lg w-full">
-                    <div class="flex items-center w-full">
-                      <div class="flex w-full border-r border-kong-border">
-                        <button
-                          class="px-4 py-2 w-1/2 transition-colors duration-200 {$activePoolView === 'all'
-                            ? 'text-kong-text-primary'
-                            : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                          on:click={() => ($activePoolView = "all")}
-                        >
-                          All Pools
-                        </button>
-                        <button
-                          class="px-4 py-2 w-1/2 transition-colors duration-200 {$activePoolView === 'user'
-                            ? 'text-kong-text-primary'
-                            : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                          on:click={() => ($activePoolView = "user")}
-                        >
-                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary px-1.5 rounded">{$userPoolBalances.length}</span>
-                        </button>
-                      </div>
-                    </div>
+              <div class="sm:hidden px-2 space-y-2">
+                <!-- Row 1: View Toggle & Search -->
+                <div class="flex gap-2 w-full">
+                  <!-- View Toggle -->
+                  <div class="flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden">
+                    <button
+                      class="px-3 py-2 text-sm {$activePoolView === 'all'
+                        ? 'text-kong-text-primary bg-[#60A5FA]/10'
+                        : 'text-kong-text-secondary'}"
+                      on:click={() => ($activePoolView = "all")}
+                    >
+                      All
+                    </button>
+                    <div class="w-px bg-kong-border"></div>
+                    <button
+                      class="px-3 py-2 text-sm {$activePoolView === 'user'
+                        ? 'text-kong-text-primary bg-[#60A5FA]/10'
+                        : 'text-kong-text-secondary'}"
+                      on:click={() => ($activePoolView = "user")}
+                    >
+                      My ({$liveUserPools.length})
+                    </button>
+                  </div>
+
+                  <!-- Search -->
+                  <div class="flex-1 relative">
+                    <input
+                      type="text"
+                      placeholder="Search pools..."
+                      class="w-full bg-kong-bg-dark border border-kong-border rounded-lg pl-8 pr-2 py-2 text-sm text-kong-text-primary placeholder-kong-text-secondary focus:outline-none"
+                      bind:value={searchTerm}
+                      on:input={handleSearch}
+                    />
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                   </div>
                 </div>
 
-                <div class="w-full bg-kong-bg-dark border border-kong-border rounded-lg px-4 py-2">
-                  <input
-                    type="text"
-                    placeholder={$isMobile == true ? "Search pools..." : "Search pools by name, symbol, or canister ID"}
-                    class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
-                    bind:value={searchTerm}
-                    on:input={handleSearch}
-                  />
-                </div>
+                <!-- Row 2: Sort & Add (Only show when viewing all pools) -->
+                {#if $activePoolView === "all"}
+                  <div class="flex gap-2 w-full">
+                    <!-- Sort -->
+                    <div class="flex-1 flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden">
+                      <select
+                        bind:value={$poolSortColumn}
+                        class="flex-1 bg-transparent text-kong-text-primary text-sm focus:outline-none px-3 py-2"
+                      >
+                        <option value="rolling_24h_volume">Volume 24H</option>
+                        <option value="tvl">TVL</option>
+                        <option value="rolling_24h_apy">APY</option>
+                        <option value="price">Price</option>
+                      </select>
+                      <div class="w-px bg-kong-border"></div>
+                      <button
+                        on:click={() => poolSortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
+                        class="px-3 text-[#60A5FA]"
+                      >
+                        <svelte:component
+                          this={$poolSortDirection === "asc" ? ArrowUp : ArrowDown}
+                          class="w-4 h-4"
+                        />
+                      </button>
+                    </div>
+
+                    <!-- Add Position Button -->
+                    <button
+                      class="bg-kong-bg-dark border border-kong-border rounded-lg px-4 py-2 text-kong-text-primary hover:bg-kong-bg-dark/90 flex items-center gap-2"
+                      on:click={() => goto("/pools/add")}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      <span class="text-sm">Add</span>
+                    </button>
+                  </div>
+                {/if}
               </div>
               <!-- Desktop view -->
               <div class="hidden sm:flex items-center gap-3 pb-1 border-b border-kong-border pt-2">
@@ -211,7 +265,7 @@
                           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                         on:click={() => ($activePoolView = "user")}
                       >
-                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded">{$userPoolBalances.length}</span>
+                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded">{$liveUserPools.length}</span>
                       </button>
                     </div>
 
@@ -248,35 +302,6 @@
                 </button>
               </div>
             </div>
-
-            <!-- Mobile Sort Controls -->
-            {#if $isMobile && $activePoolView === "all"}
-              <div
-                class="flex items-center justify-between py-1 rounded-lg sticky z-20 bg-kong-bg-dark border-b border-kong-border"
-              >
-                <select
-                  bind:value={$poolSortColumn}
-                  class="bg-transparent text-kong-text-primary text-sm focus:outline-none"
-                >
-                  <option value="rolling_24h_volume">Volume 24H</option>
-                  <option value="tvl">TVL</option>
-                  <option value="rolling_24h_apy">APY</option>
-                  <option value="price">Price</option>
-                </select>
-
-                <button
-                  on:click={() =>
-                    poolSortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
-                  class="flex items-center gap-1 text-[#60A5FA] text-sm"
-                >
-                  {$poolSortDirection === "asc" ? "Ascending" : "Descending"}
-                  <svelte:component
-                    this={$poolSortDirection === "asc" ? ArrowUp : ArrowDown}
-                    class="w-4 h-4"
-                  />
-                </button>
-              </div>
-            {/if}
           </div>
 
           <div class="h-full custom-scrollbar overflow-y-auto">
@@ -288,7 +313,7 @@
                   : ''} custom-scrollbar"
               >
                 <!-- Desktop Table View -->
-                <table class="pools-table w-full hidden md:table relative">
+                <table class="w-full hidden md:table relative [&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4">
                   <thead class="sticky top-0 z-10 bg-kong-bg-dark">
                     <tr class="h-10 border-b border-kong-border bg-kong-bg-dark">
                       <th
@@ -331,7 +356,7 @@
                   <tbody class="!px-4 h-full">
                     {#each $filteredLivePools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
-                        on:click={() => goto(`/pools/create?token0=${pool.address_0}&token1=${pool.address_1}`)}
+                        on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
                         pool={{
                           ...pool,
                           tvl: BigInt(pool.tvl),
@@ -344,79 +369,74 @@
                           pool.address_0 === KONG_CANISTER_ID ||
                           pool.address_1 === KONG_CANISTER_ID
                         }
-                        onAddLiquidity={handleAddLiquidity}
-                        onShowDetails={() => handleShowDetails(pool)}
                       />
                     {/each}
                   </tbody>
                 </table>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="md:hidden space-y-4 mt-2 h-full">
+                <div class="md:hidden space-y-2.5 mt-2 h-full">
                   {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
-                    <div
-                      class="bg-kong-bg-dark p-4 rounded-lg border border-kong-border hover:border-[#60A5FA]/30 transition-all duration-200 
-                            {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) ? 'kong-special-card' : ''}"
+                    <button
+                      on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
+                      class="w-full text-left bg-kong-bg-dark rounded-lg border border-kong-border hover:border-[#60A5FA]/30 transition-all duration-200 
+                            {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) 
+                              ? 'bg-gradient-to-b from-[rgba(0,255,128,0.02)] to-[rgba(0,255,128,0.01)] active:bg-[rgba(0,255,128,0.04)]' 
+                              : ''}"
                     >
-                      <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-2">
-                          <TokenImages
-                            tokens={[
-                              $tokenMap.get(pool.address_0),
-                              $tokenMap.get(pool.address_1),
-                            ]}
-                            size={32}
-                          />
-                          <div>
-                            <div class="text-xs text-kong-text-primary">
-                              {pool.symbol_0}/{pool.symbol_1}
-                            </div>
-                            <div class="text-xs text-kong-text-secondary">
-                              Pool Tokens
+                      <!-- Pool Header -->
+                      <div class="p-3 border-b border-kong-border">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-2">
+                            <TokenImages
+                              tokens={[
+                                $tokenMap.get(pool.address_0),
+                                $tokenMap.get(pool.address_1),
+                              ]}
+                              size={28}
+                            />
+                            <div>
+                              <div class="text-sm font-medium text-kong-text-primary">
+                                {pool.symbol_0}/{pool.symbol_1}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <button
-                            on:click={() => handleShowDetails(pool)}
-                            class="px-4 py-2 text-sm bg-kong-bg-dark text-kong-text-primary rounded-lg hover:bg-kong-bg-dark/90 transition-colors duration-200"
-                          >
-                            Details
-                          </button>
+                          <div class="text-[#60A5FA] text-sm font-medium">
+                            {Number(pool.rolling_24h_apy).toFixed(2)}% APY
+                          </div>
                         </div>
                       </div>
 
-                      <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
-                          <div class="text-sm text-kong-text-secondary mb-1">Price</div>
-                          <div class="font-medium text-kong-text-primary">
-                            {getPoolPriceUsd(pool)}
+                      <!-- Pool Stats -->
+                      <div class="p-3">
+                        <div class="grid grid-cols-2 gap-2">
+                          <div>
+                            <div class="text-xs text-kong-text-secondary mb-0.5">Price</div>
+                            <div class="text-sm font-medium text-kong-text-primary">
+                              {getPoolPriceUsd(pool)}
+                            </div>
                           </div>
-                        </div>
-                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
-                          <div class="text-sm text-kong-text-secondary mb-1">TVL</div>
-                          <div class="font-medium text-kong-text-primary">
-                            ${formatLargeNumber(Number(pool.tvl), false)}
+                          <div>
+                            <div class="text-xs text-kong-text-secondary mb-0.5">TVL</div>
+                            <div class="text-sm font-medium text-kong-text-primary">
+                              {formatUsdValue(formatBalance(Number(pool.tvl), 6, 2))}
+                            </div>
                           </div>
-                        </div>
-                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
-                          <div class="text-sm text-kong-text-secondary mb-1">
-                            Volume 24H
+                          <div class="mt-2">
+                            <div class="text-xs text-kong-text-secondary mb-0.5">Volume 24h</div>
+                            <div class="text-sm font-medium text-kong-text-primary">
+                              {formatUsdValue(formatBalance(Number(pool.rolling_24h_volume), 6, 2))}
+                            </div>
                           </div>
-                          <div class="font-medium text-kong-text-primary">
-                            ${formatLargeNumber(
-                              Number(pool.rolling_24h_volume),
-                            )}
-                          </div>
-                        </div>
-                        <div class="bg-kong-bg-dark/50 p-3 rounded-lg">
-                          <div class="text-sm text-kong-text-secondary mb-1">APY</div>
-                          <div class="font-medium text-[#60A5FA]">
-                            {Number(pool.rolling_24h_apy).toFixed(2)}%
+                          <div class="mt-2">
+                            <div class="text-xs text-kong-text-secondary mb-0.5">Fees 24h</div>
+                            <div class="text-sm font-medium text-kong-text-primary">
+                              {formatUsdValue(formatBalance(Number(pool.rolling_24h_lp_fee), 6, 2))}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   {/each}
                 </div>
               </div>
@@ -468,60 +488,10 @@
 {/if}
 
 <style scoped lang="postcss">
-  table th {
-    padding: 0.5rem 0.5rem;
-    color: #8890a4;
-    font-weight: 500;
-    font-size: 0.875rem;
-  }
-
-  /* Custom Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #1a1b23; /* Match the background color for a subtle look */
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #60a5fa; /* Use the theme's accent blue */
-    border-radius: 4px;
-    border: 2px solid #1a1b23; /* Ensures the thumb stands out slightly */
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #3b82f6; /* A slightly darker shade when hovered */
-  }
-
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #60a5fa #1a1b23;
-  }
-
-  /* For Firefox */
-  /* The above scrollbar-color property supports Firefox. The first color is the thumb, the second is the track. */
-
-  .kong-special-card {
-    background: rgba(0, 255, 128, 0.02);
-
-    &:hover {
-      background: rgba(0, 255, 128, 0.04);
-    }
-  }
-
-  .pools-table {
-    th, td {
-      padding: 0.5rem 0.5rem;
-      
-      &:first-child {
-        padding-left: 1rem;
-      }
-      
-      &:last-child {
-        padding-right: 1rem;
-      }
-    }
+  /* Only keep Firefox-specific select styling if needed */
+  select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
   }
 </style>

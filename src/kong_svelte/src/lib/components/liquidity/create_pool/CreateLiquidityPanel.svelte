@@ -7,7 +7,7 @@
   import PoolWarning from "./PoolWarning.svelte";
   import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
   import { tokenStore, loadBalances, liveTokens } from "$lib/services/tokens/tokenStore";
-  import { calculateAmount1FromPrice, validateTokenSelect, updateQueryParams, getDefaultToken, doesPoolExist } from "$lib/utils/poolCreationUtils";
+  import { calculateAmount1FromPrice, validateTokenSelect, updateQueryParams, doesPoolExist } from "$lib/utils/poolCreationUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { page } from '$app/stores';
   import { auth } from "$lib/services/auth";
@@ -28,23 +28,35 @@
   let poolExists: boolean | null = null;
   let userBalance: FE.UserPoolBalance | undefined;
 
-  // Initial token loading
-  $: if ($liveTokens.length > 0) {
+  // Track if initial load has happened
+  let initialLoadComplete = false;
+
+  // Initial token loading from URL or defaults
+  onMount(() => {
+    if ($liveTokens.length > 0) {
+        loadInitialTokens();
+    }
+  });
+
+  // Watch for liveTokens to be available
+  $: if ($liveTokens.length > 0 && !initialLoadComplete) {
+    loadInitialTokens();
+  }
+
+  function loadInitialTokens() {
     const urlToken0 = $page.url.searchParams.get('token0');
     const urlToken1 = $page.url.searchParams.get('token1');
     
-    // Only set tokens if they're not already set
-    if (!$liquidityStore.token0) {
-      const token0FromUrl = urlToken0 ? $liveTokens.find(token => token.canister_id === urlToken0) : null;
-      const defaultToken0 = $liveTokens.find(token => token.canister_id === ICP_CANISTER_ID);
-      liquidityStore.setToken(0, token0FromUrl || defaultToken0 || null);
-    }
+    const token0FromUrl = urlToken0 ? $liveTokens.find(token => token.canister_id === urlToken0) : null;
+    const token1FromUrl = urlToken1 ? $liveTokens.find(token => token.canister_id === urlToken1) : null;
     
-    if (!$liquidityStore.token1) {
-      const token1FromUrl = urlToken1 ? $liveTokens.find(token => token.canister_id === urlToken1) : null;
-      const defaultToken1 = $liveTokens.find(token => token.canister_id === CKUSDT_CANISTER_ID);
-      liquidityStore.setToken(1, token1FromUrl || defaultToken1 || null);
-    }
+    const defaultToken0 = $liveTokens.find(token => token.canister_id === ICP_CANISTER_ID);
+    const defaultToken1 = $liveTokens.find(token => token.canister_id === CKUSDT_CANISTER_ID);
+    
+    liquidityStore.setToken(0, token0FromUrl || defaultToken0 || null);
+    liquidityStore.setToken(1, token1FromUrl || defaultToken1 || null);
+    
+    initialLoadComplete = true;
   }
 
   // Token updates
@@ -63,11 +75,6 @@
   $: token0Balance = $tokenStore.balances[token0?.canister_id]?.in_tokens?.toString() || "0";
   $: token1Balance = $tokenStore.balances[token1?.canister_id]?.in_tokens?.toString() || "0";
 
-  // Add this reactive statement
-  $: if (token0?.canister_id || token1?.canister_id) {
-    updateQueryParams(token0?.canister_id, token1?.canister_id);
-  }
-
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;
     const result = validateTokenSelect(
@@ -80,19 +87,20 @@
 
     if (!result.isValid) {
       toastStore.error(result.error);
-      if (index === 0) {
-        token0 = result.newToken;
-      } else {
-        token1 = result.newToken;
-      }
       return;
     }
 
+    // Update store
     if (index === 0) {
-      liquidityStore.setToken(0, result.newToken);
+        liquidityStore.setToken(0, result.newToken);
     } else {
-      liquidityStore.setToken(1, result.newToken);
+        liquidityStore.setToken(1, result.newToken);
     }
+
+    // Update URL after store update
+    const newToken0 = index === 0 ? result.newToken : $liquidityStore.token0;
+    const newToken1 = index === 1 ? result.newToken : $liquidityStore.token1;
+    updateQueryParams(newToken0?.canister_id, newToken1?.canister_id);
   }
 
   function handlePriceChange(value: string) {

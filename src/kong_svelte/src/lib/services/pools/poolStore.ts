@@ -1,7 +1,6 @@
 import { derived, writable, type Readable, get, readable } from 'svelte/store';
 import { PoolService } from './PoolService';
-import { formatPoolData } from '$lib/utils/statsUtils';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
+import { formatPoolData, getPoolPriceUsd } from '$lib/utils/statsUtils';
 import { auth } from '../auth';
 import { eventBus } from '$lib/services/tokens/eventBus';
 import { kongDB } from '../db';
@@ -15,7 +14,6 @@ interface ExtendedPool extends BE.Pool {
 
 interface PoolState {
   pools: ExtendedPool[];
-  userPoolBalances: FE.UserPoolBalance[];
   totals: {
     tvl: number;
     rolling_24h_volume: number;
@@ -37,7 +35,6 @@ export const poolSortDirection = writable<'asc' | 'desc'>('desc');
 function createPoolStore() {
   const { subscribe, set, update } = writable<PoolState>({
     pools: [],
-    userPoolBalances: [],
     totals: {
       tvl: 0,
       rolling_24h_volume: 0,
@@ -137,7 +134,6 @@ function createPoolStore() {
         // Update the main store
         set({
           pools: pools,
-          userPoolBalances: get(poolStore).userPoolBalances,
           totals: {
             tvl: Number(poolsData.total_tvl) / 1e6,
             rolling_24h_volume: Number(poolsData.total_24h_volume) / 1e6,
@@ -186,24 +182,14 @@ function createPoolStore() {
     },
 
     loadUserPoolBalances: async () => {
-      update(state => ({ ...state, isLoading: true, error: null }));
-      const pnp = get(auth);
-      
       try {
-        if (!pnp.isConnected) {
-          update(state => ({
-            ...state,
-            userPoolBalances: [],
-            isLoading: false,
-            error: null
-          }));
+        if (!auth?.pnp?.isWalletConnected) {
           return;
         }
 
         const [balancesResponse] = await Promise.all([
           PoolService.fetchUserPoolBalances(),
         ]);
-
 
         // Process the response with proper type checking
         const balances = Array.isArray(balancesResponse) ? balancesResponse : 
@@ -220,6 +206,7 @@ function createPoolStore() {
           );
           
           return {
+            id: matchingPool?.pool_id,
             name: lpData.name,
             symbol: lpData.symbol || `${lpData.symbol_0}/${lpData.symbol_1}`,
             symbol_0: lpData.symbol_0,
@@ -237,21 +224,9 @@ function createPoolStore() {
           };
         }).filter(Boolean).filter(balance => Number(balance.balance) > 0);
 
-        // Update the store with processed balances
-        update(state => ({
-          ...state,
-          userPoolBalances: processedBalances,
-          isLoading: false,
-          error: null
-        }));
+        await kongDB.user_pools.bulkPut(processedBalances);
       } catch (error) {
         console.error('[PoolStore] Error loading user pool balances:', error);
-        update(state => ({
-          ...state,
-          userPoolBalances: [],
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Failed to load pool balances'
-        }));
       }
     },
     reset: () => {
@@ -260,7 +235,6 @@ function createPoolStore() {
       }
       set({
         pools: [],
-        userPoolBalances: [],
         totals: {
           tvl: 0,
           rolling_24h_volume: 0,
@@ -299,12 +273,6 @@ export const poolsList: Readable<BE.Pool[]> = derived(stablePoolsStore, ($pools,
 export const poolsLoading: Readable<boolean> = derived(poolStore, $store => $store.isLoading);
 
 export const poolsError: Readable<string | null> = derived(poolStore, $store => $store.error);
-
-// Derived store for user pool balances
-export const userPoolBalances: Readable<FE.UserPoolBalance[]> = derived(
-  poolStore,
-  ($store) => $store.userPoolBalances
-);
 
 export const displayPools = derived(poolsList, ($pools) => {
   return $pools.map(pool => ({
@@ -408,8 +376,11 @@ export const filteredLivePools = derived(
             direction *
             (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy))
           );
-        case 'price':
-          return direction * (Number(a.price) - Number(b.price));
+        case 'price': {
+          const priceA = getPoolPriceUsd(a);
+          const priceB = getPoolPriceUsd(b);
+          return direction * (priceA - priceB);
+        }
         default:
           return 0;
       }
@@ -443,6 +414,25 @@ export const livePoolTotals = readable<FE.PoolTotal[]>([], set => {
       set(value);
     },
     error: err => console.error('[livePoolTotals] Error:', err),
+  });
+
+  return () => {
+    if (subscription) subscription.unsubscribe();
+  };
+});
+
+export const liveUserPools = readable<FE.UserPoolBalance[]>([], set => {
+  if (!browser) {
+    set([]);
+    return;
+  }
+
+  const subscription = liveQuery(async () => {
+    const pools = await kongDB.user_pools.toArray();
+    return pools;
+  }).subscribe({
+    next: value => set(value),
+    error: err => console.error('[liveUserPools] Error:', err),
   });
 
   return () => {

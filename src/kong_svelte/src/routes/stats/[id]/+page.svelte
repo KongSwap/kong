@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { page } from "$app/stores";
   import { onDestroy } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
@@ -12,6 +11,7 @@
   import { ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
 
   // Ensure formattedTokens and poolStore are initialized
   if (!formattedTokens || !poolStore) {
@@ -216,7 +216,7 @@
     <div class="flex flex-col items-center justify-center min-h-[300px]">
       <div class="text-kong-text-primary/70">Token not found</div>
       <button
-        class="mt-4 px-4 py-2 bg-[#2a2d3d] rounded-lg hover:bg-[#2a2d3d]/80 transition-colors"
+        class="mt-4 px-4 py-2 bg-kong-bg-dark rounded-lg hover:bg-kong-bg-dark/80 transition-colors"
         on:click={() => goto("/stats")}
       >
         Return to Stats
@@ -271,6 +271,48 @@
 
             <!-- Right side with tab names -->
             <div class="hidden md:flex items-center gap-6 text-[#8890a4]">
+              <!-- Trade and add lp buttons -->
+              <div class="flex items-center gap-2 justify-end">
+                <ButtonV2
+                  variant="solid"
+                  size="md"
+                  className="w-full text-nowrap"
+                  on:click={() =>
+                    goto(
+                      `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                    )}
+                >
+                  Add LP
+                </ButtonV2>
+                <ButtonV2
+                  variant="solid"
+                  size="md"
+                  on:click={() =>
+                    goto(
+                      `/swap?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                    )}
+                >
+                  Swap
+                </ButtonV2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      <!-- Tab Content -->
+      {#if activeTab === "overview"}
+        <div
+          role="tabpanel"
+          id="overview-panel"
+          aria-labelledby="overview-tab"
+          tabindex="0"
+        >
+          <!-- Overview Layout -->
+          <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Mobile-first layout -->
+            <div class="flex flex-col gap-6 w-full lg:hidden">
+              <!-- Pool Selector -->
               <PoolSelector
                 {selectedPool}
                 {token}
@@ -287,54 +329,12 @@
                   } as Pool;
                 }}
               />
-            </div>
-          </div>
-        </div>
-      </Panel>
-
-      <!-- Remove the old tab navigation -->
-      <!-- Mobile-only tab navigation -->
-      <div class="md:hidden bg-[#2a2d3d]/60 rounded-lg">
-        <nav
-          class="flex w-full"
-          role="tablist"
-          aria-label="Token information tabs"
-        >
-          <button
-            role="tab"
-            aria-selected={activeTab === "overview"}
-            aria-controls="overview-panel"
-            id="overview-tab"
-            class="flex-1 sm:flex-none px-6 py-4 text-sm font-medium whitespace-nowrap transition-all duration-200 relative
-              {activeTab === 'overview'
-              ? 'text-kong-text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#6667AB] after:rounded-t-sm'
-              : 'text-kong-text-primary/50 hover:text-kong-text-primary hover:bg-white/10'}
-              first:rounded-l-lg"
-            on:click={() => (activeTab = "overview")}
-          >
-            Overview
-          </button>
-        </nav>
-      </div>
-
-      <!-- Tab Content -->
-      {#if activeTab === "overview"}
-        <div
-          role="tabpanel"
-          id="overview-panel"
-          aria-labelledby="overview-tab"
-          tabindex="0"
-        >
-          <!-- Overview Layout -->
-          <div class="flex flex-col lg:flex-row gap-6">
-            <!-- Left Column - Chart and Transactions -->
-            <div class="lg:w-[70%] flex flex-col gap-6">
+              
+              <!-- Token Statistics -->
+              <TokenStatistics {token} {marketCapRank} />
+              
               <!-- Chart Panel -->
-              <Panel
-                variant="transparent"
-                type="main"
-                className="!p-0 border-none"
-              >
+              <Panel variant="transparent" type="main" className="!p-0 border-none">
                 <div class="h-[450px] min-h-[400px] w-full">
                   {#if isChartDataReady}
                     <TradingViewChart
@@ -368,16 +368,79 @@
                   {/if}
                 </div>
               </Panel>
-
+              
               <!-- Transactions Panel -->
               {#if token && token.canister_id === $page.params.id}
                 <TransactionFeed {token} className="w-full !p-0" />
               {/if}
             </div>
 
-            <!-- Right Column - Stats -->
-            <div class="lg:w-[30%] flex flex-col gap-4">
-              <TokenStatistics {token} {marketCapRank} />
+            <!-- Desktop layout - hidden on mobile -->
+            <div class="hidden lg:flex lg:flex-row gap-6 w-full">
+              <!-- Left Column - Chart and Transactions -->
+              <div class="lg:w-[70%] flex flex-col gap-6">
+                <!-- Chart Panel -->
+                <Panel variant="transparent" type="main" className="!p-0 border-none">
+                  <div class="h-[450px] min-h-[400px] w-full">
+                    {#if isChartDataReady}
+                      <TradingViewChart
+                        poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                        symbol={token && selectedPool
+                          ? `${token.symbol}/${
+                              selectedPool.address_0 === token.canister_id
+                                ? $formattedTokens?.find(
+                                    (t) =>
+                                      t.canister_id === selectedPool.address_1,
+                                  )?.symbol
+                                : $formattedTokens?.find(
+                                    (t) =>
+                                      t.canister_id === selectedPool.address_0,
+                                  )?.symbol
+                            }`
+                          : ""}
+                        quoteToken={selectedPool?.address_0 === token?.canister_id
+                          ? $formattedTokens?.find(
+                              (t) => t.canister_id === selectedPool?.address_1,
+                            )
+                          : $formattedTokens?.find(
+                              (t) => t.canister_id === selectedPool?.address_0,
+                            )}
+                        baseToken={token}
+                      />
+                    {:else}
+                      <div class="flex items-center justify-center h-full">
+                        <div class="loader"></div>
+                      </div>
+                    {/if}
+                  </div>
+                </Panel>
+
+                <!-- Transactions Panel -->
+                {#if token && token.canister_id === $page.params.id}
+                  <TransactionFeed {token} className="w-full !p-0" />
+                {/if}
+              </div>
+
+              <!-- Right Column - Stats -->
+              <div class="lg:w-[30%] flex flex-col gap-4">
+                <PoolSelector
+                  {selectedPool}
+                  {token}
+                  formattedTokens={$formattedTokens}
+                  {relevantPools}
+                  onPoolSelect={(pool) => {
+                    hasManualSelection = true;
+                    selectedPool = {
+                      ...pool,
+                      pool_id: String(pool.pool_id),
+                      tvl: String(pool.tvl),
+                      lp_token_supply: String(pool.lp_token_supply),
+                      volume_24h: String(pool.daily_volume || "0"),
+                    } as Pool;
+                  }}
+                />
+                <TokenStatistics {token} {marketCapRank} />
+              </div>
             </div>
           </div>
         </div>

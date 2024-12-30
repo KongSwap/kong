@@ -109,7 +109,7 @@ export function getChartConfig(params: {
       'support_multicharts',
       'legend_widget'
     ],
-    custom_css_url: './trading-view-chart.css',
+    custom_css_url: '../../tradingview-chart.css',
     overrides: {
       ...customTheme,
       // Chart styling

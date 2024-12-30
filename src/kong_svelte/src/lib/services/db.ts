@@ -15,6 +15,7 @@ export class KongDB extends Dexie {
   favorite_tokens!: Table<FavoriteToken & { id?: number }>;
   settings!: Table<Settings, string>; // Add settings table
   pools!: Table<BE.Pool, string>;
+  user_pools!: Table<FE.UserPoolBalance, string>;
   pool_totals: Table<FE.PoolTotal, string>;
   transactions: Table<FE.Transaction, number>;
   allowances: Table<FE.AllowanceData, string>;
@@ -27,6 +28,7 @@ export class KongDB extends Dexie {
       tokens: "canister_id",
       images: "++id, canister_id, timestamp",
       pools: "id, address_0, address_1, timestamp",
+      user_pools: "id, address_0, address_1, timestamp",
       pool_totals: "++id, tvl, rolling_24h_volume, fees_24h, timestamp",
       transactions: "id",
       favorite_tokens: "++id, wallet_id, canister_id",
@@ -40,6 +42,7 @@ export class KongDB extends Dexie {
       tokens: "canister_id, timestamp",
       images: "++id, canister_id, timestamp",
       pools: "id, address_0, address_1, timestamp",
+      user_pools: "id, address_0, address_1, timestamp",
       pool_totals: "++id, tvl, rolling_24h_volume, fees_24h, timestamp",
       transactions: "id",
       favorite_tokens: "++id, wallet_id, canister_id, timestamp, [wallet_id+canister_id]",
@@ -58,6 +61,7 @@ export class KongDB extends Dexie {
 
     this.images = this.table("images");
     this.pools = this.table("pools");
+    this.user_pools = this.table("user_pools");
     this.pool_totals = this.table("pool_totals");
     this.favorite_tokens = this.table("favorite_tokens");
     this.settings = this.table("settings");

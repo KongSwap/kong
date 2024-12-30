@@ -2,10 +2,11 @@
   import { createEventDispatcher } from 'svelte';
   
   export let checked: boolean = false;
-  export let color: string = "blue"; // Changed default to blue
-  export let size: "sm" | "md" | "lg" = "md";
+  export let color: string = "blue";
+  export let size: "sm" | "md" | "lg" = "sm";
   export let disabled: boolean = false;
   export let label: string = "Toggle";
+  export let showKongMonke: boolean = false;
 
   const dispatch = createEventDispatcher();
 
@@ -19,25 +20,25 @@
 
   const sizeMap = {
     sm: {
-      toggle: "w-10 h-6",
-      slider: "w-4 h-4",
-      translate: "translate-x-5",
+      toggle: "w-12 h-6",
+      slider: "w-5 h-5",
+      translate: "translate-x-6",
     },
     md: {
-      toggle: "w-14 h-8",
+      toggle: "w-14 h-7",
       slider: "w-6 h-6",
       translate: "translate-x-7",
     },
     lg: {
-      toggle: "w-16 h-10",
-      slider: "w-8 h-8",
+      toggle: "w-16 h-8",
+      slider: "w-7 h-7",
       translate: "translate-x-8",
     },
   };
 
-  $: activeColor = colorMap[color] || colorMap.blue; // Changed fallback to blue
+  $: activeColor = colorMap[color] || colorMap.blue;
   $: style = `--active-color: ${activeColor};`;
-  $: sizeClass = sizeMap[size] || sizeMap.md;
+  $: sizeClass = sizeMap[size] || sizeMap.sm;
 
   function handleClick() {
     if (!disabled) {
@@ -60,29 +61,53 @@
   aria-label={label}
 >
   <span 
-    class="toggle-slider {sizeClass.slider}"
+    class="toggle-slider {sizeClass.slider} {checked ? '' : 'bg-kong-bg-dark'}"
     class:translated={checked}
-  />
+  >
+    {#if checked}
+      🍌
+    {/if}
+  </span>
 </button>
 
 <style scoped lang="postcss">
   .toggle-button {
-    @apply relative rounded-full duration-300 ease-in-out cursor-pointer;
+    @apply relative rounded-full duration-200 ease-in-out cursor-pointer;
     background: rgba(255, 255, 255, 0.1);
   }
 
   .toggle-button.active {
-    background: var(--active-color);
-    box-shadow: 0 0 10px var(--active-color); /* Added subtle glow effect */
+    background: rgb(var(--accent-green));
+    box-shadow: 0 0 8px rgb(var(--accent-green));
   }
 
   .toggle-slider {
-    @apply absolute top-1 left-1 rounded-full bg-white shadow-lg transform duration-300 ease-in-out;
-    transform: translateX(0);
+    @apply absolute top-0.5 left-0.5 rounded-full shadow-sm 
+           transform duration-200 ease-in-out;
+    background: rgb(var(--bg-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .toggle-button.active .toggle-slider {
+    background: rgb(var(--accent-green));
   }
 
   .toggle-slider.translated {
-    transform: translateX(24px);
+    transform: translateX(calc(100% + 2px));
+  }
+
+  .kong-monke {
+    @apply w-full h-full object-cover rounded-full;
+    transform-origin: center;
+    transition: transform 200ms ease-in-out;
+    padding: 1px;
+  }
+
+  .kong-monke.flip {
+    transform: scaleX(-1);
   }
 
   .toggle-button:not(.active):hover:not(.disabled) {
@@ -90,19 +115,15 @@
   }
 
   .toggle-button.active:hover:not(.disabled) {
-    filter: brightness(120%); /* Increased brightness on hover */
+    filter: brightness(110%);
   }
 
   .toggle-button:focus {
-    @apply outline-none ring-2 ring-opacity-50;
-    --tw-ring-color: var(--active-color);
+    @apply outline-none ring-1 ring-opacity-50;
+    --tw-ring-color: rgb(var(--accent-green));
   }
 
   .toggle-button.disabled {
     @apply cursor-not-allowed opacity-50;
-  }
-
-  .toggle-button.disabled .toggle-slider {
-    @apply opacity-50;
   }
 </style>

@@ -20,7 +20,7 @@
   "dependencies": {
     "@windoge98/plug-n-play": "0.0.22",
     "bignumber.js": "^9.1.2",
-    "chart.js": "^4.4.7",
+    "chart.js": "^4.4.1",
     "chartjs-adapter-date-fns": "^3.0.0",
     "comlink": "^4.4.2",
     "date-fns": "^4.1.0",

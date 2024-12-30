@@ -72,6 +72,7 @@
   <Toast />
   <AddToHomeScreen />
   <QRModal />
+  <div id="modals"></div>
 </div>
 
 <style scoped lang="postcss">

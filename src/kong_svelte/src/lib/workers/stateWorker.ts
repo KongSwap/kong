@@ -10,15 +10,34 @@ class StateWorkerImpl implements StateWorkerApi {
   private poolInterval: number | null = null;
   protected isPaused = false;
   
-  // Adjust intervals based on visibility
-  private readonly ACTIVE_TOKEN_INTERVAL = 15000;    // 15 seconds when active
-  private readonly BACKGROUND_TOKEN_INTERVAL = 60000; // 60 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 20000;     // 15 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 60000;  // 60 seconds when in background
+  // ----------------------------------------------------
+  // 1) Lower intervals to allow more frequent updates
+  // ----------------------------------------------------
+  // (Comment says 15 seconds, but 30000ms is actually 30s; you can reduce these)
+  private readonly ACTIVE_TOKEN_INTERVAL = 10000;         // 10 seconds when active
+  private readonly BACKGROUND_TOKEN_INTERVAL = 60000;     // 60 seconds when in background
+  private readonly ACTIVE_POOL_INTERVAL = 10000;          // 10 seconds when active
+  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 60 seconds when in background
+
+  // ----------------------------------------------------
+  // 2) Throttle settings to prevent duplicate requests
+  // ----------------------------------------------------
+  private readonly TOKEN_UPDATE_THROTTLE = 3000; // Don’t post token updates more often than every 8s
+  private readonly POOL_UPDATE_THROTTLE  = 3000; // Don’t post pool updates more often than every 8s
+
+  // ----------------------------------------------------
+  // 3) Track whether an update is already in progress
+  //    and store the time of the last update
+  // ----------------------------------------------------
+  private tokenUpdateInProgress = false;
+  private poolUpdateInProgress  = false;
+  private lastTokenUpdate       = 0;
+  private lastPoolUpdate        = 0;
 
   async startUpdates(): Promise<void> {
     this.scheduleTokenUpdates();
     this.schedulePoolUpdates();
+
     // Trigger immediate updates if not paused
     if (!this.isPaused) {
       this.postTokenUpdate();
@@ -28,19 +47,22 @@ class StateWorkerImpl implements StateWorkerApi {
 
   async stopUpdates(): Promise<void> {
     if (this.tokenInterval) clearInterval(this.tokenInterval);
-    if (this.poolInterval) clearInterval(this.poolInterval);
+    if (this.poolInterval)  clearInterval(this.poolInterval);
     this.tokenInterval = null;
-    this.poolInterval = null;
+    this.poolInterval  = null;
   }
 
+  // -------------------------------------------------------------------
+  // Schedules recurring token updates based on whether we're paused
+  // -------------------------------------------------------------------
   private scheduleTokenUpdates(): void {
     if (this.tokenInterval) {
       clearInterval(this.tokenInterval);
     }
-    
-    const interval = this.isPaused ? 
-      this.BACKGROUND_TOKEN_INTERVAL : 
-      this.ACTIVE_TOKEN_INTERVAL;
+
+    const interval = this.isPaused
+      ? this.BACKGROUND_TOKEN_INTERVAL
+      : this.ACTIVE_TOKEN_INTERVAL;
 
     this.tokenInterval = self.setInterval(() => {
       if (!this.isPaused) {
@@ -49,14 +71,17 @@ class StateWorkerImpl implements StateWorkerApi {
     }, interval);
   }
 
+  // -------------------------------------------------------------------
+  // Schedules recurring pool updates based on whether we're paused
+  // -------------------------------------------------------------------
   private schedulePoolUpdates(): void {
     if (this.poolInterval) {
       clearInterval(this.poolInterval);
     }
-    
-    const interval = this.isPaused ? 
-      this.BACKGROUND_POOL_INTERVAL : 
-      this.ACTIVE_POOL_INTERVAL;
+
+    const interval = this.isPaused
+      ? this.BACKGROUND_POOL_INTERVAL
+      : this.ACTIVE_POOL_INTERVAL;
 
     this.poolInterval = self.setInterval(() => {
       if (!this.isPaused) {
@@ -65,14 +90,57 @@ class StateWorkerImpl implements StateWorkerApi {
     }, interval);
   }
 
+  // -------------------------------------------------------------------
+  // Throttled + “in-progress” check for token updates
+  // -------------------------------------------------------------------
   private postTokenUpdate() {
+    // If we’re already updating tokens, skip
+    if (this.tokenUpdateInProgress) {
+      console.warn("Skipping token update – already in progress.");
+      return;
+    }
+    // If we updated tokens recently, skip
+    const now = Date.now();
+    if (now - this.lastTokenUpdate < this.TOKEN_UPDATE_THROTTLE) {
+      console.warn("Skipping token update – too soon since last update.");
+      return;
+    }
+
+    this.tokenUpdateInProgress = true;
+    // Your “heavy-lifting” or side effect(s) would go here. Right now,
+    // it only posts a message back to the main thread:
     self.postMessage({ type: 'token_update' });
+
+    // Mark completion
+    this.lastTokenUpdate = Date.now();
+    this.tokenUpdateInProgress = false;
   }
 
+  // -------------------------------------------------------------------
+  // Throttled + “in-progress” check for pool updates
+  // -------------------------------------------------------------------
   private postPoolUpdate() {
+    if (this.poolUpdateInProgress) {
+      console.warn("Skipping pool update – already in progress.");
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastPoolUpdate < this.POOL_UPDATE_THROTTLE) {
+      console.warn("Skipping pool update – too soon since last update.");
+      return;
+    }
+
+    this.poolUpdateInProgress = true;
+    // As with tokens, here we just post a message to the main thread:
     self.postMessage({ type: 'pool_update' });
+
+    this.lastPoolUpdate = Date.now();
+    this.poolUpdateInProgress = false;
   }
 
+  // -------------------------------------------------------------------
+  // Pause & resume simply clear or restore intervals
+  // -------------------------------------------------------------------
   public pause(): void {
     this.isPaused = true;
     this.tokenInterval && clearInterval(this.tokenInterval);
@@ -89,7 +157,7 @@ class StateWorkerImpl implements StateWorkerApi {
 // Create a single instance
 const workerInstance = new StateWorkerImpl();
 
-// Update message handler to use instance methods
+// Listen for pause/resume from the main thread
 self.addEventListener('message', (event) => {
   if (event.data.type === 'pause') {
     workerInstance.pause();
@@ -98,5 +166,5 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Expose the instance instead of creating a new one
+// Expose the instance via Comlink
 Comlink.expose(workerInstance); 

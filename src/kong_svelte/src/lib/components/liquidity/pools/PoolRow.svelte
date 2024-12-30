@@ -3,15 +3,13 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
-  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
-  import { liveTokens } from "$lib/services/tokens/tokenStore";
+  import { Flame } from 'lucide-svelte';
 
-  export let pool: BE.Pool;
+  export let pool: BE.Pool & { displayTvl: number };
   export let tokenMap: Map<string, any>;
   export let isEven: boolean;
-  export let isKongPool = false;
-  export let onAddLiquidity: (token0: string, token1: string) => void;
-  export let onShowDetails: () => void;
+  export let isKongPool: boolean;
+  export let showFireIcon: boolean = false;
 
   let isMobile = false;
   let showDetailsButton = true;
@@ -31,17 +29,6 @@
       window.removeEventListener("resize", checkMobile);
     };
   });
-
-  function handleAddLiquidity() {
-    onAddLiquidity(pool.address_0, pool.address_1);
-  }
-
-  function getDisplayPriceUsd(pool: BE.Pool): string {
-    if($liveTokens) {
-      const poolPrice = getPoolPriceUsd(pool)
-      return formatToNonZeroDecimal(Number(poolPrice) * Number($liveTokens.find(token => token.symbol === pool.symbol_1)?.metrics?.price));
-    }
-  }
 </script>
 
 {#if !isMobile}
@@ -51,11 +38,19 @@
       <div class="pool-info">
         <TokenImages
           tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={24}
+          overlap={true}
+          size={28}
         />
         <div class="pool-details">
           <div class="pool-name">
             {pool.symbol_0}/{pool.symbol_1}
+            <!-- Debug info -->
+            {#if showFireIcon}
+              <Flame class="w-3.5 h-3.5 text-orange-400" />
+            {:else}
+              <!-- Show a placeholder to verify the condition -->
+              <span class="text-xs text-gray-500">({showFireIcon ? 'true' : 'false'})</span>
+            {/if}
           </div>
         </div>
       </div>
@@ -63,7 +58,7 @@
     <td class="price-cell">
       <div class="price-info">
         <div class="price-value">
-          ${formatToNonZeroDecimal(getDisplayPriceUsd(pool))}
+          ${formatToNonZeroDecimal(pool.price)}
         </div>
       </div>
     </td>
@@ -108,10 +103,9 @@
   </div>
 {/if}
 
-<style lang="postcss">
+<style scoped lang="postcss">
   tr {
     transition: colors 150ms;
-    padding: 0 1rem;
   }
 
   tr:hover {
@@ -119,22 +113,20 @@
   }
 
   tr.kong-special-row {
-    @apply bg-kong-accent-green/20 !important;
+    @apply border border-kong-primary bg-kong-primary/10 !important;
 
     td {
       font-weight: 500;
     }
 
     &:hover {
-      @apply bg-kong-accent-green;
+      @apply bg-kong-accent-green text-black;
     }
   }
 
   td {
-    padding: 0.5rem 1rem;
     font-size: 0.875rem;
-    @apply border-b border-kong-border;
-    height: 64px;
+    @apply border-b border-kong-border/50 py-2 px-2;
   }
 
   .price-cell,
@@ -146,9 +138,7 @@
   }
 
   .pool-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    @apply flex items-center gap-2 pl-2;
   }
 
   .pool-cell {
@@ -171,6 +161,9 @@
   .pool-name {
     font-weight: 500;
     font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   .price-info,

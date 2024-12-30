@@ -1,25 +1,36 @@
 <script lang="ts">
-  import { fade, fly } from 'svelte/transition';
-  import { Star, MoreVertical } from 'lucide-svelte';
-  import TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { formatUsdValue, formatTokenBalance } from '$lib/utils/tokenFormatters';
-  import TokenDetails from '$lib/components/common/TokenDetails.svelte';
-  import { FavoriteService } from '$lib/services/tokens/favoriteService';
-  import { tokenStore } from '$lib/services/tokens';
-  
+  import { fade, fly } from "svelte/transition";
+  import { Star, Send, ArrowUpDown, Droplets } from "lucide-svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import {
+    formatUsdValue,
+    formatTokenBalance,
+  } from "$lib/utils/tokenFormatters";
+  import TokenDetails from "$lib/components/common/TokenDetails.svelte";
+  import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import { tokenStore } from "$lib/services/tokens";
+  import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { goto } from "$app/navigation";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { activeDropdownId } from "$lib/stores/dropdownStore";
+
   export let token: any;
 
-  let showDetails = false;
+  let showTokenDetails = false;
   let isHovered = false;
   let isPressed = false;
-  let showMenu = false;
   let localFavorite = false; // Local state for immediate feedback
-  let formattedBalance = '';
+  let formattedBalance = "";
   let lastLogTime = 0;
   const LOG_THROTTLE = 1000; // 1 second
-  
   let isFavorite = false;
-  let showTokenDetails = false;
+  let dropdownVisible = false;
+
+
+  // Subscribe to the store and update local dropdown visibility
+  activeDropdownId.subscribe((id) => {
+    dropdownVisible = id === token.canister_id;
+  });
 
   // Replace the reactive statement with an async function
   async function updateFavoriteStatus() {
@@ -37,104 +48,202 @@
     localFavorite = await FavoriteService.toggleFavorite(token.canister_id);
   }
 
-  function handleRowClick() {
-    showDetails = true;
-  }
-
-  function toggleMenu(e: MouseEvent) {
-    e.stopPropagation();
-    showDetails = true;
-  }
-
-  // Close menu when clicking outside
-  function handleClickOutside(e: MouseEvent) {
-    if (showMenu) {
-      showMenu = false;
+  function handleMenuAction(action: string) {
+    switch (action) {
+      case "details":
+        showTokenDetails = true;
+        break;
+      case "swap":
+        // Implement swap navigation
+        break;
+      // Add more actions as needed
     }
+    dropdownVisible = false;
   }
 
   $: {
     const balance = $tokenStore.balances[token.canister_id]?.in_tokens;
     formattedBalance = formatTokenBalance(
       balance?.toString() || "0",
-      token.decimals
+      token.decimals,
     );
-    
+
     // Throttle logging
     const now = Date.now();
     if (now - lastLogTime > LOG_THROTTLE) {
       lastLogTime = now;
-      // Only log if needed for debugging
-      // console.log('Balance update:', formattedBalance);
     }
   }
 
-  // If you need to debug, use this instead of direct console.logs
-  function debugLog(value: any) {
-    const now = Date.now();
-    if (now - lastLogTime > LOG_THROTTLE) {
-      lastLogTime = now;
+  function handleRowClick() {
+    if (dropdownVisible) {
+      activeDropdownId.set(null);
+    } else {
+      activeDropdownId.set(token.canister_id);
     }
+  }
+
+  let dropdownEl: HTMLElement;
+  let rowEl: HTMLElement;
+  let showAbove = false;
+
+  function updateDropdownPosition() {
+    if (!rowEl) return;
+    const viewportHeight = window.innerHeight;
+    const rowRect = rowEl.getBoundingClientRect();
+
+    // If the row is in the bottom third of the viewport, show dropdown above
+    showAbove = rowRect.bottom > (viewportHeight * 2) / 3;
+  }
+
+  $: if (dropdownVisible) {
+    // Use setTimeout to ensure the DOM is updated
+    setTimeout(updateDropdownPosition, 0);
   }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<div
+  class="relative isolate z-0 transition-[z-index] duration-0"
+  class:z-50={dropdownVisible}
+  bind:this={rowEl}
+>
+  {#if dropdownVisible}
+    <div
+      class="fixed inset-0 bg-black/50 z-40 animate-fadeIn"
+      transition:fade={{ duration: 150 }}
+      on:click={() => activeDropdownId.set(null)}
+    />
+  {/if}
 
-<div class="token-wrapper">
-  <div 
-    class="token-row"
+  <div
+    class="flex-1 cursor-pointer origin-center transition-all duration-200 border border-transparent relative z-40 group"
     class:pressed={isPressed}
+    class:bg-kong-bg-light={dropdownVisible}
+    class:border-kong-border={dropdownVisible}
+    class:rounded-lg={dropdownVisible}
+    class:shadow-lg={dropdownVisible}
+    class:bg-gradient-to-b={dropdownVisible}
+    class:from-kong-bg-light={dropdownVisible}
+    class:to-kong-bg-dark={dropdownVisible}
     in:fly={{ y: 20, duration: 400, delay: 200 }}
     out:fade={{ duration: 200 }}
-    on:click={handleRowClick}
-    on:mouseenter={() => isHovered = true}
-    on:mouseleave={() => isHovered = false}
-    on:mousedown={() => isPressed = true}
-    on:mouseup={() => isPressed = false}
+    on:mouseenter={() => (isHovered = true)}
+    on:mouseleave={() => (isHovered = false)}
+    on:mousedown={() => (isPressed = true)}
+    on:mouseup={() => (isPressed = false)}
+    on:click|stopPropagation={handleRowClick}
     role="button"
     tabindex="0"
-    on:keydown={e => e.key === 'Enter' && handleRowClick()}
+    on:keydown={(e) => {
+      if (e.key === "Enter") handleRowClick();
+    }}
   >
-    <div class="token-content">
-      <div class="token-left">
-        <div class="token-image" class:hovered={isHovered}>
-          <TokenImages tokens={[token]} size={36} />
+    <div
+      class="flex items-center justify-between h-14 relative px-2 z-[100]
+             group-hover:bg-kong-bg-light/40 group-hover:border-kong-border/10 
+             transition-all duration-200 rounded-lg"
+    >
+      <div class="flex items-center gap-3">
+        <div class="transform scale-100">
+          <TokenImages tokens={[token]} size={32} />
         </div>
 
-        <div class="token-info">
-          <div class="token-name-row">
-            <button 
-              class="favorite-button"
-              class:active={localFavorite}
+        <div class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-1.5">
+            <button
+              class="p-1 rounded-md text-kong-text-primary/50 bg-white/5 transition-all duration-200 hover:text-white hover:scale-110 hover:bg-white/10 {localFavorite
+                ? 'text-yellow-400 bg-yellow-400/10'
+                : ''}"
               on:click={handleFavoriteClick}
-              title={localFavorite ? "Remove from favorites" : "Add to favorites"}
+              title={localFavorite
+                ? "Remove from favorites"
+                : "Add to favorites"}
             >
-              <Star size={16} fill={localFavorite ? "#ffd700" : "none"} />
+              <Star size={14} fill={localFavorite ? "#ffd700" : "none"} />
             </button>
-            <span class="token-symbol">{token.symbol}</span>
+            <span class="text-[15px] font-semibold text-kong-text-primary"
+              >{token.symbol}</span
+            >
           </div>
-          <span class="token-name">{token.name}</span>
+          <span class="text-[13px] text-kong-text-primary/70">{token.name}</span
+          >
         </div>
       </div>
 
-      <div class="token-right">
-        <div class="value-info">
-          <div class="balance">
+      <div class="flex items-center h-full">
+        <div class="flex flex-col items-end gap-0.5">
+          <div class="text-sm font-medium text-kong-text-primary">
             {formattedBalance}
           </div>
-          <div class="usd-value">
-            {formatUsdValue($tokenStore.balances[token.canister_id]?.in_usd || '0')}
+          <div class="text-[13px] text-kong-text-primary/70">
+            {formatUsdValue(
+              $tokenStore.balances[token.canister_id]?.in_usd || "0",
+            )}
           </div>
         </div>
 
-        <div class="menu-container">
-          <button 
-            class="menu-button"
-            on:click={toggleMenu}
-            title="Token details"
-          >
-            <MoreVertical size={24} />
-          </button>
+        <div class="relative z-50 ml-2 h-full isolate">
+          {#if dropdownVisible}
+            <div
+              bind:this={dropdownEl}
+              class="absolute {showAbove
+                ? 'bottom-[calc(100%+1px)]'
+                : 'top-[calc(100%+1px)]'} -right-1 z-50 min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
+                ? 'rounded-t-lg'
+                : 'rounded-b-lg'} shadow-lg origin-{showAbove
+                ? 'bottom'
+                : 'top'} animate-slideDown"
+              on:click|stopPropagation
+            >
+              <div
+                class="absolute {showAbove
+                  ? '-bottom-[5px]'
+                  : '-top-[5px]'} right-3 w-2.5 h-2.5 bg-kong-bg-light border-l border-t border-kong-border transform {showAbove
+                  ? 'rotate-[225deg]'
+                  : 'rotate-45'} -z-10 shadow-[-2px_-2px_3px_rgba(0,0,0,0.1)]"
+              ></div>
+
+              <!-- Dropdown buttons -->
+              <button
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-white hover:translate-x-0.5 flex items-center gap-2"
+                on:click|stopPropagation={() => {
+                  activeDropdownId.set(null);
+                  handleMenuAction("details");
+                }}
+              >
+                <Send size={16} />
+                Send/Receive
+              </button>
+
+              <button
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-white hover:translate-x-0.5 flex items-center gap-2"
+                on:click|stopPropagation={() => {
+                  activeDropdownId.set(null);
+                  sidebarStore.collapse();
+                  goto(
+                    `/swap?token0=${token.canister_id}&token1=${CKUSDT_CANISTER_ID}`,
+                  );
+                }}
+              >
+                <ArrowUpDown size={16} />
+                Swap
+              </button>
+
+              <button
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-white hover:translate-x-0.5 flex items-center gap-2"
+                on:click|stopPropagation={() => {
+                  activeDropdownId.set(null);
+                  sidebarStore.collapse();
+                  goto(
+                    `/pools/add?token0=${token.canister_id}&token1=${CKUSDT_CANISTER_ID}`,
+                  );
+                }}
+              >
+                <Droplets size={16} />
+                Add Liquidity
+              </button>
+            </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -142,120 +251,9 @@
 </div>
 
 {#if showTokenDetails}
-  <TokenDetails 
-    token={token}
+  <TokenDetails
+    {token}
     isOpen={showTokenDetails}
-    on:close={() => showTokenDetails = false}
+    on:close={() => (showTokenDetails = false)}
   />
 {/if}
-
-<style scoped lang="postcss">
-  .token-row {
-    flex: 1;
-    cursor: pointer;
-    transform-origin: center;
-    will-change: transform;
-    transition: background-color 0.1s ease;
-    border: 1px solid transparent;
-    transition: border-color 0.2s ease;
-  }
-
-  .token-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 72px;
-  }
-
-  .token-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .token-image {
-    transform: scale(1);
-  }
-
-  .token-info {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .token-name-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .favorite-button {
-    padding: 4px;
-    border-radius: 8px;
-    color: text-kong-text-primary/50;
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-
-  .favorite-button:hover {
-    @apply text-white;
-    transform: scale(1.1);
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .favorite-button.active {
-    color: #ffd700;
-    background-color: rgba(253, 224, 71, 0.1);
-  }
-
-  .token-symbol {
-    font-size: 18px;
-    font-weight: bold;
-    color: text-kong-text-primary;
-  }
-
-  .token-name {
-    font-size: 14px;
-    color: text-kong-text-primary/70;
-  }
-
-  .token-right {
-    display: flex;
-    align-items: center;
-    height: 100%;
-  }
-
-  .value-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-
-  .balance {
-    font-size: 16px;
-    font-weight: 500;
-    color: text-kong-text-primary;
-  }
-
-  .usd-value {
-    font-size: 14px;
-    color: text-kong-text-primary/70;
-  }
-
-  .menu-container {
-    height: 100%;
-  }
-
-  .menu-button {
-    @apply text-kong-text-primary/70;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 100%;
-  }
-
-  .menu-button:hover {
-    color: white;
-  }
-</style>

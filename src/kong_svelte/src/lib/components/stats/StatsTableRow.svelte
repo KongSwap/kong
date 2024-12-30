@@ -122,7 +122,7 @@
   </td>
 </tr>
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .token-name {
     @apply text-kong-text-primary font-medium truncate max-w-[120px] md:max-w-none;
   }
@@ -144,15 +144,14 @@
   }
 
   .kong-special-row {
-    background: rgba(0, 255, 128, 0.02);
-    border-left: 2px solid #00d3a533;
+    @apply bg-kong-primary/10 border border-b-0 border-kong-primary;
 
     &:hover {
-      background: rgba(0, 255, 128, 0.04);
+      @apply bg-kong-primary/10;
     }
 
     td {
-      font-weight: 500;
+      @apply font-medium;
     }
   }
 </style> 

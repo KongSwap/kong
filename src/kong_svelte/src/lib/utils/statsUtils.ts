@@ -47,7 +47,7 @@ export function filterTokens(tokens: FE.Token[], searchQuery: string): FE.Token[
   );
 }
 
-export function getPoolPriceUsd(pool: BE.Pool): string {
-  if (!pool?.price) return '0';
-  return formatToNonZeroDecimal(pool.price);
+export function getPoolPriceUsd(pool: BE.Pool): number {
+  if (!pool?.price) return 0;
+  return Number(pool.price);
 }

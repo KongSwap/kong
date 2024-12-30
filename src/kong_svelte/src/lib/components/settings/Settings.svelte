@@ -51,6 +51,26 @@
     isCustomSlippage = !quickSlippageValues.includes(slippageValue);
   }
 
+  // Initialize slippage from localStorage or default to 2.0
+  function initializeSlippageFromStorage() {
+    if (browser) {
+      const storedSlippage = localStorage.getItem('slippage');
+      if (storedSlippage) {
+        const value = parseFloat(storedSlippage);
+        slippageValue = value;
+        slippageInputValue = value.toString();
+        isCustomSlippage = !quickSlippageValues.includes(value);
+      }
+    }
+  }
+
+  // Save slippage to localStorage
+  function saveSlippageToStorage(value: number) {
+    if (browser) {
+      localStorage.setItem('slippage', value.toString());
+    }
+  }
+
   function handleQuickSlippageSelect(value: number) {
     if (!$auth.isConnected) {
       toastStore.error('Please connect your wallet to save settings');
@@ -60,6 +80,7 @@
     slippageValue = value;
     slippageInputValue = value.toString();
     isCustomSlippage = false;
+    saveSlippageToStorage(value);
     toastStore.success(`Slippage updated to ${value}%`);
   }
 
@@ -71,6 +92,7 @@
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
+      saveSlippageToStorage(boundedValue);
     }
   }
 
@@ -100,26 +122,23 @@
 
   function handleSlippageBlur(e: Event) {
     if (!$auth.isConnected) {
-      // Reset to default value
-      slippageInputValue = '2.0';
-      slippageValue = 2.0;
-      isCustomSlippage = false;
+      // Reset to stored value or default
+      initializeSlippageFromStorage();
       toastStore.error('Please connect your wallet to save settings');
       return;
     }
     
     const value = parseFloat(slippageInputValue);
     if (isNaN(value) || value < 0 || value > 99) {
-      // Reset to last valid value from settings
-      slippageInputValue = $settingsStore.max_slippage?.toString() || '2.0';
-      slippageValue = $settingsStore.max_slippage || 2.0;
-      isCustomSlippage = !quickSlippageValues.includes(slippageValue);
+      // Reset to last valid value from settings or storage
+      initializeSlippageFromStorage();
     } else {
       const boundedValue = Math.min(Math.max(value, 0), 99);
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       settingsStore.updateSetting('max_slippage', boundedValue);
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
+      saveSlippageToStorage(boundedValue);
       if (boundedValue !== value) {
         toastStore.success(`Slippage bounded to ${boundedValue}%`);
       }
@@ -165,6 +184,7 @@
     handleResize();
     if (browser) {
       window.addEventListener('resize', handleResize);
+      initializeSlippageFromStorage();
       return () => window.removeEventListener('resize', handleResize);
     }
   });
@@ -179,336 +199,329 @@
   function handleThemeToggle() {
     themeStore.toggleTheme();
   }
+
+  // Add this function to handle done click
+  function handleDone() {
+    // You can add any cleanup or save logic here if needed
+    window.history.back();
+  }
 </script>
 
-<div class="settings-container">
-  <div class="setting-sections">
-    <!-- Theme Section -->
-    <div class="setting-row">
+<div class="settings">
+  <!-- Slippage Section -->
+  <div class="settings-section slippage-section">
+    <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="setting-label">Theme</span>
-        {#if $themeStore === 'dark'}
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-kong-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        <h3 class="settings-title">Slippage Tolerance</h3>
+        <button 
+          class="text-muted hover:text-primary p-1 -m-1 rounded-md transition-colors"
+          on:click={() => showSlippageInfo = !showSlippageInfo}
+          aria-label="Slippage information"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+            <path stroke-width="2" d="M12 16v-4M12 8h.01"/>
           </svg>
-        {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-kong-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-        {/if}
+        </button>
       </div>
-      <Toggle 
-        checked={$themeStore === 'dark'} 
-        on:change={(e) => handleThemeToggle()} 
-      />
     </div>
 
-    <!-- Slippage Section -->
-    <div class="setting-section">
-      <div class="setting-header">
-        <div class="flex items-center gap-2">
-          <h3 class="text-lg font-medium text-kong-text-primary">Slippage Tolerance</h3>
-          <button 
-            class="info-button"
-            on:click={() => showSlippageInfo = !showSlippageInfo}
-            aria-label="Slippage information"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="12" cy="12" r="10" stroke-width="2"/>
-              <path stroke-width="2" d="M12 16v-4M12 8h.01"/>
-            </svg>
-          </button>
-        </div>
-        <span class="text-sm text-kong-text-secondary">Maximum price difference during trades</span>
-      </div>
-      
+    <div class="settings-content">
       {#if showSlippageInfo}
         <div class="info-panel" transition:fly={{ y: -10, duration: 200 }}>
-          <p>Slippage tolerance is the maximum price difference you're willing to accept between the estimated and actual price of your trade.</p>
-          <ul class="mt-2 space-y-1">
-            <li class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-green-500/50"></span>
-              <span>0.1-2%: Recommended for stable pairs</span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-yellow-500/50"></span>
-              <span>2-5%: Use caution, higher risk</span>
-            </li>
-            <li class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-red-500/50"></span>
-              <span>5%+: High risk of unfavorable trades</span>
-            </li>
-          </ul>
+          <div class="flex gap-2">
+            <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="space-y-2">
+              <p class="text-xs text-kong-text-secondary">Maximum acceptable price difference between estimated and actual trade price.</p>
+              <div class="flex gap-4 text-xs">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500/50"></span>
+                  <span class="text-green-500">0.1-2%</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500/50"></span>
+                  <span class="text-yellow-500">2-5%</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500/50"></span>
+                  <span class="text-kong-error">5%+</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       {/if}
 
-      <div class="slippage-content">
-        <div class="quick-slippage-buttons">
-          {#each quickSlippageValues as value}
-            <button
-              class="quick-slippage-button"
-              class:active={slippageValue === value}
-              class:warning={getSlippageRiskLevel(value) === 'warning'}
-              class:danger={getSlippageRiskLevel(value) === 'danger'}
-              on:click={() => handleQuickSlippageSelect(value)}
-            >
-              <span class="value">{value}%</span>
-              {#if slippageValue === value}
-                <span class="active-indicator"></span>
-              {/if}
-            </button>
-          {/each}
-          <div 
-            class="custom-slippage-input" 
-            class:active={isCustomSlippage}
-            class:focused={customInputFocused}
-            class:warning={getSlippageRiskLevel(slippageValue) === 'warning'}
-            class:danger={getSlippageRiskLevel(slippageValue) === 'danger'}
+      <div class="slippage-controls">
+        {#each quickSlippageValues as value}
+          <button
+            class="slippage-btn"
+            class:active={slippageValue === value}
+            class:warning={getSlippageRiskLevel(value) === 'warning'}
+            class:danger={getSlippageRiskLevel(value) === 'danger'}
+            on:click={() => handleQuickSlippageSelect(value)}
           >
-            <input
-              type="text"
-              class="slippage-input"
-              value={slippageInputValue}
-              on:input={handleSlippageInput}
-              on:change={handleSlippageChange}
-              on:blur={(e) => {
-                customInputFocused = false;
-                handleSlippageBlur(e);
-              }}
-              on:focus={() => customInputFocused = true}
-              placeholder="Custom"
-            />
-            <span class="percentage-symbol">%</span>
-          </div>
+            {value}%
+          </button>
+        {/each}
+        <div 
+          class="slippage-input-wrapper" 
+          class:active={isCustomSlippage}
+          class:warning={getSlippageRiskLevel(slippageValue) === 'warning'}
+          class:danger={getSlippageRiskLevel(slippageValue) === 'danger'}
+        >
+          <input
+            type="text"
+            class="w-full min-w-[40px] bg-transparent text-right text-xs md:text-sm"
+            value={isCustomSlippage ? slippageInputValue : "Custom"}
+            on:focus={(e) => {
+              const input = e.target as HTMLInputElement;
+              if (!isCustomSlippage) {
+                input.value = '';
+              }
+            }}
+            on:input={handleSlippageInput}
+            on:change={handleSlippageChange}
+            on:blur={handleSlippageBlur}
+            placeholder="Custom"
+          />
+          <span class="text-muted text-xs md:text-sm">%</span>
         </div>
-        
-        {#if slippageValue > 0}
-          <div class="slippage-indicator" class:warning={getSlippageRiskLevel(slippageValue) === 'warning'} class:danger={getSlippageRiskLevel(slippageValue) === 'danger'}>
-            <div class="indicator-bar" style="width: {Math.min(slippageValue * 10, 100)}%"></div>
-          </div>
-        {/if}
+      </div>
 
-        {#if slippageValue > 5}
-          <div class="warning-message danger" transition:fly={{ y: 10, duration: 200 }}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>High slippage may result in unfavorable trades</span>
+      {#if slippageValue > 5}
+        <div class="warning-message error">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>High slippage warning</span>
+        </div>
+      {:else if slippageValue > 2}
+        <div class="warning-message warning">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Use caution</span>
+        </div>
+      {/if}
+    </div>
+  </div>
+
+  <div class="settings-grid">
+    <!-- General Section -->
+    <div class="settings-section">
+      <h3 class="settings-title">General</h3>
+      <div class="settings-items">
+        <div class="settings-item">
+          <div class="flex items-center gap-2">
+            <span class="text-sm">Theme</span>
+            {#if $themeStore === 'dark'}
+              <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            {:else}
+              <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            {/if}
           </div>
-        {:else if slippageValue > 2}
-          <div class="warning-message warning" transition:fly={{ y: 10, duration: 200 }}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <Toggle 
+            checked={$themeStore === 'dark'} 
+            on:change={handleThemeToggle}
+            showKongMonke={true}
+            size="md"
+          />
+        </div>
+
+        <div class="settings-item">
+          <div class="flex items-center gap-2">
+            <span class="text-sm">Sound Effects</span>
+            <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             </svg>
-            <span>Consider using lower slippage for better rates</span>
           </div>
-        {/if}
+          <Toggle 
+            checked={soundEnabled} 
+            on:change={handleToggleSound}
+            size="md"
+          />
+        </div>
       </div>
     </div>
 
-    <!-- Other Settings -->
-    <div class="setting-row">
-      <span class="setting-label">Sound Effects</span>
-      <Toggle checked={soundEnabled} on:change={handleToggleSound} />
-    </div>
+    <!-- Data Section -->
+    <div class="settings-section">
+      <h3 class="settings-title">Data</h3>
+      <div class="settings-items">
+        <div class="settings-item">
+          <span class="text-sm">Favorite Tokens</span>
+          <button class="btn-secondary" on:click={clearFavorites}>Clear</button>
+        </div>
 
-    <div class="setting-row">
-      <span class="setting-label">Favorite Tokens</span>
-      <button class="action-button" on:click={clearFavorites}>
-        Clear Favorites
-      </button>
+        <div class="settings-item">
+          <span class="text-sm">Reload Application</span>
+          <button class="btn-destructive" on:click={resetDatabase}>Reload</button>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div class="setting-row">
-      <span class="setting-label">Reset App</span>
-      <button class="action-button warning" on:click={resetDatabase}>
-        Reset
-      </button>
-    </div>
+  <!-- Add the done button section -->
+  <div class="done-section">
+    <button 
+      class="btn-primary"
+      on:click={handleDone}
+    >
+      Done
+    </button>
   </div>
 </div>
 
 <style lang="postcss">
-  .settings-container {
-    @apply w-full text-kong-text-primary max-w-2xl mx-auto overflow-y-auto h-full;
+  .settings {
+    @apply w-full max-w-2xl mx-auto space-y-6 p-4;
   }
 
-  .setting-sections {
-    @apply grid gap-6 max-w-full h-full overflow-y-auto;
+  /* Add specific styles for the slippage section */
+  .slippage-section {
+    @apply md:max-w-none;
   }
 
-  .setting-section {
-    @apply grid gap-4 bg-kong-bg-dark/40 rounded-2xl p-6 
-           border border-kong-border backdrop-blur-sm
-           w-full max-w-full overflow-hidden
-           transition-all duration-200 shadow-lg shadow-black/10
-           hover:border-kong-border-light;
+  .settings-content {
+    @apply space-y-3 bg-kong-bg-dark/20 rounded-lg border border-kong-border p-4;
+    @apply md:max-w-3xl md:mx-auto;
   }
 
-  .setting-header {
-    @apply flex flex-col gap-1 border-b border-kong-border pb-4;
+  .slippage-controls {
+    @apply flex flex-wrap items-center gap-2;
+    @apply md:justify-center md:gap-3;
   }
 
-  .setting-header h3 {
-    @apply text-kong-text-primary;
+  .settings-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
   }
 
-  .setting-header span {
-    @apply text-kong-text-secondary;
+  .settings-section {
+    @apply space-y-3;
+    height: fit-content;
   }
 
-  .slippage-content {
-    @apply flex flex-wrap gap-2;
-  }
-
-  .quick-slippage-buttons {
-    @apply grid grid-cols-2 sm:grid-cols-5 gap-2 w-full;
-  }
-
-  .quick-slippage-button {
-    @apply relative px-6 py-3 rounded-xl 
-           bg-kong-bg-dark/20 text-kong-text-primary text-base font-medium
-           border border-kong-border transition-all duration-200
-           hover:bg-kong-bg-dark/30 hover:border-kong-border-light
-           focus:outline-none focus:ring-2 focus:ring-kong-primary/30
-           flex items-center justify-center gap-2;
-  }
-
-  .quick-slippage-button .value {
-    @apply relative z-10;
-  }
-
-  .quick-slippage-button .active-indicator {
-    @apply absolute inset-0 rounded-xl bg-kong-primary/10
-           border border-kong-primary/30 ring-2 ring-kong-primary/20;
-  }
-
-  .custom-slippage-input {
-    @apply col-span-2 sm:col-span-1 flex items-center gap-2
-           px-4 py-3 rounded-xl bg-kong-bg-dark/20 
-           border border-kong-border transition-all duration-200
-           hover:bg-kong-bg-dark/30 hover:border-kong-border-light;
-  }
-
-  .slippage-input {
-    @apply w-full bg-transparent text-kong-text-primary text-base font-medium
-           focus:outline-none text-right pr-1
-           placeholder:text-kong-text-disabled;
-  }
-
-  .percentage-symbol {
-    @apply text-kong-text-secondary font-medium;
-  }
-
-  .warning-message {
-    @apply flex items-center gap-2 mt-3 px-3 py-2 
-           bg-kong-error/10 border border-kong-error/20 
-           rounded-lg text-kong-error/90 text-sm;
-  }
-
-  .warning-icon {
-    @apply w-5 h-5 flex-shrink-0;
-  }
-
-  .setting-row {
-    @apply flex items-center justify-between py-4 px-6 
-           bg-kong-bg-dark/40 rounded-2xl border border-kong-border
-           hover:bg-kong-bg-dark/30 hover:border-kong-border-light
-           transition-all duration-200 shadow-lg shadow-black/10;
-  }
-
-  .setting-label {
-    @apply text-kong-text-primary text-base font-medium;
-  }
-
-  .action-button {
-    @apply w-[140px] px-4 py-2.5 rounded-xl
-           bg-kong-primary/10 text-kong-text-primary text-sm font-medium
-           border border-kong-primary/30 transition-all duration-200
-           hover:bg-kong-primary/20 hover:border-kong-primary/40
-           focus:outline-none focus:ring-2 focus:ring-kong-primary/30
-           text-center whitespace-nowrap shadow-lg shadow-kong-primary/5;
-  }
-
-  .action-button.warning {
-    @apply bg-kong-error/10 border-kong-error/30
-           hover:bg-kong-error/20 hover:border-kong-error/40
-           focus:ring-kong-error/30 shadow-lg shadow-kong-error/5;
-  }
-
-  .action-button:hover {
-    @apply transform -translate-y-0.5;
-  }
-
-  @media (max-width: 768px) {
-    .setting-header h3 {
-      @apply text-base;
-    }
-    
-    .quick-slippage-button {
-      @apply px-4 py-2 text-sm min-w-[70px];
-    }
-    
-    .custom-slippage-input {
-      @apply min-w-[100px];
-    }
-    
-    .action-button {
-      @apply w-[120px] px-3 py-1.5;
-    }
-  }
-
-  .info-button {
-    @apply p-1 rounded-lg text-kong-text-secondary hover:text-kong-text-primary 
-           hover:bg-kong-bg-dark/20 transition-colors duration-200;
+  .settings-title {
+    @apply text-sm font-medium text-kong-text-primary;
   }
 
   .info-panel {
-    @apply p-4 rounded-xl bg-kong-bg-dark/20 border border-kong-border
-           text-sm text-kong-text-secondary leading-relaxed;
+    @apply bg-kong-bg-dark/40 rounded-md border border-kong-border p-3;
   }
 
-  .slippage-indicator {
-    @apply w-full h-1 mt-4 rounded-full bg-kong-bg-dark/20 overflow-hidden;
+  .slippage-btn {
+    @apply px-3 py-1.5 text-xs font-medium rounded-md
+           bg-kong-bg-dark/40 text-kong-text-primary
+           border border-kong-border
+           hover:bg-kong-bg-dark/60 hover:border-kong-border-light
+           transition-all duration-200;
   }
 
-  .indicator-bar {
-    @apply h-full bg-green-500/50 transition-all duration-200;
+  .slippage-btn.active {
+    @apply bg-kong-primary/10 border-kong-primary/30
+           text-kong-primary ring-1 ring-kong-primary/30;
   }
 
-  .slippage-indicator.warning .indicator-bar {
-    @apply bg-yellow-500/50;
+  .slippage-btn.warning.active {
+    @apply bg-yellow-500/10 border-yellow-500/30
+           text-yellow-500 ring-1 ring-yellow-500/30;
   }
 
-  .slippage-indicator.danger .indicator-bar {
-    @apply bg-red-500/50;
+  .slippage-btn.danger.active {
+    @apply bg-kong-error/10 border-kong-error/30
+           text-kong-error ring-1 ring-kong-error/30;
   }
 
-  .quick-slippage-button.warning {
-    @apply hover:border-yellow-500/30;
+  .slippage-input-wrapper {
+    @apply px-3 py-1.5 text-xs md:text-sm font-medium rounded-md
+           bg-kong-bg-dark/40 border border-kong-border
+           flex items-center gap-1
+           w-[100px] md:w-[120px]
+           focus-within:ring-1 focus-within:ring-kong-primary/30
+           focus-within:border-kong-primary/30
+           transition-all duration-200;
   }
 
-  .quick-slippage-button.danger {
-    @apply hover:border-red-500/30;
+  .slippage-input-wrapper input {
+    @apply text-kong-text-primary placeholder-kong-text-secondary text-right;
   }
 
-  .custom-slippage-input.focused {
-    @apply ring-2 ring-kong-primary/30;
+  .slippage-input-wrapper:not(.active) input {
+    @apply text-kong-text-secondary;
   }
 
-  .custom-slippage-input.warning {
-    @apply hover:border-yellow-500/30;
-  }
-
-  .custom-slippage-input.danger {
-    @apply hover:border-red-500/30;
+  .warning-message {
+    @apply flex items-center gap-1.5 text-xs p-2 rounded-md;
   }
 
   .warning-message.warning {
-    @apply bg-yellow-500/10 border-yellow-500/20 text-yellow-500/90;
+    @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20;
   }
 
-  .warning-message.danger {
-    @apply bg-red-500/10 border-red-500/20 text-red-500/90;
+  .warning-message.error {
+    @apply bg-kong-error/10 text-kong-error border border-kong-error/20;
+  }
+
+  .settings-items {
+    @apply divide-y divide-kong-border rounded-md border border-kong-border
+           bg-kong-bg-dark/20;
+  }
+
+  .settings-item {
+    @apply flex items-center justify-between p-2
+           hover:bg-kong-bg-dark/40 transition-colors;
+    min-height: 44px;
+  }
+
+  .btn-secondary, .btn-destructive {
+    @apply px-3 py-1.5 text-xs font-medium rounded-md
+           min-w-[70px] h-[32px]
+           flex items-center justify-center
+           transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-kong-bg-dark/40 text-kong-text-primary
+           border border-kong-border
+           hover:bg-kong-bg-dark/60 hover:border-kong-border-light;
+  }
+
+  .btn-destructive {
+    @apply bg-kong-error/10 text-kong-error
+           border border-kong-error/20
+           hover:bg-kong-error/20 hover:border-kong-error/30;
+  }
+
+  @media (min-width: 768px) {
+    .settings-content {
+      @apply p-5;
+    }
+
+    .slippage-controls {
+      @apply gap-3;
+    }
+
+    .slippage-btn, .slippage-input-wrapper {
+      @apply text-sm;
+    }
+  }
+
+  .done-section {
+    @apply flex justify-center pt-4 md:pt-6;
+  }
+
+  .btn-primary {
+    @apply px-8 py-2 text-sm font-medium rounded-md
+           bg-kong-primary text-white
+           hover:bg-kong-primary/80
+           transition-colors duration-200
+           min-w-[120px];
   }
 </style>

@@ -5,7 +5,6 @@ import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
 import BigNumber from "bignumber.js";
 import { kongDB } from "$lib/services/db";
-import { loadTokens } from "$lib/services/tokens";
 
 export interface PriceWorkerApi {
   startUpdates(): Promise<void>;

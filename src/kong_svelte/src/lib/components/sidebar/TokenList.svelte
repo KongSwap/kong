@@ -4,7 +4,13 @@
   import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from 'svelte';
   import { FavoriteService } from '$lib/services/tokens/favoriteService';
-  import AddCustomTokenModal from './AddCustomTokenModal.svelte';
+    import BigNumber from 'bignumber.js';
+
+  type SearchMatch = {
+    type: 'name' | 'symbol' | 'canister' | null;
+    query: string;
+    matchedText?: string;
+  };
 
   export let tokens: FE.Token[] = [];
   let searchQuery = '';
@@ -13,7 +19,8 @@
   let sortDirection = 'desc';
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = '';
-  let showAddTokenModal = false;
+  let searchMatches: Record<string, SearchMatch> = {};
+  let filteredTokens: FE.Token[] = [];
   
   onMount(async () => {
     await FavoriteService.loadFavorites();
@@ -37,18 +44,6 @@
     }, 150);
   }
 
-  // Add new type for search matches
-  type SearchMatch = {
-    type: 'name' | 'symbol' | 'canister' | null;
-    query: string;
-    matchedText?: string;
-  };
-
-  // Add to script section
-  let searchMatches: Record<string, SearchMatch> = {};
-
-  let filteredTokens: FE.Token[] = [];
-
   async function updateFilteredTokens() {
     const tokensWithFavorites = await Promise.all(
       $formattedTokens.map(async (token) => {
@@ -60,8 +55,15 @@
 
     filteredTokens = tokensWithFavorites
       .filter(({ token }) => {
-        if (hideZeroBalances && (!token.balance || BigInt(token.balance) <= 0n)) {
-          return false;
+        // Check zero balance condition
+        if (hideZeroBalances) {
+          try {
+            const balance = BigInt($tokenStore.balances[token.canister_id]?.in_tokens || 0n)
+            if (balance <= 0n) return false;
+          } catch (e) {
+            console.warn(`Error checking balance for token ${token.canister_id}:`, e);
+            return true; // Show tokens with invalid balance format
+          }
         }
         
         if (!debouncedSearchQuery) {
@@ -109,12 +111,12 @@
         if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
         
         // Use the stored usdValue directly
-        const aValue = Number(a.usdValue);
-        const bValue = Number(b.usdValue);
+        const aValue = new BigNumber($tokenStore.balances[a.token.canister_id]?.in_usd?.toString());
+        const bValue = new BigNumber($tokenStore.balances[b.token.canister_id]?.in_usd?.toString());
         
         return sortDirection === 'desc' 
-          ? bValue - aValue
-          : aValue - bValue;
+          ? bValue.minus(aValue).toNumber()
+          : aValue.minus(bValue).toNumber();
       })
       .map(({ token }) => token);
   }
@@ -182,64 +184,61 @@
 </script>
 
 <div class="token-list" on:keydown={handleKeydown}>
-  <div class="tokens-header">
-    
-    <div class="controls-wrapper">
-      <div class="search-section">
-        <div class="search-input-wrapper">
-          <input
-            bind:this={searchInput}
-            bind:value={searchQuery}
-            type="text"
-            placeholder="Search by name, symbol, or canister ID"
-            class="search-input"
-            on:keydown={handleKeydown}
-          />
-          {#if searchQuery}
-            <button 
-              class="action-button"
-              on:click|stopPropagation={() => {
-                searchQuery = '';
-                searchInput.focus();
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          {/if}
-        </div>
+  <div>
+    <div class="flex items-center gap-2">
+      <div class="search-input-wrapper flex-1">
+        <input
+          bind:this={searchInput}
+          bind:value={searchQuery}
+          type="text"
+          placeholder="Search tokens..."
+          class="search-input"
+          on:keydown={handleKeydown}
+        />
+        {#if searchQuery}
+          <button 
+            class="clear-button"
+            on:click|stopPropagation={() => {
+              searchQuery = '';
+              searchInput.focus();
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        {/if}
       </div>
 
-      <div class="filter-bar">
-        <div class="filter-options">
-          <label class="filter-toggle">
-            <input
-              type="checkbox"
-              bind:checked={hideZeroBalances}
-            />
-            <span class="toggle-label">Hide zero balances</span>
-          </label>
+      <div class="flex items-center gap-2">
+        <label class="filter-toggle flex items-center gap-2 text-gray-400 hover:text-white">
+          <span class="toggle-label text-xs">Hide zero</span>
+          <input
+            type="checkbox"
+            bind:checked={hideZeroBalances}
+            class="sr-only"
+          />
+          <div class="toggle-switch" />
+        </label>
 
-          <div class="sort-toggle" on:click={() => {
-            sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
-          }}>
-            <span class="toggle-label">Sort by value</span>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2"
-              class="sort-arrow"
-              class:ascending={sortDirection === 'asc'}
-            >
-              <path d="M12 20V4M5 13l7 7 7-7"/>
-            </svg>
-          </div>
+        <div class="sort-toggle" on:click={() => {
+          sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+        }}>
+          <span class="toggle-label text-xs">Value</span>
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="14" 
+            height="14" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2"
+            class="sort-arrow"
+            class:ascending={sortDirection === 'asc'}
+          >
+            <path d="M12 20V4M5 13l7 7 7-7"/>
+          </svg>
         </div>
       </div>
     </div>
@@ -298,245 +297,95 @@
           {/if}
         </div>
       {/if}
-
-      <div class="add-token-section">
-        <button 
-          class="add-token-button" 
-          on:click={() => showAddTokenModal = true}
-        >
-          Add Custom Token
-        </button>
-      </div>
     </div>
   </div>
 </div>
 
-{#if showAddTokenModal}
-  <AddCustomTokenModal 
-    on:close={() => showAddTokenModal = false} 
-  />
-{/if}
 
 <style lang="postcss">
   .token-list {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .tokens-content {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .controls-wrapper {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .search-section {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    @apply flex flex-col h-full overflow-hidden;
   }
 
   .search-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
+    @apply relative flex items-center bg-kong-bg-dark/40 rounded-md border border-gray-700/50;
   }
 
   .search-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    padding: 0.75rem 0;
-    @apply text-kong-text-primary;
-    font-size: 1rem;
-    transition: border-color 0.2s;
+    @apply w-full bg-transparent border-none py-1.5 px-3 text-sm text-white
+           placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50;
   }
 
-  .search-input::placeholder {
-    @apply text-kong-text-primary/50;
-  }
-
-  .search-input:focus {
-    outline: none;
-    border-bottom-color: rgba(255, 255, 255, 0.5);
-  }
-
-  .action-button {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    color: rgba(255, 255, 255, 0.7);
-    transition: color 0.2s;
-  }
-
-  .action-button:hover {
-    @apply text-kong-text-primary;
-  }
-
-  .filter-bar {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .filter-options {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    @apply text-kong-text-primary/70;
-    cursor: pointer;
-  }
-
-  .filter-toggle:hover {
-    @apply text-kong-text-primary;
+  .clear-button {
+    @apply absolute right-2 text-gray-500 hover:text-white transition-colors p-1;
   }
 
   .sort-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .sort-toggle:hover {
-    @apply text-kong-text-primary;
+    @apply flex items-center gap-1.5 text-gray-400 cursor-pointer 
+           hover:text-white transition-colors whitespace-nowrap bg-kong-bg-dark/40
+           px-2 py-1.5 rounded-md border border-gray-700/50 h-[34px];
   }
 
   .sort-arrow {
-    transition: transform 0.2s;
+    @apply transition-transform duration-200;
   }
 
   .sort-arrow.ascending {
-    transform: rotate(180deg);
+    @apply rotate-180;
   }
 
-  .toggle-label {
-    user-select: none;
+  .filter-toggle {
+    @apply relative flex items-center cursor-pointer h-[34px] px-2;
+  }
+
+  .toggle-switch {
+    @apply w-7 h-4 bg-gray-700 rounded-full transition-colors duration-200
+           before:content-[''] before:absolute before:w-3 before:h-3 
+           before:bg-gray-400 before:rounded-full before:transition-transform
+           before:duration-200 before:translate-x-0.5 before:translate-y-0.5;
+  }
+
+  .filter-toggle input:checked + .toggle-switch {
+    @apply bg-blue-900;
+  }
+
+  .filter-toggle input:checked + .toggle-switch::before {
+    @apply translate-x-3.5 bg-blue-400;
+  }
+
+  .tokens-content {
+    @apply flex-1 min-h-0 overflow-y-auto px-1.5;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
   }
 
   .tokens-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #2a2d3d transparent;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y pinch-zoom;
+    @apply py-1.5;
   }
 
   .token-row-wrapper {
-    touch-action: pan-y;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .tokens-container::-webkit-scrollbar {
-    width: 0.375rem;
-  }
-
-  .tokens-container::-webkit-scrollbar-track {
-    background: #15161c;
-    border-radius: 0.25rem;
-  }
-
-  .tokens-container::-webkit-scrollbar-thumb {
-    background: #2a2d3d;
-    border-radius: 0.25rem;
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    min-height: 160px;
-    @apply text-kong-text-primary/40;
-    font-size: 0.875rem;
-  }
-
-  .clear-search-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    @apply text-kong-text-primary/70;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .clear-search-button:hover {
-    @apply text-kong-text-primary;
-    border-color: rgba(255, 255, 255, 0.2);
+    @apply mb-0.5 last:mb-0;
   }
 
   .match-indicator {
-    padding: 0.25rem 1rem;
-    font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    @apply px-2 py-0.5 text-xs flex items-center gap-2 text-gray-400;
   }
 
   .match-type {
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: capitalize;
+    @apply capitalize;
   }
 
   .match-label {
-    display: inline-block;
-    padding: 0 0.5rem;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.6);
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-family: monospace;
+    @apply font-mono;
   }
 
-  .add-token-section {
-    padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin-top: auto;
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-2
+           min-h-[120px] text-white/40 text-xs;
   }
 
-  .add-token-button {
-    width: 100%;
-    padding: 0.75rem;
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 0.5rem;
-    color: rgb(59, 130, 246);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s;
-  }
-
-  .add-token-button:hover {
-    background: rgba(59, 130, 246, 0.2);
-    border-color: rgba(59, 130, 246, 0.3);
+  .clear-search-button {
+    @apply px-3 py-1.5 bg-kong-bg-dark/70 text-white/70 text-xs font-medium rounded-md
+           transition-all duration-200 hover:bg-gray-700/90 hover:text-white;
   }
 </style>

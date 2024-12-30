@@ -8,6 +8,8 @@ import BigNumber from "bignumber.js";
 import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import { type TokenState } from "./types";
+import { livePools } from "../pools/poolStore";
+import { liveUserPools } from "../pools/poolStore";
 
 
 function createTokenStore() {
@@ -73,17 +75,33 @@ const getCurrentWalletId = (): string => {
 };
 
 export const portfolioValue = derived(
-  [tokenStore, liveTokens],
-  ([$tokenStore, $liveTokens]: [TokenState, FE.Token[]]) => {
-    const balances = $tokenStore.balances;
-    return $liveTokens.reduce((acc, token) => {
-      const balance = balances[token.canister_id]?.in_usd;
+  [tokenStore, liveTokens, liveUserPools],
+  ([$tokenStore, $liveTokens, $userPools]: [TokenState, FE.Token[], FE.UserPoolBalance[]]) => {
+    // Calculate token values
+    const tokenValue = $liveTokens.reduce((acc, token) => {
+      const balance = $tokenStore.balances[token.canister_id]?.in_usd;
       // Only add if balance exists and is not '0'
-      if (balance && balance !== 's0') {
+      if (balance && balance !== '0') {
         return acc + Number(balance);
       }
       return acc;
-    }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }, 0);
+
+    // Calculate pool values
+    const poolValue = $userPools.reduce((acc, pool) => {
+      const balance = pool.usd_balance;
+      if (balance && Number(balance) > 0) {
+        return acc + Number(balance);
+      }
+      return acc;
+    }, 0);
+
+    // Combine values and format
+    const totalValue = tokenValue + poolValue;
+    return totalValue.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
   }
 );
 

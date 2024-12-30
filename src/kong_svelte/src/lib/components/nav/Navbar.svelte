@@ -15,11 +15,11 @@
   import Modal from "$lib/components/common/Modal.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { swapModeService } from "$lib/services/settings/swapModeService";
+    import { themeStore } from "$lib/stores/themeStore";
 
   let showSettings = false;
   let isMobile = false;
   let activeTab: "swap" | "earn" | "stats" = "swap";
-  let principalId: string | undefined = undefined;
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
   let activeDropdown: 'swap' | 'earn' | null = null;
@@ -40,9 +40,6 @@
   onMount(() => {
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    if ($auth.account) {
-      principalId = $auth.account.owner;
-    }
   });
 
   onDestroy(() => {
@@ -50,10 +47,6 @@
       window.removeEventListener('resize', checkMobile);
     }
   });
-
-  $: if ($auth.isConnected && $auth.account) {
-    principalId = $auth.account.owner;
-  }
 
   function onTabChange(tab: "swap" | "earn" | "stats") {
     activeTab = tab;
@@ -154,7 +147,6 @@
       setTimeout(async () => {
         const mode = option.path === '/swap/pro' ? 'pro' : 'basic';
         swapModeService.saveMode(mode);
-        
         await goto(option.path);
         onTabChange('swap');
       }, 150);
@@ -162,12 +154,12 @@
   }
 </script>
 
-<div class="nav-container-wrapper">
+<div class="nav-container-wrapper mt-2">
   <div class="nav-container">
     <div class="left-section">
       {#if isMobile}
         <button class="mobile-icon-btn" on:click={() => (navOpen = !navOpen)}>
-          <Menu size={20} />
+          <Menu size={20} color={$themeStore === "dark" ? "white" : "black"} />
         </button>
       {:else}
         <button class="logo-link" on:click={() => goto("/")}>
@@ -317,7 +309,7 @@
 
           <button
             class="action-btn"
-            on:click={() => copyToClipboard(principalId)}
+            on:click={() => copyToClipboard(auth.pnp?.account?.owner)}
             use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
           >
             <Copy size={18} />
@@ -457,7 +449,7 @@
               </button>
             {/if}
 
-            <button class="mobile-nav-btn" on:click={() => copyToClipboard(principalId)}>
+            <button class="mobile-nav-btn" on:click={() => copyToClipboard(auth.pnp?.account?.owner)}>
               <div class="mobile-nav-btn-icon bg-kong-text-primary/10">
                 <Copy size={18} />
               </div>
@@ -488,7 +480,6 @@
     isOpen={true}
     title="Settings"
     height="auto"
-    class="overflow-y-auto"
     on:close={() => showSettings = false}
   >
     <Settings on:close={() => showSettings = false} />
@@ -579,12 +570,11 @@
 
   .nav-link:hover {
     color: theme(colors.kong.text-primary);
-    @apply bg-kong-text-primary/5;
   }
 
   .nav-link.active {
-    color: theme(colors.kong.text-primary);
-    @apply bg-kong-primary/10;
+    color: theme(colors.kong.primary);
+    text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 
   /* Right Section */
@@ -679,11 +669,11 @@
 
   .dropdown-menu {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100%);
     left: -20px;
     min-width: 480px;
     padding: 12px;
-    @apply bg-kong-bg-dark;
+    @apply bg-kong-bg-dark/70;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     @apply border border-kong-border;
@@ -745,6 +735,10 @@
     color: theme(colors.kong.text-primary);
   }
 
+  .dropdown-item:hover .dropdown-item-title {
+    color: theme(colors.kong.primary);
+  }
+
   .dropdown-item-description {
     font-size: 13px;
     color: theme(colors.kong.text-secondary);
@@ -758,6 +752,7 @@
   .dropdown-item:hover .dropdown-item-icon {
     transform: scale(1.1);
     @apply bg-kong-text-primary/10;
+    color: theme(colors.kong.primary);
   }
 
   .dropdown-item:hover .dropdown-item-content {

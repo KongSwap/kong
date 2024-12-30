@@ -1,16 +1,12 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import IdentityPanel from "./account/IdentityPanel.svelte";
-  import WalletInfoPanel from "./account/WalletInfoPanel.svelte";
-  import ConnectionPanel from "./account/ConnectionPanel.svelte";
-  import UserDetailsPanel from "./account/UserDetailsPanel.svelte";
   import { accountStore } from "$lib/stores/accountStore";
 
   export let show = false;
-  let activeTab = 'identity';
-  export let onClose = () => {};
+  let activeTab = "identity";
 
-  accountStore.subscribe(state => {
+  accountStore.subscribe((state) => {
     show = state.showDetails;
     activeTab = state.activeTab;
   });
@@ -22,49 +18,22 @@
     isMobile = window.innerWidth < 768;
   };
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
   }
-
-  $: tabs = [
-    { id: 'identity', label: 'Identity' },
-    { id: 'wallet', label: 'Wallet Address' },
-    ...(isMobile ? [] : [{ id: 'connection', label: 'Connection' }]),
-  ];
 </script>
 
-<Modal 
-  isOpen={show} 
-  title="My Addresses" 
+<Modal
+  isOpen={show}
+  title="My Addresses"
   onClose={() => accountStore.hideAccountDetails()}
-  height="min(700px, 90vh)"
-  width="min(700px, 95vw)"
+  height="auto"
 >
   <div class="account-details">
-    <div class="tabs">
-      {#each tabs as tab}
-        <button
-          class="tab-button"
-          class:active={activeTab === tab.id}
-          on:click={() => accountStore.setActiveTab(tab.id as 'details' | 'identity' | 'wallet' | 'connection')}
-        >
-          {tab.label}
-        </button>
-      {/each}
-    </div>
-
     <div class="content-wrapper">
       <div class="tab-content">
-        {#if activeTab === 'identity'}
-          <IdentityPanel />
-        {:else if activeTab === 'wallet'}
-          <WalletInfoPanel />
-        {:else if activeTab === 'connection' && !isMobile}
-          <ConnectionPanel />
-        {:else if activeTab === 'details'}
-          <UserDetailsPanel />
-        {/if}
+        <IdentityPanel />
       </div>
     </div>
   </div>
@@ -98,36 +67,5 @@
   .content-wrapper::-webkit-scrollbar-thumb {
     @apply bg-kong-bg-dark;
     border-radius: 3px;
-  }
-
-  .tabs {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 2px;
-    @apply bg-kong-bg-dark;
-    padding: 2px;
-    border-radius: 6px;
-    width: 100%;
-  }
-
-  .tab-button {
-    flex: 1;
-    padding: 0.75rem 0.5rem;
-    background: transparent;
-    border: none;
-    @apply text-kong-text-secondary;
-    font-size: clamp(0.75rem, 2vw, 0.875rem);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 4px;
-    white-space: nowrap;
-  }
-
-  .tab-button.active {
-    @apply bg-kong-primary;
-    @apply text-white;
   }
 </style>

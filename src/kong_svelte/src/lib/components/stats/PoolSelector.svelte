@@ -1,12 +1,10 @@
 <script lang="ts">
   import { portal } from 'svelte-portal';
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import Panel from "$lib/components/common/Panel.svelte";
   import type { Pool } from "$lib/services/pools";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
     import ButtonV2 from '../common/ButtonV2.svelte';
     import { goto } from '$app/navigation';
-    import { onMount } from 'svelte';
 
   export let selectedPool: Pool | undefined;
   export let token: FE.Token;
@@ -16,15 +14,15 @@
 
   let isPoolSelectorOpen = false;
   let selectorButton: HTMLElement;
-  let dropdownPosition = { top: 0, left: 0, width: 0 };
+  let dropdownPosition: { top: number; left: number; width: number } | null = null;
 
   function updateDropdownPosition() {
     if (selectorButton) {
       const rect = selectorButton.getBoundingClientRect();
       dropdownPosition = {
-        top: rect.bottom + window.scrollY + 8,
+        top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
-        width: rect.width + 180
+        width: rect.width
       };
     }
   }
@@ -85,25 +83,8 @@
           />
         </svg>
       </button>
-
-      <!-- Trade and add lp buttons -->
-      <div class="flex items-center gap-2 justify-end">
-        <ButtonV2 
-          variant="solid" 
-          size="md"
-          className="w-full text-nowrap"
-          on:click={() => goto(`/pools/create?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`)}>
-          Add LP
-        </ButtonV2>
-        <ButtonV2 
-        variant="solid" 
-        size="md" 
-        on:click={() => goto(`/swap?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`)}>
-        Trade
-      </ButtonV2>
-      </div>
       
-      {#if isPoolSelectorOpen}
+      {#if isPoolSelectorOpen && dropdownPosition}
         <div use:portal>
           <!-- Backdrop -->
           <div 

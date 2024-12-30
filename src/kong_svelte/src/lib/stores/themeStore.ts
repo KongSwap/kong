@@ -33,8 +33,7 @@ function createThemeStore() {
     initTheme: () => {
       if (browser) {
         const savedTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme: Theme = validateTheme(savedTheme) || (prefersDark ? 'dark' : 'light');
+        const theme: Theme = validateTheme(savedTheme) || 'dark'
         
         document.documentElement.classList.remove('dark', 'light');
         document.documentElement.classList.add(theme);

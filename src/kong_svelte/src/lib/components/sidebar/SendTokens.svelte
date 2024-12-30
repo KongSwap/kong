@@ -1,18 +1,24 @@
 <script lang="ts">
-  import { fade, fly } from "svelte/transition";
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { toastStore } from "$lib/stores/toastStore";
-  import { Principal } from "@dfinity/principal";
   import Modal from "$lib/components/common/Modal.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import BigNumber from "bignumber.js";
   import QrScanner from "$lib/components/common/QrScanner.svelte";
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { Clipboard } from "lucide-svelte";
   import { Camera } from "lucide-svelte";
-  import { AccountIdentifier } from "@dfinity/ledger-icp";
-  import { SubAccount } from "@dfinity/ledger-icp";
   import { auth } from "$lib/services/auth";
+  import {  detectAddressType, validateAddress } from "$lib/utils/balanceUtils";
+  import { getAccountIds, getPrincipalString } from "$lib/utils/accountUtils";
+  import {
+    calculateMaxAmount,
+    validateTokenAmount,
+    getInitialBalances,
+  } from "$lib/utils/tokenValidationUtils";
+  import {
+    formatTokenInput,
+    convertToTokenAmount
+  } from "$lib/utils/tokenConversionUtils";
 
   export let token: FE.Token;
 
@@ -29,15 +35,7 @@
     main: "",
   };
 
-  let balances =
-    token?.symbol === "ICP"
-      ? {
-          default: BigInt(0),
-          subaccount: BigInt(0),
-        }
-      : {
-          default: BigInt(0),
-        };
+  let balances = getInitialBalances(token?.symbol);
 
   async function loadTokenFee() {
     try {
@@ -52,222 +50,50 @@
     loadTokenFee();
   }
 
-  $: maxAmount =
-    token?.symbol === "ICP"
-      ? selectedAccount === "main"
-        ? new BigNumber(balances.default.toString())
-            .dividedBy(new BigNumber(10).pow(token.decimals))
-            .minus(
-              new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-                new BigNumber(10).pow(token.decimals),
-              ),
-            )
-            .toNumber()
-        : new BigNumber(balances.subaccount.toString())
-            .dividedBy(new BigNumber(10).pow(token.decimals))
-            .minus(
-              new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-                new BigNumber(10).pow(token.decimals),
-              ),
-            )
-            .toNumber()
-      : new BigNumber(balances.default.toString())
-          .dividedBy(new BigNumber(10).pow(token.decimals))
-          .minus(
-            new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-              new BigNumber(10).pow(token.decimals),
-            ),
-          )
-          .toNumber();
+  $: maxAmount = token?.symbol === "ICP"
+    ? calculateMaxAmount(
+        selectedAccount === "main" ? balances.default : balances.subaccount,
+        token.decimals,
+        tokenFee
+      )
+    : calculateMaxAmount(balances.default, token.decimals, tokenFee);
+
   let addressType: "principal" | "account" | null = null;
   let showConfirmation = false;
 
-  function isValidHex(str: string): boolean {
-    const hexRegex = /^[0-9a-fA-F]+$/;
-    return hexRegex.test(str);
-  }
-
-  function detectAddressType(address: string): "principal" | "account" | null {
-    if (!address) return null;
-
-    // Check for Account ID (64 character hex string)
-    if (address.length === 64 && isValidHex(address)) {
-      return "account";
-    }
-
-    // Check for Principal ID
-    try {
-      Principal.fromText(address);
-      return "principal";
-    } catch {
-      return null;
-    }
-  }
-
-  function validateAddress(address: string): boolean {
-    if (!address) return false;
-
-    const cleanAddress = address.trim();
-
-    if (cleanAddress.length === 0) {
-      errorMessage = "Address cannot be empty";
-      return false;
-    }
-
-    addressType = detectAddressType(cleanAddress);
-
-    if (addressType === null) {
-      errorMessage = "Invalid address format";
-      return false;
-    }
-
-    // Handle Account ID validation
-    if (addressType === "account") {
-      if (cleanAddress.length !== 64 || !isValidHex(cleanAddress)) {
-        errorMessage = "Invalid Account ID format";
-        return false;
-      }
-      return true;
-    }
-
-    // Handle Principal ID validation
-    try {
-      const principal = Principal.fromText(cleanAddress);
-      if (principal.isAnonymous()) {
-        errorMessage = "Cannot send to anonymous principal";
-        return false;
-      }
-    } catch (err) {
-      errorMessage = "Invalid Principal ID format";
-      return false;
-    }
-
-    errorMessage = "";
-    return true;
+  function validateRecipientAddress(address: string): boolean {
+    const validation = validateAddress(address);
+    addressType = detectAddressType(address.trim());
+    errorMessage = validation.errorMessage;
+    return validation.isValid;
   }
 
   function validateAmount(value: string): boolean {
-    if (!value) return false;
-    const numValue = parseFloat(value);
-
-    if (isNaN(numValue) || numValue <= 0) {
-      errorMessage = "Amount must be greater than 0";
-      return false;
-    }
-
-    const currentBalance =
-      selectedAccount === "main" ? balances.default : balances.subaccount;
-    const maxAmount = new BigNumber(currentBalance.toString())
-      .dividedBy(new BigNumber(10).pow(token.decimals))
-      .minus(
-        new BigNumber(tokenFee?.toString() || "10000").dividedBy(
-          new BigNumber(10).pow(token.decimals),
-        ),
-      )
-      .toNumber();
-
-    if (numValue > maxAmount) {
-      errorMessage = "Insufficient balance";
-      return false;
-    }
-
-    return true;
+    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
+    const { isValid, errorMessage: errMsg } = validateTokenAmount(
+      value,
+      currentBalance,
+      token.decimals,
+      tokenFee
+    );
+    errorMessage = errMsg;
+    return isValid;
   }
 
   function handleAmountInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/[^0-9.]/g, "");
-
-    const parts = value.split(".");
-    if (parts.length > 2) {
-      value = `${parts[0]}.${parts[1]}`;
-    }
-
-    if (parts[1]?.length > token.decimals) {
-      value = `${parts[0]}.${parts[1].slice(0, token.decimals)}`;
-    }
-
-    amount = value;
+    amount = formatTokenInput(input.value, token.decimals);
     errorMessage = "";
-    validateAmount(value);
+    validateAmount(amount);
   }
 
   async function handleSubmit() {
     showConfirmation = true;
   }
 
-  function getAccountIds(
-    principalStr: string,
-    rawSubaccount: any,
-  ): { subaccount: string; main: string } {
-    try {
-      const principal = Principal.fromText(principalStr);
-
-      // Create account ID with provided subaccount
-      const subAccount = convertToSubaccount(rawSubaccount);
-      const subaccountId = AccountIdentifier.fromPrincipal({
-        principal,
-        subAccount,
-      }).toHex();
-
-      // Create account ID with main (zero) subaccount
-      const mainAccountId = AccountIdentifier.fromPrincipal({
-        principal,
-        subAccount: undefined,
-      }).toHex();
-
-      return {
-        subaccount: subaccountId,
-        main: mainAccountId,
-      };
-    } catch (error) {
-      console.error("Error creating account identifier:", error);
-      return {
-        subaccount: "",
-        main: "",
-      };
-    }
-  }
-
-  function convertToSubaccount(raw: any): SubAccount | undefined {
-    try {
-      if (!raw) return undefined;
-
-      if (raw instanceof SubAccount) return raw;
-
-      let bytes: Uint8Array;
-      if (raw instanceof Uint8Array) {
-        bytes = raw;
-      } else if (Array.isArray(raw)) {
-        bytes = new Uint8Array(raw);
-      } else if (typeof raw === "number") {
-        bytes = new Uint8Array(32).fill(0);
-        bytes[31] = raw;
-      } else {
-        return undefined;
-      }
-
-      if (bytes.length !== 32) {
-        const paddedBytes = new Uint8Array(32).fill(0);
-        paddedBytes.set(bytes.slice(0, 32));
-        bytes = paddedBytes;
-      }
-
-      const subAccountResult = SubAccount.fromBytes(bytes);
-      if (subAccountResult instanceof Error) {
-        throw subAccountResult;
-      }
-      return subAccountResult;
-    } catch (error) {
-      console.error("Error converting subaccount:", error);
-      return undefined;
-    }
-  }
-
   $: if (auth.pnp?.account?.owner) {
     const principal = auth.pnp.account.owner;
-    const principalStr =
-      typeof principal === "string" ? principal : principal?.toText?.() || "";
+    const principalStr = getPrincipalString(principal);
     accounts = getAccountIds(principalStr, auth.pnp?.account?.subaccount);
   }
 
@@ -278,9 +104,7 @@
 
     try {
       const decimals = token.decimals || 8;
-      const amountBigInt = BigInt(
-        Math.floor(Number(amount) * 10 ** decimals).toString(),
-      );
+      const amountBigInt = convertToTokenAmount(amount, decimals);
 
       toastStore.info(`Sending ${token.symbol}...`);
 
@@ -346,7 +170,7 @@
 
   $: {
     if (recipientAddress) {
-      validateAddress(recipientAddress);
+      validateRecipientAddress(recipientAddress);
     } else {
       addressType = null;
       errorMessage = "";
@@ -393,7 +217,7 @@
     const cleanedText = scannedText.trim();
     console.log("Scanned text:", cleanedText);
 
-    if (validateAddress(cleanedText)) {
+    if (validateRecipientAddress(cleanedText)) {
       recipientAddress = cleanedText;
       toastStore.success("QR code scanned successfully");
       showScanner = false;
@@ -432,11 +256,11 @@
           true,
         );
 
-        if ("default" in result) {
+        if (typeof result === "object" && "default" in result) {
           balances = result;
         } else {
           balances = {
-            default: result,
+            default: result as bigint,
             subaccount: BigInt(0),
           };
         }
@@ -448,7 +272,7 @@
           false,
         );
         balances = {
-          default: result,
+          default: result as bigint,
         };
       }
     } catch (error) {
@@ -469,8 +293,30 @@
   }
 </script>
 
-<div class="container" transition:fade>
+<div class="container">
   <form on:submit|preventDefault={handleSubmit}>
+    {#if token.symbol === "ICP"}
+    <div class="id-card">
+      <div class="id-header">
+        <span>Source Account</span>
+      </div>
+      <div class="input-group">
+        <select bind:value={selectedAccount} class="account-select">
+          <option value="subaccount"
+            >Subaccount ({accounts.subaccount.slice(
+              0,
+              6,
+            )}...{accounts.subaccount.slice(-6)})</option
+          >
+          <option value="main"
+            >Main Account ({accounts.main.slice(0, 6)}...{accounts.main.slice(
+              -6,
+            )})</option
+          >
+        </select>
+      </div>
+    </div>
+  {/if}
     <div class="id-card">
       <div class="id-header">
         <span>Recipient Address</span>
@@ -502,6 +348,7 @@
             type="text"
             bind:value={recipientAddress}
             placeholder="Paste address or enter manually"
+            class="ring-1 ring-kong-border"
             class:error={errorMessage && recipientAddress}
             class:valid={addressType === "principal" && !errorMessage}
           />
@@ -580,31 +427,8 @@
       </div>
     </div>
 
-    {#if token.symbol === "ICP"}
-      <div class="id-card">
-        <div class="id-header">
-          <span>Source Account</span>
-        </div>
-        <div class="input-group">
-          <select bind:value={selectedAccount} class="account-select">
-            <option value="subaccount"
-              >Subaccount ({accounts.subaccount.slice(
-                0,
-                6,
-              )}...{accounts.subaccount.slice(-6)})</option
-            >
-            <option value="main"
-              >Main Account ({accounts.main.slice(0, 6)}...{accounts.main.slice(
-                -6,
-              )})</option
-            >
-          </select>
-        </div>
-      </div>
-    {/if}
-
     {#if errorMessage}
-      <div class="error-message" transition:fade={{ duration: 200 }}>
+      <div class="error-message">
         {errorMessage}
       </div>
     {/if}
@@ -711,15 +535,18 @@
 
 <style lang="postcss">
   .container {
-    @apply flex flex-col gap-4 py-4;
+    @apply flex flex-col gap-4 py-4 px-2;
   }
 
   .id-card {
-    @apply bg-kong-bg-dark rounded-xl p-4 mb-2;
+    @apply bg-kong-bg-dark/50 rounded-xl p-4 mb-2 
+           border border-white/5 hover:border-white/10 
+           transition-colors;
   }
 
   .id-header {
-    @apply flex justify-between items-center mb-2 text-kong-text-primary/70 text-sm;
+    @apply flex justify-between items-center mb-3 
+           text-kong-text-primary text-sm font-medium;
   }
 
   .header-actions {
@@ -727,48 +554,65 @@
   }
 
   .header-button {
-    @apply px-3 py-1 bg-kong-bg-dark/10 rounded-lg hover:bg-kong-bg-dark/20 text-kong-text-primary;
-  }
-
-  .max-btn {
-    @apply px-3 py-1 bg-kong-bg-dark/10 rounded-lg hover:bg-kong-bg-dark/20 text-kong-text-primary;
+    @apply px-2.5 py-1.5 bg-black/20 rounded-lg 
+           text-kong-text-primary/80 hover:text-kong-text-primary
+           hover:bg-black/30 active:bg-black/40;
   }
 
   .input-wrapper {
     @apply relative flex items-center;
 
     input {
-      @apply w-full px-3 py-2 bg-kong-bg-dark/20 rounded-lg text-kong-text-primary
-                   border border-kong-bg-dark/10 hover:border-kong-bg-dark/20
-                   focus:border-kong-primary focus:outline-none;
+      @apply w-full px-3 py-2.5 bg-black/20 rounded-lg 
+             text-kong-text-primary placeholder:text-kong-text-primary/30
+             border border-white/5 hover:border-white/10
+             focus:border-kong-primary focus:outline-none;
 
       &.error {
-        @apply border-red-500/50 bg-red-500/10;
+        @apply border-kong-error/50 bg-kong-error/5;
       }
     }
   }
 
   .error-message {
-    @apply text-red-400 text-sm px-2 mb-2;
+    @apply text-kong-error text-sm px-2 mb-2;
   }
 
   .send-btn {
     @apply w-full py-3 bg-kong-primary text-white rounded-lg
-               font-medium hover:bg-indigo-600 disabled:opacity-50;
+           font-medium hover:bg-kong-primary-hover 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           disabled:hover:bg-kong-primary;
   }
 
   .validation-status {
-    @apply text-sm mt-1 px-1;
+    @apply text-sm mt-2 px-1;
     &.success {
-      @apply text-green-400;
+      @apply text-kong-success;
     }
     &.error {
-      @apply text-red-400;
+      @apply text-kong-error;
     }
   }
 
   .balance-info {
-    @apply text-right text-sm text-kong-text-primary/60;
+    @apply text-right text-sm text-kong-text-primary/60 mt-2;
+  }
+
+  .account-select {
+    @apply w-full px-3 py-2.5 bg-black/20 rounded-lg 
+           text-kong-text-primary
+           border border-white/5 hover:border-white/10
+           focus:border-kong-primary focus:outline-none;
+  }
+
+  .balance-row {
+    @apply flex justify-between text-sm text-kong-text-primary/60 py-0.5;
+
+    &.total {
+      @apply mt-2 pt-2 border-t border-white/10 
+             text-kong-text-primary font-medium;
+    }
   }
 
   .confirm-box {
@@ -834,16 +678,18 @@
       }
 
       .confirm-btn {
-        @apply bg-indigo-500 hover:bg-indigo-600 text-kong-text-primary disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply bg-kong-primary hover:bg-kong-primary-hover 
+               text-white disabled:opacity-50 
+               disabled:cursor-not-allowed;
         &.loading {
-          @apply bg-indigo-500/50;
+          @apply bg-kong-primary/50;
         }
       }
     }
   }
 
   .loading-spinner {
-    @apply inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
+    @apply inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full;
   }
 
   .scanner-container {
@@ -879,34 +725,6 @@
 
     .cancel-scan-btn {
       @apply px-4 py-2 bg-white/10 hover:bg-white/15 text-kong-text-primary/90 rounded-lg;
-    }
-  }
-
-  @keyframes scan {
-    0% {
-      transform: translateY(-100%);
-      opacity: 0;
-    }
-    50% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(100%);
-      opacity: 0;
-    }
-  }
-
-  .account-select {
-    @apply w-full px-3 py-2 bg-black/20 rounded-lg text-kong-text-primary
-               border border-white/10 hover:border-white/20
-               focus:border-indigo-500 focus:outline-none;
-  }
-
-  .balance-row {
-    @apply flex justify-between text-sm text-kong-text-primary/60;
-
-    &.total {
-      @apply mt-1 pt-1 border-t border-white/10 text-kong-text-primary/90 font-medium;
     }
   }
 </style>

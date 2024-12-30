@@ -86,7 +86,7 @@
     </div>
 </Modal>
 
-<style lang="postcss">
+<style scoped lang="postcss">
     .token-details {
         @apply flex flex-col min-h-0;
         min-height: 550px;

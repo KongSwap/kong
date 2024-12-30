@@ -7,16 +7,20 @@
   import Portal from "svelte-portal";
   import Toast from "./Toast.svelte";
   import { createEventDispatcher } from 'svelte';
+  import { tick } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let isOpen = false;
-  export let title: string;
+  export let title: string | HTMLElement = '';
   export let variant: "solid" | "transparent" = "solid";
   export let width = "600px";
   export let height = "80vh";
   export let minHeight: string = "auto";
   export let onClose: () => void = () => {};
-
+  export let loading = false;
+  export let closeOnEscape = true;
+  export let closeOnClickOutside = true;
+  export let className: string = "";
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -24,6 +28,7 @@
   let currentX = 0;
   let isDragging = false;
   let modalElement: HTMLDivElement;
+  let titleElement: HTMLElement;
 
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
 
@@ -85,13 +90,13 @@
   }
 
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
+    if (event.target === event.currentTarget && closeOnClickOutside) {
       handleClose();
     }
   }
 
   function handleEscape(event: KeyboardEvent) {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && closeOnEscape) {
       handleClose();
     }
   }
@@ -100,6 +105,14 @@
     if (isOpen) {
       dispatch('introend');
     }
+  }
+
+  $: if (isOpen && title && typeof title === 'string' && title.includes('<')) {
+    tick().then(() => {
+      if (titleElement) {
+        titleElement.innerHTML = title;
+      }
+    });
   }
 </script>
 
@@ -135,12 +148,17 @@
         }}
       >
         <Panel
-          variant="solid"
+          variant={variant}
           width="100%"
           height="100%"
-          className="modal-panel"
+          className="{className}"
         >
           <div class="modal-content" style="height: {height}; min-height: {minHeight};">
+            {#if loading}
+              <div class="loading-overlay">
+                <div class="spinner"></div>
+              </div>
+            {/if}
             <div 
               class="drag-handle" 
               style="touch-action: pan-x;" 
@@ -155,17 +173,23 @@
               <!-- Place your "pull-down" bar or similar here -->
             </div>
 
-            <header class="modal-header">
-              <h2 id="modal-title" class="text-xl">{title}</h2>
+            <header class="flex justify-between items-center px-4 pt-1">
+              <slot name="title">
+                {#if typeof title === 'string'}
+                  <h2 class="text-lg font-medium">{title}</h2>
+                {:else}
+                  <div bind:this={titleElement}></div>
+                {/if}
+              </slot>
               <button
-                class="action-button close-button !border-0 !shadow-none group relative"
+                class="action-button !flex !justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
                 on:click={handleClose}
                 aria-label="Close modal"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="#ff4444"
                   stroke="currentColor"
@@ -180,7 +204,7 @@
               </button>
             </header>
 
-            <div class="modal-body overflow-y-auto">
+            <div class="modal-body overflow-y-auto flex flex-col">
               <slot />
             </div>
           </div>
@@ -221,30 +245,19 @@
     min-height: var(--min-height, auto);
   }
 
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 1rem;
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
-
   .modal-body {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    scrollbar-color: var(--kong-primary) transparent;
     margin: 0rem;
     padding: 0rem;
   }
 
   .action-button {
-    border: 1px solid var(--sidebar-border);
-    padding: 6px;
-    border-radius: 4px;
-    color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -256,24 +269,9 @@
     flex-shrink: 0;
   }
 
-  .close-button {
-    background: rgba(186, 49, 49, 0.4);
-    color: #ffffff;
-  }
-
-  .close-button:hover {
-    background: rgba(255, 68, 68, 0.5);
-    transform: translateY(-1px);
-  }
-
   @media (max-width: 768px) {
     .modal-overlay {
       padding: 0.4rem;
-    }
-
-
-    .modal-header {
-      padding-bottom: 1rem;
     }
 
 

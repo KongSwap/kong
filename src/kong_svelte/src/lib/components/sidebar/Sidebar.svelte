@@ -12,27 +12,30 @@
   import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-  import SocialSection from "./SocialSection.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";
   import PoolList from "./PoolList.svelte";
+  import AddCustomTokenModal from "./AddCustomTokenModal.svelte";
+    import ButtonV2 from "../common/ButtonV2.svelte";
 
-  export let isOpen: boolean;
   export let onClose: () => void;
 
   let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
   let isMobile = false;
+  let showAddTokenModal = false;
 
-  // Subscribe to sidebar store
-  $: isOpen = $sidebarStore.isOpen;
 
-  sidebarStore.subscribe(state => {
+  sidebarStore.subscribe((state) => {
     isExpanded = state.isExpanded;
   });
 
   onMount(() => {
     if (browser) {
-      activeTab = (localStorage.getItem("sidebarActiveTab") as "tokens" | "pools" | "history") || "tokens";
+      activeTab =
+        (localStorage.getItem("sidebarActiveTab") as
+          | "tokens"
+          | "pools"
+          | "history") || "tokens";
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
       };
@@ -70,9 +73,9 @@
   });
 </script>
 
-{#if isOpen}
+{#if $sidebarStore.isOpen}
   <div class="sidebar-root">
-    <div 
+    <div
       class="backdrop"
       in:fade|local={{ duration: 150 }}
       out:fade|local={{ duration: 150 }}
@@ -83,7 +86,7 @@
     />
     <div class="sidebar-container" role="dialog" aria-modal="true">
       <div
-        class={`sidebar-wrapper ${isExpanded ? 'expanded' : ''}`}
+        class={`sidebar-wrapper ${isExpanded ? "expanded" : ""}`}
         in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
         out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
       >
@@ -91,14 +94,16 @@
           width="100%"
           height="100%"
           variant="solid"
-          className="sidebar-panel"
+          className="sidebar-panel !bg-kong-bg-dark"
         >
           <div class="sidebar-layout">
+            <!-- Header Section -->
             <header class="sidebar-header">
               <SidebarHeader {onClose} {activeTab} {setActiveTab} />
             </header>
 
-            <div class="sidebar-content">
+            <!-- Main Content Section -->
+            <main class="sidebar-content px-2 !rounded-t-none">
               {#if !$auth.isConnected}
                 <WalletProvider
                   on:login={async () => {
@@ -106,23 +111,40 @@
                     setActiveTab("tokens");
                   }}
                 />
-              {:else if activeTab === "tokens"}
-                <TokenList tokens={$tokens || []} />
-              {:else if activeTab === "pools"}
-                <PoolList 
-                    pools={$pools || []} 
-                    on:close={handleClose}
-                />
-              {:else if activeTab === "history"}
-                <TransactionHistory transactions={$transactions || []} />
+              {:else}
+                <div class="content-container bg-kong-bg-light !rounded-t-none border-l border-b border-r border-kong-border/50">
+                  {#if activeTab === "tokens"}
+                    <TokenList tokens={$tokens || []} />
+                  {:else if activeTab === "pools"}
+                    <PoolList pools={$pools || []} on:close={handleClose} />
+                  {:else if activeTab === "history"}
+                    <TransactionHistory transactions={$transactions || []} />
+                  {/if}
+                </div>
               {/if}
-            </div>
+            </main>
 
-            <footer class="sidebar-footer">
-              <SocialSection />
+            <!-- Footer Section -->
+            <footer class="border-t border-kong-border pt-1 mx-2">
+              <div class="flex justify-end">
+                <ButtonV2 
+                  variant="transparent"
+                  theme="accent-blue"
+                  className="add-token-button" 
+                  on:click={() => showAddTokenModal = true}
+                >
+                  Import Token
+                </ButtonV2>
+              </div>
             </footer>
           </div>
         </Panel>
+
+        {#if showAddTokenModal}
+          <AddCustomTokenModal
+            on:close={() => (showAddTokenModal = false)}
+          />
+        {/if}
       </div>
     </div>
   </div>
@@ -199,12 +221,6 @@
     display: grid;
   }
 
-  .sidebar-footer {
-    min-height: 0;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
   @media (max-width: 768px) {
     .sidebar-wrapper {
       inset: 0;
@@ -215,5 +231,9 @@
     .sidebar-wrapper.expanded {
       inset: 0;
     }
+  }
+
+  .content-container {
+    @apply p-2 flex flex-col gap-2 rounded-lg;
   }
 </style>

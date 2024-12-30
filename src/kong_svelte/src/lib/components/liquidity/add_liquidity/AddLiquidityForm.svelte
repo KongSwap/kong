@@ -719,7 +719,7 @@
         <p class="text-white/70 mb-4">No liquidity pool exists for this token pair.</p>
         <button
           class="create-pool-button"
-          on:click={() => goto("/pools/create")}
+          on:click={() => goto("/pools/add")}
         >
           Create New Pool
         </button>

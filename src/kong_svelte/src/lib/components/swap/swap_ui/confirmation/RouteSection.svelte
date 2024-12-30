@@ -51,7 +51,7 @@
   />
 {/if}
 
-<style>
+<style scoped lang="postcss">
   .route-container {
     width: 100%;
     padding: 8px;

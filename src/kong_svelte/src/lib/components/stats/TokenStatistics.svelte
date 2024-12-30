@@ -6,9 +6,22 @@
   export let token: FE.Token;
   export let marketCapRank: number | null;
 
+  let previousPrice: number | null = null;
+  let priceFlash: 'up' | 'down' | null = null;
+
   function calculateVolumePercentage(volume: number, marketCap: number): string {
     if (!marketCap) return "0.00%";
     return ((volume / marketCap) * 100).toFixed(2) + "%";
+  }
+
+  // Watch for price changes
+  $: {
+    const currentPrice = Number(token?.metrics?.price || 0);
+    if (previousPrice !== null && currentPrice !== previousPrice) {
+      priceFlash = currentPrice > previousPrice ? 'up' : 'down';
+      setTimeout(() => priceFlash = null, 1000);
+    }
+    previousPrice = currentPrice;
   }
 </script>
 
@@ -18,7 +31,11 @@
     <div>
       <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Current Price</div>
       <div class="flex flex-col gap-2">
-        <div class="text-[32px] font-medium text-kong-text-primary">
+        <div 
+          class="text-[32px] font-medium text-kong-text-primary"
+          class:flash-green={priceFlash === 'up'}
+          class:flash-red={priceFlash === 'down'}
+        >
           {formatUsdValue(token?.metrics?.price || 0)}
         </div>
         {#if token?.metrics?.price_change_24h && token.metrics.price_change_24h !== "n/a"}
@@ -95,4 +112,24 @@
       </div>
     </div>
   </div>
-</Panel> 
+</Panel>
+
+<style>
+  .flash-green {
+    animation: flashGreen 1s ease-out;
+  }
+  
+  .flash-red {
+    animation: flashRed 1s ease-out;
+  }
+  
+  @keyframes flashGreen {
+    0% { color: rgb(34, 197, 94); }
+    100% { color: inherit; }
+  }
+  
+  @keyframes flashRed {
+    0% { color: rgb(239, 68, 68); }
+    100% { color: inherit; }
+  }
+</style> 
