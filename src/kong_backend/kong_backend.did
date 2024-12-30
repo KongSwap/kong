@@ -224,7 +224,7 @@ type LPTokenReply = record {
     decimals : nat8;
     fee : nat;
     total_supply : nat;
-    on_kong : bool;
+    is_removed : bool;
 };
 type ICTokenReply = record {
     token_id : nat32;
@@ -237,7 +237,7 @@ type ICTokenReply = record {
     icrc1 : bool;
     icrc2 : bool;
     icrc3 : bool;
-    on_kong : bool;
+    is_removed : bool;
 };
 type TokensResult = variant { Ok : vec TokenReply; Err : text };
 
@@ -264,7 +264,7 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
-    on_kong : bool;             // flag indicating if displayed on Kong Swap
+    is_removed : bool;
     tvl : nat;                  // USD value of TVL
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
@@ -329,7 +329,6 @@ type TransfersResult = variant { Ok : vec TransferIdReply; Err : text };
 
 type AddTokenArgs = record {
     token : text;
-    on_kong : opt bool;
 };
 type AddTokenReply = variant {
     IC : ICTokenReply;
@@ -344,7 +343,6 @@ type AddPoolArgs = record {
     amount_1 : nat;
     tx_id_1 : opt TxId;
     lp_fee_bps : opt nat8;
-    on_kong : opt bool;
 };
 type AddPoolReply = record {
     tx_id : nat64;
@@ -362,7 +360,7 @@ type AddPoolReply = record {
     lp_token_symbol : text;
     transfer_ids : vec TransferIdReply;
     claim_ids : vec nat64;
-    on_kong : bool;
+    is_removed : bool;
     ts : nat64;
 };
 type AddPoolResult = variant { Ok : AddPoolReply; Err : text };
@@ -622,6 +620,7 @@ service : {
     send : (SendArgs) -> (SendResult);
 
     // admin functions
+    add_token : (AddTokenArgs) -> (AddTokenResult);
     check_pools : () -> (CheckPoolsResult);
     get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
     get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;

@@ -33,7 +33,7 @@ pub struct StablePool {
     pub lp_fee_bps: u8,   // LP's fee in basis points
     pub kong_fee_bps: u8, // Kong's fee in basis points
     pub lp_token_id: u32, // token id of the LP token
-    pub on_kong: bool,    // whether the pool is on Kong
+    pub is_removed: bool,
     pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
@@ -42,7 +42,7 @@ pub struct StablePool {
 }
 
 impl StablePool {
-    pub fn new(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32, on_kong: bool) -> Self {
+    pub fn new(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32) -> Self {
         Self {
             pool_id: 0,
             token_id_0,
@@ -56,7 +56,7 @@ impl StablePool {
             lp_fee_bps,
             kong_fee_bps,
             lp_token_id,
-            on_kong,
+            is_removed: false,
             tvl: nat_zero(),
             rolling_24h_volume: nat_zero(),
             rolling_24h_lp_fee: nat_zero(),

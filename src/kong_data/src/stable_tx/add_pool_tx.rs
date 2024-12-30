@@ -14,6 +14,6 @@ pub struct AddPoolTx {
     pub add_lp_token_amount: Nat,
     pub transfer_ids: Vec<u64>,
     pub claim_ids: Vec<u64>,
-    pub on_kong: bool,
+    pub is_removed: bool,
     pub ts: u64,
 }

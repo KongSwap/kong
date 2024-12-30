@@ -4,7 +4,7 @@ use num::BigRational;
 use serde::{Deserialize, Serialize};
 
 use crate::helpers::math_helpers::price_rounded;
-use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision, nat_zero};
+use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision};
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -38,7 +38,7 @@ pub struct StablePool {
     pub lp_fee_bps: u8,   // LP's fee in basis points
     pub kong_fee_bps: u8, // Kong's fee in basis points
     pub lp_token_id: u32, // token id of the LP token
-    pub on_kong: bool,    // whether the pool is on Kong
+    pub is_removed: bool,
     pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,

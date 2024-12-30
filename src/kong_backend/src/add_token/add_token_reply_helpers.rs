@@ -18,7 +18,7 @@ pub fn to_add_token_reply(token: &StableToken) -> Result<AddTokenReply, String> 
             icrc1: ic_token.icrc1,
             icrc2: ic_token.icrc2,
             icrc3: ic_token.icrc3,
-            on_kong: token.on_kong(),
+            is_removed: token.is_removed(),
         })),
         _ => Err("Unsupported token type".to_string()),
     }

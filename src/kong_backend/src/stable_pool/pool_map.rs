@@ -135,19 +135,14 @@ pub fn get_by_lp_token_id(lp_token_id: u32) -> Option<StablePool> {
     })
 }
 
-/// get all pools listed on Kong
-pub fn get_on_kong() -> Vec<StablePool> {
+/// get all pools
+pub fn get() -> Vec<StablePool> {
     POOL_MAP.with(|m| {
         m.borrow()
             .iter()
-            .filter_map(|(_, v)| if v.on_kong { Some(v) } else { None })
+            .filter_map(|(_, v)| if !v.is_removed { Some(v) } else { None })
             .collect()
     })
-}
-
-/// get all pools
-pub fn get() -> Vec<StablePool> {
-    POOL_MAP.with(|m| m.borrow().iter().map(|(_, v)| v).collect())
 }
 
 /// check if pool exists

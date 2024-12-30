@@ -13,5 +13,5 @@ pub struct ICReply {
     pub icrc1: bool,
     pub icrc2: bool,
     pub icrc3: bool,
-    pub on_kong: bool,
+    pub is_removed: bool,
 }

@@ -45,7 +45,6 @@ pub fn serialize_request(request: &Request) -> serde_json::Value {
                 "tx_id_1": serialize_option_tx_id(request.tx_id_1.as_ref()),
                 "lp_fee_bps": request.lp_fee_bps,
                 "kong_fee_bps": request.kong_fee_bps,
-                "on_kong": request.on_kong,
             }
         }),
         Request::AddLiquidity(request) => json!({
@@ -122,7 +121,7 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
                     },
                 })).collect::<Vec<_>>(),
                 "claim_ids": reply.claim_ids,
-                "on_kong": reply.on_kong,
+                "is_removed": reply.is_removed,
                 "ts": reply.ts,
             }
         }),

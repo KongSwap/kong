@@ -28,7 +28,7 @@ pub struct AddPoolReply {
     pub lp_token_symbol: String,
     pub transfer_ids: Vec<TransferIdReply>,
     pub claim_ids: Vec<u64>,
-    pub on_kong: bool,
+    pub is_removed: bool,
     pub ts: u64,
 }
 

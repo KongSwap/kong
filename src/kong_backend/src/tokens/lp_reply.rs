@@ -12,5 +12,5 @@ pub struct LPReply {
     pub decimals: u8,
     pub fee: Nat,
     pub total_supply: Nat,
-    pub on_kong: bool,
+    pub is_removed: bool,
 }
