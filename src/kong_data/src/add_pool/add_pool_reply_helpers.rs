@@ -14,10 +14,11 @@ pub fn create_add_pool_reply(add_pool_tx: &AddPoolTx) -> AddPoolReply {
 }
 
 pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> AddPoolReply {
-    let (symbol, chain_0, address_0, symbol_0, balance_0, chain_1, address_1, symbol_1, balance_1, lp_fee_bps, lp_token_symbol) =
+    let (name, symbol, chain_0, address_0, symbol_0, balance_0, chain_1, address_1, symbol_1, balance_1, lp_fee_bps, lp_token_symbol) =
         pool_map::get_by_pool_id(add_pool_tx.pool_id).map_or_else(
             || {
                 (
+                    "Pool name not found".to_string(),
                     "Pool symbol not found".to_string(),
                     "Pool chain_0 not found".to_string(),
                     "Pool address_0 not found".to_string(),
@@ -43,6 +44,7 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
                 let symbol_1 = token_1.symbol();
                 let balance_1 = pool.balance_1.clone();
                 (
+                    pool.name(),
                     pool.symbol(),
                     chain_0,
                     address_0,
@@ -59,9 +61,11 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
         );
     AddPoolReply {
         tx_id,
-        symbol,
+        pool_id: add_pool_tx.pool_id,
         request_id: add_pool_tx.request_id,
         status: add_pool_tx.status.to_string(),
+        name,
+        symbol,
         chain_0,
         address_0,
         symbol_0,

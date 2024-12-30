@@ -346,9 +346,11 @@ type AddPoolArgs = record {
 };
 type AddPoolReply = record {
     tx_id : nat64;
-    symbol : text;
+    pool_id : nat32;
     request_id : nat64;
-    status : text;
+    status : text;    
+    name : text;
+    symbol : text;
     chain_0 : text;
     symbol_0 : text;
     amount_0 : nat;

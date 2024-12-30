@@ -8,9 +8,11 @@ use crate::transfers::transfer_reply::TransferIdReply;
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct AddPoolReply {
     pub tx_id: u64,
-    pub symbol: String,
+    pub pool_id: u32,
     pub request_id: u64,
     pub status: String,
+    pub name: String,
+    pub symbol: String,
     pub chain_0: String,
     pub symbol_0: String,
     pub amount_0: Nat,
