@@ -1,7 +1,6 @@
 use super::add_liquidity_reply::AddLiquidityReply;
 
 use crate::stable_pool::pool_map;
-use crate::stable_token::token::Token;
 use crate::stable_tx::add_liquidity_tx::AddLiquidityTx;
 use crate::transfers::transfer_reply_helpers::to_transfer_ids;
 
@@ -24,22 +23,22 @@ pub fn create_add_liquidity_reply_with_tx_id(tx_id: u64, add_liquidity_tx: &AddL
                 )
             },
             |pool| {
-                let token_0 = pool.token_0();
-                let chain_0 = token_0.chain();
-                let address_0 = token_0.address();
-                let symbol_0 = token_0.symbol();
-                let token_1 = pool.token_1();
-                let chain_1 = token_1.chain();
-                let address_1 = token_1.address();
-                let symbol_1 = token_1.symbol();
-                (pool.symbol(), chain_0, address_0, symbol_0, chain_1, address_1, symbol_1)
+                (
+                    pool.symbol(),
+                    pool.chain_0(),
+                    pool.address_0(),
+                    pool.symbol_0(),
+                    pool.chain_1(),
+                    pool.address_1(),
+                    pool.symbol_1(),
+                )
             },
         );
     AddLiquidityReply {
         tx_id,
-        symbol,
         request_id: add_liquidity_tx.request_id,
         status: add_liquidity_tx.status.to_string(),
+        symbol,
         chain_0,
         address_0,
         symbol_0,

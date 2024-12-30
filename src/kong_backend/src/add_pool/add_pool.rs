@@ -581,11 +581,24 @@ async fn return_tokens(
 
     // Token0
     let chain_0 = token_0.chain();
+    let address_0 = token_0.address();
     let symbol_0 = token_0.symbol();
     // Token1
     let chain_1 = token_1.chain();
+    let address_1 = token_1.address();
     let symbol_1 = token_1.symbol();
-    let reply = create_add_pool_reply_failed(&chain_0, &symbol_0, &chain_1, &symbol_1, request_id, transfer_ids, &claim_ids, ts);
+    let reply = create_add_pool_reply_failed(
+        &chain_0,
+        &symbol_0,
+        &address_0,
+        &chain_1,
+        &address_1,
+        &symbol_1,
+        request_id,
+        transfer_ids,
+        &claim_ids,
+        ts,
+    );
     request_map::update_reply(request_id, Reply::AddPool(reply));
 }
 

@@ -15,16 +15,18 @@ pub fn create_add_pool_reply(add_pool_tx: &AddPoolTx) -> AddPoolReply {
 }
 
 pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> AddPoolReply {
-    let (name, symbol, chain_0, symbol_0, balance_0, chain_1, symbol_1, balance_1, lp_fee_bps, lp_token_symbol) =
+    let (name, symbol, chain_0, address_0, symbol_0, balance_0, chain_1, address_1, symbol_1, balance_1, lp_fee_bps, lp_token_symbol) =
         pool_map::get_by_pool_id(add_pool_tx.pool_id).map_or_else(
             || {
                 (
                     "Pool name not found".to_string(),
                     "Pool symbol not found".to_string(),
                     "Pool chain_0 not found".to_string(),
+                    "Pool address_0 not found".to_string(),
                     "Pool symbol_0 not found".to_string(),
                     nat_zero(),
                     "Pool chain_1 not found".to_string(),
+                    "Pool address_1 not found".to_string(),
                     "Pool symbol_1 not found".to_string(),
                     nat_zero(),
                     0,
@@ -36,9 +38,11 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
                     pool.name(),
                     pool.symbol(),
                     pool.chain_0(),
+                    pool.address_0(),
                     pool.symbol_0(),
                     pool.balance_0.clone(),
                     pool.chain_1(),
+                    pool.address_1(),
                     pool.symbol_1(),
                     pool.balance_1.clone(),
                     pool.lp_fee_bps,
@@ -54,10 +58,12 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
         name,
         symbol,
         chain_0,
+        address_0,
         symbol_0,
         amount_0: add_pool_tx.amount_0.clone(),
         balance_0,
         chain_1,
+        address_1,
         symbol_1,
         amount_1: add_pool_tx.amount_1.clone(),
         balance_1,
@@ -74,8 +80,10 @@ pub fn create_add_pool_reply_with_tx_id(tx_id: u64, add_pool_tx: &AddPoolTx) -> 
 #[allow(clippy::too_many_arguments)]
 pub fn create_add_pool_reply_failed(
     chain_0: &str,
+    address_0: &str,
     symbol_0: &str,
     chain_1: &str,
+    address_1: &str,
     symbol_1: &str,
     request_id: u64,
     transfer_ids: &[u64],
@@ -90,10 +98,12 @@ pub fn create_add_pool_reply_failed(
         name: "Pool not added".to_string(),
         symbol: "Pool not added".to_string(),
         chain_0: chain_0.to_string(),
+        address_0: address_0.to_string(),
         symbol_0: symbol_0.to_string(),
         amount_0: nat_zero(),
         balance_0: nat_zero(),
         chain_1: chain_1.to_string(),
+        address_1: address_1.to_string(),
         symbol_1: symbol_1.to_string(),
         amount_1: nat_zero(),
         balance_1: nat_zero(),

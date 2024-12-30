@@ -56,7 +56,7 @@ impl StablePool {
     }
 
     pub fn address(&self) -> String {
-        format!("{}_{}", self.token_0().address(), self.token_1().address())
+        format!("{}_{}", self.address_0(), self.address_1())
     }
 
     pub fn address_with_chain(&self) -> String {
@@ -75,6 +75,10 @@ impl StablePool {
         self.token_0().chain().to_string()
     }
 
+    pub fn address_0(&self) -> String {
+        self.token_0().address().to_string()
+    }
+
     pub fn symbol_0(&self) -> String {
         self.token_0().symbol().to_string()
     }
@@ -85,6 +89,10 @@ impl StablePool {
 
     pub fn chain_1(&self) -> String {
         self.token_1().chain().to_string()
+    }
+
+    pub fn address_1(&self) -> String {
+        self.token_1().address().to_string()
     }
 
     pub fn symbol_1(&self) -> String {

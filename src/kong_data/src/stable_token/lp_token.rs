@@ -10,8 +10,8 @@ pub const LP_DECIMALS: u8 = 8; // LP token decimal
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct LPToken {
     pub token_id: u32,
-    pub symbol: String,
     pub address: String, // unique identifier for the token
+    pub symbol: String,
     pub decimals: u8,
     pub is_removed: bool,
 }

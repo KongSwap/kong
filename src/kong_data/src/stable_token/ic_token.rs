@@ -6,9 +6,9 @@ use crate::chains::chains::IC_CHAIN;
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct ICToken {
     pub token_id: u32,
+    pub canister_id: Principal,
     pub name: String,
     pub symbol: String,
-    pub canister_id: Principal,
     pub decimals: u8,
     pub fee: Nat,
     pub icrc1: bool,

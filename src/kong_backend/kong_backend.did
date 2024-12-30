@@ -216,11 +216,11 @@ type TokenReply = variant {
 };
 type LPTokenReply = record {
     token_id : nat32;
-    name : text;
     chain : text;
+    address : text;
+    name : text;
     symbol : text;
     pool_id_of : nat32;
-    address : text;
     decimals : nat8;
     fee : nat;
     total_supply : nat;
@@ -228,10 +228,10 @@ type LPTokenReply = record {
 };
 type ICTokenReply = record {
     token_id : nat32;
-    name : text;
     chain : text;
-    symbol : text;
     canister_id : text;
+    name : text;
+    symbol : text;
     decimals : nat8;	
     fee : nat;
     icrc1 : bool;
@@ -352,9 +352,11 @@ type AddPoolReply = record {
     name : text;
     symbol : text;
     chain_0 : text;
+    address_0 : text;
     symbol_0 : text;
     amount_0 : nat;
     chain_1 : text;
+    address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
     add_lp_token_amount : nat;
@@ -370,13 +372,13 @@ type AddPoolResult = variant { Ok : AddPoolReply; Err : text };
 type AddLiquidityAmountsReply = record {
     symbol : text;
     chain_0 : text;
-    symbol_0 : text;
     address_0 : text;
+    symbol_0 : text;
     amount_0 : nat;
     fee_0 : nat;
     chain_1 : text;
-    symbol_1 : text;
     address_1 : text;
+    symbol_1 : text;
     amount_1 : nat;
     fee_1 : nat;
     add_lp_token_amount : nat;
@@ -393,13 +395,15 @@ type AddLiquidityArgs = record {
 };
 type AddLiquidityReply = record {
     tx_id : nat64;
-    symbol : text;
     request_id : nat64;
     status : text;
+    symbol : text;
     chain_0 : text;
+    address_0 : text;
     symbol_0 : text;
     amount_0 : nat;
     chain_1 : text;
+    address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
     add_lp_token_amount : nat;
@@ -414,13 +418,13 @@ type ValidateAddLiquidityResult = variant { Ok : text; Err : text };
 type RemoveLiquidityAmountsReply = record {
     symbol : text;
     chain_0 : text;
-    symbol_0 : text;
     address_0 : text;
+    symbol_0 : text;
     amount_0 : nat;
     lp_fee_0 : nat;
     chain_1 : text;
+    address_1 : text;    
     symbol_1 : text;
-    address_1 : text;
     amount_1 : nat;
     lp_fee_1 : nat;
     remove_lp_token_amount : nat;
@@ -434,14 +438,16 @@ type RemoveLiquidityArgs = record {
 };
 type RemoveLiquidityReply = record {
     tx_id : nat64;
-    symbol : text;
     request_id : nat64;
     status : text;
+    symbol : text;
     chain_0 : text;
+    address_0 : text;
     symbol_0 : text;
     amount_0 : nat;
     lp_fee_0 : nat;
     chain_1 : text;
+    address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
     lp_fee_1 : nat;
