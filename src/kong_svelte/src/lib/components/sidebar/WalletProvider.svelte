@@ -1,11 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import {
-    auth,
-    availableWallets,
-    selectedWalletId,
-  } from "$lib/services/auth";
-  import { isPwa, isMobileBrowser, isPlugAvailable } from '$lib/utils/browser';
+  import { auth, availableWallets, selectedWalletId } from "$lib/services/auth";
+  import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
 
@@ -17,18 +13,19 @@
   const isOnMobile = isMobileBrowser();
 
   // Filter out Plug wallet on mobile unless it's a PWA
-  $: filteredWallets = isOnMobile && !isPwa() 
-    ? availableWallets
-    : availableWallets;
+  $: filteredWallets =
+    isOnMobile && !isPwa() ? availableWallets : availableWallets;
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
 
     // Show modal on mobile if IC object is not present
-    if (isOnMobile && walletId === 'plug' && !isPlugAvailable()) {
+    if (isOnMobile && walletId === "plug" && !isPlugAvailable()) {
       // Dynamically import the dialog component when needed
       if (!plugDialog) {
-        const module = await import('$lib/components/wallet/PlugMobileDialog.svelte');
+        const module = await import(
+          "$lib/components/wallet/PlugMobileDialog.svelte"
+        );
         plugDialog = module.default;
       }
       dialogOpen = true;
@@ -36,8 +33,8 @@
     }
 
     // Redirect to Plug website on desktop if Plug is not installed
-    if (!isOnMobile && walletId === 'plug' && !isPlugAvailable()) {
-      window.open('https://plugwallet.ooo/', '_blank');
+    if (!isOnMobile && walletId === "plug" && !isPlugAvailable()) {
+      window.open("https://plugwallet.ooo/", "_blank");
       return;
     }
 
@@ -58,53 +55,62 @@
 </script>
 
 <Modal
-        isOpen={true}
-        title="Connect Wallet"
-        onClose={() => sidebarStore.collapse()}
-        width="440px"
-        height="auto"
-        variant="transparent"
-        className="wallet-modal"
-      >
-        <div class="flex flex-col gap-6">
-
-          <div class="wallet-connect-body">
-<div class="wallet-list">
-  {#each filteredWallets as wallet}
-    <button
-      class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
-      on:click={() => handleConnect(wallet.id)}
-      disabled={connecting}
-    >
-      <div class="wallet-content">
-        <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
-        <div class="wallet-info">
-          <span class="wallet-name">{wallet.name}</span>
-          {#if wallet.id === 'nfid'}
-            <span class="wallet-description">Sign in with Google</span>
-          {/if}
-        </div>
+  isOpen={true}
+  title="Connect Wallet"
+  onClose={() => sidebarStore.collapse()}
+  width="min(440px, 95vw)"
+  height="auto"
+  variant="transparent"
+>
+  <div class="flex flex-col gap-6">
+    <div class="wallet-connect-body">
+      <div class="wallet-list">
+        {#each filteredWallets as wallet}
+          <button
+            class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
+            on:click={() => handleConnect(wallet.id)}
+            disabled={connecting}
+          >
+            <div class="wallet-content">
+              <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
+              <div class="wallet-info">
+                <span class="wallet-name">{wallet.name}</span>
+                {#if wallet.id === "nfid"}
+                  <span class="wallet-description">Sign in with Google</span>
+                {/if}
+              </div>
+            </div>
+            <svg
+              class="wallet-arrow"
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        {/each}
       </div>
-      <svg class="wallet-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 18l6-6-6-6"/>
-      </svg>
-    </button>
-  {/each}
-</div>
-</div>
-<div class="flex flex-col gap-2 ">
-  <p class="text-xs text-kong-text-secondary text-center pb-4">
-    Rumble in the crypto jungle at <a href="#" class="text-kong-primary hover:text-kong-primary-hover">KongSwap.io</a>.
-  </p>
-</div>
-</div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <p class="text-xs text-kong-text-secondary text-center pb-4">
+        Rumble in the crypto jungle at <a
+          href="#"
+          class="text-kong-primary hover:text-kong-primary-hover">KongSwap.io</a
+        >.
+      </p>
+    </div>
+  </div>
 </Modal>
 
 {#if plugDialog}
-  <svelte:component 
-    this={plugDialog} 
-    bind:open={dialogOpen} 
-  />
+  <svelte:component this={plugDialog} bind:open={dialogOpen} />
 {/if}
 
 <style lang="postcss">
@@ -125,7 +131,7 @@
 
   .wallet-option:hover:not(:disabled) {
     @apply border-kong-primary bg-kong-primary/25;
-    box-shadow: 
+    box-shadow:
       0 4px 24px -2px rgb(0 0 0 / 0.12),
       0 2px 8px -2px rgb(0 0 0 / 0.06);
   }
@@ -140,7 +146,7 @@
 
   .wallet-option.recommended:hover:not(:disabled) {
     @apply bg-kong-primary/25 border-kong-primary/30;
-    box-shadow: 
+    box-shadow:
       0 4px 24px -2px rgb(var(--primary) / 0.15),
       0 2px 8px -2px rgb(var(--primary) / 0.1);
   }

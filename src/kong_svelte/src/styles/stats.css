@@ -48,10 +48,10 @@
     background: transparent;
   }
   15% {
-    background: rgba(0, 204, 129, 0.06);
+    background: rgba(0, 204, 129, 0.1);
   }
   85% {
-    background: rgba(0, 204, 129, 0.06);
+    background: rgba(0, 204, 129, 0.1);
   }
   100% {
     background: transparent;
@@ -63,10 +63,10 @@
     background: transparent;
   }
   15% {
-    background: rgba(209, 27, 27, 0.06);
+    background: rgba(209, 27, 27, 0.1);
   }
   85% {
-    background: rgba(209, 27, 27, 0.06);
+    background: rgba(209, 27, 27, 0.1);
   }
   100% {
     background: transparent;
@@ -74,11 +74,11 @@
 }
 
 .flash-green {
-  animation: flash-green 1.2s ease-out !important;
+  animation: flash-green 2s ease-out !important;
 }
 
 .flash-red {
-  animation: flash-red 1.2s ease-out !important;
+  animation: flash-red 2s ease-out !important;
 }
 
 /* Custom Scrollbar */

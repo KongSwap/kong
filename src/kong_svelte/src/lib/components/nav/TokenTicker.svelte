@@ -196,9 +196,9 @@
   bind:this={tickerElement}
   class="w-full overflow-hidden border-b border-kong-text-primary/10 text-sm bg-kong-bg-dark/80"
 >
-  <div class="w-full overflow-hidden relative">
+  <div class="ticker-container">
     <div
-      class="inline-flex px-2 animate-scroll whitespace-nowrap relative will-change-transform"
+      class="ticker-content"
       class:paused={isChartHovered || !isVisible || isTickerHovered}
       on:mouseenter={() => (isTickerHovered = true)}
       on:mouseleave={() => (isTickerHovered = false)}
@@ -213,12 +213,8 @@
             on:mouseenter={(e) => handleMouseEnter(e, token)}
             on:mouseleave={handleMouseLeave}
           >
-            <span class="text-kong-text-secondary"
-              >{index + 1}.</span
-            >
-            <span class="font-medium text-kong-text-primary"
-              >{token.symbol}</span
-            >
+            <span class="text-kong-text-secondary">{index + 1}.</span>
+            <span class="font-medium text-kong-text-primary">{token.symbol}</span>
             <span class="text-kong-text-secondary"
               >${formatToNonZeroDecimal(Number(token.metrics.price))}</span
             >
@@ -248,10 +244,8 @@
             on:mouseenter={(e) => handleMouseEnter(e, token)}
             on:mouseleave={handleMouseLeave}
           >
-          
-            <span class="font-medium text-kong-text-primary"
-              >{token.symbol}</span
-            >
+            <span class="text-kong-text-secondary">{index + 1}.</span>
+            <span class="font-medium text-kong-text-primary">{token.symbol}</span>
             <span class="text-kong-text-secondary"
               >${formatToNonZeroDecimal(Number(token.metrics.price))}</span
             >
@@ -311,23 +305,57 @@
   </button>
 {/if}
 
-<style scoped lang="postcss">
-  @keyframes scroll {
+<style lang="postcss">
+  .ticker-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 5%,
+      black 95%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 5%,
+      black 95%,
+      transparent
+    );
+  }
+
+  .ticker-content {
+    display: flex;
+    white-space: nowrap;
+    animation: ticker 30s linear infinite;
+    will-change: transform;
+    /* Enable hardware acceleration */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @supports (-webkit-touch-callout: none) {
+    /* iOS-specific optimizations */
+    .ticker-content {
+      -webkit-overflow-scrolling: touch;
+      -webkit-transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .ticker-content.paused {
+    animation-play-state: paused;
+  }
+
+  @keyframes ticker {
     0% {
-      transform: translateX(0);
+      transform: translate3d(0, 0, 0);
     }
     100% {
-      transform: translateX(-50%);
+      transform: translate3d(-100%, 0, 0);
     }
-  }
-
-  .animate-scroll {
-    animation: scroll 80s linear infinite;
-    will-change: transform;
-  }
-
-  .animate-scroll.paused {
-    animation-play-state: paused;
   }
 
   .positive {

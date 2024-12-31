@@ -10,6 +10,8 @@ function createThemeStore() {
     return theme === 'dark' || theme === 'light' ? theme : 'dark';
   }
 
+  let initialized = false;
+
   return {
     subscribe,
     setTheme: (theme: Theme) => {
@@ -31,15 +33,18 @@ function createThemeStore() {
       }
     },
     initTheme: () => {
-      if (browser) {
-        const savedTheme = localStorage.getItem('theme');
-        const theme: Theme = validateTheme(savedTheme) || 'dark'
-        
-        document.documentElement.classList.remove('dark', 'light');
-        document.documentElement.classList.add(theme);
-        set(theme);
-        localStorage.setItem('theme', theme);
+      if (initialized || !browser) return;
+      
+      const theme = localStorage.getItem('theme');
+      if (theme) {
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+      } else {
+        // Check system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', prefersDark);
       }
+      
+      initialized = true;
     }
   };
 }

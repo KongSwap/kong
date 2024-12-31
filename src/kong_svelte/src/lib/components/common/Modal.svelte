@@ -176,7 +176,7 @@
             <header class="flex justify-between items-center px-4">
               <slot name="title">
                 {#if typeof title === 'string'}
-                  <h2 class="text-lg font-semibold">{title}</h2>
+                  <h2 class="text-lg font-semibold py-4">{title}</h2>
                 {:else}
                   <div bind:this={titleElement}></div>
                 {/if}

@@ -26,6 +26,16 @@
 	<meta name="twitter:description" content="Rumble in the crypto jungle" />
 	<meta name="twitter:image" content="https://www.kongswap.io/images/banner.webp" />
 
+	<script>
+		let theme = localStorage.getItem('theme');
+		if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+			document.documentElement.classList.add('dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+		}
+		document.documentElement.setAttribute('data-theme-ready', 'true');
+	</script>
+
 	%sveltekit.head%
 </head>
 

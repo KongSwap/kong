@@ -17,6 +17,7 @@
   export let isFavorite: boolean;
   export let priceClass: string;
   export let trendClass: string;
+  export let showHotIcon = false;
 </script>
 
 <div 
@@ -41,10 +42,8 @@
       <div class="token-info-mobile">
         <div class="flex items-center gap-1">
           <span class="token-symbol-mobile">{token.symbol}</span>
-          {#if token.isHot}
-            <div class="hot-badge-small" title="#{token.volumeRank} 24h volume" use:tooltip={{ text: `${token.volumeRank} 24h volume` }}>
-              <Flame size={14} class="hot-icon" fill="#FFA500" stroke="white" />
-            </div>
+          {#if showHotIcon}
+            <Flame class="w-4 h-4 text-orange-500" />
           {/if}
         </div>
         <div class="token-metrics-row text-nowrap">

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
   import { writable, derived } from "svelte/store";
-  import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
   import Panel from "$lib/components/common/Panel.svelte";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { livePoolTotals } from "$lib/services/pools/poolStore";
-  import { ArrowUp, ArrowDown, ArrowUpDown, TrendingUp } from "lucide-svelte";
+  import { ArrowUp, ArrowDown, ArrowUpDown, TrendingUp, Flame } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/services/auth";
@@ -74,14 +74,28 @@
       const s = $search.trim().toLowerCase();
       let filtered = [...$liveTokens];
 
+      // First sort by volume to determine volume ranks
+      const volumeRankedTokens = filtered
+        .sort((a, b) => {
+          const aVolume = Number(a.metrics?.volume_24h || 0);
+          const bVolume = Number(b.metrics?.volume_24h || 0);
+          return bVolume - aVolume;
+        })
+        .map((token, index) => ({
+          ...token,
+          volumeRank: index + 1,
+        }))
+
       // Filter by favorites if enabled
       if ($showFavoritesOnly) {
         if (!$auth.isConnected) {
           return []; // Return empty array to trigger the connect wallet view
         }
-        filtered = filtered.filter((token) =>
+        filtered = volumeRankedTokens.filter((token) =>
           $favoriteTokenIds.includes(token.canister_id),
         );
+      } else {
+        filtered = volumeRankedTokens;
       }
 
       // Filter by search term
@@ -96,7 +110,7 @@
         });
       }
 
-      // First sort by market cap to determine ranks
+      // Sort by market cap to determine ranks
       const rankedTokens = filtered
         .sort((a, b) => {
           const aMarketCap = Number(a.metrics?.market_cap || 0);
@@ -308,6 +322,11 @@
   function isTokenFavorited(tokenId: string): boolean {
     return $favoriteTokenIds.includes(tokenId);
   }
+
+  function isTopVolume(token: FE.Token, index: number): boolean {
+    if (token.canister_id === CKUSDT_CANISTER_ID || token.canister_id === ICP_CANISTER_ID) return false;
+    return token.volumeRank && token.volumeRank <= 7 && Number(token.metrics?.volume_24h || 0) > 0;
+  }
 </script>
 
 <PageHeader
@@ -505,7 +524,7 @@
                       </thead>
 
                       <tbody class="!px-4" bind:this={tableBody}>
-                        {#each $filteredTokens as token (token.canister_id)}
+                        {#each $filteredTokens as token, index (token.canister_id)}
                           <StatsTableRow
                             {token}
                             isConnected={$auth.isConnected}
@@ -513,6 +532,7 @@
                             priceClass={getPriceClass(token)}
                             trendClass={getTrendClass(token)}
                             kongCanisterId={KONG_CANISTER_ID}
+                            showHotIcon={isTopVolume(token, index)}
                           />
                         {/each}
                       </tbody>
@@ -616,6 +636,7 @@
                                   )}
                                   priceClass={getPriceClass(token)}
                                   trendClass={getTrendClass(token)}
+                                  showHotIcon={isTopVolume(token, index)}
                                 />
                               </div>
                             </div>

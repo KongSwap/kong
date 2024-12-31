@@ -26,8 +26,7 @@ const config = {
         if (
           path === "/swap" ||
           path === "/pools" ||
-          path === "/stats" ||
-          path === "/pools"
+          path === "/stats"
         ) {
           return;
         }
@@ -41,7 +40,6 @@ const config = {
           id === "swap" ||
           id === "pools" ||
           id === "stats" ||
-          id === "earn" ||
           id === ".well-known" ||
           id === "ic-domains" ||
           id === ".well-known/ic-domains"

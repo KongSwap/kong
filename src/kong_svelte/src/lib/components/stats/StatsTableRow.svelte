@@ -19,6 +19,7 @@
   export let priceClass: string;
   export let trendClass: string;
   export let kongCanisterId: string;
+  export let showHotIcon = false;
 
   const handleFavoriteClick = async (e: MouseEvent) => {
     e.stopPropagation();
@@ -47,8 +48,8 @@
   on:click={() => goto(`/stats/${token.canister_id}`)}
 >
   <td class="col-rank text-center text-[#8890a4]">#{token.marketCapRank || "-"}</td>
-  <td class="col-token pl-2">
-    <div class="flex items-center gap-2 h-full">
+  <td class="col-token py-2 pl-2">
+    <div class="flex items-center gap-2">
       {#if isConnected}
         <button
           class="favorite-button {isFavorite ? 'active' : ''}"
@@ -70,17 +71,16 @@
       <TokenImages tokens={[token]} containerClass="self-center" size={24} />
       <span class="token-name">{token.name}</span>
       <span class="token-symbol">{token.symbol}</span>
-      {#if token?.isHot}
+      {#if showHotIcon}
         <div
           class="hot-badge-small"
-          title="#{token?.volumeRank} 24hr volume"
           use:tooltip={{
-            text: `#${token.volumeRank} Volume`,
+            text: `#${token.volumeRank} by Volume`,
             direction: "right",
             textSize: "sm",
           }}
         >
-          <Flame size={20} class="hot-icon" fill="#FFA500" stroke="white" />
+          <Flame size={16} class="hot-icon" fill="#FFA500" stroke="none" />
         </div>
       {/if}
     </div>

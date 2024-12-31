@@ -1,7 +1,6 @@
 <script lang="ts">
   import Toggle from "../common/Toggle.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
-  import { loadTokens } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
   import { kongDB } from '$lib/services/db';
   import { onMount, onDestroy } from "svelte";
@@ -18,7 +17,6 @@
   let isMobile = false;
   let isCustomSlippage = false;
   let showSlippageInfo = false;
-  let customInputFocused = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];
@@ -158,7 +156,7 @@
   async function clearFavorites() {
     if (confirm('Are you sure you want to clear your favorite tokens?')) {
       // TODO: readd clearing favorites
-      await loadTokens(true);
+      await kongDB.favorite_tokens.clear();
       toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
     }
   }

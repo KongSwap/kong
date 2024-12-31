@@ -7,7 +7,7 @@
 
 /* Set a more neutral, professional default font and tidy up the body styling. */
 body {
-  @apply bg-kong-bg-dark;
+  @apply bg-kong-bg-dark transition-colors duration-200;
   /* Consider using a professional default like Inter or Space Grotesk */
   font-family: "Exo 2", sans-serif;
   color: var(--text-primary);
@@ -40,6 +40,7 @@ body {
   --logo-invert: 1;
   --logo-hover-brightness: 0.65;
   --chart-text-color: #334155;    /* Darker blue-gray for better contrast */
+  color-scheme: light dark; /* Helps with system transitions */
 }
 
 /* Dark theme overrides (more neutral navy background) */
@@ -98,4 +99,9 @@ body {
   position: relative;
   z-index: 1;
   box-shadow: 0 -5px 15px rgba(37, 99, 235, 0.03);  /* Blue-tinted shadow */
+}
+
+/* Add this to your CSS */
+html:not([data-theme-ready]) {
+  visibility: hidden;
 }

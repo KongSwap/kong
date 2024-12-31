@@ -61,11 +61,11 @@ function createAuthStore(pnp: PNP) {
             isInitialized: true,
           };
           set(newState);
+          await loadBalances(result.owner.toString());
           selectedWalletId.set(walletId);
           isConnected.set(true);
           principalId.set(result.owner.toString());
           saveLastWallet(walletId);
-          loadBalances(result.owner.toString());
           return result;
         } else {
           console.error("Invalid connection result format:", result);

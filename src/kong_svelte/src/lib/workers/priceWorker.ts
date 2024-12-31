@@ -113,6 +113,8 @@ class PriceWorkerImpl implements PriceWorkerApi {
       // Log price changes
       if (previousPrice === currentPrice.toString()) {
         return null;
+      } else {
+        console.log("Price changed for", token.symbol, previousPrice, currentPrice);
       }
 
       // Calculate metrics
@@ -257,6 +259,10 @@ class PriceWorkerImpl implements PriceWorkerApi {
       (p: BE.Pool) =>
         p.address_0 === token.canister_id || p.address_1 === token.canister_id,
     );
+
+    if (token.canister_id === CKUSDT_CANISTER_ID) {
+      console.log("tokenPools", tokenPools);
+    }
 
     // Calculate total volume across all pools
     const totalVolume = tokenPools.reduce((sum, pool) => {

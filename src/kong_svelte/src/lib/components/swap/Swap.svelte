@@ -339,12 +339,7 @@
 
   // Initialization functions
   async function initializeComponent(): Promise<void> {
-    try {
-      const tokens = get(liveTokens);
-      if (!tokens.length) {
-        await loadTokens();
-      }
-      
+    try {  
       // Only initialize default tokens if no URL parameters are present
       const token0Id = get(page).url.searchParams.get('token0');
       const token1Id = get(page).url.searchParams.get('token1');
