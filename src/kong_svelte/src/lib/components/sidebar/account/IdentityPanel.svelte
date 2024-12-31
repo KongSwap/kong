@@ -5,7 +5,7 @@
   import { writable } from 'svelte/store';
   import { toastStore } from "$lib/stores/toastStore";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { QrCode } from 'lucide-svelte';
+  import { QrCode, Clipboard } from 'lucide-svelte';
   import { Principal } from '@dfinity/principal';
   import { AccountIdentifier } from '@dfinity/ledger-icp';
   import { SubAccount } from '@dfinity/ledger-icp';
@@ -196,7 +196,6 @@
     await updateIdentity();
   });
 
-  // Replace afterUpdate with a subscription to auth changes
   $: if (mounted && auth.pnp?.account?.owner) {
     updateIdentity();
   }
@@ -248,128 +247,99 @@
           </button>
         </div>
       {/if}
+
       <div class="info-grid mt-4">
         {#if (activeTab === 'principal' || display === 'principal') && (display !== 'account')}
-          <div class="info-section">
-            <div class="identity-container">
-              <div class="identity-details">
-                <div class="info-item">
-                  <div class="value-container">
-                    <div class="id-row">
-                      <span class="value">{identity.principalId || '...'}</span>
-                      <div class="action-buttons">
-                        <button
-                          class="action-button"
-                          on:click={() => handleCopy(identity.principalId, 'principal')}
-                          disabled={$copyLoading}
-                        >
-                          {#if $principalCopied}
-                            <span>Copied!</span>
-                          {:else}
-                            <span>Copy</span>
-                          {/if}
-                        </button>
-                        <button
-                          class="action-button"
-                          on:click={() => identity.principalQR && openQrModal(identity.principalQR, 'principal')}
-                          title="Show QR Code"
-                        >
-                          <QrCode size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div class="id-card">
+            <div class="id-header">
+              <span>Principal ID</span>
+              <div class="header-actions">
+                <button 
+                  type="button"
+                  class="action-button"
+                  on:click={() => identity.principalQR && openQrModal(identity.principalQR, 'principal')}
+                  title="Show QR Code"
+                >
+                  <QrCode class="w-4 h-4" />
+                  <span class="button-text">Show QR</span>
+                </button>
+                <button 
+                  type="button"
+                  class="action-button"
+                  on:click={() => handleCopy(identity.principalId, 'principal')}
+                >
+                  <Clipboard class="w-4 h-4" />
+                  <span class="button-text">Copy</span>
+                </button>
               </div>
-              <div class="info-tooltip">
-                <p>Your Principal ID is your unique digital identity that:</p>
-                <ul>
-                  <li>Is used for ICRC token transfers and DeFi operations</li>
-                  <li>Acts as your universal username across IC applications</li>
-                  <li>Controls access to your assets and data</li>
-                  <li>Is required for interacting with most dapps</li>
-                </ul>
+            </div>
+
+            <div class="input-group">
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  readonly
+                  value={identity.principalId || '...'}
+                  class="monospace-input"
+                />
               </div>
+            </div>
+
+            <div class="info-tooltip mt-4">
+              <p>About Principal ID:</p>
+              <ul>
+                <li>Your general wallet address used across all Internet Computer dapps</li>
+                <li>Used for sending/receiving ICRC tokens (ICP's ERC-20 variant)</li>
+                <li>Principal ID is used to generate the Account ID</li>
+              </ul>
             </div>
           </div>
         {/if}
+
         {#if (activeTab === 'account' || display === 'account') && (display !== 'principal')}
-          <div class="info-section">
-            <div class="identity-container">
-              <div class="identity-details">
-                <div class="info-item">
-                  <div class="value-container">
-                    <div class="id-row flex items-center">
-                      <div class="flex flex-col gap-4 w-full">
-                        <div class="flex flex-col">
-                          <span class="text-xs text-gray-400">Principal ID:</span>
-                          <div class="flex items-center justify-between">
-                            <span class="value flex items-center">
-                              {identity.principalId || '...'}
-                            </span>
-                            <div class="action-buttons">
-                              <button
-                                class="action-button"
-                                on:click={() => handleCopy(identity.principalId, 'principal')}
-                                disabled={$copyLoading}
-                              >
-                                {#if $principalCopied}
-                                  <span>Copied!</span>
-                                {:else}
-                                  <span>Copy</span>
-                                {/if}
-                              </button>
-                              <button
-                                class="action-button"
-                                on:click={() => identity.principalQR && openQrModal(identity.principalQR, 'principal')}
-                                title="Show QR Code"
-                              >
-                                <QrCode size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="flex flex-col">
-                          <span class="text-xs text-gray-400">Account ID:</span>
-                          <div class="flex items-center justify-between">
-                            <span class="value flex items-center">
-                              {identity.defaultAccountId || '...'}
-                            </span>
-                            <div class="action-buttons">
-                              <button
-                                class="action-button"
-                                on:click={() => handleCopy(identity.defaultAccountId, 'account')}
-                                disabled={$copyLoading}
-                              >
-                                {#if $accountCopied}
-                                  <span>Copied!</span>
-                                {:else}
-                                  <span>Copy</span>
-                                {/if}
-                              </button>
-                              <button
-                                class="action-button"
-                                on:click={() => identity.accountQR && openQrModal(identity.accountQR, 'account')}
-                                title="Show QR Code"
-                              >
-                                <QrCode size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="info-tooltip">
-                  <p>Important Account ID Information:</p>
-                  <ul>
-                    <li>If you don't see your ICP in the current Account ID, try the Default Account ID</li>
-                    <li>The Current Account ID includes a specific subaccount</li>
-                    <li>The Default Account ID is the most commonly used for receiving ICP</li>
-                  </ul>
-                </div>
+          <div class="id-card">
+            <div class="id-header">
+              <span>Account ID</span>
+              <div class="header-actions">
+                <button 
+                  type="button"
+                  class="action-button"
+                  on:click={() => identity.accountQR && openQrModal(identity.accountQR, 'account')}
+                  title="Show QR Code"
+                >
+                  <QrCode class="w-4 h-4" />
+                  <span class="button-text">Show QR</span>
+                </button>
+                <button 
+                  type="button"
+                  class="action-button"
+                  on:click={() => handleCopy(identity.defaultAccountId, 'account')}
+                >
+                  <Clipboard class="w-4 h-4" />
+                  <span class="button-text">Copy</span>
+                </button>
               </div>
+            </div>
+
+            <div class="input-group">
+              <div class="input-wrapper">
+                <input
+                  type="text"
+                  readonly
+                  value={identity.defaultAccountId || '...'}
+                  class="monospace-input"
+                />
+              </div>
+            </div>
+
+            <div class="info-tooltip mt-4">
+              <p>About Account ID:</p>
+              <ul>
+                <li>Use this when moving ICP to/from exchanges</li>
+                <li>A unique identifier derived from your Principal ID</li>
+                <li>Required for ICP token transactions</li>
+                <li class="text-yellow-400">Cannot be used for ICRC token transactions</li>
+              </ul>
             </div>
           </div>
         {/if}
@@ -377,7 +347,7 @@
     </div>
 </div>
 
-<style scoped>
+<style lang="postcss">
   .tab-panel {
     animation: fadeIn 0.3s ease;
     padding-bottom: 4rem;
@@ -385,13 +355,6 @@
 
   .detail-section {
     padding-bottom: 1rem;
-  }
-
-  .detail-section h3 {
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 0.5rem;
-    font-weight: 600;
   }
 
   .tabs {
@@ -422,41 +385,6 @@
     gap: 1rem;
   }
 
-  .info-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .info-item {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 0.75rem;
-    height: 100%;
-  }
-
-  .value-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    height: 100%;
-    justify-content: center;
-  }
-
-  .value {
-    font-family: monospace;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.9);
-    word-break: break-all;
-    user-select: text;
-    flex: 1;
-    min-width: 200px;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-  }
-
   .action-button {
     padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
@@ -481,13 +409,6 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
 
   @keyframes spin {
     to { transform: rotate(360deg); }
@@ -583,57 +504,11 @@
     gap: 0.5rem;
   }
 
-  .identity-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .identity-details {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .info-item {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 0.75rem;
-  }
-
-  .value-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .value {
-    font-family: monospace;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.9);
-    word-break: break-all;
-    user-select: text;
-    width: 100%;
-  }
-
   .info-tooltip {
     padding: 0.75rem;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .value-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
   }
 
   .action-button {
@@ -661,31 +536,6 @@
     cursor: not-allowed;
   }
 
-  .id-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .value {
-    font-family: monospace;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.9);
-    word-break: break-all;
-    user-select: text;
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
   .action-button {
     padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
@@ -700,5 +550,97 @@
     justify-content: center;
     min-width: 32px;
     height: 28px;
+  }
+
+  .id-header {
+    @apply flex justify-between items-center text-white/70 text-sm mb-2;
+  }
+
+  .header-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .action-button {
+    @apply h-8 px-3 rounded-lg 
+           bg-white/5 backdrop-blur-sm
+           border border-white/10
+           hover:border-white/20 hover:bg-white/10
+           text-white/70 hover:text-white
+           transition-all duration-200
+           flex items-center justify-center gap-2;
+  }
+
+  .button-text {
+    @apply hidden md:inline;
+  }
+
+  .action-button:active {
+    @apply border-indigo-500 bg-indigo-500/10;
+  }
+
+  .id-card {
+    @apply flex flex-col gap-2 p-4 
+           bg-black/20 backdrop-blur-sm
+           border border-white/10 
+           rounded-lg;
+  }
+
+  .input-wrapper input {
+    @apply w-full h-11 rounded-lg px-4
+           bg-white/5 backdrop-blur-sm
+           border border-white/10 
+           hover:border-white/20
+           text-white/90
+           transition-colors;
+  }
+
+  .monospace-input {
+    @apply font-mono text-sm;
+    cursor: default;
+    user-select: all;
+  }
+
+  .info-tooltip {
+    @apply p-4 rounded-lg
+           bg-white/5 backdrop-blur-sm
+           border border-white/10;
+  }
+
+  .info-tooltip p {
+    @apply text-white/90 text-sm mb-2;
+  }
+
+  .info-tooltip ul {
+    @apply list-disc pl-5 text-sm text-white/70;
+  }
+
+  .info-tooltip li {
+    @apply mb-1;
+  }
+
+  .id-header {
+    @apply flex justify-between items-center text-white/70 text-sm;
+  }
+
+  .header-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .action-button {
+    @apply h-8 px-3 rounded-lg 
+           bg-white/5 backdrop-blur-sm
+           border border-white/10
+           hover:border-white/20 hover:bg-white/10
+           text-white/70 hover:text-white
+           transition-all duration-200
+           flex items-center justify-center gap-2;
+  }
+
+  .button-text {
+    @apply hidden md:inline;
+  }
+
+  .action-button:active {
+    @apply border-indigo-500 bg-indigo-500/10;
   }
 </style>

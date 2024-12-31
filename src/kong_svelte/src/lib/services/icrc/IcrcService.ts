@@ -3,10 +3,9 @@ import { canisterIDLs } from "$lib/services/pnp/PnpInitializer";
 import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
-import { tokenStore } from "$lib/services/tokens/tokenStore";
-import { eventBus } from "$lib/services/tokens/eventBus";
 import { allowanceStore } from "../tokens/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
+import { AccountIdentifier } from '@dfinity/ledger-icp';
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -227,38 +226,108 @@ export class IcrcService {
     }
   }
 
-  public static async icrc1Transfer(
+  private static decodeAccountId(accountId: string): { owner: Principal, subaccount?: number[] } {
+    try {
+        // Add input validation
+        if (!accountId || accountId.length !== 64) {
+            throw new Error(`Invalid account ID length: ${accountId.length}`);
+        }
+        if (!/^[0-9a-fA-F]+$/.test(accountId)) {
+            throw new Error("Invalid account ID format: not hex");
+        }
+
+        const accountIdBytes = this.hex2array(accountId);
+        console.log("Account ID bytes:", accountIdBytes);
+
+        // First 4 bytes are CRC32 checksum, skip them
+        const principalBytes = accountIdBytes.slice(4, 28);  // Changed from 32 to 28
+        const subaccountBytes = accountIdBytes.slice(28);    // Changed from 32 to 28
+
+        console.log("Principal bytes:", principalBytes);
+        console.log("Subaccount bytes:", subaccountBytes);
+
+        // Convert bytes to Principal
+        const principal = Principal.fromUint8Array(principalBytes);
+        console.log("Decoded principal:", principal.toString());
+
+        // If subaccount exists, return it
+        return subaccountBytes.length > 0
+            ? { owner: principal, subaccount: Array.from(subaccountBytes) }
+            : { owner: principal };
+    } catch (error) {
+        console.error("Error decoding account ID:", error);
+        throw new Error(`Invalid account ID format: ${error.message}`);
+    }
+  }
+
+  private static hex2array(hex: string): Uint8Array {
+    const pairs = hex.match(/[\dA-F]{2}/gi) || [];
+    return new Uint8Array(pairs.map(s => parseInt(s, 16)));
+  }
+
+  public static async transfer(
     token: FE.Token,
     to: string | Principal,
     amount: bigint,
     opts: {
-      memo?: number[];
-      fee?: bigint;
-      fromSubaccount?: number[];
-      createdAtTime?: bigint;
+        memo?: number[];
+        fee?: bigint;
+        fromSubaccount?: number[];
+        createdAtTime?: bigint;
     } = {},
   ): Promise<Result<bigint>> {
     try {
-      const actor = auth.pnp.getActor(token.canister_id, canisterIDLs.icrc1, {
-        anon: false,
-        requiresSigning: true,
-      });
+        // If it's an ICP transfer to an account ID
+        if (token.symbol === 'ICP' && typeof to === 'string' && to.length === 64) {
+            const ledgerActor = await auth.getActor(
+                token.canister_id, 
+                canisterIDLs["ICP"],
+                { anon: false, requiresSigning: true }
+            );
+            
+            const transfer_args = {
+                to: this.hex2Bytes(to),
+                amount: { e8s: amount },
+                fee: { e8s: BigInt(token.fee_fixed) },
+                memo: 0n,
+                from_subaccount: opts.fromSubaccount ? [Array.from(opts.fromSubaccount)] : [],
+                created_at_time: opts.createdAtTime ? [{ timestamp_nanos: opts.createdAtTime }] : [],
+            };
 
-      const result = await actor.icrc1_transfer({
-        to:
-          typeof to === "string"
-            ? { owner: Principal.fromText(to), subaccount: [] }
-            : { owner: to, subaccount: [] },
-        amount,
-        fee: [BigInt(token.fee_fixed)],
-        memo: opts.memo || [],
-        from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
-        created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
-      });
+            console.log("Ledger transfer args:", transfer_args);
+            return await ledgerActor.transfer(transfer_args);
+        }
 
-      return result;
+        // For all other cases (ICRC1 transfers to principals)
+        const actor = await auth.getActor(
+            token.canister_id, 
+            canisterIDLs["icrc1"],
+            { anon: false, requiresSigning: true }
+        );
+
+        return await actor.icrc1_transfer({
+            to: {
+                owner: typeof to === 'string' ? Principal.fromText(to) : to,
+                subaccount: []
+            },
+            amount,
+            fee: [BigInt(token.fee_fixed)],
+            memo: opts.memo || [],
+            from_subaccount: opts.fromSubaccount ? [opts.fromSubaccount] : [],
+            created_at_time: opts.createdAtTime ? [opts.createdAtTime] : [],
+        });
     } catch (error) {
-      return { Err: error };
+        console.error("Transfer error:", error);
+        return { Err: error };
     }
+  }
+
+  // to byte array
+  private static hex2Bytes(hex: string): number[] {
+    const bytes = [];
+    for (let i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+    }
+    return bytes;
   }
 }
