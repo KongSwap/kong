@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::transfers::transfer_reply::TransferIdReply;
 
-/// Data structure for the reply of the `swap` function.
-/// Used in StableRequest
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct SwapTxReply {
     pub pool_symbol: String,

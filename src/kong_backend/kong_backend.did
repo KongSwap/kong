@@ -630,6 +630,4 @@ service : {
     // admin functions
     add_token : (AddTokenArgs) -> (AddTokenResult);
     check_pools : () -> (CheckPoolsResult);
-    get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
-    get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 }

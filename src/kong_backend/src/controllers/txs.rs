@@ -5,9 +5,6 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TX_ARCHIVE_MAP, TX_MAP};
 use crate::stable_tx::stable_tx::{StableTx, StableTxId};
 use crate::stable_tx::tx::Tx;
-use crate::stable_tx::tx_map;
-use crate::txs::txs_reply::TxsReply;
-use crate::txs::txs_reply_helpers::to_txs_reply;
 
 const MAX_TXS: usize = 100;
 
@@ -46,16 +43,6 @@ fn update_txs(stable_txs_json: String) -> Result<String, String> {
     });
 
     Ok("Txs updated".to_string())
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-pub fn get_txs(tx_id: Option<u64>, user_id: Option<u32>, token_id: Option<u32>, num_txs: Option<u16>) -> Result<Vec<TxsReply>, String> {
-    let num_txs = num_txs.map(|n| n as usize);
-    let txs = tx_map::get_by_user_and_token_id(tx_id, user_id, token_id, num_txs)
-        .iter()
-        .map(to_txs_reply)
-        .collect();
-    Ok(txs)
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]

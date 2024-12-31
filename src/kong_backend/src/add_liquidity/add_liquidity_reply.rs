@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::transfers::transfer_reply::TransferIdReply;
 
-/// Data structure for the reply of the `add_liquidity` function.
-/// Used in StableRequest
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct AddLiquidityReply {
     pub tx_id: u64,
