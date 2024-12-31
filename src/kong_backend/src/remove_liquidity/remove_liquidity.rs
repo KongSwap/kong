@@ -39,7 +39,7 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     let caller_id = caller_id();
 
-    process_remove_liquidity(
+    let result = match process_remove_liquidity(
         request_id,
         user_id,
         &caller_id,
@@ -52,18 +52,19 @@ pub async fn remove_liquidity(args: RemoveLiquidityArgs) -> Result<RemoveLiquidi
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        },
-        |reply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            // archive to kong data
-            archive_to_kong_data(&reply);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 /// used by remove_lp_positions() to remove_liquidity for user_id and tokens returned to to_principal_id
@@ -78,7 +79,7 @@ pub async fn remove_liquidity_from_pool(
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::RemoveLiquidity(args), ts));
     request_map::update_status(request_id, StatusCode::RemoveLiquidityFromPool, None);
 
-    process_remove_liquidity(
+    let result = match process_remove_liquidity(
         request_id,
         user_id,
         to_principal_id,
@@ -91,17 +92,19 @@ pub async fn remove_liquidity_from_pool(
         ts,
     )
     .await
-    .map_or_else(
-        |e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            Err(e)
-        },
-        |reply| {
+    {
+        Ok(reply) => {
             request_map::update_status(request_id, StatusCode::Success, None);
-            archive_to_kong_data(&reply);
             Ok(reply)
-        },
-    )
+        }
+        Err(e) => {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            Err(e)
+        }
+    };
+    _ = archive_to_kong_data(request_id);
+
+    result
 }
 
 #[update]
@@ -127,14 +130,10 @@ pub async fn remove_liquidity_async(args: RemoveLiquidityArgs) -> Result<u64, St
         )
         .await
         {
-            Ok(reply) => {
-                request_map::update_status(request_id, StatusCode::Success, None);
-                archive_to_kong_data(&reply);
-            }
-            Err(e) => {
-                request_map::update_status(request_id, StatusCode::Failed, Some(&e));
-            }
+            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
+            Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
         };
+        _ = archive_to_kong_data(request_id);
     });
 
     Ok(request_id)
@@ -516,17 +515,26 @@ fn return_tokens(
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply));
 }
 
-pub fn archive_to_kong_data(reply: &RemoveLiquidityReply) {
+fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        request_map::archive_request_to_kong_data(reply.request_id);
-        for claim_id in reply.claim_ids.iter() {
-            claim_map::archive_claim_to_kong_data(*claim_id);
+        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
+        let request = requests.first().ok_or("Request not found")?;
+        request_map::archive_request_to_kong_data(request.request_id);
+        match request.reply {
+            Reply::RemoveLiquidity(ref reply) => {
+                for claim_id in reply.claim_ids.iter() {
+                    claim_map::archive_claim_to_kong_data(*claim_id);
+                }
+                for transfer_id_reply in reply.transfer_ids.iter() {
+                    transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+                }
+                tx_map::archive_tx_to_kong_data(reply.tx_id);
+            }
+            _ => Err("Invalid reply type".to_string())?,
         }
-        for transfer_id_reply in reply.transfer_ids.iter() {
-            transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
-        }
-        tx_map::archive_tx_to_kong_data(reply.tx_id);
     }
+
+    Ok(())
 }
 
 /// api to validate remove_liquidity for SNS proposals

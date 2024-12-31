@@ -4,27 +4,33 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Panel from "$lib/components/common/Panel.svelte";
-  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
   import TokenList from "./TokenList.svelte";
-  import { kongDB } from "$lib/services/db";
-  import { liveQuery } from "dexie";
   import { auth } from "$lib/services/auth";
   import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
   import TransactionHistory from "./TransactionHistory.svelte";
   import PoolList from "./PoolList.svelte";
-  import AddCustomTokenModal from "./AddCustomTokenModal.svelte";
   import ButtonV2 from "../common/ButtonV2.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
+
+  let WalletProviderComponent: any;
+  let AddCustomTokenModalComponent: any;
+
+  async function loadWalletProvider() {
+    const module = await import('$lib/components/sidebar/WalletProvider.svelte');
+    WalletProviderComponent = module.default;
+  }
+
+  async function loadAddCustomTokenModal() {
+    const module = await import('./AddCustomTokenModal.svelte');
+    AddCustomTokenModalComponent = module.default;
+  }
 
   export let onClose: () => void;
 
   let activeTab: "tokens" | "pools" | "history" = "tokens";
   let isExpanded = false;
-  let isMobile = false;
   let showAddTokenModal = false;
-
 
   sidebarStore.subscribe((state) => {
     isExpanded = state.isExpanded;
@@ -37,12 +43,6 @@
           | "tokens"
           | "pools"
           | "history") || "tokens";
-      const updateDimensions = () => {
-        isMobile = window.innerWidth <= 768;
-      };
-      updateDimensions();
-      window.addEventListener("resize", updateDimensions);
-      return () => window.removeEventListener("resize", updateDimensions);
     }
   });
 
@@ -56,26 +56,10 @@
       localStorage.setItem("sidebarActiveTab", tab);
     }
   }
-
-  // Live database subscriptions with debug logging
-  const tokens = liveQuery(async () => {
-    const dbTokens = await kongDB.tokens.toArray();
-    return dbTokens;
-  });
-
-  const pools = liveQuery(async () => {
-    const dbPools = await kongDB.pools.toArray();
-    return dbPools;
-  });
-
-  const transactions = liveQuery(async () => {
-    const dbTransactions = await kongDB.transactions.toArray();
-    return dbTransactions;
-  });
 </script>
 
 {#if $sidebarStore.isOpen}
-  <div class="sidebar-root">
+  <div class="fixed inset-0 z-100 isolation-isolate pointer-events-none">
     <div
       class="backdrop"
       in:fade|local={{ duration: 150 }}
@@ -86,36 +70,27 @@
       aria-label="Close sidebar"
     />
     {#if !$auth.isConnected}
-      <Modal
-        isOpen={true}
-        title="Connect Wallet"
-        onClose={handleClose}
-        width="440px"
-        height="auto"
-        variant="transparent"
-        className="wallet-modal"
-      >
-        <div class="wallet-connect-container">
-
-          <div class="wallet-connect-body">
-            <WalletProvider
-              on:login={async () => {
-                await tick();
-                setActiveTab("tokens");
-              }}
-            />
-          </div>
-          <div class="wallet-connect-footer">
-            <p class="text-xs text-kong-text-secondary text-center pb-4">
-              Rumble in the crypto jungle at <a href="#" class="text-kong-primary hover:text-kong-primary-hover">KongSwap.io</a>.
-            </p>
-          </div>
-        </div>
-      </Modal>
+      {#await loadWalletProvider()}
+        <div class="wallet-loading-placeholder">Loading...</div>
+      {:then}
+        {#if WalletProviderComponent}
+          <svelte:component 
+            this={WalletProviderComponent}
+            on:login={async () => {
+              await tick();
+              setActiveTab("tokens");
+            }}
+          />
+        {/if}
+      {/await}
     {:else}
-      <div class="sidebar-container" role="dialog" aria-modal="true">
+      <div
+        class="fixed inset-0 z-[2] isolation-isolate pointer-events-none"
+        role="dialog"
+        aria-modal="true"
+      >
         <div
-          class={`sidebar-wrapper ${isExpanded ? "expanded" : ""}`}
+          class={`sidebar-wrapper ${isExpanded ? "inset-1rem w-auto" : ""}`}
           in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
           out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
         >
@@ -125,33 +100,41 @@
             variant="solid"
             className="sidebar-panel !bg-kong-bg-dark !py-0"
           >
-            <div class="sidebar-layout !rounded-b-lg">
+            <div
+              class="grid grid-rows-auto-1fr-auto flex-1 min-h-full overflow-hidden !rounded-b-lg"
+            >
               <!-- Header Section -->
-              <header class="sidebar-header">
+              <header class="min-h-0">
                 <SidebarHeader {onClose} {activeTab} {setActiveTab} />
               </header>
 
               <!-- Main Content Section -->
-              <main class="sidebar-content px-2 !rounded-t-none !rounded-b-lg">
-                <div class="content-container bg-kong-bg-light !rounded-t-none border-l !rounded-b-lg border-b border-r border-kong-border">
+              <main
+                class="min-h-0 px-2 !rounded-t-none !rounded-b-lg flex-1"
+              >
+                <div
+                  class="flex flex-col flex-1 h-full gap-1 rounded-lg bg-kong-bg-light !rounded-t-none border-l !rounded-b-lg border-b border-r border-kong-border"
+                >
                   {#if activeTab === "tokens"}
-                    <TokenList tokens={$tokens || []} />
+                    <TokenList />
                   {:else if activeTab === "pools"}
-                    <PoolList pools={$pools || []} on:close={handleClose} />
+                    <PoolList on:close={handleClose} />
                   {:else if activeTab === "history"}
-                    <TransactionHistory transactions={$transactions || []} />
+                    <TransactionHistory />
                   {/if}
                 </div>
               </main>
 
               <!-- Footer Section -->
-              <footer class="border-t border-kong-border py-1 mx-2">
+              <footer
+                class="px-4 pt-2 border-t border-kong-border/30 backdrop-blur-sm"
+              >
                 <div class="flex justify-end">
-                  <ButtonV2 
+                  <ButtonV2
                     variant="transparent"
                     theme="accent-blue"
-                    className="add-token-button" 
-                    on:click={() => showAddTokenModal = true}
+                    className="add-token-button mb-1"
+                    on:click={() => (showAddTokenModal = true)}
                   >
                     Import Token
                   </ButtonV2>
@@ -161,9 +144,16 @@
           </Panel>
 
           {#if showAddTokenModal}
-            <AddCustomTokenModal
-              on:close={() => (showAddTokenModal = false)}
-            />
+            {#await loadAddCustomTokenModal()}
+              <!-- Optional loading state -->
+            {:then}
+              {#if AddCustomTokenModalComponent}
+                <svelte:component 
+                  this={AddCustomTokenModalComponent}
+                  on:close={() => (showAddTokenModal = false)}
+                />
+              {/if}
+            {/await}
           {/if}
         </div>
       </div>
@@ -172,14 +162,6 @@
 {/if}
 
 <style scoped lang="postcss">
-  .sidebar-root {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    isolation: isolate;
-    pointer-events: none;
-  }
-
   .backdrop {
     position: fixed;
     inset: 0;
@@ -188,14 +170,6 @@
     -webkit-backdrop-filter: blur(4px);
     pointer-events: auto;
     cursor: pointer;
-  }
-
-  .sidebar-container {
-    position: fixed;
-    inset: 0;
-    z-index: 2;
-    display: grid;
-    pointer-events: none;
   }
 
   .sidebar-wrapper {
@@ -211,34 +185,9 @@
     pointer-events: auto;
   }
 
-  .sidebar-wrapper.expanded {
-    inset: 1rem;
-    width: auto;
-  }
-
   .sidebar-wrapper :global(.panel) {
     backdrop-filter: blur(20px);
     height: 100%;
-    display: grid;
-  }
-
-  .sidebar-layout {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .sidebar-header {
-    min-height: 0;
-  }
-
-  .sidebar-content {
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
     display: grid;
   }
 
@@ -252,14 +201,6 @@
     .sidebar-wrapper.expanded {
       inset: 0;
     }
-  }
-
-  .content-container {
-    @apply flex flex-col gap-2 rounded-lg;
-  }
-
-  .wallet-connect-container {
-    @apply flex flex-col gap-6;
   }
 
   .wallet-connect-header {
@@ -276,36 +217,86 @@
 
   :global(.wallet-modal) {
     @apply relative overflow-hidden;
-    background: linear-gradient(180deg, #0B1026 0%, #0A0F1F 100%);
+    background: linear-gradient(180deg, #0b1026 0%, #0a0f1f 100%);
   }
 
   :global(.wallet-modal::before) {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background: 
-      radial-gradient(circle at 20% 35%, rgba(51, 153, 255, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 85% 24%, rgba(0, 217, 255, 0.12) 0%, transparent 45%),
-      radial-gradient(circle at 10% 55%, rgba(51, 153, 255, 0.15) 0%, transparent 45%),
-      radial-gradient(circle at 70% 75%, rgba(51, 153, 255, 0.12) 0%, transparent 40%);
+    background: radial-gradient(
+        circle at 20% 35%,
+        rgba(51, 153, 255, 0.15) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 85% 24%,
+        rgba(0, 217, 255, 0.12) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 10% 55%,
+        rgba(51, 153, 255, 0.15) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 70% 75%,
+        rgba(51, 153, 255, 0.12) 0%,
+        transparent 40%
+      );
     pointer-events: none;
     opacity: 0.6;
   }
 
   :global(.wallet-modal::after) {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background-image: 
-      radial-gradient(1.5px 1.5px at 10% 10%, rgba(255, 255, 255, 0.9) 0%, transparent 100%),
-      radial-gradient(1.5px 1.5px at 20% 20%, rgba(255, 255, 255, 0.8) 0%, transparent 100%),
-      radial-gradient(2px 2px at 30% 30%, rgba(255, 255, 255, 0.9) 0%, transparent 100%),
-      radial-gradient(2px 2px at 40% 40%, rgba(255, 255, 255, 0.8) 0%, transparent 100%),
-      radial-gradient(1px 1px at 50% 50%, rgba(255, 255, 255, 0.7) 0%, transparent 100%),
-      radial-gradient(1.5px 1.5px at 60% 60%, rgba(255, 255, 255, 0.8) 0%, transparent 100%),
-      radial-gradient(2px 2px at 70% 70%, rgba(255, 255, 255, 0.9) 0%, transparent 100%),
-      radial-gradient(1px 1px at 80% 80%, rgba(255, 255, 255, 0.8) 0%, transparent 100%),
-      radial-gradient(1.5px 1.5px at 90% 90%, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
+    background-image: radial-gradient(
+        1.5px 1.5px at 10% 10%,
+        rgba(255, 255, 255, 0.9) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1.5px 1.5px at 20% 20%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        2px 2px at 30% 30%,
+        rgba(255, 255, 255, 0.9) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        2px 2px at 40% 40%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1px 1px at 50% 50%,
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1.5px 1.5px at 60% 60%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        2px 2px at 70% 70%,
+        rgba(255, 255, 255, 0.9) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1px 1px at 80% 80%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1.5px 1.5px at 90% 90%,
+        rgba(255, 255, 255, 0.9) 0%,
+        transparent 100%
+      );
     background-size: 250px 250px;
     background-repeat: repeat;
     pointer-events: none;
@@ -315,14 +306,29 @@
 
   /* Add a third layer for more depth */
   :global(.wallet-modal .modal-body::before) {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background: 
-      radial-gradient(1px 1px at 15% 15%, rgba(255, 255, 255, 0.7) 0%, transparent 100%),
-      radial-gradient(1px 1px at 35% 35%, rgba(255, 255, 255, 0.7) 0%, transparent 100%),
-      radial-gradient(1px 1px at 55% 55%, rgba(255, 255, 255, 0.7) 0%, transparent 100%),
-      radial-gradient(1px 1px at 75% 75%, rgba(255, 255, 255, 0.7) 0%, transparent 100%);
+    background: radial-gradient(
+        1px 1px at 15% 15%,
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1px 1px at 35% 35%,
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1px 1px at 55% 55%,
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 100%
+      ),
+      radial-gradient(
+        1px 1px at 75% 75%,
+        rgba(255, 255, 255, 0.7) 0%,
+        transparent 100%
+      );
     background-size: 150px 150px;
     background-repeat: repeat;
     pointer-events: none;
@@ -373,8 +379,11 @@
     @apply px-2;
   }
 
-  .wallet-connect-footer {
-    @apply px-4 pt-2 border-t border-kong-border/30;
-    backdrop-filter: blur(8px);
+  .wallet-loading-placeholder {
+    @apply fixed inset-0 z-[2] flex items-center justify-center text-kong-text-primary;
+  }
+
+  .loading-placeholder {
+    @apply flex justify-center text-kong-text-primary py-4;
   }
 </style>

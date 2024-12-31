@@ -75,11 +75,11 @@ const getCurrentWalletId = (): string => {
 };
 
 // Create a temporary store for user pools that we'll sync later
-const userPoolsStore = writable<FE.UserPoolBalance[]>([]);
+const userPoolsStore = writable<UserPoolBalance[]>([]);
 
 export const portfolioValue = derived(
   [tokenStore, liveTokens, userPoolsStore],
-  ([$tokenStore, $liveTokens, $userPools]: [TokenState, FE.Token[], FE.UserPoolBalance[]]) => {
+  ([$tokenStore, $liveTokens, $userPools]: [TokenState, FE.Token[], UserPoolBalance[]]) => {
     // Calculate token values
     const tokenValue = ($liveTokens || []).reduce((acc, token) => {
       const balance = $tokenStore?.balances[token.canister_id]?.in_usd;
@@ -242,9 +242,4 @@ export const fromTokenDecimals = (amount: BigNumber | string, decimals: number):
     console.error('Error converting to token decimals:', error);
     return BigInt(0);
   }
-};
-
-// Export a function to sync the userPoolsStore with liveUserPools
-export const syncUserPools = (pools: FE.UserPoolBalance[]) => {
-  userPoolsStore.set(pools);
 };

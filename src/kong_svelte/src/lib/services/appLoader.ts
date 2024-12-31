@@ -1,5 +1,5 @@
 import { loadBalances, loadTokens } from "$lib/services/tokens/tokenStore";
-import { poolStore } from "$lib/services/pools/poolStore";
+import { loadPools } from "$lib/services/pools/poolStore";
 import { get, writable, type Readable } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import { updateWorkerService } from "$lib/services/updateWorkerService";
@@ -79,7 +79,7 @@ export class AppLoader {
         loadTokens(),
       ]);
 
-      await poolStore.loadPools();
+      await loadPools();
 
       // If wallet is connected, load balances
       if (wallet?.isConnected && wallet?.account?.owner) {

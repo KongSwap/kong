@@ -63,12 +63,13 @@ pub fn serialize_claim(claim: &StableClaim) -> serde_json::Value {
 }
 
 pub async fn update_claims_on_database(db_client: &Client, tokens_map: &BTreeMap<u32, u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open("./backups/claims.json")?;
-    let reader = BufReader::new(file);
-    let claim_map: BTreeMap<StableClaimId, StableClaim> = serde_json::from_reader(reader)?;
+    if let Ok(file) = File::open("./backups/claims.json") {
+        let reader = BufReader::new(file);
+        let claim_map: BTreeMap<StableClaimId, StableClaim> = serde_json::from_reader(reader)?;
 
-    for v in claim_map.values() {
-        insert_claim_on_database(v, db_client, tokens_map).await?;
+        for v in claim_map.values() {
+            insert_claim_on_database(v, db_client, tokens_map).await?;
+        }
     }
 
     Ok(())
@@ -136,12 +137,13 @@ pub async fn insert_claim_on_database(
 
 pub async fn update_claims_on_kong_data<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/claims.json");
-    let file = File::open(path)?;
-    println!("processing: {:?}", path.file_name().unwrap());
-    let mut reader = BufReader::new(file);
-    let mut contents = String::new();
-    reader.read_to_string(&mut contents)?;
-    kong_update.update_claims(&contents).await?;
+    if let Ok(file) = File::open(path) {
+        println!("processing: {:?}", path.file_name().unwrap());
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_update.update_claims(&contents).await?;
+    }
 
     Ok(())
 }

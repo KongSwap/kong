@@ -1,29 +1,11 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { fly, fade } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
+  import { fade } from "svelte/transition";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { TokenService, tokenStore } from "$lib/services/tokens";
-  import { onMount } from "svelte";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-
-  // Accept transactions prop for live data
-  export let transactions: any[] = [];
-
-  interface TransactionData {
-    ts: bigint;
-    txs: Array<any>;
-    request_id: bigint;
-    status: string;
-    tx_id: bigint;
-    pay_symbol?: string;
-    pay_chain?: string;
-    receive_symbol?: string;
-    receive_chain?: string;
-    pay_amount?: string;
-    receive_amount?: string;
-  }
+  import { TokenService } from "$lib/services/tokens";
+  import { kongDB } from "$lib/services/db";
+  import { liveQuery } from "dexie";
 
   let isLoading = false;
   let error: string | null = null;
@@ -37,6 +19,11 @@
     { id: "swap", label: "Swap" },
     { id: "pool", label: "Pool" },
   ];
+
+  const transactions = liveQuery(async () => {
+    const dbTransactions = await kongDB.transactions.toArray();
+    return dbTransactions;
+  });
 
   function processTransaction(tx: any) {
     // First check if we have a valid transaction object
@@ -127,19 +114,6 @@
   $: if ($auth.isConnected) {
     loadTransactions();
   }
-
-  onMount(() => {
-    // Poll every 30 seconds if connected
-    pollInterval = setInterval(() => {
-      if ($auth.isConnected) {
-        loadTransactions();
-      }
-    }, 30000);
-
-    return () => {
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  });
 </script>
 
 <div class="transaction-history-wrapper">
@@ -269,7 +243,7 @@
 
 <style lang="postcss">
   .transaction-history-wrapper {
-    @apply flex flex-col h-full bg-kong-bg-dark/20;
+    @apply flex flex-col h-full bg-kong-bg-dark/20  min-h-[87vh];
   }
 
   .tab-button {

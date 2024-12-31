@@ -5,17 +5,21 @@ declare global {
   }
 
   interface UserPoolBalance {
-    amount_0: bigint;
-    amount_1: bigint;
-    balance: bigint;
+    id: string;
+    address_0?: string;
+    address_1?: string;
+    amount_0: string;
+    amount_1: string;
+    balance: string;
     name: string;
     symbol: string;
-    symbol_0: string;
-    symbol_1: string;
-    ts: bigint;
-    usd_amount_0: number;
-    usd_amount_1: number;
-    usd_balance: number;
+    symbol_0?: string;
+    symbol_1?: string;
+    ts: string;
+    usd_amount_0?: number;
+    usd_amount_1?: number;
+    usd_balance?: number;
+    timestamp?: number;
   }
 
   interface Transaction {

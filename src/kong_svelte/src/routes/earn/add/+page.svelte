@@ -5,10 +5,10 @@
   import { goto } from "$app/navigation";
   import { PoolService } from "$lib/services/pools/PoolService";
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
-  import { poolStore } from "$lib/services/pools/poolStore";
   import { browser } from "$app/environment";
   import { toastStore } from "$lib/stores/toastStore";
   import { livePools } from "$lib/services/pools/poolStore";
+  
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
   let amount0 = "";
@@ -145,7 +145,7 @@
         if (status.statuses.includes('Success')) {
             console.log('Success status found, showing toast');
             toastStore.success("Successfully added liquidity to the pool");
-            await poolStore.loadUserPoolBalances();
+            await PoolService.fetchUserPoolBalances();
             showConfirmation = false;
             loading = false;
             goto("/pools");

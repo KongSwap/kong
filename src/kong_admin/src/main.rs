@@ -50,6 +50,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let tokens_map;
+    let pools_map;
+    if args.contains(&"--database".to_string()) {
+        // Dump to database
+        users::update_users_on_database(&db_client).await?;
+        tokens_map = tokens::update_tokens_on_database(&db_client).await?;
+        pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
+        lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
+        requests::update_requests_on_database(&db_client).await?;
+        claims::update_claims_on_database(&db_client, &tokens_map).await?;
+        transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
+        txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
+    } else {
+        tokens_map = tokens::load_tokens_from_database(&db_client).await?;
+        pools_map = pools::load_pools_from_database(&db_client).await?;
+    }
+
     let (replica_url, is_mainnet) = if args.contains(&"--mainnet".to_string()) {
         (MAINNET_REPLICA, true)
     } else {
@@ -57,27 +74,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let identity = create_identity_from_pem_file(dfx_pem_file);
     let agent = create_agent(replica_url, identity, is_mainnet).await?;
-    let kong_backend = KongBackend::new(&agent).await;
-    let kong_data = KongData::new(&agent, is_mainnet).await;
-
-    let tokens_map = tokens::load_tokens_from_database(&db_client).await?;
-    let pools_map = pools::load_pools_from_database(&db_client).await?;
 
     if args.contains(&"--updates".to_string()) {
+        let kong_data = KongData::new(&agent, is_mainnet).await;
         get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
-    } else if args.contains(&"--database".to_string()) {
-        // Dump to database
-        users::update_users_on_database(&db_client).await?;
-        let tokens_map = tokens::update_tokens_on_database(&db_client).await?;
-        let pools_map = pools::update_pools_on_database(&db_client, &tokens_map).await?;
-        lp_tokens::update_lp_tokens_on_database(&db_client, &tokens_map).await?;
-        requests::update_requests_on_database(&db_client).await?;
-        claims::update_claims_on_database(&db_client, &tokens_map).await?;
-        transfers::update_transfers_on_database(&db_client, &tokens_map).await?;
-        txs::update_txs_on_database(&db_client, &tokens_map, &pools_map).await?;
-    } else if args.contains(&"--kong_backend".to_string()) {
+    }
+
+    if args.contains(&"--kong_backend".to_string()) {
+        let kong_backend = KongBackend::new(&agent).await;
         // Dump to kong_backend
-        // kong_settings::update_kong_settings(&kong_backend).await?;
         users::update_users(&kong_backend).await?;
         tokens::update_tokens(&kong_backend).await?;
         pools::update_pools(&kong_backend).await?;
@@ -86,9 +91,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // claims::update_claims(&kong_backend).await?;
         // transfers::update_transfers(&kong_backend).await?;
         // txs::update_txs(&kong_backend).await?;
-    } else if args.contains(&"--kong_data".to_string()) {
+    }
+
+    if args.contains(&"--kong_data".to_string()) {
+        let kong_data = KongData::new(&agent, is_mainnet).await;
         // Dump to kong_data
-        //kong_settings::update_kong_settings(&kong_data).await?;
         users::update_users(&kong_data).await?;
         tokens::update_tokens(&kong_data).await?;
         pools::update_pools(&kong_data).await?;

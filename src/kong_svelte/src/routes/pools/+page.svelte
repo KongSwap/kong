@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { formatBalance } from '$lib/utils/numberFormatUtils';
-	import { sidebarStore } from '$lib/stores/sidebarStore';
+  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
   import { writable, derived } from "svelte/store";
   import {
     livePools,
@@ -30,7 +30,7 @@
   import UserPoolList from "$lib/components/earn/UserPoolList.svelte";
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
-    import { formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -41,7 +41,7 @@
   let isMobile = writable(false);
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
-  const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
+  const KONG_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
 
   onMount(() => {
     window.addEventListener("resize", checkMobile);
@@ -59,7 +59,7 @@
   $: if (browser) {
     checkMobile();
   }
-  
+
   const tokenMap = derived(formattedTokens, ($tokens) => {
     const map = new Map();
     if ($tokens) {
@@ -77,10 +77,10 @@
 
   function toggleSort(column: string) {
     if ($poolSortColumn === column) {
-      poolSortDirection.set($poolSortDirection === 'asc' ? 'desc' : 'asc');
+      poolSortDirection.set($poolSortDirection === "asc" ? "desc" : "asc");
     } else {
       poolSortColumn.set(column);
-      poolSortDirection.set('desc');
+      poolSortDirection.set("desc");
     }
   }
 
@@ -126,20 +126,35 @@
   stats={[
     {
       label: "Volume 24H",
-      value: `${formatUsdValue(formatBalance($livePools.reduce((acc, pool) => acc + Number(pool.rolling_24h_volume), 0), 6, 2))}`,
-      icon: TrendingUp
+      value: `${formatUsdValue(
+        formatBalance(
+          $livePools.reduce(
+            (acc, pool) => acc + Number(pool.rolling_24h_volume),
+            0,
+          ),
+          6,
+          2,
+        ),
+      )}`,
+      icon: TrendingUp,
     },
     {
       label: "TVL",
-      value: `${formatUsdValue(formatBalance($livePools.reduce((acc, pool) => acc + Number(pool.tvl), 0), 6, 2))}`,
-      icon: TrendingUp
+      value: `${formatUsdValue(
+        formatBalance(
+          $livePools.reduce((acc, pool) => acc + Number(pool.tvl), 0),
+          6,
+          2,
+        ),
+      )}`,
+      icon: TrendingUp,
     },
     {
       label: "Highest APY",
-      value: `${$highestApr.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+      value: `${$highestApr.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
       icon: Flame,
-      hideOnMobile: true
-    }
+      hideOnMobile: true,
+    },
   ]}
 />
 
@@ -156,7 +171,9 @@
                 <!-- Row 1: View Toggle & Search -->
                 <div class="flex gap-2 w-full">
                   <!-- View Toggle -->
-                  <div class="flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden">
+                  <div
+                    class="flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden"
+                  >
                     <button
                       class="px-3 py-2 text-sm {$activePoolView === 'all'
                         ? 'text-kong-text-primary bg-[#60A5FA]/10'
@@ -185,14 +202,19 @@
                       bind:value={searchTerm}
                       on:input={handleSearch}
                     />
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-kong-text-secondary"
+                      fill="none"
+                      viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
                     </svg>
                   </div>
                 </div>
@@ -201,7 +223,9 @@
                 {#if $activePoolView === "all"}
                   <div class="flex gap-2 w-full">
                     <!-- Sort -->
-                    <div class="flex-1 flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden">
+                    <div
+                      class="flex-1 flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden"
+                    >
                       <select
                         bind:value={$poolSortColumn}
                         class="flex-1 bg-transparent text-kong-text-primary text-sm focus:outline-none px-3 py-2"
@@ -213,11 +237,16 @@
                       </select>
                       <div class="w-px bg-kong-border"></div>
                       <button
-                        on:click={() => poolSortDirection.update((d) => (d === "asc" ? "desc" : "asc"))}
+                        on:click={() =>
+                          poolSortDirection.update((d) =>
+                            d === "asc" ? "desc" : "asc",
+                          )}
                         class="px-3 text-[#60A5FA]"
                       >
                         <svelte:component
-                          this={$poolSortDirection === "asc" ? ArrowUp : ArrowDown}
+                          this={$poolSortDirection === "asc"
+                            ? ArrowUp
+                            : ArrowDown}
                           class="w-4 h-4"
                         />
                       </button>
@@ -252,27 +281,36 @@
                   <div class="flex items-center">
                     <div class="flex bg-transparent">
                       <button
-                        class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'all'
+                        class="px-4 py-2 transition-colors duration-200 {$activePoolView ===
+                        'all'
                           ? 'text-kong-text-primary'
                           : 'text-kong-text-secondary hover:text-kong-text-primary'}"
                         on:click={() => ($activePoolView = "all")}
                       >
                         All Pools
                       </button>
-                      <button
-                        class="px-4 py-2 transition-colors duration-200 {$activePoolView === 'user'
-                          ? 'text-kong-text-primary'
-                          : 'text-kong-text-secondary hover:text-kong-text-primary'}"
-                        on:click={() => ($activePoolView = "user")}
-                      >
-                        My Pools <span class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded">{$liveUserPools.length}</span>
-                      </button>
+                      {#if $auth.isConnected}
+                        <button
+                          class="px-4 py-2 transition-colors duration-200 {$activePoolView ===
+                          'user'
+                            ? 'text-kong-text-primary'
+                            : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+                          on:click={() => ($activePoolView = "user")}
+                        >
+                          My Pools <span
+                            class="text-xs ml-1 font-bold py-0.5 text-white/80 bg-kong-primary/80 px-1.5 rounded"
+                            >{$liveUserPools.length}</span
+                          >
+                        </button>
+                      {/if}
                     </div>
 
                     <div class="flex-1 px-4 py-2">
                       <input
                         type="text"
-                        placeholder={$isMobile == true ? "Search pools..." : "Search pools by name, symbol, or canister ID"}
+                        placeholder={$isMobile == true
+                          ? "Search pools..."
+                          : "Search pools by name, symbol, or canister ID"}
                         class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
                         bind:value={searchTerm}
                         on:input={handleSearch}
@@ -307,68 +345,84 @@
           <div class="h-full custom-scrollbar overflow-y-auto">
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
-              <div
-                class="overflow-auto {$isMobile
-                  ? ''
-                  : ''} custom-scrollbar"
-              >
+              <div class="overflow-auto {$isMobile ? '' : ''} custom-scrollbar">
                 <!-- Desktop Table View -->
-                <table class="w-full hidden md:table relative [&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4">
+                <table
+                  class="w-full hidden md:table relative [&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4"
+                >
                   <thead class="sticky top-0 z-10 bg-kong-bg-dark">
-                    <tr class="h-10 border-b border-kong-border bg-kong-bg-dark">
+                    <tr
+                      class="h-10 border-b border-kong-border bg-kong-bg-dark"
+                    >
                       <th
                         class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("pool_name")}
                       >
                         Pool
-                        <svelte:component this={getSortIcon("pool_name")} class="inline w-3.5 h-3.5 ml-1" />
+                        <svelte:component
+                          this={getSortIcon("pool_name")}
+                          class="inline w-3.5 h-3.5 ml-1"
+                        />
                       </th>
                       <th
                         class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("price")}
                       >
                         Price
-                        <svelte:component this={getSortIcon("price")} class="inline w-3.5 h-3.5 ml-1" />
+                        <svelte:component
+                          this={getSortIcon("price")}
+                          class="inline w-3.5 h-3.5 ml-1"
+                        />
                       </th>
                       <th
                         class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("tvl")}
                       >
                         TVL
-                        <svelte:component this={getSortIcon("tvl")} class="inline w-3.5 h-3.5 ml-1" />
+                        <svelte:component
+                          this={getSortIcon("tvl")}
+                          class="inline w-3.5 h-3.5 ml-1"
+                        />
                       </th>
                       <th
                         class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_volume")}
                       >
                         Volume 24H
-                        <svelte:component this={getSortIcon("rolling_24h_volume")} class="inline w-3.5 h-3.5 ml-1" />
+                        <svelte:component
+                          this={getSortIcon("rolling_24h_volume")}
+                          class="inline w-3.5 h-3.5 ml-1"
+                        />
                       </th>
                       <th
                         class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
                         on:click={() => toggleSort("rolling_24h_apy")}
                       >
                         APY
-                        <svelte:component this={getSortIcon("rolling_24h_apy")} class="inline w-3.5 h-3.5 ml-1" />
+                        <svelte:component
+                          this={getSortIcon("rolling_24h_apy")}
+                          class="inline w-3.5 h-3.5 ml-1"
+                        />
                       </th>
                     </tr>
                   </thead>
                   <tbody class="!px-4 h-full">
                     {#each $filteredLivePools as pool, i (pool.address_0 + pool.address_1)}
                       <PoolRow
-                        on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
+                        on:click={() =>
+                          goto(
+                            `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
+                          )}
                         pool={{
                           ...pool,
                           tvl: BigInt(pool.tvl),
                           rolling_24h_volume: BigInt(pool.rolling_24h_volume),
-                          displayTvl: Number(pool.tvl) / 1e6
+                          displayTvl: Number(pool.tvl) / 1e6,
                         } as BE.Pool & { displayTvl: number }}
                         tokenMap={$tokenMap}
                         isEven={i % 2 === 0}
-                        isKongPool={
-                          pool.address_0 === KONG_CANISTER_ID ||
-                          pool.address_1 === KONG_CANISTER_ID
-                        }
+                        isKongPool={pool.address_0 === KONG_CANISTER_ID ||
+                          pool.address_1 === KONG_CANISTER_ID}
                       />
                     {/each}
                   </tbody>
@@ -378,11 +432,15 @@
                 <div class="md:hidden space-y-2.5 mt-2 h-full">
                   {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <button
-                      on:click={() => goto(`/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`)}
-                      class="w-full text-left bg-kong-bg-dark rounded-lg border border-kong-border hover:border-[#60A5FA]/30 transition-all duration-200 
-                            {(pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID) 
-                              ? 'bg-gradient-to-b from-[rgba(0,255,128,0.02)] to-[rgba(0,255,128,0.01)] active:bg-[rgba(0,255,128,0.04)]' 
-                              : ''}"
+                      on:click={() =>
+                        goto(
+                          `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
+                        )}
+                      class="w-full text-left bg-kong-bg-dark rounded-lg border border-kong-border hover:border-[#60A5FA]/30 transition-all duration-200
+                            {pool.address_0 === KONG_CANISTER_ID ||
+                      pool.address_1 === KONG_CANISTER_ID
+                        ? 'bg-gradient-to-b from-[rgba(0,255,128,0.02)] to-[rgba(0,255,128,0.01)] active:bg-[rgba(0,255,128,0.04)]'
+                        : ''}"
                     >
                       <!-- Pool Header -->
                       <div class="p-3 border-b border-kong-border">
@@ -396,7 +454,9 @@
                               size={28}
                             />
                             <div>
-                              <div class="text-sm font-medium text-kong-text-primary">
+                              <div
+                                class="text-sm font-medium text-kong-text-primary"
+                              >
                                 {pool.symbol_0}/{pool.symbol_1}
                               </div>
                             </div>
@@ -411,27 +471,65 @@
                       <div class="p-3">
                         <div class="grid grid-cols-2 gap-2">
                           <div>
-                            <div class="text-xs text-kong-text-secondary mb-0.5">Price</div>
-                            <div class="text-sm font-medium text-kong-text-primary">
+                            <div
+                              class="text-xs text-kong-text-secondary mb-0.5"
+                            >
+                              Price
+                            </div>
+                            <div
+                              class="text-sm font-medium text-kong-text-primary"
+                            >
                               {getPoolPriceUsd(pool)}
                             </div>
                           </div>
                           <div>
-                            <div class="text-xs text-kong-text-secondary mb-0.5">TVL</div>
-                            <div class="text-sm font-medium text-kong-text-primary">
-                              {formatUsdValue(formatBalance(Number(pool.tvl), 6, 2))}
+                            <div
+                              class="text-xs text-kong-text-secondary mb-0.5"
+                            >
+                              TVL
+                            </div>
+                            <div
+                              class="text-sm font-medium text-kong-text-primary"
+                            >
+                              {formatUsdValue(
+                                formatBalance(Number(pool.tvl), 6, 2),
+                              )}
                             </div>
                           </div>
                           <div class="mt-2">
-                            <div class="text-xs text-kong-text-secondary mb-0.5">Volume 24h</div>
-                            <div class="text-sm font-medium text-kong-text-primary">
-                              {formatUsdValue(formatBalance(Number(pool.rolling_24h_volume), 6, 2))}
+                            <div
+                              class="text-xs text-kong-text-secondary mb-0.5"
+                            >
+                              Volume 24h
+                            </div>
+                            <div
+                              class="text-sm font-medium text-kong-text-primary"
+                            >
+                              {formatUsdValue(
+                                formatBalance(
+                                  Number(pool.rolling_24h_volume),
+                                  6,
+                                  2,
+                                ),
+                              )}
                             </div>
                           </div>
                           <div class="mt-2">
-                            <div class="text-xs text-kong-text-secondary mb-0.5">Fees 24h</div>
-                            <div class="text-sm font-medium text-kong-text-primary">
-                              {formatUsdValue(formatBalance(Number(pool.rolling_24h_lp_fee), 6, 2))}
+                            <div
+                              class="text-xs text-kong-text-secondary mb-0.5"
+                            >
+                              Fees 24h
+                            </div>
+                            <div
+                              class="text-sm font-medium text-kong-text-primary"
+                            >
+                              {formatUsdValue(
+                                formatBalance(
+                                  Number(pool.rolling_24h_lp_fee),
+                                  6,
+                                  2,
+                                ),
+                              )}
                             </div>
                           </div>
                         </div>
@@ -444,7 +542,7 @@
               <!-- User Pools View -->
               {#if $auth.isConnected}
                 <div class="h-full custom-scrollbar">
-                  <UserPoolList 
+                  <UserPoolList
                     on:poolClick={handlePoolClick}
                     searchQuery={searchTerm}
                   />

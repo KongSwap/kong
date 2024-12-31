@@ -60,11 +60,9 @@ fn user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option
 
     // user_amount_0 = reserve0 * user_lp_token_balance / lp_token_total_supply
     let token_0 = pool.token_0();
-    let symbol_0 = token_0.symbol();
     let reserve0 = nat_add(&pool.balance_0, &pool.lp_fee_0);
     let numerator = nat_multiply(&reserve0, &user_lp_token_balance);
-    let denominator = lp_token_total_supply;
-    let raw_amount_0 = nat_divide(&numerator, &denominator).unwrap_or(nat_zero());
+    let raw_amount_0 = nat_divide(&numerator, &lp_token_total_supply).unwrap_or(nat_zero());
     let amount_0 = nat_to_decimals_f64(token_0.decimals(), &raw_amount_0)?;
     let usd_amount_0 = ckusdt_amount(&token_0, &raw_amount_0)
         .and_then(|amount_0| to_ckusdt_decimals_f64(&amount_0).ok_or("Error converting amount 0 to ckUSDT".to_string()))
@@ -72,10 +70,9 @@ fn user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option
 
     // user_amount_1 = reserve1 * user_lp_token_balance / lp_token_total_supply
     let token_1 = pool.token_1();
-    let symbol_1 = token_1.symbol();
     let reserve1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
     let numerator = nat_multiply(&reserve1, &user_lp_token_balance);
-    let raw_amount_1 = nat_divide(&numerator, &denominator).unwrap_or(nat_zero());
+    let raw_amount_1 = nat_divide(&numerator, &lp_token_total_supply).unwrap_or(nat_zero());
     let amount_1 = nat_to_decimals_f64(token_1.decimals(), &raw_amount_1)?;
     let usd_amount_1 = ckusdt_amount(&token_1, &raw_amount_1)
         .and_then(|amount_1| to_ckusdt_decimals_f64(&amount_1).ok_or("Error converting amount 1 to ckUSDT".to_string()))
@@ -88,10 +85,14 @@ fn user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option
         symbol: token.symbol.clone(),
         balance,
         usd_balance,
-        symbol_0,
+        chain_0: token_0.chain(),
+        symbol_0: token_0.symbol(),
+        address_0: token_0.address(),
         amount_0,
         usd_amount_0,
-        symbol_1,
+        chain_1: token_1.chain(),
+        symbol_1: token_1.symbol(),
+        address_1: token_1.address(),
         amount_1,
         usd_amount_1,
         ts,

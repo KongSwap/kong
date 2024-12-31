@@ -3,7 +3,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import { onMount } from "svelte";
-  import { poolStore } from "$lib/services/pools";
+  import { livePools } from "$lib/services/pools/poolStore";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
 
@@ -29,7 +29,7 @@
   }
 
   // Get the pool based on selected tokens
-  $: selectedPool = $poolStore?.pools?.find(p => {
+  $: selectedPool = $livePools?.find(p => {
     if (!fromToken?.canister_id || !toToken?.canister_id) return null;
     
     return (p.address_0 === fromToken.canister_id && p.address_1 === toToken.canister_id) ||

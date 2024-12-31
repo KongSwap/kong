@@ -1,21 +1,21 @@
 <script lang="ts">
+	import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
+	import { BigNumber } from 'bignumber.js';
   import Panel from "$lib/components/common/Panel.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { livePools, liveUserPools } from "$lib/services/pools/poolStore";
 
-  export let balance: bigint = 0n;
-  export let amount0: bigint = 0n;
-  export let amount1: bigint = 0n;
-  export let symbol0: string = "";
-  export let symbol1: string = "";
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
   export let decimals: number = 8;
   export let layout: "vertical" | "horizontal" = "vertical";
+  
 
   // Calculate percentage of total pool
-  $: totalSupply = 1000000n; // TODO: Get actual total supply
-  $: poolShare = balance ? (Number(balance) / Number(totalSupply)) * 100 : 0;
-  $: hasPosition = balance && amount0 && amount1;
+  $: pool = $livePools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
+  $: userPool = $liveUserPools.find(p => p.symbol_0 === token0?.symbol && p.symbol_1 === token1?.symbol)
+  $: poolShare = new BigNumber(userPool?.balance).div(new BigNumber((pool?.balance_0 + pool?.balance_1).toString()))
+  $: hasPosition = userPool?.balance && userPool?.amount_0 && userPool?.amount_1;
   $: hasTokens = token0 && token1;
 </script>
 
@@ -36,7 +36,7 @@
           <div class="flex items-center">
             {#if hasPosition}
               <span class="text-sm text-kong-text-primary/40 font-normal">
-                {poolShare.toFixed(2)}% of pool
+                {formatToNonZeroDecimal(poolShare.toString())}% of pool
               </span>
             {:else}
               <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 whitespace-nowrap">
@@ -53,21 +53,21 @@
             <div>
               <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">LP Tokens</div>
               <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                {Number(balance)}
+                {Number(userPool?.balance)}
               </div>
             </div>
 
             <div>
-              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">{symbol0}</div>
+              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">{token0?.symbol}</div>
               <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                {Number(amount0)}
+                {Number(userPool?.amount_0)}
               </div>
             </div>
 
             <div>
-              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">{symbol1}</div>
+              <div class="text-kong-text-primary/40 text-xs uppercase tracking-wider mb-1">{token1?.symbol}</div>
               <div class="text-kong-text-primary/90 font-medium tabular-nums">
-                {Number(amount1)}
+                {Number(userPool?.amount_1)}
               </div>
             </div>
           </div>
@@ -84,7 +84,7 @@
               Current Position
             </div>
             <div class="text-kong-text-primary/40 text-xs mt-1">
-              {poolShare.toFixed(2)}% of pool
+              {pool}% of pool
             </div>
           {:else}
             <div class="flex flex-col gap-1">
@@ -114,7 +114,7 @@
               LP Tokens
             </div>
             <div class="text-kong-text-primary/90 text-lg font-medium tabular-nums">
-              {Number(balance)}
+              {Number(userPool?.balance)}
             </div>
           </div>
 
@@ -126,20 +126,20 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages tokens={[token0]} size={24} />
-                  <span class="text-kong-text-primary/90 font-medium">{symbol0}</span>
+                  <span class="text-kong-text-primary/90 font-medium">{token0?.symbol}</span>
                 </div>
                 <span class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(amount0)}
+                  {Number(userPool?.amount_0)}
                 </span>
               </div>
               <div class="h-px bg-white/5" />
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <TokenImages tokens={[token1]} size={24} />
-                  <span class="text-kong-text-primary/90 font-medium">{symbol1}</span>
+                  <span class="text-kong-text-primary/90 font-medium">{token1?.symbol}</span>
                 </div>
                 <span class="text-kong-text-primary/90 font-medium tabular-nums">
-                  {Number(amount1)}
+                  {Number(userPool?.amount_1)}
                 </span>
               </div>
             </div>

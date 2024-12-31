@@ -5,7 +5,7 @@
 /// <reference lib="webworker" />
 
 import { loadBalances, loadTokens } from "./tokens/tokenStore";
-import { poolStore } from "./pools/poolStore";
+import { loadPools } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
 import * as Comlink from "comlink";
@@ -129,7 +129,7 @@ class UpdateWorkerService {
     try {
       await Promise.all([
         loadBalances(walletId),
-        poolStore.loadPools(true),
+        loadPools(),
       ]);
     } catch (error) {
       console.error("Error during force update:", error);
@@ -145,7 +145,7 @@ class UpdateWorkerService {
   }
 
   private async updatePools() {
-    await poolStore.loadPools();
+    await loadPools();
   }
 
   private async startUpdates() {

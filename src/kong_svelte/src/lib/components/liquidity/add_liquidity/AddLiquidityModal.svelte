@@ -358,16 +358,6 @@
       replaceState(newUrl, null);
       updateBalances();
     }
-
-    function getCurrentStep(): string {
-      const currentStep = statusSteps.find(step => !step.completed);
-      return currentStep ? currentStep.label : 'Success';
-    }
-
-    function handleClose() {
-      showModal = false;
-      onClose?.();
-    }
   </script>
 
     <AddLiquidityForm

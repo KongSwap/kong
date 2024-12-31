@@ -1,10 +1,13 @@
 <script lang="ts">
-	import { formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import AccountDetails from "./AccountDetails.svelte";
   import { accountStore } from "$lib/stores/accountStore";
   import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
   import { RefreshCw, Wallet, Coins, History, Droplets } from "lucide-svelte";
-  import { loadBalances, portfolioValue } from "$lib/services/tokens/tokenStore";
+  import {
+    loadBalances,
+    portfolioValue,
+  } from "$lib/services/tokens/tokenStore";
   import { auth } from "$lib/services/auth";
   import PortfolioModal from "$lib/components/portfolio/PortfolioModal.svelte";
   import { tooltip } from "$lib/actions/tooltip";
@@ -15,7 +18,6 @@
 
   let windowWidth: number;
   let isRefreshing = false;
-  let showAccountDetails = false;
   let showPortfolioModal = false;
 
   const tabs: { id: "tokens" | "pools" | "history"; icon: any }[] = [
@@ -37,7 +39,6 @@
 
   async function handleDisconnect() {
     await auth.disconnect();
-    showAccountDetails = false;
     onClose();
   }
 
@@ -50,155 +51,124 @@
 
 <header class="header">
   <div class="header-content p-2 flex items-center justify-between">
-    {#if $auth.isConnected}
-      <!-- Left Section -->
-      <div class="left-section flex items-center gap-2">
-        <button
-          class="wallet-button flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
-          on:click={() => accountStore.showAccountDetails()}
-          use:tooltip={{ text: "View Account Details" }}
-        >
-          <Wallet size={16} />  Addresses
-        </button>
+    <!-- Left Section -->
+    <div class="left-section flex items-center gap-2">
+      <button
+        class="wallet-button flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
+        on:click={() => accountStore.showAccountDetails()}
+        use:tooltip={{ text: "View Account Details" }}
+      >
+        <Wallet size={16} /> Addresses
+      </button>
 
-        <button
-          class="portfolio-button flex items-center text-sm font-mono font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
-          on:click={handlePortfolioClick}
-          use:tooltip={{ text: "View Portfolio Distribution" }}
-        >
-          {#if isRefreshing}
-            <LoadingIndicator />
-          {:else}
-            {formatUsdValue($portfolioValue || 0)}
-          {/if}
-        </button>
+      <button
+        class="portfolio-button flex items-center text-sm font-mono font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
+        on:click={handlePortfolioClick}
+        use:tooltip={{ text: "View Portfolio Distribution" }}
+      >
+        {#if isRefreshing}
+          <LoadingIndicator />
+        {:else}
+          {formatUsdValue($portfolioValue || 0)}
+        {/if}
+      </button>
 
-        <button
-          class="refresh-button text-gray-400 hover:text-white transition-colors"
-          on:click={handleReload}
-          disabled={isRefreshing}
-          use:tooltip={{ text: "Refresh Portfolio" }}
-        >
-          <span class:animate-spin={isRefreshing}>
-            <RefreshCw size={16} />
-          </span>
-        </button>
-      </div>
+      <button
+        class="refresh-button text-gray-400 hover:text-white transition-colors"
+        on:click={handleReload}
+        disabled={isRefreshing}
+        use:tooltip={{ text: "Refresh Portfolio" }}
+      >
+        <span class:animate-spin={isRefreshing}>
+          <RefreshCw size={16} />
+        </span>
+      </button>
+    </div>
 
-      <!-- Right Section -->
-      <div class="right-section flex items-center gap-1.5">
-        <button
-          class="action-button"
-          on:click={handleDisconnect}
-          use:tooltip={{ text: "Disconnect Wallet" }}
+    <!-- Right Section -->
+    <div class="right-section flex items-center gap-1.5">
+      <button
+        class="action-button"
+        on:click={handleDisconnect}
+        use:tooltip={{ text: "Disconnect Wallet" }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-            <line x1="12" y1="2" x2="12" y2="12"></line>
-          </svg>
-        </button>
-        <button
-          class="action-button"
-          on:click={onClose}
-          use:tooltip={{ text: "Close Sidebar" }}
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+          <line x1="12" y1="2" x2="12" y2="12"></line>
+        </svg>
+      </button>
+      <button
+        class="action-button"
+        on:click={onClose}
+        use:tooltip={{ text: "Close Sidebar" }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-    {:else}
-      <div class="flex flex-col px-4 py-6">
-        <div class="flex flex-col">
-          <div class="flex items-center gap-3 mb-1">
-            <button
-              class="back-button p-1.5 -ml-1.5 rounded-xl hover:bg-kong-primary/25 border border-transparent hover:border-kong-primary transition-all duration-200"
-              on:click={onClose}
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="24" 
-                height="24" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round"
-                class="text-kong-text-secondary hover:text-kong-text-primary transition-colors"
-              >
-                <path d="m15 18-6-6 6-6"/>
-              </svg>
-            </button>
-            <h1 class="text-2xl font-semibold text-kong-text-primary">
-              Connect Wallet
-            </h1>
-          </div>
-          <p class="text-sm text-kong-text-secondary">
-            Choose your preferred wallet to connect
-          </p>
-        </div>
-      </div>
-    {/if}
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- Tabs Navigation -->
-  {#if $auth.isConnected}
-    <nav class="flex rounded-t-lg bg-kong-bg-light/50 border border-kong-border mx-2">
-      {#each tabs as { id, icon } (id)}
-        <button
-          class="tab-button flex-1 relative"
-          class:active={activeTab === id}
-          on:click={() => setActiveTab(id)}
-          role="tab"
-          aria-selected={activeTab === id}
-          aria-controls={`${id}-panel`}
-          id={`${id}-tab`}
-        >
-          <div class="flex items-center justify-center gap-1.5 py-2">
-            {#if activeTab === id}
-              <div class="absolute inset-0 bg-kong-accent-blue/5" />
-              <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-kong-accent-blue" />
-            {/if}
-            <svelte:component this={icon} size={14} />
-            <span class="relative z-10 text-xs font-semibold">
-              {id.charAt(0).toUpperCase() + id.slice(1)}
-            </span>
-          </div>
-        </button>
-      {/each}
-    </nav>
-  {/if}
+
+  <nav
+    class="flex rounded-t-lg bg-kong-bg-light/50 border border-kong-border mx-2"
+  >
+    {#each tabs as { id, icon } (id)}
+      <button
+        class="tab-button flex-1 relative"
+        class:active={activeTab === id}
+        on:click={() => setActiveTab(id)}
+        role="tab"
+        aria-selected={activeTab === id}
+        aria-controls={`${id}-panel`}
+        id={`${id}-tab`}
+      >
+        <div class="flex items-center justify-center gap-1.5 py-2">
+          {#if activeTab === id}
+            <div class="absolute inset-0 bg-kong-accent-blue/5" />
+            <div
+              class="absolute bottom-0 left-0 right-0 h-0.5 bg-kong-accent-blue"
+            />
+          {/if}
+          <svelte:component this={icon} size={14} />
+          <span class="relative z-10 text-xs font-semibold">
+            {id.charAt(0).toUpperCase() + id.slice(1)}
+          </span>
+        </div>
+      </button>
+    {/each}
+  </nav>
 </header>
 
 <AccountDetails />
 
 <PortfolioModal
   isOpen={showPortfolioModal}
-  onClose={() => showPortfolioModal = false}
+  onClose={() => (showPortfolioModal = false)}
 />
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .header {
     @apply min-w-[250px] shadow-sm w-full
-           bg-gradient-to-b from-kong-bg-dark/30 to-transparent ;
+           bg-gradient-to-b from-kong-bg-dark/30 to-transparent;
   }
 
   .header-content {
@@ -250,9 +220,14 @@
   @keyframes spin {
     from {
       transform: rotate(0deg);
-    } 
+    }
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* Override only the bottom padding for the header-content */
+  :global(.header-content) {
+    padding-bottom: 0 !important;
   }
 </style>

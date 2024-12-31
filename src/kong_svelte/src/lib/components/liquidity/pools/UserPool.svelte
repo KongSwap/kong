@@ -6,11 +6,11 @@
   import { liveTokens, loadBalance } from "$lib/services/tokens/tokenStore";
   import { PoolService } from "$lib/services/pools";
   import { livePools } from "$lib/services/pools/poolStore";
-  import { poolStore } from "$lib/services/pools/poolStore";
   import { toastStore } from "$lib/stores/toastStore";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { BigNumber } from 'bignumber.js';
 
   const dispatch = createEventDispatcher();
 
@@ -49,8 +49,6 @@
   // Get token objects for images
   $: token0 = $liveTokens.find((t) => t.symbol === pool.symbol_0);
   $: token1 = $liveTokens.find((t) => t.symbol === pool.symbol_1);
-
-  // Get the actual pool data with APY
   $: actualPool = $livePools.find(
     (p) => p.symbol_0 === pool.symbol_0 && p.symbol_1 === pool.symbol_1,
   );
@@ -70,11 +68,14 @@
   }
 
   function setPercentage(percent: number) {
-    const maxAmount = parseFloat(pool.balance);
-    // Format to 8 decimal places to match LP token precision
-    removeLiquidityAmount = (
-      Math.floor(((maxAmount * percent) / 100) * 1e8) / 1e8
-    ).toString();
+    const maxAmount = new BigNumber(pool.balance);
+    const percentage = new BigNumber(percent).dividedBy(100);
+    // Calculate amount with BigNumber and format to token decimals
+    const amount = maxAmount
+      .multipliedBy(percentage)
+      .decimalPlaces(token0.decimals, BigNumber.ROUND_DOWN)
+    
+      removeLiquidityAmount = amount.gt(0) ? amount.toString() : "0"
     handleInputChange();
   }
 
@@ -180,9 +181,8 @@
           await Promise.all([
             loadBalance(token0.canister_id, true),
             loadBalance(token1.canister_id, true),
-            poolStore.loadUserPoolBalances(),
+            PoolService.fetchUserPoolBalances(true),
           ]);
-          break;
         } else if (requestStatus.reply?.Failed) {
           throw new Error(requestStatus.reply.Failed || "Transaction failed");
         } else {
@@ -195,20 +195,20 @@
         throw new Error("Operation timed out");
       }
 
-      // Refresh the balances
-      await Promise.all([
-        loadBalance(token0.canister_id, true),
-        loadBalance(token1.canister_id, true),
-        poolStore.loadUserPoolBalances(),
-      ]);
-
-      // Reset state and dispatch event
+      // Close modal and reset state
+      showModal = false;
       isRemoving = false;
       error = null;
       removeLiquidityAmount = "";
       estimatedAmounts = { amount0: "0", amount1: "0" };
       dispatch("liquidityRemoved");
     } catch (err) {
+      // Ensure we still refresh balances even on error
+      await Promise.all([
+        PoolService.fetchUserPoolBalances(true),
+        loadBalance(token0.canister_id, true),
+        loadBalance(token1.canister_id, true),
+      ]);
       console.error("Error removing liquidity:", err);
       error = err.message;
       isRemoving = false;
@@ -266,7 +266,7 @@
 <Modal
   bind:isOpen={showModal}
   onClose={() => (showModal = false)}
-  variant="transparent"
+  variant="solid"
   width="min(420px, 95vw)"
   height="auto"
   className="!p-0 !flex !flex-col !rounded-md !overflow-hidden"
@@ -278,6 +278,22 @@
 
   <div class="pool-details">
     <div class="pool-header">
+      {#if activeTab === "earnings"}
+      <div class="stats-wrapper">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Total Value</span>
+            <span class="stat-value !text-kong-text-primary"
+              >${formatToNonZeroDecimal(pool.usd_balance)}</span
+            >
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">APY</span>
+            <span class="stat-value">{actualPool?.rolling_24h_apy}%</span>
+          </div>
+        </div>
+      </div>
+    {/if}
       <div class="token-amounts">
         <div class="token-row">
           <TokenImages tokens={[token0]} size={20} />
@@ -318,23 +334,6 @@
           </div>
         </div>
       </div>
-
-      {#if activeTab === "earnings"}
-        <div class="stats-wrapper">
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-label">Total Value</span>
-              <span class="stat-value !text-kong-text-primary"
-                >${formatToNonZeroDecimal(pool.usd_balance)}</span
-              >
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">APY</span>
-              <span class="stat-value">{actualPool.rolling_24h_apy}%</span>
-            </div>
-          </div>
-        </div>
-      {/if}
     </div>
 
     <div class="content-section">
@@ -492,7 +491,7 @@
   }
 
   .stats-grid {
-    @apply grid grid-cols-2 gap-3 p-4 rounded-xl bg-kong-bg-light
+    @apply grid grid-cols-2 gap-3 px-4 py-2 rounded-xl bg-kong-bg-light
            backdrop-blur-sm border border-kong-border/5;
   }
 

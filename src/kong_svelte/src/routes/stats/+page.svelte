@@ -183,14 +183,13 @@
 
   // Price change class functions
   function getPriceClass(token: FE.Token): string {
-    const flashClass =
-      token.metrics?.price > token.metrics?.previous_price
-        ? "flash-green"
-        : token.metrics?.price < token.metrics?.previous_price
-          ? "flash-red"
-          : "";
-
-    return flashClass;
+    if (!token.metrics?.price || !token.metrics?.previous_price) return "";
+    const currentPrice = Number(token.metrics.price);
+    const previousPrice = Number(token.metrics.previous_price);
+    
+    if (isNaN(currentPrice) || isNaN(previousPrice) || currentPrice === previousPrice) return "";
+    
+    return currentPrice > previousPrice ? "flash-green" : "flash-red";
   }
 
   function getTrendClass(token: FE.Token): string {
@@ -308,12 +307,6 @@
   // Update StatsTableRow to pass the favorite status
   function isTokenFavorited(tokenId: string): boolean {
     return $favoriteTokenIds.includes(tokenId);
-  }
-
-  function formatLargeNumber(num: number): string {
-    return num > 1000000
-      ? (num / 1000000).toFixed(2) + "M"
-      : (num / 1000).toFixed(2) + "K";
   }
 </script>
 

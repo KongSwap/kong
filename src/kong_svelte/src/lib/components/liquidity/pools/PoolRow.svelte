@@ -3,13 +3,11 @@
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
-  import { Flame } from 'lucide-svelte';
 
   export let pool: BE.Pool & { displayTvl: number };
   export let tokenMap: Map<string, any>;
   export let isEven: boolean;
   export let isKongPool: boolean;
-  export let showFireIcon: boolean = false;
 
   let isMobile = false;
   let showDetailsButton = true;
@@ -44,13 +42,6 @@
         <div class="pool-details">
           <div class="pool-name">
             {pool.symbol_0}/{pool.symbol_1}
-            <!-- Debug info -->
-            {#if showFireIcon}
-              <Flame class="w-3.5 h-3.5 text-orange-400" />
-            {:else}
-              <!-- Show a placeholder to verify the condition -->
-              <span class="text-xs text-gray-500">({showFireIcon ? 'true' : 'false'})</span>
-            {/if}
           </div>
         </div>
       </div>

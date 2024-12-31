@@ -210,7 +210,7 @@
   });
 </script>
 
-<div class="chart-container pb-4">
+<div class="chart-container pb-4 mb-1">
   {#if isLoading}
     <div class="loading-overlay">
       <svg class="spinner" viewBox="0 0 50 50">

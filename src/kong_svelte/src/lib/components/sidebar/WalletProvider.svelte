@@ -6,7 +6,9 @@
     selectedWalletId,
   } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from '$lib/utils/browser';
-  
+  import Modal from "$lib/components/common/Modal.svelte";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+
   const dispatch = createEventDispatcher();
   let connecting = false;
   let plugDialog: any;
@@ -55,6 +57,18 @@
   }
 </script>
 
+<Modal
+        isOpen={true}
+        title="Connect Wallet"
+        onClose={() => sidebarStore.collapse()}
+        width="440px"
+        height="auto"
+        variant="transparent"
+        className="wallet-modal"
+      >
+        <div class="flex flex-col gap-6">
+
+          <div class="wallet-connect-body">
 <div class="wallet-list">
   {#each filteredWallets as wallet}
     <button
@@ -77,6 +91,14 @@
     </button>
   {/each}
 </div>
+</div>
+<div class="flex flex-col gap-2 ">
+  <p class="text-xs text-kong-text-secondary text-center pb-4">
+    Rumble in the crypto jungle at <a href="#" class="text-kong-primary hover:text-kong-primary-hover">KongSwap.io</a>.
+  </p>
+</div>
+</div>
+</Modal>
 
 {#if plugDialog}
   <svelte:component 

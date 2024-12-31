@@ -1,6 +1,5 @@
 // TokenService.ts
 import { auth, canisterIDLs } from "$lib/services/auth";
-import { PoolService } from "../../services/pools/PoolService";
 import {
   formatToNonZeroDecimal,
   formatBalance,
@@ -11,7 +10,7 @@ import {
   ICP_CANISTER_ID,
   KONG_BACKEND_CANISTER_ID,
 } from "$lib/constants/canisterConstants";
-import { poolStore } from "$lib/services/pools/poolStore";
+import { loadPools } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { kongDB } from "../db";
@@ -27,8 +26,8 @@ export class TokenService {
     string,
     { price: number; timestamp: number }
   >();
-  private static readonly CACHE_DURATION = 1 * 60 * 1000; // 1 minute
-  public static readonly TOKEN_CACHE_DURATION = 1 * 60 * 1000; // 1 minute
+  private static readonly CACHE_DURATION = 10 * 1000; // 10 seconds
+  public static readonly TOKEN_CACHE_DURATION = 12 * 1000; // 10 seconds
 
   public static async fetchTokens(): Promise<FE.Token[]> {
     let cachedTokens: FE.Token[] = [];
@@ -75,45 +74,6 @@ export class TokenService {
       }
     }
     return [];
-  }
-
-  public static async clearTokenCache(): Promise<void> {
-    try {
-      await kongDB.tokens.clear();
-    } catch (error) {
-      console.error("Error clearing token cache:", error);
-    }
-  }
-
-  // Optional: Add a method to get a single token from cache
-  public static async getToken(canisterId: string): Promise<FE.Token | null> {
-    try {
-      const currentTime = Date.now();
-      const token = await kongDB.tokens
-        .where("canister_id")
-        .equals(canisterId)
-        .and(
-          (token) => currentTime - token.timestamp < this.TOKEN_CACHE_DURATION,
-        )
-        .first();
-
-      return token || null;
-    } catch (error) {
-      console.error("Error getting token:", error);
-      return null;
-    }
-  }
-
-  // Optional: Add a method to update a single token in cache
-  public static async updateToken(token: FE.Token): Promise<void> {
-    try {
-      await kongDB.tokens.put({
-        ...token,
-        timestamp: Date.now(),
-      });
-    } catch (error) {
-      console.error("Error updating token:", error);
-    }
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
@@ -178,17 +138,6 @@ export class TokenService {
         };
       }
 
-      // Check if principal is valid
-      try {
-        Principal.fromText(principalId);
-      } catch (e) {
-        console.warn(`Invalid principal ID: ${principalId}`);
-        return {
-          in_tokens: BigInt(0),
-          in_usd: formatToNonZeroDecimal(0),
-        };
-      }
-
       const balance = await IcrcService.getIcrc1Balance(
         token,
         Principal.fromText(principalId),
@@ -219,88 +168,6 @@ export class TokenService {
         in_usd: formatToNonZeroDecimal(0),
       };
     }
-  }
-
-  public static async fetchPrices(
-    tokens: FE.Token[],
-  ): Promise<Record<string, number>> {
-    // Ensure pools are loaded first
-    const poolData = await PoolService.fetchPoolsData();
-    if (!poolData?.pools?.length) {
-      return tokens.reduce(
-        (acc, token) => {
-          if (token.canister_id) {
-            acc[token.canister_id] = 0;
-          }
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-    }
-
-    // Create an array of promises for all tokens
-    const pricePromises = tokens.map(async (token) => {
-      try {
-        if (token.canister_id === ICP_CANISTER_ID) {
-          return {
-            canister_id: token.canister_id,
-            price: await this.getIcpPrice(),
-          };
-        }
-
-        const price = await this.calculateTokenPrice(token, poolData.pools);
-        return {
-          canister_id: token.canister_id,
-          price,
-        };
-      } catch (error) {
-        console.warn(
-          `Failed to calculate price for token ${token.symbol}:`,
-          error,
-        );
-        return {
-          canister_id: token.canister_id,
-          price: 0,
-        };
-      }
-    });
-
-    const resolvedPrices = await Promise.allSettled(pricePromises);
-    const prices: Record<string, number> = {};
-
-    // Process results and update DB
-    await Promise.all(
-      resolvedPrices.map(async (result) => {
-        if (result.status === "fulfilled") {
-          const { canister_id, price } = result.value;
-          if (canister_id) {
-            prices[canister_id] = price;
-
-            try {
-              const token = tokens.find((t) => t.canister_id === canister_id);
-              if (token) {
-                await kongDB.tokens.put({
-                  ...token,
-                  timestamp: Date.now(),
-                });
-              }
-            } catch (error) {
-              console.error(
-                `Error updating token ${canister_id} in DB:`,
-                error,
-              );
-            }
-          }
-        }
-      }),
-    );
-
-    // Set USDT price explicitly
-    if (process.env.CANISTER_ID_CKUSDT_LEDGER) {
-      prices[process.env.CANISTER_ID_CKUSDT_LEDGER] = 1;
-    }
-
-    return prices;
   }
 
   private static async calculateTokenPrice(
@@ -418,10 +285,10 @@ export class TokenService {
       // Get current pools
       const pools = await kongDB.pools.toArray();
       if (!pools?.length) {
-        await poolStore.loadPools();
+        await loadPools();
       }
       // Calculate price using pools - use the static class method
-      return await TokenService.calculateTokenPrice(token, pools);
+      return await this.calculateTokenPrice(token, pools);
     } catch (error) {
       console.error(
         `[TokenService] Error fetching price for ${token.symbol}:`,
@@ -433,16 +300,6 @@ export class TokenService {
 
   public static async fetchUserTransactions(): Promise<any> {
     try {
-      if (!KONG_BACKEND_CANISTER_ID) {
-        console.warn("Kong Data canister ID is missing");
-        return { Ok: [] };
-      }
-
-      if (!kongBackendIDL) {
-        console.warn("Kong Data IDL is missing");
-        return { Ok: [] };
-      }
-
       const actor = await createAnonymousActorHelper(
         KONG_BACKEND_CANISTER_ID,
         kongBackendIDL,

@@ -102,7 +102,7 @@
   title={isCreatingPool ? 'Create Pool' : 'Add Liquidity'}
   onClose={handleCancel}
   isOpen={show}
-  variant="green"
+  variant="solid"
   width="460px"
   height="auto"
 >

@@ -26,7 +26,6 @@ pub fn serialize_pool(pool: &StablePool) -> serde_json::Value {
             "kong_fee_bps": pool.kong_fee_bps,
             "lp_token_id": pool.lp_token_id,
             "on_kong": pool.on_kong,
-            "metadata": pool.metadata,
             "tvl": pool.tvl.to_string(),
             "rolling_24h_volume": pool.rolling_24h_volume.to_string(),
             "rolling_24h_lp_fee": pool.rolling_24h_lp_fee.to_string(),
@@ -40,12 +39,13 @@ pub async fn update_pools_on_database(
     db_client: &Client,
     tokens_map: &BTreeMap<u32, u8>,
 ) -> Result<BTreeMap<u32, (u32, u32)>, Box<dyn std::error::Error>> {
-    let file = File::open("./backups/pools.json")?;
-    let reader = BufReader::new(file);
-    let pools_map: BTreeMap<StablePoolId, StablePool> = serde_json::from_reader(reader)?;
+    if let Ok(file) = File::open("./backups/pools.json") {
+        let reader = BufReader::new(file);
+        let pools_map: BTreeMap<StablePoolId, StablePool> = serde_json::from_reader(reader)?;
 
-    for v in pools_map.values() {
-        insert_pool_on_database(v, db_client, tokens_map).await?;
+        for v in pools_map.values() {
+            insert_pool_on_database(v, db_client, tokens_map).await?;
+        }
     }
 
     load_pools_from_database(db_client).await
@@ -84,7 +84,6 @@ pub async fn insert_pool_on_database(
     let kong_fee_bps = v.kong_fee_bps as i16;
     let lp_token_id = v.lp_token_id as i32;
     let on_kong = v.on_kong;
-    let metadata = v.metadata.clone();
     let tvl = round_f64(v.tvl.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let rolling_24h_volume = round_f64(v.rolling_24h_volume.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
     let rolling_24h_lp_fee = round_f64(v.rolling_24h_lp_fee.0.to_f64().unwrap() / 1_000_000.0, 6); // in USD
@@ -95,8 +94,8 @@ pub async fn insert_pool_on_database(
     db_client
         .execute(
             "INSERT INTO pools 
-                (pool_id, token_id_0, balance_0, lp_fee_0, kong_fee_0, token_id_1, balance_1, lp_fee_1, kong_fee_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong, metadata, tvl, rolling_24h_volume, rolling_24h_lp_fee, rolling_24h_num_swaps, rolling_24h_apy, raw_json)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                (pool_id, token_id_0, balance_0, lp_fee_0, kong_fee_0, token_id_1, balance_1, lp_fee_1, kong_fee_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong, tvl, rolling_24h_volume, rolling_24h_lp_fee, rolling_24h_num_swaps, rolling_24h_apy, raw_json)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
                 ON CONFLICT (pool_id) DO UPDATE SET
                     token_id_0 = $2,
                     balance_0 = $3,
@@ -110,14 +109,13 @@ pub async fn insert_pool_on_database(
                     kong_fee_bps = $11,
                     lp_token_id = $12,
                     on_kong = $13,
-                    metadata = $14,
-                    tvl = $15,
-                    rolling_24h_volume = $16,
-                    rolling_24h_lp_fee = $17,
-                    rolling_24h_num_swaps = $18,
-                    rolling_24h_apy = $19,
-                    raw_json = $20",
-            &[&pool_id, &token_id_0, &balance_0, &lp_fee_0, &kong_fee_0, &token_id_1, &balance_1, &lp_fee_1, &kong_fee_1, &lp_fee_bps, &kong_fee_bps, &lp_token_id, &on_kong, &tvl, &metadata, &rolling_24h_volume, &rolling_24h_lp_fee, &rolling_24h_num_swaps, &rolling_24h_apy, &raw_json],
+                    tvl = $14,
+                    rolling_24h_volume = $15,
+                    rolling_24h_lp_fee = $16,
+                    rolling_24h_num_swaps = $17,
+                    rolling_24h_apy = $18,
+                    raw_json = $19",
+            &[&pool_id, &token_id_0, &balance_0, &lp_fee_0, &kong_fee_0, &token_id_1, &balance_1, &lp_fee_1, &kong_fee_1, &lp_fee_bps, &kong_fee_bps, &lp_token_id, &on_kong, &tvl, &rolling_24h_volume, &rolling_24h_lp_fee, &rolling_24h_num_swaps, &rolling_24h_apy, &raw_json],
         )
         .await?;
 
@@ -141,12 +139,13 @@ pub async fn load_pools_from_database(db_client: &Client) -> Result<BTreeMap<u32
 
 pub async fn update_pools<T: KongUpdate>(kong_update: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/pools.json");
-    let file = File::open(path)?;
-    println!("processing: {:?}", path.file_name().unwrap());
-    let mut reader = BufReader::new(file);
-    let mut contents = String::new();
-    reader.read_to_string(&mut contents)?;
-    kong_update.update_pools(&contents).await?;
+    if let Ok(file) = File::open(path) {
+        println!("processing: {:?}", path.file_name().unwrap());
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_update.update_pools(&contents).await?;
+    };
 
     Ok(())
 }

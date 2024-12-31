@@ -1,15 +1,15 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
   import { auth } from "$lib/services/auth";
-  import { poolStore, liveUserPools } from "$lib/services/pools/poolStore";
+  import { liveUserPools } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
-  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
   import { goto } from "$app/navigation";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ChevronRight, Search, X, ArrowUpDown } from "lucide-svelte";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+    import { PoolService } from "$lib/services/pools";
 
-  export const pools: any[] = [];
   export let filterPair: {token0?: string, token1?: string} = {}; // Filter by specific token pair
   export let filterToken: string = ''; // Filter by single token
   export let initialSearch: string = ""; // Initial search term
@@ -28,6 +28,14 @@
   let isSearching = false;
   let searchResultsReady = false;
   let initialFilterApplied = false;
+  let UserPoolComponent: any;
+
+  // Update loading state when pools update
+  $: {
+    if ($liveUserPools !== undefined) {
+      loading = false;
+    }
+  }
 
   // Process pool balances when they update
   $: {
@@ -135,9 +143,13 @@
 
   function handleAddLiquidity() {
     goto('/pools/add');
+    sidebarStore.collapse();
   }
 
-  function handlePoolItemClick(poolItem) {
+  async function handlePoolItemClick(poolItem) {
+    if (!UserPoolComponent) {
+      await loadUserPoolComponent();
+    }
     selectedPool = poolItem;
     showUserPoolModal = true;
   }
@@ -155,18 +167,24 @@
   }
 
   $: if ($auth.isConnected) {
-    poolStore.loadUserPoolBalances();
+    PoolService.fetchUserPoolBalances(false);
+  }
+
+  async function loadUserPoolComponent() {
+    const module = await import('$lib/components/liquidity/pools/UserPool.svelte');
+    UserPoolComponent = module.default;
   }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="pool-list-wrapper" on:keydown={handleKeydown}>
-  <div class="controls-wrapper">
+<div class="px-2 min-h-[87vh]" on:keydown={handleKeydown}>
     {#if !pool}
     <div class="search-bar">
       <div class="search-controls">
         <div class="search-input-wrapper">
-          <Search size={16} class="search-icon" />
+          <div class="search-icon-wrapper">
+            <Search size={16} />
+          </div>
           <input
             bind:this={searchInput}
             bind:value={searchQuery}
@@ -205,28 +223,27 @@
         on:click={handleAddLiquidity}
         aria-label="Add new position"
       >
-        New Position
+        +
       </button>
     </div>
     {/if}
-  </div>
 
-  <div class="pool-list-content">
+  <div class="px-2">
     <div class="pool-list">
       {#if loading && processedPools.length === 0}
         <div class="state-message" in:fade>
-          <div class="loading-spinner" />
+          <div class="loading-spinner"></div>
           <p>Loading your positions...</p>
         </div>
       {:else if !pool && (isSearching || !searchResultsReady)}
         <div class="state-message" in:fade>
-          <div class="loading-spinner" />
+          <div class="loading-spinner"></div>
           <p>Finding pools...</p>
         </div>
       {:else if error}
         <div class="state-message error" in:fade>
           <p>{error}</p>
-          <button class="retry-button" on:click={() => poolStore.loadUserPoolBalances()}>
+          <button class="retry-button" on:click={() => PoolService.fetchUserPoolBalances()}>
             Retry
           </button>
         </div>
@@ -253,7 +270,7 @@
           {/if}
         </div>
       {:else}
-        {#each filteredPools as poolItem (poolItem.id)}
+        {#each filteredPools as poolItem}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div 
             class="pool-item" 
@@ -300,24 +317,18 @@
   </div>
 </div>
 
-{#if selectedPool}
-  <UserPool
+{#if selectedPool && UserPoolComponent}
+  <svelte:component 
+    this={UserPoolComponent}
     pool={selectedPool}
     bind:showModal={showUserPoolModal}
     on:close={() => showUserPoolModal = false}
-    on:liquidityRemoved={() => {
-      poolStore.loadUserPoolBalances();
-    }}
   />
 {/if}
 
 <style lang="postcss">
   .pool-list-wrapper {
-    @apply flex flex-col h-full overflow-hidden bg-kong-bg-dark/20 rounded-lg;
-  }
-
-  .controls-wrapper {
-    @apply flex flex-col;
+    @apply flex flex-col flex-grow min-h-[85vh] overflow-hidden bg-kong-bg-dark/20 rounded-lg gap-1;
   }
 
   .search-bar {
@@ -332,8 +343,8 @@
     @apply relative flex items-center flex-1;
   }
 
-  .search-icon {
-    @apply absolute left-3 text-kong-text-secondary/60;
+  .search-icon-wrapper {
+    @apply absolute left-3 z-10 flex items-center pointer-events-none;
   }
 
   .search-input {
@@ -350,7 +361,7 @@
   .sort-toggle {
     @apply flex items-center gap-2 text-xs text-kong-text-secondary 
            hover:text-white transition-colors whitespace-nowrap bg-kong-bg-dark/30
-           px-3 py-2 rounded-lg border border-kong-border/40
+           px-3 py-2.5 rounded-lg border border-kong-border/40
            hover:border-kong-accent-blue/30 hover:bg-kong-bg-dark/40
            active:scale-[0.98];
   }
@@ -363,14 +374,8 @@
     @apply rotate-180;
   }
 
-  .pool-list-content {
-    @apply flex-1 min-h-0 overflow-y-auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-  }
-
   .add-position-button {
-    @apply px-4 py-2 bg-kong-accent-blue/90 text-white text-sm font-medium rounded-lg
+    @apply px-4 py-1.5 bg-kong-accent-blue/90 text-white text-sm font-medium rounded-lg
            transition-all duration-200 hover:bg-kong-accent-blue hover:scale-[0.98]
            active:scale-[0.96] shadow-lg shadow-kong-accent-blue/20 flex-shrink-0;
   }
@@ -428,18 +433,6 @@
            group-hover:text-kong-text-secondary;
   }
 
-  .details-arrow {
-    @apply opacity-60 transition-transform duration-200;
-  }
-
-  .pool-item:hover .details-arrow {
-    @apply translate-x-0.5 opacity-80;
-  }
-
-  .loading-state, .error-state, .empty-state {
-    @apply flex flex-col items-center justify-center gap-3
-           min-h-[140px] text-kong-text-secondary/80 text-sm;
-  }
 
   .clear-search-button {
     @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
@@ -447,13 +440,6 @@
            border border-kong-border/40 hover:border-kong-accent-blue/30;
   }
 
-  .error-state {
-    @apply text-red-400;
-  }
-
-  .loading-state {
-    @apply animate-pulse;
-  }
 
   .state-message {
     @apply flex flex-col items-center justify-center gap-4 min-h-[200px] 

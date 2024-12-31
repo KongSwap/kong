@@ -34,7 +34,6 @@ pub fn serialize_token(token: &StableToken) -> serde_json::Value {
                 "icrc2": token.icrc2,
                 "icrc3": token.icrc3,
                 "on_kong": token.on_kong,
-                "metadata": token.metadata,
             }
         }),
         StableToken::LP(token) => json!({
@@ -44,27 +43,26 @@ pub fn serialize_token(token: &StableToken) -> serde_json::Value {
                 "address": token.address,
                 "decimals": token.decimals,
                 "on_kong": token.on_kong,
-                "metadata": token.metadata,
             }
         }),
     }
 }
 
 pub async fn update_tokens_on_database(db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
-    let file = File::open("./backups/tokens.json")?;
-    let reader = BufReader::new(file);
-    let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
+    if let Ok(file) = File::open("./backups/tokens.json") {
+        let reader = BufReader::new(file);
+        let tokens_map: BTreeMap<StableTokenId, StableToken> = serde_json::from_reader(reader)?;
 
-    for v in tokens_map.values() {
-        insert_token_on_database(v, db_client).await?;
+        for v in tokens_map.values() {
+            insert_token_on_database(v, db_client).await?;
+        }
     }
 
     load_tokens_from_database(db_client).await
 }
 
 pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, metadata, raw_json) = match v
-    {
+    let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json) = match v {
         StableToken::IC(token) => {
             let decimals = 10_u64.pow(token.decimals as u32 - 1) as f64;
             let fee = token.fee.0.to_f64().unwrap() / decimals;
@@ -81,7 +79,6 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
                 Some(token.icrc2),
                 Some(token.icrc3),
                 token.on_kong,
-                token.metadata.clone(),
                 json!(serialize_token(v)),
             )
         }
@@ -98,7 +95,6 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
             None,
             None,
             token.on_kong,
-            token.metadata.clone(),
             json!(serialize_token(v)),
         ),
     };
@@ -106,8 +102,8 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
     db_client
         .execute(
             "INSERT INTO tokens 
-                (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, metadata, raw_json)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ON CONFLICT (token_id) DO UPDATE SET
                     token_type = $2,
                     name = $3,
@@ -120,8 +116,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
                     icrc2 = $10,
                     icrc3 = $11,
                     on_kong = $12,
-                    metadata = $13,
-                    raw_json = $14",
+                    raw_json = $13",
             &[
                 &token_id,
                 &type_type,
@@ -135,7 +130,6 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
                 &icrc2,
                 &icrc3,
                 &on_kong,
-                &metadata,
                 &raw_json,
             ],
         )
@@ -160,12 +154,13 @@ pub async fn load_tokens_from_database(db_client: &Client) -> Result<BTreeMap<u3
 
 pub async fn update_tokens<T: KongUpdate>(kong_data: &T) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new("./backups/tokens.json");
-    let file = File::open(path)?;
-    println!("processing: {:?}", path.file_name().unwrap());
-    let mut reader = BufReader::new(file);
-    let mut contents = String::new();
-    reader.read_to_string(&mut contents)?;
-    kong_data.update_tokens(&contents).await?;
+    if let Ok(file) = File::open(path) {
+        println!("processing: {:?}", path.file_name().unwrap());
+        let mut reader = BufReader::new(file);
+        let mut contents = String::new();
+        reader.read_to_string(&mut contents)?;
+        kong_data.update_tokens(&contents).await?;
+    };
 
     Ok(())
 }

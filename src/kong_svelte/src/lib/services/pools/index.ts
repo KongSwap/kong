@@ -1,5 +1,4 @@
 import { PoolService } from './PoolService';
-import { poolStore } from './poolStore';
 
 export interface Pool {
   pool_id: string;
@@ -13,4 +12,4 @@ export interface Pool {
   lp_token_supply?: string;
 }
 
-export { PoolService, poolStore };
+export { PoolService };

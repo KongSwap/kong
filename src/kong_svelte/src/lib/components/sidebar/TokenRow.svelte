@@ -17,7 +17,6 @@
   export let token: any;
 
   let showTokenDetails = false;
-  let isHovered = false;
   let isPressed = false;
   let localFavorite = false; // Local state for immediate feedback
   let formattedBalance = "";
@@ -104,19 +103,19 @@
 
 <div
   class="relative isolate z-0 transition-[z-index] duration-0"
-  class:z-50={dropdownVisible}
+  class:z-[100]={dropdownVisible}
   bind:this={rowEl}
 >
   {#if dropdownVisible}
     <div
-      class="fixed inset-0 bg-black/50 z-40 animate-fadeIn"
+      class="fixed inset-0 bg-black/50 z-[90] animate-fadeIn"
       transition:fade={{ duration: 150 }}
       on:click={() => activeDropdownId.set(null)}
     />
   {/if}
 
   <div
-    class="flex-1 cursor-pointer origin-center transition-all duration-200 border border-transparent relative z-40 group"
+    class="flex-1 cursor-pointer origin-center transition-all duration-200 border border-transparent relative z-[95] group"
     class:pressed={isPressed}
     class:bg-kong-bg-light={dropdownVisible}
     class:border-kong-border={dropdownVisible}
@@ -127,8 +126,6 @@
     class:to-kong-bg-dark={dropdownVisible}
     in:fly={{ y: 20, duration: 400, delay: 200 }}
     out:fade={{ duration: 200 }}
-    on:mouseenter={() => (isHovered = true)}
-    on:mouseleave={() => (isHovered = false)}
     on:mousedown={() => (isPressed = true)}
     on:mouseup={() => (isPressed = false)}
     on:click|stopPropagation={handleRowClick}
@@ -139,7 +136,7 @@
     }}
   >
     <div
-      class="flex items-center justify-between h-14 relative px-2 z-[100]
+      class="flex items-center justify-between h-14 relative z-[95]
              group-hover:bg-kong-bg-light/40 group-hover:border-kong-border/10 
              transition-all duration-200 rounded-lg"
     >
@@ -182,13 +179,13 @@
           </div>
         </div>
 
-        <div class="relative z-50 ml-2 h-full isolate">
+        <div class="relative z-[100] ml-2 h-full isolate">
           {#if dropdownVisible}
             <div
               bind:this={dropdownEl}
               class="absolute {showAbove
                 ? 'bottom-[calc(100%+1px)]'
-                : 'top-[calc(100%+1px)]'} -right-1 z-50 min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
+                : 'top-[calc(100%+1px)]'} -right-1 z-[100] min-w-[250px] p-1.5 bg-kong-bg-light border border-kong-border {showAbove
                 ? 'rounded-t-lg'
                 : 'rounded-b-lg'} shadow-lg origin-{showAbove
                 ? 'bottom'

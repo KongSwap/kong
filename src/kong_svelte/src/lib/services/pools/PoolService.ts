@@ -7,9 +7,13 @@ import { PoolSerializer } from "./PoolSerializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { toastStore } from "$lib/stores/toastStore";
 import { KONG_BACKEND_CANISTER_ID, KONG_DATA_PRINCIPAL } from "$lib/constants/canisterConstants";
+import { kongDB } from "$lib/services/db";
 
 export class PoolService {
   protected static instance: PoolService;
+  private static fetchPromise: Promise<UserPoolBalance[]> | null = null;
+  private static lastFetchTime = 0;
+  private static DEBOUNCE_TIME = 30000; // 30 seconds
 
   public static getInstance(): PoolService {
     if (!PoolService.instance) {
@@ -21,9 +25,9 @@ export class PoolService {
   // Data Fetching
   public static async fetchPoolsData(): Promise<BE.PoolResponse> {
     try {
-      const actor = await createAnonymousActorHelper(
+      const actor = createAnonymousActorHelper(
         KONG_DATA_PRINCIPAL,
-        canisterIDLs.kong_backend,
+        canisterIDLs.kong_data,
       );
       const result = await actor.pools([]);
       if (!result.Ok) {
@@ -77,7 +81,7 @@ export class PoolService {
     token1Symbol: string,
   ): Promise<any> {
     try {
-      const actor = await createAnonymousActorHelper(
+      const actor = createAnonymousActorHelper(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
       );
@@ -225,6 +229,7 @@ export class PoolService {
       let result;
       if(["oisy"].includes(auth.pnp.activeWallet.id)) {
         result = await actor.add_liquidity(addLiquidityArgs);
+        await this.fetchUserPoolBalances(true);
       } else {
         result = await actor.add_liquidity_async(addLiquidityArgs);
       }
@@ -274,8 +279,10 @@ export class PoolService {
             lastStatus = currentStatus;
             if(currentStatus.includes("Success")) {
               toastStore.success(currentStatus);
+              await this.fetchUserPoolBalances(true);
             } else {
               toastStore.info(currentStatus);
+              await this.fetchUserPoolBalances(true);
             }
           }
         }
@@ -334,6 +341,7 @@ export class PoolService {
         remove_lp_token_amount: lpTokenBigInt,
       });
 
+      await this.fetchUserPoolBalances(true);
       if (!result.Ok) {
         throw new Error(result.Err || "Failed to remove liquidity");
       }
@@ -347,18 +355,93 @@ export class PoolService {
   /**
    * Fetch the user's pool balances.
    */
-  public static async fetchUserPoolBalances(): Promise<FE.UserPoolBalance[]> {
+  public static async fetchUserPoolBalances(forceRefresh: boolean = true): Promise<UserPoolBalance[]> {
+    // If there's an ongoing fetch and it's within debounce time, return its promise
+    const now = Date.now();
+    if (!forceRefresh && this.fetchPromise && now - this.lastFetchTime < this.DEBOUNCE_TIME) {
+      return this.fetchPromise;
+    }
+
+    // Reset the fetch promise if forcing refresh
+    if (forceRefresh) {
+      this.fetchPromise = null;
+    }
+
     try {
-      const wallet = get(auth);
+      this.fetchPromise = (async () => {
+        const wallet = get(auth);
 
-      if (!wallet.isConnected || !wallet.account?.owner) {
-        // when wallet not connected, return empty balances
-        return [];
-      }
+        if (!wallet.isConnected || !wallet.account?.owner) {
+          return [];
+        }
 
-      const actor = await createAnonymousActorHelper(KONG_BACKEND_CANISTER_ID, canisterIDLs.kong_backend);
-      return await actor.user_balances(auth.pnp?.account?.owner?.toString(),[]);
+        const actor = createAnonymousActorHelper(
+          KONG_BACKEND_CANISTER_ID, 
+          canisterIDLs.kong_backend
+        );
+        const res = await actor.user_balances(auth.pnp?.account?.owner?.toString(), []);
+        
+        if (!res.Ok) {
+          throw new Error("Failed to fetch user balances");
+        }
+
+        // Create a Map to ensure unique pools by symbol pair
+        const uniquePools = new Map();
+
+        // Process pools and ensure uniqueness
+        res.Ok.forEach((item) => {
+          const pool = item.LP;
+          const poolId = `${pool.symbol_0}-${pool.symbol_1}`;
+          
+          if (!uniquePools.has(poolId) && pool.balance > 0) {
+            const poolData = {
+              id: poolId,
+              amount_0: pool.amount_0.toString(),
+              amount_1: pool.amount_1.toString(),
+              balance: pool.balance.toString(),
+              name: pool.name,
+              symbol: pool.symbol,
+              symbol_0: pool.symbol_0,
+              symbol_1: pool.symbol_1,
+              ts: pool.ts.toString(),
+              usd_amount_0: typeof pool.usd_amount_0 === 'number' ? pool.usd_amount_0 : Number(pool.usd_amount_0),
+              usd_amount_1: typeof pool.usd_amount_1 === 'number' ? pool.usd_amount_1 : Number(pool.usd_amount_1),
+              usd_balance: typeof pool.usd_balance === 'number' ? pool.usd_balance : Number(pool.usd_balance)
+            };
+            uniquePools.set(poolId, poolData);
+          }
+        });
+
+        const poolsArray = Array.from(uniquePools.values());
+
+        // Update database in a transaction and wait for it to complete
+        await kongDB.transaction('rw', kongDB.user_pools, async () => {
+          // Get existing pool IDs
+          const existingPoolIds = await kongDB.user_pools.toCollection().primaryKeys();
+          const newPoolIds = new Set(poolsArray.map(p => p.id));
+          
+          // Delete pools that no longer exist
+          for (const existingId of existingPoolIds) {
+            if (!newPoolIds.has(existingId)) {
+              await kongDB.user_pools.delete(existingId);
+            }
+          }
+          
+          // Update or add new pools
+          for (const pool of poolsArray) {
+            await kongDB.user_pools.put(pool);
+          }
+        });
+
+        this.lastFetchTime = Date.now();
+        return poolsArray;
+      })();
+
+      const result = await this.fetchPromise;
+      this.fetchPromise = null;
+      return result;
     } catch (error) {
+      this.fetchPromise = null;
       if (error.message?.includes("Anonymous user")) {
         return [];
       }
@@ -369,7 +452,7 @@ export class PoolService {
 
   static async getPool(token0: string, token1: string): Promise<BE.Pool | null> {
     try {
-      const actor = await createAnonymousActorHelper(
+      const actor = createAnonymousActorHelper(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend
       );

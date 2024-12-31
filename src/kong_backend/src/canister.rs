@@ -45,7 +45,7 @@ async fn init() {
     // start the background timer to process stats
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
-            update_pool_stats();
+            _ = update_pool_stats();
         });
     });
     STATS_TIMER_ID.with(|cell| cell.set(timer_id));
@@ -111,7 +111,7 @@ async fn post_upgrade() {
     // start the background timer to process stats
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
-            update_pool_stats();
+            _ = update_pool_stats();
         });
     });
     STATS_TIMER_ID.with(|cell| cell.set(timer_id));

@@ -1,46 +1,72 @@
 export const idlFactory = ({ IDL }) => {
-  const TxId = IDL.Variant({
-    'TransactionId' : IDL.Text,
-    'BlockIndex' : IDL.Nat,
+  const Icrc10SupportedStandards = IDL.Record({
+    'url' : IDL.Text,
+    'name' : IDL.Text,
   });
-  const AddLiquidityArgs = IDL.Record({
-    'token_0' : IDL.Text,
-    'token_1' : IDL.Text,
-    'amount_0' : IDL.Nat,
-    'amount_1' : IDL.Nat,
-    'tx_id_0' : IDL.Opt(TxId),
-    'tx_id_1' : IDL.Opt(TxId),
+  const Icrc28TrustedOriginsResponse = IDL.Record({
+    'trusted_origins' : IDL.Vec(IDL.Text),
   });
-  const SwapArgs = IDL.Record({
-    'receive_token' : IDL.Text,
-    'max_slippage' : IDL.Opt(IDL.Float64),
-    'pay_amount' : IDL.Nat,
-    'referred_by' : IDL.Opt(IDL.Text),
-    'receive_amount' : IDL.Opt(IDL.Nat),
-    'receive_address' : IDL.Opt(IDL.Text),
-    'pay_token' : IDL.Text,
-    'pay_tx_id' : IDL.Opt(TxId),
+  const PoolReply = IDL.Record({
+    'tvl' : IDL.Nat,
+    'lp_token_symbol' : IDL.Text,
+    'name' : IDL.Text,
+    'lp_fee_0' : IDL.Nat,
+    'lp_fee_1' : IDL.Nat,
+    'balance_0' : IDL.Nat,
+    'balance_1' : IDL.Nat,
+    'rolling_24h_volume' : IDL.Nat,
+    'rolling_24h_apy' : IDL.Float64,
+    'address_0' : IDL.Text,
+    'address_1' : IDL.Text,
+    'rolling_24h_num_swaps' : IDL.Nat,
+    'symbol_0' : IDL.Text,
+    'symbol_1' : IDL.Text,
+    'pool_id' : IDL.Nat32,
+    'price' : IDL.Float64,
+    'chain_0' : IDL.Text,
+    'chain_1' : IDL.Text,
+    'symbol' : IDL.Text,
+    'rolling_24h_lp_fee' : IDL.Nat,
+    'lp_fee_bps' : IDL.Nat8,
+    'on_kong' : IDL.Bool,
   });
-  const AddPoolArgs = IDL.Record({
-    'token_0' : IDL.Text,
-    'token_1' : IDL.Text,
-    'amount_0' : IDL.Nat,
-    'amount_1' : IDL.Nat,
-    'tx_id_0' : IDL.Opt(TxId),
-    'tx_id_1' : IDL.Opt(TxId),
-    'lp_fee_bps' : IDL.Opt(IDL.Nat8),
-    'on_kong' : IDL.Opt(IDL.Bool),
+  const PoolsReply = IDL.Record({
+    'total_24h_lp_fee' : IDL.Nat,
+    'total_tvl' : IDL.Nat,
+    'total_24h_volume' : IDL.Nat,
+    'pools' : IDL.Vec(PoolReply),
+    'total_24h_num_swaps' : IDL.Nat,
   });
-  const RemoveLiquidityArgs = IDL.Record({
-    'token_0' : IDL.Text,
-    'token_1' : IDL.Text,
-    'remove_lp_token_amount' : IDL.Nat,
+  const PoolsResult = IDL.Variant({ 'Ok' : PoolsReply, 'Err' : IDL.Text });
+  const ICTokenReply = IDL.Record({
+    'fee' : IDL.Nat,
+    'decimals' : IDL.Nat8,
+    'token_id' : IDL.Nat32,
+    'chain' : IDL.Text,
+    'name' : IDL.Text,
+    'canister_id' : IDL.Text,
+    'icrc1' : IDL.Bool,
+    'icrc2' : IDL.Bool,
+    'icrc3' : IDL.Bool,
+    'symbol' : IDL.Text,
+    'on_kong' : IDL.Bool,
   });
-  const RequestRequest = IDL.Variant({
-    'AddLiquidity' : AddLiquidityArgs,
-    'Swap' : SwapArgs,
-    'AddPool' : AddPoolArgs,
-    'RemoveLiquidity' : RemoveLiquidityArgs,
+  const LPTokenReply = IDL.Record({
+    'fee' : IDL.Nat,
+    'decimals' : IDL.Nat8,
+    'token_id' : IDL.Nat32,
+    'chain' : IDL.Text,
+    'name' : IDL.Text,
+    'address' : IDL.Text,
+    'pool_id_of' : IDL.Nat32,
+    'total_supply' : IDL.Nat,
+    'symbol' : IDL.Text,
+    'on_kong' : IDL.Bool,
+  });
+  const TokenReply = IDL.Variant({ 'IC' : ICTokenReply, 'LP' : LPTokenReply });
+  const TokensResult = IDL.Variant({
+    'Ok' : IDL.Vec(TokenReply),
+    'Err' : IDL.Text,
   });
   const ICTransferReply = IDL.Record({
     'is_send' : IDL.Bool,
@@ -149,24 +175,6 @@ export const idlFactory = ({ IDL }) => {
     'remove_lp_token_amount' : IDL.Nat,
     'symbol' : IDL.Text,
   });
-  const RequestReply = IDL.Variant({
-    'AddLiquidity' : AddLiquidityReply,
-    'Swap' : SwapReply,
-    'AddPool' : AddPoolReply,
-    'RemoveLiquidity' : RemoveLiquidityReply,
-    'Pending' : IDL.Null,
-  });
-  const RequestsReply = IDL.Record({
-    'ts' : IDL.Nat64,
-    'request_id' : IDL.Nat64,
-    'request' : RequestRequest,
-    'statuses' : IDL.Vec(IDL.Text),
-    'reply' : RequestReply,
-  });
-  const RequestsResult = IDL.Variant({
-    'Ok' : IDL.Vec(RequestsReply),
-    'Err' : IDL.Text,
-  });
   const TxsReply = IDL.Variant({
     'AddLiquidity' : AddLiquidityReply,
     'Swap' : SwapReply,
@@ -174,29 +182,7 @@ export const idlFactory = ({ IDL }) => {
     'RemoveLiquidity' : RemoveLiquidityReply,
   });
   const TxsResult = IDL.Variant({ 'Ok' : IDL.Vec(TxsReply), 'Err' : IDL.Text });
-  const Icrc10SupportedStandards = IDL.Record({
-    'url' : IDL.Text,
-    'name' : IDL.Text,
-  });
-  const Icrc28TrustedOriginsResponse = IDL.Record({
-    'trusted_origins' : IDL.Vec(IDL.Text),
-  });
   return IDL.Service({
-    'get_requests' : IDL.Func(
-        [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat32), IDL.Opt(IDL.Nat16)],
-        [RequestsResult],
-        ['query'],
-      ),
-    'get_txs' : IDL.Func(
-        [
-          IDL.Opt(IDL.Nat64),
-          IDL.Opt(IDL.Nat64),
-          IDL.Opt(IDL.Nat32),
-          IDL.Opt(IDL.Nat16),
-        ],
-        [TxsResult],
-        ['query'],
-      ),
     'icrc10_supported_standards' : IDL.Func(
         [],
         [IDL.Vec(Icrc10SupportedStandards)],
@@ -204,11 +190,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'icrc1_name' : IDL.Func([], [IDL.Text], ['query']),
     'icrc28_trusted_origins' : IDL.Func([], [Icrc28TrustedOriginsResponse], []),
-    'requests' : IDL.Func(
-        [IDL.Opt(IDL.Nat64), IDL.Opt(IDL.Nat16)],
-        [RequestsResult],
-        ['query'],
-      ),
+    'pools' : IDL.Func([IDL.Opt(IDL.Text)], [PoolsResult], ['query']),
+    'tokens' : IDL.Func([IDL.Opt(IDL.Text)], [TokensResult], ['query']),
     'txs' : IDL.Func(
         [
           IDL.Opt(IDL.Text),

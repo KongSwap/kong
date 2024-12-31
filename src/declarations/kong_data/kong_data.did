@@ -25,29 +25,69 @@ type TransferIdReply = record {
     transfer : TransferReply
 };
 
-type RequestRequest = variant {
-    AddPool : AddPoolArgs;
-    AddLiquidity : AddLiquidityArgs;
-    RemoveLiquidity : RemoveLiquidityArgs;
-    Swap : SwapArgs;
+type TokenReply = variant {
+    LP : LPTokenReply;
+    IC : ICTokenReply;
 };
+type LPTokenReply = record {
+    token_id : nat32;
+    name : text;
+    chain : text;
+    symbol : text;
+    pool_id_of : nat32;
+    address : text;
+    decimals : nat8;
+    fee : nat;
+    total_supply : nat;
+    on_kong : bool;
+};
+type ICTokenReply = record {
+    token_id : nat32;
+    name : text;
+    chain : text;
+    symbol : text;
+    canister_id : text;
+    decimals : nat8;	
+    fee : nat;
+    icrc1 : bool;
+    icrc2 : bool;
+    icrc3 : bool;
+    on_kong : bool;
+};
+type TokensResult = variant { Ok : vec TokenReply; Err : text };
 
-type RequestReply = variant {
-    Pending;
-    AddPool : AddPoolReply;
-    AddLiquidity : AddLiquidityReply;
-    RemoveLiquidity : RemoveLiquidityReply;
-    Swap : SwapReply;
+type PoolsReply = record {
+    pools : vec PoolReply;
+    total_tvl : nat;
+    total_24h_volume : nat;
+    total_24h_lp_fee : nat;
+    total_24h_num_swaps : nat;
 };
-
-type RequestsReply = record {
-    request_id : nat64;
-    statuses : vec text;
-    request : RequestRequest;
-    reply : RequestReply;
-    ts : nat64;
+type PoolReply = record {
+    pool_id : nat32;
+    name : text;
+    symbol : text;
+    chain_0 : text;
+    symbol_0 : text;
+    address_0 : text;
+    balance_0 : nat;
+    lp_fee_0 : nat;
+    chain_1 : text;
+    symbol_1 : text;
+    address_1 : text;
+    balance_1 : nat;
+    lp_fee_1 : nat;
+    price : float64;
+    lp_fee_bps : nat8;
+    on_kong : bool;             // flag indicating if displayed on Kong Swap
+    tvl : nat;                  // USD value of TVL
+    rolling_24h_volume : nat;   // USD value of rolling 24h volume
+    rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
+    rolling_24h_num_swaps : nat;
+    rolling_24h_apy : float64;
+    lp_token_symbol : text;
 };
-type RequestsResult = variant { Ok : vec RequestsReply; Err : text };
+type PoolsResult = variant { Ok : PoolsReply; Err : text };
 
 type AddPoolArgs = record {
     token_0 : text;
@@ -194,11 +234,11 @@ service : {
     icrc10_supported_standards : () -> (vec Icrc10SupportedStandards) query;
     icrc28_trusted_origins : () -> (Icrc28TrustedOriginsResponse);
 
-    // requests(opt request_id, opt num_requests) - return requests by request id.
-    requests : (opt nat64, opt nat16) -> (RequestsResult) query;
+    // tokens(opt wildcard) - returns all tokens or wildcard search
+    tokens : (opt text) -> (TokensResult) query;
+    // pools(opt wildcard) - returns all pools or wildcard search
+    pools : (opt text) -> (PoolsResult) query;
+
     // txs(opt principal_id, opt tx_id, opt token_id, opt num_txs) - returns transactions filtered by principal id, transaction id or token
     txs : (opt text, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
-
-    get_requests : (opt nat64, opt nat32, opt nat16) -> (RequestsResult) query;
-    get_txs : (opt nat64, opt nat64, opt nat32, opt nat16) -> (TxsResult) query;
 }

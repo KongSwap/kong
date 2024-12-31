@@ -18,6 +18,7 @@
   import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import ConfirmLiquidityModal from "$lib/components/liquidity/modals/ConfirmLiquidityModal.svelte";
   import PositionDisplay from "$lib/components/liquidity/create_pool/PositionDisplay.svelte";
+  import { BigNumber } from "bignumber.js";
 
   const ALLOWED_TOKEN_SYMBOLS = ["ICP", "ckUSDT"];
   const DEFAULT_TOKEN = "ICP";
@@ -26,7 +27,6 @@
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
   let poolExists: boolean | null = null;
-  let userBalance: FE.UserPoolBalance | undefined;
 
   // Track if initial load has happened
   let initialLoadComplete = false;
@@ -198,56 +198,22 @@
     if (!token0 || !token0Balance) return;
     
     try {
-      const balance = parseFloat(token0Balance) / Math.pow(10, token0.decimals);
-      if (isNaN(balance) || balance <= 0) return;
+      const balance = new BigNumber(token0Balance).div(new BigNumber(10).pow(token0.decimals));
+      if (!balance.isFinite() || balance.isLessThanOrEqualTo(0)) return;
 
       // If it's 100% (MAX), subtract both the token fee and transaction fee
       const adjustedBalance = percentage === 100 
-        ? balance - (token0.fee)
-        : (balance * percentage) / 100;
+        ? balance.minus(new BigNumber(token0.fee))
+        : balance.times(percentage).div(100);
       
       // Format to avoid excessive decimals (use token's decimal places)
-      const formattedAmount = adjustedBalance.toFixed(token0.decimals);
       
-      handleAmountChange(0, formattedAmount);
+      handleAmountChange(0, adjustedBalance.gt(0) ? adjustedBalance.toFormat(token0.decimals, BigNumber.ROUND_DOWN) : "0");
     } catch (error) {
       console.error("Error calculating percentage amount:", error);
       toastStore.error("Failed to calculate amount");
     }
   }
-
-  async function fetchUserBalance() {
-    try {
-      if ($liquidityStore.token0 && $liquidityStore.token1 && $auth.isConnected) {
-        const response: any = await PoolService.fetchUserPoolBalances();        
-        const balances: any = response.Ok;
-        
-        if (balances?.length) {
-          userBalance = balances.find(
-            b => 
-              (b.LP?.symbol_0 === $liquidityStore.token0?.symbol && 
-               b.LP?.symbol_1 === $liquidityStore.token1?.symbol)
-          )?.LP;
-        } else {
-          userBalance = undefined;
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching user balance:", error);
-      userBalance = undefined;
-    }
-  }
-
-  // Watch for token changes to update balance
-  $: if ($liquidityStore.token0 && $liquidityStore.token1) {
-    fetchUserBalance();
-  }
-
-  onMount(() => {
-    if ($liquidityStore.token0 && $liquidityStore.token1) {
-      fetchUserBalance();
-    }
-  });
 
   onDestroy(() => {
     // Only reset amounts on destroy, keep the tokens
@@ -270,11 +236,6 @@
       
       {#if token0 && token1}
         <PositionDisplay
-          balance={userBalance?.balance}
-          amount0={userBalance?.amount_0}
-          amount1={userBalance?.amount_1}
-          symbol0={userBalance?.symbol_0}
-          symbol1={userBalance?.symbol_1}
           token0={$liquidityStore.token0}
           token1={$liquidityStore.token1}
           layout="horizontal"

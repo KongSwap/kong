@@ -22,7 +22,8 @@
     "@dfinity/nns": "8.1.0",
     "@dfinity/principal": "2.2.0",
     "@dfinity/utils": "2.8.0",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "svelte-tiny-virtual-list": "^2.1.2"
   },
   "workspaces": [
     "src/kong_svelte"

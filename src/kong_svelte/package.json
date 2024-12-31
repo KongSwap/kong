@@ -18,6 +18,12 @@
     "copy-tv": "cp -r node_modules/tradingview/charting_library static/charting_library"
   },
   "dependencies": {
+    "@dfinity/agent": "2.2.0",
+    "@dfinity/auth-client": "2.2.0",
+    "@dfinity/candid": "2.2.0",
+    "@dfinity/identity": "2.2.0",
+    "@dfinity/principal": "2.2.0",
+    "@dfinity/utils": "2.8.0",
     "@windoge98/plug-n-play": "0.0.22",
     "bignumber.js": "^9.1.2",
     "chart.js": "^4.4.1",
@@ -50,7 +56,7 @@
     "prettier-eslint": "^16.3.0",
     "rollup-plugin-visualizer": "^5.12.0",
     "sass": "^1.63.6",
-    "svelte": "5.15.0",
+    "svelte": "5.16.0",
     "svelte-check": "^4.0.1",
     "svelte-flags": "2.0.1",
     "svelte-language-server": "^0.17.6",

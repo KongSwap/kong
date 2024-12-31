@@ -42,7 +42,7 @@
 </script>
 
 <tr
-  class="stats-row h-[44px] border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer {parseFloat(token.metrics?.price || '0') > parseFloat(token.metrics?.previous_price || '0') ? 'flash-green' : 'flash-red'}"
+  class="stats-row h-[44px] border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer {priceClass}"
   class:kong-special-row={token.canister_id === kongCanisterId}
   on:click={() => goto(`/stats/${token.canister_id}`)}
 >

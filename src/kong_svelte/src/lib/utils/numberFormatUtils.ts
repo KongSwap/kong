@@ -22,8 +22,8 @@ export function formatBalance(
   if (value.isZero()) return "0";
 
   // For very small values (< 0.000001), show up to 8 decimals
-  if (value.isLessThan(0.000001) && !value.isZero()) {
-    return value.toFormat(8).replace(/\.?0+$/, "");
+  if (value.isLessThan(0.001) && !value.isZero()) {
+    return value.toFormat(decimals).replace(/\.?0+$/, "");
   }
 
   // For small values (< 0.01), show up to 6 decimals

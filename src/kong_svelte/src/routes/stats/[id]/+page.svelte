@@ -4,7 +4,7 @@
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
-  import { poolStore, type Pool } from "$lib/services/pools";
+  import {type Pool } from "$lib/services/pools";
   import { livePools } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
@@ -13,9 +13,9 @@
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+    import { kongDB } from "$lib/services/db";
 
-  // Ensure formattedTokens and poolStore are initialized
-  if (!formattedTokens || !poolStore) {
+  if (!formattedTokens || !livePools) {
     throw new Error("Stores are not initialized");
   }
 
@@ -43,19 +43,9 @@
   });
 
   // Remove the duplicate state declarations and keep only one effect
-  $effect(() => {
+  $effect(async () => {
     const pageId = $page.params.id;
-
-    if (!$formattedTokens?.length || !pageId) {
-      token = undefined;
-      hasManualSelection = false;
-      initialPoolSet = false;
-      return;
-    }
-
-    const foundToken = $formattedTokens.find(
-      (t) => t.address === pageId || t.canister_id === pageId,
-    );
+    const foundToken = await kongDB.tokens.get(pageId);
 
     if (foundToken) {
       const converted = foundToken;
