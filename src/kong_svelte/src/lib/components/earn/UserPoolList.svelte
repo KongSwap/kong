@@ -100,7 +100,7 @@
     </div>
   {:else}
     <div class="pools-grid">
-      {#each filteredPools as pool (pool.id)}
+      {#each processedPools as pool (pool.id)}
         <div class="pool-container" in:slide={{ duration: 200 }}>
           <div
             class="group rounded-lg border border-kong-border dark:border-kong-border bg-white/90 dark:bg-kong-bg-dark/40 backdrop-blur-lg p-3.5 shadow-sm hover:shadow-md transition-all"

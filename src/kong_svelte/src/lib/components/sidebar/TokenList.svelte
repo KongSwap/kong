@@ -8,6 +8,8 @@
   import { searchToken, getMatchDisplay } from "$lib/utils/searchUtils";
   import { sortTokens, filterByBalance } from "$lib/utils/sortUtils";
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
+  import { browser } from "$app/environment";
+  import { writable } from "svelte/store";
 
   type SearchMatch = {
     type: "name" | "symbol" | "canister" | null;
@@ -15,9 +17,22 @@
     matchedText?: string;
   };
 
+  // Create a writable store for hideZeroBalances
+  const hideZeroStore = writable(false);
+  if (browser) {
+    const storedValue = localStorage.getItem('kong_hide_zero_balances');
+    hideZeroStore.set(storedValue === 'true');
+  }
+
+  // Subscribe to changes and save to localStorage
+  if (browser) {
+    hideZeroStore.subscribe((value) => {
+      localStorage.setItem('kong_hide_zero_balances', value.toString());
+    });
+  }
+
   let searchQuery = "";
   let searchInput: HTMLInputElement;
-  let hideZeroBalances = false;
   let sortDirection = "desc";
   let searchDebounceTimer: NodeJS.Timeout;
   let debouncedSearchQuery = "";
@@ -48,7 +63,7 @@
     const filteredAndSorted = await sortTokens(
       $formattedTokens.filter((token) => {
         // Check zero balance condition
-        if (!filterByBalance(token, $tokenStore.balances, hideZeroBalances)) {
+        if (!filterByBalance(token, $tokenStore.balances, $hideZeroStore)) {
           return false;
         }
 
@@ -81,7 +96,7 @@
   // Watch for other changes
   $: if (
     debouncedSearchQuery ||
-    hideZeroBalances ||
+    $hideZeroStore ||
     sortDirection ||
     Object.keys($tokenStore.balances).length > 0
   ) {
@@ -151,7 +166,8 @@
           <span class="toggle-label text-xs">Hide zero</span>
           <input
             type="checkbox"
-            bind:checked={hideZeroBalances}
+            checked={$hideZeroStore}
+            on:change={(e) => hideZeroStore.set(e.currentTarget.checked)}
             class="sr-only"
           />
           <div class="toggle-switch"></div>
@@ -235,7 +251,7 @@
 
 <style scoped lang="postcss">
   .token-list-container {
-    @apply flex flex-col min-h-[85dvh] relative;
+    @apply flex flex-col min-h-[87dvh] relative;
   }
 
   .search-section {
