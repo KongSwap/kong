@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 
 use super::add_pool_args::AddPoolArgs;
 use super::add_pool_reply::AddPoolReply;
-use super::add_pool_reply_helpers::{create_add_pool_reply_failed, create_add_pool_reply_with_tx_id};
+use super::add_pool_reply_helpers::{to_add_pool_reply, to_add_pool_reply_failed};
 
 use crate::add_token::add_token::{add_ic_token, add_lp_token};
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
@@ -376,7 +376,21 @@ async fn process_add_pool(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
-    let reply = create_add_pool_reply_with_tx_id(tx_id, &add_pool_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::AddPool(add_pool_tx)) => to_add_pool_reply(add_pool_tx),
+        _ => to_add_pool_reply_failed(
+            request_id,
+            &token_0.chain(),
+            &token_0.address(),
+            &token_0.symbol(),
+            &token_1.chain(),
+            &token_1.address(),
+            &token_1.symbol(),
+            &transfer_ids,
+            &Vec::new(),
+            ts,
+        ),
+    };
     request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
 
     Ok(reply)
@@ -579,22 +593,14 @@ async fn return_tokens(
         .await;
     }
 
-    // Token0
-    let chain_0 = token_0.chain();
-    let address_0 = token_0.address();
-    let symbol_0 = token_0.symbol();
-    // Token1
-    let chain_1 = token_1.chain();
-    let address_1 = token_1.address();
-    let symbol_1 = token_1.symbol();
-    let reply = create_add_pool_reply_failed(
-        &chain_0,
-        &symbol_0,
-        &address_0,
-        &chain_1,
-        &address_1,
-        &symbol_1,
+    let reply = to_add_pool_reply_failed(
         request_id,
+        &token_0.chain(),
+        &token_0.address(),
+        &token_0.symbol(),
+        &token_1.chain(),
+        &token_1.address(),
+        &token_1.symbol(),
         transfer_ids,
         &claim_ids,
         ts,

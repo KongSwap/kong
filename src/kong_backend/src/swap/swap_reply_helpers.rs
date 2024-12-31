@@ -2,6 +2,7 @@ use candid::Nat;
 use num::{BigRational, Zero};
 
 use super::swap_calc::SwapCalc;
+use super::swap_reply::{SwapReply, SwapTxReply};
 
 use crate::helpers::math_helpers::price_rounded;
 use crate::helpers::nat_helpers::nat_zero;
@@ -12,12 +13,6 @@ use crate::stable_token::token_map;
 use crate::stable_tx::status_tx::StatusTx;
 use crate::stable_tx::swap_tx::SwapTx;
 use crate::transfers::transfer_reply_helpers::to_transfer_ids;
-
-use super::swap_reply::{SwapReply, SwapTxReply};
-
-pub fn to_txs(txs: &[SwapCalc], ts: u64) -> Vec<SwapTxReply> {
-    txs.iter().filter_map(|tx| to_swap_tx_reply(tx, ts)).collect()
-}
 
 fn to_swap_tx_reply(swap: &SwapCalc, ts: u64) -> Option<SwapTxReply> {
     let pool = pool_map::get_by_pool_id(swap.pool_id)?;
@@ -44,11 +39,11 @@ fn to_swap_tx_reply(swap: &SwapCalc, ts: u64) -> Option<SwapTxReply> {
     })
 }
 
-pub fn create_swap_reply(swap_tx: &SwapTx) -> SwapReply {
-    create_swap_reply_with_tx_id(swap_tx.tx_id, swap_tx)
+fn to_txs(txs: &[SwapCalc], ts: u64) -> Vec<SwapTxReply> {
+    txs.iter().filter_map(|tx| to_swap_tx_reply(tx, ts)).collect()
 }
 
-pub fn create_swap_reply_with_tx_id(tx_id: u64, swap_tx: &SwapTx) -> SwapReply {
+pub fn to_swap_reply(swap_tx: &SwapTx) -> SwapReply {
     let pay_token = token_map::get_by_token_id(swap_tx.pay_token_id);
     let (pay_chain, pay_symbol) = pay_token.map_or_else(
         || ("Pay chain not found".to_string(), "Pay symbol not found".to_string()),
@@ -60,7 +55,7 @@ pub fn create_swap_reply_with_tx_id(tx_id: u64, swap_tx: &SwapTx) -> SwapReply {
         |token| (token.chain().to_string(), token.symbol().to_string()),
     );
     SwapReply {
-        tx_id,
+        tx_id: swap_tx.tx_id,
         request_id: swap_tx.request_id,
         status: swap_tx.status.to_string(),
         pay_chain,
@@ -79,7 +74,7 @@ pub fn create_swap_reply_with_tx_id(tx_id: u64, swap_tx: &SwapTx) -> SwapReply {
     }
 }
 
-pub fn create_swap_reply_failed(
+pub fn to_swap_reply_failed(
     request_id: u64,
     pay_token: &StableToken,
     pay_amount: &Nat,

@@ -1,7 +1,7 @@
 use candid::Nat;
 use icrc_ledger_types::icrc1::account::Account;
 
-use super::swap_reply_helpers::create_swap_reply_failed;
+use super::swap_reply_helpers::to_swap_reply_failed;
 
 use crate::helpers::nat_helpers::{nat_subtract, nat_zero};
 use crate::ic::{address::Address, transfer::icrc1_transfer};
@@ -67,6 +67,6 @@ pub async fn return_pay_token(
         }
     };
 
-    let reply = create_swap_reply_failed(request_id, pay_token, pay_amount, receive_token, transfer_ids, &claim_ids, ts);
+    let reply = to_swap_reply_failed(request_id, pay_token, pay_amount, receive_token, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::Swap(reply));
 }

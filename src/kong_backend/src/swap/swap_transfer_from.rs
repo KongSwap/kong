@@ -162,7 +162,7 @@ async fn process_swap(
             }
         };
 
-    let reply = send_receive_token(
+    send_receive_token(
         request_id,
         user_id,
         pay_token,
@@ -177,9 +177,7 @@ async fn process_swap(
         &swaps,
         ts,
     )
-    .await;
-
-    Ok(reply)
+    .await
 }
 
 async fn transfer_from_token(

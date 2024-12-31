@@ -2,7 +2,7 @@ use candid::Nat;
 
 use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
-use super::swap_reply_helpers::create_swap_reply_with_tx_id;
+use super::swap_reply_helpers::{to_swap_reply, to_swap_reply_failed};
 
 use crate::ic::{
     address::Address,
@@ -29,7 +29,7 @@ pub async fn send_receive_token(
     slippage: f64,
     txs: &[SwapCalc],
     ts: u64,
-) -> SwapReply {
+) -> Result<SwapReply, String> {
     let pay_token_id = pay_token.token_id();
     let receive_token_id = receive_token.token_id();
 
@@ -94,9 +94,11 @@ pub async fn send_receive_token(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::Swap(swap_tx.clone()));
-
-    let reply = create_swap_reply_with_tx_id(tx_id, &swap_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::Swap(swap_tx)) => to_swap_reply(swap_tx),
+        _ => to_swap_reply_failed(request_id, pay_token, pay_amount, Some(receive_token), transfer_ids, &claim_ids, ts),
+    };
     request_map::update_reply(request_id, Reply::Swap(reply.clone()));
 
-    reply
+    Ok(reply)
 }

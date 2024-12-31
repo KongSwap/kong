@@ -180,7 +180,7 @@ async fn process_swap(
             }
         };
 
-    let reply = send_receive_token(
+    send_receive_token(
         request_id,
         user_id,
         pay_token,
@@ -195,9 +195,7 @@ async fn process_swap(
         &swaps,
         ts,
     )
-    .await;
-
-    Ok(reply)
+    .await
 }
 
 async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat, amount: &Nat, ts: u64) -> Result<u64, String> {
