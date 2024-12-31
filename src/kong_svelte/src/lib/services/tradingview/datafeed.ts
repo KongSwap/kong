@@ -33,11 +33,14 @@ interface Bar {
 export class KongDatafeed {
   private fromTokenId: number;
   private toTokenId: number;
-  private lastBar: Bar | null = null;
+  public lastBar: Bar | null = null;
+  private currentPrice: number;
 
-  constructor(fromTokenId: number, toTokenId: number) {
+  constructor(fromTokenId: number, toTokenId: number, currentPrice: number) {
     this.fromTokenId = fromTokenId;
-    this.toTokenId = toTokenId;  }
+    this.toTokenId = toTokenId;
+    this.currentPrice = currentPrice;
+  }
 
   onReady(callback: (configuration: any) => void): void {
     setTimeout(() => callback({
@@ -55,6 +58,13 @@ export class KongDatafeed {
   }
 
   resolveSymbol(symbolName: string, onSymbolResolvedCallback: (symbolInfo: any) => void, onError: (error: string) => void): void {
+    // Calculate precision and price scale based on current price
+    const getPriceScale = (price: number) => {
+      if (price >= 1000) return 100;        // 2 decimals
+      if (price >= 1) return 10000;         // 4 decimals
+      return 100000000;                       // 6 decimals
+    };
+
     // Symbol information object
     const symbolInfo = {
       name: symbolName,
@@ -67,7 +77,7 @@ export class KongDatafeed {
       listed_exchange: 'Kong',
       format: 'price',
       minmov: 1,
-      pricescale: 100000000,
+      pricescale: getPriceScale(this.currentPrice),
       has_intraday: true,
       has_daily: true,
       has_weekly_and_monthly: true,
@@ -136,6 +146,10 @@ export class KongDatafeed {
       console.error('Error fetching bars:', error);
       onErrorCallback(error.toString());
     }
+  }
+
+  getPrice(): number {
+    return this.lastBar ? this.lastBar.close : 0;
   }
 
   subscribeBars(

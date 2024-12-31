@@ -1,77 +1,90 @@
 import { writable } from 'svelte/store';
-import hyperid from 'hyperid';
-
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 export interface Toast {
     id: string;
-    type: ToastType;
-    message: string;
-    duration?: number;
+    type: 'success' | 'error' | 'warning' | 'info';
     title?: string;
+    message: string;
+    timestamp: number;
+    timeoutId?: ReturnType<typeof setTimeout>;
+    duration?: number;
 }
 
-const generateId = hyperid();
+export interface ToastOptions {
+    title?: string;
+    duration?: number;
+}
 
 function createToastStore() {
     const { subscribe, update } = writable<Toast[]>([]);
 
-    const addToast = (
-        message: string,
-        type: ToastType = 'info',
-        duration: number = 5000,
-        title?: string
-    ): string => {
-        const id = generateId();
-
-        if (type === 'error') {
-            duration = duration || 8000;
+    const add = (toast: Omit<Toast, 'id' | 'timestamp'>): string => {
+        const id = crypto.randomUUID();
+        
+        // Create timeout if duration is specified
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        if (toast.duration) {
+            timeoutId = setTimeout(() => {
+                dismiss(id);
+            }, toast.duration);
         }
 
-        const toast: Toast = {
+        update(toasts => [...toasts, {
+            ...toast,
             id,
-            type,
-            message,
-            duration,
-            title
-        };
-
-        update(toasts => [...toasts, toast]);
-
-        if (duration && duration > 0) {
-            setTimeout(() => {
-                removeToast(id);
-            }, duration);
-        }
-
+            timestamp: Date.now(),
+            timeoutId // Store the timeout ID
+        }]);
         return id;
     };
 
-    const removeToast = (id: string) => {
-        update(toasts => toasts.filter(t => t.id !== id));
-    };
-
-    const clearToasts = () => {
-        update(() => []);
-    };
-
-    const dismissToast = (id: string) => {
-        update(toasts => toasts.filter(t => t.id !== id));
+    const dismiss = (id: string) => {
+        update(toasts => {
+            const toast = toasts.find(t => t.id === id);
+            if (toast?.timeoutId) {
+                clearTimeout(toast.timeoutId);
+            }
+            return toasts.filter(t => t.id !== id);
+        });
     };
 
     return {
         subscribe,
-        success: (message: string, duration?: number, title?: string) => 
-            addToast(message, 'success', duration, title),
-        error: (message: string, duration?: number, title?: string) => 
-            addToast(message, 'error', duration, title),
-        warning: (message: string, duration?: number, title?: string) => 
-            addToast(message, 'warning', duration, title),
-        info: (message: string, duration?: number, title?: string) => 
-            addToast(message, 'info', duration, title),
-        remove: removeToast,
-        clear: clearToasts,
-        dismiss: dismissToast
+        add,
+        dismiss,
+        // Convenience methods with options
+        success: (message: string, options: ToastOptions = {}): string => {
+            return add({ 
+                type: 'success', 
+                message, 
+                title: options.title,
+                duration: options.duration || 5000 
+            });
+        },
+        error: (message: string, options: ToastOptions = {}): string => {
+            return add({ 
+                type: 'error', 
+                message, 
+                title: options.title,
+                duration: options.duration || 10000 // Longer default for errors
+            });
+        },
+        warning: (message: string, options: ToastOptions = {}): string => {
+            return add({ 
+                type: 'warning', 
+                message, 
+                title: options.title,
+                duration: options.duration || 10000
+            });
+        },
+        info: (message: string, options: ToastOptions = {}): string => {
+            return add({ 
+                type: 'info', 
+                message, 
+                title: options.title,
+                duration: options.duration || 5000
+            });
+        },
     };
 }
 

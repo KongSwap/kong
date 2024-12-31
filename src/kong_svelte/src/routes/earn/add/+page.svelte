@@ -4,11 +4,11 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { PoolService } from "$lib/services/pools/PoolService";
-  import { formatTokenAmount, parseTokenAmount } from "$lib/utils/numberFormatUtils";
-  import { poolStore } from "$lib/services/pools/poolStore";
+  import { parseTokenAmount } from "$lib/utils/numberFormatUtils";
   import { browser } from "$app/environment";
   import { toastStore } from "$lib/stores/toastStore";
-
+  import { livePools } from "$lib/services/pools/poolStore";
+  
   let token0: FE.Token | null = null;
   let token1: FE.Token | null = null;
   let amount0 = "";
@@ -18,7 +18,6 @@
   let token0Balance = "0";
   let token1Balance = "0";
   let pool: BE.Pool | null = null;
-  let previewMode = false;
   let showConfirmation = false;
 
   $: {
@@ -51,14 +50,14 @@
 
   async function fetchPoolInfo() {
     try {
-      const pools = $poolStore.pools;
+      const pools = $livePools;
       pool = pools.find(
         p => (p.address_0 === token0?.canister_id && p.address_1 === token1?.canister_id) ||
              (p.address_0 === token1?.canister_id && p.address_1 === token0?.canister_id)
       ) || null;
     } catch (err) {
       console.error('Error fetching pool info:', err);
-      toastStore.error(err.message || "Failed to fetch pool info", 8000, "Error");
+      toastStore.error(err.message || "Failed to fetch pool info");
       pool = null;
     }
   }
@@ -107,7 +106,6 @@
 
   async function handleSubmit() {
     try {
-        console.log("Starting handleSubmit...");
         if (!token0 || !token1 || !amount0 || !amount1) {
             error = "Please fill in all fields";
             return;
@@ -123,7 +121,7 @@
             amount_1: parseTokenAmount(amount1, token1.decimals),
         };
 
-        toastStore.info("Adding liquidity...", 7000);
+        toastStore.info("Adding liquidity...");
         const requestId = await PoolService.addLiquidity(params);
 
         // Start polling
@@ -132,7 +130,7 @@
 
     } catch (err) {
         console.error("Error adding liquidity:", err);
-        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        toastStore.error(err.message || "Failed to add liquidity");
         loading = false;
         error = err.message;
         showConfirmation = false;
@@ -146,36 +144,36 @@
         
         if (status.statuses.includes('Success')) {
             console.log('Success status found, showing toast');
-            toastStore.success("Successfully added liquidity to the pool", 5000, "Success");
-            await poolStore.loadUserPoolBalances();
+            toastStore.success("Successfully added liquidity to the pool");
+            await PoolService.fetchUserPoolBalances();
             showConfirmation = false;
             loading = false;
-            goto("/earn");
+            goto("/pools");
         } else if (status.statuses.some(s => 
             s.toLowerCase().includes('failed') || 
             s.toLowerCase().includes('error')
         )) {
             console.log('Error status found, throwing error');
             const errorMsg = status.statuses[status.statuses.length - 1];
-            toastStore.error(errorMsg, 8000, "Error");
+            toastStore.error(errorMsg);
             showConfirmation = false;
             loading = false;
             throw new Error(errorMsg);
         } else if (attempt >= MAX_ATTEMPTS) {
             console.log('Maximum polling attempts reached');
-            toastStore.error(`Operation timed out after ${MAX_ATTEMPTS} attempts`, 8000, "Error");
+            toastStore.error(`Operation timed out after ${MAX_ATTEMPTS} attempts`);
             showConfirmation = false;
             loading = false;
             throw new Error("Operation timed out");
         } else {
             console.log('Still pending, polling again in .5s');
             return new Promise((resolve) => {
-                setTimeout(() => resolve(pollStatus(requestId, attempt + 1)), 400);
+                setTimeout(() => resolve(pollStatus(requestId, attempt + 1)), 500);
             });
         }
     } catch (err) {
         console.error("Error during polling:", err);
-        toastStore.error(err.message || "Failed to add liquidity", 8000, "Error");
+        toastStore.error(err.message || "Failed to add liquidity");
         showConfirmation = false;
         loading = false;
         throw err;
@@ -183,7 +181,7 @@
   }
 
   function handleBack() {
-    goto("/earn");
+    goto("/pools");
   }
 </script>
 
@@ -216,7 +214,7 @@
   </div>
 </div>
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .container {
     @apply max-w-2xl mx-auto px-4 py-6 w-full;
   }

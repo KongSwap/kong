@@ -1,13 +1,13 @@
 <script lang="ts">
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
-  import { tokenStore } from "$lib/services/tokens/tokenStore";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
 
   export let routingPath: string[] = [];
 
   $: tokens = routingPath
     ? routingPath
-      .map(symbol => $tokenStore.tokens.find(t => t.symbol === symbol))
+      .map(symbol => $liveTokens.find(t => t.symbol === symbol))
       .filter((t): t is FE.Token => t !== undefined)
     : [];
 
@@ -51,7 +51,7 @@
   />
 {/if}
 
-<style>
+<style scoped lang="postcss">
   .route-container {
     width: 100%;
     padding: 8px;
@@ -60,7 +60,7 @@
 
   .route-header {
     text-align: center;
-    color: rgba(255,255,255,0.9);
+    @apply text-kong-text-primary;
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 12px;
@@ -83,9 +83,7 @@
   }
 
   .token-block {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
+    @apply bg-kong-bg-dark border border-kong-bg-dark rounded;
     padding: 6px 12px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -93,8 +91,7 @@
   }
 
   .token-block:hover {
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(255,255,255,0.2);
+    @apply bg-kong-bg-dark border border-kong-bg-dark;
   }
 
   .token-inner {
@@ -105,19 +102,19 @@
   }
 
   .token-symbol {
-    color: #ffffff;
+    @apply text-kong-text-primary;
     font-size: 14px;
     font-weight: 500;
   }
 
   .arrow {
-    color: rgba(255,255,255,0.6);
+    @apply text-kong-text-secondary;
     font-size: 18px;
     padding: 0 2px;
   }
 
   .no-route {
-    color: rgba(255,255,255,0.6);
+    @apply text-kong-text-secondary;
     text-align: center;
     padding: 12px;
   }

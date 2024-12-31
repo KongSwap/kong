@@ -3,57 +3,65 @@
   export let type: "button" | "submit" | "reset" = "button";
   export let theme: "primary" | "secondary" | "success" | "error" | "warning" | "accent-green" | "accent-blue" | "muted" = "primary";
   export let variant: "solid" | "outline" | "transparent" | "shine" = "solid";
-  export let size: "sm" | "md" | "lg" = "md";
+  export let size: "xs" | "sm" | "md" | "lg" = "md";
   export let isDisabled: boolean = false;
   export let fullWidth: boolean = false;
   export let uppercase: boolean = false;
-  export let onClick: () => void = () => {};
+  export let disabled: boolean = false;
+  export let className: string = "";
 
   // Theme-based styles
   const baseThemeClasses = {
-    primary: "text-kong-text-primary",
-    secondary: "text-kong-secondary",
+    primary: "text-white/90",
+    secondary: "text-white/90",
     success: "text-kong-success",
-    error: "text-kong-error",
+    error: "text-white",
     warning: "text-kong-warning",
-    "accent-green": "text-kong-accent-green",
-    "accent-blue": "text-kong-accent-blue",
-    "accent-red": "text-kong-accent-red",
+    "accent-green": "text-white",
+    "accent-blue": "text-kong-white",
+    "accent-red": "text-kong-white",
     muted: "text-kong-text-inverse/60",
   };
 
   const solidThemeClasses = {
     primary: "bg-kong-primary hover:bg-kong-primary-hover",
-    secondary: "bg-kong-secondary hover:bg-kong-secondary-hover",
+    secondary: "bg-white/5 hover:bg-white/10",
     success: "bg-kong-success hover:bg-green-500",
-    error: "bg-kong-error hover:bg-red-500",
+    error: "bg-red-600 hover:bg-red-700",
     warning: "bg-kong-warning hover:bg-yellow-500",
     "accent-green": "bg-kong-accent-green hover:bg-kong-accent-green-hover",
     "accent-blue": "bg-kong-accent-blue hover:bg-kong-accent-blue-hover",
     "accent-red": "bg-kong-accent-red hover:bg-kong-accent-red-hover",
-    muted: "bg-white/10 hover:bg-white/20 text-white/90 hover:text-white",
+    muted: "bg-white/5 hover:bg-white/10 text-white/90 hover:text-white",
   };
 
   const outlineThemeClasses = {
     primary: "border border-kong-primary text-kong-primary hover:bg-kong-primary/10",
-    secondary: "border border-kong-secondary text-kong-secondary hover:bg-kong-secondary/10",
+    secondary: "border border-white/10 text-white/90 hover:bg-white/5",
+    "accent-green": "border border-kong-accent-green text-kong-accent-green hover:bg-kong-accent-green/10",
+    "accent-blue": "border border-kong-accent-blue text-kong-accent-blue hover:bg-kong-accent-blue/10",
+    "accent-red": "border border-kong-accent-red text-kong-accent-red hover:bg-kong-accent-red/10",
     success: "border border-kong-success text-kong-success hover:bg-kong-success/10",
-    error: "border border-kong-error text-kong-error hover:bg-kong-error/10",
+    error: "border border-red-600 text-red-500 hover:bg-red-600/10",
     warning: "border border-kong-warning text-kong-warning hover:bg-kong-warning/10",
-    muted: "border border-white/20 text-white/50 hover:bg-white/10",
+    muted: "border border-white/10 text-white/50 hover:bg-white/5",
   };
 
   const transparentThemeClasses = {
     primary: "bg-transparent text-kong-primary hover:bg-kong-primary/10",
-    secondary: "bg-transparent text-kong-secondary hover:bg-kong-secondary/10",
+    secondary: "bg-transparent text-white/90 hover:bg-white/5",
+    "accent-green": "bg-transparent text-kong-accent-green hover:bg-kong-accent-green/10",
+    "accent-blue": "bg-transparent text-kong-accent-blue hover:bg-kong-accent-blue/10",
+    "accent-red": "bg-transparent text-kong-accent-red hover:bg-kong-accent-red/10",
     success: "bg-transparent text-kong-success hover:bg-kong-success/10",
-    error: "bg-transparent text-kong-error hover:bg-kong-error/10",
+    error: "bg-transparent text-red-600 hover:bg-red-600/10",
     warning: "bg-transparent text-kong-warning hover:bg-kong-warning/10",
-    muted: "bg-transparent text-white/50 hover:bg-white/10",
+    muted: "bg-transparent text-white/50 hover:bg-white/5",
   };
 
   // Size-based styles
   const sizeClasses = {
+    xs: "px-2 py-1 text-xs",
     sm: "px-3 py-1 text-sm",
     md: "px-4 py-2 text-sm",
     lg: "px-6 py-3 text-base",
@@ -92,9 +100,9 @@
   type={type}
   class="rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed 
     {baseThemeClasses[theme]} {variantClasses[variant]} {sizeClasses[size]} 
-    {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''}"
+    {fullWidth ? 'w-full' : 'w-auto'} {uppercase ? 'uppercase' : ''} {className}"
   disabled={isDisabled}
-  on:click={onClick}
+  on:click
 >
   <div class="relative z-10">
     {#if label}

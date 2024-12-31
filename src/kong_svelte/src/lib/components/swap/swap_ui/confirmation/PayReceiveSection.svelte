@@ -10,7 +10,7 @@
   export let receiveUsdValue: string;
 </script>
 
-<div class="section">
+<div class="section rounded">
   <div class="token-section">
     <div class="token-info">
       <TokenImages tokens={[payToken]} size={38} containerClass="token-image" />
@@ -36,11 +36,9 @@
   </div>
 </div>
 
-<style>
+<style scoped lang="postcss">
   .section {
-    background: rgba(26, 27, 35, 0.6);
-    border: 1px solid rgba(42, 45, 61, 1);
-    border-radius: 12px;
+    @apply bg-kong-bg-dark border border-kong-bg-dark rounded;
     padding: 16px;
   }
 
@@ -54,7 +52,7 @@
   .divider {
     width: 100%;
     height: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    @apply bg-kong-bg-dark/20;
     margin: 8px 0;
   }
 
@@ -72,13 +70,13 @@
 
   .type {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.6);
+    @apply text-kong-text-secondary;
   }
 
   .amount {
     font-size: 18px;
     font-weight: 500;
-    color: white;
+    @apply text-kong-text-primary;
     letter-spacing: -0.01em;
   }
 

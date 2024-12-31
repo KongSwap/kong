@@ -1,43 +1,88 @@
 <!-- Panel.svelte -->
 <script lang="ts">
-    import { themeStore } from '$lib/stores/themeStore';
-    import PixelPanel from '$lib/components/themes/pixel/Panel.svelte';
-    import ModernPanel from '$lib/components/themes/modern/Panel.svelte';
-
-    export let variant: "green" | "yellow" | "blue" = "green";
-    export let pixelVariant: "green" | "yellow" = variant as "green" | "yellow";
-    export let type: "main" | "secondary" = "main";
-    export let width: string = "auto";
-    export let height: string = "auto"; 
-    export let content: string = '';
-    export let className: string = '';
-    export let zIndex: number = 10;
-    export let roundedBorders: boolean = true;
+  export let variant: "transparent" | "solid" = "transparent";
+  export let type: "main" | "secondary" = "main";
+  export let width: string = "auto";
+  export let height: string = "auto";
+  export let content: string = '';
+  export let className: string = '';
+  export let zIndex: number = 10;
+  export let roundedBorders: boolean = true;
 </script>
 
-{#if $themeStore === 'pixel'}
-    <PixelPanel
-        variant={pixelVariant}
-        {type}
-        {width}
-        {height}
-        {content}
-        {className}
-        {zIndex}
-    >
-        <slot>{content}</slot>
-    </PixelPanel>
-{:else}
-    <ModernPanel
-        {variant}
-        {type}
-        {width}
-        {height}
-        {content}
-        {className}
-        {zIndex}
-        {roundedBorders}
-    >
-        <slot>{content}</slot>
-    </ModernPanel>
-{/if}
+<div 
+  class="panel px-3 py-2 {variant} {type} {className} {roundedBorders ? '' : 'no-rounded'}"
+  style="width: {width}; height: {height}; z-index: {zIndex};"
+>
+  <slot>{content}</slot>
+</div>
+
+<style lang="postcss">
+.panel {
+  @apply relative text-kong-text-primary flex flex-col min-h-0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel.solid {
+  @apply bg-kong-bg-dark border border-kong-border;
+  @apply shadow-lg dark:shadow-[0_8px_32px_rgba(0,0,0,0.32)];
+  @apply dark:border-white/[0.02];
+  @apply light:bg-kong-bg-dark light:border-kong-border;
+}
+
+.panel.solid.main {
+  @apply border-kong-border dark:border-white/[0.025];
+  @apply shadow-xl dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)];
+  @apply light:bg-kong-bg-dark light:border-kong-border;
+}
+
+.panel.transparent {
+  @apply bg-kong-bg-dark/40;
+  backdrop-filter: blur(var(--blur, 12px));
+  @apply border border-kong-border/50;
+  @apply shadow-sm dark:shadow-[0_4px_12px_rgba(0,0,0,0.16)];
+  @apply light:bg-kong-bg-dark/95 light:border-kong-border;
+}
+
+.panel:not(.no-rounded) {
+  @apply rounded-lg;
+}
+
+.panel.no-rounded {
+  @apply border-0;
+}
+
+/* Premium edge highlight for solid variant */
+.panel.solid:not(.no-rounded)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  @apply rounded-lg;
+  @apply bg-gradient-to-br from-kong-text-primary/[0.04] via-kong-text-primary/[0.02] to-kong-text-primary/[0.01];
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Inner glow effect for solid variant */
+.panel.solid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  @apply rounded-lg;
+  @apply bg-gradient-radial from-kong-text-primary/[0.01] to-transparent;
+  pointer-events: none;
+}
+
+/* Hover effects for transparent variant */
+.panel.transparent:hover,
+.panel.transparent:has(.panel:hover) {
+  @apply bg-kong-bg-dark/50;
+  @apply border-kong-border/60;
+  @apply shadow-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.2)];
+  @apply light:bg-kong-bg-dark/95;
+}
+</style>

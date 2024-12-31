@@ -2,7 +2,7 @@
   import { fade } from "svelte/transition";
   import { onMount } from "svelte";
   import {
-    formatTokenAmount,
+    formatBalance,
     parseTokenAmount,
   } from "$lib/utils/numberFormatUtils";
   import Portal from "svelte-portal";
@@ -11,8 +11,8 @@
   import LiquidityPanel from "./LiquidityPanel.svelte";
   import { addLiquidityStore } from "$lib/services/pools/addLiquidityStore";
   import { goto } from "$app/navigation";
-  import { tokenStore } from "$lib/services/tokens";
-  import { auth } from "$lib/services/auth";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
+  import { toastStore } from "$lib/stores/toastStore";
 
   export let token0: FE.Token | null = null;
   export let token1: FE.Token | null = null;
@@ -44,14 +44,7 @@
   ];
 
   async function handleInput(index: 0 | 1, event: CustomEvent) {
-    console.log("handleInput called with:", {
-      index,
-      event,
-      detail: event.detail,
-    });
-
     const input = event.detail?.value;
-    console.log("Got input value:", input);
 
     if (!input) {
       if (index === 0) amount0 = "0";
@@ -62,30 +55,16 @@
     // Update the amount immediately
     if (index === 0) {
       amount0 = input;
-      console.log("Set amount0 to:", amount0);
     } else {
       amount1 = input;
-      console.log("Set amount1 to:", amount1);
     }
 
     // Only calculate if we have both tokens and input is not empty
     if (token0 && token1 && input !== "") {
       try {
-        console.log("Starting calculation with tokens:", { token0, token1 });
         const parsedAmount = parseTokenAmount(
           input,
           index === 0 ? token0.decimals : token1.decimals,
-        );
-        console.log("Parsed amount:", parsedAmount.toString());
-
-        // Log which token we're calculating from/to
-        console.log(
-          "Calculating from:",
-          index === 0 ? token0.token : token1.token,
-        );
-        console.log(
-          "Calculating to:",
-          index === 0 ? token1.token : token0.token,
         );
 
         const result = await PoolService.calculateLiquidityAmounts(
@@ -94,14 +73,8 @@
           index === 0 ? token1.token : token0.token,
         );
 
-        console.log("Got result:", result);
 
         if (result.Ok) {
-          console.log("Result amounts:", {
-            amount_0: result.Ok.amount_0.toString(),
-            amount_1: result.Ok.amount_1.toString(),
-          });
-
           // When index is 0 (top token), we want amount_1 for the bottom token
           // When index is 1 (bottom token), we want amount_0 for the top token
           const otherAmount =
@@ -109,11 +82,9 @@
           const otherDecimals = index === 0 ? token1.decimals : token0.decimals;
 
           if (index === 0) {
-            amount1 = formatTokenAmount(otherAmount, otherDecimals);
-            console.log("Updated amount1 to:", amount1);
+            amount1 = formatBalance(otherAmount, otherDecimals);
           } else {
-            amount0 = formatTokenAmount(otherAmount, otherDecimals);
-            console.log("Updated amount0 to:", amount0);
+            amount0 = formatBalance(otherAmount, otherDecimals);
           }
         } else if (result.Err) {
           console.error("Error calculating liquidity:", result.Err);
@@ -140,7 +111,6 @@
   }
 
   function handleTokenSelected(token: FE.Token, index: 0 | 1) {
-    console.log("Token selected:", { token, index });
     if (index === 0) {
       token0 = token;
     } else {
@@ -148,7 +118,6 @@
     }
 
     addLiquidityStore.closeTokenSelector();
-    console.log("After token selection:", { token0, token1 });
   }
 
   async function handleSubmit() {
@@ -159,26 +128,40 @@
       const parsedAmount0 = parseTokenAmount(amount0, token0.decimals);
       const parsedAmount1 = parseTokenAmount(amount1, token1.decimals);
 
-      const addLiquidityArgs = {
-        token_0: token0,
-        amount_0: parsedAmount0,
-        token_1: token1,
-        amount_1: parsedAmount1,
-      };
+      if (!$addLiquidityStore.poolExists) {
+        // Handle new pool creation
+        if (!$addLiquidityStore.initialPrice || parseFloat($addLiquidityStore.initialPrice) <= 0) {
+          throw new Error("Please set a valid initial price");
+        }
 
-      const result = await PoolService.addLiquidity(addLiquidityArgs);
+        const createPoolArgs = {
+          token_0: token0,
+          amount_0: parsedAmount0,
+          token_1: token1,
+          amount_1: parsedAmount1,
+          initial_price: parseFloat($addLiquidityStore.initialPrice)
+        };
 
-
-      if (typeof result === "bigint") {
-        // Reset state before navigation
-  
-        addLiquidityStore.reset();
-        // Add a small delay to ensure UI updates before navigation
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        goto("/earn");
+        await PoolService.createPool(createPoolArgs);
+        toastStore.success("Successfully created new pool");
       } else {
-        error = result;
+        // Handle adding liquidity to existing pool
+        const addLiquidityArgs = {
+          token_0: token0,
+          amount_0: parsedAmount0,
+          token_1: token1,
+          amount_1: parsedAmount1,
+        };
+
+        await PoolService.addLiquidity(addLiquidityArgs);
+        toastStore.success("Successfully added liquidity");
       }
+
+      // Reset state and navigate
+      addLiquidityStore.reset();
+      // Add a small delay to ensure UI updates before navigation
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      goto("/pools");
     } catch (err) {
       console.error("Error submitting liquidity:", err);
       // If it's a wallet connection issue, show a more user-friendly message
@@ -193,35 +176,17 @@
   }
 
   function handleBack() {
-    goto("/earn");
+    goto("/pools");
   }
 
-  $: {
-    console.log("Button text calculation:", {
-      token0,
-      token1,
-      amount0,
-      amount1,
-      amount0Type: typeof amount0,
-      amount1Type: typeof amount1,
-      amount0Value: Number(amount0),
-      amount1Value: Number(amount1),
-      condition1: !token0 || !token1,
-      condition2: amount0 === "" || amount1 === "",
-      condition3: Number(amount0) === 0 || Number(amount1) === 0,
-    });
-  }
-
+  // Combine the button text logic into a single reactive statement
   $: buttonText = error
     ? error
     : !token0 || !token1
-      ? "Select Tokens"
-      : !amount0 ||
-          !amount1 ||
-          parseFloat(amount0) <= 0 ||
-          parseFloat(amount1) <= 0
-        ? "Enter Amounts"
-        : "Add Liquidity";
+    ? "Select Tokens"
+    : !$addLiquidityStore.poolExists
+    ? "Create Pool"
+    : "Add Liquidity";
 
   // Add store subscription
   $: tokenSelectorState = $addLiquidityStore;
@@ -266,7 +231,7 @@
 
         if (result.Ok) {
           amount0 = "1";
-          amount1 = formatTokenAmount(result.Ok.amount_1, token1.decimals);
+          amount1 = formatBalance(result.Ok.amount_1, token1.decimals);
         } else if (result.Err) {
           console.error(
             "Error calculating initial liquidity amounts:",
@@ -278,6 +243,24 @@
       }
     }
   });
+
+  $: {
+    if (token0 && token1) {
+      addLiquidityStore.checkPoolExists(token0, token1);
+    }
+  }
+
+  // Add handler for initial price input
+  function handleInitialPriceInput(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
+    const value = event.currentTarget.value;
+    if (!value || isNaN(parseFloat(value))) return;
+    addLiquidityStore.setInitialPrice(value);
+  }
+
+  // Remove the duplicate buttonText declaration and keep the disabled logic
+  $: buttonDisabled = !$addLiquidityStore.poolExists && 
+    (!$addLiquidityStore.initialPrice || 
+     parseFloat($addLiquidityStore.initialPrice) <= 0);
 </script>
 
 <div class="swap-wrapper">
@@ -320,6 +303,93 @@
       {/each}
     </div>
 
+    {#if token0 && token1 && !$addLiquidityStore.poolExists}
+      <div class="new-pool-warning">
+        <div class="warning-header">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-text">New Pool Creation</span>
+        </div>
+        
+        <div class="pool-creation-form">
+          <!-- Initial Amounts Section -->
+          <div class="form-section">
+            <h3 class="section-title">Initial Pool Liquidity</h3>
+            <div class="token-amounts">
+              <div class="token-amount">
+                <label>Initial {token0?.symbol} Amount</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="any"
+                  placeholder={`Enter ${token0?.symbol} amount`}
+                  bind:value={amount0}
+                />
+                <p class="balance-hint">Balance: {token0Balance} {token0?.symbol}</p>
+              </div>
+              
+              <div class="token-amount">
+                <label>Initial {token1?.symbol} Amount</label>
+                <input 
+                  type="number"
+                  min="0" 
+                  step="any"
+                  placeholder={`Enter ${token1?.symbol} amount`}
+                  bind:value={amount1}
+                />
+                <p class="balance-hint">Balance: {token1Balance} {token1?.symbol}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Price Ratio Section -->
+          <div class="form-section">
+            <h3 class="section-title">Initial Price Ratio</h3>
+            <div class="price-inputs">
+              <div class="price-input">
+                <label>Price ({token1?.symbol} per {token0?.symbol})</label>
+                <input
+                  type="number"
+                  id="initial-price"
+                  min="0"
+                  step="any"
+                  placeholder="Enter price ratio"
+                  on:input={handleInitialPriceInput}
+                />
+                <p class="price-hint">
+                  Example: If 1 {token0?.symbol} = 10 {token1?.symbol}, enter "10"
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pool Info Section -->
+          <div class="form-section">
+            <h3 class="section-title">Pool Information</h3>
+            <div class="pool-info">
+              <div class="info-row">
+                <span class="label">Pool Name:</span>
+                <span class="value">{token0?.symbol}/{token1?.symbol}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Pool Symbol:</span>
+                <span class="value">{token0?.symbol}_{token1?.symbol}_LP</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Warning Messages -->
+          <div class="warnings">
+            <p class="warning-item">
+              ⚠️ You are creating a new liquidity pool. Make sure the initial price ratio is correct.
+            </p>
+            <p class="warning-item">
+              ⚠️ The ratio of tokens you add will set the initial price for the pool.
+            </p>
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <div class="swap-footer">
       <button
         class="swap-button"
@@ -354,7 +424,7 @@
 {#if $addLiquidityStore.showToken0Selector}
   <Portal target="body">
     <TokenSelectorDropdown
-      tokens={$tokenStore.tokens}
+      tokens={$liveTokens}
       position={$addLiquidityStore.tokenSelectorPosition}
       onClose={() => addLiquidityStore.closeTokenSelector()}
       onSelect={(token) => handleTokenSelected(token, 0)}
@@ -365,7 +435,7 @@
 {#if $addLiquidityStore.showToken1Selector}
   <Portal target="body">
     <TokenSelectorDropdown
-      tokens={$tokenStore.tokens}
+      tokens={$liveTokens}
       position={$addLiquidityStore.tokenSelectorPosition}
       onClose={() => addLiquidityStore.closeTokenSelector()}
       onSelect={(token) => handleTokenSelected(token, 1)}
@@ -585,5 +655,111 @@
     100% {
       opacity: 0.8;
     }
+  }
+
+  .new-pool-warning {
+    @apply mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20;
+  }
+
+  .warning-header {
+    @apply flex items-center gap-2 mb-2;
+  }
+
+  .warning-text {
+    @apply text-yellow-500 font-medium;
+  }
+
+  .warning-description {
+    @apply text-white/70 text-sm;
+  }
+
+  .initial-price-input {
+    @apply mt-4;
+  }
+
+  .initial-price-input label {
+    @apply block text-sm text-white/70 mb-1;
+  }
+
+  .initial-price-input input {
+    @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2;
+    @apply text-white placeholder-white/40;
+    @apply focus:outline-none focus:border-blue-500;
+    @apply transition-colors duration-200;
+  }
+
+  .initial-price-input input:invalid {
+    @apply border-red-500/50;
+  }
+
+  .price-hint {
+    @apply text-xs text-white/50 mt-1;
+  }
+
+  .pool-creation-form {
+    @apply mt-4 space-y-6;
+  }
+
+  .form-section {
+    @apply bg-white/5 rounded-lg p-4;
+  }
+
+  .section-title {
+    @apply text-lg font-medium text-white mb-3;
+  }
+
+  .token-amounts {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .token-amount {
+    @apply space-y-2;
+  }
+
+  .balance-hint {
+    @apply text-xs text-white/50;
+  }
+
+  .price-inputs {
+    @apply space-y-4;
+  }
+
+  .price-input {
+    @apply space-y-2;
+  }
+
+  .pool-info {
+    @apply space-y-3;
+  }
+
+  .info-row {
+    @apply flex justify-between items-center;
+  }
+
+  .label {
+    @apply text-white/70;
+  }
+
+  .value {
+    @apply text-white font-medium;
+  }
+
+  .warnings {
+    @apply mt-4 space-y-2;
+  }
+
+  .warning-item {
+    @apply text-sm text-yellow-500;
+  }
+
+  input {
+    @apply w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2;
+    @apply text-white placeholder-white/40;
+    @apply focus:outline-none focus:border-blue-500;
+    @apply transition-colors duration-200;
+  }
+
+  input:invalid {
+    @apply border-red-500/50;
   }
 </style>

@@ -6,23 +6,53 @@ export function getChartConfig(params: {
   containerHeight: number;
   isMobile: boolean;
   autosize?: boolean;
+  currentPrice?: number;
+  theme?: string;
 }) {
-  const { symbol, datafeed, container, containerWidth, containerHeight, isMobile, autosize } = params;
+  const { 
+    symbol, 
+    datafeed, 
+    container, 
+    containerWidth, 
+    containerHeight, 
+    isMobile, 
+    autosize,
+    currentPrice = 1000,
+    theme = 'dark'
+  } = params;
+
+  const getPrecision = (price: number) => {
+    if (price >= 1000) return 2;
+    if (price >= 1) return 4;
+    return 6;
+  };
+
+  const getMinMove = (price: number) => {
+    if (price >= 1000) return 0.01;
+    if (price >= 1) return 0.0001;
+    return 0.000001;
+  };
+
+  const precision = getPrecision(currentPrice);
+  const minMove = getMinMove(currentPrice);
 
   const customTheme = {
     chart: {
-      backgroundColor: 'rgba(22, 16, 40, 1)',
+      backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
       layout: {
-        background: { color: 'rgba(22, 16, 40, 1)' },
-        textColor: '#9ca3af',
+        background: { 
+          type: "solid",
+          color: theme === 'dark' ? '#000000' : '#FFFFFF'
+        },
+        textColor: theme === 'dark' ? '#9BA1B0' : '#4B5563',
       },
       topToolbar: {
-        backgroundColor: 'rgba(22, 16, 40, 1)',
-        borderColor: 'transparent',
+        backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
+        borderColor: theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       },
       leftToolbar: {
-        backgroundColor: 'rgba(22, 16, 40, 1)',
-        borderColor: 'transparent',
+        backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
+        borderColor: theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
       }
     },
   };
@@ -38,12 +68,12 @@ export function getChartConfig(params: {
     locale: 'en',
     fullscreen: false,
     autosize: autosize ?? true,
-    theme: 'dark',
+    theme: theme,
     timezone: 'Etc/UTC',
-    toolbar_bg: 'rgba(22, 16, 40, 1)',
+    toolbar_bg: 'rgba(0,0,0,0)',
     loading_screen: { 
-      backgroundColor: "rgba(22, 16, 40, 1)",
-      foregroundColor: "#2962FF"
+      backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
+      foregroundColor: "#00A1FA"
     },
     disabled_features: [
       'use_localstorage_for_settings',
@@ -64,6 +94,9 @@ export function getChartConfig(params: {
         'scales_date_format_button',
         'display_market_status',
         'control_bar',
+        'chart_crosshair_menu',
+        'popup_hints',
+        'legend_context_menu',
       ] : [])
     ],
     enabled_features: [
@@ -76,55 +109,60 @@ export function getChartConfig(params: {
       'support_multicharts',
       'legend_widget'
     ],
-    custom_css_url: '/tradingview-chart.css',
+    custom_css_url: '../../tradingview-chart.css',
     overrides: {
       ...customTheme,
       // Chart styling
-      "mainSeriesProperties.candleStyle.upColor": "#22c55e",
-      "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-      "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
-      "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
-      "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
-      "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+      "mainSeriesProperties.candleStyle.upColor": "#00cc81",
+      "mainSeriesProperties.candleStyle.downColor": "#d11b1b",
+      "mainSeriesProperties.candleStyle.borderUpColor": "#00cc81",
+      "mainSeriesProperties.candleStyle.borderDownColor": "#d11b1b",
+      "mainSeriesProperties.candleStyle.wickUpColor": "#00cc81",
+      "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
       
-      // Chart background
-      "paneProperties.vertGridProperties.color": "rgba(30, 41, 59, 0.64)",
-      "paneProperties.horzGridProperties.color": "rgba(30, 41, 59, 0.64)",
-      "paneProperties.backgroundType": "gradient",
-      "paneProperties.backgroundGradientStartColor": "rgba(22, 16, 40, 0.9)",
-      "paneProperties.backgroundGradientEndColor": "rgba(1, 1, 1, 0.5)",
+      // Chart background and grid - adjust for themes
+      "paneProperties.vertGridProperties.color": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "paneProperties.horzGridProperties.color": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "paneProperties.backgroundType": "solid",
+      "paneProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
       
       // Chart area
-      "chartProperties.background": "rgba(22, 16, 40, 1)",
+      "chartProperties.background": theme === 'dark' ? '#000000' : '#FFFFFF',
       "chartProperties.backgroundType": "solid",
       
       // Price scale formatting
-      "mainSeriesProperties.priceFormat.precision": isMobile ? 6 : 4,
-      "mainSeriesProperties.priceFormat.minMove": isMobile ? 0.000001 : 0.0001,
+      "mainSeriesProperties.priceFormat.precision": precision,
+      "mainSeriesProperties.priceFormat.minMove": minMove,
       
       // Price axis
-      "scalesProperties.backgroundColor": "rgba(22, 16, 40, 1)",
-      "scalesProperties.lineColor": "rgba(30, 41, 59, 0.2)",
-      "scalesProperties.textColor": "#9ca3af",
+      "scalesProperties.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
+      "scalesProperties.lineColor": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "scalesProperties.textColor": theme === 'dark' ? '#9BA1B0' : '#4B5563',
       "scalesProperties.fontSize": isMobile ? 14 : 12,
       
       // Time axis
-      "timeScale.backgroundColor": "rgba(22, 16, 40, 1)",
-      "timeScale.borderColor": "rgba(30, 41, 59, 0.2)",
-      "timeScale.textColor": "#9ca3af",
+      "timeScale.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
+      "timeScale.borderColor": theme === 'dark' ? '#2A2F3D' : '#E5E7EB',
+      "timeScale.textColor": theme === 'dark' ? '#9BA1B0' : '#4B5563',
+      
+      // Loading screen
+      "loading_screen.backgroundColor": theme === 'dark' ? '#000000' : '#FFFFFF',
+      "loading_screen.foregroundColor": "#00A1FA",
       
       // Volume
       "volumePaneSize": "medium",
       ...(isMobile ? {
-        "paneProperties.topMargin": 12,
-        "paneProperties.bottomMargin": 12,
-        "paneProperties.leftAxisMargin": 12,
-        "paneProperties.rightAxisMargin": 12,
+        "paneProperties.topMargin": 8,
+        "paneProperties.bottomMargin": 8,
+        "paneProperties.leftAxisMargin": 8,
+        "paneProperties.rightAxisMargin": 8,
         
         // Price display settings
-        "scalesProperties.fontSize": 14,
-        "scalesProperties.textColor": "#9ca3af",
-        "scalesProperties.lineColor": "rgba(255, 255, 255, 0.1)",
+        "scalesProperties.fontSize": 11,
+        "scalesProperties.textColor": "#9BA1B0",
+        "scalesProperties.lineColor": theme === 'dark' ? 
+          'rgba(255, 255, 255, 0.1)' : 
+          'rgba(0, 0, 0, 0.1)',
         "scalesProperties.showLeftScale": false,
         "scalesProperties.showRightScale": true,
         
@@ -132,44 +170,45 @@ export function getChartConfig(params: {
         "priceScale.autoScale": true,
         "priceScale.formatAmount": 6,
         "priceFormat.type": "price",
-        "priceFormat.precision": 6,
-        "priceFormat.minMove": 0.000001,
+        "priceFormat.precision": precision,
+        "priceFormat.minMove": minMove,
         
         // Time scale settings
-        "timeScale.fontSize": 14,
-        "timeScale.rightOffset": 5,
-        "timeScale.leftOffset": 5,
+        "timeScale.fontSize": 11,
+        "timeScale.rightOffset": 3,
+        "timeScale.leftOffset": 3,
         
         // Other mobile-specific settings
         "paneProperties.legendProperties.showLegend": true,
-        "paneProperties.legendProperties.showStudyArguments": true,
+        "paneProperties.legendProperties.showStudyArguments": false,
         "paneProperties.legendProperties.showStudyTitles": true,
-        "volumePaneSize": "small",
+        "paneProperties.legendProperties.fontSize": 11,
+        "volumePaneSize": "tiny",
         
         // Candle style settings
         "mainSeriesProperties.candleStyle.drawWick": true,
         "mainSeriesProperties.candleStyle.drawBorder": true,
-        "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
-        "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
-        "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
-        "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+        "mainSeriesProperties.candleStyle.borderUpColor": "#00cc81",
+        "mainSeriesProperties.candleStyle.borderDownColor": "#d11b1b",
+        "mainSeriesProperties.candleStyle.wickUpColor": "#00cc81",
+        "mainSeriesProperties.candleStyle.wickDownColor": "#d11b1b",
         
         // Grid settings
-        "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.15)",
-        "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.15)",
+        "paneProperties.vertGridProperties.color": "rgba(255, 255, 255, 0.03)",
+        "paneProperties.horzGridProperties.color": "rgba(255, 255, 255, 0.03)",
         
         // Crosshair settings
-        "crossHairProperties.color": "#9ca3af",
-        "crossHairProperties.width": 1,
+        "crossHairProperties.color": "#9BA1B0",
+        "crossHairProperties.width": 0.5,
         "crossHairProperties.style": 2,
       } : {}),
     },
     studies_overrides: {
-      "volume.volume.color.0": "#ef4444",
-      "volume.volume.color.1": "#22c55e",
-      "volume.volume.transparency": 50,
-      "volume.volume ma.color": "#2962FF",
-      "volume.volume ma.transparency": 30,
+      "volume.volume.color.0": "#d11b1b",
+      "volume.volume.color.1": "#00cc81",
+      "volume.volume.transparency": theme === 'dark' ? 50 : 65,
+      "volume.volume ma.color": "#00A1FA",
+      "volume.volume ma.transparency": theme === 'dark' ? 30 : 45,
       "volume.volume ma.linewidth": 2,
       "volume.show ma": true,
       "volume.ma length": 20

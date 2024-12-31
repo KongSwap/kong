@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { swapState } from './SwapStateService';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
+import { liveTokens } from '$lib/services/tokens/tokenStore';
 import { toastStore } from '$lib/stores/toastStore';
 import { updateURL } from '$lib/components/swap/utils';
 import type { Principal } from '@dfinity/principal';
@@ -9,26 +9,26 @@ import { swapStatusStore } from './swapStore';
 
 export class SwapLogicService {
   static async handleSwapSuccess(event: CustomEvent) {
-    const $tokenStore = get(tokenStore);
-    
-    if (!$tokenStore?.tokens?.length) {
+    const tokens = get(liveTokens);
+    if (!tokens?.length) {
       console.error('TokenStore not initialized or empty');
       return;
     }
 
-    const payToken = $tokenStore.tokens.find((t: any) => t.symbol === event.detail.payToken);
-    const receiveToken = $tokenStore.tokens.find((t: any) => t.symbol === event.detail.receiveToken);
+    const payToken = tokens.find((t: any) => t.symbol === event.detail.payToken);
+    const receiveToken = tokens.find((t: any) => t.symbol === event.detail.receiveToken);
 
     if (!payToken || !receiveToken) {
       console.error('Could not find pay or receive token', {
         paySymbol: event.detail.payToken,
         receiveSymbol: event.detail.receiveToken,
-        availableTokens: $tokenStore.tokens.map(t => t.symbol)
+        availableTokens: tokens.map(t => t.symbol)
       });
       return;
     }
 
     const updatedSuccessDetails = {
+      principalId: event.detail.principalId,
       payAmount: event.detail.payAmount,
       payToken,
       receiveAmount: event.detail.receiveAmount,

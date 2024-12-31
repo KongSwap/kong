@@ -9,7 +9,7 @@
   title={$qrModalStore.title}
   width="min(90vw, 500px)"
   height="auto"
-  variant="green"
+  variant="transparent"
 >
   <div class="qr-modal-content">
     <div class="qr-display">

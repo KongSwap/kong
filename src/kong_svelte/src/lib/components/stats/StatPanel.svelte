@@ -10,9 +10,9 @@
 </script>
 
 <Panel
-  variant="blue"
-  type="secondary"
-  className="relative !p-0 overflow-hidden group hover:bg-slate-800/50 transition-colors duration-200"
+  variant="transparent"
+  type="main"
+  className="relative !p-0 overflow-hidden group transition-colors duration-200"
 >
   <div class="absolute inset-0">
     <svg

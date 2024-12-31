@@ -1,8 +1,8 @@
 <script lang="ts">
     import { Search, Star } from "lucide-svelte";
-    import { tokenStore } from "$lib/services/tokens/tokenStore";
     import Modal from "$lib/components/common/Modal.svelte";
     import TokenRowCompact from "$lib/components/sidebar/TokenRowCompact.svelte";
+    import { FavoriteService } from "$lib/services/tokens/favoriteService";
   
     export let show: boolean = false;
     export let tokens: FE.Token[] = [];
@@ -11,43 +11,55 @@
     export let onClose: () => void;
     export let onSelect: (token: FE.Token) => void;
 
-    let standardFilter = $state("all");
-    
-    let favoriteCount = $derived(tokens.filter(token => tokenStore.isFavorite(token.canister_id)).length);
+    let standardFilter = "all";
+    let favoriteCount = 0;
+    let filteredTokens: FE.Token[] = [];
 
-    $: filteredTokens = tokens
-      .filter((token) => {
-        // First apply search filter
-        const matchesSearch = searchQuery ? (
-          token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          token.name.toLowerCase().includes(searchQuery.toLowerCase())
-        ) : true;
+    async function updateFavoriteCount() {
+        const favorites = await Promise.all(
+            tokens.map(token => FavoriteService.isFavorite(token.canister_id))
+        );
+        favoriteCount = favorites.filter(Boolean).length;
+    }
 
-        if (!matchesSearch) return false;
+    async function updateFilteredTokens() {
+        const tokensWithFavorites = await Promise.all(
+            tokens.map(async (token) => {
+                const isFavorite = await FavoriteService.isFavorite(token.canister_id);
+                const matchesSearch = searchQuery ? (
+                    token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    token.name.toLowerCase().includes(searchQuery.toLowerCase())
+                ) : true;
 
-        // Then apply standard filter
-        switch (standardFilter) {
-          case "ck":
-            return token.symbol.toLowerCase().startsWith("ck");
-          case "favorites":
-            return tokenStore.isFavorite(token.canister_id);
-          case "all":
-          default:
-            return true;
-        }
-      })
-      .sort((a, b) => {
-        // Sort by favorites first
-        const aFavorite = tokenStore.isFavorite(a.canister_id);
-        const bFavorite = tokenStore.isFavorite(b.canister_id);
-        if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
-        
-        // Then sort by symbol
-        return a.symbol.localeCompare(b.symbol);
-      });
+                if (!matchesSearch) return null;
+
+                switch (standardFilter) {
+                    case "ck": 
+                        return token.symbol.toLowerCase().startsWith("ck") ? { token, isFavorite } : null;
+                    case "favorites": 
+                        return isFavorite ? { token, isFavorite } : null;
+                    default: 
+                        return { token, isFavorite };
+                }
+            })
+        );
+
+        filteredTokens = tokensWithFavorites
+            .filter((item): item is {token: FE.Token, isFavorite: boolean} => item !== null)
+            .sort((a, b) => {
+                if (a.isFavorite !== b.isFavorite) return b.isFavorite ? 1 : -1;
+                return a.token.symbol.localeCompare(b.token.symbol);
+            })
+            .map(({ token }) => token);
+    }
+
+    $: {
+        if (tokens) updateFavoriteCount();
+        if (tokens || searchQuery || standardFilter) updateFilteredTokens();
+    }
 </script>
 
-<Modal isOpen={show} {onClose} title="Select Token" variant="green">
+<Modal isOpen={show} {onClose} title="Select Token" variant="solid">
   <div class="bg-white dark:bg-emerald-800 dark:bg-opacity-80 dark:backdrop-blur-md rounded-2xl w-full max-w-md p-6 space-y-4">
     <div class="flex justify-between items-center">
       <div>
@@ -58,7 +70,7 @@
       </div>
       <button
         class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        on:click={onClose}
+        onclick={onClose}
       >
         ✕
       </button>

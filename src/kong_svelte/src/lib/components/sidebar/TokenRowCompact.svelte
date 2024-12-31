@@ -1,8 +1,10 @@
 <script lang="ts">  
+	import { formatBalance } from '$lib/utils/numberFormatUtils';
   import TokenImages from '$lib/components/common/TokenImages.svelte';
-  import { formatBalance, formatUsdValue } from '$lib/utils/tokenFormatters';
+  import { formatUsdValue } from '$lib/utils/tokenFormatters';
   import { Star } from 'lucide-svelte';
   import { tokenStore } from '$lib/services/tokens/tokenStore';
+  import { FavoriteService } from '$lib/services/tokens/favoriteService';
   import { createEventDispatcher } from 'svelte';
 
   interface TokenRowProps {
@@ -12,17 +14,17 @@
   let { token, onClick }: TokenRowProps = $props();
   const dispatch = createEventDispatcher();
 
-  function handleFavoriteClick(e: MouseEvent) {
+  async function handleFavoriteClick(e: MouseEvent) {
     e.stopPropagation();
-    tokenStore.toggleFavorite(token.canister_id);
+    await FavoriteService.toggleFavorite(token.canister_id);
   }
 
-  let isFavorite = $derived(tokenStore.isFavorite(token.canister_id));
+  let isFavorite = $derived(FavoriteService.isFavorite(token.canister_id));
 </script>
 
 {#if token}
 <div class="base">
-  <button class="content" onclick={onClick} type="button" aria-label="Select {token.name} ({token.symbol})">
+  <div class="content" onclick={onClick} aria-label="Select {token.name} ({token.symbol})">
     <div class="left">
       <div class="img-container">
         <TokenImages tokens={[token]} size={24} />
@@ -32,7 +34,7 @@
           <button 
             class="favorite-button"
             class:active={isFavorite}
-            on:click={handleFavoriteClick}
+            onclick={handleFavoriteClick}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Star size={14} fill={isFavorite ? "#ffd700" : "none"} />
@@ -48,7 +50,7 @@
         <span class="price">{formatUsdValue(token.metrics.price)}</span>
       {/if}
     </div>
-  </button>
+  </div>
 </div>
 {/if}
 
