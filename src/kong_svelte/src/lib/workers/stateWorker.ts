@@ -22,8 +22,8 @@ class StateWorkerImpl implements StateWorkerApi {
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests
   // ----------------------------------------------------
-  private readonly TOKEN_UPDATE_THROTTLE = 3000; // Don’t post token updates more often than every 8s
-  private readonly POOL_UPDATE_THROTTLE  = 3000; // Don’t post pool updates more often than every 8s
+  private readonly TOKEN_UPDATE_THROTTLE = 8000; // Don’t post token updates more often than every 8s
+  private readonly POOL_UPDATE_THROTTLE  = 8000; // Don’t post pool updates more often than every 8s
 
   // ----------------------------------------------------
   // 3) Track whether an update is already in progress

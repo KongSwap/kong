@@ -8,9 +8,6 @@ import BigNumber from "bignumber.js";
 import { get } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import { type TokenState } from "./types";
-import { livePools } from "../pools/poolStore";
-import { liveUserPools } from "../pools/poolStore";
-
 
 function createTokenStore() {
   const initialState: TokenState = {
@@ -49,16 +46,19 @@ function createTokenStore() {
 export const tokenStore = createTokenStore();
 
 export const liveTokens = readable<FE.Token[]>([], (set) => {
+  if (!browser) {
+    return;
+  }
   const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
     next: (tokens) => {
-      set(tokens);
+      set(tokens || []);
     },
     error: (error) => {
       console.error("Error loading tokens from Dexie liveQuery:", error);
       set([]); 
     },
   });
-  return () => subscription.unsubscribe();
+  return () => subscription?.unsubscribe();
 });
 
 export const formattedTokens = derived(liveTokens, ($liveTokens) => {
@@ -74,12 +74,15 @@ const getCurrentWalletId = (): string => {
   return wallet?.account?.owner?.toString() || "anonymous";
 };
 
+// Create a temporary store for user pools that we'll sync later
+const userPoolsStore = writable<FE.UserPoolBalance[]>([]);
+
 export const portfolioValue = derived(
-  [tokenStore, liveTokens, liveUserPools],
+  [tokenStore, liveTokens, userPoolsStore],
   ([$tokenStore, $liveTokens, $userPools]: [TokenState, FE.Token[], FE.UserPoolBalance[]]) => {
     // Calculate token values
-    const tokenValue = $liveTokens.reduce((acc, token) => {
-      const balance = $tokenStore.balances[token.canister_id]?.in_usd;
+    const tokenValue = ($liveTokens || []).reduce((acc, token) => {
+      const balance = $tokenStore?.balances[token.canister_id]?.in_usd;
       // Only add if balance exists and is not '0'
       if (balance && balance !== '0') {
         return acc + Number(balance);
@@ -88,7 +91,7 @@ export const portfolioValue = derived(
     }, 0);
 
     // Calculate pool values
-    const poolValue = $userPools.reduce((acc, pool) => {
+    const poolValue = ($userPools || []).reduce((acc, pool) => {
       const balance = pool.usd_balance;
       if (balance && Number(balance) > 0) {
         return acc + Number(balance);
@@ -239,4 +242,9 @@ export const fromTokenDecimals = (amount: BigNumber | string, decimals: number):
     console.error('Error converting to token decimals:', error);
     return BigInt(0);
   }
+};
+
+// Export a function to sync the userPoolsStore with liveUserPools
+export const syncUserPools = (pools: FE.UserPoolBalance[]) => {
+  userPoolsStore.set(pools);
 };

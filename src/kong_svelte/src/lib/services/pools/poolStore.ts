@@ -7,6 +7,7 @@ import { kongDB } from '../db';
 import { KONG_CANISTER_ID } from '$lib/constants/canisterConstants';
 import { liveQuery } from "dexie";
 import { browser } from '$app/environment';
+import { syncUserPools } from '../tokens/tokenStore';
 
 interface ExtendedPool extends BE.Pool {
   displayTvl?: number;
@@ -335,3 +336,10 @@ export const liveUserPools = readable<FE.UserPoolBalance[]>([], set => {
     if (subscription) subscription.unsubscribe();
   };
 });
+
+// Subscribe to liveUserPools and sync with tokenStore
+if (browser) {
+  liveUserPools.subscribe(pools => {
+    syncUserPools(pools);
+  });
+}

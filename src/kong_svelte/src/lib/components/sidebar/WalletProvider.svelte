@@ -87,7 +87,7 @@
 
 <style lang="postcss">
   .wallet-list {
-    @apply flex flex-col gap-3;
+    @apply flex flex-col gap-3 px-1;
   }
 
   .wallet-option {
@@ -135,10 +135,13 @@
 
   .wallet-info {
     @apply flex flex-col gap-1;
+    @apply flex-1;
+    @apply text-left;
   }
 
   .wallet-name {
     @apply text-kong-text-primary font-medium text-lg;
+    @apply text-left;
   }
 
   .wallet-description {

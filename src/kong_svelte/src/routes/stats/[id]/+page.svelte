@@ -76,7 +76,7 @@
   let initialPoolSet = $state(false);
 
   $effect(() => {
-    if (!token?.canister_id || !$poolStore?.pools) return;
+    if (!token?.canister_id || !$livePools) return;
     if (hasManualSelection) return;
     if (initialPoolSet) return;
 
@@ -189,7 +189,7 @@
 
   // Update relevantPools when poolStore changes
   $effect(() => {
-    if (!token?.canister_id || !$poolStore?.pools) {
+    if (!token?.canister_id || !$livePools) {
       relevantPools = [];
       return;
     }
@@ -207,7 +207,7 @@
 </script>
 
 <div class="p-4 pt-0">
-  {#if !$formattedTokens || !$poolStore?.pools}
+  {#if !$formattedTokens || !$livePools}
     <!-- Improved loading state -->
     <div class="flex flex-col items-center justify-center min-h-[300px]">
       <div class="loader mb-4"></div>
