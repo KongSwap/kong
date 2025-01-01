@@ -140,9 +140,9 @@ async fn process_swap(
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
-        Some(ref address) => match get_address(address) {
-            Some(address) => address,
-            None => {
+        Some(ref address) => match get_address(&receive_token, address) {
+            Ok(address) => address,
+            Err(e) => {
                 request_map::update_status(request_id, StatusCode::ReceiveAddressNotFound, None);
                 return_pay_token(
                     request_id,
@@ -155,7 +155,7 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. Invalid receive address", request_id));
+                return Err(format!("Req #{} failed. {}", request_id, e));
             }
         },
         None => Address::PrincipalId(caller_id),

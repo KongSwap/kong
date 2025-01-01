@@ -91,7 +91,7 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
-        Some(ref address) => get_address(address).ok_or("Invalid receive address")?,
+        Some(ref address) => get_address(&receive_token, address)?,
         None => Address::PrincipalId(caller_id()),
     };
     if nat_is_zero(&pay_amount) {

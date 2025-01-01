@@ -22,6 +22,10 @@ pub const ICP_ADDRESS_WITH_CHAIN: &str = if cfg!(any(feature = "local", feature 
     "IC.ryjl3-tyaaa-aaaaa-aaaba-cai"
 };
 
+pub fn is_icp_token_id(token_id: u32) -> bool {
+    token_id == ICP_TOKEN_ID
+}
+
 pub fn is_icp(token: &str) -> bool {
     let kong_settings = kong_settings_map::get();
     if token == kong_settings.icp_symbol
