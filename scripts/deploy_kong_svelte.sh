@@ -70,7 +70,7 @@ EOL
     esac
 }
 
-npm -w kong_svelte i
+npm i
 
 if [ $1 == "ic" ]; then
     bash create_canister_id.sh ic
