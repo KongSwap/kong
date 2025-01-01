@@ -251,7 +251,7 @@
 
 <style scoped lang="postcss">
   .token-list-container {
-    @apply flex flex-col min-h-[87dvh] relative;
+    @apply flex flex-col min-h-[86dvh] relative;
   }
 
   .search-section {

@@ -25,8 +25,9 @@ declare global {
       balance_1: bigint;
       rolling_24h_volume: bigint;
       rolling_24h_apy: number;
-      address_0: string;
-      address_1: string;
+      rolling_24h_lp_fee: bigint;
+      address_0?: string;
+      address_1?: string;
       symbol_0: string;
       symbol_1: string;
       tvl: bigint;
@@ -42,6 +43,7 @@ declare global {
       volume_24h?: string;
       apr?: number;
       timestamp?: number;
+      ts?: number;
     }
   }
 }

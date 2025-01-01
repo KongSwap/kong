@@ -83,18 +83,25 @@
   let tickerElement: HTMLElement;
 
   onMount(() => {
-    // Set up Intersection Observer
+    // More efficient observer options
     observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
+        const entry = entries[0];
+        if (entry) {
           isVisible = entry.isIntersecting;
-          const scrollElement = tickerElement?.querySelector(".animate-scroll");
-          if (scrollElement) {
-            scrollElement.classList.toggle("paused", !isVisible);
-          }
-        });
+          // Use requestAnimationFrame for smoother state updates
+          requestAnimationFrame(() => {
+            const scrollElement = tickerElement?.querySelector(".ticker-content");
+            if (scrollElement) {
+              scrollElement.classList.toggle("paused", !isVisible);
+            }
+          });
+        }
       },
-      { threshold: 0.1 },
+      { 
+        threshold: 0,
+        rootMargin: "50px 0px" // Preload before visible
+      }
     );
 
     if (tickerElement) {
@@ -194,11 +201,12 @@
 
 <div
   bind:this={tickerElement}
-  class="w-full overflow-hidden border-b border-kong-text-primary/10 text-sm bg-kong-bg-dark/80"
+  class="w-full overflow-hidden border-b border-kong-text-primary/10 text-sm bg-kong-bg-dark/80 shadow-lg"
 >
   <div class="ticker-container">
     <div
       class="ticker-content"
+      role="list"
       class:paused={isChartHovered || !isVisible || isTickerHovered}
       on:mouseenter={() => (isTickerHovered = true)}
       on:mouseleave={() => (isTickerHovered = false)}
@@ -206,7 +214,7 @@
       {#each $tokenStore as token, index (token.canister_id)}
         {#if token.metrics}
           <button
-            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 py-1.5 {priceFlashStates.get(
+            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 {priceFlashStates.get(
               token.canister_id,
             )?.class || ''}"
             on:click={() => goto(`/stats/${token.address}`)}
@@ -277,7 +285,7 @@
     on:mouseleave={handleChartMouseLeave}
     transition:fade={{ duration: 150 }}
   >
-    <div class="flex justify-between items-center pb-2 px-2">
+    <div class="flex justify-between items-center px-2">
       <span class="font-medium text-kong-text-primary"
         >{hoveredToken.symbol}/ICP</span
       >
@@ -305,7 +313,7 @@
   </button>
 {/if}
 
-<style lang="postcss">
+<style scoped lang="postcss">
   .ticker-container {
     width: 100%;
     overflow: hidden;
@@ -324,25 +332,27 @@
       black 95%,
       transparent
     );
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
+    isolation: isolate;
+    contain: content;
+    z-index: 1;
   }
 
   .ticker-content {
-    display: flex;
+    display: inline-flex;
+    align-items: center;
     white-space: nowrap;
     animation: ticker 30s linear infinite;
+    transform: translate3d(0, 0, 0) translateZ(0);
     will-change: transform;
-    /* Enable hardware acceleration */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  @supports (-webkit-touch-callout: none) {
-    /* iOS-specific optimizations */
-    .ticker-content {
-      -webkit-overflow-scrolling: touch;
-      -webkit-transform: translate3d(0, 0, 0);
-    }
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    perspective: 1000;
+    -webkit-perspective: 1000;
+    contain: content;
   }
 
   .ticker-content.paused {
@@ -354,7 +364,7 @@
       transform: translate3d(0, 0, 0);
     }
     100% {
-      transform: translate3d(-100%, 0, 0);
+      transform: translate3d(-50%, 0, 0);
     }
   }
 
@@ -371,7 +381,7 @@
   }
 
   .divider {
-    @apply absolute right-0 w-px h-4 bg-kong-text-primary opacity-50;
+    @apply absolute right-0 w-px h-4 bg-kong-text-primary/50 opacity-50;
   }
 
   /* Price flash animations */

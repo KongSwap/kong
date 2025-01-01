@@ -1,7 +1,7 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
   import { fade } from "svelte/transition";
-  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import { TokenService } from "$lib/services/tokens";
   import { kongDB } from "$lib/services/db";

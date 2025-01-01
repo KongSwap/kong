@@ -71,17 +71,7 @@
           ].join(' ').toLowerCase();
           
           return {
-            id: poolBalance.name,
-            name: poolBalance.name,
-            symbol: poolBalance.symbol,
-            symbol_0: poolBalance.symbol_0,
-            symbol_1: poolBalance.symbol_1,
-            balance: poolBalance.balance.toString(),
-            amount_0: poolBalance.amount_0,
-            amount_1: poolBalance.amount_1,
-            usd_balance: poolBalance.usd_balance,
-            address_0: poolBalance.symbol_0,
-            address_1: poolBalance.symbol_1,
+            ...poolBalance,
             searchableText
           };
         });

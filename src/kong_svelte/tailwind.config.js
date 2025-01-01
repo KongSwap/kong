@@ -92,6 +92,14 @@ export default {
         shimmer: 'shimmer 2s infinite',
         'fadeIn': 'fadeIn 150ms ease-out',
         'slideDown': 'slideDown 150ms cubic-bezier(0.16, 1, 0.3, 1)',
+        "in": "in 0.2s ease-out",
+        "out": "out 0.2s ease-in",
+        "fade-in": "fade-in 200ms ease-out",
+        "fade-out": "fade-out 200ms ease-in",
+        "slide-in-from-top": "slide-in-from-top 200ms ease-out",
+        "slide-out-to-top": "slide-out-to-top 200ms ease-in",
+        "zoom-in": "zoom-in 200ms ease-out",
+        "zoom-out": "zoom-out 200ms ease-in",
       },
       scale: {
         '98': '0.98',
@@ -120,7 +128,31 @@ export default {
             opacity: '1',
             transform: 'scaleY(1)'
           }
-        }
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "fade-out": {
+          "0%": { opacity: "1" },
+          "100%": { opacity: "0" },
+        },
+        "slide-in-from-top": {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(0)" },
+        },
+        "slide-out-to-top": {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-100%)" },
+        },
+        "zoom-in": {
+          "0%": { transform: "scale(0.95)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "zoom-out": {
+          "0%": { transform: "scale(1)" },
+          "100%": { transform: "scale(0.95)" },
+        },
       },
     },
   },

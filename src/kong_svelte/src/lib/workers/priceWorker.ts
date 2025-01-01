@@ -36,7 +36,7 @@ class PriceWorkerImpl implements PriceWorkerApi {
   };
 
   // Adjust intervals based on visibility
-  private readonly ACTIVE_UPDATE_INTERVAL = 15000; // 15 seconds when active
+  private readonly ACTIVE_UPDATE_INTERVAL = 20000; // 15 seconds when active
   private readonly BACKGROUND_UPDATE_INTERVAL = 45000; // 45 seconds when in background
 
   async setTokens(tokens: FE.Token[]): Promise<void> {

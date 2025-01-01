@@ -119,9 +119,11 @@
 <svelte:window on:keydown={handleEscape} />
 <Portal target="#portal-target">
   <Toast />
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   {#if isOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="modal-overlay"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99999] grid place-items-center will-change-opacity"
       on:click={handleBackdropClick}
       transition:fade={{ duration: 200 }}
       role="dialog"
@@ -129,9 +131,10 @@
       aria-labelledby="modal-title"
       on:introend={handleTransitionEnd}
     >
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         bind:this={modalElement}
-        class="modal-container"
+        class="relative will-change-transform max-w-full max-h-full touch-pan-x"
         style="width: {modalWidth}; height: {modalHeight};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
@@ -153,15 +156,14 @@
           height="100%"
           className="!py-0 {className}"
         >
-          <div class="modal-content" style="height: {height}; min-height: {minHeight};">
+          <div class="modal-content flex flex-col min-h-full" style="height: {height}; min-height: {minHeight};">
             {#if loading}
               <div class="loading-overlay">
                 <div class="spinner"></div>
               </div>
             {/if}
             <div 
-              class="drag-handle" 
-              style="touch-action: pan-x;" 
+              class="drag-handle touch-pan-x"
               on:mousedown={handleDragStart}
               on:mousemove={handleDragMove}
               on:mouseup={handleDragEnd}
@@ -204,7 +206,7 @@
               </button>
             </header>
 
-            <div class="modal-body flex flex-col">
+            <div class="flex-1 flex flex-col overflow-y-auto scrollbar-custom">
               <slot />
             </div>
           </div>
@@ -215,46 +217,15 @@
 </Portal>
 
 <style scoped>
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 99999;
-    display: grid;
-    place-items: center;
-    will-change: opacity;
-  }
+  @media (max-width: 768px) {
+    .modal-container {
+      cursor: grab;
+      user-select: none;
+    }
 
-  .modal-container {
-    position: relative;
-    will-change: transform;
-    max-width: 100%;
-    max-height: 100%;
-    touch-action: pan-x;
-  }
-
-  .modal-content {
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
-    min-height: var(--min-height, auto);
-  }
-
-  .modal-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: var(--kong-primary) transparent;
-    margin: 0rem;
-    padding: 0rem;
-    min-height: 100%;
+    .modal-container:active {
+      cursor: grabbing;
+    }
   }
 
   .action-button {
@@ -267,21 +238,5 @@
     width: 40px;
     height: 40px;
     flex-shrink: 0;
-  }
-
-  @media (max-width: 768px) {
-    .modal-overlay {
-      padding: 0.4rem;
-    }
-
-
-    .modal-container {
-      cursor: grab;
-      user-select: none;
-    }
-
-    .modal-container:active {
-      cursor: grabbing;
-    }
   }
 </style>

@@ -2,7 +2,7 @@
 
 import { onDestroy } from 'svelte';
 
-interface TooltipOptions {
+export interface TooltipOptions {
   text?: string;
   html?: HTMLElement;
   paddingClass?: string;
@@ -190,13 +190,12 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
     if (tooltipEl) {
       tooltipEl.classList.remove('opacity-100');
       tooltipEl.classList.add('opacity-0');
-      // Remove after transition
-      setTimeout(() => {
-        if (tooltipEl && tooltipEl.parentNode) {
-          tooltipEl.parentNode.removeChild(tooltipEl);
-          tooltipEl = null;
-        }
-      }, 200);
+      
+      // Remove immediately if component is being destroyed
+      if (tooltipEl && tooltipEl.parentNode) {
+        tooltipEl.parentNode.removeChild(tooltipEl);
+        tooltipEl = null;
+      }
     }
   };
 
@@ -208,19 +207,17 @@ export function tooltip(node: HTMLElement, options: TooltipOptions = { direction
   window.addEventListener('scroll', positionTooltip);
   window.addEventListener('resize', positionTooltip);
 
-  // Cleanup on destroy
-  onDestroy(() => {
-    hideTooltip();
-    node.removeEventListener('mouseenter', showTooltip);
-    node.removeEventListener('mouseleave', hideTooltip);
-    node.removeEventListener('focusin', showTooltip);
-    node.removeEventListener('focusout', hideTooltip);
-    window.removeEventListener('scroll', positionTooltip);
-    window.removeEventListener('resize', positionTooltip);
-  });
-
-  // Optional: Return an object with update method to handle dynamic options
+  // Return destroy function directly instead of using onDestroy
   return {
+    destroy() {
+      hideTooltip();
+      node.removeEventListener('mouseenter', showTooltip);
+      node.removeEventListener('mouseleave', hideTooltip);
+      node.removeEventListener('focusin', showTooltip);
+      node.removeEventListener('focusout', hideTooltip);
+      window.removeEventListener('scroll', positionTooltip);
+      window.removeEventListener('resize', positionTooltip);
+    },
     update(newOptions: TooltipOptions) {
       options = newOptions;
       if (tooltipEl) {

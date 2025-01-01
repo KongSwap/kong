@@ -50,7 +50,7 @@
   isOpen={showModal}
   title="Pool Details"
   onClose={handleClose}
-  variant="green"
+  variant="solid"
   width="800px"
 >
   <div class="pool-details">

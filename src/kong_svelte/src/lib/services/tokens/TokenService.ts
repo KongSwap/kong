@@ -140,7 +140,7 @@ export class TokenService {
 
       const balance = await IcrcService.getIcrc1Balance(
         token,
-        Principal.fromText(principalId),
+        typeof principalId === "string" ? Principal.fromText(principalId) : principalId,
       );
 
       const actualBalance = formatBalance(balance.toString(), token.decimals)?.replace(/,/g, '');

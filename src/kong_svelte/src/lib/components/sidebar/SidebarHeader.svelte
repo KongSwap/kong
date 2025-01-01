@@ -2,8 +2,8 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import AccountDetails from "./AccountDetails.svelte";
   import { accountStore } from "$lib/stores/accountStore";
-  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
-  import { RefreshCw, Wallet, Coins, History, Droplets } from "lucide-svelte";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import { RefreshCw, IdCard, Coins, History, Droplets } from "lucide-svelte";
   import {
     loadBalances,
     portfolioValue,
@@ -56,15 +56,15 @@
       <button
         class="wallet-button flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
         on:click={() => accountStore.showAccountDetails()}
-        use:tooltip={{ text: "View Account Details" }}
+        use:tooltip={{ text: "View Account Details", direction: "bottom" }}
       >
-        <Wallet size={16} /> Addresses
+        <IdCard size={18} />
       </button>
 
       <button
         class="portfolio-button flex items-center text-sm font-mono font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
         on:click={handlePortfolioClick}
-        use:tooltip={{ text: "View Portfolio Distribution" }}
+        use:tooltip={{ text: "View Portfolio Distribution", direction: "bottom" }}
       >
         {#if isRefreshing}
           <LoadingIndicator />
@@ -77,10 +77,10 @@
         class="refresh-button text-gray-400 hover:text-white transition-colors"
         on:click={handleReload}
         disabled={isRefreshing}
-        use:tooltip={{ text: "Refresh Portfolio" }}
+        use:tooltip={{ text: "Refresh Portfolio", direction: "bottom" }}
       >
         <span class:animate-spin={isRefreshing}>
-          <RefreshCw size={16} />
+          <RefreshCw size={18} />
         </span>
       </button>
     </div>
@@ -89,13 +89,14 @@
     <div class="right-section flex items-center gap-1.5">
       <button
         class="action-button"
+        aria-label="Disconnect Wallet"
         on:click={handleDisconnect}
-        use:tooltip={{ text: "Disconnect Wallet" }}
+        use:tooltip={{ text: "Disconnect Wallet", direction: "bottom" }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -106,14 +107,15 @@
         </svg>
       </button>
       <button
-        class="action-button"
+        class="action-button !p-1"
+        aria-label="Close Sidebar"
         on:click={onClose}
-        use:tooltip={{ text: "Close Sidebar" }}
+        use:tooltip={{ text: "Close Sidebar", direction: "bottom" }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
+          width="22"
+          height="22"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

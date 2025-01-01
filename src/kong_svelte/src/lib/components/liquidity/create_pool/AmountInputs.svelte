@@ -119,7 +119,6 @@
             class="amount-input"
             value={displayValue1}
             on:input={(e) => handleFormattedInput(1, e)}
-            disabled={true}
           />
         </div>
       </div>

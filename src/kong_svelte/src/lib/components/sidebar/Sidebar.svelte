@@ -12,6 +12,7 @@
   import TransactionHistory from "./TransactionHistory.svelte";
   import PoolList from "./PoolList.svelte";
   import ButtonV2 from "../common/ButtonV2.svelte";
+    import { Coins, Import } from "lucide-svelte";
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
@@ -127,17 +128,31 @@
 
               <!-- Footer Section -->
               <footer
-                class="px-4 pt-2 border-t border-kong-border/30 backdrop-blur-sm"
+                class="px-4 pt-1 border-t border-kong-border/30 z-10 bg-kong-bg-dark"
               >
                 <div class="flex justify-end">
                   <ButtonV2
                     variant="transparent"
-                    theme="accent-blue"
-                    className="add-token-button mb-1"
+                    theme="primary"
+                    className="add-token-button mb-1 !text-kong-text-primary/50"
                     on:click={() => (showAddTokenModal = true)}
                   >
+                  <div class="flex items-center gap-x-2">
+                    <Import size={16} />
                     Import Token
+                    </div>
                   </ButtonV2>
+                  <ButtonV2
+                  variant="transparent"
+                  theme="primary"
+                  className="add-token-button mb-1 !text-kong-text-primary/50"
+                  on:click={() => (showAddTokenModal = true)}
+                >
+                <div class="flex items-center gap-x-2">
+                  <Coins size={16} />
+                  Manage Tokens
+                </div>
+                </ButtonV2>
                 </div>
               </footer>
             </div>

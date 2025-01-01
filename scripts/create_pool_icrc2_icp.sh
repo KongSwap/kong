@@ -6,13 +6,13 @@ KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 
 # Add TOKEN/ICP pool
 # only need to change the section below to create a new pool
-TOKEN_SYMBOL="TOKEN"
-TOKEN_ICP_PRICE=
+TOKEN_SYMBOL="MGSN"
+TOKEN_ICP_PRICE=0.000003073
 TOKEN_ICP_PRICE=${TOKEN_ICP_PRICE//_/}        # remove underscore
-TOKEN_AMOUNT=500_000_000_000            # 5,000 ICP
+TOKEN_AMOUNT=194_000_000_000_000            # 5,000 ICP
 TOKEN_AMOUNT=${TOKEN_AMOUNT//_/}        # remove underscore
 TOKEN_CHAIN="IC"
-TOKEN_LEDGER="CANISTER"
+TOKEN_LEDGER="2rqn6-kiaaa-aaaam-qcuya-cai"
 
 # shouldn't need to change anything below
 ICP_SYMBOL="ICP"

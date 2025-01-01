@@ -50,6 +50,9 @@ export class IcrcService {
         subaccount: [subaccount],
       });
 
+      console.log("defaultBalance", defaultBalance);
+      console.log("subaccountBalance", subaccountBalance);
+
       return {
         default: defaultBalance,
         subaccount: subaccountBalance
