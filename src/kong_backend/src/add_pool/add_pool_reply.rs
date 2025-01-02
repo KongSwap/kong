@@ -6,9 +6,11 @@ use crate::transfers::transfer_reply::TransferIdReply;
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct AddPoolReply {
     pub tx_id: u64,
+    #[serde(default = "zero_u32")]
     pub pool_id: u32,
     pub request_id: u64,
     pub status: String,
+    #[serde(default = "empty_string")]
     pub name: String,
     pub symbol: String,
     pub chain_0: String,
@@ -28,10 +30,19 @@ pub struct AddPoolReply {
     pub lp_token_symbol: String,
     pub transfer_ids: Vec<TransferIdReply>,
     pub claim_ids: Vec<u64>,
+    #[serde(default = "false_bool")]
     pub is_removed: bool,
     pub ts: u64,
 }
 
+fn zero_u32() -> u32 {
+    0
+}
+
 fn empty_string() -> String {
     String::new()
+}
+
+fn false_bool() -> bool {
+    false
 }

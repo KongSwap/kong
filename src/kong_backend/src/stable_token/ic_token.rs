@@ -15,7 +15,12 @@ pub struct ICToken {
     pub icrc1: bool,
     pub icrc2: bool,
     pub icrc3: bool,
+    #[serde(default = "false_bool")]
     pub is_removed: bool,
+}
+
+fn false_bool() -> bool {
+    false
 }
 
 impl ICToken {

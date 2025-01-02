@@ -13,7 +13,12 @@ pub struct LPToken {
     pub address: String, // unique identifier for the token
     pub symbol: String,
     pub decimals: u8,
+    #[serde(default = "false_bool")]
     pub is_removed: bool,
+}
+
+fn false_bool() -> bool {
+    false
 }
 
 impl LPToken {
