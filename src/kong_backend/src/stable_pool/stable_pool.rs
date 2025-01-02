@@ -38,17 +38,22 @@ pub struct StablePool {
     pub kong_fee_1: Nat,  // Kong's share of the LP fee
     pub lp_fee_bps: u8,   // LP's fee in basis points
     pub kong_fee_bps: u8, // Kong's fee in basis points
-    pub lp_token_id: u32, // token id of the LP token
-    pub on_kong: bool,    // whether the pool is on Kong
     pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
+    pub lp_token_id: u32, // token id of the LP token
+    #[serde(default = "false_bool")]
+    pub is_removed: bool,
+}
+
+fn false_bool() -> bool {
+    false
 }
 
 impl StablePool {
-    pub fn new(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32, on_kong: bool) -> Self {
+    pub fn new(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32) -> Self {
         Self {
             pool_id: 0,
             token_id_0,
@@ -61,13 +66,13 @@ impl StablePool {
             kong_fee_1: nat_zero(),
             lp_fee_bps,
             kong_fee_bps,
-            lp_token_id,
-            on_kong,
             tvl: nat_zero(),
             rolling_24h_volume: nat_zero(),
             rolling_24h_lp_fee: nat_zero(),
             rolling_24h_num_swaps: nat_zero(),
             rolling_24h_apy: 0_f64,
+            lp_token_id,
+            is_removed: false,
         }
     }
 
@@ -80,7 +85,7 @@ impl StablePool {
     }
 
     pub fn address(&self) -> String {
-        format!("{}_{}", self.token_0().address(), self.token_1().address())
+        format!("{}_{}", self.address_0(), self.address_1())
     }
 
     pub fn address_with_chain(&self) -> String {
@@ -99,6 +104,10 @@ impl StablePool {
         self.token_0().chain().to_string()
     }
 
+    pub fn address_0(&self) -> String {
+        self.token_0().address().to_string()
+    }
+
     pub fn symbol_0(&self) -> String {
         self.token_0().symbol().to_string()
     }
@@ -109,6 +118,10 @@ impl StablePool {
 
     pub fn chain_1(&self) -> String {
         self.token_1().chain().to_string()
+    }
+
+    pub fn address_1(&self) -> String {
+        self.token_1().address().to_string()
     }
 
     pub fn symbol_1(&self) -> String {
@@ -150,14 +163,6 @@ impl StablePool {
         let tvl_0_ckusdt = ckusdt_amount(&token_0, &tvl_0).unwrap_or(nat_zero());
         let tvl_1_ckusdt = ckusdt_amount(&token_1, &tvl_1).unwrap_or(nat_zero());
         self.tvl = nat_add(&tvl_0_ckusdt, &tvl_1_ckusdt);
-    }
-
-    /// make sure to call pool_map::update after calling this function
-    pub fn set_on_kong(&mut self, on_kong: bool) {
-        self.token_0().set_on_kong(on_kong);
-        self.token_1().set_on_kong(on_kong);
-        self.lp_token().set_on_kong(on_kong);
-        self.on_kong = on_kong;
     }
 }
 

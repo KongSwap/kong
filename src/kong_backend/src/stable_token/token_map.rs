@@ -166,19 +166,14 @@ pub fn get_icp() -> Result<StableToken, String> {
     token_map::get_by_token_id(kong_settings_map::get().icp_token_id).ok_or("ICP token not found".to_string())
 }
 
-/// return all tokens that are listed on Kong
-pub fn get_on_kong() -> Vec<StableToken> {
+/// return all tokens
+pub fn get() -> Vec<StableToken> {
     TOKEN_MAP.with(|m| {
         m.borrow()
             .iter()
-            .filter_map(|(_, v)| if v.on_kong() { Some(v) } else { None })
+            .filter_map(|(_, v)| if !v.is_removed() { Some(v) } else { None })
             .collect()
     })
-}
-
-/// return all tokens
-pub fn get() -> Vec<StableToken> {
-    TOKEN_MAP.with(|m| m.borrow().iter().map(|(_, v)| v).collect())
 }
 
 // token's address is the unique identifier

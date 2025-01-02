@@ -24,7 +24,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             decimals: token.decimals(),
             fee: token.fee(),
             total_supply: lp_token_map::get_total_supply(token_id),
-            on_kong: token.on_kong(),
+            is_removed: token.is_removed(),
         }),
         IC(ic_token) => TokensReply::IC(ICReply {
             token_id,
@@ -37,7 +37,7 @@ pub fn to_token_reply(token: &StableToken) -> TokensReply {
             icrc1: ic_token.icrc1,
             icrc2: ic_token.icrc2,
             icrc3: ic_token.icrc3,
-            on_kong: token.on_kong(),
+            is_removed: token.is_removed(),
         }),
     }
 }

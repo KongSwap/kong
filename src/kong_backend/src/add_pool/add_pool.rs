@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 
 use super::add_pool_args::AddPoolArgs;
 use super::add_pool_reply::AddPoolReply;
-use super::add_pool_reply_helpers::{create_add_pool_reply_failed, create_add_pool_reply_with_tx_id};
+use super::add_pool_reply_helpers::{to_add_pool_reply, to_add_pool_reply_failed};
 
 use crate::add_token::add_token::{add_ic_token, add_lp_token};
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
@@ -54,7 +54,7 @@ enum TokenIndex {
 /// * `Err(String)` - An error message if the operation fails.
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
-    let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
+    let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount) =
         check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
@@ -71,7 +71,6 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         lp_fee_bps,
         kong_fee_bps,
         &add_lp_token_amount,
-        on_kong,
         ts,
     )
     .await
@@ -98,7 +97,7 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
 ///
 /// # Returns
 ///
-/// * `Ok((user_id, token_0, amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, on_kong))`
+/// * `Ok((user_id, token_0, amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps))`
 /// *   `user_id` - The user id.
 /// *   `token_0` - The first token.
 /// *   `amount_0` - The amount of the first token.
@@ -109,11 +108,10 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
 /// *   `lp_fee_bps` - The liquidity pool fee basis points.
 /// *   `kong_fee_bps` - The liquidity pool Kong fee basis points.
 /// *   `add_lp_token_amount` - The amount of LP token to be added to the pool.
-/// *   `on_kong` - Whether the pool is on Kong.
 /// * `Err(String)` - An error message if the operation fails.
 async fn check_arguments(
     args: &AddPoolArgs,
-) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat, bool), String> {
+) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
         return Err("Invalid zero amounts".to_string());
     }
@@ -133,9 +131,6 @@ async fn check_arguments(
     if kong_fee_bps > lp_fee_bps {
         return Err("Kong fee cannot be greater than LP fee".to_string());
     }
-
-    // add a token and pool to Kong
-    let on_kong = args.on_kong.unwrap_or(false);
 
     // check tx_id_0 and tx_id_1 are valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
@@ -173,7 +168,7 @@ async fn check_arguments(
         Err(_) => {
             // token_0 needs to be added. Only IC tokens of format IC.CanisterId supported
             match token_map::get_chain(&args.token_0) {
-                Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0, on_kong).await?,
+                Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0).await?,
                 Some(chain) if chain == LP_CHAIN => return Err("Token_0 LP tokens not supported".to_string()),
                 Some(_) | None => return Err("Token_0 chain not specified or supported".to_string()),
             }
@@ -207,7 +202,6 @@ async fn check_arguments(
         lp_fee_bps,
         kong_fee_bps,
         add_lp_token_amount,
-        on_kong,
     ))
 }
 
@@ -235,7 +229,6 @@ async fn process_add_pool(
     lp_fee_bps: u8,
     kong_fee_bps: u8,
     add_lp_token_amount: &Nat,
-    on_kong: bool,
     ts: u64,
 ) -> Result<AddPoolReply, String> {
     let caller_id = caller_id();
@@ -309,7 +302,7 @@ async fn process_add_pool(
     // add LP token
     request_map::update_status(request_id, StatusCode::AddLPToken, None);
     // default to None for LP token metadata
-    let lp_token = match add_lp_token(token_0, token_1, on_kong) {
+    let lp_token = match add_lp_token(token_0, token_1) {
         Ok(lp_token) => {
             request_map::update_status(request_id, StatusCode::AddLPTokenSuccess, None);
             lp_token
@@ -342,7 +335,6 @@ async fn process_add_pool(
         lp_fee_bps,
         kong_fee_bps,
         lp_token.token_id(),
-        on_kong,
     ) {
         Ok(pool) => {
             request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
@@ -381,11 +373,24 @@ async fn process_add_pool(
         add_lp_token_amount,
         &transfer_ids,
         &Vec::new(),
-        on_kong,
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
-    let reply = create_add_pool_reply_with_tx_id(tx_id, &add_pool_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::AddPool(add_pool_tx)) => to_add_pool_reply(add_pool_tx),
+        _ => to_add_pool_reply_failed(
+            request_id,
+            &token_0.chain(),
+            &token_0.address(),
+            &token_0.symbol(),
+            &token_1.chain(),
+            &token_1.address(),
+            &token_1.symbol(),
+            &transfer_ids,
+            &Vec::new(),
+            ts,
+        ),
+    };
     request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
 
     Ok(reply)
@@ -588,13 +593,18 @@ async fn return_tokens(
         .await;
     }
 
-    // Token0
-    let chain_0 = token_0.chain();
-    let symbol_0 = token_0.symbol();
-    // Token1
-    let chain_1 = token_1.chain();
-    let symbol_1 = token_1.symbol();
-    let reply = create_add_pool_reply_failed(&chain_0, &symbol_0, &chain_1, &symbol_1, request_id, transfer_ids, &claim_ids, ts);
+    let reply = to_add_pool_reply_failed(
+        request_id,
+        &token_0.chain(),
+        &token_0.address(),
+        &token_0.symbol(),
+        &token_1.chain(),
+        &token_1.address(),
+        &token_1.symbol(),
+        transfer_ids,
+        &claim_ids,
+        ts,
+    );
     request_map::update_reply(request_id, Reply::AddPool(reply));
 }
 
@@ -661,15 +671,8 @@ async fn return_token(
 }
 
 // add_pool() taken
-fn add_new_pool(
-    token_id_0: u32,
-    token_id_1: u32,
-    lp_fee_bps: u8,
-    kong_fee_bps: u8,
-    lp_token_id: u32,
-    on_kong: bool,
-) -> Result<StablePool, String> {
-    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong);
+fn add_new_pool(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32) -> Result<StablePool, String> {
+    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id);
     let pool_id = pool_map::insert(&pool)?;
 
     // Retrieves the inserted pool by its pool_id

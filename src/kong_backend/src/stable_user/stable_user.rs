@@ -50,7 +50,6 @@ pub struct StableUser {
     // 1: first trade
     pub campaign1_flags: Vec<bool>,
     pub last_login_ts: u64,
-    pub last_swap_ts: u64,
 }
 
 impl Default for StableUser {
@@ -66,7 +65,6 @@ impl Default for StableUser {
             fee_level_expires_at: None,
             campaign1_flags: vec![false, false],
             last_login_ts: get_time(),
-            last_swap_ts: 0,
         }
     }
 }

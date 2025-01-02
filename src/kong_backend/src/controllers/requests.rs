@@ -2,10 +2,7 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::requests::request_reply::RequestReply;
-use crate::requests::request_reply_helpers::to_request_reply;
 use crate::stable_memory::{REQUEST_ARCHIVE_MAP, REQUEST_MAP};
-use crate::stable_request::request_map;
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 
 const MAX_REQUESTS: usize = 100;
@@ -46,16 +43,6 @@ fn update_requests(stable_requests_json: String) -> Result<String, String> {
     });
 
     Ok("Requests updated".to_string())
-}
-
-#[query(hidden = true, guard = "caller_is_kingkong")]
-fn get_requests(request_id: Option<u64>, user_id: Option<u32>, num_requests: Option<u16>) -> Result<Vec<RequestReply>, String> {
-    let num_requests = num_requests.map(|n| n as usize);
-    let requests = request_map::get_by_request_and_user_id(request_id, user_id, num_requests)
-        .iter()
-        .map(to_request_reply)
-        .collect();
-    Ok(requests)
 }
 
 #[update(hidden = true, guard = "caller_is_kingkong")]

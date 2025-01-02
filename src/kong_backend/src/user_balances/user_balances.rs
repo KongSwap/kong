@@ -31,7 +31,7 @@ pub async fn user_balances(principal_id: String, symbol: Option<String>) -> Resu
         Some(symbol) => {
             vec![token_map::get_by_token(&symbol)?]
         }
-        None => token_map::get_on_kong(),
+        None => token_map::get(),
     };
 
     tokens.iter().for_each(|token| match token {

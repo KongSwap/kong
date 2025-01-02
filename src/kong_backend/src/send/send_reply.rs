@@ -1,8 +1,6 @@
 use candid::{CandidType, Nat};
 use serde::{Deserialize, Serialize};
 
-/// Data structure for the reply of the `send` function.
-/// Used in StableRequest
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct SendReply {
     pub tx_id: u64,

@@ -2,7 +2,6 @@ use candid::{Nat, Principal};
 
 use super::stable_token::StableToken;
 use super::stable_token::StableToken::{IC, LP};
-use super::token_map;
 
 use crate::helpers::nat_helpers::nat_zero;
 
@@ -22,8 +21,7 @@ pub trait Token {
     fn is_icrc2(&self) -> bool;
     #[allow(dead_code)]
     fn is_icrc3(&self) -> bool;
-    fn on_kong(&self) -> bool;
-    fn set_on_kong(&mut self, on_kong: bool);
+    fn is_removed(&self) -> bool;
 }
 
 impl Token for StableToken {
@@ -113,19 +111,11 @@ impl Token for StableToken {
         }
     }
 
-    fn on_kong(&self) -> bool {
+    fn is_removed(&self) -> bool {
         match self {
-            LP(token) => token.on_kong,
-            IC(token) => token.on_kong,
+            LP(token) => token.is_removed,
+            IC(token) => token.is_removed,
         }
-    }
-
-    fn set_on_kong(&mut self, on_kong: bool) {
-        match self {
-            LP(token) => token.on_kong = on_kong,
-            IC(token) => token.on_kong = on_kong,
-        };
-        token_map::update(self);
     }
 }
 

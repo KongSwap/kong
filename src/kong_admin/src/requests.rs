@@ -45,7 +45,6 @@ pub fn serialize_request(request: &Request) -> serde_json::Value {
                 "tx_id_1": serialize_option_tx_id(request.tx_id_1.as_ref()),
                 "lp_fee_bps": request.lp_fee_bps,
                 "kong_fee_bps": request.kong_fee_bps,
-                "on_kong": request.on_kong,
             }
         }),
         Request::AddLiquidity(request) => json!({
@@ -96,12 +95,18 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
         Reply::AddPool(reply) => json!({
             "AddPoolReply": {
                 "tx_id": reply.tx_id,
+                "pool_id": reply.pool_id,
+                "request_id": reply.request_id,
+                "status": reply.status,
+                "name": reply.name,
                 "symbol": reply.symbol,
                 "chain_0": reply.chain_0,
+                "address_0": reply.address_0,
                 "symbol_0": reply.symbol_0,
                 "amount_0": reply.amount_0.to_string(),
                 "balance_0": reply.balance_0.to_string(),
                 "chain_1": reply.chain_1,
+                "address_1": reply.address_1,
                 "symbol_1": reply.symbol_1,
                 "amount_1": reply.amount_1.to_string(),
                 "balance_1": reply.balance_1.to_string(),
@@ -122,18 +127,22 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
                     },
                 })).collect::<Vec<_>>(),
                 "claim_ids": reply.claim_ids,
-                "on_kong": reply.on_kong,
+                "is_removed": reply.is_removed,
                 "ts": reply.ts,
             }
         }),
         Reply::AddLiquidity(reply) => json!({
             "AddLiquidityReply": {
                 "tx_id": reply.tx_id,
+                "request_id": reply.request_id,
+                "status": reply.status,
                 "symbol": reply.symbol,
                 "chain_0": reply.chain_0,
+                "address_0": reply.address_0,
                 "symbol_0": reply.symbol_0,
                 "amount_0": reply.amount_0.to_string(),
                 "chain_1": reply.chain_1,
+                "address_1": reply.address_1,
                 "symbol_1": reply.symbol_1,
                 "amount_1": reply.amount_1.to_string(),
                 "add_lp_token_amount": reply.add_lp_token_amount.to_string(),
@@ -157,12 +166,16 @@ pub fn serialize_reply(reply: &Reply) -> serde_json::Value {
         Reply::RemoveLiquidity(reply) => json!({
             "RemoveLiquidityReply": {
                 "tx_id": reply.tx_id,
+                "request_id": reply.request_id,
+                "status": reply.status,
                 "symbol": reply.symbol,
                 "chain_0": reply.chain_0,
+                "address_0": reply.address_0,
                 "symbol_0": reply.symbol_0,
                 "amount_0": reply.amount_0.to_string(),
                 "lp_fee_0": reply.lp_fee_0.to_string(),
                 "chain_1": reply.chain_1,
+                "address_1": reply.address_1,
                 "symbol_1": reply.symbol_1,
                 "amount_1": reply.amount_1.to_string(),
                 "lp_fee_1": reply.lp_fee_1.to_string(),

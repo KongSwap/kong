@@ -16,26 +16,26 @@ fn remove_liquidity_amounts(token_0: String, token_1: String, remove_lp_token_am
     // Token0
     let token_0 = pool.token_0();
     let chain_0 = token_0.chain();
-    let symbol_0 = token_0.symbol();
     let address_0 = token_0.address();
+    let symbol_0 = token_0.symbol();
     // Token1
     let token_1 = pool.token_1();
     let chain_1 = token_1.chain();
-    let symbol_1 = token_1.symbol();
     let address_1 = token_1.address();
+    let symbol_1 = token_1.symbol();
 
     let (amount_0, lp_fee_0, amount_1, lp_fee_1) = calculate_amounts(&pool, &remove_lp_token_amount)?;
 
     Ok(RemoveLiquidityAmountsReply {
         symbol,
         chain_0,
-        symbol_0,
         address_0,
+        symbol_0,
         amount_0,
         lp_fee_0,
         chain_1,
-        symbol_1,
         address_1,
+        symbol_1,
         amount_1,
         lp_fee_1,
         remove_lp_token_amount,

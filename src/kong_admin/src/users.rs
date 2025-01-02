@@ -56,14 +56,13 @@ pub async fn insert_user_on_database(v: &StableUser, db_client: &Client) -> Resu
     let fee_level_expires_at = v.fee_level_expires_at.map(|x| x as f64 / 1_000_000_000.0);
     let campaign1_flags = v.campaign1_flags.clone();
     let last_login_ts = v.last_login_ts as f64 / 1_000_000_000.0;
-    let last_swap_ts = v.last_swap_ts as f64 / 1_000_000_000.0;
     let raw_json = json!({ "StableUser": &v} );
 
     db_client
         .execute(
             "INSERT INTO users 
-                (user_id, principal_id, user_name, my_referral_code, referred_by, referred_by_expires_at, fee_level, fee_level_expires_at, campaign1_flags, last_login_ts, last_swap_ts, raw_json)
-                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, to_timestamp($8), $9, to_timestamp($10), to_timestamp($11), $12)
+                (user_id, principal_id, user_name, my_referral_code, referred_by, referred_by_expires_at, fee_level, fee_level_expires_at, campaign1_flags, last_login_ts, raw_json)
+                VALUES ($1, $2, $3, $4, $5, to_timestamp($6), $7, to_timestamp($8), $9, to_timestamp($10), $11)
                 ON CONFLICT (user_id) DO UPDATE SET
                     principal_id = $2,
                     user_name = $3,
@@ -74,9 +73,8 @@ pub async fn insert_user_on_database(v: &StableUser, db_client: &Client) -> Resu
                     fee_level_expires_at = to_timestamp($8),
                     campaign1_flags = $9,
                     last_login_ts = to_timestamp($10),
-                    last_swap_ts = to_timestamp($11),
-                    raw_json = $12",
-            &[&user_id, &v.principal_id, &user_name, &v.my_referral_code, &referred_by, &referred_by_expires_at, &fee_level, &fee_level_expires_at, &campaign1_flags, &last_login_ts, &last_swap_ts, &raw_json],                )
+                    raw_json = $11",
+            &[&user_id, &v.principal_id, &user_name, &v.my_referral_code, &referred_by, &referred_by_expires_at, &fee_level, &fee_level_expires_at, &campaign1_flags, &last_login_ts, &raw_json],                )
         .await?;
 
     println!("user_id={} saved", v.user_id);

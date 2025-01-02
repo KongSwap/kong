@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 
 use super::remove_liquidity_args::RemoveLiquidityArgs;
 use super::remove_liquidity_reply::RemoveLiquidityReply;
-use super::remove_liquidity_reply_helpers::{create_remove_liquidity_reply_failed, create_remove_liquidity_reply_with_tx_id};
+use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove_liquidity_reply_failed};
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
 use crate::ic::{address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, transfer::icrc1_transfer};
@@ -257,7 +257,7 @@ async fn process_remove_liquidity(
     update_liquidity_pool(request_id, pool, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1);
 
     // successful, add tx and update request with reply
-    let reply = send_payout_tokens(
+    send_payout_tokens(
         request_id,
         user_id,
         to_principal_id,
@@ -269,9 +269,7 @@ async fn process_remove_liquidity(
         remove_lp_token_amount,
         ts,
     )
-    .await;
-
-    Ok(reply)
+    .await
 }
 
 fn remove_lp_token(request_id: u64, user_id: u32, lp_token: &StableToken, remove_lp_token_amount: &Nat, ts: u64) -> Result<(), String> {
@@ -361,7 +359,7 @@ async fn send_payout_tokens(
     payout_lp_fee_1: &Nat,
     remove_lp_token_amount: &Nat,
     ts: u64,
-) -> RemoveLiquidityReply {
+) -> Result<RemoveLiquidityReply, String> {
     // Token0
     let token_0 = pool.token_0();
     // Token1
@@ -414,10 +412,13 @@ async fn send_payout_tokens(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::RemoveLiquidity(remove_liquidity_tx.clone()));
-    let reply = create_remove_liquidity_reply_with_tx_id(tx_id, &remove_liquidity_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::RemoveLiquidity(remove_liquidity_tx)) => to_remove_liquidity_reply(remove_liquidity_tx),
+        _ => to_remove_liquidity_reply_failed(pool.pool_id, request_id, ts),
+    };
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
 
-    reply
+    Ok(reply)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -511,7 +512,7 @@ fn return_tokens(
         }
     }
 
-    let reply = create_remove_liquidity_reply_failed(pool.pool_id, request_id, ts);
+    let reply = to_remove_liquidity_reply_failed(pool.pool_id, request_id, ts);
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply));
 }
 
