@@ -6,7 +6,10 @@ export const ICP_CANISTER_ID = process.env.CANISTER_ID_ICP_LEDGER || 'ryjl3-tyaa
 
 export const KONG_BACKEND_PRINCIPAL = process.env.CANISTER_ID_KONG_BACKEND || '2ipq2-uqaaa-aaaar-qailq-cai';
 export const KONG_DATA_PRINCIPAL = process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
-export const INDEXER_URL = "https://api.kongswap.io";
+export const INDEXER_URL = 
+    process.env.DFX_NETWORK === "local" ? "http://localhost:8080" :
+    process.env.DFX_NETWORK === "staging" ? "http://staging" :
+    "https://api.kongswap.io";  // "ic" is the default
 
 // Frontend Canister IDs
 export const KONG_FRONTEND_CANISTER_ID = process.env.CANISTER_ID_KONG_FRONTEND;
