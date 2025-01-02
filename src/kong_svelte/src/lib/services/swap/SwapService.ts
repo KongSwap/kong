@@ -270,7 +270,7 @@ export class SwapService {
           requiredAllowance,
         );
       } else if (payToken.icrc1) {
-        const result = await IcrcService.icrc1Transfer(
+        const result = await IcrcService.transfer(
           payToken,
           params.backendPrincipal,
           payAmount,
