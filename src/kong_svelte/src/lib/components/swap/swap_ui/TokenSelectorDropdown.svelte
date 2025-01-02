@@ -8,8 +8,9 @@
   import Portal from "svelte-portal";
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatBalance, formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
+  import { auth } from "$lib/services/auth";
 
   const props = $props();
   const {
@@ -33,6 +34,12 @@
   let sortColumn = $state("value");
   let standardFilter = $state("all");
 
+  // Subscribe to stores for reactivity
+  let isAuthenticated = $derived($auth?.isConnected ?? false);
+  let walletId = $derived($auth?.account?.owner?.toString() || "anonymous");
+  let currentStore = $derived($tokenStore);
+  let isFavorite = (canisterId: string) => currentStore.favoriteTokens[walletId]?.includes(canisterId) ?? false;
+
   // Get filtered tokens before any UI filters (search, favorites, etc)
   let baseFilteredTokens = $derived(
     tokens.filter((token) => {
@@ -51,19 +58,29 @@
       if (allowedCanisterIds.length > 0) {
         return allowedCanisterIds.includes(token.canister_id);
       }
+
+      // Apply hide zero balances filter
+      if (hideZeroBalances) {
+        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        if (balance <= 0n) {
+          return false;
+        }
+      }
+
       return true;
-    }),
+    })
   );
 
   // Get counts based on the base filtered tokens
   let allTokensCount = $derived(baseFilteredTokens.length);
   let ckTokensCount = $derived(
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck"))
-      .length,
+      .length
   );
   let favoritesCount = $derived(
-    baseFilteredTokens.filter((t) => tokenStore.isFavorite(t.canister_id))
-      .length,
+    isAuthenticated 
+      ? baseFilteredTokens.filter((t) => isFavorite(t.canister_id)).length 
+      : 0
   );
 
   // Then apply UI filters for display
@@ -89,24 +106,19 @@
           case "ck":
             return match.token.symbol.toLowerCase().startsWith("ck");
           case "favorites":
-            return tokenStore.isFavorite(match.token.canister_id);
+            return isAuthenticated && isFavorite(match.token.canister_id);
           case "all":
           default:
-            // Apply balance filter if enabled
-            if (hideZeroBalances) {
-              const balance =
-                $tokenStore.balances[match.token.canister_id]?.in_tokens ||
-                BigInt(0);
-              return balance > 0;
-            }
             return true;
         }
       })
       .sort((a, b) => {
         // Then sort by favorites
-        const aFavorite = tokenStore.isFavorite(a.token.canister_id);
-        const bFavorite = tokenStore.isFavorite(b.token.canister_id);
-        if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+        if (isAuthenticated) {
+          const aFavorite = isFavorite(a.token.canister_id);
+          const bFavorite = isFavorite(b.token.canister_id);
+          if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+        }
 
         // Sort by sortColumn first
         const aValue = Number(
@@ -154,10 +166,10 @@
     }
   });
 
-  function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+  async function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
     e.preventDefault();
     e.stopPropagation();
-    tokenStore.toggleFavorite(token.canister_id);
+    await tokenStore.toggleFavorite(token.canister_id);
   }
 
   type TokenMatch = {
@@ -266,6 +278,21 @@
   onMount(async () => {
     await tokenStore.loadFavorites();
   });
+
+  function toggleHideZeroBalances() {
+    console.log('Toggle hide zero balances:', { before: hideZeroBalances });
+    hideZeroBalances = !hideZeroBalances;
+    console.log('After toggle:', { after: hideZeroBalances });
+  }
+
+  function toggleSort() {
+    sortDirection = sortDirection === "desc" ? "asc" : "desc";
+    sortColumn = sortColumn === "value" ? "volume" : "value";
+  }
+
+  function setStandardFilter(filter: string) {
+    standardFilter = filter;
+  }
 </script>
 
 {#if show}
@@ -285,7 +312,7 @@
       <div
         class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
         bind:this={dropdownElement}
-        on:click|preventDefault
+        on:click|stopPropagation
         transition:scale={{
           duration: 200,
           start: 0.95,
@@ -299,7 +326,7 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <button
               class="close-button"
-              on:click|self={() => {
+              on:click|stopPropagation={() => {
                 swapState.closeTokenSelector();
                 onClose();
               }}
@@ -341,7 +368,7 @@
                   {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <button
-                      on:click={() => (standardFilter = tab.id)}
+                      on:click={() => setStandardFilter(tab.id)}
                       class="filter-btn"
                       class:active={standardFilter === tab.id}
                       aria-label="Show {tab.label.toLowerCase()} tokens"
@@ -356,16 +383,16 @@
 
                 <div class="filter-options">
                   <label class="filter-toggle">
-                    <input type="checkbox" bind:checked={hideZeroBalances} />
+                    <input
+                      type="checkbox"
+                      bind:checked={hideZeroBalances}
+                    />
                     <span class="toggle-label">Hide zero balances</span>
                   </label>
 
                   <div
                     class="sort-toggle"
-                    on:click={() => {
-                      sortDirection = sortDirection === "desc" ? "asc" : "desc";
-                      sortColumn = sortColumn === "value" ? "volume" : "value";
-                    }}
+                    on:click={toggleSort}
                   >
                     <span class="toggle-label">Sort by value</span>
                     <svg
@@ -419,17 +446,15 @@
                           <!-- svelte-ignore a11y-no-static-element-interactions -->
                           <button
                             class="favorite-button"
-                            class:active={tokenStore.isFavorite(
-                              token.canister_id,
-                            )}
+                            class:active={isFavorite(token.canister_id)}
                             on:click={(e) => handleFavoriteClick(e, token)}
-                            title={tokenStore.isFavorite(token.canister_id)
+                            title={isFavorite(token.canister_id)
                               ? "Remove from favorites"
                               : "Add to favorites"}
                           >
                             <Star
                               size={14}
-                              fill={tokenStore.isFavorite(token.canister_id)
+                              fill={isFavorite(token.canister_id)
                                 ? "#ffd700"
                                 : "none"}
                             />
@@ -448,10 +473,10 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right text-kong-text-primary text-sm">
-                      <span class="token-balance flex flex-col text-right">
+                    <div class="text-sm token-right text-kong-text-primary">
+                      <span class="flex flex-col text-right token-balance">
                         {token.formattedBalance || "0"}
-                        <span class="token-balance-label text-xs">
+                        <span class="text-xs token-balance-label">
                           {formatUsdValue(token.formattedUsdValue || "0")}
                         </span>
                       </span>
@@ -741,15 +766,33 @@
     height: 1rem;
     border-radius: 0.25rem;
     border: 1px solid #2a2d3d;
-    background-color: #2a2d3d;
-    transition: background-color 0.2s;
+    background-color: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    position: relative;
+    margin: 0;
   }
 
   .filter-toggle input[type="checkbox"]:checked {
     background-color: #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  .filter-toggle input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
 
   .filter-toggle input[type="checkbox"]:focus {
+    outline: none;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
   }
 
