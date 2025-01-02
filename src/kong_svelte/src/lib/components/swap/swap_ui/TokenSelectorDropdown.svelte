@@ -84,7 +84,13 @@
       .filter((match): match is TokenMatch => {
         if (!match?.token?.canister_id) return false;
 
-        // Apply standard filter
+        // Apply balance filter first if enabled
+        if (hideZeroBalances) {
+          const balance = $tokenStore.balances[match.token.canister_id]?.in_tokens || BigInt(0);
+          if (balance <= 0) return false;
+        }
+
+        // Then apply standard filter
         switch (standardFilter) {
           case "ck":
             return match.token.symbol.toLowerCase().startsWith("ck");
@@ -92,13 +98,6 @@
             return tokenStore.isFavorite(match.token.canister_id);
           case "all":
           default:
-            // Apply balance filter if enabled
-            if (hideZeroBalances) {
-              const balance =
-                $tokenStore.balances[match.token.canister_id]?.in_tokens ||
-                BigInt(0);
-              return balance > 0;
-            }
             return true;
         }
       })
@@ -299,7 +298,7 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <button
               class="close-button"
-              on:click|self={() => {
+              on:click={() => {
                 swapState.closeTokenSelector();
                 onClose();
               }}
@@ -448,10 +447,10 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right text-kong-text-primary text-sm">
-                      <span class="token-balance flex flex-col text-right">
+                    <div class="text-sm token-right text-kong-text-primary">
+                      <span class="flex flex-col text-right token-balance">
                         {token.formattedBalance || "0"}
-                        <span class="token-balance-label text-xs">
+                        <span class="text-xs token-balance-label">
                           {formatUsdValue(token.formattedUsdValue || "0")}
                         </span>
                       </span>
