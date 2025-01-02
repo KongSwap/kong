@@ -77,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.contains(&"--updates".to_string()) {
         let kong_data = KongData::new(&agent, is_mainnet).await;
-        get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
+        get_db_updates(None, &kong_data, &db_client, tokens_map, pools_map).await?;
     }
 
     if args.contains(&"--kong_backend".to_string()) {
