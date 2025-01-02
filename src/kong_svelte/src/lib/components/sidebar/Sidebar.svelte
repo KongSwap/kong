@@ -143,7 +143,7 @@
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     pointer-events: auto;
-    cursor: pointer;
+    cursor: zoom-out;
   }
 
   .sidebar-container {

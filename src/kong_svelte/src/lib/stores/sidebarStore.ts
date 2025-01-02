@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 
 interface SidebarState {
     isExpanded: boolean;
@@ -59,9 +59,12 @@ function createSidebarStore() {
             update(state => ({ ...state, isOpen: !state.isOpen }));
         },
         collapse: async () => {
-            update(state => ({ ...state, isExpanded: false, width: 527 }));
-            // Wait for animations to complete
-            await new Promise(resolve => setTimeout(resolve, 200));
+            const currentState = get({ subscribe });
+            if (currentState.isExpanded) {
+                update(state => ({ ...state, isExpanded: false, width: 527 }));
+                // Wait for animations to complete only if we were expanded
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
             // Close the sidebar
             update(state => ({ ...state, isOpen: false }));
         }
