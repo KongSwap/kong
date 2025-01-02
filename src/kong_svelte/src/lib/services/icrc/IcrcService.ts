@@ -279,7 +279,7 @@ export class IcrcService {
     try {
         // If it's an ICP transfer to an account ID
         if (token.symbol === 'ICP' && typeof to === 'string' && to.length === 64) {
-            const ledgerActor = await auth.getActor(
+            const ledgerActor = auth.getActor(
                 token.canister_id, 
                 canisterIDLs["ICP"],
                 { anon: false, requiresSigning: true }
@@ -299,7 +299,7 @@ export class IcrcService {
         }
 
         // For all other cases (ICRC1 transfers to principals)
-        const actor = await auth.getActor(
+        const actor = auth.getActor(
             token.canister_id, 
             canisterIDLs["icrc1"],
             { anon: false, requiresSigning: true }

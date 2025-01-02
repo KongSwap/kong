@@ -148,10 +148,6 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         {
           find: "$lib",
           replacement: path.resolve(__dirname, "./src/lib")
-        },
-        {
-          find: 'dexie',
-          replacement: path.resolve(__dirname, 'node_modules/dexie/dist/dexie.mjs')
         }
       ],
     },
