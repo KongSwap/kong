@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { fade, fly } from 'svelte/transition';
     import { IcrcService } from "$lib/services/icrc/IcrcService";
     import { toastStore } from "$lib/stores/toastStore";
     import { Principal } from "@dfinity/principal";
@@ -7,7 +6,7 @@
     import { formatTokenAmount, toMinimalUnit } from '$lib/utils/numberFormatUtils';
     import BigNumber from 'bignumber.js';
     import QrScanner from '$lib/components/common/QrScanner.svelte';
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount } from 'svelte';
     import { Clipboard } from 'lucide-svelte';
     import { Camera } from 'lucide-svelte';
     import { AccountIdentifier } from '@dfinity/ledger-icp';
@@ -23,13 +22,13 @@
     let tokenFee: bigint;
     let showScanner = false;
     let hasCamera = false;
-    let selectedAccount: 'subaccount' | 'main' = 'main';
+    let selectedAccount: 'main' | 'subaccount' = 'main';
     let accounts = {
         subaccount: '',
         main: ''
     };
 
-    let balances = token?.symbol === 'ICP' 
+    let balances: { default: bigint; subaccount?: bigint } = token?.symbol === 'ICP' 
         ? {
             default: BigInt(0),
             subaccount: BigInt(0)
@@ -101,6 +100,13 @@
         }
 
         addressType = detectAddressType(cleanAddress);
+
+        // Add check for non-ICP tokens with account ID
+        if (addressType === 'account' && token.symbol !== 'ICP') {
+            errorMessage = `Account ID can't be used with ${token.name}`;
+            toastStore.error(errorMessage);
+            return false;
+        }
 
         if (addressType === null) {
             errorMessage = 'Invalid address format';
@@ -259,39 +265,24 @@
 
             toastStore.info(`Sending ${token.symbol}...`);
             
-            // Get the correct subaccount based on selection
             const fromSubaccount = selectedAccount === 'subaccount' 
                 ? auth.pnp?.account?.subaccount 
                 : undefined;
 
-            let result;
-            if (addressType === 'account') {
-                result = await IcrcService.icrc1Transfer(
-                    token,
-                    recipientAddress,
-                    amountBigInt,
-                    { 
-                        fee: BigInt(token.fee_fixed),
-                        fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
-                    }
-                );
-            } else {
-                result = await IcrcService.icrc1Transfer(
-                    token,
-                    recipientAddress,
-                    amountBigInt,
-                    { 
-                        fee: BigInt(token.fee_fixed),
-                        fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
-                    }
-                );
-            }
+            const result = await IcrcService.transfer(
+                token,
+                recipientAddress,
+                amountBigInt,
+                { 
+                    fee: BigInt(token.fee_fixed),
+                    fromSubaccount: fromSubaccount ? Array.from(fromSubaccount) : undefined,
+                }
+            );
 
             if (result?.Ok) {
                 toastStore.success(`Successfully sent ${token.symbol}`);
                 recipientAddress = '';
                 amount = '';
-                // Reload balances after successful transfer
                 await loadBalances();
             } else if (result?.Err) {
                 const errMsg = typeof result.Err === "object" 
@@ -309,6 +300,10 @@
     }
 
     function setMaxAmount() {
+        if (maxAmount <= 0) {
+            toastStore.warning("Hmm... Looks like you don't have enough balance for a transfer");
+            return;
+        }
         amount = maxAmount.toFixed(token.decimals);
         errorMessage = '';
     }
@@ -383,28 +378,30 @@
 
     async function loadBalances() {
         try {
-            if (!auth.pnp?.account?.owner || !token) return;
-            
-            if (token.symbol === 'ICP') {
+            if (token?.symbol === 'ICP') {
                 const result = await IcrcService.getIcrc1Balance(
                     token,
-                    auth.pnp.account.owner,
+                    auth.pnp?.account?.owner,
                     auth.pnp?.account?.subaccount ? Array.from(auth.pnp.account.subaccount) : undefined,
                     true
                 );
                 
-                if ('default' in result) {
-                    balances = result;
-                } else {
-                    balances = {
-                        default: result,
-                        subaccount: BigInt(0)
-                    };
-                }
+                balances = {
+                    default: result.default || BigInt(0),
+                    subaccount: result.subaccount || BigInt(0)
+                };
+
+                // Update token object with both balances
+                token = {
+                    ...token,
+                    balance: balances.default.toString(),
+                    subaccountBalance: balances.subaccount.toString()
+                };
             } else {
+                // For non-ICP tokens, just get the main balance
                 const result = await IcrcService.getIcrc1Balance(
                     token,
-                    auth.pnp.account.owner,
+                    auth.pnp?.account?.owner,
                     undefined,
                     false
                 );
@@ -414,7 +411,7 @@
             }
         } catch (error) {
             console.error('Error loading balances:', error);
-            balances = token.symbol === 'ICP' 
+            balances = token?.symbol === 'ICP' 
                 ? { default: BigInt(0), subaccount: BigInt(0) }
                 : { default: BigInt(0) };
         }
@@ -429,30 +426,36 @@
     }
 </script>
 
-<div class="container" transition:fade>
+<div class="container">
     <form on:submit|preventDefault={handleSubmit}>
-        <div class="id-card">
+        <div class="id-card mt-2">
             <div class="id-header">
                 <span>Recipient Address</span>
                 <div class="header-actions">
-                        <button 
-                            type="button"
-                            class="header-button"
-                            on:click={() => showScanner = true}
-                            title="Scan QR Code"
-                        >
-                            <Camera class="w-4 h-4" />
-                        </button>
                     <button 
                         type="button"
-                        class="header-button"
+                        class="action-button"
+                        on:click={() => showScanner = true}
+                        title="Scan QR Code"
+                    >
+                        <Camera class="w-4 h-4" />
+                        <span class="button-text">Scan QR</span>
+                    </button>
+                    <button 
+                        type="button"
+                        class="action-button"
                         on:click={recipientAddress ? () => recipientAddress = '' : handlePaste}
                     >
-                        {#if recipientAddress}✕{:else}<Clipboard class="w-4 h-4" /> {/if}
+                        {#if recipientAddress}
+                            ✕
+                            <span class="button-text">Clear</span>
+                        {:else}
+                            <Clipboard class="w-4 h-4" />
+                            <span class="button-text">Paste</span>
+                        {/if}
                     </button>
                 </div>
             </div>
-
             <div class="input-group">
                 <div class="input-wrapper">
                     <input
@@ -476,10 +479,32 @@
             </div>
         </div>
 
-        <div class="id-card">
+        <div class="id-card mt-4">
             <div class="id-header">
                 <span>Amount</span>
-                <button type="button" class="header-button" on:click={setMaxAmount}>MAX</button>
+                <div class="header-actions">
+                    {#if token.symbol === 'ICP' && balances.subaccount && balances.subaccount > BigInt(0)}
+                        <div class="account-tabs">
+                            <button 
+                                type="button"
+                                class="tab-button"
+                                class:active={selectedAccount === 'main'}
+                                on:click={() => selectedAccount = 'main'}
+                            >
+                                Main
+                            </button>
+                            <button 
+                                type="button"
+                                class="tab-button"
+                                class:active={selectedAccount === 'subaccount'}
+                                on:click={() => selectedAccount = 'subaccount'}
+                            >
+                                Sub
+                            </button>
+                        </div>
+                    {/if}
+                    <button type="button" class="action-button" on:click={setMaxAmount}>MAX</button>
+                </div>
             </div>
 
             <div class="input-group">
@@ -492,64 +517,24 @@
                         on:input={handleAmountInput}
                         class:error={errorMessage.includes('balance') || errorMessage.includes('Amount')}
                     />
-                </div>
-                <div class="balance-info">
-                    {#if token.symbol === 'ICP'}
-                        <div class="balance-row">
-                            <span>Default Account:</span>
-                            <span>{formatTokenAmount(balances.default, token.decimals)} {token.symbol}</span>
-                        </div>
-                        <div class="balance-row">
-                            <span>Subaccount:</span>
-                            <span>{formatTokenAmount(balances.subaccount, token.decimals)} {token.symbol}</span>
-                        </div>
-                        <div class="balance-row total">
-                            <span>Selected Balance:</span>
-                            <span>{formatTokenAmount(selectedAccount === 'main' ? balances.default : balances.subaccount, token.decimals)} {token.symbol}</span>
-                        </div>
-                    {:else}
-                        <div class="balance-row total">
-                            <span>Available Balance:</span>
-                            <span>{formatTokenAmount(balances.default, token.decimals)} {token.symbol}</span>
-                        </div>
-                    {/if}
+                    <div class="balance-display">
+                        Balance: {formatTokenAmount(
+                            selectedAccount === 'main' 
+                                ? balances.default.toString()
+                                : balances.subaccount?.toString() ?? "0", 
+                            token.decimals
+                        )} {token.symbol}
+                    </div>
                 </div>
             </div>
         </div>
 
-        {#if token.symbol === 'ICP'}
-            <div class="id-card">
-                <div class="id-header">
-                    <span>Source Account</span>
-                </div>
-                <div class="input-group">
-                    <select 
-                        bind:value={selectedAccount}
-                        class="account-select"
-                    >
-                        <option value="subaccount">Subaccount ({accounts.subaccount.slice(0, 6)}...{accounts.subaccount.slice(-6)})</option>
-                        <option value="main">Main Account ({accounts.main.slice(0, 6)}...{accounts.main.slice(-6)})</option>
-                    </select>
-                </div>
-            </div>
-        {/if}
-
-        {#if errorMessage}
-            <div class="error-message" transition:fade={{duration: 200}}>
-                {errorMessage}
-            </div>
-        {/if}
-
         <button 
             type="submit" 
             class="send-btn"
-            disabled={isValidating || !amount || !recipientAddress || addressType === 'account'}
+            disabled={isValidating || !amount || !recipientAddress}
         >
-            {#if addressType === 'account'}
-                Sending to Account IDs coming soon
-            {:else}
-                Send Tokens
-            {/if}
+            Send Tokens
         </button>
     </form>
 
@@ -621,60 +606,100 @@
 
 <style lang="postcss">
     .container {
-        @apply flex flex-col gap-4 py-4;
+        @apply flex flex-col gap-6;
     }
 
     .id-card {
-        @apply bg-white/5 rounded-xl p-4 mb-2;
+        @apply flex flex-col gap-2;
     }
 
     .id-header {
-        @apply flex justify-between items-center mb-2 text-white/70 text-sm;
+        @apply flex justify-between items-center text-white/70 text-sm;
     }
 
     .header-actions {
         @apply flex items-center gap-2;
     }
 
-    .header-button {
-        @apply px-3 py-1 bg-white/10 rounded-lg hover:bg-white/20 text-white;
-    }
+    .action-button {
+        @apply h-8 px-3 rounded-lg 
+               bg-white/5 backdrop-blur-sm
+               border border-white/10
+               hover:border-white/20 hover:bg-white/10
+               text-white/70 hover:text-white
+               transition-all duration-200
+               flex items-center justify-center gap-2;
 
-    .max-btn {
-        @apply px-3 py-1 bg-white/10 rounded-lg hover:bg-white/20 text-white;
-    }
-
-    .input-wrapper {
-        @apply relative flex items-center;
-
-        input {
-            @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white
-                   border border-white/10 hover:border-white/20
-                   focus:border-indigo-500 focus:outline-none;
-
-            &.error { 
-                @apply border-red-500/50 bg-red-500/10; 
-            }
+        .button-text {
+            @apply hidden md:inline;
         }
+
+        &:active {
+            @apply border-indigo-500 bg-indigo-500/10;
+        }
+    }
+
+    .input-wrapper input {
+        @apply w-full h-11 rounded-lg text-white px-4
+               bg-white/5 backdrop-blur-sm
+               border border-white/10 
+               hover:border-white/20
+               focus:border-indigo-500 focus:outline-none
+               transition-colors;
+
+        &::placeholder {
+            @apply text-white/30;
+        }
+
+        &.error { 
+            @apply border-red-500/50 bg-red-500/5; 
+        }
+
+        &.valid {
+            @apply border-green-500/50 bg-green-500/5;
+        }
+    }
+
+    .account-selector {
+        @apply grid grid-cols-2 gap-3 mt-3;
+    }
+
+    .account-option {
+        @apply h-16 rounded-lg border border-white/10 
+               bg-white/5 backdrop-blur-sm
+               hover:border-white/20 hover:bg-white/10
+               transition-all duration-200;
+
+        &.selected {
+            @apply border-indigo-500 bg-indigo-500/10;
+        }
+    }
+
+    .account-details {
+        @apply flex flex-col items-center justify-center h-full gap-1;
+    }
+
+    .account-label {
+        @apply text-sm text-white/70;
+    }
+
+    .account-balance {
+        @apply text-white font-medium;
+    }
+
+    .send-btn {
+        @apply h-12 w-full rounded-lg bg-indigo-500 text-white font-medium 
+               hover:bg-indigo-600 disabled:opacity-50 mt-4;
     }
 
     .error-message {
         @apply text-red-400 text-sm px-2 mb-2;
     }
 
-    .send-btn {
-        @apply w-full py-3 bg-indigo-500 text-white rounded-lg
-               font-medium hover:bg-indigo-600 disabled:opacity-50;
-    }
-
     .validation-status {
         @apply text-sm mt-1 px-1;
         &.success { @apply text-green-400; }
         &.error { @apply text-red-400; }
-    }
-
-    .balance-info {
-        @apply text-right text-sm text-white/60;
     }
 
     .confirm-box {
@@ -708,14 +733,6 @@
                 
                 .value {
                     @apply text-sm text-white/90;
-                    
-                    &.address {
-                        @apply max-w-[200px] truncate;
-                    }
-                    
-                    &.type {
-                        @apply capitalize;
-                    }
                 }
                 
                 &.total {
@@ -751,42 +768,6 @@
         @apply inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
     }
 
-    .scanner-container {
-        @apply p-4 flex flex-col items-center gap-4;
-
-        :global(#qr-reader) {
-            @apply w-full max-w-[300px] mx-auto bg-black/20 rounded-lg overflow-hidden;
-            
-            :global(video) {
-                @apply rounded-lg;
-            }
-
-            :global(#qr-reader__header_message),
-            :global(#qr-reader__filescan_input),
-            :global(#qr-reader__dashboard_section_csr) {
-                @apply hidden;
-            }
-
-            :global(#qr-reader__scan_region) {
-                @apply bg-transparent rounded-lg relative;
-                border: 2px solid theme('colors.indigo.500') !important;
-            }
-        }
-
-        .scanner-controls {
-            @apply flex gap-3 mt-4;
-        }
-
-        .switch-camera-btn {
-            @apply px-4 py-2 bg-white/10 hover:bg-white/15 text-white/90 
-                   rounded-lg flex items-center justify-center;
-        }
-
-        .cancel-scan-btn {
-            @apply px-4 py-2 bg-white/10 hover:bg-white/15 text-white/90 rounded-lg;
-        }
-    }
-
     @keyframes scan {
         0% { 
             transform: translateY(-100%);
@@ -801,21 +782,23 @@
         }
     }
 
-    .account-select {
-        @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white
-               border border-white/10 hover:border-white/20
-               focus:border-indigo-500 focus:outline-none;
+    .account-tabs {
+        @apply flex gap-1 mr-2;
     }
 
-    .balance-row {
-        @apply flex justify-between text-sm text-white/60;
-        
-        &.total {
-            @apply mt-1 pt-1 border-t border-white/10 text-white/90 font-medium;
+    .tab-button {
+        @apply px-3 py-1 rounded-lg text-sm
+               bg-white/5 backdrop-blur-sm
+               border border-white/10
+               text-white/70
+               transition-all duration-200;
+
+        &.active {
+            @apply bg-indigo-500/20 border-indigo-500 text-white;
         }
     }
 
-    .account-info {
-        @apply w-full px-3 py-2 bg-black/20 rounded-lg text-white/70;
+    .balance-display {
+        @apply text-sm text-white/60 mt-2 px-1;
     }
 </style>
