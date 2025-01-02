@@ -38,14 +38,14 @@ pub struct StablePool {
     pub kong_fee_1: Nat,  // Kong's share of the LP fee
     pub lp_fee_bps: u8,   // LP's fee in basis points
     pub kong_fee_bps: u8, // Kong's fee in basis points
-    pub lp_token_id: u32, // token id of the LP token
-    #[serde(default = "false_bool")]
-    pub is_removed: bool,
     pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
+    pub lp_token_id: u32, // token id of the LP token
+    #[serde(default = "false_bool")]
+    pub is_removed: bool,
 }
 
 fn false_bool() -> bool {
@@ -66,13 +66,13 @@ impl StablePool {
             kong_fee_1: nat_zero(),
             lp_fee_bps,
             kong_fee_bps,
-            lp_token_id,
-            is_removed: false,
             tvl: nat_zero(),
             rolling_24h_volume: nat_zero(),
             rolling_24h_lp_fee: nat_zero(),
             rolling_24h_num_swaps: nat_zero(),
             rolling_24h_apy: 0_f64,
+            lp_token_id,
+            is_removed: false,
         }
     }
 

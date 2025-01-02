@@ -47,13 +47,13 @@ pub fn to_pool_reply(pool: &StablePool) -> PoolReply {
         lp_fee_1: pool.lp_fee_1.clone(),
         price: pool.get_price_as_f64().unwrap_or(0_f64),
         lp_fee_bps: pool.lp_fee_bps,
-        is_removed: pool.is_removed,
         tvl: pool.tvl.clone(),
         rolling_24h_volume: pool.rolling_24h_volume.clone(),
         rolling_24h_lp_fee: pool.rolling_24h_lp_fee.clone(),
         rolling_24h_num_swaps: pool.rolling_24h_num_swaps.clone(),
         rolling_24h_apy: pool.rolling_24h_apy,
         lp_token_symbol,
+        is_removed: pool.is_removed,
     }
 }
 

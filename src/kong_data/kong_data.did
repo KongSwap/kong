@@ -79,13 +79,13 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
-    is_removed : bool;
     tvl : nat;                  // USD value of TVL
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;
     rolling_24h_apy : float64;
     lp_token_symbol : text;
+    is_removed : bool;
 };
 type PoolsResult = variant { Ok : PoolsReply; Err : text };
 
@@ -113,9 +113,9 @@ type AddPoolReply = record {
     address_1 : text;
     symbol_1 : text;
     amount_1 : nat;
-    add_lp_token_amount : nat;
     lp_fee_bps : nat8;
     lp_token_symbol : text;
+    add_lp_token_amount : nat;
     transfer_ids : vec TransferIdReply;
     claim_ids : vec nat64;
     is_removed : bool;
