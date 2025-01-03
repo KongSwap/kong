@@ -29,13 +29,15 @@
     accountId: string;
     principalQR: string;
     accountQR: string;
+    defaultAccountId: string;
   }
 
   let identity: UserIdentity = {
     principalId: '',
     accountId: '',
     principalQR: '',
-    accountQR: ''
+    accountQR: '',
+    defaultAccountId: ''
   };
 
   async function generateQR(text: string | undefined): Promise<string> {
@@ -180,7 +182,7 @@
     if (identity.principalId && identity.accountId) {
       const [principalQR, accountQR] = await Promise.all([
         generateQR(identity.principalId),
-        generateQR(identity.accountId)
+        generateQR(identity.defaultAccountId)
       ]);
 
       identity = {
