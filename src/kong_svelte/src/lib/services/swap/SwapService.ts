@@ -100,7 +100,7 @@ export class SwapService {
       if (!payToken?.symbol || !receiveToken?.symbol) {
         throw new Error("Invalid tokens provided for swap quote");
       }
-      const actor = await auth.getActor(
+      const actor =  auth.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
         { anon: true },
@@ -190,7 +190,7 @@ export class SwapService {
     pay_tx_id?: { BlockIndex: number }[];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      const actor = await auth.pnp.getActor(
+      const actor =  auth.pnp.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
         { 
@@ -213,7 +213,7 @@ export class SwapService {
    */
   public static async requests(requestIds: bigint[]): Promise<RequestResponse> {
     try {
-      const actor = await auth.getActor(
+      const actor =  auth.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
         { anon: true }
