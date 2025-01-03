@@ -307,8 +307,8 @@ fn three_step_swaps(
     let pool2_icp_ckusdt = pool_map::get_by_token_ids(icp_token_id, ckusdt_token_id);
 
     // token0/ckUSDT -> ckUSDT/ICP -> ICP/token1
-    // make sure token1 != ckUSDT
-    if receive_token_id != ckusdt_token_id {
+    // make sure token0 != ICP && token1 != ckUSDT
+    if pay_token_id != icp_token_id && receive_token_id != ckusdt_token_id {
         let pool1_ckusdt = pool_map::get_by_token_ids(pay_token_id, ckusdt_token_id);
         let pool3_icp = pool_map::get_by_token_ids(receive_token_id, icp_token_id);
         if pool1_ckusdt.is_some() && pool2_icp_ckusdt.is_some() && pool3_icp.is_some() {
@@ -369,8 +369,8 @@ fn three_step_swaps(
     }
 
     // token0/ICP -> ICP/ckUSDT -> ckUSDT/token1
-    // make sure token1 != ICP
-    if receive_token_id != icp_token_id {
+    // make sure token0 != ckUSDT && token1 != ICP
+    if pay_token_id != ckusdt_token_id && receive_token_id != icp_token_id {
         let pool1_icp = pool_map::get_by_token_ids(pay_token_id, icp_token_id);
         let pool3_ckusdt = pool_map::get_by_token_ids(receive_token_id, ckusdt_token_id);
         if pool1_icp.is_some() && pool2_icp_ckusdt.is_some() && pool3_ckusdt.is_some() {
