@@ -61,8 +61,6 @@
   <div 
     class="token-row"
     class:pressed={isPressed}
-    in:fly={{ y: 20, duration: 400, delay: 200 }}
-    out:fade={{ duration: 200 }}
     on:click={handleRowClick}
     on:mouseenter={() => isHovered = true}
     on:mouseleave={() => isHovered = false}

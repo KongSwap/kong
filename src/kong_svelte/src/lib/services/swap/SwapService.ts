@@ -100,7 +100,7 @@ export class SwapService {
       if (!payToken?.symbol || !receiveToken?.symbol) {
         throw new Error("Invalid tokens provided for swap quote");
       }
-      const actor = await auth.getActor(
+      const actor =  auth.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
         { anon: true },
@@ -190,10 +190,13 @@ export class SwapService {
     pay_tx_id?: { BlockIndex: number }[];
   }): Promise<BE.SwapAsyncResponse> {
     try {
-      const actor = await auth.pnp.getActor(
+      const actor =  auth.pnp.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
+        { 
+          anon: false, 
+          requiresSigning: auth.pnp.activeWallet.id === 'plug' 
+        },
       );
       console.log("SWAP_ASYNC ACTOR", actor);
       const result = await actor.swap_async(params);
@@ -210,10 +213,10 @@ export class SwapService {
    */
   public static async requests(requestIds: bigint[]): Promise<RequestResponse> {
     try {
-      const actor = await auth.pnp.getActor(
+      const actor =  auth.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
+        { anon: true }
       );
       const result = await actor.requests(requestIds);
       return result;
@@ -315,7 +318,10 @@ export class SwapService {
         const actor = auth.pnp.getActor(
           kongBackendCanisterId,
           canisterIDLs.kong_backend,
-          { anon: false, requiresSigning: true },
+          { 
+            anon: false, 
+            requiresSigning: auth.pnp.activeWallet.id === 'plug' 
+          },
         );
         const result = await actor.swap(swapParams);
         toastStore.dismiss(toastId);
@@ -555,16 +561,6 @@ export class SwapService {
 
               // Update immediately
               await updateBalances();
-
-              // Schedule updates with increasing delays
-              const delays = [1000, 2000, 3000, 4000, 5000];
-              console.log("Scheduling delayed balance updates...");
-              delays.forEach((delay) => {
-                setTimeout(async () => {
-                  await updateBalances();
-                }, delay);
-              });
-
               toastStore.dismiss(toastId);
               return;
             } else if (swapStatus.status === "Failed") {

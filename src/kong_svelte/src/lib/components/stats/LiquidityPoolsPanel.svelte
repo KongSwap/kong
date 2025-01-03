@@ -131,7 +131,7 @@
                   <button
                     onclick={() =>
                       goto(
-                        `/pool/add?token0=${pool.address_0}&token1=${pool.address_1}`,
+                        `/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`,
                       )}
                     class="inline-block px-3 py-1.5 text-sm bg-purple-500/20 text-purple-400 rounded-full hover:bg-purple-500/30 transition-colors duration-200"
                   >
@@ -188,7 +188,7 @@
                 <button
                   onclick={() =>
                     goto(
-                      `/pool/add?token0=${pool.address_0}&token1=${pool.address_1}`,
+                      `/earn/add?token0=${pool.address_0}&token1=${pool.address_1}`,
                     )}
                   class="flex-1 text-center px-3 py-1.5 text-sm bg-purple-500/20 text-purple-400 rounded-full hover:bg-purple-500/30 transition-colors duration-200"
                 >
@@ -212,7 +212,7 @@
                 There are currently no liquidity pools for this token
               </div>
               <button
-                onclick={() => goto("/pool/add")}
+                onclick={() => goto("/earn/add")}
                 class="mt-6 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors duration-200"
               >
                 Create Pool

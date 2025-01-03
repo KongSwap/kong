@@ -9,7 +9,6 @@
     import { parseTokenAmount, formatTokenAmount } from "$lib/utils/numberFormatUtils";
     import { goto, replaceState } from '$app/navigation';
     import { page } from '$app/stores';
-    import Modal from "$lib/components/common/Modal.svelte";
     import { auth } from "$lib/services/auth";
 
     // Props
@@ -354,7 +353,7 @@
       const params = new URLSearchParams();
       if (token0) params.set('token0', token0.canister_id);
       if (token1) params.set('token1', token1.canister_id);
-      const newUrl = `/pools/add${params.toString() ? '?' + params.toString() : ''}`;
+      const newUrl = `/earn/add${params.toString() ? '?' + params.toString() : ''}`;
       replaceState(newUrl, null);
       updateBalances();
     }

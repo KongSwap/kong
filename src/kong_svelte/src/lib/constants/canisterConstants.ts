@@ -14,6 +14,7 @@ export const KONG_SVELTE_CANISTER_ID = process.env.CANISTER_ID_KONG_SVELTE;
 export const KONG_BACKEND_CANISTER_ID = process.env.CANISTER_ID_KONG_BACKEND;
 
 // Token Canister IDs
+export const BIL_CANISTER_ID = 'ktra4-taaaa-aaaag-atveq-cai';
 export const CKBTC_CANISTER_ID = 'mxzaz-hqaaa-aaaar-qaada-cai';
 export const CKUSDC_CANISTER_ID = 'xevnm-gaaaa-aaaar-qafnq-cai';
 export const CKETH_CANISTER_ID = 'ss2fx-dyaaa-aaaar-qacoq-cai';
