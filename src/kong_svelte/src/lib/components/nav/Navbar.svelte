@@ -154,23 +154,24 @@
   }
 </script>
 
-<div class="nav-container-wrapper mt-2">
-  <div class="nav-container">
-    <div class="left-section">
+<div class="mb-4 w-full top-0 left-0 z-50 relative">
+  <div class="mx-auto h-16 flex items-center justify-between px-6">
+    <div class="flex items-center gap-10">
       {#if isMobile}
-        <button class="mobile-icon-btn" on:click={() => (navOpen = !navOpen)}>
+        <button class="h-[34px] w-[34px] flex items-center justify-center" on:click={() => (navOpen = !navOpen)}>
           <Menu size={20} color={$themeStore === "dark" ? "white" : "black"} />
         </button>
       {:else}
-        <button class="logo-link" on:click={() => goto("/")}>
+        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/")}>
           <img 
             src="/titles/logo-white-wide.png"
             alt="Kong Logo" 
-            class="logo-wide"
+            class="h-[30px] transition-all duration-200"
+            class:light-logo={$themeStore === 'light'}
           />
         </button>
 
-        <nav class="nav-tabs">
+        <nav class="flex items-center gap-0.5">
           {#each tabs as tab}
             {#if tab === 'earn'}
               <div 
@@ -186,11 +187,11 @@
                 </button>
                 
                 {#if activeDropdown === 'earn'}
-                  <div class="dropdown-menu" transition:fade={{ duration: 150 }}>
-                    <div class="dropdown-header">EARN OPTIONS</div>
+                  <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
+                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">EARN OPTIONS</div>
                     {#each earnOptions as option}
                       <button
-                        class="dropdown-item"
+                        class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
                         on:click={async () => {
                           if (!option.comingSoon) {
                             hideDropdown();
@@ -200,17 +201,17 @@
                         }}
                         class:disabled={option.comingSoon}
                       >
-                        <div class="dropdown-item-icon">
+                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
-                        <div class="dropdown-item-content">
-                          <div class="dropdown-item-title-row">
-                            <span class="dropdown-item-title">{option.label}</span>
+                        <div class="flex flex-col gap-1 pt-0.5">
+                          <div class="flex items-center gap-2">
+                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">{option.label}</span>
                             {#if option.comingSoon}
-                              <span class="coming-soon-badge">Coming Soon</span>
+                              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="dropdown-item-description">{option.description}</span>
+                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -232,25 +233,25 @@
                 </button>
                 
                 {#if activeDropdown === 'swap'}
-                  <div class="dropdown-menu" transition:fade={{ duration: 150 }}>
-                    <div class="dropdown-header">SWAP OPTIONS</div>
+                  <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
+                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">SWAP OPTIONS</div>
                     {#each swapOptions as option}
                       <button
-                        class="dropdown-item"
+                        class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
                         on:click={() => handleSwapOptionClick(option)}
                         class:disabled={option.comingSoon}
                       >
-                        <div class="dropdown-item-icon">
+                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
                           <svelte:component this={option.icon} size={20} />
                         </div>
-                        <div class="dropdown-item-content">
-                          <div class="dropdown-item-title-row">
-                            <span class="dropdown-item-title">{option.label}</span>
+                        <div class="flex flex-col gap-1 pt-0.5">
+                          <div class="flex items-center gap-2">
+                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">{option.label}</span>
                             {#if option.comingSoon}
-                              <span class="coming-soon-badge">Coming Soon</span>
+                              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
                             {/if}
                           </div>
-                          <span class="dropdown-item-description">{option.description}</span>
+                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
                         </div>
                       </button>
                     {/each}
@@ -275,21 +276,22 @@
     </div>
 
     {#if isMobile}
-      <div class="center-section">
-        <button class="logo-link" on:click={() => goto("/")}>
+      <div class="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/")}>
           <img 
             src="/titles/logo-white-wide.png"
             alt="Kong Logo" 
-            class="logo-wide"
+            class="h-6 transition-all duration-200"
+            class:light-logo={$themeStore === 'light'}
           />
         </button>
       </div>
     {/if}
 
-    <div class="right-section">
+    <div class="flex items-center gap-1.5">
       {#if !isMobile}
         <button
-          class="action-btn"
+          class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
           on:click={handleOpenSettings}
           use:tooltip={{ text: "Settings", direction: "bottom" }}
         >
@@ -299,7 +301,7 @@
         {#if $auth.isConnected}
           {#if process.env.DFX_NETWORK === 'local' || process.env.DFX_NETWORK === 'staging'}
             <button
-              class="action-btn"
+              class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
               on:click={claimTokens}
               use:tooltip={{ text: "Claim test tokens", direction: "bottom" }}
             >
@@ -308,7 +310,7 @@
           {/if}
 
           <button
-            class="action-btn"
+            class="h-[34px] px-3 flex items-center gap-1.5 rounded-md text-sm font-medium text-kong-text-secondary bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20 transition-all duration-150 hover:text-kong-text-primary hover:bg-kong-text-primary/10 hover:border-kong-border-light"
             on:click={() => copyToClipboard(auth.pnp?.account?.owner)}
             use:tooltip={{ text: "Copy Principal ID", direction: "bottom" }}
           >
@@ -318,7 +320,7 @@
         {/if}
 
         <button
-          class="action-btn wallet-btn"
+          class="h-[34px] px-3.5 flex items-center gap-1.5 rounded-md text-sm font-semibold text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
           class:selected={$sidebarStore.isOpen}
           on:click={handleConnect}
         >
@@ -327,7 +329,7 @@
         </button>
       {:else}
         <button
-          class="action-btn wallet-btn mobile-wallet-btn"
+          class="h-[34px] w-[34px] flex items-center justify-center rounded-md text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
           class:selected={$sidebarStore.isOpen}
           on:click={handleConnect}
         >
@@ -501,127 +503,21 @@
 {/if}
 
 <style scoped lang="postcss">
-  @font-face {
-    font-family: "Space Grotesk";
-    src: url("/fonts/Alumni-Sans-Latin.woff2") format("woff2");
-    font-weight: normal;
-    font-style: normal;
-  }
-
-  .nav-container-wrapper {
-    @apply mb-4;
-    width: 100%;
-    top: 0;
-    left: 0;
-    z-index: 50;
-    position: relative;
-  }
-
-  .nav-container {
-    margin: 0 auto;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-  }
-
-  /* Left Section */
-  .left-section {
-    display: flex;
-    align-items: center;
-    gap: 40px;
-  }
-
-  .logo-link {
-    display: flex;
-    align-items: center;
-  }
-
-  .logo-wide {
-    height: 30px;
-    transition: all 0.2s ease;
-    filter: brightness(var(--logo-brightness, 1)) invert(var(--logo-invert, 0));
-  }
-
-  .logo-link:hover .logo-wide {
-    filter: brightness(var(--logo-hover-brightness, 0.9)) invert(var(--logo-invert, 0));
-  }
-
-  /* Navigation */
-  .nav-tabs {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-  }
 
   .nav-link {
-    position: relative;
-    height: 64px;
-    padding: 0 20px;
-    display: flex;
-    align-items: center;
-    font-size: 13px;
-    font-weight: 600;
-    color: theme(colors.kong.text-secondary);
-    letter-spacing: 0.3px;
-    transition: all 0.2s ease;
+    @apply relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
   }
 
   .nav-link:hover {
-    color: theme(colors.kong.text-primary);
+    @apply text-kong-text-primary;
   }
 
   .nav-link.active {
-    color: theme(colors.kong.primary);
+    @apply text-kong-primary;
     text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 
-  /* Right Section */
-  .right-section {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
 
-  /* Action Buttons */
-  .action-btn {
-    height: 34px;
-    padding: 0 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: theme(colors.kong.text-secondary);
-    @apply bg-kong-text-primary/5 border border-kong-border light:border-gray-800/20;
-    transition: all 0.15s ease;
-  }
-
-  .action-btn:hover {
-    color: theme(colors.kong.text-primary);
-    @apply bg-kong-text-primary/10 border-kong-border-light;
-  }
-
-  .wallet-btn {
-    background: theme(colors.kong.primary / 15%);
-    border: 1px solid theme(colors.kong.primary / 30%);
-    color: theme(colors.kong.text-primary);
-    padding: 0 14px;
-    height: 34px;
-    font-weight: 600;
-  }
-
-  .wallet-btn:hover {
-    background: theme(colors.kong.primary / 20%);
-    border-color: theme(colors.kong.primary / 40%);
-  }
-
-  .wallet-btn.selected {
-    background: theme(colors.kong.primary / 25%);
-    border-color: theme(colors.kong.primary / 50%);
-  }
 
   /* Mobile Menu */
   .mobile-menu-content {
@@ -638,16 +534,7 @@
   }
 
   .mobile-nav-btn {
-    height: 40px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: theme(colors.kong.text-secondary);
-    transition: all 0.15s ease;
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-200 text-sm font-medium;
   }
 
   .mobile-nav-btn:hover,
@@ -657,256 +544,17 @@
   }
 
   .nav-dropdown {
-    position: relative;
-    z-index: 60;
+    @apply relative z-[60];
   }
 
   .nav-dropdown .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    @apply flex items-center gap-1;
   }
 
-  .dropdown-menu {
-    position: absolute;
-    top: calc(100%);
-    left: -20px;
-    min-width: 480px;
-    padding: 12px;
-    @apply bg-kong-bg-dark/70;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    @apply border border-kong-border;
-    @apply rounded-md;
-    box-shadow: 
-      0 8px 32px rgb(0 0 0 / 0.2),
-      0 0 0 1px rgb(var(--text-primary) / 0.02);
-    z-index: 61;
-  }
-
-  .dropdown-header {
-    padding: 0 20px 12px 20px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: theme(colors.kong.text-secondary);
-    border-bottom: 1px solid theme(colors.kong.border);
-    margin-bottom: 8px;
-  }
-
-  .dropdown-item {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 80px 1fr;
-    align-items: center;
-    text-align: left;
-    @apply relative rounded-md overflow-hidden text-left px-4 py-4;
-    transition: all 0.15s ease;
-  }
-
-  .dropdown-item-icon {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    @apply rounded-md;
-    @apply bg-kong-text-primary/5;
-    color: theme(colors.kong.text-primary);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: scale(0.9);
-  }
-
-  .dropdown-item-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-top: 2px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .dropdown-item-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: theme(colors.kong.text-primary);
-  }
-
-  .dropdown-item:hover .dropdown-item-title {
-    color: theme(colors.kong.primary);
-  }
-
-  .dropdown-item-description {
-    font-size: 13px;
-    color: theme(colors.kong.text-secondary);
-    line-height: 1.5;
-  }
-
-  .dropdown-item:hover {
-    @apply bg-kong-text-primary/5;
-  }
-
-  .dropdown-item:hover .dropdown-item-icon {
-    transform: scale(1.1);
-    @apply bg-kong-text-primary/10;
-    color: theme(colors.kong.primary);
-  }
-
-  .dropdown-item:hover .dropdown-item-content {
-    transform: none;
-  }
-
-  /* Add a subtle arrow/pointer to the dropdown */
-  .dropdown-menu::before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    left: 40px;
-    width: 8px;
-    height: 8px;
-    transform: rotate(45deg);
-    @apply bg-kong-bg-dark/95;
-    @apply border-l border-t border-kong-border;
-  }
-
-  /* Update mobile menu to include dropdown items */
-  .mobile-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-  }
-
-  /* Add a invisible bridge between nav link and dropdown */
   .nav-dropdown::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    height: 8px;
-    background: transparent;
+    @apply content-[''] absolute top-full left-0 w-full h-2 bg-transparent;
   }
 
-  .dropdown-item.disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  .dropdown-item.disabled:hover {
-    background: transparent;
-  }
-
-  .dropdown-item.disabled:hover .dropdown-item-icon {
-    transform: none;
-    @apply bg-kong-text-primary/5;
-  }
-
-  .dropdown-item-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .coming-soon-badge {
-    font-size: 11px;
-    font-weight: 500;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: theme(colors.kong.primary / 15%);
-    color: theme(colors.kong.primary);
-    letter-spacing: 0.3px;
-  }
-
-  .mobile-nav-btn.disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  .mobile-nav-btn-content {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-  }
-
-  /* Make the coming-soon-badge smaller in mobile view */
-  .mobile-nav-btn .coming-soon-badge {
-    font-size: 10px;
-    padding: 1px 4px;
-  }
-
-  .sidebar-portal {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    isolation: isolate;
-  }
-
-  .sidebar-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-
-  .center-section {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  @media (max-width: 767px) {
-    .nav-container {
-      position: relative; /* For absolute positioning of center-section */
-    }
-
-    .left-section {
-      gap: 0;
-    }
-
-    .logo-wide {
-      height: 24px;
-    }
-
-    .mobile-icon-btn {
-      height: 34px;
-      width: 34px;
-      padding: 0;
-    }
-
-    .wallet-btn {
-      height: 34px;
-      padding: 0 12px;
-    }
-
-    /* Hide the wallet button text on very small screens */
-    @media (max-width: 360px) {
-      .wallet-btn span {
-        display: none;
-      }
-      
-      .wallet-btn {
-        padding: 0;
-        width: 34px;
-        justify-content: center;
-      }
-    }
-
-    .mobile-wallet-btn {
-      width: 34px;
-      padding: 0;
-      justify-content: center;
-    }
-
-    .mobile-wallet-btn span {
-      display: none;
-    }
-  }
 
   .mobile-menu {
     @apply fixed inset-0 z-50;
@@ -917,8 +565,7 @@
   }
 
   .mobile-menu-content {
-    @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col;
-    @apply bg-kong-bg-dark border-r border-kong-border;
+    @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col bg-kong-bg-dark border-r border-kong-border;
   }
 
   .mobile-menu-header {
@@ -926,10 +573,7 @@
   }
 
   .mobile-close-btn {
-    @apply w-8 h-8 flex items-center justify-center rounded-lg;
-    @apply text-kong-text-secondary hover:text-kong-text-primary;
-    @apply bg-kong-text-primary/5 hover:bg-kong-text-primary/10;
-    @apply transition-colors duration-200;
+    @apply w-8 h-8 flex items-center justify-center rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors duration-200;
   }
 
   .mobile-nav {
@@ -945,8 +589,7 @@
   }
 
   .mobile-nav-section-title {
-    @apply text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2;
-    letter-spacing: 0.5px;
+    @apply text-xs font-semibold text-kong-text-secondary/70 px-2 mb-2 tracking-wider;
   }
 
   .mobile-nav-group {
@@ -958,11 +601,7 @@
   }
 
   .mobile-nav-btn {
-    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg;
-    @apply text-kong-text-secondary hover:text-kong-text-primary;
-    @apply transition-colors duration-200;
-    font-size: 14px;
-    font-weight: 500;
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-kong-text-secondary hover:text-kong-text-primary transition-colors duration-200 text-sm font-medium;
   }
 
   .mobile-nav-btn.active {
@@ -970,8 +609,7 @@
   }
 
   .mobile-nav-btn-icon {
-    @apply flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg;
-    @apply bg-kong-text-primary/5;
+    @apply flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-kong-text-primary/5;
   }
 
   .mobile-nav-btn-content {
@@ -983,15 +621,23 @@
   }
 
   .mobile-wallet-btn {
-    @apply w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg;
-    @apply bg-kong-primary/15 hover:bg-kong-primary/20;
-    @apply text-kong-text-primary font-semibold;
-    @apply border border-kong-primary/30 hover:border-kong-primary/40;
-    @apply transition-all duration-200;
+    @apply w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
   }
 
   .coming-soon-badge {
-    @apply text-[10px] font-medium px-2 py-0.5 rounded;
-    @apply bg-kong-primary/20 text-kong-primary;
+    @apply text-[10px] font-medium px-2 py-0.5 rounded bg-kong-primary/20 text-kong-primary;
+  }
+
+  .sidebar-portal {
+    @apply fixed inset-0 z-[100] isolate;
+  }
+
+  .sidebar-backdrop {
+    @apply fixed inset-0 bg-black/20 backdrop-blur-[4px];
+  }
+
+  /* Update logo styles */
+  .light-logo {
+    @apply invert brightness-[0.75] transition-all duration-200;
   }
 </style>

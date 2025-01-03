@@ -16,27 +16,14 @@ export const parseTokens = async (
           (t) => t.canister_id === token.canister_id
         );
 
-        // → Use existing token's price if fresh data doesn't include one
-        const freshPrice = token.metrics?.price;
-        const oldPrice = existingToken?.metrics?.price;
-
-        const mergedPrice =
-          freshPrice && Number(freshPrice) !== 0
-            ? freshPrice
-            : oldPrice || "0";
-
         if (!existingToken) {
+          console.log("New token:", token);
           // For brand-new tokens, you can still set price to "0" *ONLY* if
           // nothing else is available
           return {
             ...token,
             metrics: {
               ...token.metrics,
-              price: mergedPrice, // preserve existing if we already had something
-              price_change_24h: "0",
-              volume_24h: "0",
-              market_cap: "0",
-              tvl: "0",
             },
             logo_url: DEFAULT_LOGOS[token.canister_id] || 
               (token?.logo_url

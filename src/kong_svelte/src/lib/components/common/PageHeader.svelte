@@ -1,8 +1,8 @@
 <script lang="ts">
   export let title: string;
   export let maxWidth: string = "1300px";
-  export let description: string;
-  export let icon: any; // SVG path data
+  export let description: string | null = null;
+  export let icon: any | null = null; // SVG path data
   export let stats: Array<{
     label: string;
     value: string;

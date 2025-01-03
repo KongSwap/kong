@@ -27,18 +27,16 @@
   });
 </script>
 
-<section class="swap-container">
+<section class="w-full overflow-x-hidden">
   {#if $liveTokens}
-    <div class="swap-wrapper">
+    <div class="p-2 md:p-0 w-full flex justify-center">
       {#if currentMode === 'normal'}
-      <div class="swap-normal">
         <Swap 
           initialFromToken={fromToken} 
           initialToToken={toToken} 
           {currentMode}
           on:modeChange={handleModeChange}
         />
-      </div>
       {:else}
         <SwapPro 
           initialFromToken={fromToken} 
@@ -52,36 +50,3 @@
     <p>Loading tokens...</p>
   {/if}
 </section>
-
-<style scoped lang="postcss">
-  .swap-container {
-    width: 100%;
-    overflow-x: hidden;
-  }
-
-  .swap-wrapper {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  .swap-normal {
-    background-color: transparent;
-
-  }
-
-  @media (max-width: 640px) {
-    .swap-normal {
-      padding-top: 0.5rem;
-      padding: 1rem 1rem 0;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .swap-normal {
-      padding-top: 0.25rem;
-    }
-  }
-</style>

@@ -115,7 +115,7 @@
     <span>{formatUsdValue(token?.metrics?.volume_24h)}</span>
   </td>
   <td class="col-mcap text-right">
-    <span>{formatUsdValue(token?.metrics?.market_cap)}</span>
+    <span>{token?.metrics?.market_cap}</span>
   </td>
   <td class="col-tvl text-right pr-3">
     <span>{formatUsdValue(token?.metrics?.tvl || 0)}</span>

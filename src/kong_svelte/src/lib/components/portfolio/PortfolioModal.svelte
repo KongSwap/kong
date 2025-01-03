@@ -5,11 +5,22 @@
   import { portfolioValue, tokenStore } from "$lib/services/tokens/tokenStore";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { liveUserPools } from "$lib/services/pools/poolStore";
+  import { getChartColors, getChartOptions } from './chartConfig';
+  import { processPortfolioData, createChartData } from './portfolioDataProcessor';
+  import { calculateRiskMetrics } from './riskAnalyzer';
 
   Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
   export let isOpen = false;
   export let onClose = () => {};
+
+  let tokenPercentage = 0;
+  let lpPercentage = 0;
+  let riskScore = 0;
+  let dailyChange = 0;
+  let bestPerformer = { symbol: '', change: 0 };
+  let highestValue = 0;
+  let lowestValue = 0;
   
   let canvas: HTMLCanvasElement;
   let chart: Chart;
@@ -23,22 +34,19 @@
     updateChart();
   }
 
-  // Helper function to safely serialize data including BigInts
+  // Helper function to safely serialize data
   function safeSerialize(obj: any): string {
     return JSON.stringify(obj, (_, value) =>
-      typeof value === 'bigint'
-        ? value.toString()
-        : value
+      typeof value === 'bigint' ? value.toString() : value
     );
   }
 
-  // Calculate portfolio data from actual token balances and pool positions
+  // Calculate portfolio data
   $: portfolioData = (() => {
     const tokens = $liveTokens;
     const balances = $tokenStore.balances;
     const userPools = $liveUserPools;
     
-    // Only do expensive operations if data has changed
     const dataKey = safeSerialize({ 
       tokens: tokens.map(t => t.canister_id),
       balances: Object.keys(balances),
@@ -48,126 +56,16 @@
     if (currentData?.key === dataKey) {
       return currentData.data;
     }
+
+    const { topPositions, otherPositions } = processPortfolioData(tokens, balances, userPools);
+    const { colors, getBorderColors } = getChartColors();
+    const borderColors = getBorderColors(colors);
     
-    
-    // Process token balances
-    const tokenData = tokens
-      .filter(token => {
-        const balance = balances[token.canister_id]?.in_usd;
-        const numBalance = typeof balance === 'bigint' 
-          ? Number(balance)
-          : Number(balance);
-        return balance && balance !== '0' && !isNaN(numBalance);
-      })
-      .map(token => ({
-        label: token.symbol,
-        balance: typeof balances[token.canister_id]?.in_usd === 'bigint'
-          ? Number(balances[token.canister_id].in_usd)
-          : Number(balances[token.canister_id]?.in_usd || 0)
-      }));
+    const chartData = createChartData(topPositions, otherPositions, colors, borderColors);
 
-
-    // Process pool positions
-    const poolData = userPools
-      .filter(pool => pool.usd_balance && Number(pool.usd_balance) > 0)
-      .map(pool => ({
-        label: `${pool.symbol_0}/${pool.symbol_1} LP`,
-        balance: Number(pool.usd_balance)
-      }));
-
-
-    // Combine token and pool data
-    const combinedData = [...tokenData, ...poolData]
-      .sort((a, b) => b.balance - a.balance);
-
-    // Take top 5 positions and group the rest as "Others"
-    const topPositions = combinedData.slice(0, 5);
-    const otherPositions = combinedData.slice(5);
-    
-    const otherSum = otherPositions.reduce((sum, item) => sum + item.balance, 0);
-    
-    const labels = [
-      ...topPositions.map(item => item.label),
-      ...(otherPositions.length > 0 ? ['Others'] : [])
-    ];
-    
-    const data = [
-      ...topPositions.map(item => item.balance),
-      ...(otherPositions.length > 0 ? [otherSum] : [])
-    ];
-
-    const colors = [
-      'rgba(54, 162, 235, 0.8)',   // blue
-      'rgba(75, 192, 192, 0.8)',   // teal
-      'rgba(255, 99, 132, 0.8)',   // pink
-      'rgba(255, 206, 86, 0.8)',   // yellow
-      'rgba(153, 102, 255, 0.8)',  // purple
-      'rgba(128, 128, 128, 0.8)',  // gray (for Others)
-    ];
-
-    const borderColors = colors.map(color => color.replace('0.8', '1'));
-
-    const chartData = {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors.slice(0, labels.length),
-        borderColor: borderColors.slice(0, labels.length),
-        borderWidth: 1
-      }]
-    };
-
-    // Cache the calculated data
-    currentData = {
-      key: dataKey,
-      data: chartData
-    };
-
+    currentData = { key: dataKey, data: chartData };
     return chartData;
   })();
-
-  const chartOptions = {
-    responsive: true,
-    animation: {
-      duration: 350
-    },
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: {
-          color: '#CBD5E1',
-          padding: 20,
-          font: {
-            family: "'Exo 2', sans-serif",
-            size: 12
-          },
-          usePointStyle: true,
-          pointStyle: 'circle'
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        bodyFont: {
-          family: "'Exo 2', sans-serif"
-        },
-        padding: 12,
-        cornerRadius: 4,
-        callbacks: {
-          label: function(context) {
-            const value = context.raw as number;
-            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${context.label}: $${value.toLocaleString('en-US', { 
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2 
-            })} (${percentage}%)`;
-          }
-        }
-      }
-    }
-  };
 
   function updateChart() {
     if (!canvas || !isOpen) return;
@@ -176,18 +74,16 @@
       chart.destroy();
     }
 
+    const isDark = document.documentElement.classList.contains('dark');
     chart = new Chart(canvas, {
       type: 'doughnut',
       data: portfolioData,
-      options: chartOptions
+      options: getChartOptions(isDark)
     });
   }
 
   $: if (isOpen && canvas) {
-    // Small delay to ensure DOM is ready
-    setTimeout(() => {
-      updateChart();
-    }, 0);
+    setTimeout(() => updateChart(), 0);
   }
 
   onMount(() => {
@@ -198,13 +94,31 @@
       }
     };
   });
-</script>
 
-<style>
-  :global(.chart-container) {
-    color: rgb(var(--text-primary));
+  // Calculate risk metrics
+  $: riskMetrics = (() => {
+    const { topPositions, otherPositions } = processPortfolioData(
+      $liveTokens,
+      $tokenStore.balances,
+      $liveUserPools
+    );
+    return calculateRiskMetrics([...topPositions, ...otherPositions]);
+  })();
+
+  // Calculate percentages
+  $: {
+    const totalValue = Number($portfolioValue.replace(/[^0-9.-]+/g, ""));
+    const tokenValue = $liveTokens.reduce((acc, token) => {
+      const balance = $tokenStore.balances[token.canister_id]?.in_usd;
+      return acc + (balance ? Number(balance) : 0);
+    }, 0);
+    const lpValue = totalValue - tokenValue;
+    
+    tokenPercentage = totalValue ? Math.round((tokenValue / totalValue) * 100) : 0;
+    lpPercentage = totalValue ? Math.round((lpValue / totalValue) * 100) : 0;
+    riskScore = riskMetrics.diversificationScore;
   }
-</style>
+</script>
 
 <Modal
   {isOpen}
@@ -213,9 +127,9 @@
   height="auto"
   minHeight="400px"
 >
-  <h2 slot="title" class="text-lg font-medium">Portfolio Distribution</h2>
+  <h2 slot="title" class="text-lg font-medium text-kong-text-primary">Portfolio Distribution</h2>
   
-  <div class="p-4 flex flex-col gap-4 j">
+  <div class="p-4 flex flex-col gap-4 rounded-lg">
     <div class="text-center mb-4">
       <h3 class="text-lg font-medium text-kong-text-primary">Total Value</h3>
       <p class="text-2xl font-bold text-kong-text-primary">${$portfolioValue}</p>
@@ -231,7 +145,7 @@
     <div class="flex justify-center mt-2">
       <button
         on:click={handleRefresh}
-        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-kong-text-primary bg-kong-bg-light rounded-lg hover:bg-opacity-80 transition-colors"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-kong-primary text-white rounded-lg hover:bg-kong-primary-hover transition-colors"
       >
         <svg 
           class="w-4 h-4" 
@@ -249,5 +163,86 @@
         Refresh
       </button>
     </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <!-- 24h Change -->
+      <div class="stat-card">
+        <h4 class="text-sm text-kong-text-secondary">24h Change</h4>
+        <p class:text-kong-accent-green={dailyChange > 0} 
+           class:text-kong-accent-red={dailyChange < 0}
+           class="text-lg font-bold">
+          {dailyChange > 0 ? '+' : ''}{dailyChange.toFixed(2)}%
+        </p>
+      </div>
+
+      <!-- Best Performer -->
+      <div class="stat-card">
+        <h4 class="text-sm text-kong-text-secondary">Best Performer</h4>
+        <p class="text-lg font-bold text-kong-accent-green">
+          {bestPerformer.symbol} (+{bestPerformer.change}%)
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h3 class="text-lg font-medium mb-2">Portfolio Composition</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Asset Type Distribution -->
+        <div class="composition-card">
+          <h4>Asset Types</h4>
+          <ul class="text-sm">
+            <li>Tokens: {tokenPercentage}%</li>
+            <li>LP Positions: {lpPercentage}%</li>
+          </ul>
+        </div>
+
+        <!-- Risk Level -->
+        <div class="composition-card">
+          <h4 class="text-sm font-medium mb-2">Risk Analysis</h4>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="h-2 w-full bg-kong-bg-dark rounded">
+              <div 
+                class="h-full bg-gradient-to-r from-kong-accent-green to-kong-accent-red" 
+                style="width: {riskScore}%"
+              />
+            </div>
+            <span class="text-sm">{riskScore}/100</span>
+          </div>
+          <div class="text-sm text-kong-text-secondary">
+            {#each riskMetrics.recommendations as recommendation}
+              <p class="mb-1">• {recommendation}</p>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </Modal> 
+
+<style>
+  .stat-card {
+    @apply bg-kong-bg-light p-3 rounded-lg;
+    @apply flex flex-col gap-1;
+    @apply transition-all duration-200;
+    @apply hover:bg-opacity-80;
+  }
+
+  .composition-card {
+    @apply bg-kong-bg-light p-3 rounded-lg;
+    @apply transition-all duration-200;
+  }
+
+    :global(.chart-container) {
+    color: rgb(var(--text-primary));
+    padding: 1rem;
+  }
+
+  :global(.text-kong-text-primary) {
+    color: rgb(var(--text-primary)) !important;
+    font-weight: 500;
+  }
+
+  :global(.chart-container canvas) {
+    max-height: 300px !important;
+  }
+</style> 

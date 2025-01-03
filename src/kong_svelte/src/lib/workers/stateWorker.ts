@@ -1,3 +1,4 @@
+import { loadTokens } from '$lib/services/tokens';
 import * as Comlink from 'comlink';
 
 export interface StateWorkerApi {
@@ -13,17 +14,16 @@ class StateWorkerImpl implements StateWorkerApi {
   // ----------------------------------------------------
   // 1) Lower intervals to allow more frequent updates
   // ----------------------------------------------------
-  // (Comment says 15 seconds, but 30000ms is actually 30s; you can reduce these)
-  private readonly ACTIVE_TOKEN_INTERVAL = 30000;         // 30 seconds when active
-  private readonly BACKGROUND_TOKEN_INTERVAL = 60000;     // 60 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 20000;          // 20 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 60 seconds when in background
+  private readonly ACTIVE_TOKEN_INTERVAL = 5000;          // 5 seconds when active
+  private readonly BACKGROUND_TOKEN_INTERVAL = 10000;     // 10 seconds when in background
+  private readonly ACTIVE_POOL_INTERVAL = 5000;          // 5 seconds when active
+  private readonly BACKGROUND_POOL_INTERVAL = 10000;      // 10 seconds when in background
 
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests
   // ----------------------------------------------------
-  private readonly TOKEN_UPDATE_THROTTLE = 25000; // Don’t post token updates more often than every 8s
-  private readonly POOL_UPDATE_THROTTLE  = 15000; // Don’t post pool updates more often than every 8s
+  private readonly TOKEN_UPDATE_THROTTLE = 4000; // Don't post token updates more often than every 4s
+  private readonly POOL_UPDATE_THROTTLE  = 4000; // Don't post pool updates more often than every 4s
 
   // ----------------------------------------------------
   // 3) Track whether an update is already in progress
@@ -94,7 +94,8 @@ class StateWorkerImpl implements StateWorkerApi {
   // Throttled + “in-progress” check for token updates
   // -------------------------------------------------------------------
   private postTokenUpdate() {
-    // If we’re already updating tokens, skip
+    console.log("postTokenUpdate");
+    // If we're already updating tokens, skip
     if (this.tokenUpdateInProgress) {
       console.warn("Skipping token update – already in progress.");
       return;
@@ -107,13 +108,22 @@ class StateWorkerImpl implements StateWorkerApi {
     }
 
     this.tokenUpdateInProgress = true;
-    // Your “heavy-lifting” or side effect(s) would go here. Right now,
-    // it only posts a message back to the main thread:
-    self.postMessage({ type: 'token_update' });
-
-    // Mark completion
-    this.lastTokenUpdate = Date.now();
-    this.tokenUpdateInProgress = false;
+    try {
+      // Load tokens first to ensure we have fresh data
+      loadTokens(true).catch(error => {
+        console.error("Error loading tokens:", error);
+      });
+      
+      // Post message to main thread to trigger balance updates
+      self.postMessage({ type: 'token_update', timestamp: now });
+      console.log("Token update message posted");
+    } catch (error) {
+      console.error("Error in postTokenUpdate:", error);
+    } finally {
+      // Mark completion
+      this.lastTokenUpdate = now;
+      this.tokenUpdateInProgress = false;
+    }
   }
 
   // -------------------------------------------------------------------
