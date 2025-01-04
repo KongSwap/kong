@@ -44,14 +44,10 @@ pub async fn process_claims() {
     let mut consecutive_errors = 0_u8;
     for claim in &claims {
         if let Some(to_address) = &claim.to_address {
-            let token = match token_map::get_by_token_id(claim.token_id) {
-                Some(token) => token,
-                None => continue, // continue to next claim if token not found
-            };
-
             if claim.attempt_request_id.len() > 50 {
                 // if claim has more than 50 attempts, update status to too_many_attempts and investigate manually
                 claim_map::update_too_many_attempts_status(claim.claim_id);
+                claim_map::archive_claim_to_kong_data(claim.claim_id);
                 continue;
             } else if claim.attempt_request_id.len() > 20 {
                 let last_attempt_request_id = claim.attempt_request_id.last().unwrap();
@@ -64,6 +60,11 @@ pub async fn process_claims() {
                     continue;
                 }
             }
+
+            let token = match token_map::get_by_token_id(claim.token_id) {
+                Some(token) => token,
+                None => continue, // continue to next claim if token not found
+            };
 
             // create new request with CLAIMS_TIMER_USER_ID as user_id
             let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
