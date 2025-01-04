@@ -25,8 +25,7 @@ pub async fn process_claims() {
         return;
     }
 
-    let num_claims = claim_map::get_num_unclaimed_claims();
-    if num_claims == 0 {
+    if claim_map::get_num_unclaimed_claims() == 0 {
         return;
     }
 
@@ -68,19 +67,23 @@ pub async fn process_claims() {
 
             // create new request with CLAIMS_TIMER_USER_ID as user_id
             let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
+            let claim_id = claim.claim_id;
 
-            match process_claim(request_id, claim.claim_id, &token, &claim.amount, to_address, ts).await {
+            match process_claim(request_id, claim_id, &token, &claim.amount, to_address, ts).await {
                 Ok(_) => {
+                    request_map::update_status(request_id, StatusCode::Success, None);
                     consecutive_errors = 0;
                 }
-                Err(e) => {
-                    error_log(&format!("Error processing claim #{}: {}", claim.claim_id, e));
+                Err(_) => {
+                    request_map::update_status(request_id, StatusCode::Failed, None);
                     consecutive_errors += 1;
-                    if consecutive_errors > 3 {
-                        error_log("Too many consecutive errors, stopping claims processing");
-                        break;
-                    }
                 }
+            }
+            _ = claim_map::archive_to_kong_data(claim_id);
+
+            if consecutive_errors > 4 {
+                error_log("Too many consecutive errors, stopping claims processing.");
+                break;
             }
         };
     }
@@ -102,36 +105,28 @@ async fn process_claim(
     request_map::update_status(request_id, StatusCode::Start, None);
 
     let reply = match send_claim(request_id, claim_id, token, amount, to_address, &mut transfer_ids, ts).await {
-        Ok(_) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-
-            ClaimReply {
-                claim_id,
-                status: "Success".to_string(),
-                chain: chain.to_string(),
-                symbol: symbol.to_string(),
-                amount: amount.clone(),
-                fee: token.fee(),
-                to_address: to_address.to_string(),
-                transfer_ids: to_transfer_ids(&transfer_ids),
-                ts,
-            }
-        }
-        Err(_) => {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-
-            ClaimReply {
-                claim_id,
-                status: "Failed".to_string(),
-                chain: chain.to_string(),
-                symbol: symbol.to_string(),
-                amount: amount.clone(),
-                fee: token.fee(),
-                to_address: to_address.to_string(),
-                transfer_ids: to_transfer_ids(&transfer_ids),
-                ts,
-            }
-        }
+        Ok(_) => ClaimReply {
+            claim_id,
+            status: "Success".to_string(),
+            chain: chain.to_string(),
+            symbol: symbol.to_string(),
+            amount: amount.clone(),
+            fee: token.fee(),
+            to_address: to_address.to_string(),
+            transfer_ids: to_transfer_ids(&transfer_ids),
+            ts,
+        },
+        Err(_) => ClaimReply {
+            claim_id,
+            status: "Failed".to_string(),
+            chain: chain.to_string(),
+            symbol: symbol.to_string(),
+            amount: amount.clone(),
+            fee: token.fee(),
+            to_address: to_address.to_string(),
+            transfer_ids: to_transfer_ids(&transfer_ids),
+            ts,
+        },
     };
 
     request_map::update_reply(request_id, Reply::Claim(reply.clone()));
@@ -175,8 +170,6 @@ async fn send_claim(
 
             request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
 
-            _ = claim_map::archive_to_kong_data(claim_id);
-
             Ok(())
         }
         Err(e) => {
@@ -185,9 +178,7 @@ async fn send_claim(
 
             request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
 
-            _ = claim_map::archive_to_kong_data(claim_id);
-
-            Err(format!("Failed to send claim #{}. {}", claim_id, e))
+            Err(format!("Failed to send claim_id #{}. {}", claim_id, e))
         }
     }
 }
