@@ -1,0 +1,1712 @@
+#!/usr/bin/env bash
+##############################################################################
+# deploy_kong_local_with_database.sh
+#
+# A comprehensive, highly robust script for managing local Kong/DFX development,
+# including repository selection, PostgreSQL database setup (reset/migrations),
+##############################################################################
+
+#-----------------------------
+# 1. Color & Output Utilities
+#-----------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+
+#-----------------------------
+# Environment Configuration
+#-----------------------------
+load_env_variables() {
+    # Use APIS_REPO path to find .env
+    local env_file="${APIS_REPO}/.env"
+    
+    # Default values
+    export POSTGRES_HOST="localhost"
+    export POSTGRES_PORT="5432"
+    export POSTGRES_USER="postgres"
+    export POSTGRES_DB="kong-apis2"
+    export POSTGRES_PASSWORD=""
+
+    # Try to load from .env if it exists
+    if [ -f "$env_file" ]; then
+        print_info "Loading environment variables from $env_file"
+        
+        # Read the actual values from .env
+        while IFS='=' read -r key value || [ -n "$key" ]; do
+            # Skip comments and empty lines
+            [[ $key =~ ^#.*$ ]] && continue
+            [[ -z $key ]] && continue
+            
+            # Remove quotes and spaces from value
+            value=$(echo "$value" | tr -d '"' | tr -d "'" | xargs)
+            
+            # Map the DB_ prefixed variables to POSTGRES_ variables
+            case "$key" in
+                "DB_HOST") export POSTGRES_HOST="$value" ;;
+                "DB_PORT") export POSTGRES_PORT="$value" ;;
+                "DB_USER") export POSTGRES_USER="$value" ;;
+                "DB_NAME") export POSTGRES_DB="$value" ;;
+                "DB_PASSWORD") export POSTGRES_PASSWORD="$value" ;;
+            esac
+        done < "$env_file"
+        
+        print_success "Environment variables loaded from $env_file"
+    else
+        print_warning "No .env file found at $env_file, using default values"
+    fi
+
+    # Verify and log the current configuration
+    print_info "Current database configuration:"
+    echo "  Host: $POSTGRES_HOST"
+    echo "  Port: $POSTGRES_PORT"
+    echo "  User: $POSTGRES_USER"
+    echo "  Database: $POSTGRES_DB"
+    echo "  Password: ${POSTGRES_PASSWORD:-(none)}"
+}
+
+#----------------------------------------------------------------------
+# Config Management
+#----------------------------------------------------------------------
+CONFIG_FILE="$(dirname "$(readlink -f "$0")")/.kong_deploy_config"
+
+load_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        print_info "Loading configuration from $CONFIG_FILE"
+        # shellcheck source=/dev/null
+        source "$CONFIG_FILE"
+        
+        # Validate loaded paths exist
+        if [ ! -d "$KONG_REPO" ] || [ ! -d "$APIS_REPO" ]; then
+            print_warning "Saved repository paths are no longer valid."
+            KONG_REPO=""
+            APIS_REPO=""
+            JOBS_PID=""
+            NPM_PID=""
+            NPM_ENV=""
+            return 1
+        fi
+        
+        print_success "Loaded configurations:"
+        echo -e "  KONG: ${GREEN}$KONG_REPO${NC}"
+        echo -e "  APIs: ${GREEN}$APIS_REPO${NC}"
+        return 0
+    else
+        print_info "No saved configuration found."
+        KONG_REPO=""
+        APIS_REPO=""
+        JOBS_PID=""
+        NPM_PID=""
+        NPM_ENV=""
+        return 1
+    fi
+}
+
+save_config() {
+    # Create the directory if it doesn't exist
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    
+    if [ -n "$KONG_REPO" ] && [ -n "$APIS_REPO" ]; then
+        cat > "$CONFIG_FILE" << EOF
+KONG_REPO="$KONG_REPO"
+APIS_REPO="$APIS_REPO"
+JOBS_PID="$JOBS_PID"
+NPM_PID="$NPM_PID"
+NPM_ENV="$NPM_ENV"
+EOF
+        chmod 600 "$CONFIG_FILE"
+        print_success "Configuration saved to $CONFIG_FILE"
+    else
+        print_error "Cannot save empty repository paths"
+        return 1
+    fi
+}
+
+#----------------------------------------------------------------------
+# 2. Ensure the script is run with Bash (in case user invoked 'sh' ...)
+#----------------------------------------------------------------------
+if [ -z "$BASH_VERSION" ]; then
+  print_error "Please run this script with Bash, e.g.:"
+  print_error "  bash $0"
+  exit 1
+fi
+
+#----------------------------------------------------------------------
+# 3. Dependency Checking
+#----------------------------------------------------------------------
+check_dependencies() {
+    # Tools we rely on for a full local dev experience
+    local deps=(
+        "rustc:Rust compiler"
+        "cargo:Rust package manager"
+        "npm:Node.js package manager"
+        "dfx:Internet Computer SDK"
+        "jq:JSON processor"
+        "sha256sum:SHA256 checksum tool"
+        "psql:PostgreSQL client"
+        "createdb:PostgreSQL database creation tool"
+        "dropdb:PostgreSQL database removal tool"
+        "flyway:Database migration tool"
+        "pg_isready:PostgreSQL connection check tool"
+    )
+    local missing_deps=()
+
+    # Detect OS
+    local os_type
+    case "$(uname -s)" in
+        Linux*)     os_type="Linux" ;;
+        Darwin*)    os_type="MacOS" ;;
+        MINGW*)     os_type="Windows" ;;
+        *)          os_type="UNKNOWN" ;;
+    esac
+
+    print_info "Running on $os_type"
+    print_info "Checking dependencies..."
+
+    # Check each dependency
+    for dep in "${deps[@]}"; do
+        IFS=':' read -r cmd description <<< "$dep"
+        if ! command -v "$cmd" &>/dev/null; then
+            missing_deps+=("$cmd")
+            print_error "❌ Missing $description ($cmd)"
+        else
+            # Get version information where possible
+            case "$cmd" in
+                "rustc")
+                    version=$(rustc --version 2>/dev/null)
+                    print_success "✓ $description: $version"
+                    ;;
+                "cargo")
+                    version=$(cargo --version 2>/dev/null)
+                    print_success "✓ $description: $version"
+                    ;;
+                "npm")
+                    version=$(npm --version 2>/dev/null)
+                    print_success "✓ $description: v$version"
+                    ;;
+                "dfx")
+                    version=$(dfx --version 2>/dev/null)
+                    print_success "✓ $description: $version"
+                    ;;
+                "flyway")
+                    version=$(flyway -v 2>/dev/null | head -n1)
+                    print_success "✓ $description: $version"
+                    ;;
+                *)
+                    print_success "✓ $description"
+                    ;;
+            esac
+        fi
+    done
+
+    # Check Rust target
+    if ! rustup target list | grep -q "wasm32-unknown-unknown (installed)"; then
+        print_error "❌ Missing Rust target: wasm32-unknown-unknown"
+        print_info "To fix, run: rustup target add wasm32-unknown-unknown"
+        missing_deps+=("wasm32-unknown-unknown")
+    else
+        print_success "✓ Rust target: wasm32-unknown-unknown"
+    fi
+
+    # Check Flyway specifically
+    if command -v flyway &>/dev/null; then
+        # Verify Flyway version meets minimum requirements
+        flyway_version=$(flyway -v 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "0.0.0")
+        if [[ "$(echo -e "9.0.0\n$flyway_version" | sort -V | head -n1)" == "9.0.0" ]]; then
+            print_error "❌ Flyway version $flyway_version is below recommended version 9.0.0"
+            print_info "Please upgrade Flyway to version 9.0.0 or higher"
+            missing_deps+=("flyway>=9.0.0")
+        fi
+    fi
+
+    # OS-specific checks
+    case "$os_type" in
+        "Linux")
+            # Check for specific Linux dependencies
+            if ! command -v systemctl &>/dev/null; then
+                print_warning "⚠️  systemctl not found - may affect PostgreSQL service management"
+            fi
+            ;;
+        "MacOS")
+            # Check for Homebrew as it's commonly used for dependencies
+            if ! command -v brew &>/dev/null; then
+                print_warning "⚠️  Homebrew not found - recommended for managing dependencies on MacOS"
+            fi
+            ;;
+        "Windows")
+            print_warning "⚠️  Windows support is experimental - recommend using WSL2"
+            ;;
+    esac
+
+    # If any dependencies are missing, provide installation guidance
+    if [ ${#missing_deps[@]} -ne 0 ]; then
+        print_error "\nMissing required dependencies. Installation guides:"
+        for dep in "${missing_deps[@]}"; do
+            case "$dep" in
+                "rustc"|"cargo")
+                    echo "  - Rust tools: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+                    ;;
+                "npm")
+                    echo "  - Node.js/npm: Visit https://nodejs.org/"
+                    ;;
+                "dfx")
+                    echo "  - DFX: sh -ci \"\$(curl -fsSL https://internetcomputer.org/install.sh)\""
+                    ;;
+                "flyway")
+                    case "$os_type" in
+                        "MacOS")
+                            echo "  - Flyway: brew install flyway"
+                            ;;
+                        "Linux")
+                            echo "  - Flyway: Download from https://flywaydb.org/download"
+                            ;;
+                    esac
+                    ;;
+                "psql"|"createdb"|"dropdb"|"pg_isready")
+                    case "$os_type" in
+                        "MacOS")
+                            echo "  - PostgreSQL tools: brew install postgresql@14"
+                            ;;
+                        "Linux")
+                            echo "  - PostgreSQL tools: sudo apt-get install postgresql-client"
+                            ;;
+                    esac
+                    ;;
+            esac
+        done
+        exit 1
+    fi
+
+    print_success "\nAll dependencies are properly installed! 🎉"
+}
+
+#----------------------------------------------------------------------
+# 4. Repository Searching
+#----------------------------------------------------------------------
+#    We attempt to locate "kong" and "apis" repositories
+#    in a set of common directories. Then we store them in arrays.
+#----------------------------------------------------------------------
+
+#----------------------------------------------------------------------
+# 5. Let User Select Repositories
+#----------------------------------------------------------------------
+select_repositories() {
+    local KONG_REPO
+    local APIS_REPO
+    local retry=true
+
+    while $retry; do
+        print_info "Repository Selection Process"
+        echo "--------------------------------"
+        echo "Current directory: $(pwd)"
+        
+        # Kong Repository Selection
+        echo -e "\n${BLUE}Step 1: Kong Repository${NC}"
+        echo "Please enter the absolute path to your Kong repository"
+        echo "Examples:"
+        echo "  - '/home/user/projects/kong'"
+        echo "  - '/Users/username/kong'"
+        read -rp "Kong repository absolute path: " KONG_REPO
+
+        # Validate absolute path
+        if [[ ! "$KONG_REPO" = /* ]]; then
+            print_error "Please provide an absolute path (starting with /)."
+            read -rp "Would you like to try again? (Y/n): " retry_answer
+            [[ ! "$retry_answer" =~ ^[Nn]$ ]] && continue || return 1
+        fi
+
+        # Validate and show Kong repository contents
+        if [ ! -d "$KONG_REPO" ]; then
+            print_error "Invalid Kong repository path"
+            read -rp "Would you like to try again? (Y/n): " retry_answer
+            [[ ! "$retry_answer" =~ ^[Nn]$ ]] && continue || return 1
+        fi
+
+        echo -e "\nKong repository contents:"
+        ls -1 "$KONG_REPO" | grep -E "^(src|dfx.json|package.json|Cargo.toml|scripts)$" --color=never | sed 's/^/  /'
+        
+        read -rp "Is this the correct Kong repository? (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            read -rp "Would you like to try again? (Y/n): " retry_answer
+            [[ ! "$retry_answer" =~ ^[Nn]$ ]] && continue || return 1
+        fi
+
+        # APIs Repository Selection
+        echo -e "\n${BLUE}Step 2: APIs Repository${NC}"
+        echo "Please enter the absolute path to your APIs repository"
+        echo "Examples:"
+        echo "  - '/home/user/projects/apis'"
+        echo "  - '/Users/username/apis'"
+        read -rp "APIs repository absolute path: " APIS_REPO
+
+        # Validate absolute path
+        if [[ ! "$APIS_REPO" = /* ]]; then
+            print_error "Please provide an absolute path (starting with /)."
+            read -rp "Would you like to try again? (Y/n): " retry_answer
+            [[ ! "$retry_answer" =~ ^[Nn]$ ]] && continue || return 1
+        fi
+
+        # Validate and show APIs repository contents
+        if [ ! -d "$APIS_REPO" ]; then
+            print_error "Invalid APIs repository path"
+            read -rp "Would you like to try again? (Y/n): " retry_answer
+            [[ ! "$retry_answer" =~ ^[Nn]$ ]] && continue || return 1
+        fi
+
+        echo -e "\nAPIs repository contents:"
+        ls -1 "$APIS_REPO" | grep -E "^(src|migrations|package.json|Cargo.toml)$" --color=never | sed 's/^/  /'
+        
+        read -rp "Is this the correct APIs repository? (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            read -rp "Would you like to try again? (Y/n): " retry_answer
+            [[ ! "$retry_answer" =~ ^[Nn]$ ]] && continue || return 1
+        fi
+
+        # If we made it here, both repositories are valid
+        retry=false
+    done
+
+    # Export and save confirmed paths
+    export KONG_REPO APIS_REPO
+    save_config
+    
+    # Verify the config was saved and can be loaded
+    if [ -f "$CONFIG_FILE" ]; then
+        local saved_kong_repo="$KONG_REPO"
+        local saved_apis_repo="$APIS_REPO"
+        load_config
+        if [ "$saved_kong_repo" != "$KONG_REPO" ] || [ "$saved_apis_repo" != "$APIS_REPO" ]; then
+            print_error "Configuration save/load verification failed!"
+            return 1
+        fi
+    else
+        print_error "Failed to create configuration file!"
+        return 1
+    fi
+
+    print_success "Repository selection completed!"
+    echo -e "Selected repositories:"
+    echo -e "  KONG: ${GREEN}$KONG_REPO${NC}"
+    echo -e "  APIs: ${GREEN}$APIS_REPO${NC}"
+}
+
+# New function to show database status
+show_database_status() {
+    echo -e "\n${BLUE}Connection Status${NC}"
+    echo "----------------"
+    
+    if pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" > /dev/null 2>&1; then
+        echo -e "PostgreSQL Connection: ${GREEN}Connected${NC}"
+        
+        if psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -lqt | cut -d \| -f 1 | grep -qw "$POSTGRES_DB"; then
+            echo -e "Database '$POSTGRES_DB': ${GREEN}Exists${NC}"
+            
+            echo -e "\n${BLUE}Table Records${NC}"
+            echo "-------------"
+            psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+                SELECT COUNT(*) as token_count FROM tokens;" 2>/dev/null | 
+                grep -v "count" | 
+                grep -v "^-" | 
+                sed 's/^/  Tokens: /' |
+                sed 's/^[ \t]*//'
+        else
+            echo -e "Database '$POSTGRES_DB': ${RED}Does not exist${NC}"
+        fi
+    else
+        echo -e "PostgreSQL Connection: ${RED}Failed${NC}"
+    fi
+    
+    echo -e "\n${BLUE}Background Jobs${NC}"
+    echo "---------------"
+    if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+        echo -e "Status: ${GREEN}Running${NC} (PID: $JOBS_PID)"
+        
+        echo -e "\n${BLUE}Recent Updates${NC}"
+        echo "--------------"
+        if psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+            SELECT 
+                'Token Updates' as type,
+                COUNT(*) as total,
+                MAX(updated_at) as last_update
+            FROM tokens
+            UNION ALL
+            SELECT 
+                'Price Updates',
+                COUNT(*),
+                MAX(updated_at)
+            FROM token_metrics
+            WHERE price IS NOT NULL;
+        " 2>/dev/null | grep -v "^$" | grep -v "rows)" | sed 's/^/  /'; then
+            : # Query succeeded
+        else
+            echo -e "  ${RED}Could not fetch update statistics${NC}"
+        fi
+    else
+        echo -e "Status: ${RED}Not Running${NC}"
+    fi
+}
+
+#----------------------------------------------------------------------
+# 7. Deploy Local DFX Environment
+#----------------------------------------------------------------------
+deploy_local_dfx() {
+    print_info "Setting up local Internet Computer environment..."
+    
+    # Kill existing DFX processes
+    dfx killall &>/dev/null
+    sleep 2
+
+    # Start DFX
+    dfx start --clean --background
+    
+    # Change to Kong repository directory
+    cd "$KONG_REPO" || exit 1
+    
+    # Check if deploy_kong.sh exists in scripts directory
+    if [ ! -f "./scripts/deploy_kong.sh" ]; then
+        print_error "deploy_kong.sh not found in $KONG_REPO/scripts"
+        return 1
+    fi
+    
+    # Deploy kong with local network from scripts directory
+    cd scripts || exit 1
+    print_info "Running deploy_kong.sh with local network..."
+    bash ./deploy_kong.sh local
+    
+    # Return to Kong repository root
+    cd "$KONG_REPO" || exit 1
+
+    # Get canister IDs after deployment
+    local backend_id
+    local data_id
+    backend_id=$(dfx canister id kong_backend)
+    data_id=$(dfx canister id kong_data)
+    
+    # Ensure the kong_svelte directory exists
+    mkdir -p "$KONG_REPO/src/kong_svelte"
+    
+    # Create/update .env file for Svelte app
+    cat > "$KONG_REPO/src/kong_svelte/.env" << EOF
+# Environment
+VITE_ENVIRONMENT=local
+DFX_NETWORK=local
+VITE_DFX_NETWORK=local
+
+# Canister IDs
+VITE_KONG_FRONTEND_CANISTER_ID='$backend_id'
+VITE_KONG_BACKEND_CANISTER_ID='$backend_id'
+VITE_KONG_DATA_CANISTER_ID='$data_id'
+CANISTER_ID_KONG_FRONTEND='$backend_id'
+CANISTER_ID_KONG_BACKEND='$backend_id'
+CANISTER_ID_KONG_DATA='$data_id'
+
+# Network Configuration
+VITE_IC_HOST=http://localhost:4943
+EOF
+
+    print_success "Local DFX environment deployed successfully!"
+    print_info "Environment variables set for Svelte app:"
+    cat "$KONG_REPO/src/kong_svelte/.env"
+}
+
+#----------------------------------------------------------------------
+# 8. Show Status
+#----------------------------------------------------------------------
+show_status() {
+    # Load config before showing status
+    load_config
+
+    clear
+    echo "=================================================="
+    echo "   KONG Local Development Environment Status"
+    echo "=================================================="
+
+    # Repository Status
+    echo -e "\033[0;34mRepository Configuration\033[0m"
+    echo "--------------------------------------------------"
+    if [ -n "$KONG_REPO" ] && [ -d "$KONG_REPO" ]; then
+        echo -e "Kong Repository: \033[0;32m$KONG_REPO\033[0m"
+    else
+        echo -e "Kong Repository: \033[0;31mNot selected or invalid\033[0m"
+    fi
+    
+    if [ -n "$APIS_REPO" ] && [ -d "$APIS_REPO" ]; then
+        echo -e "APIs Repository: \033[0;32m$APIS_REPO\033[0m"
+    else
+        echo -e "APIs Repository: \033[0;31mNot selected or invalid\033[0m"
+    fi
+    echo
+
+    # Use the 'kong' identity to check some canister statuses
+    dfx identity use kong &>/dev/null
+
+    echo -e "\n${BLUE}Core Canisters Status${NC} (kong identity)"
+    echo "--------------------------------------------------"
+    
+    # Check core canisters with timeout
+    check_canister_status_with_timeout "kong_backend" "Kong Backend"
+    check_canister_status_with_timeout "kong_data" "Kong Data"
+    check_canister_status_with_timeout "kong_svelte" "Kong Frontend"
+    check_canister_status_with_timeout "kong_faucet" "Kong Faucet"
+
+    # Token ledgers with kong_token_minter identity
+    dfx identity use kong_token_minter &>/dev/null
+    echo -e "\n${BLUE}Token Ledgers Status${NC} (kong_token_minter)"
+    echo "--------------------------------------------------"
+    local tokens=("ksusdt" "ksicp" "ksbtc" "kseth" "kskong")
+    
+    for token in "${tokens[@]}"; do
+        local token_upper
+        token_upper=$(echo "$token" | tr '[:lower:]' '[:upper:]')
+        check_canister_status_with_timeout "${token}_ledger" "${token_upper} Ledger"
+    done
+
+    # Internet Identity
+    dfx identity use kong &>/dev/null
+    echo -e "\033[0;34mInfrastructure Status\033[0m"
+    echo "--------------------------------------------------"
+    if dfx canister status internet_identity &>/dev/null; then
+        local status
+        status=$(dfx canister status internet_identity 2>/dev/null | grep "Status:" | cut -d: -f2 | tr -d ' ')
+        echo -e "Internet Identity: \033[0;32m$status\033[0m"
+    else
+        echo -e "Internet Identity: \033[0;31mNot Deployed\033[0m"
+    fi
+
+    # Add enhanced DFX API checks
+    echo -e "\n\033[0;34mDFX API Status\033[0m"
+    echo "--------------------------------------------------"
+    if dfx ping &>/dev/null; then
+        echo -e "DFX Network: \033[0;32mRunning\033[0m"
+        
+        # Check core canisters reachability
+        local canisters=("kong_backend" "kong_data" "kong_svelte" "kong_faucet")
+        local missing_canisters=()
+        
+        for canister in "${canisters[@]}"; do
+            if ! dfx canister status "$canister" &>/dev/null; then
+                missing_canisters+=("$canister")
+            fi
+        done
+        
+        if [ ${#missing_canisters[@]} -gt 0 ]; then
+            echo -e "\n\033[0;31mMissing Canisters:\033[0m"
+            for canister in "${missing_canisters[@]}"; do
+                echo -e "  - $canister"
+            done
+            echo -e "\n\033[0;33mSuggestion:\033[0m Run option 6 'Deploy local dfx environment' to deploy missing canisters"
+        fi
+
+        # Check canister HTTP reachability
+        if [ -n "$KONG_SVELTE" ]; then
+            if curl -s "http://localhost:4943/?canisterId=$KONG_SVELTE" &>/dev/null; then
+                echo -e "Frontend Canister: \033[0;32mReachable\033[0m"
+            else
+                echo -e "Frontend Canister: \033[0;31mNot Reachable\033[0m"
+                echo -e "\033[0;33mSuggestion:\033[0m Check if canister is properly deployed and running"
+            fi
+        fi
+    else
+        echo -e "DFX Network: \033[0;31mStopped\033[0m"
+        echo -e "\033[0;33mSuggestion:\033[0m Run 'dfx start' to start the local network"
+    fi
+
+    # Add API reachability checks
+    echo -e "\n\033[0;34mAPI Reachability\033[0m"
+    echo "--------------------------------------------------"
+    
+    # Check local API
+    if curl -s "http://localhost:8080/health" &>/dev/null; then
+        echo -e "Local API (8080): \033[0;32mReachable\033[0m"
+    else
+        echo -e "Local API (8080): \033[0;31mNot Reachable\033[0m"
+        echo -e "\033[0;33mSuggestion:\033[0m Start the API from Database Management menu"
+    fi
+
+    # Check DFX API
+    if curl -s "http://localhost:4943" &>/dev/null; then
+        echo -e "DFX API (4943): \033[0;32mReachable\033[0m"
+    else
+        echo -e "DFX API (4943): \033[0;31mNot Reachable\033[0m"
+        echo -e "\033[0;33mSuggestion:\033[0m Run 'dfx start' or deploy the local dfx environment"
+    fi
+
+    # Add Database Status Section
+    echo -e "\n\033[0;34mDatabase Tokens Status\033[0m"
+    echo "--------------------------------------------------"
+    
+    # Ensure we have the database variables
+    load_env_variables
+    
+    if pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" >/dev/null 2>&1; then
+        # Simple query to check if tokens exist and explicitly specify the database
+        token_count=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COUNT(*) FROM tokens;")
+        
+        if [ "$token_count" -gt 0 ] 2>/dev/null; then
+            # Display token information
+            PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -A -F $'\t' -c "
+                SELECT 
+                    symbol as \"Symbol\",
+                    name as \"Name\",
+                    decimals as \"Dec\",
+                    substring(canister_id, 1, 8) as \"Canister\",
+                    CASE WHEN on_kong THEN 'Active' ELSE 'Inactive' END as \"Status\"
+                FROM tokens 
+                ORDER BY token_id;" | column -ts $'\t'
+        else
+            echo -e "  ${YELLOW}No tokens found in database${NC}"
+        fi
+    else
+        echo -e "  ${RED}Database connection not available${NC}"
+    fi
+
+    echo -e "\n\033[0;34mDatabase Status\033[0m"
+    echo "--------------------------------------------------"
+    local db_name="kong-apis2"
+    local db_user="postgres"
+    local db_host="localhost"
+    local db_port="5432"
+
+    # Check if PostgreSQL is running
+    if pg_isready -h "$db_host" -p "$db_port" -U "$db_user" >/dev/null 2>&1; then
+        echo -e "PostgreSQL Server: ${GREEN}Running${NC}"
+        if psql -h "$db_host" -p "$db_port" -U "$db_user" -lqt | cut -d \| -f 1 | grep -qw "$db_name"; then
+            echo -e "Database '$db_name': ${GREEN}Exists${NC}"
+            
+            echo -e "\nDatabase Tables:"
+            echo "----------------"
+            psql -h "$db_host" -p "$db_port" -U "$db_user" -d "$db_name" -c "\dt" 2>/dev/null | 
+                grep -v "^$" | 
+                grep -v "List of relations" | 
+                grep -v "rows)" |
+                sed 's/^/   /'
+        else
+            echo -e "Database '$db_name': ${RED}Does not exist${NC}"
+        fi
+    else
+        echo -e "PostgreSQL Server: ${RED}Not Running${NC}"
+        echo -e "Database '$db_name': ${RED}Unavailable${NC}"
+    fi
+
+    # Database Jobs Status section
+    echo -e "\n\033[0;34mDatabase Jobs Status\033[0m"
+    echo "--------------------------------------------------"
+    if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+        echo -e "Background Jobs: ${GREEN}Running${NC} (PID: $JOBS_PID)"
+    else
+        echo -e "Background Jobs: ${RED}Not Running${NC}"
+    fi
+    
+    if pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; then
+        echo -e "Database Connection: ${GREEN}Ready${NC}"
+    else
+        echo -e "Database Connection: ${RED}Not Available${NC}"
+    fi
+
+    echo "=================================================="
+
+    # Restore original or default identity if needed
+    dfx identity use kong &>/dev/null
+}
+
+# Add this helper function near the top with other utility functions
+check_canister_status_with_timeout() {
+    local canister=$1
+    local display_name=$2
+    local timeout=5
+
+    # Use timeout command if available, otherwise use perl
+    if command -v timeout >/dev/null 2>&1; then
+        if timeout $timeout dfx canister status "$canister" >/dev/null 2>&1; then
+            local status
+            status=$(timeout $timeout dfx canister status "$canister" 2>/dev/null | grep "Status:" | cut -d: -f2 | tr -d ' ')
+            echo -e "$display_name: ${GREEN}$status${NC}"
+            return 0
+        fi
+    else
+        # Fallback to perl timeout for macOS
+        if perl -e 'alarm shift; exec @ARGV' "$timeout" dfx canister status "$canister" >/dev/null 2>&1; then
+            local status
+            status=$(perl -e 'alarm shift; exec @ARGV' "$timeout" dfx canister status "$canister" 2>/dev/null | grep "Status:" | cut -d: -f2 | tr -d ' ')
+            echo -e "$display_name: ${GREEN}$status${NC}"
+            return 0
+        fi
+    fi
+    echo -e "$display_name: ${RED}Not Deployed or Not Responding${NC}"
+    return 1
+}
+
+#----------------------------------------------------------------------
+# 9. Menu & Main Loop
+#----------------------------------------------------------------------
+show_menu() {
+    clear
+    echo "=================================================="
+    echo -e "   ${BLUE}KONG Local Development Environment Manager${NC}"
+    echo "=================================================="
+    echo -e "1. ${BLUE}Check dependencies${NC}"
+    echo -e "2. ${BLUE}Select repositories${NC}"
+    echo -e "3. ${YELLOW}Manage environment variables${NC}"
+    echo -e "4. ${YELLOW}Manage database${NC}"
+    echo -e "5. ${GREEN}Deploy local database${NC}"
+    echo -e "6. ${GREEN}Deploy local dfx environment${NC}"
+    echo -e "7. ${YELLOW}Manage NPM environment${NC}"
+    echo -e "8. ${BLUE}Show current status${NC}"
+    echo -e "9. ${RED}Exit${NC}"
+    echo "=================================================="
+    echo -ne "Enter your choice ${GREEN}(1-9)${NC}: "
+}
+
+#----------------------------------------------------------------------
+# Environment Management
+#----------------------------------------------------------------------
+manage_environment() {
+    while true; do
+        clear
+        echo "=================================================="
+        echo "   Environment Configuration Management"
+        echo "=================================================="
+        echo "1. View current environment variables"
+        echo "2. Edit Kong environment variables"
+        echo "3. Edit APIs environment variables"
+        echo "4. Generate default environment files"
+        echo "5. Back to Main Menu"
+        echo "=================================================="
+
+        read -rp "Enter your choice (1-5): " env_choice
+
+        case "$env_choice" in
+            1)
+                echo -e "\nCurrent Environment Variables:"
+                echo "--------------------------------"
+                if [ -f "$KONG_REPO/.env" ]; then
+                    echo -e "\n${BLUE}Kong Environment (.env):${NC}"
+                    grep -v '^#' "$KONG_REPO/.env" | grep -v '^$' | sed 's/^/  /'
+                else
+                    echo -e "\n${YELLOW}No .env file found in Kong repository${NC}"
+                fi
+                
+                if [ -f "$APIS_REPO/.env" ]; then
+                    echo -e "\n${BLUE}APIs Environment (.env):${NC}"
+                    grep -v '^#' "$APIS_REPO/.env" | grep -v '^$' | sed 's/^/  /'
+                else
+                    echo -e "\n${YELLOW}No .env file found in APIs repository${NC}"
+                fi
+                ;;
+            2)
+                if [ -z "$KONG_REPO" ]; then
+                    print_error "Kong repository not selected. Please select repositories first."
+                else
+                    ${EDITOR:-nano} "$KONG_REPO/.env"
+                fi
+                ;;
+            3)
+                if [ -z "$APIS_REPO" ]; then
+                    print_error "APIs repository not selected. Please select repositories first."
+                else
+                    ${EDITOR:-nano} "$APIS_REPO/.env"
+                fi
+                ;;
+            4)
+                if [ -n "$KONG_REPO" ]; then
+                    # Generate Kong .env if it doesn't exist
+                    if [ ! -f "$KONG_REPO/.env" ]; then
+                        cat > "$KONG_REPO/.env" << EOF
+# DFX CANISTER ENVIRONMENT VARIABLES
+DFX_VERSION='0.24.1'
+DFX_NETWORK='local'
+CANISTER_ID_KONG_FRONTEND='3ldz4-aiaaa-aaaar-qaina-cai'
+CANISTER_ID_KONG_BACKEND='2ipq2-uqaaa-aaaar-qailq-cai'
+CANISTER_ID_KONG_DATA='cbefx-hqaaa-aaaar-qakrq-cai'
+CANISTER_ID_KONG_SVELTE='3ldz4-aiaaa-aaaar-qaina-cai'
+CANISTER_ID_KONG_FAUCET='be2us-64aaa-aaaaa-qaabq-cai'
+VITE_KONG_BACKEND_CANISTER_ID='2ipq2-uqaaa-aaaar-qailq-cai'
+VITE_KONG_DATA_CANISTER_ID='cbefx-hqaaa-aaaar-qakrq-cai'
+EOF
+                        print_success "Generated default .env file for Kong repository"
+                    fi
+                fi
+
+                if [ -n "$APIS_REPO" ]; then
+                    # Generate APIs .env if it doesn't exist
+                    if [ ! -f "$APIS_REPO/.env" ]; then
+                        cat > "$APIS_REPO/.env" << EOF
+# Database Configuration
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_DB=kong-apis2
+
+# API Configuration
+INDEXER_URL=https://api.kongswap.io
+EOF
+                        print_success "Generated default .env file for APIs repository"
+                    fi
+                fi
+                ;;
+            5)
+                return 0
+                ;;
+            *)
+                print_error "Invalid option"
+                ;;
+        esac
+        read -rp "Press Enter to continue..."
+    done
+}
+
+# Add NPM_PID to the config file structure
+CONFIG_FILE="$(dirname "$(readlink -f "$0")")/.kong_deploy_config"
+
+# Add this new function for NPM management
+manage_database() {
+    # Make sure environment variables are loaded
+    load_env_variables
+
+    while true; do
+        clear
+        echo -e "${BLUE}=================================================="
+        echo "   Database Management"
+        echo -e "==================================================${NC}"
+        
+        # Show current database status with consistent colors
+        if pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" > /dev/null 2>&1; then
+            echo -e "Database Status: ${GREEN}Connected${NC}"
+            echo -e "Database: ${GREEN}$POSTGRES_DB${NC}"
+            if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+                echo -e "Background Jobs: ${GREEN}Running${NC} (PID: $JOBS_PID)"
+                echo -e "Logs: ${BLUE}/tmp/cargo_run.log${NC} (use '${YELLOW}tail -f /tmp/cargo_run.log${NC}' to follow)"
+            else
+                echo -e "Background Jobs: ${RED}Not Running${NC}"
+            fi
+        else
+            echo -e "Database Status: ${RED}Not Connected${NC}"
+        fi
+        
+        echo -e "\n${BLUE}--------------------------------------------------${NC}"
+        echo -e "1. ${RED}Initialize/Reset Database${NC}"
+        echo -e "2. ${GREEN}Start Background Jobs${NC}"
+        echo -e "3. ${RED}Stop Background Jobs${NC}"
+        echo -e "4. ${BLUE}Show Database Status${NC}"
+        echo -e "5. ${BLUE}View Job Logs${NC}"
+        echo -e "6. ${GREEN}Back to Main Menu${NC}"
+        echo -e "${BLUE}==================================================${NC}"
+
+        read -rp "Enter your choice (1-6): " db_choice
+
+        case "$db_choice" in
+            1)
+                echo -e "\n${RED}⚠️  DANGER ZONE ⚠️${NC}"
+                echo -e "${YELLOW}You're about to reset the database '${POSTGRES_DB}'${NC}"
+                echo -e "${RED}All data will be lost! 💨${NC}"
+                read -rp "Type 'yes, reset' to confirm: " confirmation
+                
+                if [ "$confirmation" = "yes, reset" ]; then
+                    # Stop background jobs if running
+                    if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+                        print_info "Stopping background jobs before database reset..."
+                        pkill -P "$JOBS_PID" 2>/dev/null
+                        kill "$JOBS_PID" 2>/dev/null
+                        JOBS_PID=""
+                        save_config
+                    fi
+
+                    # Get local canister IDs from canister_ids.all.json
+                    local canister_ids_file="${KONG_REPO}/canister_ids.all.json"
+                    if [ ! -f "$canister_ids_file" ]; then
+                        print_error "canister_ids.all.json not found at $canister_ids_file"
+                        return 1
+                    fi
+
+                    # Extract local canister IDs
+                    local ksusdt_id=$(jq -r '.ksusdt_ledger.local' "$canister_ids_file")
+                    local ksicp_id=$(jq -r '.ksicp_ledger.local' "$canister_ids_file")
+                    local ksbtc_id=$(jq -r '.ksbtc_ledger.local' "$canister_ids_file")
+                    local kseth_id=$(jq -r '.kseth_ledger.local' "$canister_ids_file")
+                    local kskong_id=$(jq -r '.kskong_ledger.local' "$canister_ids_file")
+
+                    print_info "Resetting database '${POSTGRES_DB}'..."
+                    
+                    # Drop and recreate database
+                    PGPASSWORD="$POSTGRES_PASSWORD" dropdb \
+                        -h "$POSTGRES_HOST" \
+                        -p "$POSTGRES_PORT" \
+                        -U "$POSTGRES_USER" \
+                        "$POSTGRES_DB" 2>/dev/null || true
+                    
+                    print_info "Creating new database..."
+                    PGPASSWORD="$POSTGRES_PASSWORD" createdb \
+                        -h "$POSTGRES_HOST" \
+                        -p "$POSTGRES_PORT" \
+                        -U "$POSTGRES_USER" \
+                        "$POSTGRES_DB"
+                    
+                    print_info "Running database migrations..."
+                    (cd "$APIS_REPO" && flyway \
+                        -url="jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}" \
+                        -user="$POSTGRES_USER" \
+                        -password="$POSTGRES_PASSWORD" \
+                        -locations=filesystem:migrations \
+                        migrate)
+                    
+                    print_info "Initializing tokens..."
+                    PGPASSWORD="$POSTGRES_PASSWORD" psql \
+                        -h "$POSTGRES_HOST" \
+                        -p "$POSTGRES_PORT" \
+                        -U "$POSTGRES_USER" \
+                        -d "$POSTGRES_DB" << EOF
+INSERT INTO tokens (
+    token_id, 
+    name, 
+    symbol, 
+    decimals, 
+    canister_id, 
+    on_kong, 
+    token_type, 
+    raw_json,
+    icrc1,
+    icrc2
+) VALUES 
+    (1, 'USD Tether (KongSwap Test Token)', 'KSUSDT', 6, '$ksusdt_id', true, 'IC', '{}'::jsonb, true, true),
+    (2, 'Bitcoin (KongSwap Test Token)',     'KSBTC',  8, '$ksbtc_id',  true, 'IC', '{}'::jsonb, true, true),
+    (3, 'Ethereum (KongSwap Test Token)',    'KSETH',  18, '$kseth_id', true, 'IC', '{}'::jsonb, true, true),
+    (4, 'Internet Computer',                 'ICP',    8, '$ksicp_id',  true, 'IC', '{}'::jsonb, true, true),
+    (5, 'KongSwap Token',                    'KONG',   8, '$kskong_id', true, 'IC', '{}'::jsonb, true, true)
+ON CONFLICT (token_id) DO UPDATE 
+SET name       = EXCLUDED.name,
+    symbol     = EXCLUDED.symbol,
+    decimals   = EXCLUDED.decimals,
+    canister_id= EXCLUDED.canister_id,
+    on_kong    = EXCLUDED.on_kong,
+    token_type = EXCLUDED.token_type,
+    raw_json   = EXCLUDED.raw_json,
+    icrc1   = EXCLUDED.icrc1,
+    icrc2   = EXCLUDED.icrc2;
+EOF
+                    
+                    print_success "Database reset and initialized successfully"
+                    echo -e "\nInitialized tokens with these local canister IDs:"
+                    echo "KSUSDT: $ksusdt_id"
+                    echo "KSBTC:  $ksbtc_id"
+                    echo "KSETH:  $kseth_id"
+                    echo "ICP:    $ksicp_id"
+                    echo "KONG:   $kskong_id"
+                else
+                    print_info "Database reset cancelled"
+                fi
+                ;;
+            2)
+                if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+                    print_warning "Jobs are already running (PID: $JOBS_PID)"
+                else
+                    print_info "Starting background jobs..."
+                    
+                    # Start the background process and save PID to config
+                    (cd "$APIS_REPO" && nohup cargo run > /tmp/cargo_run.log 2>&1 & echo $! > /tmp/jobs_pid)
+                    JOBS_PID=$(cat /tmp/jobs_pid)
+                    rm -f /tmp/jobs_pid  # Clean up temporary file
+                    
+                    # Save the PID to our config file
+                    save_config
+                    
+                    print_success "Jobs started successfully (PID: $JOBS_PID)"
+                    print_info "Output is being logged to /tmp/cargo_run.log"
+                fi
+                ;;
+            3)
+                if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+                    print_info "Stopping background jobs..."
+                    pkill -P "$JOBS_PID" 2>/dev/null
+                    kill "$JOBS_PID" 2>/dev/null
+                    JOBS_PID=""
+                    rm -f "$JOBS_PID_FILE"
+                    print_success "Jobs stopped successfully"
+                else
+                    print_warning "No jobs are currently running"
+                fi
+                ;;
+            4)
+                echo -e "\n${BLUE}Database Status Details${NC}"
+                echo "------------------------"
+                show_database_status
+                ;;
+            5)
+                if [ -n "$JOBS_PID" ] && [ -f "/tmp/cargo_run.log" ]; then
+                    # Use less to view the log file
+                    less "/tmp/cargo_run.log"
+                else
+                    print_warning "No job logs available"
+                    sleep 2
+                fi
+                ;;
+            6)
+                return 0
+                ;;
+            *)
+                print_error "Invalid option"
+                read -rp "Press Enter to continue..."
+                continue
+                ;;
+        esac
+
+        # Fix display issues by adding a clear pause
+        sleep 1
+        read -rp "Press Enter to continue..."
+        clear  # Add clear to refresh display
+    done
+}
+
+
+write_env_file() {
+    local env_file="${KONG_REPO}/.env"
+    local canister_ids_file="${KONG_REPO}/canister_ids.all.json"
+    
+    # Backup existing .env if it exists
+    if [ -f "$env_file" ]; then
+        mv "$env_file" "${env_file}.backup"
+    fi
+
+    # Determine which canister IDs to use based on environment
+    local canister_network
+    case "$NPM_ENV" in
+        "local")     canister_network="local" ;;
+        "staging")   canister_network="staging" ;;  # Use staging canister IDs
+        "production") canister_network="ic" ;;      # Use ic canister IDs
+        *) canister_network="local" ;;
+    esac
+    
+    # Always use ic0.app for non-local environments
+    local dfx_network
+    case "$NPM_ENV" in
+        "local")     dfx_network="local" ;;
+        *)           dfx_network="ic" ;; 
+    esac
+
+    # Read canister IDs from JSON file if it exists
+    if [ -f "$canister_ids_file" ]; then
+        # Core canisters - use canister_network to get correct IDs
+        local kong_backend_id=$(jq -r ".kong_backend.${canister_network}" "$canister_ids_file")
+        local kong_frontend_id=$(jq -r ".kong_svelte.${canister_network}" "$canister_ids_file")
+        local kong_data_id=$(jq -r ".kong_data.${canister_network}" "$canister_ids_file")
+        local kong_faucet_id=$(jq -r ".kong_faucet.${canister_network}" "$canister_ids_file")
+        
+        # Token ledgers
+        local ksusdt_ledger_id=$(jq -r ".ksusdt_ledger.${canister_network}" "$canister_ids_file")
+        local ksicp_ledger_id=$(jq -r ".ksicp_ledger.${canister_network}" "$canister_ids_file")
+        local ksbtc_ledger_id=$(jq -r ".ksbtc_ledger.${canister_network}" "$canister_ids_file")
+        local kseth_ledger_id=$(jq -r ".kseth_ledger.${canister_network}" "$canister_ids_file")
+        local kskong_ledger_id=$(jq -r ".kskong_ledger.${canister_network}" "$canister_ids_file")
+    fi
+
+    # Write new environment variables
+    cat > "$env_file" << EOF
+# Environment
+VITE_ENVIRONMENT=${NPM_ENV:-local}
+DFX_NETWORK=${dfx_network}
+
+# API Configuration
+VITE_INDEXER_URL=${INDEXER_URL}
+VITE_API_URL=${API_URL}
+
+# Network Configuration
+VITE_DFX_NETWORK=${dfx_network}
+VITE_IC_HOST=${dfx_network:+https://ic0.app}
+
+# DFX CANISTER ENVIRONMENT VARIABLES
+DFX_VERSION='0.24.1'
+
+# Core Canisters
+CANISTER_ID_KONG_FRONTEND='${kong_frontend_id}'
+CANISTER_ID_KONG_BACKEND='${kong_backend_id}'
+CANISTER_ID_KONG_DATA='${kong_data_id}'
+CANISTER_ID_KONG_SVELTE='${kong_frontend_id}'
+CANISTER_ID_KONG_FAUCET='${kong_faucet_id}'
+CANISTER_ID='${kong_frontend_id}'
+
+# Token Ledger Canisters
+CANISTER_ID_CKUSDT_LEDGER='${ksusdt_ledger_id}'
+CANISTER_ID_ICP_LEDGER='${ksicp_ledger_id}'
+CANISTER_ID_CKBTC_LEDGER='${ksbtc_ledger_id}'
+CANISTER_ID_CKETH_LEDGER='${kseth_ledger_id}'
+CANISTER_ID_KONG_LEDGER='${kskong_ledger_id}'
+
+# Preserve any additional ledger canister IDs
+$([ -f "${env_file}.backup" ] && grep -E "CANISTER_ID_.*_LEDGER" "${env_file}.backup" | grep -vE "CANISTER_ID_(CKUSDT|ICP|CKBTC|CKETH|KONG)_LEDGER")
+# END DFX CANISTER ENVIRONMENT VARIABLES
+EOF
+
+    print_success "Updated Kong .env file with ${NPM_ENV:-local} configuration"
+    print_info "Using ${network} network canister IDs:"
+    echo "  Frontend: ${kong_frontend_id}"
+    echo "  Backend:  ${kong_backend_id}"
+    echo "  Data:     ${kong_data_id}"
+    echo "  Faucet:   ${kong_faucet_id}"
+    echo "  Tokens:"
+    echo "    CKUSDT: ${ksusdt_ledger_id}"
+    echo "    ICP:    ${ksicp_ledger_id}"
+    echo "    CKBTC:  ${ksbtc_ledger_id}"
+    echo "    CKETH:  ${kseth_ledger_id}"
+    echo "    KONG:   ${kskong_ledger_id}"
+}
+
+# Add new function for local database deployment
+deploy_local_database() {
+    # First load environment variables
+    load_env_variables
+    
+    print_info "Checking database status..."
+    
+    # Validate environment variables
+    if [ -z "$POSTGRES_DB" ] || [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_HOST" ] || [ -z "$POSTGRES_PORT" ]; then
+        print_error "Missing required database configuration:"
+        [ -z "$POSTGRES_DB" ] && echo "  - Database name not set"
+        [ -z "$POSTGRES_USER" ] && echo "  - Database user not set"
+        [ -z "$POSTGRES_HOST" ] && echo "  - Database host not set"
+        [ -z "$POSTGRES_PORT" ] && echo "  - Database port not set"
+        return 1
+    fi
+    
+    # Check PostgreSQL connection
+    if ! pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" > /dev/null 2>&1; then
+        print_error "PostgreSQL is not running or not accessible at $POSTGRES_HOST:$POSTGRES_PORT"
+        return 1
+    fi
+
+    # Check if database already exists
+    if psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -lqt | cut -d \| -f 1 | grep -qw "$POSTGRES_DB"; then
+        print_warning "Database '$POSTGRES_DB' already exists!"
+        echo -e "\n${YELLOW}Suggestions:${NC}"
+        echo "1. Use the Database Management menu (option 4) to reset the database"
+        echo "2. Or use the Database Management menu to check current database status"
+        return 0
+    fi
+
+    # Get local canister IDs from canister_ids.all.json
+    local canister_ids_file="${KONG_REPO}/canister_ids.all.json"
+    if [ ! -f "$canister_ids_file" ]; then
+        print_error "canister_ids.all.json not found at $canister_ids_file"
+        return 1
+    fi
+
+    # Extract local canister IDs
+    local ksusdt_id=$(jq -r '.ksusdt_ledger.local' "$canister_ids_file")
+    local ksicp_id=$(jq -r '.ksicp_ledger.local' "$canister_ids_file")
+    local ksbtc_id=$(jq -r '.ksbtc_ledger.local' "$canister_ids_file")
+    local kseth_id=$(jq -r '.kseth_ledger.local' "$canister_ids_file")
+    local kskong_id=$(jq -r '.kskong_ledger.local' "$canister_ids_file")
+
+    print_info "Deploying new database '${POSTGRES_DB}'..."
+    
+    # Create database
+    createdb -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" "$POSTGRES_DB"
+    
+    # Run migrations
+    print_info "Running database migrations..."
+    (cd "$APIS_REPO" && flyway -url=jdbc:postgresql://"$POSTGRES_HOST":"$POSTGRES_PORT"/"$POSTGRES_DB" \
+                             -user="$POSTGRES_USER" \
+                             -locations=filesystem:migrations \
+                             migrate)
+    
+# Initialize tokens with local canister IDs
+print_info "Initializing tokens with local canister IDs..."
+PGPASSWORD="$POSTGRES_PASSWORD" psql \
+    -h "$POSTGRES_HOST" \
+    -p "$POSTGRES_PORT" \
+    -U "$POSTGRES_USER" \
+    -d "$POSTGRES_DB" << EOF
+INSERT INTO tokens (
+    token_id, 
+    name, 
+    symbol, 
+    decimals, 
+    canister_id, 
+    on_kong, 
+    token_type, 
+    raw_json,
+    icrc1,
+    icrc2
+) VALUES 
+    (1, 'USD Tether (KongSwap Test Token)', 'KSUSDT', 6, '$ksusdt_id', true, 'IC', '{}'::jsonb, true, true),
+    (2, 'Bitcoin (KongSwap Test Token)',     'KSBTC',  8, '$ksbtc_id',  true, 'IC', '{}'::jsonb, true, true),
+    (3, 'Ethereum (KongSwap Test Token)',    'KSETH',  18, '$kseth_id', true, 'IC', '{}'::jsonb, true, true),
+    (4, 'Internet Computer',                 'ICP',    8, '$ksicp_id',  true, 'IC', '{}'::jsonb, true, true),
+    (5, 'KongSwap Token',                    'KONG',   8, '$kskong_id', true, 'IC', '{}'::jsonb, true, true)
+ON CONFLICT (token_id) DO UPDATE 
+SET name       = EXCLUDED.name,
+    symbol     = EXCLUDED.symbol,
+    decimals   = EXCLUDED.decimals,
+    canister_id= EXCLUDED.canister_id,
+    on_kong    = EXCLUDED.on_kong,
+    token_type = EXCLUDED.token_type,
+    raw_json   = EXCLUDED.raw_json,
+    icrc1      = EXCLUDED.icrc1,
+    icrc2      = EXCLUDED.icrc2;
+EOF
+
+    print_success "Local database deployed successfully with local canister IDs!"
+    echo -e "\nInitialized tokens with these local canister IDs:"
+    echo "CKUSDT: $ksusdt_id"
+    echo "CKBTC:  $ksbtc_id"
+    echo "CKETH:  $kseth_id"
+    echo "ICP:    $ksicp_id"
+    echo "KONG:   $kskong_id"
+}
+
+manage_faucet() {
+    print_info "Local Kong Faucet"
+    echo "-----------------"
+
+    # Check if we're in local network
+    if [ "$(dfx identity get-network)" != "local" ]; then
+        print_error "Faucet is only available on local network"
+        return 1
+    fi
+
+    # Get local canister IDs
+    local canister_ids_file="${KONG_REPO}/canister_ids.all.json"
+    if [ ! -f "$canister_ids_file" ]; then
+        print_error "canister_ids.all.json not found at $canister_ids_file"
+        return 1
+    fi
+
+    # Prompt for principal ID
+    local to_principal_id
+    read -p "Enter principal ID to airdrop tokens to (or press Enter to use kong_user1): " input_principal
+    if [ -z "$input_principal" ]; then
+        to_principal_id=$(dfx identity --network local --identity kong_user1 get-principal)
+        echo -e "Using kong_user1 principal: ${GREEN}$to_principal_id${NC}"
+    else
+        to_principal_id="$input_principal"
+    fi
+
+    print_info "Starting token transfers..."
+
+    # Function to perform token transfer
+    transfer_token() {
+        local token=$1
+        local amount=$2
+        local human_amount=$3
+        local decimals=$4
+        
+        echo -e "\n${BLUE}Sending ${GREEN}$human_amount${BLUE} $token...${NC}"
+        
+        local token_ledger="${token}_ledger"
+        local result=$(dfx canister call --network local --identity kong_token_minter "$token_ledger" icrc1_transfer "(record {
+            to=record {owner=principal \"$to_principal_id\"; subaccount=null};
+            amount=$amount;
+        },)" 2>&1)
+        
+        if echo "$result" | grep -q "variant { Ok"; then
+            echo -e "${GREEN}✓ Successfully sent $human_amount $token${NC}"
+        else
+            echo -e "${RED}✗ Failed to send $token: $result${NC}"
+        fi
+    }
+
+    # Perform transfers
+    transfer_token "ksusdt" "1_000_000_000_000" "1,000,000" 6
+    transfer_token "ksicp" "10_000_000_000_000" "100,000" 8
+    transfer_token "ksbtc" "500_000_000" "5" 8
+    transfer_token "kseth" "60_000_000_000_000_000_000" "60" 18
+    transfer_token "kskong" "500_000_000_000_000" "5,000,000" 8
+
+    print_success "All transfers completed!"
+}
+
+main() {
+    # Load config at startup
+    load_config
+    
+    while true; do
+        show_menu
+        read -r choice
+        case "$choice" in
+            1) check_dependencies ;;
+            2) select_repositories ;;
+            3) 
+                if [ -z "$KONG_REPO" ] || [ -z "$APIS_REPO" ]; then
+                    print_error "Please select repositories first (option 2)."
+                else
+                    manage_environment
+                fi
+                ;;
+            4)
+                if [ -z "$APIS_REPO" ]; then
+                    print_error "Please select repositories first (option 2)."
+                else
+                    manage_database
+                fi
+                ;;
+            5)
+                if [ -z "$APIS_REPO" ]; then
+                    print_error "Please select repositories first (option 2)."
+                else
+                    deploy_local_database
+                fi
+                ;;
+            6)
+                if [ -z "$KONG_REPO" ] || [ -z "$APIS_REPO" ]; then
+                    print_error "Please select repositories first (option 2)."
+                else
+                    deploy_local_dfx
+                fi
+                ;;
+            7) manage_npm_environment ;;
+            8) show_status ;;
+            9)
+                print_info "Exiting..."
+                exit 0
+                ;;
+            *)
+                print_error "Invalid option. Please try again."
+                ;;
+        esac
+        echo -e "\nPress ${GREEN}Enter${NC} to continue..."
+        read -r
+    done
+}
+
+# Add NPM_PID to the config file structure
+CONFIG_FILE="$(dirname "$(readlink -f "$0")")/.kong_deploy_config"
+
+# Add this new function for NPM management
+manage_npm_environment() {
+    while true; do
+        clear
+        echo "=================================================="
+        echo -e "   ${BLUE}NPM Environment Management${NC}"
+        echo "=================================================="
+        
+        # Check if NPM process is actually running
+        if [ -n "$NPM_PID" ] && ps -p "$NPM_PID" >/dev/null 2>&1; then
+            echo -e "Current NPM Status: ${GREEN}Running${NC} (PID: $NPM_PID)"
+            echo -e "Logs: ${BLUE}/tmp/kong_npm_${NPM_PID}.log${NC}"
+            echo -e "View with: ${YELLOW}tail -f /tmp/kong_npm_${NPM_PID}.log${NC}"
+            
+            # Enhanced environment display
+            case "$NPM_ENV" in
+                "local")
+                    echo -e "Environment: ${BLUE}Local Development${NC} (Local Replica)"
+                    ;;
+                "staging")
+                    echo -e "Environment: ${YELLOW}Staging${NC} (IC Mainnet)"
+                    ;;
+                "production")
+                    echo -e "Environment: ${RED}Production${NC} (IC Mainnet)"
+                    ;;
+            esac
+            
+            echo -e "\n${YELLOW}Frontend URLs:${NC}"
+            echo -e "→ Frontend: ${GREEN}http://localhost:5173${NC}"
+            
+            echo -e "\n${YELLOW}API Endpoints:${NC}"
+            case "$NPM_ENV" in
+                "local")
+                    if dfx ping >/dev/null 2>&1; then
+                        echo -e "→ DFX API:     ${GREEN}Local Replica${NC} (http://localhost:4943)"
+                    else
+                        echo -e "→ DFX API:     ${RED}Local Replica Not Running${NC} (run 'dfx start')"
+                    fi
+                    
+                    if nc -z localhost 8080 2>/dev/null; then
+                        echo -e "→ Indexer API: ${GREEN}Local${NC} (http://localhost:8080)"
+                    else
+                        echo -e "→ Indexer API: ${RED}Not Running${NC} (start from Database Management)"
+                    fi
+                    ;;
+                "staging")
+                    echo -e "→ DFX API:     ${GREEN}IC Mainnet${NC} (https://ic0.app)"
+                    echo -e "→ Indexer API: ${GREEN}Staging${NC} (https://api-staging.kongswap.io)"
+                    ;;
+                "production")
+                    echo -e "→ DFX API:     ${GREEN}IC Mainnet${NC} (https://ic0.app)"
+                    echo -e "→ Indexer API: ${GREEN}Production${NC} (https://api.kongswap.io)"
+                    ;;
+            esac
+        else
+            echo -e "Current NPM Status: ${RED}Not Running${NC}"
+            if [ -n "$NPM_PID" ]; then
+                NPM_PID=""
+                NPM_ENV=""
+                save_config
+            fi
+        fi
+        
+        echo -e "\n--------------------------------------------------"
+        echo -e "1. Start NPM dev (${GREEN}Local Replica${NC})"
+        echo -e "2. Start NPM dev (${YELLOW}Staging Mainnet${NC})"
+        echo -e "3. Start NPM dev (${RED}Production Mainnet${NC})"
+        echo -e "4. ${RED}Stop NPM process${NC}"
+        echo -e "5. ${BLUE}View NPM logs${NC}"
+        echo -e "6. ${GREEN}Back to main menu${NC}"
+        echo "=================================================="
+
+        read -rp "Enter your choice (1-6): " option
+
+        case "$option" in
+            1)  # Local environment
+                if [ -n "$NPM_PID" ] && ps -p "$NPM_PID" >/dev/null 2>&1; then
+                    print_warning "NPM is already running. Please stop it first."
+                    read -rp "Press Enter to continue..."
+                    continue
+                fi
+
+                NPM_ENV="local"
+                DFX_NETWORK="local"
+                INDEXER_URL="http://localhost:8080"
+                API_URL="http://localhost:8080"
+
+                print_info "Starting NPM in local mode..."
+                
+                # Write environment variables before starting NPM
+                write_env_file
+                
+                if [ -d "$KONG_REPO/src/kong_svelte" ]; then
+                    cd "$KONG_REPO/src/kong_svelte" || exit
+                    if [ -f "package.json" ]; then
+                        print_info "Checking npm dependencies..."
+                        
+                        # Check if node_modules exists and package-lock.json is in sync
+                        if [ ! -d "node_modules" ] || [ ! -f "package-lock.json" ]; then
+                            print_warning "Running npm install first..."
+                            npm install
+                            if [ $? -ne 0 ]; then
+                                print_error "npm install failed. Check the error messages above."
+                                return 1
+                            fi
+                        fi
+
+                        # Set DFX_NETWORK environment variable
+                        export DFX_NETWORK="local"
+                        
+                        # Create a temporary file to capture initial startup
+                        local temp_log="/tmp/npm_startup_$$.log"
+                        
+                        print_info "Starting npm in local mode..."
+                        npm run dev > "$temp_log" 2>&1 &
+                        NPM_PID=$!
+                        
+                        # Wait for up to 10 seconds while checking for common errors
+                        local counter=0
+                        local max_wait=10
+                        local started=false
+                        
+                        while [ $counter -lt $max_wait ]; do
+                            if ! ps -p "$NPM_PID" >/dev/null 2>&1; then
+                                print_error "NPM process failed to start. Checking logs..."
+                                cat "$temp_log"
+                                NPM_PID=""
+                                NPM_ENV=""
+                                rm -f "$temp_log"
+                                return 1
+                            fi
+                            
+                            # Updated condition to check for either Local: or VITE ready message
+                            if grep -q "Local: \|VITE.*ready" "$temp_log"; then
+                                started=true
+                                break
+                            fi
+                            
+                            sleep 1
+                            counter=$((counter + 1))
+                        done
+                        
+                        mv "$temp_log" "/tmp/kong_npm_${NPM_PID}.log"
+                        
+                        if [ "$started" = true ]; then
+                            print_success "NPM started successfully in local mode (PID: $NPM_PID)"
+                            print_info "Output is being logged to /tmp/kong_npm_${NPM_PID}.log"
+                            print_success "Vite server is running at: http://localhost:5173/"
+                            save_config
+                            
+                            # Show Vite URLs and add more context
+                            echo -e "\nVite Development Server:"
+                            grep "Local:\|Network:\|VITE.*ready" "/tmp/kong_npm_${NPM_PID}.log" | tail -n 3
+                            echo -e "\n${GREEN}✓${NC} Server is ready! You can now access:"
+                            echo -e "  ${BLUE}→${NC} Frontend: http://localhost:5173/"
+                        else
+                            print_error "NPM failed to start properly after ${max_wait} seconds"
+                            print_info "Recent log output:"
+                            tail -n 10 "/tmp/kong_npm_${NPM_PID}.log"
+                            
+                            kill "$NPM_PID" 2>/dev/null
+                            NPM_PID=""
+                            NPM_ENV=""
+                        fi
+                    else
+                        print_error "package.json not found in kong_svelte directory"
+                        read -rp "Press Enter to continue..."
+                    fi
+                else
+                    print_error "kong_svelte directory not found"
+                    read -rp "Press Enter to continue..."
+                fi
+                ;;
+            2|3)  # Combined staging and production logic
+                if [ -n "$NPM_PID" ] && ps -p "$NPM_PID" >/dev/null 2>&1; then
+                    print_warning "NPM is already running. Please stop it first."
+                    read -rp "Press Enter to continue..."
+                    continue
+                fi
+
+                # Set environment variables based on option
+                if [ "$option" = "2" ]; then
+                    NPM_ENV="staging"
+                    DFX_NETWORK="ic"
+                    INDEXER_URL="https://api-staging.kongswap.io"
+                    API_URL="https://api-staging.kongswap.io"
+                else
+                    NPM_ENV="production"
+                    DFX_NETWORK="ic"
+                    INDEXER_URL="https://api.kongswap.io"
+                    API_URL="https://api.kongswap.io"
+                fi
+
+                print_info "Starting NPM in ${NPM_ENV} mode..."
+                
+                # Write environment variables before starting NPM
+                write_env_file
+                
+                if [ -d "$KONG_REPO/src/kong_svelte" ]; then
+                    cd "$KONG_REPO/src/kong_svelte" || exit
+                    if [ -f "package.json" ]; then
+                        print_info "Checking npm dependencies..."
+                        
+                        # Check if node_modules exists and package-lock.json is in sync
+                        if [ ! -d "node_modules" ] || [ ! -f "package-lock.json" ]; then
+                            print_warning "Running npm install first..."
+                            npm install
+                            if [ $? -ne 0 ]; then
+                                print_error "npm install failed. Check the error messages above."
+                                return 1
+                            fi
+                        fi
+
+                        # Set DFX_NETWORK environment variable
+                        export DFX_NETWORK="ic"
+                        
+                        # Create a temporary file to capture initial startup
+                        local temp_log="/tmp/npm_startup_$$.log"
+                        
+                        print_info "Starting npm in ${NPM_ENV} mode..."
+                        npm run dev > "$temp_log" 2>&1 &
+                        NPM_PID=$!
+                        
+                        # Wait for up to 10 seconds while checking for common errors
+                        local counter=0
+                        local max_wait=10
+                        local started=false
+                        
+                        while [ $counter -lt $max_wait ]; do
+                            if ! ps -p "$NPM_PID" >/dev/null 2>&1; then
+                                print_error "NPM process failed to start. Checking logs..."
+                                cat "$temp_log"
+                                NPM_PID=""
+                                NPM_ENV=""
+                                rm -f "$temp_log"
+                                return 1
+                            fi
+                            
+                            # Updated condition to check for either Local: or VITE ready message
+                            if grep -q "Local: \|VITE.*ready" "$temp_log"; then
+                                started=true
+                                break
+                            fi
+                            
+                            sleep 1
+                            counter=$((counter + 1))
+                        done
+                        
+                        mv "$temp_log" "/tmp/kong_npm_${NPM_PID}.log"
+                        
+                        if [ "$started" = true ]; then
+                            print_success "NPM started successfully in ${NPM_ENV} mode (PID: $NPM_PID)"
+                            print_info "Output is being logged to /tmp/kong_npm_${NPM_PID}.log"
+                            print_success "Vite server is running at: http://localhost:5173/"
+                            save_config
+                            
+                            # Show Vite URLs and add more context
+                            echo -e "\nVite Development Server:"
+                            grep "Local:\|Network:\|VITE.*ready" "/tmp/kong_npm_${NPM_PID}.log" | tail -n 3
+                            echo -e "\n${GREEN}✓${NC} Server is ready! You can now access:"
+                            echo -e "  ${BLUE}→${NC} Frontend: http://localhost:5173/"
+                        else
+                            print_error "NPM failed to start properly after ${max_wait} seconds"
+                            print_info "Recent log output:"
+                            tail -n 10 "/tmp/kong_npm_${NPM_PID}.log"
+                            
+                            kill "$NPM_PID" 2>/dev/null
+                            NPM_PID=""
+                            NPM_ENV=""
+                        fi
+                    else
+                        print_error "package.json not found in kong_svelte directory"
+                        read -rp "Press Enter to continue..."
+                    fi
+                else
+                    print_error "kong_svelte directory not found"
+                    read -rp "Press Enter to continue..."
+                fi
+                ;;
+            4)
+                if [ -n "$NPM_PID" ]; then
+                    print_info "Stopping NPM process..."
+                    pkill -P "$NPM_PID" 2>/dev/null
+                    kill "$NPM_PID" 2>/dev/null
+                    
+                    sleep 1
+                    if ps -p "$NPM_PID" >/dev/null 2>&1; then
+                        print_warning "Force killing NPM process..."
+                        kill -9 "$NPM_PID" 2>/dev/null
+                        pkill -9 -P "$NPM_PID" 2>/dev/null
+                    fi
+                    
+                    # Cleanup log file
+                    rm -f "/tmp/kong_npm_${NPM_PID}.log"
+                    NPM_PID=""
+                    NPM_ENV=""
+                    save_config
+                    print_success "NPM process stopped"
+                else
+                    print_warning "No NPM process running"
+                fi
+                read -rp "Press Enter to continue..."
+                continue
+                ;;
+            5)
+                if [ -n "$NPM_PID" ] && [ -f "/tmp/kong_npm_${NPM_PID}.log" ]; then
+                    # Use less to view the log file
+                    less "/tmp/kong_npm_${NPM_PID}.log"
+                else
+                    print_warning "No NPM logs available"
+                    sleep 2
+                fi
+                continue
+                ;;
+            6)
+                return 0
+                ;;
+            *)
+                print_error "Invalid option"
+                read -rp "Press Enter to continue..."
+                continue
+                ;;
+        esac
+
+        # Fix display issues by adding a clear pause
+        sleep 1
+        read -rp "Press Enter to continue..."
+        clear  # Add clear to refresh display
+    done
+}
+
+#----------------------------------------------------------------------
+# 10. Kick off the script
+#----------------------------------------------------------------------
+main

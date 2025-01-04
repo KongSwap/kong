@@ -1,5 +1,10 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
 
+// Add polyfill for global
+if (typeof window !== 'undefined') {
+  (window as any).global = window;
+}
+
 // In-memory cache for anonymous actors
 const actorCache = new Map<string, any>();
 

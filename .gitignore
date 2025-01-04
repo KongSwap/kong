@@ -49,6 +49,7 @@ bower_components
 .sass-cache
 connect.lock
 typings
+scripts/.kong_deploy_config
 
 # Logs
 logs

@@ -4,8 +4,7 @@ import { Principal } from "@dfinity/principal";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "../tokens/allowanceStore";
-import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
-import { AccountIdentifier } from '@dfinity/ledger-icp';
+import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -120,7 +119,7 @@ export class IcrcService {
       const currentAllowance = allowanceStore.getAllowance(
         token.canister_id,
         auth.pnp.account.owner.toString(),
-        KONG_BACKEND_PRINCIPAL,
+        KONG_BACKEND_CANISTER_ID,
       );
 
       if (currentAllowance && currentAllowance.amount >= totalAmount) {
@@ -163,7 +162,7 @@ export class IcrcService {
       allowanceStore.addAllowance(token.canister_id, {
         address: token.canister_id,
         wallet_address: auth.pnp.account.owner.toString(),
-        spender: KONG_BACKEND_PRINCIPAL,
+        spender: KONG_BACKEND_CANISTER_ID,
         amount: approveArgs.amount,
         timestamp: Date.now(),
       });
