@@ -113,7 +113,7 @@ async fn check_arguments(
     args: &AddPoolArgs,
 ) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
-        return Err("Invalid zero amounts".to_string());
+        Err("Invalid zero amounts".to_string())?
     }
 
     let lp_fee_bps = match args.lp_fee_bps {
@@ -122,28 +122,23 @@ async fn check_arguments(
     };
 
     let default_kong_fee_bps = kong_settings_map::get().default_kong_fee_bps;
-    // only controllers can set kong_fee_bps otherwise use default
-    let kong_fee_bps = match is_caller_controller() {
-        true => args.kong_fee_bps.unwrap_or(default_kong_fee_bps),
-        false => default_kong_fee_bps,
-    };
-
-    if kong_fee_bps > lp_fee_bps {
-        return Err("Kong fee cannot be greater than LP fee".to_string());
+    let kong_fee_bps = default_kong_fee_bps;
+    if lp_fee_bps < kong_fee_bps {
+        Err(format!("LP fee cannot be less than Kong fee of {}", kong_fee_bps))?
     }
 
     // check tx_id_0 and tx_id_1 are valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
         Some(tx_id_0) => match tx_id_0 {
             TxId::BlockIndex(block_id) => Some(block_id).cloned(),
-            _ => return Err("Unsupported tx_id_0".to_string()),
+            _ => Err("Unsupported tx_id_0".to_string())?,
         },
         None => None,
     };
     let tx_id_1 = match &args.tx_id_1 {
         Some(tx_id_1) => match tx_id_1 {
             TxId::BlockIndex(block_id) => Some(block_id).cloned(),
-            _ => return Err("Unsupported tx_id_1".to_string()),
+            _ => Err("Unsupported tx_id_1".to_string())?,
         },
         None => None,
     };
@@ -152,13 +147,11 @@ async fn check_arguments(
     let token_1 = match args.token_1.as_str() {
         token if is_ckusdt(token) => token_map::get_ckusdt()?,
         token if is_icp(token) => token_map::get_icp()?,
-        _ => {
-            return Err(format!(
-                "Token_1 must be {} or {}",
-                kong_settings_map::get().ckusdt_symbol,
-                kong_settings_map::get().icp_symbol
-            ))
-        }
+        _ => Err(format!(
+            "Token_1 must be {} or {}",
+            kong_settings_map::get().ckusdt_symbol,
+            kong_settings_map::get().icp_symbol
+        ))?,
     };
 
     // token_0, check if it exists already or needs to be added
@@ -169,8 +162,8 @@ async fn check_arguments(
             // token_0 needs to be added. Only IC tokens of format IC.CanisterId supported
             match token_map::get_chain(&args.token_0) {
                 Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0).await?,
-                Some(chain) if chain == LP_CHAIN => return Err("Token_0 LP tokens not supported".to_string()),
-                Some(_) | None => return Err("Token_0 chain not specified or supported".to_string()),
+                Some(chain) if chain == LP_CHAIN => Err("Token_0 LP tokens not supported".to_string())?,
+                Some(_) | None => Err("Token_0 chain not specified or supported".to_string())?,
             }
         }
     };
@@ -178,12 +171,12 @@ async fn check_arguments(
     // make sure LP token does not already exist
     let lp_token_address = token::address(&token_0, &token_1);
     if token_map::exists(&lp_token_address) {
-        return Err(format!("LP token {} already exists", token::symbol(&token_0, &token_1)));
+        Err(format!("LP token {} already exists", token::symbol(&token_0, &token_1)))?
     }
 
     // make sure pool does not already exist
     if pool_map::exists(&token_0, &token_1) {
-        return Err(format!("Pool {} already exists", pool_map::symbol(&token_0, &token_1)));
+        Err(format!("Pool {} already exists", pool_map::symbol(&token_0, &token_1)))?
     }
 
     let (add_amount_0, add_amount_1, add_lp_token_amount) = calculate_amounts(&token_0, &args.amount_0, &token_1, &args.amount_1)?;
