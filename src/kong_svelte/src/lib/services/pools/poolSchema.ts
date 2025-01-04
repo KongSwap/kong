@@ -22,7 +22,7 @@ export const PoolSchema = z.object({
   lp_token_supply: z.bigint(),
   symbol: z.string(),
   lp_fee_bps: z.number(),
-  on_kong: z.boolean(),
+  is_removed: z.boolean().optional(),
   logo: z.string().optional(),
   total_24h_volume: z.bigint().optional(),
 });

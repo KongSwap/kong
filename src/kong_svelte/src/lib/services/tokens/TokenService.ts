@@ -6,7 +6,7 @@ import {
   formatTokenAmount,
 } from "$lib/utils/numberFormatUtils";
 import { get } from "svelte/store";
-import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
+import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID, KONG_BACKEND_CANISTER_ID, KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
 import { poolStore } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
@@ -17,6 +17,7 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
 import { toastStore } from "$lib/stores/toastStore";
+import { browser } from "$app/environment";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -37,6 +38,8 @@ export class TokenService {
   public static async fetchTokens(): Promise<FE.Token[]> {
     // First try to get cached tokens
     let cachedTokens: FE.Token[] = [];
+    let dbError = false;
+    
     try {
       cachedTokens = await kongDB.tokens
         .where('timestamp')
@@ -44,6 +47,7 @@ export class TokenService {
         .toArray() as FE.Token[];
     } catch (error) {
       console.error("Error fetching cached tokens:", error);
+      dbError = true;
     }
 
     // If we have cached tokens, update the store immediately
@@ -60,11 +64,17 @@ export class TokenService {
       // Fetch fresh data in the background
       const freshTokens = await this.fetchFromNetwork();
       
-      // Update cache with fresh data
-      await kongDB.tokens.bulkPut(freshTokens.map(token => ({
-        ...token,
-        timestamp: Date.now()
-      })));
+      // Only try to update cache if previous DB operations were successful
+      if (!dbError && browser) {
+        try {
+          await kongDB.tokens.bulkPut(freshTokens.map(token => ({
+            ...token,
+            timestamp: Date.now()
+          })));
+        } catch (cacheError) {
+          console.warn("Failed to update token cache:", cacheError);
+        }
+      }
 
       // Update store with fresh data
       tokenStore.update(state => ({
@@ -87,6 +97,24 @@ export class TokenService {
         return cachedTokens;
       }
       
+      // If we have no cached data and network fetch failed, try to get any tokens from DB regardless of age
+      if (browser && !dbError) {
+        try {
+          const oldTokens = await kongDB.tokens.toArray() as FE.Token[];
+          if (oldTokens.length > 0) {
+            tokenStore.update(state => ({
+              ...state,
+              tokens: oldTokens,
+              lastTokensFetch: Date.now(),
+              isLoading: false
+            }));
+            return oldTokens;
+          }
+        } catch (e) {
+          console.error("Failed to fetch old tokens from DB:", e);
+        }
+      }
+      
       tokenStore.update(state => ({
         ...state,
         isLoading: false,
@@ -98,18 +126,64 @@ export class TokenService {
 
   private static async fetchFromNetwork(): Promise<FE.Token[]> {
     let retries = 3;
+    let lastError: Error | null = null;
 
+    // First try the indexer API
     while (retries > 0) {
       try {   
         return await fetchTokens();
       } catch (error) {
-        console.warn(`Token fetch attempt failed, ${retries - 1} retries left:`, error);
+        console.warn(`Token fetch attempt from indexer failed, ${retries - 1} retries left:`, error);
+        lastError = error as Error;
         retries--;
-        if (retries === 0) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
     }
-    return [];
+
+    // If indexer fails, try fetching directly from the canister
+    try {
+      console.log("Falling back to canister for token fetch");
+      const actor = await createAnonymousActorHelper(KONG_BACKEND_PRINCIPAL, kongBackendIDL);
+      const result = await actor.tokens(["all"]);
+      
+      if (Array.isArray(result)) {
+        // Transform canister response to FE.Token format
+        return result.map(token => {
+          const { symbol, name, decimals, fee, canister_id, fee_fixed, logo_url } = token;
+          return {
+            symbol,
+            name,
+            decimals,
+            fee,
+            canister_id,
+            fee_fixed,
+            logo_url,
+            address: canister_id,
+            metrics: {
+              price: "0",
+              tvl: "0",
+              price_change_24h: "0",
+              volume_24h: "0",
+              market_cap: "0",
+              total_supply: "0",
+              updated_at: Date.now().toString()
+            },
+            token_type: "IC",
+            chain: "ICP",
+            pools: []
+          } as FE.Token;
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch tokens from canister:", error);
+      // If we have a previous error from the indexer, throw that instead
+      if (lastError) throw lastError;
+      throw error;
+    }
+    
+    throw new Error("Failed to fetch tokens from both indexer and canister");
   }
 
   public static async clearTokenCache(): Promise<void> {

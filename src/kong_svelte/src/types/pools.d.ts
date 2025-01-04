@@ -25,6 +25,8 @@ declare global {
       balance_1: bigint;
       rolling_24h_volume: bigint;
       rolling_24h_apy: number;
+      rolling_24h_num_swaps: number;
+      rolling_24h_lp_fee: bigint;
       address_0: string;
       address_1: string;
       symbol_0: string;
@@ -37,10 +39,10 @@ declare global {
       lp_token_supply: bigint;
       symbol: string;
       lp_fee_bps: number;
-      on_kong: boolean;
       tvl?: bigint;
       volume_24h?: string;
       apr?: number;
+      is_removed: boolean;
       timestamp?: number;
     }
   }

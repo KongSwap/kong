@@ -36,7 +36,6 @@ export interface AddPoolArgs {
   'tx_id_0' : [] | [TxId],
   'tx_id_1' : [] | [TxId],
   'lp_fee_bps' : [] | [number],
-  'on_kong' : [] | [boolean],
 }
 export interface AddPoolReply {
   'ts' : bigint,
@@ -46,6 +45,7 @@ export interface AddPoolReply {
   'lp_token_symbol' : string,
   'add_lp_token_amount' : bigint,
   'transfer_ids' : Array<TransferIdReply>,
+  'name' : string,
   'amount_0' : bigint,
   'amount_1' : bigint,
   'claim_ids' : BigUint64Array | bigint[],
@@ -53,16 +53,16 @@ export interface AddPoolReply {
   'address_1' : string,
   'symbol_0' : string,
   'symbol_1' : string,
+  'pool_id' : number,
   'chain_0' : string,
   'chain_1' : string,
+  'is_removed' : boolean,
   'symbol' : string,
   'lp_fee_bps' : number,
-  'on_kong' : boolean,
 }
 export interface ICTokenReply {
   'fee' : bigint,
   'decimals' : number,
-  'token' : string,
   'token_id' : number,
   'chain' : string,
   'name' : string,
@@ -70,8 +70,8 @@ export interface ICTokenReply {
   'icrc1' : boolean,
   'icrc2' : boolean,
   'icrc3' : boolean,
+  'is_removed' : boolean,
   'symbol' : string,
-  'on_kong' : boolean,
 }
 export interface ICTransferReply {
   'is_send' : boolean,
@@ -88,15 +88,14 @@ export interface Icrc28TrustedOriginsResponse {
 export interface LPTokenReply {
   'fee' : bigint,
   'decimals' : number,
-  'token' : string,
   'token_id' : number,
   'chain' : string,
   'name' : string,
   'address' : string,
   'pool_id_of' : number,
+  'is_removed' : boolean,
   'total_supply' : bigint,
   'symbol' : string,
-  'on_kong' : boolean,
 }
 export interface PoolReply {
   'tvl' : bigint,
@@ -117,10 +116,10 @@ export interface PoolReply {
   'price' : number,
   'chain_0' : string,
   'chain_1' : string,
+  'is_removed' : boolean,
   'symbol' : string,
   'rolling_24h_lp_fee' : bigint,
   'lp_fee_bps' : number,
-  'on_kong' : boolean,
 }
 export interface PoolsReply {
   'total_24h_lp_fee' : bigint,
