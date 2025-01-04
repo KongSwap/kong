@@ -118,7 +118,7 @@ fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
         request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::Send(ref reply) => {
-                tx_map::archive_tx_to_kong_data(reply.tx_id);
+                tx_map::archive_to_kong_data(reply.tx_id);
             }
             _ => Err("Invalid reply type".to_string())?,
         }

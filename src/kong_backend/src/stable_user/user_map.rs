@@ -112,7 +112,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
                 referred_by_expires_at,
                 ..Default::default()
             };
-            archive_user_to_kong_data(user.clone());
+            _ = archive_to_kong_data(&user);
             user
         }
         Err(e) => Err(e)?, // do not allow anonymous user
@@ -126,22 +126,25 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
     })
 }
 
-fn archive_user_to_kong_data(user: StableUser) {
+fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
+    let user_id = user.user_id;
+    let user_json = match serde_json::to_string(user) {
+        Ok(user_json) => user_json,
+        Err(e) => Err(format!("Failed to serialize user_id #{}. {}", user_id, e))?,
+    };
+
     ic_cdk::spawn(async move {
-        match serde_json::to_string(&user) {
-            Ok(user_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user.user_id, e)),
-                };
-            }
-            Err(e) => error_log(&format!("Failed to serialize user_id #{}. {}", user.user_id, e)),
-        }
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user_id, e)),
+        };
     });
+
+    Ok(())
 }

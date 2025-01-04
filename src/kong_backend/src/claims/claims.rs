@@ -47,7 +47,7 @@ pub async fn process_claims() {
             if claim.attempt_request_id.len() > 50 {
                 // if claim has more than 50 attempts, update status to too_many_attempts and investigate manually
                 claim_map::update_too_many_attempts_status(claim.claim_id);
-                claim_map::archive_claim_to_kong_data(claim.claim_id);
+                _ = claim_map::archive_to_kong_data(claim.claim_id);
                 continue;
             } else if claim.attempt_request_id.len() > 20 {
                 let last_attempt_request_id = claim.attempt_request_id.last().unwrap();
@@ -175,8 +175,7 @@ async fn send_claim(
 
             request_map::update_status(request_id, StatusCode::ClaimTokenSuccess, None);
 
-            // archive claim to kong_data
-            claim_map::archive_claim_to_kong_data(claim_id);
+            _ = claim_map::archive_to_kong_data(claim_id);
 
             Ok(())
         }
@@ -186,8 +185,7 @@ async fn send_claim(
 
             request_map::update_status(request_id, StatusCode::ClaimTokenFailed, Some(&e));
 
-            // archive claim to kong_data
-            claim_map::archive_claim_to_kong_data(claim_id);
+            _ = claim_map::archive_to_kong_data(claim_id);
 
             Err(format!("Failed to send claim #{}. {}", claim_id, e))
         }
