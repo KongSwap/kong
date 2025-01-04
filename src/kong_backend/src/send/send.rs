@@ -113,9 +113,9 @@ fn process_send(
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
-        let request = requests.first().ok_or("Request not found")?;
-        request_map::archive_request_to_kong_data(request.request_id);
+        let request =
+            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+        request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::Send(ref reply) => {
                 tx_map::archive_tx_to_kong_data(reply.tx_id);

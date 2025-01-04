@@ -681,9 +681,9 @@ fn add_new_pool(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: 
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
-        let request = requests.first().ok_or("Request not found")?;
-        request_map::archive_request_to_kong_data(request.request_id);
+        let request =
+            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+        request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::AddPool(ref reply) => {
                 for claim_id in reply.claim_ids.iter() {
