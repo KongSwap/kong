@@ -64,12 +64,12 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
 
 async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Nat, Nat), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
-        return Err("Invalid zero amounts".to_string());
+        Err("Invalid zero amounts".to_string())?
     }
 
     // check to make sure tx_id_0 and tx_id_1 is not specified
     if args.tx_id_0.is_some() || args.tx_id_1.is_some() {
-        return Err("Tx_id_0 and Tx_id_1 not supported".to_string());
+        Err("Tx_id_0 and Tx_id_1 not supported".to_string())?
     }
 
     // add_amount_0 and add_amount_1 are the amounts to be added to the pool with the current state
@@ -80,7 +80,7 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
     let token_0 = pool.token_0();
     let token_1 = pool.token_1();
     if !token_0.is_icrc2() || !token_1.is_icrc2() {
-        return Err("Tokens must support ICRC2".to_string());
+        Err("Tokens must support ICRC2".to_string())?
     }
 
     // make sure user is registered, if not create a new user

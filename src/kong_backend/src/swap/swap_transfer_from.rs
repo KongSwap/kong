@@ -95,16 +95,16 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
         None => Address::PrincipalId(caller_id()),
     };
     if nat_is_zero(&pay_amount) {
-        return Err("Pay amount is zero".to_string());
+        Err("Pay amount is zero".to_string())?;
     }
 
     // check to make sure pay_tx_id is not specified
     if args.pay_tx_id.is_some() {
-        return Err("Pay tx_id not supported".to_string());
+        Err("Pay tx_id not supported".to_string())?;
     }
 
     if !pay_token.is_icrc2() {
-        return Err("Pay token must support ICRC2".to_string());
+        Err("Pay token must support ICRC2".to_string())?;
     }
 
     // make sure user is registered, if not create a new user with referred_by if specified
@@ -158,7 +158,7 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
 

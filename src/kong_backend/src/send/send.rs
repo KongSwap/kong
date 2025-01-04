@@ -25,7 +25,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     let lp_token = match token_map::get_by_token(&args.token) {
         Ok(LP(token)) => token,
         Err(e) => return Err(e),
-        _ => return Err("Token not supported".to_string()),
+        _ => Err("Token not supported".to_string())?,
     };
     let lp_token_id = lp_token.token_id;
     let lp_token_chain = LP_CHAIN;
@@ -95,7 +95,7 @@ fn process_send(
 
             let reply = to_send_reply_failed(request_id, lp_token_chain, lp_token_symbol, amount, to_address, ts);
             request_map::update_reply(request_id, Reply::Send(reply.clone()));
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?;
         }
     }
 
@@ -118,7 +118,7 @@ fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
         request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::Send(ref reply) => {
-                tx_map::archive_to_kong_data(reply.tx_id);
+                tx_map::archive_to_kong_data(reply.tx_id)?;
             }
             _ => Err("Invalid reply type".to_string())?,
         }

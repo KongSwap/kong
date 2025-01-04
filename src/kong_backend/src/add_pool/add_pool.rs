@@ -15,7 +15,7 @@ use crate::ic::{
     get_time::get_time,
     guards::not_in_maintenance_mode,
     icp::is_icp,
-    id::{caller_id, is_caller_controller},
+    id::caller_id,
     transfer::{icrc1_transfer, icrc2_transfer_from},
     verify::verify_transfer,
 };
@@ -316,7 +316,7 @@ async fn process_add_pool(
                 ts,
             )
             .await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
 
@@ -349,7 +349,7 @@ async fn process_add_pool(
                 ts,
             )
             .await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
 
@@ -687,7 +687,7 @@ fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
                 }
                 tx_map::archive_to_kong_data(reply.tx_id)?;
             }
-            _ => return Err("Invalid reply type".to_string()),
+            _ => Err("Invalid reply type".to_string())?,
         }
     }
 
