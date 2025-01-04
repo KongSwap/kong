@@ -3,6 +3,7 @@ use candid::Nat;
 use super::stable_lp_token::{StableLPToken, StableLPTokenId};
 
 use crate::helpers::nat_helpers::{nat_add, nat_zero};
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::LP_TOKEN_MAP;
 use crate::stable_user::user_map;
@@ -69,7 +70,7 @@ pub fn archive_to_kong_data(lp_token: &StableLPToken) -> Result<(), String> {
             .0
         {
             Ok(_) => (),
-            Err(e) => ic_cdk::print(format!("Failed to archive lp_token #{}. {}", lp_token_id, e)),
+            Err(e) => error_log(&format!("Failed to archive lp_token #{}. {}", lp_token_id, e)),
         }
     });
 
