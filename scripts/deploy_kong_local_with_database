@@ -460,6 +460,11 @@ deploy_local_dfx() {
     
     # Kill existing DFX processes
     dfx killall &>/dev/null
+    dfx killall &>/dev/null
+    dfx killall &>/dev/null
+    dfx killall &>/dev/null
+    dfx killall &>/dev/null
+    dfx killall &>/dev/null
     sleep 2
 
     # Start DFX
@@ -758,9 +763,11 @@ show_menu() {
     echo -e "6. ${GREEN}Deploy local dfx environment${NC}"
     echo -e "7. ${YELLOW}Manage NPM environment${NC}"
     echo -e "8. ${BLUE}Show current status${NC}"
-    echo -e "9. ${RED}Exit${NC}"
+    echo -e "9. ${GREEN}Use local faucet${NC}"
+    echo -e "10. ${GREEN}Deploy Everything Local${NC}"  # New option
+    echo -e "11. ${RED}Exit${NC}"                      # Moved exit to 11
     echo "=================================================="
-    echo -ne "Enter your choice ${GREEN}(1-9)${NC}: "
+    echo -ne "Enter your choice ${GREEN}(1-11)${NC}: "       # Updated prompt
 }
 
 #----------------------------------------------------------------------
@@ -966,37 +973,39 @@ INSERT INTO tokens (
     name, 
     symbol, 
     decimals, 
-    canister_id, 
+    canister_id,
+    address,
     on_kong, 
     token_type, 
     raw_json,
     icrc1,
     icrc2
 ) VALUES 
-    (1, 'USD Tether (KongSwap Test Token)', 'KSUSDT', 6, '$ksusdt_id', true, 'IC', '{}'::jsonb, true, true),
-    (2, 'Bitcoin (KongSwap Test Token)',     'KSBTC',  8, '$ksbtc_id',  true, 'IC', '{}'::jsonb, true, true),
-    (3, 'Ethereum (KongSwap Test Token)',    'KSETH',  18, '$kseth_id', true, 'IC', '{}'::jsonb, true, true),
-    (4, 'Internet Computer',                 'ICP',    8, '$ksicp_id',  true, 'IC', '{}'::jsonb, true, true),
-    (5, 'KongSwap Token',                    'KONG',   8, '$kskong_id', true, 'IC', '{}'::jsonb, true, true)
+    (1, 'USD Tether (KongSwap Test Token)', 'ksUSDT', 6, '$ksusdt_id', '$ksusdt_id', true, 'IC', '{}'::jsonb, true, true),
+    (2, 'Bitcoin (KongSwap Test Token)',     'ksBTC',  8, '$ksbtc_id', '$ksbtc_id',  true, 'IC', '{}'::jsonb, true, true),
+    (3, 'Ethereum (KongSwap Test Token)',    'ksETH',  18, '$kseth_id', '$kseth_id', true, 'IC', '{}'::jsonb, true, true),
+    (4, 'Internet Computer',                 'ksICP',    8, '$ksicp_id', '$ksicp_id',  true, 'IC', '{}'::jsonb, true, true),
+    (5, 'KongSwap Token',                    'ksKONG',   8, '$kskong_id', '$kskong_id', true, 'IC', '{}'::jsonb, true, true)
 ON CONFLICT (token_id) DO UPDATE 
 SET name       = EXCLUDED.name,
     symbol     = EXCLUDED.symbol,
     decimals   = EXCLUDED.decimals,
     canister_id= EXCLUDED.canister_id,
+    address    = EXCLUDED.address,
     on_kong    = EXCLUDED.on_kong,
     token_type = EXCLUDED.token_type,
     raw_json   = EXCLUDED.raw_json,
-    icrc1   = EXCLUDED.icrc1,
-    icrc2   = EXCLUDED.icrc2;
+    icrc1      = EXCLUDED.icrc1,
+    icrc2      = EXCLUDED.icrc2;
 EOF
                     
                     print_success "Database reset and initialized successfully"
                     echo -e "\nInitialized tokens with these local canister IDs:"
-                    echo "KSUSDT: $ksusdt_id"
-                    echo "KSBTC:  $ksbtc_id"
-                    echo "KSETH:  $kseth_id"
-                    echo "ICP:    $ksicp_id"
-                    echo "KONG:   $kskong_id"
+                    echo "ksUSDT: $ksusdt_id"
+                    echo "ksBTC:  $ksbtc_id"
+                    echo "ksETH:  $kseth_id"
+                    echo "ksICP:    $ksicp_id"
+                    echo "ksKONG:   $kskong_id"
                 else
                     print_info "Database reset cancelled"
                 fi
@@ -1225,23 +1234,25 @@ INSERT INTO tokens (
     name, 
     symbol, 
     decimals, 
-    canister_id, 
+    canister_id,
+    address,
     on_kong, 
     token_type, 
     raw_json,
     icrc1,
     icrc2
 ) VALUES 
-    (1, 'USD Tether (KongSwap Test Token)', 'KSUSDT', 6, '$ksusdt_id', true, 'IC', '{}'::jsonb, true, true),
-    (2, 'Bitcoin (KongSwap Test Token)',     'KSBTC',  8, '$ksbtc_id',  true, 'IC', '{}'::jsonb, true, true),
-    (3, 'Ethereum (KongSwap Test Token)',    'KSETH',  18, '$kseth_id', true, 'IC', '{}'::jsonb, true, true),
-    (4, 'Internet Computer',                 'ICP',    8, '$ksicp_id',  true, 'IC', '{}'::jsonb, true, true),
-    (5, 'KongSwap Token',                    'KONG',   8, '$kskong_id', true, 'IC', '{}'::jsonb, true, true)
+    (1, 'USD Tether (KongSwap Test Token)', 'ksUSDT', 6, '$ksusdt_id', '$ksusdt_id', true, 'IC', '{}'::jsonb, true, true),
+    (2, 'Bitcoin (KongSwap Test Token)',     'ksBTC',  8, '$ksbtc_id', '$ksbtc_id',  true, 'IC', '{}'::jsonb, true, true),
+    (3, 'Ethereum (KongSwap Test Token)',    'ksETH',  18, '$kseth_id', '$kseth_id', true, 'IC', '{}'::jsonb, true, true),
+    (4, 'Internet Computer',                 'ksICP',    8, '$ksicp_id', '$ksicp_id',  true, 'IC', '{}'::jsonb, true, true),
+    (5, 'KongSwap Token',                    'ksKONG',   8, '$kskong_id', '$kskong_id', true, 'IC', '{}'::jsonb, true, true)
 ON CONFLICT (token_id) DO UPDATE 
 SET name       = EXCLUDED.name,
     symbol     = EXCLUDED.symbol,
     decimals   = EXCLUDED.decimals,
     canister_id= EXCLUDED.canister_id,
+    address    = EXCLUDED.address,
     on_kong    = EXCLUDED.on_kong,
     token_type = EXCLUDED.token_type,
     raw_json   = EXCLUDED.raw_json,
@@ -1251,9 +1262,9 @@ EOF
 
     print_success "Local database deployed successfully with local canister IDs!"
     echo -e "\nInitialized tokens with these local canister IDs:"
-    echo "CKUSDT: $ksusdt_id"
-    echo "CKBTC:  $ksbtc_id"
-    echo "CKETH:  $kseth_id"
+    echo "KSUSDT: $ksusdt_id"
+    echo "KSBTC:  $ksbtc_id"
+    echo "KSETH:  $kseth_id"
     echo "ICP:    $ksicp_id"
     echo "KONG:   $kskong_id"
 }
@@ -1262,9 +1273,25 @@ manage_faucet() {
     print_info "Local Kong Faucet"
     echo "-----------------"
 
-    # Check if we're in local network
-    if [ "$(dfx identity get-network)" != "local" ]; then
+    # Check if we're in local network using DFX_NETWORK
+    if [ "${DFX_NETWORK:-local}" != "local" ]; then
         print_error "Faucet is only available on local network"
+        return 1
+    fi
+
+    # Verify kong_token_minter identity exists
+    if ! dfx identity list | grep -q "kong_token_minter"; then
+        print_error "kong_token_minter identity not found"
+        print_info "Creating kong_token_minter identity..."
+        dfx identity new --disable-encryption kong_token_minter || {
+            print_error "Failed to create kong_token_minter identity"
+            return 1
+        }
+    fi
+
+    # Switch to kong_token_minter identity
+    if ! dfx identity use kong_token_minter; then
+        print_error "Failed to switch to kong_token_minter identity"
         return 1
     fi
 
@@ -1275,15 +1302,23 @@ manage_faucet() {
         return 1
     fi
 
-    # Prompt for principal ID
+    # Prompt for principal ID with cancel option
     local to_principal_id
-    read -p "Enter principal ID to airdrop tokens to (or press Enter to use kong_user1): " input_principal
-    if [ -z "$input_principal" ]; then
-        to_principal_id=$(dfx identity --network local --identity kong_user1 get-principal)
-        echo -e "Using kong_user1 principal: ${GREEN}$to_principal_id${NC}"
-    else
-        to_principal_id="$input_principal"
-    fi
+    read -p "Enter principal ID to airdrop tokens to (press Enter for kong_user1, 'n' to cancel): " input_principal
+    
+    case "$input_principal" in
+        "n"|"N")
+            print_info "Faucet operation cancelled"
+            return 0
+            ;;
+        "")
+            to_principal_id=$(dfx identity --identity kong_user1 get-principal)
+            echo -e "Using kong_user1 principal: ${GREEN}$to_principal_id${NC}"
+            ;;
+        *)
+            to_principal_id="$input_principal"
+            ;;
+    esac
 
     print_info "Starting token transfers..."
 
@@ -1317,6 +1352,84 @@ manage_faucet() {
     transfer_token "kskong" "500_000_000_000_000" "5,000,000" 8
 
     print_success "All transfers completed!"
+
+    # Switch back to kong identity after transfers
+    dfx identity use kong || true
+}
+
+# Add new function for deploying everything
+deploy_everything_local() {
+    print_info "Starting comprehensive local deployment..."
+    
+    # 1. Check if repositories are selected
+    if [ -z "$KONG_REPO" ] || [ -z "$APIS_REPO" ]; then
+        print_error "Repositories not selected. Please run option 2 first."
+        return 1
+    fi
+
+    # 2. Deploy local DFX environment
+    print_info "Step 1/4: Deploying local DFX environment..."
+    deploy_local_dfx
+    if [ $? -ne 0 ]; then
+        print_error "Failed to deploy local DFX environment"
+        return 1
+    fi
+
+    # 3. Deploy local database
+    print_info "Step 2/4: Deploying local database..."
+    deploy_local_database
+    if [ $? -ne 0 ]; then
+        print_error "Failed to deploy local database"
+        return 1
+    fi
+
+    # 4. Start database jobs
+    print_info "Step 3/4: Starting database jobs..."
+    if [ -n "$JOBS_PID" ] && ps -p "$JOBS_PID" > /dev/null; then
+        print_warning "Jobs are already running (PID: $JOBS_PID)"
+    else
+        (cd "$APIS_REPO" && nohup cargo run > /tmp/cargo_run.log 2>&1 & echo $! > /tmp/jobs_pid)
+        JOBS_PID=$(cat /tmp/jobs_pid)
+        rm -f /tmp/jobs_pid
+        save_config
+        print_success "Database jobs started (PID: $JOBS_PID)"
+    fi
+
+    # 5. Start NPM in local mode
+    print_info "Step 4/4: Starting NPM in local mode..."
+    if [ -n "$NPM_PID" ] && ps -p "$NPM_PID" > /dev/null; then
+        print_warning "NPM is already running (PID: $NPM_PID)"
+    else
+        NPM_ENV="local"
+        DFX_NETWORK="local"
+        INDEXER_URL="http://localhost:8080"
+        API_URL="http://localhost:8080"
+        
+        write_env_file
+        
+        if [ -d "$KONG_REPO/src/kong_svelte" ]; then
+            cd "$KONG_REPO/src/kong_svelte" || exit
+            if [ -f "package.json" ]; then
+                npm install
+                export DFX_NETWORK="local"
+                npm run dev > "/tmp/kong_npm_$$.log" 2>&1 &
+                NPM_PID=$!
+                save_config
+                print_success "NPM started in local mode (PID: $NPM_PID)"
+            fi
+        fi
+    fi
+
+    print_success "Local deployment completed! 🎉"
+    echo -e "\n${GREEN}Services Status:${NC}"
+    echo -e "→ DFX: Running locally (http://localhost:4943)"
+    echo -e "→ Database: Running locally (PostgreSQL)"
+    echo -e "→ Jobs: Running (PID: $JOBS_PID)"
+    echo -e "→ Frontend: Running at http://localhost:5173"
+    echo -e "\n${YELLOW}Next steps:${NC}"
+    echo "1. Use option 9 to airdrop test tokens to your principal"
+    echo "2. Visit http://localhost:5173 to access the frontend"
+    echo "3. Use option 8 to monitor the status of all services"
 }
 
 main() {
@@ -1359,10 +1472,9 @@ main() {
                 ;;
             7) manage_npm_environment ;;
             8) show_status ;;
-            9)
-                print_info "Exiting..."
-                exit 0
-                ;;
+            9) manage_faucet ;;        # New case for faucet
+            10) deploy_everything_local ;;  # New case
+            11) print_info "Exiting..."; exit 0 ;;  # Updated exit option
             *)
                 print_error "Invalid option. Please try again."
                 ;;
