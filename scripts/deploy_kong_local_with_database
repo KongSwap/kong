@@ -554,22 +554,22 @@ show_status() {
     echo -e "\n${BLUE}Core Canisters Status${NC} (kong identity)"
     echo "--------------------------------------------------"
     
-    # Run core canister checks in parallel
-    check_canister_status_with_timeout "kong_backend" "Kong Backend" "kong" &
-    check_canister_status_with_timeout "kong_data" "Kong Data" "kong" &
-    check_canister_status_with_timeout "kong_svelte" "Kong Frontend" "kong" &
-    check_canister_status_with_timeout "kong_faucet" "Kong Faucet" "kong" &
-    wait
+    # Run core canister checks sequentially instead of parallel for cleaner output
+    check_canister_status_with_timeout "kong_backend" "Kong Backend" "kong"
+    check_canister_status_with_timeout "kong_data" "Kong Data" "kong"
+    check_canister_status_with_timeout "kong_svelte" "Kong Frontend" "kong"
+    check_canister_status_with_timeout "kong_faucet" "Kong Faucet" "kong"
 
+    # Add a separator before the next section
     echo -e "\n${BLUE}Token Ledgers Status${NC} (kong_token_minter)"
     echo "--------------------------------------------------"
+
+    # Run token ledger checks sequentially
     local tokens=("ksusdt" "ksicp" "ksbtc" "kseth" "kskong")
-    
     for token in "${tokens[@]}"; do
         local token_upper=$(echo "$token" | tr '[:lower:]' '[:upper:]')
-        check_canister_status_with_timeout "${token}_ledger" "${token_upper} Ledger" "kong_token_minter" &
+        check_canister_status_with_timeout "${token}_ledger" "${token_upper} Ledger" "kong_token_minter"
     done
-    wait
 
     # Calculate and display totals
     if [ -f "/tmp/total_cycles_$$" ] && [ -f "/tmp/total_instructions_$$" ]; then
@@ -895,6 +895,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_DB=kong-apis2
+POSTGRES_PASSWORD=postgres
 
 # API Configuration
 INDEXER_URL=https://api.kongswap.io
