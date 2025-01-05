@@ -20,7 +20,7 @@ declare global {
       icrc1: boolean;
       icrc2: boolean;
       icrc3: boolean;
-      is_removed: boolean;
+      is_removed?: boolean;
       pool_symbol: string;
       pools: any[];
       metrics: {
