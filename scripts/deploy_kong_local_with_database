@@ -548,29 +548,46 @@ show_status() {
     fi
     echo
 
-    # Use the 'kong' identity to check some canister statuses
-    dfx identity use kong &>/dev/null
-
+    # Initialize temporary files for totals
+    rm -f "/tmp/total_cycles_$$" "/tmp/total_instructions_$$"
+    
     echo -e "\n${BLUE}Core Canisters Status${NC} (kong identity)"
     echo "--------------------------------------------------"
     
-    # Check core canisters with timeout
-    check_canister_status_with_timeout "kong_backend" "Kong Backend"
-    check_canister_status_with_timeout "kong_data" "Kong Data"
-    check_canister_status_with_timeout "kong_svelte" "Kong Frontend"
-    check_canister_status_with_timeout "kong_faucet" "Kong Faucet"
+    # Run core canister checks in parallel
+    check_canister_status_with_timeout "kong_backend" "Kong Backend" "kong" &
+    check_canister_status_with_timeout "kong_data" "Kong Data" "kong" &
+    check_canister_status_with_timeout "kong_svelte" "Kong Frontend" "kong" &
+    check_canister_status_with_timeout "kong_faucet" "Kong Faucet" "kong" &
+    wait
 
-    # Token ledgers with kong_token_minter identity
-    dfx identity use kong_token_minter &>/dev/null
     echo -e "\n${BLUE}Token Ledgers Status${NC} (kong_token_minter)"
     echo "--------------------------------------------------"
     local tokens=("ksusdt" "ksicp" "ksbtc" "kseth" "kskong")
     
     for token in "${tokens[@]}"; do
-        local token_upper
-        token_upper=$(echo "$token" | tr '[:lower:]' '[:upper:]')
-        check_canister_status_with_timeout "${token}_ledger" "${token_upper} Ledger"
+        local token_upper=$(echo "$token" | tr '[:lower:]' '[:upper:]')
+        check_canister_status_with_timeout "${token}_ledger" "${token_upper} Ledger" "kong_token_minter" &
     done
+    wait
+
+    # Calculate and display totals
+    if [ -f "/tmp/total_cycles_$$" ] && [ -f "/tmp/total_instructions_$$" ]; then
+        local total_cycles=$(awk '{sum += $1} END {print sum}' "/tmp/total_cycles_$$")
+        local total_instructions=$(awk '{sum += $1} END {print sum}' "/tmp/total_instructions_$$")
+        
+        echo -e "\n${BLUE}Total Resource Usage${NC}"
+        echo "--------------------------------------------------"
+        echo -e "Total Cycles: ${GREEN}$(format_cycles "$total_cycles")${NC}"
+        echo -e "Total Instructions: ${GREEN}$total_instructions${NC}"
+        
+        # Calculate instruction cost (approximate)
+        local instruction_cost=$(echo "scale=8; $total_instructions * 0.000000001" | bc)
+        echo -e "Estimated Instruction Cost: ${YELLOW}\$${instruction_cost}${NC}"
+    fi
+
+    # Cleanup temporary files
+    rm -f "/tmp/total_cycles_$$" "/tmp/total_instructions_$$"
 
     # Internet Identity
     dfx identity use kong &>/dev/null
@@ -720,31 +737,60 @@ show_status() {
     dfx identity use kong &>/dev/null
 }
 
-# Add this helper function near the top with other utility functions
-check_canister_status_with_timeout() {
+# Add this helper function for cycle calculations
+format_cycles() {
+    local cycles=$1
+    local dollars=$(echo "scale=4; $cycles * 1.35 / 1000000000000" | bc)
+    echo "${cycles} Cycles (\$${dollars})"
+}
+
+function check_canister_status_with_timeout() {
     local canister=$1
     local display_name=$2
-    local timeout=5
+    local identity=${3:-kong}
+    local timeout=2
 
-    # Use timeout command if available, otherwise use perl
+    # Switch to specified identity
+    dfx identity use "$identity" &>/dev/null
+
+    # Temporary file for status output
+    local temp_file="/tmp/dfx_status_${canister}_$$"
+
     if command -v timeout >/dev/null 2>&1; then
-        if timeout $timeout dfx canister status "$canister" >/dev/null 2>&1; then
-            local status
-            status=$(timeout $timeout dfx canister status "$canister" 2>/dev/null | grep "Status:" | cut -d: -f2 | tr -d ' ')
-            echo -e "$display_name: ${GREEN}$status${NC}"
-            return 0
-        fi
+        timeout $timeout dfx canister status "$canister" > "$temp_file" 2>&1
     else
-        # Fallback to perl timeout for macOS
-        if perl -e 'alarm shift; exec @ARGV' "$timeout" dfx canister status "$canister" >/dev/null 2>&1; then
-            local status
-            status=$(perl -e 'alarm shift; exec @ARGV' "$timeout" dfx canister status "$canister" 2>/dev/null | grep "Status:" | cut -d: -f2 | tr -d ' ')
-            echo -e "$display_name: ${GREEN}$status${NC}"
-            return 0
-        fi
+        perl -e 'alarm shift; exec @ARGV' "$timeout" dfx canister status "$canister" > "$temp_file" 2>&1
     fi
-    echo -e "$display_name: ${RED}Not Deployed or Not Responding${NC}"
-    return 1
+
+    if [ $? -eq 0 ]; then
+        # Extract values only once to avoid duplicate processing
+        local status=$(grep "Status:" "$temp_file" | cut -d: -f2 | tr -d ' ')
+        local balance=$(grep "Balance:" "$temp_file" | awk '{print $2}' | tr -d '_')
+        local queries=$(grep "Number of queries:" "$temp_file" | awk '{print $4}')
+        local instructions=$(grep "Instructions spent in queries:" "$temp_file" | awk '{print $5}' | tr -d '_')
+        local memory_size=$(grep "Memory Size:" "$temp_file" | awk '{print $3}' | sed 's/Nat(//' | sed 's/)//')
+        
+        # Format memory size in MB
+        local memory_mb=$(echo "scale=2; $memory_size / 1048576" | bc)
+        
+        # Output in a clear, organized format
+        echo -e "${display_name}:"
+        echo -e "  Status:       ${GREEN}$status${NC}"
+        [ -n "$balance" ] && echo -e "  Balance:      ${BLUE}$(format_cycles "$balance")${NC}"
+        [ -n "$queries" ] && echo -e "  Queries:      $queries"
+        [ -n "$instructions" ] && echo -e "  Instructions: $instructions"
+        [ -n "$memory_mb" ] && echo -e "  Memory:       ${memory_mb}MB"
+        echo ""  # Add spacing between canisters
+        
+        # Save stats for total calculation
+        [ -n "$balance" ] && echo "$balance" >> "/tmp/total_cycles_$$"
+        [ -n "$instructions" ] && echo "$instructions" >> "/tmp/total_instructions_$$"
+    else
+        echo -e "${display_name}: ${RED}Not Deployed or Not Responding${NC}"
+        echo ""  # Add spacing between canisters
+    fi
+
+    rm -f "$temp_file"
 }
 
 #----------------------------------------------------------------------
