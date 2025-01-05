@@ -17,9 +17,9 @@ export const createAnonymousActorHelper = async (canisterId: string, idl: any) =
       return actorCache.get(cacheKey);
     }
 
-    const host = import.meta.env.DFX_NETWORK !== "ic"
+    const host = import.meta.env.VITE_DFX_NETWORK !== "ic"
       ? "http://localhost:4943"
-      : "https://icp0.io";
+      : "https://ic0.app";
 
     const agent = new HttpAgent({
       host,
@@ -31,7 +31,7 @@ export const createAnonymousActorHelper = async (canisterId: string, idl: any) =
     });
 
     // Always fetch root key in local development
-    if (import.meta.env.DFX_NETWORK !== "ic") {
+    if (import.meta.env.VITE_DFX_NETWORK !== "ic") {
       try {
         await agent.fetchRootKey();
         console.log('Root key fetched successfully for', canisterId);
@@ -64,13 +64,13 @@ export const clearActorCache = () => {
 // Helper to check if agent can connect
 export const checkAgentConnection = async () => {
   try {
-    const host = import.meta.env.DFX_NETWORK !== "ic"
+    const host = import.meta.env.VITE_DFX_NETWORK !== "ic"
       ? "http://localhost:4943"
-      : "https://icp0.io";
+      : "https://ic0.app";
 
     const agent = new HttpAgent({ host });
     
-    if (import.meta.env.DFX_NETWORK !== "ic") {
+    if (import.meta.env.VITE_DFX_NETWORK !== "ic") {
       await agent.fetchRootKey();
     }
     
@@ -84,29 +84,29 @@ export const checkAgentConnection = async () => {
 // Helper to get agent status
 export const getAgentStatus = async () => {
   try {
-    const host = import.meta.env.DFX_NETWORK !== "ic"
+    const host = import.meta.env.VITE_DFX_NETWORK !== "ic"
       ? "http://localhost:4943"
-      : "https://icp0.io";
+      : "https://ic0.app";
 
     const agent = new HttpAgent({ host });
     
-    if (import.meta.env.DFX_NETWORK !== "ic") {
+    if (import.meta.env.VITE_DFX_NETWORK !== "ic") {
       await agent.fetchRootKey();
     }
 
     return {
       connected: true,
       host,
-      network: import.meta.env.DFX_NETWORK
+      network: import.meta.env.VITE_DFX_NETWORK
     };
   } catch (error) {
     return {
       connected: false,
       error: error.message,
-      host: import.meta.env.DFX_NETWORK !== "ic"
+      host: import.meta.env.VITE_DFX_NETWORK !== "ic"
         ? "http://localhost:4943"
-        : "https://icp0.io",
-      network: import.meta.env.DFX_NETWORK
+        : "https://ic0.app",
+      network: import.meta.env.VITE_DFX_NETWORK
     };
   }
 };
