@@ -10,6 +10,7 @@
   import { updateWorkerService } from "$lib/services/updateWorkerService";
   import AddToHomeScreen from "$lib/components/common/AddToHomeScreen.svelte";
   import QRModal from '$lib/components/common/QRModal.svelte';
+  import { browser } from '$app/environment';
 
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
@@ -32,8 +33,20 @@
     return initializationPromise;
   }
 
-  onMount(() => {
-    init();
+  onMount(async () => {
+    if (browser) {
+      // Check if we need a fresh start
+      const needsFreshStart = localStorage.getItem('needsFreshStart');
+      if (needsFreshStart) {
+        localStorage.removeItem('needsFreshStart');
+        // Force reload one more time to ensure clean state
+        window.location.replace(window.location.origin + window.location.pathname);
+        return;
+      }
+      
+      // Normal initialization
+      init();
+    }
   });
 
   onDestroy(() => {

@@ -7,7 +7,6 @@ import BigNumber from "bignumber.js";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { swapStatusStore } from "./swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
-import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
 import { canisterId as kongBackendCanisterId } from "../../../../../declarations/kong_backend";
 import { requireWalletConnection } from "$lib/services/auth";
 
@@ -100,11 +99,18 @@ export class SwapService {
       if (!payToken?.symbol || !receiveToken?.symbol) {
         throw new Error("Invalid tokens provided for swap quote");
       }
-      const actor =  auth.getActor(
+      
+      const actor = await auth.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
-        { anon: true },
+        { anon: true }
       );
+
+      // Debug logs to inspect the actor and available methods
+      console.log("Actor object:", actor);
+      console.log("Available methods:", Object.keys(actor));
+
+      // Try the original method name since it might be correct after all
       return await actor.swap_amounts(
         payToken.symbol,
         payAmount,
@@ -112,6 +118,7 @@ export class SwapService {
       );
     } catch (error) {
       console.error("Error getting swap amounts:", error);
+      console.error("Params:", { payToken, payAmount, receiveToken });
       throw error;
     }
   }
@@ -213,11 +220,12 @@ export class SwapService {
    */
   public static async requests(requestIds: bigint[]): Promise<RequestResponse> {
     try {
-      const actor =  auth.getActor(
+      const actor =  await auth.getActor(
         kongBackendCanisterId,
         canisterIDLs.kong_backend,
         { anon: true }
       );
+      console.log("REQUESTS ACTOR", actor);
       const result = await actor.requests(requestIds);
       return result;
     } catch (error) {

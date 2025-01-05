@@ -9,13 +9,15 @@
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
-
+  import { updateWorkerService } from '$lib/services/updateWorkerService';
+  import { poolStore } from '$lib/services/pools/poolStore';
+  
   let soundEnabled = true;
   let settingsSubscription: () => void;
   let slippageValue: number = 2.0;
   let slippageInputValue = '2.0';
-  let isMobile = false;
   let isCustomSlippage = false;
+  let isMobile = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];
@@ -155,13 +157,17 @@
 
   async function resetDatabase() {
     try {
-      await kongDB.delete();
-      await assetCache.clearCache();
-      toastStore.success('Database cleared successfully');
-      window.location.reload();
+      // First, stop any active workers/services
+      await updateWorkerService.destroy();
+      
+      // Perform reset
+      await poolStore.reset();
+      
+      // Reload after a short delay to ensure cleanup
+      setTimeout(() => window.location.reload(), 100);
     } catch (error) {
-      console.error('Error clearing database:', error);
-      toastStore.error('Failed to clear database');
+      console.error('Reset failed:', error);
+      toastStore.error('Reset failed');
     }
   }
 
@@ -233,9 +239,9 @@
     </div>
 
     <div class="setting-row">
-      <span class="setting-label">Clear App Data</span>
+      <span class="setting-label">Reset KongSwap</span>
       <button class="action-button warning" on:click={resetDatabase}>
-        Clear Data
+        Reset App
       </button>
     </div>
   </div>

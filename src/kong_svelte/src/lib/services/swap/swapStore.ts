@@ -215,6 +215,12 @@ function createSwapStatusStore() {
                     token: swap.fees.token
                 } : undefined
             };
+        },
+
+        reset: () => {
+            // Create a new writable store with empty state
+            const { set } = writable<Record<string, SwapStatus>>({});
+            set({});
         }
     };
 }

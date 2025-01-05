@@ -45,16 +45,42 @@ class UpdateWorkerService {
     }
   }
 
-  destroy() {
-    if (this.priceWorker) {
-      this.priceWorker.terminate();
-      this.priceWorker = null;
-      this.priceWorkerApi = null;
-    }
-    if (this.stateWorker) {
-      this.stateWorker.terminate();
-      this.stateWorker = null;
-      this.stateWorkerApi = null;
+  async destroy() {
+    try {
+      // Remove event listener
+      document.removeEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
+
+      // Clear update interval if it exists
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+        this.updateInterval = null;
+      }
+
+      // Stop workers if they exist
+      if (this.priceWorkerApi) {
+        await this.priceWorkerApi.stopUpdates?.();
+      }
+      if (this.stateWorkerApi) {
+        await this.stateWorkerApi.stopUpdates?.();
+      }
+
+      // Terminate workers
+      if (this.priceWorker) {
+        this.priceWorker.terminate();
+        this.priceWorker = null;
+        this.priceWorkerApi = null;
+      }
+      if (this.stateWorker) {
+        this.stateWorker.terminate();
+        this.stateWorker = null;
+        this.stateWorkerApi = null;
+      }
+
+      // Reset initialization state
+      this.isInitialized = false;
+      this.isInBackground = false;
+    } catch (error) {
+      console.error("Error during worker service cleanup:", error);
     }
   }
 
