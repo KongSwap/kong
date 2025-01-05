@@ -32,7 +32,7 @@ load_env_variables() {
     export POSTGRES_PORT="5432"
     export POSTGRES_USER="postgres"
     export POSTGRES_DB="kong-apis2"
-    export POSTGRES_PASSWORD=""
+    export POSTGRES_PASSWORD="postgres"
 
     # Try to load from .env if it exists
     if [ -f "$env_file" ]; then
