@@ -5,11 +5,11 @@ import { kongDB } from "../db";
 const STATIC_ASSETS_URL = `${INDEXER_URL}`;
 
 export const parseTokens = async (
-  data: FE.Token[],
+  data: {tokens: FE.Token[], total: number},
 ): Promise<FE.Token[]> => {
   try {
     const existingTokens = await kongDB.tokens.toArray();
-    const icTokens: FE.Token[] = await Promise.all(data.map(async (token) => {
+    const icTokens: FE.Token[] = await Promise.all(data.tokens.map(async (token) => {
       const logoUrl = DEFAULT_LOGOS[token.canister_id] || 
         (token?.logo_url
           ? token.logo_url.startsWith('http')
