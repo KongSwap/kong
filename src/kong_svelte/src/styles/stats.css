@@ -32,49 +32,53 @@
 
 .positive {
   @apply text-kong-accent-green;
+  @apply flex items-center justify-end;
+  @apply w-full h-full;
 }
 
 .negative {
   @apply text-kong-accent-red;
+  @apply flex items-center justify-end;
+  @apply w-full h-full;
 }
 
-/* Price flash animations */
+/* Updated Price flash animations */
 @keyframes flash-green {
   0% {
-    color: #fff;
+    background: transparent;
   }
   15% {
-    color: #00cc81;
+    background: rgba(0, 204, 129, 0.1);
   }
   85% {
-    color: #00cc81;
+    background: rgba(0, 204, 129, 0.1);
   }
   100% {
-    color: #fff;
+    background: transparent;
   }
 }
 
 @keyframes flash-red {
   0% {
-    color: #fff;
+    background: transparent;
   }
   15% {
-    color: #d11b1b;
+    background: rgba(209, 27, 27, 0.1);
   }
   85% {
-    color: #d11b1b;
+    background: rgba(209, 27, 27, 0.1);
   }
   100% {
-    color: #fff;
+    background: transparent;
   }
 }
 
 .flash-green {
-  animation: flash-green 1.2s ease-out !important;
+  animation: flash-green 2s ease-out !important;
 }
 
 .flash-red {
-  animation: flash-red 1.2s ease-out !important;
+  animation: flash-red 2s ease-out !important;
 }
 
 /* Custom Scrollbar */
@@ -121,4 +125,58 @@
     transform: rotate(-3deg) scale(1.1);
     opacity: 0.95;
   }
+}
+
+/* Add these utility classes for table column widths */
+.col-rank {
+  width: 50px;
+  min-width: 50px;
+}
+
+.col-token {
+  width: 250px;
+  min-width: 250px;
+}
+
+.col-price {
+  width: 100px;
+  min-width: 100px;
+}
+
+.col-change {
+  width: 100px;
+  min-width: 100px;
+}
+
+.col-volume {
+  width: 130px;
+  min-width: 130px;
+}
+
+.col-mcap {
+  width: 130px;
+  min-width: 130px;
+}
+
+.col-tvl {
+  width: 130px;
+  min-width: 130px;
+}
+
+/* Add these styles for the bevel effect */
+.stats-row {
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0.05),
+              inset 0 0 0 0 rgba(0, 0, 0, 0.1);
+}
+
+.stats-row:hover {
+  box-shadow: inset 1px 1px 1px 0 rgba(255, 255, 255, 0.05),
+              inset -1px -1px 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Add styles for the header bevel effect */
+.stats-header {
+  box-shadow: inset 1px 1px 2px 0 rgba(255, 255, 255, 0.07),
+              inset -1px -1px 2px 0 rgba(0, 0, 0, 0.15);
 }

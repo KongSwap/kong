@@ -1,8 +1,9 @@
-import { tokenStore } from "$lib/services/tokens/tokenStore";
-import { poolStore } from "$lib/services/pools/poolStore";
+import { loadBalances } from "$lib/services/tokens/tokenStore";
+import { loadPools } from "$lib/services/pools/poolStore";
 import { get, writable, type Readable } from "svelte/store";
 import { auth } from "$lib/services/auth";
 import { updateWorkerService } from "$lib/services/updateWorkerService";
+import { TokenService } from "./tokens";
 
 interface LoadingState {
   isLoading: boolean;
@@ -76,14 +77,14 @@ export class AppLoader {
       
       // Load tokens and wait for completion
       await Promise.all([
-        tokenStore.loadTokens(),
+        TokenService.fetchTokens(),
       ]);
 
-      await poolStore.loadPools();
+      await loadPools();
 
       // If wallet is connected, load balances
       if (wallet?.isConnected && wallet?.account?.owner) {
-        await tokenStore.loadBalances(wallet.account.owner);
+        await loadBalances(wallet.account.owner.toString());
       }
     } catch (error) {
       console.error("Failed to initialize tokens:", error);

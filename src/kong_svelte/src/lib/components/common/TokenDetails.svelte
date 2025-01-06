@@ -1,25 +1,27 @@
 <script lang="ts">
-    import Modal from '$lib/components/common/Modal.svelte';
-    import SendTokens from '$lib/components/sidebar/SendTokens.svelte';
-    import { createEventDispatcher } from 'svelte';
+  import Modal from "$lib/components/common/Modal.svelte";
+  import SendTokens from "$lib/components/sidebar/SendTokens.svelte";
+  import { createEventDispatcher } from "svelte";
 
-    export let token: FE.Token;
-    
-    const dispatch = createEventDispatcher();
+  export let token: FE.Token;
 
-    function handleClose() {
-        dispatch('close');
-    }
+  const dispatch = createEventDispatcher();
+  type TokenWithAmount = FE.Token & { amount?: string };
+  let activeTab: "send" | "receive" = "send";
+
+  function handleClose() {
+    dispatch("close");
+  }
 </script>
 
 <Modal
-    isOpen={true}
-    onClose={handleClose}
-    title="Send {token.name}"
-    width="min(700px, 95vw)"
-    height="min(420px, 95vh)"
+  isOpen={true}
+  onClose={handleClose}
+  title="Send {token.name}"
+  width="min(700px, 95vw)"
+  height="min(420px, 95vh)"
 >
-        <div class="tab-content">
-            <SendTokens token={token} />
-        </div>
+  <div class="tab-content">
+    <SendTokens {token} />
+  </div>
 </Modal>

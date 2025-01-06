@@ -1,26 +1,24 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { onMount, afterUpdate } from "svelte";
+  import { onMount } from "svelte";
   import QRCode from 'qrcode';
-  import { writable } from 'svelte/store';
   import { toastStore } from "$lib/stores/toastStore";
   import Modal from "$lib/components/common/Modal.svelte";
-  import { QrCode, Clipboard } from 'lucide-svelte';
+  import { QrCode, Copy, Check } from 'lucide-svelte';
   import { Principal } from '@dfinity/principal';
   import { AccountIdentifier } from '@dfinity/ledger-icp';
   import { SubAccount } from '@dfinity/ledger-icp';
 
-  const qrModalStore = writable({
+  let qrModal = {
     isOpen: false,
     qrData: '',
     title: ''
-  });
+  };
 
-  export let display: 'both' | 'principal' | 'account' = 'both';
-  let principalCopied = writable(false);
-  let accountCopied = writable(false);
-  let copyLoading = writable(false);
-  let qrLoading = writable(false);
+  let principalCopied = false;
+  let accountCopied = false;
+  let copyLoading = false;
+  let qrLoading = false;
   let activeTab: 'principal' | 'account' = 'principal';
   let mounted = false;
 
@@ -29,20 +27,26 @@
     accountId: string;
     principalQR: string;
     accountQR: string;
+    defaultAccountId: string;
   }
 
   let identity: UserIdentity = {
     principalId: '',
     accountId: '',
     principalQR: '',
-    accountQR: ''
+    accountQR: '',
+    defaultAccountId: ''
   };
+
+  let lastPrincipal = '';
+  let lastSubaccount: any = null;
+  let cachedAccountIds = { withSubaccount: '', default: '' };
 
   async function generateQR(text: string | undefined): Promise<string> {
     if (!text || typeof text !== 'string' || text.trim() === '') return '';
     
     try {
-      qrLoading.set(true);
+      qrLoading = true;
       const safeText = text.toString().trim();
       return await QRCode.toDataURL(safeText, {
         width: 200,
@@ -57,29 +61,29 @@
       console.error('QR generation failed:', err);
       return '';
     } finally {
-      qrLoading.set(false);
+      qrLoading = false;
     }
   }
 
-  const handleCopy = async (text: string, type: 'principal' | 'account') => {
+  async function handleCopy(text: string, type: 'principal' | 'account') {
     try {
-      copyLoading.set(true);
+      copyLoading = true;
       await navigator.clipboard.writeText(text);
       if (type === 'principal') {
-        principalCopied.set(true);
-        setTimeout(() => principalCopied.set(false), 2000);
+        principalCopied = true;
+        setTimeout(() => (principalCopied = false), 2000);
       } else {
-        accountCopied.set(true);
-        setTimeout(() => accountCopied.set(false), 2000);
+        accountCopied = true;
+        setTimeout(() => (accountCopied = false), 2000);
       }
-      toastStore.success('Copied to clipboard!', 2000);
+      toastStore.success('Copied to clipboard!');
     } catch (error) {
       console.error('Failed to copy:', error);
       toastStore.error('Failed to copy to clipboard');
     } finally {
-      copyLoading.set(false);
+      copyLoading = false;
     }
-  };
+  }
 
   function convertToSubaccount(raw: any): SubAccount | undefined {
     try {
@@ -119,7 +123,15 @@
     }
   }
 
-  function createAccountIdentifier(principalStr: string, rawSubaccount: any): { withSubaccount: string, default: string } {
+  function createAccountIdentifier(principalStr: string, rawSubaccount: any) {
+    // Return cached result if inputs haven't changed
+    if (
+      principalStr === lastPrincipal &&
+      JSON.stringify(rawSubaccount) === JSON.stringify(lastSubaccount)
+    ) {
+      return cachedAccountIds;
+    }
+
     try {
       const principal = Principal.fromText(principalStr);
       
@@ -136,10 +148,15 @@
         subAccount: undefined  // This will use the default subaccount
       }).toHex();
       
-      return {
+      // Update cache
+      lastPrincipal = principalStr;
+      lastSubaccount = rawSubaccount;
+      cachedAccountIds = {
         withSubaccount,
         default: defaultAccountId
       };
+      
+      return cachedAccountIds;
     } catch (error) {
       console.error('Error creating account identifier:', error);
       return {
@@ -153,42 +170,52 @@
     if (!auth.pnp?.account?.owner) return;
     
     const principal = auth.pnp.account.owner;
-    const principalStr = typeof principal === 'string' ? principal : principal?.toText?.() || '';
+    const principalStr =
+      typeof principal === 'string' ? principal : principal?.toText?.() || '';
     
-    // Log debug information
-    console.log('Account Debug:', {
-      principal: principalStr,
-      rawSubaccount: auth.pnp?.account?.subaccount,
-      subaccountArray: Array.from(auth.pnp?.account?.subaccount || [])
-    });
+    const accountIds = createAccountIdentifier(
+      principalStr,
+      auth.pnp?.account?.subaccount
+    );
     
-    const accountIds = createAccountIdentifier(principalStr, auth.pnp?.account?.subaccount);
-    
-    console.log('Generated Account IDs:', {
-      withSubaccount: accountIds.withSubaccount,
-      default: accountIds.default
-    });
-
     identity = {
       ...identity,
       principalId: principalStr,
       accountId: accountIds.withSubaccount,
       defaultAccountId: accountIds.default
     };
+  }
 
-    // Generate QR codes
-    if (identity.principalId && identity.accountId) {
-      const [principalQR, accountQR] = await Promise.all([
-        generateQR(identity.principalId),
-        generateQR(identity.accountId)
-      ]);
-
-      identity = {
-        ...identity,
-        principalQR,
-        accountQR
-      };
+  async function getQRCode(type: 'principal' | 'account') {
+    const text = type === 'principal' ? identity.principalId : identity.defaultAccountId;
+    try {
+      return await QRCode.toDataURL(text, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+    } catch (err) {
+      console.error("QR generation failed:", err);
+      return "";
     }
+  }
+
+  async function openQrModal(type: 'principal' | 'account') {
+    qrLoading = true;
+    try {
+      const qrData = await getQRCode(type);
+      const title = type === 'principal' ? 'Principal ID' : 'Account ID';
+      qrModal = { isOpen: true, qrData, title };
+    } finally {
+      qrLoading = false;
+    }
+  }
+
+  function closeQrModal() {
+    qrModal.isOpen = false;
   }
 
   onMount(async () => {
@@ -196,360 +223,217 @@
     await updateIdentity();
   });
 
-  $: if (mounted && auth.pnp?.account?.owner) {
+  $: if (
+    mounted &&
+    auth.pnp?.account?.owner &&
+    identity.principalId !== auth.pnp.account.owner.toString()
+  ) {
     updateIdentity();
-  }
-
-  function openQrModal(qr: string, type: 'principal' | 'account') {
-    const title = type === 'principal' ? 'Principal ID' : 'Account ID';
-    qrModalStore.update(state => ({ isOpen: true, qrData: qr, title }));
   }
 </script>
 
-{#if $qrModalStore.isOpen}
-  <Modal
-    isOpen={$qrModalStore.isOpen}
-    onClose={() => qrModalStore.update(state => ({ ...state, isOpen: false }))}
-    title={$qrModalStore.title}
-    width="min(90vw, 500px)"
-    height="auto"
-    variant="green"
-  >
-    <div class="qr-modal-content">
-      <div class="qr-display">
-        <div class="qr-backdrop">
-          <img src={$qrModalStore.qrData} alt={$qrModalStore.title} class="qr-blur" />
+<!-- Identity Panel -->
+<div class="container">
+  {#if qrModal.isOpen}
+    <Modal
+      isOpen={qrModal.isOpen}
+      onClose={closeQrModal}
+      title={qrModal.title}
+      width="min(400px, 75vw)"
+      height="auto"
+      variant="solid"
+    >
+      <div class="modal-content">
+        <div class="qr-wrapper">
+          <img 
+            src={qrModal.qrData} 
+            alt={qrModal.title} 
+            class="qr-code" 
+          />
         </div>
-        <img src={$qrModalStore.qrData} alt={$qrModalStore.title} class="qr-main" />
+        <p class="modal-text">
+          Scan this QR code to share your {qrModal.title.toLowerCase()}.
+        </p>
       </div>
-      <div class="qr-description ">
-        <p class="text-sm opacity-75">Scan this QR code to quickly share your {$qrModalStore.title.toLowerCase()} with others.</p>
+    </Modal>
+  {/if}
+
+  <div class="card">
+    <div class="card-header">
+      <span>Identity Type</span>
+    </div>
+    <div class="input-group">
+      <div class="input-wrapper">
+        <select 
+          bind:value={activeTab}
+          class="select-input"
+        >
+          <option value="principal">Principal ID</option>
+          <option value="account">Account ID</option>
+        </select>
       </div>
     </div>
-  </Modal>
-{/if}
+  </div>
 
-<div class="tab-panel">
-    <div class="detail-section">
-      {#if display === 'both'}
-        <div class="tabs">
-          <button
-            class="tab-button {activeTab === 'principal' ? 'active' : ''}"
-            on:click={() => activeTab = 'principal'}
-          >
-            Principal ID
-          </button>
-          <button
-            class="tab-button {activeTab === 'account' ? 'active' : ''}"
-            on:click={() => activeTab = 'account'}
-          >
-            Account ID
-          </button>
-        </div>
-      {/if}
-
-      <div class="info-grid mt-4">
-        {#if (activeTab === 'principal' || display === 'principal') && (display !== 'account')}
-          <div class="id-card">
-            <div class="id-header">
-              <span>Principal ID</span>
-              <div class="header-actions">
-                <button 
-                  type="button"
-                  class="action-button"
-                  on:click={() => identity.principalQR && openQrModal(identity.principalQR, 'principal')}
-                  title="Show QR Code"
-                >
-                  <QrCode class="w-4 h-4" />
-                  <span class="button-text">Show QR</span>
-                </button>
-                <button 
-                  type="button"
-                  class="action-button"
-                  on:click={() => handleCopy(identity.principalId, 'principal')}
-                >
-                  <Clipboard class="w-4 h-4" />
-                  <span class="button-text">Copy</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="input-group">
-              <div class="input-wrapper">
-                <input
-                  type="text"
-                  readonly
-                  value={identity.principalId || '...'}
-                  class="monospace-input"
-                />
-              </div>
-            </div>
-
-            <div class="info-tooltip mt-4">
-              <p>About Principal ID:</p>
-              <ul>
-                <li>Your general wallet address used across all Internet Computer dapps</li>
-                <li>Used for sending/receiving ICRC tokens (ICP's ERC-20 variant)</li>
-                <li>Principal ID is used to generate the Account ID</li>
-              </ul>
-            </div>
-          </div>
-        {/if}
-
-        {#if (activeTab === 'account' || display === 'account') && (display !== 'principal')}
-          <div class="id-card">
-            <div class="id-header">
-              <span>Account ID</span>
-              <div class="header-actions">
-                <button 
-                  type="button"
-                  class="action-button"
-                  on:click={() => identity.accountQR && openQrModal(identity.accountQR, 'account')}
-                  title="Show QR Code"
-                >
-                  <QrCode class="w-4 h-4" />
-                  <span class="button-text">Show QR</span>
-                </button>
-                <button 
-                  type="button"
-                  class="action-button"
-                  on:click={() => handleCopy(identity.defaultAccountId, 'account')}
-                >
-                  <Clipboard class="w-4 h-4" />
-                  <span class="button-text">Copy</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="input-group">
-              <div class="input-wrapper">
-                <input
-                  type="text"
-                  readonly
-                  value={identity.defaultAccountId || '...'}
-                  class="monospace-input"
-                />
-              </div>
-            </div>
-
-            <div class="info-tooltip mt-4">
-              <p>About Account ID:</p>
-              <ul>
-                <li>Use this when moving ICP to/from exchanges</li>
-                <li>A unique identifier derived from your Principal ID</li>
-                <li>Required for ICP token transactions</li>
-                <li class="text-yellow-400">Cannot be used for ICRC token transactions</li>
-              </ul>
-            </div>
-          </div>
-        {/if}
+  <div class="card">
+    <div class="card-header">
+      <span>{activeTab === 'principal' ? 'Principal ID' : 'Account ID'}</span>
+      <div class="header-actions">
+        <button
+          class="icon-button"
+          on:click={() => handleCopy(activeTab === 'principal' ? identity.principalId : identity.defaultAccountId, activeTab)}
+          disabled={copyLoading}
+        >
+          {#if (activeTab === 'principal' ? principalCopied : accountCopied)}
+            <Check class="w-4 h-4 text-kong-success" />
+            <span class="button-text">Copied</span>
+          {:else}
+            <Copy class="w-4 h-4" />
+            <span class="button-text">Copy</span>
+          {/if}
+        </button>
+        <button
+          class="icon-button"
+          on:click={() => openQrModal(activeTab)}
+          disabled={qrLoading}
+        >
+          <QrCode class="w-4 h-4" />
+          <span class="button-text">QR Code</span>
+        </button>
       </div>
     </div>
+    <div class="input-group">
+      <div class="input-wrapper">
+        <input
+          type="text"
+          readonly
+          value={activeTab === 'principal' ? identity.principalId : identity.defaultAccountId}
+          class="text-input"
+        />
+      </div>
+
+      <div class="info-card">
+        <div class="info-content">
+          {#if activeTab === 'principal'}
+            <p class="info-title">Your <strong>Principal ID</strong> is your unique identity on the Internet Computer.</p>
+            <ul class="info-list">
+              <li>Acts as your universal username across IC applications</li>
+              <li>Controls access to your assets and data</li>
+              <li>Is required for interacting with most dApps</li>
+            </ul>
+          {:else}
+            <p class="info-title">Your <strong>Account ID</strong> is used for holding and transferring tokens.</p>
+            <ul class="info-list">
+              <li>If you don't see your tokens, ensure you're using the correct Account ID</li>
+              <li>The Account ID includes a specific subaccount</li>
+              <li>The Default Account ID is commonly used for receiving ICP</li>
+            </ul>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<style lang="postcss">
-  .tab-panel {
-    animation: fadeIn 0.3s ease;
-    padding-bottom: 4rem;
+<style scoped lang="postcss">
+  .container {
+    @apply flex flex-col gap-4 p-4;
   }
 
-  .detail-section {
-    padding-bottom: 1rem;
+  .card {
+    @apply bg-kong-bg-light rounded-md px-4 py-3
+           border border-kong-border hover:border-kong-border
+           transition-all duration-200;
+
+    &:first-child {
+      @apply mt-0;
+    }
   }
 
-  .tabs {
-    display: flex;
-    gap: 0.25rem;
-    margin-bottom: 1rem;
-    padding: 0.25rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 0.5rem;
+  .card-header {
+    @apply flex justify-between items-center mb-3 
+           text-kong-text-primary font-medium;
   }
 
-  .tab-button {
-    flex: 1;
-    padding: 0.5rem;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    border-radius: 0.375rem;
-    transition: all 0.2s;
+  .header-actions {
+    @apply flex items-center gap-2;
   }
 
-  .tab-button.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
+  .input-group {
+    @apply flex flex-col gap-2;
   }
 
-  .info-grid {
-    display: grid;
-    gap: 1rem;
+  .input-wrapper {
+    @apply relative flex items-center;
   }
 
-  .action-button {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 0.375rem;
-    transition: all 0.2s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 28px;
+  .select-input {
+    @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
+           text-kong-text-primary border border-kong-border
+           hover:border-kong-border focus:border-kong-primary
+           focus:ring-1 focus:ring-kong-primary/20 focus:outline-none
+           transition-all duration-200;
   }
 
-  .action-button:hover {
-    background: rgba(255, 255, 255, 0.2);
+  .icon-button {
+    @apply flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium
+           rounded-md bg-kong-bg-dark text-kong-text-secondary
+           hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-200;
+
+    .button-text {
+      @apply font-medium;
+    }
   }
 
-  .action-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .qr-wrapper {
+    @apply flex justify-center p-4 bg-white rounded-md
+           border border-kong-border;
   }
 
-  @keyframes spin {
-    to { transform: rotate(360deg); }
+  .qr-code {
+    @apply w-48 h-48 object-contain;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  .text-input {
+    @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
+           text-kong-text-primary border border-kong-border
+           hover:border-kong-border transition-all duration-200
+           font-mono text-xs tracking-wider leading-relaxed;
   }
 
-  .info-tooltip {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  .info-card {
+    @apply p-3 bg-kong-bg-light rounded-md
+           border border-kong-border;
   }
 
-  .info-tooltip p {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
+  .info-content {
+    @apply space-y-2;
   }
 
-  .info-tooltip ul {
-    list-style-type: disc;
-    padding-left: 1.5rem;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.875rem;
+  .info-title {
+    @apply text-sm text-kong-text-secondary;
+
+    strong {
+      @apply text-kong-text-primary font-medium;
+    }
   }
 
-  .info-tooltip li {
-    margin: 0.25rem 0;
+  .info-list {
+    @apply list-disc pl-4 space-y-1;
+
+    li {
+      @apply text-xs text-kong-text-secondary;
+    }
   }
 
-  .qr-modal-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
-    padding: 2rem;
-    position: relative;
-    z-index: 1;
+  .modal-content {
+    @apply p-6 flex flex-col items-center gap-4;
   }
 
-  .qr-display {
-    position: relative;
-    width: min(100%, 300px);
-    aspect-ratio: 1;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 1rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .qr-backdrop {
-    position: absolute;
-    inset: -20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    border-radius: 1rem;
-    z-index: -1;
-    opacity: 0.6;
-  }
-
-  .qr-blur {
-    width: 120%;
-    height: 120%;
-    object-fit: cover;
-    filter: blur(20px) brightness(0.3);
-    transform: scale(1.2);
-  }
-
-  .qr-main {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: white;
-    padding: 1rem;
-    border-radius: 0.5rem;
-  }
-
-  .qr-description {
-    text-align: center;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.95rem;
-    width: 88%;
-    line-height: 1.5;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .info-tooltip {
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .action-button {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 0.375rem;
-    transition: all 0.2s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 28px;
-  }
-
-  .action-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-
-  .action-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .action-button {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 0.375rem;
-    transition: all 0.2s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 28px;
+  .modal-text {
+    @apply text-center text-sm text-kong-text-secondary;
   }
 
   .id-header {

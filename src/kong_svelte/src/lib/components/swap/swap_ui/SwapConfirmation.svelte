@@ -6,10 +6,10 @@
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { onMount, onDestroy } from "svelte";
-  import { formatTokenValue } from '$lib/utils/tokenFormatters';
+  import { fade } from "svelte/transition";
   import { toastStore } from "$lib/stores/toastStore";
   import { createEventDispatcher } from "svelte";
-    import { formatTokenAmount } from "$lib/utils/numberFormatUtils";
+  import { formatBalance } from "$lib/utils/numberFormatUtils";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -25,10 +25,13 @@
   let isLoading = false;
   let error = "";
   let quoteUpdateInterval: ReturnType<typeof setInterval>;
-  const QUOTE_UPDATE_INTERVAL = 1500; // 1.5 seconds
+  const QUOTE_UPDATE_INTERVAL = 1000; // 1 second
 
-  $: payUsdValue = formatTokenAmount(payAmount.toString(), payToken?.decimals);
-  $: receiveUsdValue = formatTokenAmount(receiveAmount.toString(), receiveToken?.decimals);
+  $: payUsdValue = formatBalance(payAmount.toString(), payToken?.decimals);
+  $: receiveUsdValue = formatBalance(
+    receiveAmount.toString(),
+    receiveToken?.decimals,
+  );
 
   $: quoteData = {
     routingPath,
@@ -45,10 +48,11 @@
   onMount(async () => {
     cleanComponent();
     await updateQuote(); // Initial quote update
-    
+
     // Set up periodic quote updates
     quoteUpdateInterval = setInterval(async () => {
-      if (!isLoading) { // Only update if not processing a swap
+      if (!isLoading) {
+        // Only update if not processing a swap
         await updateQuote();
       }
     }, QUOTE_UPDATE_INTERVAL);
@@ -67,17 +71,17 @@
 
     isLoading = true;
     error = "";
-    
+
     try {
       const result = await onConfirm();
-      
+
       if (result === true) {
-        swapState.update(state => ({
+        swapState.update((state) => ({
           ...state,
           showConfirmation: false,
           isProcessing: false,
           error: null,
-          showSuccessModal: true
+          showSuccessModal: true,
         }));
         onClose?.();
         return true;
@@ -108,7 +112,7 @@
     if (!lpFees || !Array.isArray(lpFees)) {
       return 0;
     }
-    
+
     return lpFees.reduce((total, fee) => total + Number(fee), 0);
   }
 
@@ -137,7 +141,7 @@
           receiveToken.decimals,
         );
 
-        dispatch('quoteUpdate', { receiveAmount });
+        dispatch("quoteUpdate", { receiveAmount });
 
         if (quote.Ok.txs.length > 0) {
           routingPath = [
@@ -146,11 +150,11 @@
           ];
 
           // Only update fees if they exist in the quote
-          const newGasFees = quote.Ok.txs.map(tx => 
-            SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals)
+          const newGasFees = quote.Ok.txs.map((tx) =>
+            SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals),
           );
-          const newLpFees = quote.Ok.txs.map(tx => 
-            SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals)
+          const newLpFees = quote.Ok.txs.map((tx) =>
+            SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals),
           );
 
           // Only update if we have valid fees
@@ -178,8 +182,10 @@
   isOpen={true}
   title="Review Swap"
   {onClose}
-  variant="green"
+  variant="solid"
   height="auto"
+  maxHeight="90vh"
+  className="mobile:!p-0"
 >
   {#if error}
     <div class="error-container">
@@ -187,7 +193,7 @@
       <p class="error-message">{error}</p>
     </div>
   {:else if payToken && receiveToken}
-    <div class="confirmation-container">
+    <div class="confirmation-container px-4" transition:fade={{ duration: 200 }}>
       <div class="content-wrapper">
         <div class="sections-wrapper">
           <PayReceiveSection
@@ -198,9 +204,7 @@
             {payUsdValue}
             {receiveUsdValue}
           />
-          <RouteSection
-            routingPath={quoteData.routingPath}
-          />
+          <RouteSection routingPath={quoteData.routingPath} />
           <FeesSection
             totalGasFee={calculateTotalFee(quoteData.gasFees)}
             totalLPFee={calculateTotalFee(quoteData.lpFees)}
@@ -208,36 +212,35 @@
             {receiveToken}
           />
         </div>
-
-        <div class="button-container">
-          <button
-            class="swap-button"
-            class:processing={isLoading}
-            class:shine-animation={!isLoading}
-            on:click={handleConfirm}
-            disabled={isLoading}
-            on:mousedown={() => console.log("Button pressed")}
-          >
-            <div class="button-content">
-              <span class="button-text">
-                {#if isLoading}
-                  Processing...
-                {:else}
-                  Confirm Swap
-                {/if}
-              </span>
-              {#if isLoading}
-                <div class="loading-spinner"></div>
-              {/if}
-            </div>
-            {#if !isLoading}
-              <div class="button-glow"></div>
-              <div class="shine-effect"></div>
-              <div class="ready-glow"></div>
-            {/if}
-          </button>
-        </div>
       </div>
+    </div>
+    <div class="button-container">
+      <button
+        class="swap-button"
+        class:processing={isLoading}
+        class:shine-animation={!isLoading}
+        on:click={handleConfirm}
+        disabled={isLoading}
+        on:mousedown={() => {}}
+      >
+        <div class="button-content">
+          <span class="button-text">
+            {#if isLoading}
+              Processing...
+            {:else}
+              Confirm Swap
+            {/if}
+          </span>
+          {#if isLoading}
+            <div class="loading-spinner"></div>
+          {/if}
+        </div>
+        {#if !isLoading}
+          <div class="button-glow"></div>
+          <div class="shine-effect"></div>
+          <div class="ready-glow"></div>
+        {/if}
+      </button>
     </div>
   {/if}
 </Modal>
@@ -246,9 +249,9 @@
   .confirmation-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    width: 100%;
     backdrop-filter: blur(16px);
-    border-radius: 24px;
+    @apply rounded-md;
     transition: all 0.3s ease-in-out;
   }
 
@@ -261,16 +264,16 @@
   .sections-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 16px;    
+    gap: 16px;
     padding: 4px;
     flex: 1;
-    border-radius: 24px;
+    @apply rounded-md;
   }
 
   .sections-wrapper > :global(*) {
     position: relative;
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
+    @apply rounded-md;
     border: 1px solid rgba(255, 255, 255, 0.05);
     transition: all 0.2s ease;
     width: 100%;
@@ -278,8 +281,13 @@
   }
 
   .button-container {
-    padding-top: 16px;
+    padding: 16px;
     margin-top: auto;
+    width: 100%;
+    position: sticky;
+    bottom: 0;
+    backdrop-filter: blur(8px);
+    border-radius: 0 0 12px 12px;
   }
 
   .error-container {
@@ -296,7 +304,7 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: rgba(239, 68, 68, 0.2);
+    @apply bg-kong-bg-dark;
     color: rgb(239, 68, 68);
     display: flex;
     align-items: center;
@@ -315,10 +323,11 @@
     position: relative;
     width: 100%;
     padding: 16px;
-    border-radius: 16px;
+    @apply rounded-md;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(135deg, 
-      rgba(55, 114, 255, 0.95) 0%, 
+    background: linear-gradient(
+      135deg,
+      rgba(55, 114, 255, 0.95) 0%,
       rgba(111, 66, 193, 0.95) 100%
     );
     box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
@@ -389,9 +398,15 @@
   }
 
   @keyframes pulse {
-    0% { opacity: 0.9; }
-    50% { opacity: 0.7; }
-    100% { opacity: 0.9; }
+    0% {
+      opacity: 0.9;
+    }
+    50% {
+      opacity: 0.7;
+    }
+    100% {
+      opacity: 0.9;
+    }
   }
 
   .shine-effect {
@@ -433,16 +448,19 @@
   }
 
   @keyframes shine {
-    0%, 100% {
+    0%,
+    100% {
       left: -100%;
     }
-    35%, 65% {
+    35%,
+    65% {
       left: 200%;
     }
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 0;
       transform: scale(1);
     }
@@ -455,11 +473,12 @@
   @media (max-width: 640px) {
     .confirmation-container {
       padding: 0;
+      height: auto;
     }
 
     .content-wrapper {
-      padding: 0;
-      justify-content: space-between;
+      padding: 16px;
+      height: auto;
     }
 
     .sections-wrapper {
@@ -468,8 +487,9 @@
     }
 
     .button-container {
-      padding-top: 0;
+      padding: 16px;
       margin-top: 0;
+      border-radius: 0;
     }
 
     .error-container {

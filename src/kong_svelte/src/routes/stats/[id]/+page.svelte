@@ -1,23 +1,22 @@
 <script lang="ts">
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { page } from "$app/stores";
   import { onDestroy } from "svelte";
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
-  import { poolStore, type Pool } from "$lib/services/pools";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { userPoolBalances } from "$lib/services/pools/poolStore";
+  import {type Pool } from "$lib/services/pools";
+  import { livePools } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
-  import { toastStore } from "$lib/stores/toastStore";
-  import LiquidityPoolsPanel from "$lib/components/stats/LiquidityPoolsPanel.svelte";
-  import StatPanel from "$lib/components/stats/StatPanel.svelte";
   import { goto } from "$app/navigation";
   import { ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
+  import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { Droplets, ArrowLeftRight } from "lucide-svelte";
+    import { kongDB } from "$lib/services/db";
 
-  // Ensure formattedTokens and poolStore are initialized
-  if (!formattedTokens || !poolStore) {
+  if (!formattedTokens || !livePools) {
     throw new Error("Stores are not initialized");
   }
 
@@ -45,44 +44,45 @@
   });
 
   // Remove the duplicate state declarations and keep only one effect
-  $effect(() => {
+  $effect(async () => {
     const pageId = $page.params.id;
-
-    if (!$formattedTokens?.length || !pageId) {
-      token = undefined;
-      return;
-    }
-
-    const foundToken = $formattedTokens.find(
-      (t) => t.address === pageId || t.canister_id === pageId,
-    );
+    const foundToken = await kongDB.tokens.get(pageId);
 
     if (foundToken) {
       const converted = foundToken;
       token = converted;
+      hasManualSelection = false;
+      initialPoolSet = false;
     } else {
       console.warn("Token not found:", $page.params.id);
       token = undefined;
+      hasManualSelection = false;
+      initialPoolSet = false;
     }
   });
 
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
   let selectedPool = $state<Pool | undefined>(undefined);
+  let hasManualSelection = $state(false);
+  let initialPoolSet = $state(false);
+
   $effect(() => {
-    if (!token?.canister_id || !$poolStore?.pools) return;
+    if (!token?.canister_id || !$livePools) return;
+    if (hasManualSelection) return;
+    if (initialPoolSet) return;
 
     // Get all pools containing this token
-    const relevantPools = $poolStore.pools.filter((p) => {
+    const relevantPools = $livePools.filter((p) => {
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
       const hasTVL = Number(p.tvl) > 0;
       const hasVolume = Number(p.volume_24h) > 0;
-      return hasToken && hasTVL && hasVolume; // Only include pools with actual volume
+      return hasToken && hasTVL && hasVolume;
     });
 
     if (relevantPools.length === 0) {
       // If no pools with volume, fall back to pools with just TVL
-      const poolsWithTvl = $poolStore.pools.filter((p) => {
+      const poolsWithTvl = $livePools.filter((p) => {
         const hasToken =
           p.address_0 === token.canister_id ||
           p.address_1 === token.canister_id;
@@ -101,6 +101,7 @@
           tvl: String(highestTvlPool.tvl),
           lp_token_supply: String(highestTvlPool.lp_token_supply),
         } as unknown as Pool;
+        initialPoolSet = true;
       }
       return;
     }
@@ -118,6 +119,7 @@
         tvl: String(highestVolumePool.tvl),
         lp_token_supply: String(highestVolumePool.lp_token_supply),
       } as unknown as Pool;
+      initialPoolSet = true;
     }
   });
 
@@ -166,248 +168,279 @@
   $effect(() => {
     isChartDataReady = Boolean(selectedPool && token);
   });
+
+  // Add tab state
+  let activeTab = $state<"overview" | "pools" | "transactions">("overview");
+
+  // Add pool selector state
+  let isPoolSelectorOpen = $state(false);
+
+  // Store relevant pools for selection
+  let relevantPools = $state<BE.Pool[]>([]);
+
+  // Update relevantPools when poolStore changes
+  $effect(() => {
+    if (!token?.canister_id || !$livePools) {
+      relevantPools = [];
+      return;
+    }
+
+    relevantPools = $livePools
+      .filter((p) => {
+        const hasToken =
+          p.address_0 === token.canister_id ||
+          p.address_1 === token.canister_id;
+        const hasTVL = Number(p.tvl) > 0;
+        return hasToken && hasTVL;
+      })
+      .sort((a, b) => Number(b.volume_24h || 0) - Number(a.volume_24h || 0));
+  });
 </script>
 
-<div class="p-4 pt-0 mt-2">
-  {#if !$formattedTokens || !$poolStore?.pools}
-    <div class="text-white">Loading token data...</div>
+<div class="p-4 pt-0">
+  {#if !$formattedTokens || !$livePools}
+    <!-- Improved loading state -->
+    <div class="flex flex-col items-center justify-center min-h-[300px]">
+      <div class="loader mb-4"></div>
+      <div class="text-kong-text-primary/70">Loading token data...</div>
+    </div>
   {:else if !token}
-    <div class="text-white">
-      <!-- Add a no token found and loading indicator -->
-      
+    <div class="flex flex-col items-center justify-center min-h-[300px]">
+      <div class="text-kong-text-primary/70">Token not found</div>
+      <button
+        class="mt-4 px-4 py-2 bg-kong-bg-dark rounded-lg hover:bg-kong-bg-dark/80 transition-colors"
+        on:click={() => goto("/stats")}
+      >
+        Return to Stats
+      </button>
     </div>
   {:else}
     <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
       <!-- Token Header - Non-fixed with border radius -->
-      <div class="bg-[#1a1d29] border-b border-white/5 rounded-2xl">
-        <div class="p-4">
-          <div class="max-w-[1300px] mx-auto">
-            <!-- Token Info Container -->
-            <div class="flex flex-col md:flex-row md:items-center gap-4">
-              <div class="flex flex-row md:flex-row md:items-center gap-4">
-                <!-- Back Button -->
-                <button
-                  title="Back"
-                  aria-label="Back"
-                  onclick={() => goto("/stats")}
-                  class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 px-2.5 text-sm bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] text-white/70 rounded-lg transition-colors duration-200 w-fit"
+      <Panel variant="transparent" type="main">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <!-- Left side with back button and token info -->
+            <div class="flex items-center gap-4">
+              <button
+                title="Back"
+                aria-label="Back"
+                on:click={() => goto("/stats")}
+                class="flex min-h-[40px] md:min-h-[48px] flex-col items-center justify-center gap-2 px-2.5 text-sm bg-kong-bg-secondary hover:bg-kong-bg-secondary/80 text-kong-text-primary/70 rounded-lg transition-colors duration-200 w-fit"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-3.5 w-3.5 md:h-4 md:w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-3.5 w-3.5 md:h-4 md:w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </button>
-
-                <div class="flex items-center gap-3 md:gap-4">
-                  <TokenImages
-                    tokens={token ? [token] : []}
-                    size={36}
-                    containerClass="md:w-12 md:h-12"
+                  <path
+                    fill-rule="evenodd"
+                    d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z"
+                    clip-rule="evenodd"
                   />
-                  <div class="flex items-center gap-2">
-                    <h1 class="text-lg md:text-2xl font-bold text-white">
-                      {token.name}
-                    </h1>
-                    <div class="text-sm md:text-base text-[#8890a4]">
-                      ({token.symbol})
-                    </div>
-                  </div>
-                </div>
-              </div>
+                </svg>
+              </button>
 
-              <!-- Canister ID - Hidden on mobile -->
-              <div class="hidden md:flex md:flex-1 md:justify-end">
-                <div
-                  class="bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full md:w-auto transition-colors duration-200"
-                >
-                  <div class="truncate">
-                    <span class="text-[#8890a4] text-sm"
-                      >{token.canister_id}</span
-                    >
-                  </div>
-                  <button
-                    class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
-                    aria-label="Copy canister ID"
-                    onclick={() => {
-                      navigator.clipboard.writeText(token.canister_id);
-                      toastStore.success("Canister ID copied!", 2000);
-                    }}
-                    title="Copy canister ID"
+              <div class="flex items-center gap-3">
+                <TokenImages
+                  tokens={token ? [token] : []}
+                  size={36}
+                  containerClass="md:w-12 md:h-12"
+                />
+                <div class="flex items-center gap-2">
+                  <h1
+                    class="text-lg md:text-2xl font-bold text-kong-text-primary"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4 text-[#8890a4]"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </button>
+                    {token.name}
+                  </h1>
+                  <div class="text-sm md:text-base text-[#8890a4]">
+                    ({token.symbol})
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Mobile Canister ID -->
-            <div class="md:hidden mt-4">
-              <div
-                class="bg-[#2a2d3d]/60 hover:bg-[#2a2d3d] px-4 py-2 rounded-lg flex items-center justify-between gap-3 w-full transition-colors duration-200"
-              >
-                <div class="truncate">
-                  <span class="text-[#8890a4] text-sm">{token.canister_id}</span
-                  >
-                </div>
-                <button
-                  class="p-1.5 hover:bg-white/10 rounded-md transition-colors duration-200 flex-shrink-0"
-                  aria-label="Copy canister ID"
-                  onclick={() => {
-                    navigator.clipboard.writeText(token.canister_id);
-                    toastStore.success("Canister ID copied!", 2000);
-                  }}
-                  title="Copy canister ID"
+            <!-- Right side with tab names -->
+            <div class="hidden md:flex items-center gap-6 text-[#8890a4]">
+              <!-- Trade and add lp buttons -->
+              <div class="flex items-center gap-2 justify-end">
+                <ButtonV2
+                  variant="solid"
+                  size="md"
+                  className="w-full text-nowrap"
+                  on:click={() =>
+                    goto(
+                      `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                    )}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 text-[#8890a4]"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    />
-                  </svg>
-                </button>
+                <div class="flex items-center gap-2">
+                 <Droplets class="w-4 h-4" /> Add Liquidity
+                </div>
+                </ButtonV2>
+                <ButtonV2
+                  variant="solid"
+                  size="md"
+                  on:click={() =>
+                    goto(
+                      `/swap?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                    )}
+                >
+                  <div class="flex items-center gap-2">
+                    <ArrowLeftRight class="w-4 h-4" /> Swap
+                  </div>
+                </ButtonV2>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <!-- Price Panel -->
-        <StatPanel
-          title="Price"
-          value={formatUsdValue(token?.metrics?.price || 0)}
-          color="purple"
-        >
-          <svelte:fragment slot="subtitle">
-            {#if !token?.metrics?.price_change_24h || token.metrics.price_change_24h === "n/a"}
-              <span class="text-purple-400">0%</span>
-            {:else if token.metrics.price_change_24h === null || Number(token.metrics.price_change_24h) === 0}
-              <span class="text-slate-400">--</span>
-            {:else}
-              <span
-                class={Number(token.metrics.price_change_24h) > 0
-                  ? "text-green-500"
-                  : "text-red-500"}
-              >
-                {Number(token.metrics.price_change_24h) > 0 ? "+" : ""}{Number(
-                  token.metrics.price_change_24h,
-                ).toFixed(2)}%
-              </span>
-            {/if}
-            <span class="text-slate-400 ml-1">24h</span>
-          </svelte:fragment>
-        </StatPanel>
-
-        <!-- 24h Volume Panel -->
-        <StatPanel
-          title="24h Volume"
-          value={formatUsdValue(Number(token.metrics.volume_24h))}
-          subtitle={token.metrics.volume_24h
-            ? `${calculateVolumePercentage(Number(token.metrics.volume_24h), Number(token.metrics.market_cap))} of mcap`
-            : "No volume data"}
-          color="purple"
-        />
-
-        <!-- Market Cap Panel -->
-        <StatPanel
-          title="Market Cap"
-          value={formatUsdValue(token?.metrics?.market_cap)}
-          subtitle={`Rank #${marketCapRank !== null ? marketCapRank : "N/A"}`}
-          color="green"
-        />
-
-        <!-- Total Supply Panel -->
-        <StatPanel
-          title="Total Supply"
-          value={token?.metrics?.total_supply
-            ? formatToNonZeroDecimal(
-                Number(token.metrics?.total_supply) / 10 ** token.decimals,
-              )
-            : "0"}
-          subtitle={`${token?.symbol || ""} tokens`}
-          color="orange"
-        />
-      </div>
-
-      <!-- Chart Section -->
-      <Panel variant="blue" type="main" className="!p-0 flex-1 border-none">
-        <div class="h-[450px] min-h-[400px] w-full">
-          {#if isChartDataReady}
-            <TradingViewChart
-              poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
-              symbol={token && selectedPool
-                ? `${token.symbol}/${
-                    selectedPool.address_0 === token.canister_id
-                      ? $formattedTokens?.find(
-                          (t) => t.canister_id === selectedPool.address_1,
-                        )?.symbol
-                      : $formattedTokens?.find(
-                          (t) => t.canister_id === selectedPool.address_0,
-                        )?.symbol
-                  }`
-                : ""}
-              quoteToken={selectedPool?.address_0 === token?.canister_id
-                ? $formattedTokens?.find(
-                    (t) => t.canister_id === selectedPool?.address_1,
-                  )
-                : $formattedTokens?.find(
-                    (t) => t.canister_id === selectedPool?.address_0,
-                  )}
-              baseToken={token}
-            />
-          {:else}
-            <div class="flex items-center justify-center h-full">
-              <div class="loader"></div>
-            </div>
-          {/if}
-        </div>
       </Panel>
 
-      <!-- Transactions Section -->
-      <div class="flex flex-col md:flex-row gap-4">
-        <LiquidityPoolsPanel
-          {token}
-          pools={$poolStore?.pools || []}
-          userBalances={$userPoolBalances.map((balance) => ({
-            ...balance,
-            balance: balance.balance.toString(),
-          }))}
-        />
+      <!-- Tab Content -->
+      {#if activeTab === "overview"}
+        <div
+          role="tabpanel"
+          id="overview-panel"
+          aria-labelledby="overview-tab"
+          tabindex="0"
+        >
+          <!-- Overview Layout -->
+          <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Mobile-first layout -->
+            <div class="flex flex-col gap-6 w-full lg:hidden">
+              <!-- Pool Selector -->
+              <PoolSelector
+                {selectedPool}
+                {token}
+                formattedTokens={$formattedTokens}
+                {relevantPools}
+                onPoolSelect={(pool) => {
+                  hasManualSelection = true;
+                  selectedPool = {
+                    ...pool,
+                    pool_id: String(pool.pool_id),
+                    tvl: String(pool.tvl),
+                    lp_token_supply: String(pool.lp_token_supply),
+                    volume_24h: String(pool.daily_volume || "0"),
+                  } as Pool;
+                }}
+              />
+              
+              <!-- Token Statistics -->
+              <TokenStatistics {token} {marketCapRank} />
+              
+              <!-- Chart Panel -->
+              <Panel variant="transparent" type="main" className="!p-0 border-none">
+                <div class="h-[450px] min-h-[400px] w-full">
+                  {#if isChartDataReady}
+                    <TradingViewChart
+                      poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                      symbol={token && selectedPool
+                        ? `${token.symbol}/${
+                            selectedPool.address_0 === token.canister_id
+                              ? $formattedTokens?.find(
+                                  (t) =>
+                                    t.canister_id === selectedPool.address_1,
+                                )?.symbol
+                              : $formattedTokens?.find(
+                                  (t) =>
+                                    t.canister_id === selectedPool.address_0,
+                                )?.symbol
+                          }`
+                        : ""}
+                      quoteToken={selectedPool?.address_0 === token?.canister_id
+                        ? $formattedTokens?.find(
+                            (t) => t.canister_id === selectedPool?.address_1,
+                          )
+                        : $formattedTokens?.find(
+                            (t) => t.canister_id === selectedPool?.address_0,
+                          )}
+                      baseToken={token}
+                    />
+                  {:else}
+                    <div class="flex items-center justify-center h-full">
+                      <div class="loader"></div>
+                    </div>
+                  {/if}
+                </div>
+              </Panel>
+              
+              <!-- Transactions Panel -->
+              {#if token && token.canister_id === $page.params.id}
+                <TransactionFeed {token} className="w-full !p-0" />
+              {/if}
+            </div>
 
-        {#if token && token.canister_id === $page.params.id}
-          <TransactionFeed {token} />
-        {/if}
-      </div>
+            <!-- Desktop layout - hidden on mobile -->
+            <div class="hidden lg:flex lg:flex-row gap-6 w-full">
+              <!-- Left Column - Chart and Transactions -->
+              <div class="lg:w-[70%] flex flex-col gap-6">
+                <!-- Chart Panel -->
+                <Panel variant="transparent" type="main" className="!p-0 border-none">
+                  <div class="h-[450px] min-h-[400px] w-full">
+                    {#if isChartDataReady}
+                      <TradingViewChart
+                        poolId={selectedPool ? Number(selectedPool.pool_id) : 0}
+                        symbol={token && selectedPool
+                          ? `${token.symbol}/${
+                              selectedPool.address_0 === token.canister_id
+                                ? $formattedTokens?.find(
+                                    (t) =>
+                                      t.canister_id === selectedPool.address_1,
+                                  )?.symbol
+                                : $formattedTokens?.find(
+                                    (t) =>
+                                      t.canister_id === selectedPool.address_0,
+                                  )?.symbol
+                            }`
+                          : ""}
+                        quoteToken={selectedPool?.address_0 === token?.canister_id
+                          ? $formattedTokens?.find(
+                              (t) => t.canister_id === selectedPool?.address_1,
+                            )
+                          : $formattedTokens?.find(
+                              (t) => t.canister_id === selectedPool?.address_0,
+                            )}
+                        baseToken={token}
+                      />
+                    {:else}
+                      <div class="flex items-center justify-center h-full">
+                        <div class="loader"></div>
+                      </div>
+                    {/if}
+                  </div>
+                </Panel>
+
+                <!-- Transactions Panel -->
+                {#if token && token.canister_id === $page.params.id}
+                  <TransactionFeed {token} className="w-full !p-0" />
+                {/if}
+              </div>
+
+              <!-- Right Column - Stats -->
+              <div class="lg:w-[30%] flex flex-col gap-4">
+                <PoolSelector
+                  {selectedPool}
+                  {token}
+                  formattedTokens={$formattedTokens}
+                  {relevantPools}
+                  onPoolSelect={(pool) => {
+                    hasManualSelection = true;
+                    selectedPool = {
+                      ...pool,
+                      pool_id: String(pool.pool_id),
+                      tvl: String(pool.tvl),
+                      lp_token_supply: String(pool.lp_token_supply),
+                      volume_24h: String(pool.daily_volume || "0"),
+                    } as Pool;
+                  }}
+                />
+                <TokenStatistics {token} {marketCapRank} />
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -461,5 +494,10 @@
       width: 48px;
       height: 48px;
     }
+  }
+
+  /* Add smooth transitions for tabs */
+  button {
+    transition: all 0.2s ease-in-out;
   }
 </style>

@@ -5,7 +5,6 @@ import { canisterId as kongBackendCanisterId } from "../../../../../declarations
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "../tokens/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
-import { AccountIdentifier } from '@dfinity/ledger-icp';
 
 export class IcrcService {
   private static handleError(methodName: string, error: any) {
@@ -68,7 +67,7 @@ export class IcrcService {
   ): Promise<Map<string, bigint>> {
     const results = new Map<string, bigint>();
     const subaccount = auth.pnp?.account?.subaccount 
-      ? Array.from(auth.pnp.account.subaccount)
+      ? Array.from(auth.pnp.account.subaccount) as number[]
       : undefined;
 
     // Group tokens by subnet to minimize subnet key fetches
@@ -89,7 +88,10 @@ export class IcrcService {
         );
 
         subnetTokens.forEach((token, i) => {
-          results.set(token.canister_id, balances[i]);
+          const balance = balances[i];
+          results.set(token.canister_id, 
+            typeof balance === 'bigint' ? balance : balance.default
+          );
         });
       }),
     );
@@ -143,13 +145,6 @@ export class IcrcService {
         },
       };
 
-      console.log("ICRC2_APPROVE ARGS:", {
-        ...approveArgs,
-        amount: approveArgs.amount.toString(),
-        expires_at: approveArgs.expires_at[0].toString(),
-      });
-
-
       const approveActor = auth.pnp.getActor(
         token.canister_id,
         canisterIDLs.icrc2,
@@ -167,9 +162,6 @@ export class IcrcService {
         amount: approveArgs.amount,
         timestamp: Date.now(),
       });
-      toastStore.success(
-        `Successfully approved ${token.symbol} for trading`,
-      );
 
       if ("Err" in result) {
         throw new Error(`ICRC2 approve error: ${JSON.stringify(result.Err)}`);
@@ -281,7 +273,7 @@ export class IcrcService {
         if (token.symbol === 'ICP' && typeof to === 'string' && to.length === 64) {
             const ledgerActor = auth.getActor(
                 token.canister_id, 
-                canisterIDLs["ICP"],
+                canisterIDLs.ICP,
                 { anon: false, requiresSigning: true }
             );
             

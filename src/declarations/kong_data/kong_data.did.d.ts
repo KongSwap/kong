@@ -62,7 +62,6 @@ export interface AddPoolReply {
 export interface ICTokenReply {
   'fee' : bigint,
   'decimals' : number,
-  'token' : string,
   'token_id' : number,
   'chain' : string,
   'name' : string,
@@ -88,7 +87,6 @@ export interface Icrc28TrustedOriginsResponse {
 export interface LPTokenReply {
   'fee' : bigint,
   'decimals' : number,
-  'token' : string,
   'token_id' : number,
   'chain' : string,
   'name' : string,

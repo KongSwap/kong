@@ -1,22 +1,16 @@
 <script lang="ts">
-  // UI Components
   import SwapPanel from "./swap_ui/SwapPanel.svelte";
   import TokenSelectorDropdown from "./swap_ui/TokenSelectorDropdown.svelte";
   import SwapConfirmation from "./swap_ui/SwapConfirmation.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
-  import Modal from "$lib/components/common/Modal.svelte";
-  import Settings from "$lib/components/settings/Settings.svelte";
   import Portal from 'svelte-portal';
-  import WalletProvider from "$lib/components/sidebar/WalletProvider.svelte";
-
-  // Svelte imports
+  import { Principal } from "@dfinity/principal";
   import { fade } from "svelte/transition";
   import { onMount, createEventDispatcher } from "svelte";
   import { get } from "svelte/store";
   import { replaceState } from "$app/navigation";
-
-  // Services and stores
+  import { page } from '$app/stores';
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
@@ -24,14 +18,16 @@
   import {
     tokenStore,
     getTokenDecimals,
+    liveTokens,
+    storedBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
+  import { CKUSDT_CANISTER_ID, KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+    import { livePools } from "$lib/services/pools/poolStore";
 
-  // Utils
-  import { getKongBackendPrincipal } from "$lib/utils/canisterIds";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -46,8 +42,6 @@
   export let initialToToken: FE.Token | null = null;
   export let currentMode: "normal" | "pro";
 
-  // Constants
-  const KONG_BACKEND_PRINCIPAL = getKongBackendPrincipal();
   const PANELS: PanelConfig[] = [
     { id: "pay", type: "pay", title: "You Pay" },
     { id: "receive", type: "receive", title: "You Receive" },
@@ -70,7 +64,6 @@
   let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
-  let showWalletModal = false;
 
   // Subscribe to swap status changes
   $: {
@@ -143,20 +136,41 @@
     Number($swapState.payAmount) >
       Number(getTokenBalance($swapState.payToken.canister_id));
 
-  $: buttonText = getButtonText(
-    showSuccessModal,
-    $swapState.isProcessing,
-    $swapState.error,
-    insufficientFunds,
-    $swapState.swapSlippage > userMaxSlippage,
-    $auth?.account?.owner,
-    $swapState.payAmount,
-  );
+  $: buttonText = (() => {
+    if (!$swapState.payToken || !$swapState.receiveToken) return "Select Tokens";
+    if (showSuccessModal) return "Swap";
+    if ($swapState.isProcessing) return "Processing...";
+    if ($swapState.error) return $swapState.error;
+    if (insufficientFunds) return "Insufficient Funds";
+    if (!hasValidPool) return "Pool Does Not Exist";
+    if ($swapState.swapSlippage > userMaxSlippage)
+      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
+    if (!$auth?.account?.owner) return "Click to Connect Wallet";
+    if (!$swapState.payAmount) return "Enter Amount";
+    return "SWAP";
+  })();
 
   // Initialize tokens when they become available
-  $: if ($tokenStore.tokens.length > 0 && !isInitialized) {
+  $: if ($liveTokens.length > 0 && !isInitialized) {
     isInitialized = true;
-    swapState.initializeTokens(initialFromToken, initialToToken);
+    
+    // If initial tokens are provided, verify they exist in liveTokens
+    const fromToken = initialFromToken 
+      ? $liveTokens.find(t => t.canister_id === initialFromToken.canister_id)
+      : $liveTokens.find(t => t.canister_id === CKUSDT_CANISTER_ID); // ICP
+
+    const toToken = initialToToken
+      ? $liveTokens.find(t => t.canister_id === initialToToken.canister_id)
+      : $liveTokens.find(t => t.canister_id === KONG_CANISTER_ID); // ckUSDT
+
+    // Update swap state with verified tokens
+    swapState.update(state => ({
+      ...state,
+      payToken: fromToken || null,
+      receiveToken: toToken || null,
+      payAmount: '',
+      receiveAmount: ''
+    }));
   }
 
   // Initialize on mount
@@ -173,31 +187,30 @@
   // Helper functions
   function getTokenBalance(tokenId: string): string {
     if (!tokenId) return "0";
-    const balance = $tokenStore.balances[tokenId]?.in_tokens ?? BigInt(0);
-    const token = $tokenStore.tokens.find((t) => t.canister_id === tokenId);
+    const balance = $storedBalancesStore[tokenId]?.in_tokens ?? BigInt(0);
+    const token = $liveTokens.find((t) => t.canister_id === tokenId);
     return token
       ? (Number(balance) / Math.pow(10, token.decimals)).toString()
       : "0";
   }
 
-  function getButtonText(
-    showSuccessModal: boolean,
-    isProcessing: boolean,
-    error: string | null,
-    insufficientFunds: boolean,
-    highSlippage: boolean,
-    isWalletConnected: boolean | undefined,
-    payAmount: string | null,
-  ): string {
-    if (showSuccessModal) return "Swap";
-    if (isProcessing) return "Processing...";
-    if (error) return error;
-    if (insufficientFunds) return "Insufficient Funds";
-    if (highSlippage)
-      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
-    if (!isWalletConnected) return "Click to Connect Wallet";
-    if (!payAmount) return "Enter Amount";
-    return "SWAP";
+  // Modify the poolExists function to add more debugging
+  function poolExists(payToken: FE.Token | null, receiveToken: FE.Token | null): boolean {
+    if (!payToken || !receiveToken) {
+      return false;
+    }
+    
+    if ($livePools.length === 0) {
+      return true; // Return true when pools aren't loaded yet
+    }
+    
+    const exists = $livePools.some(pool => 
+      (pool.symbol_0 === payToken.symbol && pool.symbol_1 === receiveToken.symbol) ||
+      (pool.symbol_0 === receiveToken.symbol && pool.symbol_1 === payToken.symbol)
+    );
+  
+    
+    return exists;
   }
 
   function getButtonTooltip(
@@ -205,7 +218,9 @@
     slippageTooHigh: boolean,
     error: string | null,
   ): string {
+    if (!$swapState.payToken || !$swapState.receiveToken) return "Select tokens to trade";
     if (!owner) return "Connect to trade";
+    if (!hasValidPool) return "Pool does not exist";
     if (insufficientFunds) {
       const balance = getTokenBalance($swapState.payToken?.canister_id);
       return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
@@ -280,7 +295,7 @@
         receiveToken: $swapState.receiveToken,
         receiveAmount: $swapState.receiveAmount,
         userMaxSlippage,
-        backendPrincipal: KONG_BACKEND_PRINCIPAL,
+        backendPrincipal: Principal.fromText(KONG_BACKEND_CANISTER_ID),
         lpFees: $swapState.lpFees,
       });
 
@@ -298,7 +313,12 @@
 
   async function handleButtonAction(): Promise<void> {
     if (!$auth.isConnected) {
-      showWalletModal = true;
+      sidebarStore.open();
+      return;
+    }
+
+    if (!hasValidPool) {
+      toastStore.error("This pool does not exist");
       return;
     }
 
@@ -319,9 +339,17 @@
 
   // Initialization functions
   async function initializeComponent(): Promise<void> {
-    const tokens = get(tokenStore);
-    if (!tokens.tokens.length) {
-      await tokenStore.loadTokens();
+    try {  
+      // Only initialize default tokens if no URL parameters are present
+      const token0Id = get(page).url.searchParams.get('token0');
+      const token1Id = get(page).url.searchParams.get('token1');
+      
+      if (!token0Id && !token1Id && !isInitialized && $liveTokens.length > 0) {
+        isInitialized = true;
+        swapState.initializeTokens(initialFromToken, initialToToken);
+      }
+    } catch (error) {
+      console.error('Error initializing component:', error);
     }
   }
 
@@ -346,9 +374,17 @@
 
   function handleTokenSelect(panelType: PanelType) {
     if (panelType === "pay") {
-      swapState.update((s) => ({ ...s, showPayTokenSelector: true }));
+      swapState.update((s) => ({ 
+        ...s, 
+        showPayTokenSelector: true,
+        error: null // Reset error state when selecting new token
+      }));
     } else {
-      swapState.update((s) => ({ ...s, showReceiveTokenSelector: true }));
+      swapState.update((s) => ({ 
+        ...s, 
+        showReceiveTokenSelector: true,
+        error: null // Reset error state when selecting new token
+      }));
     }
   }
 
@@ -362,9 +398,13 @@
     const tempPayAmount = $swapState.payAmount;
     const tempReceiveAmount = $swapState.receiveAmount;
 
-    // Update tokens
-    swapState.setPayToken($swapState.receiveToken);
-    swapState.setReceiveToken(tempPayToken);
+    // Update tokens and reset error state
+    swapState.update(s => ({
+      ...s,
+      payToken: s.receiveToken,
+      receiveToken: tempPayToken,
+      error: null // Reset error state when reversing tokens
+    }));
 
     // Set the new pay amount
     if (tempReceiveAmount && tempReceiveAmount !== "0") {
@@ -405,6 +445,7 @@
     if (
       !state.payToken ||
       !state.receiveToken ||
+      !hasValidPool ||
       !state.payAmount ||
       state.payAmount === "0"
     ) {
@@ -488,11 +529,6 @@
     }
   }
 
-  // Handle wallet connection success
-  function handleWalletLogin() {
-    showWalletModal = false;
-  }
-
   // Add this to the reactive statements section
   $: if (currentMode !== previousMode) {
     resetSwapState();
@@ -527,35 +563,49 @@
     previousPayToken = null;
     previousReceiveToken = null;
   }
+
+  // Add a reactive statement to check pool existence
+  $: hasValidPool = poolExists($swapState.payToken, $swapState.receiveToken);
+
+  // Add a reactive statement to update button state when tokens change
+  $: {
+    if ($swapState.payToken || $swapState.receiveToken) {
+      swapState.update(s => ({
+        ...s,
+        error: null // Reset error state when tokens change
+      }));
+    }
+  }
+
+  // Add this to the reactive statements section
+  $: {
+    // When URL params or tokens change, update the swap state
+    if ($page && $liveTokens.length > 0) {
+      const token0Id = $page.url.searchParams.get('token0');
+      const token1Id = $page.url.searchParams.get('token1');
+      
+      if (token0Id && token1Id) {
+        const token0 = $liveTokens.find(t => t.canister_id === token0Id);
+        const token1 = $liveTokens.find(t => t.canister_id === token1Id);
+        
+        if (token0 && token1) {
+          swapState.update(state => ({
+            ...state,
+            payToken: token0,
+            receiveToken: token1,
+            payAmount: '',
+            receiveAmount: ''
+          }));
+        }
+      }
+    }
+  }
 </script>
 
 <!-- Template content -->
 <div class="swap-container">
   <div class="swap-wrapper">
     <div class="swap-container" in:fade={{ duration: 420 }}>
-      <div class="mode-selector">
-        <div
-          class="mode-selector-background"
-          style="transform: translateX({currentMode === 'pro' ? '100%' : '0'})"
-        ></div>
-        <button
-          class="mode-button"
-          class:selected={currentMode === "normal"}
-          class:transitioning={isTransitioning && previousMode === "pro"}
-          on:click={() => handleModeChange("normal")}
-        >
-          <span class="mode-text">Normal</span>
-        </button>
-        <button
-          class="mode-button"
-          class:selected={currentMode === "pro"}
-          class:transitioning={isTransitioning && previousMode === "normal"}
-          on:click={() => handleModeChange("pro")}
-        >
-          <span class="mode-text">Pro</span>
-        </button>
-      </div>
-
       <div class="panels-container">
         <div class="panels-wrapper">
           <div class="panel">
@@ -620,15 +670,18 @@
         <div class="swap-footer">
           <button
             class="swap-button"
-            class:error={$swapState.error ||
-              $swapState.swapSlippage > userMaxSlippage ||
-              insufficientFunds}
+            class:error={$swapState.error || 
+              $swapState.swapSlippage > userMaxSlippage || 
+              insufficientFunds || 
+              !hasValidPool}
             class:processing={$swapState.isProcessing}
-            class:ready={!$swapState.error &&
-              $swapState.swapSlippage <= userMaxSlippage &&
-              !insufficientFunds}
+            class:ready={!$swapState.error && 
+              $swapState.swapSlippage <= userMaxSlippage && 
+              !insufficientFunds && 
+              hasValidPool}
             class:shine-animation={buttonText === "SWAP"}
             on:click={handleButtonAction}
+            disabled={!hasValidPool || $swapState.isProcessing || insufficientFunds}
             title={getButtonTooltip(
               $auth?.account?.owner,
               $swapState.swapSlippage > userMaxSlippage,
@@ -716,31 +769,7 @@
   onClose={handleSuccessModalClose}
 />
 
-{#if isSettingsModalOpen}
-  <Portal target="body">
-    <Modal
-      isOpen={isSettingsModalOpen}
-      onClose={() => (isSettingsModalOpen = false)}
-      title="Slippage Settings"
-    >
-      <Settings />
-    </Modal>
-  </Portal>
-{/if}
-
-{#if showWalletModal}
-  <Portal target="body">
-    <Modal
-      isOpen={showWalletModal}
-      onClose={() => (showWalletModal = false)}
-      title="Connect Wallet"
-    >
-      <WalletProvider on:login={handleWalletLogin} />
-    </Modal>
-  </Portal>
-{/if}
-
-<style lang="postcss">
+<style scoped lang="postcss">
   .swap-container {
     position: relative;
     display: flex;
@@ -750,66 +779,82 @@
   .mode-selector {
     position: relative;
     display: flex;
-    gap: 1px;
+    gap: 2px;
     margin-bottom: 12px;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    padding: 3px;
+    border-radius: 12px;
+    border: 1px solid theme('colors.kong.border');
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      inset 0 1px 1px rgba(255, 255, 255, 0.05);
   }
 
   .mode-selector-background {
     position: absolute;
-    top: 2px;
-    left: 2px;
-    width: calc(50% - 1px);
-    height: calc(100% - 4px);
+    top: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    height: calc(100% - 6px);
     background: linear-gradient(
       135deg,
-      rgba(55, 114, 255, 0.15),
-      rgba(55, 114, 255, 0.2)
+      theme('colors.kong.accent-blue/15'),
+      theme('colors.kong.primary/20')
     );
-    border-radius: 12px;
+    border-radius: 10px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid theme('colors.kong.accent-blue/15');
   }
 
   .mode-button {
     position: relative;
     z-index: 1;
     flex: 1;
-    padding: 6px 12px;
+    padding: 8px 12px;
     border: none;
-    border-radius: 16px;
-    font-size: 0.875rem;
+    border-radius: 9px;
+    font-size: 14px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    color: theme('colors.kong.text-secondary');
     background: transparent;
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .mode-text {
-    @apply text-lg;
+    @apply text-sm font-medium text-kong-text-secondary;
     position: relative;
     z-index: 2;
-    transition:
-      transform 0.2s ease,
-      color 0.2s ease;
+    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
   }
 
   .mode-button:hover:not(.selected) .mode-text {
-    color: rgba(255, 255, 255, 0.9);
+    color: theme('colors.kong.text-primary');
   }
 
   .mode-button.selected .mode-text {
-    color: rgba(255, 255, 255, 1);
-    font-weight: 600;
+    @apply text-white font-semibold;
   }
 
-  .mode-button.transitioning .mode-text {
-    transform: scale(0.95);
+  .mode-button.selected {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* Simplify hover effect */
+  .mode-button:hover:not(.selected)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9px;
+    background: theme('colors.kong.primary/5');
+    opacity: 1;
+  }
+
+  .mode-button:active:not(.selected) {
+    transform: scale(0.98);
   }
 
   .button-content {
@@ -861,36 +906,12 @@
     transition-duration: 0.1s;
   }
 
-  .swap-button.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #1c2333;
-  }
-
-  .swap-button-inner {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .swap-button.rotating .swap-button-inner {
-    transform: rotate(180deg);
-  }
-
   .switch-icon {
     transition: all 0.2s ease;
     opacity: 0.9;
     width: 24px;
     height: 24px;
     color: currentColor;
-  }
-
-  .swap-button:hover:not(.disabled) .switch-icon {
-    transform: scale(1.1);
-    opacity: 1;
   }
 
   .panels-container {
@@ -914,18 +935,6 @@
     z-index: 1;
   }
 
-  /* Add these new styles for enhanced button text */
-  .button-text {
-    @apply text-white font-semibold text-lg;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    /* Add subtle text shadow for better contrast */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-
   /* Add subtle bounce animation for the emoji */
   @keyframes subtle-bounce {
     0%,
@@ -935,10 +944,6 @@
     50% {
       transform: translateY(-2px);
     }
-  }
-
-  .button-text :first-child {
-    animation: subtle-bounce 2s infinite ease-in-out;
   }
 
   .swap-button-text {
@@ -980,18 +985,6 @@
   .button-content {
     @apply relative z-10 flex items-center justify-center gap-2;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  }
-
-  .button-text {
-    @apply text-white font-semibold text-lg;
-    font-size: 1.125rem;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 140px;
-    text-align: center;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
   }
 
   .loading-spinner {
@@ -1254,5 +1247,27 @@
       opacity: 0.5;
       transform: scale(1.02);
     }
+  }
+
+  /* Update the selected state styles */
+  .mode-button.selected::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 11px;
+    background: linear-gradient(
+      135deg,
+      rgba(0, 161, 250, 0.3),
+      rgba(59, 130, 246, 0.3)
+    );
+    z-index: -1;
+    opacity: 0.5;
+  }
+
+  .mode-button.selected {
+    background: rgba(26, 29, 46, 0.6);
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.1),
+      inset 0 1px 2px rgba(255, 255, 255, 0.05);
   }
 </style>

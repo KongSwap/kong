@@ -1,17 +1,16 @@
 <script lang="ts">
+	import { formatTokenBalance } from '$lib/utils/tokenFormatters';
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { tokenStore, fromTokenDecimals } from "$lib/services/tokens/tokenStore";
-  import { formatTokenAmount, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { tokenStore, loadBalance, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
-  import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { onMount } from "svelte";
-    import { Nu } from "svelte-flags";
   
   // Props with proper TypeScript types
   let { 
@@ -57,9 +56,11 @@
   let isMobile = $state(false);
   let formattedBalance = $state("0");
   let displayBalance = $state("0");
+  let lastBalanceCheck = $state<Record<string, number>>({});
+  const DEBOUNCE_DELAY = 1000; // 1 second between balance checks
 
   // Derived state using runes
-  let tokenInfo = $derived($tokenStore.tokens.find(
+  let tokenInfo = $derived($liveTokens.find(
     (t) => t.canister_id === token?.canister_id,
   ));
   
@@ -143,35 +144,62 @@
   }
 
   // Watch for token and balance changes using $effect
-  $effect(() => {
-    if (tokenInfo) {
-      const balance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
-      if (balance !== undefined) {
-        displayBalance = formatWithCommas(formatTokenAmount(
+  $effect.pre(() => {
+    if (!tokenInfo || panelType !== "pay") return;
+
+    const canisterId = tokenInfo.canister_id;
+    const balance = $storedBalancesStore[canisterId]?.in_tokens;
+    const isPending = $tokenStore.pendingBalanceRequests.has(canisterId);
+    const now = Date.now();
+    const lastCheck = lastBalanceCheck[canisterId] || 0;
+    
+    if (balance !== undefined) {
+      // Update display values without triggering another effect
+      queueMicrotask(() => {
+        displayBalance = formatTokenBalance(
           balance.toString(),
-          decimals,
-        ));
+          tokenInfo.decimals
+        );
         formattedBalance = calculateAvailableBalance(balance);
-      } else {
-        tokenStore.loadBalance(tokenInfo, "", true);
-      }
+      });
+    } else if (!isPending && 
+               (now - lastCheck) > DEBOUNCE_DELAY) {
+      
+      // Update last check time
+      lastBalanceCheck[canisterId] = now;
+      
+      // Load balance
+      queueMicrotask(() => {
+        if (!$tokenStore.pendingBalanceRequests.has(canisterId)) {
+          loadBalance(canisterId, false);
+        }
+      });
     }
   });
 
   function calculateAvailableBalance(balance: bigint): string {
-    if (!balance) return "0";
+    if (!balance || !tokenInfo) return "0";
 
     try {
-      const feesInTokens = tokenInfo?.fee_fixed
+      // Get the fee amount
+      const feesInTokens = tokenInfo.fee_fixed
         ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
         : 0n;
 
-      return formatTokenAmount(
-        new BigNumber(balance.toString())
-          .minus(fromTokenDecimals(amount || "0", decimals))
-          .minus(feesInTokens.toString())
-          .toString(),
-        decimals,
+      // Convert to BigNumber for safer math
+      const balanceBN = new BigNumber(balance.toString());
+      const amountBN = new BigNumber(amount || "0");
+      const feesBN = new BigNumber(feesInTokens.toString());
+
+      // Calculate available balance
+      const availableBalance = balanceBN
+        .minus(amountBN)
+        .minus(feesBN);
+
+      // Format with proper decimals
+      return formatBalance(
+        availableBalance.toString(),
+        tokenInfo.decimals
       );
     } catch (error) {
       console.error("Error calculating available balance:", error);
@@ -243,76 +271,55 @@
   }
 
   async function handleMaxClick() {
-    if (!disabled && title === "You Pay" && tokenInfo) {
+    if (!disabled && title === "You Pay" && token) {
       try {
-        if (!tokenInfo.decimals) {
-          console.error("Token info missing required properties", tokenInfo);
+        if (!tokenInfo) {
+          console.error("Token info missing");
           toastStore.error("Invalid token configuration");
           return;
         }
 
-        const rawBalance = $tokenStore.balances[tokenInfo.canister_id]?.in_tokens;
-        if (rawBalance === undefined || rawBalance === null) {
-          console.error("Balance not available for token", tokenInfo.symbol);
-          toastStore.error(`Balance not available for ${tokenInfo.symbol}`);
+        const balance = $storedBalancesStore[token.canister_id]?.in_tokens;
+        if (!balance) {
+          console.error("Balance not available for token", token.symbol);
+          toastStore.error(`Balance not available for ${token.symbol}`);
           return;
         }
 
-        const balance = new BigNumber(rawBalance.toString());
-        if (!balance.isFinite() || balance.isNaN()) {
-          console.error("Invalid balance value", rawBalance);
-          toastStore.error("Invalid balance value");
-          return;
-        }
+        // Calculate fees
+        const feesInTokens = tokenInfo.fee_fixed
+          ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
+          : 0n;
 
-        let tokenFee;
-        try {
-          tokenFee = await IcrcService.getTokenFee(tokenInfo);
-        } catch (error) {
-          console.error("Error getting token fee, falling back to fee_fixed:", error);
-          if (!tokenInfo.fee_fixed) {
-            toastStore.error("Could not determine token fee");
-            return;
-          }
-          tokenFee = BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, ''));
-        }
-
-        const feeMultiplier = tokenInfo.icrc2 ? 2n : 1n;
-        const totalFees = new BigNumber(tokenFee.toString()).multipliedBy(feeMultiplier.toString());
-
-        let maxAmount = balance.minus(totalFees);
-
-        if (maxAmount.isLessThanOrEqualTo(0) || maxAmount.isNaN()) {
-          console.error("Invalid max amount calculated", maxAmount.toString());
+        // Subtract fees from balance
+        const availableBalance = balance - feesInTokens;
+        
+        if (availableBalance <= 0n) {
           toastStore.error("Insufficient balance to cover fees");
           return;
         }
 
-        maxAmount = maxAmount.integerValue(BigNumber.ROUND_DOWN);
-        
-        const formattedMax = formatTokenAmount(maxAmount.toString(), tokenInfo.decimals);
-        if (!formattedMax || formattedMax === "NaN") {
-          console.error("Invalid formatted amount", formattedMax);
-          toastStore.error("Failed to format amount");
-          return;
-        }
+        // Convert to display format
+        const maxAmount = formatTokenBalance(
+          availableBalance.toString(),
+          token.decimals
+        );
 
-        const cleanFormattedMax = formattedMax.replace(/,/g, '');
+        // Set the input value
         if (inputElement) {
-          inputElement.value = formatWithCommas(cleanFormattedMax);
+          inputElement.value = formatWithCommas(maxAmount);
         }
 
-        previousValue = cleanFormattedMax;
-
+        // Trigger the amount change
         onAmountChange(
           new CustomEvent("input", {
-            detail: { value: cleanFormattedMax, panelType },
+            detail: { value: maxAmount, panelType },
           }),
         );
 
       } catch (error) {
         console.error("Error in handleMaxClick:", error);
-        toastStore.error("Failed to set max amount");
+        toastStore.error("Failed to set maximum amount");
       }
     }
   }
@@ -393,20 +400,29 @@
         : 'down';
     }
   });
+
+  // Helper function to update display values
+  function updateDisplayValues(balance: bigint) {
+    displayBalance = formatTokenBalance(
+      balance.toString(),
+      tokenInfo?.decimals || DEFAULT_DECIMALS
+    );
+    formattedBalance = calculateAvailableBalance(balance);
+  }
 </script>
 
 <Panel
-  variant="green"
+  variant="transparent"
   width="auto"
-  className="token-panel w-full max-w-[690px]"
+  className="token-panel w-full max-w-[690px] !rounded-xl !p-4"
 >
   <div
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg"
   >
     <header>
-      <div class="flex items-center justify-between gap-4 min-h-[2.5rem] mb-5">
+      <div class="flex items-center justify-between gap-4 min-h-[1rem] mb-5">
         <h2
-          class="text-[clamp(1.5rem,4vw,2rem)] font-semibold text-white m-0 tracking-tight leading-none"
+          class="text-2xl font-semibold text-kong-text-primary m-0 tracking-tight leading-none"
         >
           {title}
         </h2>
@@ -417,12 +433,12 @@
               title="Price Impact"
             >
               <span
-                class="text-[0.875rem] font-medium text-white/70 uppercase tracking-wide"
+                class="text-[0.875rem] font-medium text-kong-text-primary uppercase tracking-wide"
               >
                 Impact
               </span>
               <span
-                class="text-[1rem] font-semibold text-white"
+                class="text-[1rem] font-semibold text-kong-text-primary"
                 class:high={$animatedSlippage >= HIGH_IMPACT_THRESHOLD}
               >
                 {$animatedSlippage.toFixed(2)}%
@@ -451,7 +467,7 @@
             inputmode="decimal"
             pattern="[0-9]*"
             placeholder="0.00"
-            class="flex-1 min-w-0 bg-transparent border-none text-white text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-white disabled:text-white/65 placeholder:text-white/65"
+            class="flex-1 min-w-0 bg-transparent border-none text-kong-text-primary text-[clamp(1.5rem,8vw,2.5rem)] font-medium tracking-tight w-full relative z-10 p-0 mt-[-0.25rem] opacity-85 focus:outline-none focus:text-kong-text-primary disabled:text-kong-text-primary placeholder:text-kong-text-primary"
             class:opacity-0={isLoading && panelType === "receive"}
             value={formattedDisplayAmount}
             on:input={handleInput}
@@ -511,27 +527,29 @@
       </div>
     </div>
 
-    <footer class="text-white text-[clamp(0.75rem,2vw,0.875rem)]">
+    <footer class="text-kong-text-primary text-[clamp(0.75rem,2vw,0.875rem)]">
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide mobile-text">Value</span>
-          <span class="pl-1 text-white/50 font-medium tracking-wide mobile-text">
+          <span class="text-kong-text-primary font-normal tracking-wide mobile-text">Value</span>
+          <span class="pl-1 text-kong-text-primary font-medium tracking-wide mobile-text">
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="text-white/50 font-normal tracking-wide mobile-text">
-            Available:
-          </span>
-          <button
-            class="pl-1 text-white/70 font-semibold tracking-tight mobile-text"
-            class:clickable={title === "You Pay" && !disabled}
-            on:click={handleMaxClick}
-          >
-            {displayBalance}
-            {token?.symbol}
-          </button>
-        </div>
+        {#if token}
+          <div class="flex items-center gap-2">
+            <span class="text-kong-text-primary font-normal tracking-wide mobile-text">
+              Available:
+            </span>
+            <button
+              class="pl-1 text-kong-text-primary font-semibold tracking-tight mobile-text"
+              class:clickable={title === "You Pay" && !disabled}
+              on:click={handleMaxClick}
+            >
+              {formatTokenBalance($storedBalancesStore[token.canister_id]?.in_tokens.toString() || "0", token.decimals)}
+              {token.symbol}
+            </button>
+          </div>
+        {/if}
       </div>
     </footer>
   </div>
@@ -585,9 +603,8 @@
   }
 
   .token-symbol {
-    font-size: 15px;
-    color: white;
-    font-weight: 500;
+    color: rgb(var(--text-primary));
+    @apply font-semibold text-xl;
   }
 
   @media (max-width: 420px) {
@@ -603,14 +620,14 @@
 
   .select-token-text {
     font-size: 2rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgb(var(--text-primary) / 0.7);
     text-align: left;
   }
 
   .chevron {
     width: 1.25rem;
     height: 1.25rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgb(var(--text-primary) / 0.5);
   }
 
   /* Mobile optimizations */
@@ -633,7 +650,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgb(var(--text-primary) / 0.5);
     animation: bounce 1.4s infinite ease-in-out both;
   }
 

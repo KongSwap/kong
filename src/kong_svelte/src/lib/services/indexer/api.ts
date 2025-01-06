@@ -1,15 +1,74 @@
 import { INDEXER_URL } from "$lib/constants/canisterConstants";
-import { parseTokens } from "../tokens/tokenParsers";
+import { kongDB } from "../db";
+import { DEFAULT_LOGOS } from "../tokens/tokenLogos";
 
-export const fetchTokens = async (): Promise<FE.Token[]> => {
+interface TokensParams {
+  page?: number;
+  limit?: number;
+  canisterIds?: string[];
+}
+
+export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> => {
   try {
-    const response = await fetch(`${INDEXER_URL}/api/tokens`);
+    const { page = 1, limit = 100, canisterIds } = params || {};
+    
+    // Build query string for pagination
+    const queryString = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    }).toString();
+
+    // Determine if we need to make a GET or POST request
+    const options: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    };
+
+    if (canisterIds && canisterIds.length > 0) {
+      // Use POST with body if we have canister IDs
+      options.method = 'POST';
+      options.body = JSON.stringify({ canister_ids: ["ryjl3-tyaaa-aaaaa-aaaba-cai"] });
+    } else {
+      // Use GET if no canister IDs
+      options.method = 'GET';
+    }
+
+    const response = await fetch(
+      `${INDEXER_URL}/api/tokens?${queryString}`,
+      options
+    );
+   
     if (!response.ok) {
       throw new Error(`Failed to fetch tokens: ${response.status} ${response.statusText}`);
     }
+
     const data = await response.json();
-    const parsed = parseTokens(data);
-    return parsed;
+    const tokens = data?.tokens || data;
+    return await Promise.all(tokens.map(async (token) => {
+      const existingToken = await kongDB.tokens.where('canister_id').equals(token.canister_id).first();
+      return {
+        ...token,
+        metrics: {
+              ...token.metrics,
+              previous_price: existingToken?.metrics?.price || "0",
+            },
+            logo_url: DEFAULT_LOGOS[token.canister_id] || 
+              (token?.logo_url
+                ? token.logo_url.startsWith('http')
+                  ? token.logo_url
+                  : `${INDEXER_URL}${token.logo_url.startsWith('/') ? '' : '/'}${token.logo_url}`
+                : DEFAULT_LOGOS.DEFAULT),
+            address: token.address || token.canister_id,
+            fee: Number(token.fee),
+            fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
+            token: token.token_type || '',
+            token_type: token.token_type || '',
+            chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
+            pool_symbol: token.pool_symbol ?? "Pool not found",
+            pools: [],
+          };
+      }));
   } catch (error) {
     console.error('Error fetching tokens:', error);
     throw error;
@@ -140,4 +199,16 @@ export const fetchTransactions = async (
     console.error('Failed to fetch transactions:', error);
     return [];
   }
+};
+
+interface PoolsResponse {
+  pools: BE.Pool[];
+  total_count: number;
+}
+
+export const fetchPools = async (): Promise<PoolsResponse> => {
+  const url = `${INDEXER_URL}/api/pools`;
+  const response = await fetch(url);
+  const data = await response.json();
+  return data || {};
 };

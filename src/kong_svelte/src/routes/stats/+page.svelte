@@ -1,523 +1,536 @@
 <script lang="ts">
   import { tooltip } from "$lib/actions/tooltip";
   import { writable, derived } from "svelte/store";
+  import {
+    CKUSDT_CANISTER_ID,
+    ICP_CANISTER_ID,
+    KONG_CANISTER_ID,
+  } from "$lib/constants/canisterConstants";
   import Panel from "$lib/components/common/Panel.svelte";
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { tokenStore, liveTokens } from "$lib/services/tokens/tokenStore";
-  import { poolStore } from "$lib/services/pools";
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import LoadingIndicator from "$lib/components/stats/LoadingIndicator.svelte";
-  import debounce from "lodash-es/debounce";
-  import { ArrowUp, ArrowDown, Star, ArrowUpDown, Flame } from "lucide-svelte";
+  import { liveTokens } from "$lib/services/tokens/tokenStore";
+  import { livePoolTotals } from "$lib/services/pools/poolStore";
+  import {
+    ArrowUp,
+    ArrowDown,
+    ArrowUpDown,
+    TrendingUp,
+    Flame,
+    ChevronDown,
+  } from "lucide-svelte";
   import { onMount } from "svelte";
-  import { toastStore } from "$lib/stores/toastStore";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/services/auth";
-  import {
-    favoriteStore,
-    currentWalletFavorites,
-  } from "$lib/services/tokens/favoriteStore";
-  import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { browser } from "$app/environment";
-  import { createFilteredTokens } from "$lib/utils/statsUtils";
-  import StatsCards from "$lib/components/stats/StatsCards.svelte";
   import TokenCardMobile from "$lib/components/stats/TokenCardMobile.svelte";
-    import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import StatsTableRow from "$lib/components/stats/StatsTableRow.svelte";
+  import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+  import PageHeader from "$lib/components/common/PageHeader.svelte";
+  import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import DataTable from "$lib/components/common/DataTable.svelte";
+  import TokenCell from "$lib/components/stats/TokenCell.svelte";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
-  const isMobile = writable(false);
+  const ITEMS_PER_PAGE = 100;
+  const currentPage = writable(1);
 
-  onMount(() => {
-    const checkMobile = () => {
-      if (browser) {
-        isMobile.set(window.innerWidth < 768);
+  // Local state
+  let isMobile = false;
+  let searchTerm = "";
+  let showFavoritesOnly = false;
+  let sortBy = "market_cap";
+  let sortDirection: "asc" | "desc" = "desc";
+
+  // Favorites state - needs to be a store since it's shared with other components
+  const favoriteTokenIds = writable<string[]>([]);
+  const favoriteCount = writable(0);
+
+  // Update favorite tokens when auth changes
+  $: if ($auth.isConnected) {
+    FavoriteService.getFavoriteCount().then((count) => {
+      favoriteCount.set(count);
+    });
+    FavoriteService.loadFavorites().then((favorites) => {
+      favoriteTokenIds.set(favorites);
+    });
+  } else {
+    favoriteTokenIds.set([]);
+    favoriteCount.set(0);
+  }
+
+  // Filter tokens
+  $: filteredTokens = derived(
+    [liveTokens, favoriteTokenIds],
+    ([$liveTokens, $favoriteTokenIds]) => {
+      const s = searchTerm.trim().toLowerCase();
+      let filtered = [...$liveTokens];
+
+      // Add volume ranks
+      filtered = filtered
+        .sort((a, b) => {
+          const aVolume = Number(a.metrics?.volume_24h || 0);
+          const bVolume = Number(b.metrics?.volume_24h || 0);
+          return bVolume - aVolume;
+        })
+        .map((token, index) => ({
+          ...token,
+          volumeRank: index + 1,
+        }));
+
+      // Add TVL ranks
+      filtered = filtered
+        .sort((a, b) => {
+          const aTvl = Number(a.metrics?.tvl || 0);
+          const bTvl = Number(b.metrics?.tvl || 0);
+          return bTvl - aTvl;
+        })
+        .map((token, index) => ({
+          ...token,
+          tvlRank: index + 1,
+        }));
+
+      // Add price change ranks (for gainers and losers)
+      const gainers = filtered
+        .filter(token => Number(token.metrics?.price_change_24h || 0) > 0)
+        .sort((a, b) => Number(b.metrics?.price_change_24h || 0) - Number(a.metrics?.price_change_24h || 0))
+        .map((token, index) => ({
+          ...token,
+          priceChangeRank: index + 1,
+        }));
+
+      const losers = filtered
+        .filter(token => Number(token.metrics?.price_change_24h || 0) < 0)
+        .sort((a, b) => Number(a.metrics?.price_change_24h || 0) - Number(b.metrics?.price_change_24h || 0))
+        .map((token, index) => ({
+          ...token,
+          priceChangeRank: index + 1,
+        }));
+
+      const unchanged = filtered
+        .filter(token => Number(token.metrics?.price_change_24h || 0) === 0)
+        .map(token => ({
+          ...token,
+          priceChangeRank: null,
+        }));
+
+      filtered = [...gainers, ...unchanged, ...losers].map(token => ({
+        ...token,
+        totalTokens: gainers.length + losers.length + unchanged.length
+      }));
+
+      // Filter by favorites if enabled
+      if (showFavoritesOnly) {
+        filtered = filtered.filter((token) =>
+          $favoriteTokenIds.includes(token.canister_id),
+        );
       }
-    };
-    checkMobile();
 
-    const loadFavorites = async () => {
-      if ($auth.isConnected) {
-        await tokenStore.loadFavorites();
+      // Filter by search term
+      if (s) {
+        filtered = filtered.filter((token) => {
+          const symbol = token.symbol?.toLowerCase() || "";
+          const name = token.name?.toLowerCase() || "";
+          const canisterID = token.canister_id.toLowerCase();
+          return (
+            symbol.includes(s) || name.includes(s) || canisterID.includes(s)
+          );
+        });
       }
-    };
-    const loadPools = async () => {
-      await poolStore.loadPools(true);
-    };
-    loadFavorites();
-    loadPools();
 
-    window.addEventListener("resize", checkMobile);
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  });
+      // Add market cap ranks
+      filtered = filtered
+        .sort((a, b) => {
+          const aMarketCap = Number(a.metrics?.market_cap || 0);
+          const bMarketCap = Number(b.metrics?.market_cap || 0);
+          return bMarketCap - aMarketCap;
+        })
+        .map((token, index) => ({
+          ...token,
+          marketCapRank: index + 1,
+        }));
 
-  $: if (browser) {
-    isMobile.set(window.innerWidth < 768);
-  }
-
-  // Store for toggling between all tokens and favorites only
-  const showFavoritesOnly = writable(false);
-  const activeStatsSection = writable<"tokens" | "marketStats">("tokens");
-  const DEBOUNCE_DELAY = 300;
-  const searchQuery = writable<string>("");
-  const sortColumnStore = writable<string>("marketCap");
-  const sortDirectionStore = writable<"asc" | "desc">("desc");
-  const KONG_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
-
-  let tokensLoading: boolean;
-  $: {
-    tokensLoading = $liveTokens === undefined;
-  }
-
-  const tokensError = derived<
-    [typeof tokenStore, typeof poolStore],
-    string | null
-  >([tokenStore, poolStore], ([$tokenStore, $poolStore]) => {
-    return $tokenStore.error || $poolStore.error || null;
-  });
-
-  const debouncedSearch = debounce((value: string) => {
-    searchQuery.set(value);
-  }, DEBOUNCE_DELAY);
-
-  function handleSearch(event: Event) {
-    const target = event.target as HTMLInputElement;
-    debouncedSearch(target.value);
-  }
-
-  const filteredTokens = createFilteredTokens(
-    liveTokens,
-    searchQuery,
-    sortColumnStore,
-    sortDirectionStore,
-    showFavoritesOnly,
-    currentWalletFavorites,
-    $auth,
+      return filtered;
+    }
   );
 
-  function toggleSort(column: string) {
-    if ($sortColumnStore === column) {
-      sortDirectionStore.update((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      sortColumnStore.set(column);
-      sortDirectionStore.set("desc");
+  $: sortedTokens = derived(
+    [filteredTokens],
+    ([$filteredTokens]) => {
+      let sorted = [...$filteredTokens];
+      
+      // First separate KONG from other tokens
+      const kongToken = sorted.find(t => t.canister_id === KONG_CANISTER_ID);
+      const otherTokens = sorted.filter(t => t.canister_id !== KONG_CANISTER_ID);
+      
+      // Sort the other tokens
+      switch (sortBy) {
+        case "market_cap":
+          otherTokens.sort((a, b) => {
+            const aValue = Number(a.metrics?.market_cap || 0);
+            const bValue = Number(b.metrics?.market_cap || 0);
+            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+          });
+          break;
+        case "volume":
+          otherTokens.sort((a, b) => {
+            const aValue = Number(a.metrics?.volume_24h || 0);
+            const bValue = Number(b.metrics?.volume_24h || 0);
+            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+          });
+          break;
+        case "price_change":
+          otherTokens.sort((a, b) => {
+            const aValue = Number(a.metrics?.price_change_24h || 0);
+            const bValue = Number(b.metrics?.price_change_24h || 0);
+            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+          });
+          break;
+      }
+
+      // Return KONG at the top followed by sorted tokens
+      return kongToken ? [kongToken, ...otherTokens] : otherTokens;
     }
-  }
+  );
 
-  function getSortIcon(column: string) {
-    if ($sortColumnStore !== column) return ArrowUpDown;
-    return $sortDirectionStore === "asc" ? ArrowUp : ArrowDown;
-  }
+  $: paginatedTokens = derived(
+    [sortedTokens, currentPage],
+    ([$sortedTokens, $currentPage]) => {
+      const start = ($currentPage - 1) * ITEMS_PER_PAGE;
+      const end = start + ITEMS_PER_PAGE;
+      return $sortedTokens.slice(start, end);
+    }
+  );
 
-  // Price change class functions
-  function getPriceClass(token: FE.Token): string {
-    const flashClass = $tokenStore.priceChangeClasses[token.canister_id] || "";
-    return flashClass;
-  }
+  $: totalPages = derived(filteredTokens, ($filteredTokens) => 
+    Math.ceil($filteredTokens.length / ITEMS_PER_PAGE)
+  );
 
   function getTrendClass(token: FE.Token): string {
     return token?.metrics?.price_change_24h
       ? Number(token.metrics.price_change_24h) > 0
-        ? "positive"
+        ? "text-kong-accent-green"
         : Number(token.metrics.price_change_24h) < 0
-          ? "negative"
+          ? "text-kong-accent-red"
           : ""
       : "";
   }
 
-  // Single source of truth for virtualization
-  const scrollY = writable(0);
-  const virtualItems = derived(
-    [filteredTokens, scrollY],
-    ([$filteredTokens, $scrollY]) => {
-      if (!$filteredTokens.tokens) return [];
+  function isTopVolume(token: FE.Token): boolean {
+    if (
+      token.canister_id === CKUSDT_CANISTER_ID ||
+      token.canister_id === ICP_CANISTER_ID
+    )
+      return false;
+    return (
+      token.volumeRank &&
+      token.volumeRank <= 7 &&
+      Number(token.metrics?.volume_24h || 0) > 0
+    );
+  }
 
-      const itemHeight = 80;
-      const containerHeight = browser ? window.innerHeight : 800;
-      const bufferSize = 5;
-      const start = Math.max(0, Math.floor($scrollY / itemHeight) - bufferSize);
-      const visibleItems = Math.ceil(containerHeight / itemHeight) + bufferSize * 2;
-      const end = Math.min(
-        start + visibleItems,
-        $filteredTokens.tokens.length
-      );
-
-      return $filteredTokens.tokens.slice(start, end).map((token, i) => ({
-        token,
-        index: start + i,
-        y: (start + i) * itemHeight,
-      }));
-    },
-  );
-
-  // Handle scroll event
-  function handleScroll(event: Event) {
-    const target = event.target as HTMLElement;
-    if (target) {
-      scrollY.set(target.scrollTop);
+  function nextPage() {
+    if ($currentPage < $totalPages) {
+      currentPage.update(n => n + 1);
     }
   }
+
+  function previousPage() {
+    if ($currentPage > 1) {
+      currentPage.update(n => n - 1);
+    }
+  }
+
+  function goToPage(page: number) {
+    if (page >= 1 && page <= $totalPages) {
+      currentPage.set(page);
+    }
+  }
+
+  function toggleSort(newSortBy: string) {
+    if (sortBy === newSortBy) {
+      sortDirection = sortDirection === "desc" ? "asc" : "desc";
+    } else {
+      sortBy = newSortBy;
+      sortDirection = "desc";
+    }
+  }
+
+  onMount(() => {
+    if (browser) {
+      isMobile = window.innerWidth < 768;
+      const handleResize = () => (isMobile = window.innerWidth < 768);
+      window.addEventListener("resize", handleResize);
+    }
+
+    return () => {
+      if (browser) {
+        const handleResize = () => (isMobile = window.innerWidth < 768);
+        window.removeEventListener("resize", handleResize);
+      }
+    };
+  });
 </script>
 
-<section class="flex flex-col w-full h-[100dvh] px-4">
-  <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
-    {#if $isMobile}
-      <div class="flex gap-4 sticky top-0 z-30">
-        <button
-          class="flex-1 px-4 py-2 rounded-lg transition-colors duration-200
-                 {$activeStatsSection === 'tokens'
-            ? 'bg-kong-primary text-white'
-            : 'bg-[#2a2d3d] text-[#8890a4]'}"
-          on:click={() => activeStatsSection.set("tokens")}
-        >
-          Tokens
-        </button>
-        <button
-          class="flex-1 px-4 py-2 rounded-lg transition-colors duration-200
-                 {$activeStatsSection === 'marketStats'
-            ? 'bg-kong-primary text-white'
-            : 'bg-[#2a2d3d] text-[#8890a4]'}"
-          on:click={() => activeStatsSection.set("marketStats")}
-        >
-          Market Stats
-        </button>
-      </div>
-    {/if}
+<PageHeader
+  title="Market Stats"
+  description="Track token performance and market activity"
+  icon={TrendingUp}
+  stats={[
+    {
+      label: "Volume 24H",
+      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6)}`,
+      icon: TrendingUp,
+    },
+    {
+      label: "TVL",
+      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6)}`,
+      icon: TrendingUp,
+    },
+    {
+      label: "Fees 24H",
+      value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6)}`,
+      icon: TrendingUp,
+      hideOnMobile: true,
+    },
+  ]}
+/>
 
-    {#if !$isMobile || ($isMobile && $activeStatsSection === "marketStats")}
-      <StatsCards
-        volume24h={$poolStore.totals?.rolling_24h_volume || 0}
-        totalLiquidity={$poolStore.totals?.tvl || 0}
-        totalFees={$poolStore.totals?.fees_24h || 0}
-        isMobile={$isMobile}
-      />
-    {/if}
+<section class="flex flex-col w-full px-2 max-h-[calc(100vh-15rem)] mt-4">
+  <div
+    class="z-10 flex flex-col lg:flex-row w-full mx-auto gap-4 max-w-[1300px] h-[calc(100vh-15rem)]"
+  >
+    <Panel
+      variant="transparent"
+      type="main"
+      className="content-panel flex-1 !p-0"
+      height="100%"
+    >
+      <div class="flex flex-col h-full">
+        <!-- Header -->
+        <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
+          <div
+            class="hidden sm:flex items-center gap-3 py-1 border-b border-kong-border"
+          >
+            <div class="flex bg-transparent">
+              <button
+                class="px-4 py-1 transition-colors duration-200 {!showFavoritesOnly
+                  ? 'text-kong-text-primary'
+                  : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+                on:click={() => (showFavoritesOnly = false)}
+              >
+                All Tokens
+              </button>
+              <button
+                class="px-4 py-2 transition-colors duration-200 {showFavoritesOnly
+                  ? 'text-kong-text-primary'
+                  : 'text-kong-text-secondary hover:text-kong-text-primary'}"
+                on:click={() => (showFavoritesOnly = true)}
+              >
+                My Favorites
+                {#if $auth.isConnected}
+                  <span
+                    class="ml-1 px-2 py-0.5 text-kong-text-primary/80 bg-kong-primary/60 rounded text-xs"
+                  >
+                    {$favoriteCount}
+                  </span>
+                {/if}
+              </button>
+            </div>
 
-    {#if $activeStatsSection === "tokens"}
-      <Panel
-        variant="green"
-        type="main"
-        className="content-panel flex-1 !p-0 mt-2"
-        height="100%"
-      >
-        <div class="flex flex-col h-full">
-          <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
-            <div
-              class="hidden sm:flex items-center gap-3 pb-1 border-b border-[#2a2d3d] pt-2"
-            >
-              <div class="flex bg-transparent">
-                <button
-                  class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
-                    ? 'text-[#8890a4] hover:text-white'
-                    : 'text-white'}"
-                  on:click={() => showFavoritesOnly.set(false)}
-                >
-                  All Tokens
-                </button>
-                <button
-                  class="px-4 py-2 transition-colors duration-200 {$showFavoritesOnly
-                    ? 'text-white'
-                    : 'text-[#8890a4] hover:text-white'}"
-                  on:click={() => showFavoritesOnly.update((v) => !v)}
-                >
-                  My Favorites
-                  {#if $auth.isConnected}
-                    <span
-                      class="ml-1 px-2 py-0.5 text-white/80 bg-blue-400/60 rounded text-xs"
-                    >
-                      {$currentWalletFavorites.length}
-                    </span>
-                  {/if}
-                </button>
-              </div>
-
-              <div class="flex-1 px-4 py-2">
-                <input
-                  type="text"
-                  placeholder={$isMobile
-                    ? "Search tokens..."
-                    : "Search tokens by name, symbol, or canister ID"}
-                  class="w-full bg-transparent text-white placeholder-[#8890a4] focus:outline-none"
-                  on:input={handleSearch}
-                  disabled={$showFavoritesOnly}
-                />
-              </div>
+            <div class="flex-1 px-4 py-2">
+              <input
+                type="text"
+                placeholder={isMobile
+                  ? "Search tokens..."
+                  : "Search tokens by name, symbol, or canister ID"}
+                class="w-full bg-transparent text-kong-text-primary placeholder-[#8890a4] focus:outline-none"
+                on:input={(e) => (searchTerm = e.currentTarget.value)}
+                disabled={showFavoritesOnly}
+              />
             </div>
           </div>
+        </div>
 
-          {#if tokensLoading}
-            <LoadingIndicator />
-          {:else if $tokensError}
-            <div class="error-message">
-              <p>Error loading tokens: {$tokensError}</p>
-              <ButtonV2 
-                label="Retry"
-                theme="primary"
-                variant="solid"
-                size="lg"
-                isDisabled={$auth.isConnected}
-                onClick={() => {
-                  tokenStore.loadTokens();
-                  poolStore.loadPools();
-                }}
-              />
-            </div>
-          {:else if $filteredTokens.showFavoritesPrompt}
-            <div
-              class="flex flex-col items-center justify-center h-64 text-center"
-            >
+        <!-- Content -->
+        {#if $filteredTokens.length === 0}
+          <div
+            class="flex flex-col items-center justify-center h-64 text-center"
+          >
+            {#if showFavoritesOnly && !$auth.isConnected}
               <p class="text-gray-400 mb-4">
-                Connect your wallet to view your favorite tokens
+                Connect your wallet to view and manage your favorite tokens
               </p>
               <ButtonV2
-                label="Connect Wallet"
-                theme="primary"
                 variant="solid"
-                size="lg"
-                isDisabled={$auth.isConnected}
-                onClick={() => {
-                  toastStore.info(
-                    "Connect your wallet to view your favorite tokens",
-                    undefined,
-                    "Connect Wallet",
-                  );
-                }}
-              />
-            </div>
-          {:else if $filteredTokens.noFavorites}
-            <div
-              class="flex flex-col items-center justify-center h-64 text-center"
-            >
-              <p class="text-gray-400 mb-4">
-                You have no favorite tokens yet. Mark some tokens as favorites
-                to view them here.
-              </p>
-            </div>
-          {:else if $filteredTokens.loading}
-            <LoadingIndicator />
-          {:else if $filteredTokens.tokens.length === 0}
-            <div
-              class="flex flex-col items-center justify-center h-64 text-center"
-            >
+                theme="primary"
+                on:click={() => sidebarStore.open()}
+              >
+                Connect Wallet
+              </ButtonV2>
+            {:else}
               <p class="text-gray-400">
                 No tokens found matching your search criteria
               </p>
-            </div>
-          {:else}
-            <div
-              class="flex-1 custom-scrollbar {$isMobile
-                ? 'h-[calc(99vh-11rem)]'
-                : 'h-[calc(100vh-1rem)]'}"
-            >
-              {#if !$isMobile}
-                <!-- Desktop table view -->
-                <div class="flex flex-col h-full">
-                  <!-- Header outside scroll area -->
-                  <table class="w-full border-collapse min-w-[800px] md:min-w-0">
-                    <thead class="bg-[#1E1F2A]">
-                      <tr class="h-10 border-b border-[#2a2d3d]">
-                        <th
-                          class="text-center py-2 text-no-wrap text-sm font-medium text-[#8890a4] text-nowrap w-[50px] cursor-pointer"
-                          on:click={() => toggleSort("marketCapRank")}
-                        >
-                          #
-                          <svelte:component
-                            this={getSortIcon("marketCapRank")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="text-left py-2 pl-2 text-no-wrap text-sm font-medium text-[#8890a4] w-[300px] cursor-pointer"
-                          on:click={() => toggleSort("token_name")}
-                        >
-                          Token
-                          <svelte:component
-                            this={getSortIcon("token_name")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="text-right pr-10 py-2 text-no-wrap text-sm font-medium text-[#8890a4] cursor-pointer w-[180px]"
-                          on:click={() => toggleSort("price")}
-                        >
-                          Price
-                          <svelte:component
-                            this={getSortIcon("price")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="text-right pr-8 py-2 text-no-wrap text-sm font-medium text-[#8890a4] cursor-pointer w-[80px]"
-                          on:click={() => toggleSort("price_change_24h")}
-                        >
-                          24h
-                          <svelte:component
-                            this={getSortIcon("price_change_24h")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="text-right pr-8 py-2 text-no-wrap text-sm font-medium text-[#8890a4] cursor-pointer w-[100px]"
-                          on:click={() => toggleSort("volume_24h")}
-                        >
-                          Vol
-                          <svelte:component
-                            this={getSortIcon("volume_24h")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="text-right pr-8 py-2 text-no-wrap text-sm font-medium text-[#8890a4] cursor-pointer w-[100px]"
-                          on:click={() => toggleSort("marketCap")}
-                        >
-                          MCap
-                          <svelte:component
-                            this={getSortIcon("marketCap")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                        <th
-                          class="text-right pr-4 py-2 text-no-wrap text-sm font-medium text-[#8890a4] cursor-pointer w-[120px]"
-                          on:click={() => toggleSort("tvl")}
-                        >
-                          TVL
-                          <svelte:component
-                            this={getSortIcon("tvl")}
-                            class="inline w-3.5 h-3.5 ml-1"
-                          />
-                        </th>
-                      </tr>
-                    </thead>
-                  </table>
-                  
-                  <!-- Scrollable body -->
-                  <div class="overflow-auto flex-1">
-                    <table class="w-full border-collapse min-w-[800px] md:min-w-0">
-                      <tbody class="!px-4 ">
-                        {#each $filteredTokens.tokens as token (token.canister_id)}
-                          <StatsTableRow
-                            {token}
-                            isConnected={$auth.isConnected}
-                            isFavorite={$currentWalletFavorites.includes(token.canister_id)}
-                            priceClass={getPriceClass(token)}
-                            trendClass={getTrendClass(token)}
-                            kongCanisterId={KONG_CANISTER_ID}
-                          />
-                        {/each}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              {:else}
-                <!-- Mobile view with virtualization -->
-                <div class="mobile-container">
-                  {#if $isMobile}
-                    <!-- Mobile sorting options -->
-                    <div class="flex items-center gap-2 mb-2 bg-[#1a1b23] p-4 z-10 border-b border-[#2a2d3d]">
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'marketCap' ? 'bg-primary-blue text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("marketCap")}
-                      >
-                        MCap
-                        <svelte:component
-                          this={getSortIcon("marketCap")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'volume_24h' ? 'bg-primary-blue text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("volume_24h")}
-                      >
-                        Vol
-                        <svelte:component
-                          this={getSortIcon("volume_24h")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'tvl' ? 'bg-primary-blue text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("tvl")}
-                      >
-                        TVL
-                        <svelte:component
-                          this={getSortIcon("tvl")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                      <button
-                        class="px-3 py-1.5 text-sm rounded {$sortColumnStore === 'price_change_24h' ? 'bg-primary-blue text-white' : 'bg-[#2a2d3d] text-[#8890a4]'}"
-                        on:click={() => toggleSort("price_change_24h")}
-                      >
-                        24h
-                        <svelte:component
-                          this={getSortIcon("price_change_24h")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </button>
-                    </div>
-                  {/if}
-                  <div 
-                    class="mobile-scroll-container"
-                    on:scroll={handleScroll}
-                  >
-                    <div
-                      class="relative"
-                      style="height: {$filteredTokens.tokens.length * 80}px"
+            {/if}
+          </div>
+        {:else}
+          <div
+            class="flex-1 custom-scrollbar {isMobile
+              ? 'h-[calc(100vh-8rem)]'
+              : 'h-[calc(100vh-1rem)]'}"
+          >
+            {#if !isMobile}
+              <DataTable
+                data={$filteredTokens}
+                rowKey="canister_id"
+                columns={[
+                  {
+                    key: 'marketCapRank',
+                    title: '#',
+                    align: 'center',
+                    sortable: true,
+                    width: '60px',
+                    formatter: (row) => {
+                      const rank = row.marketCapRank || '-';
+                      return rank === '-' ? rank : `#${rank}`;
+                    }
+                  },
+                  {
+                    key: 'token',
+                    title: 'Token',
+                    align: 'left',
+                    component: TokenCell,
+                    sortable: true
+                  },
+                  {
+                    key: 'price',
+                    title: 'Price',
+                    align: 'right',
+                    sortable: true,
+                    formatter: (row) => "$" + formatToNonZeroDecimal(row.metrics?.price || 0)
+                  },
+                  {
+                    key: 'price_change_24h',
+                    title: '24h',
+                    align: 'right',
+                    sortable: true,
+                    formatter: (row) => {
+                      const value = row.metrics?.price_change_24h || 0;
+                      return `${value > 0 ? '+' : ''}${formatToNonZeroDecimal(value)}%`;
+                    }
+                  },
+                  {
+                    key: 'volume_24h',
+                    title: 'Vol',
+                    align: 'right',
+                    sortable: true,
+                    formatter: (row) => formatUsdValue(row.metrics?.volume_24h || 0)
+                  },
+                  {
+                    key: 'market_cap',
+                    title: 'MCap',
+                    align: 'right',
+                    sortable: true,
+                    formatter: (row) => formatUsdValue(row.metrics?.market_cap || 0)
+                  },
+                  {
+                    key: 'tvl',
+                    title: 'TVL',
+                    align: 'right',
+                    sortable: true,
+                    formatter: (row) => formatUsdValue(row.metrics?.tvl || 0)
+                  }
+                ]}
+                itemsPerPage={100}
+                defaultSort={{ column: 'market_cap', direction: 'desc' }}
+                onRowClick={(row) => goto(`/stats/${row.canister_id}`)}
+                isKongRow={(row) => row.canister_id === KONG_CANISTER_ID}
+              />
+            {:else}
+              <div class="flex flex-col h-full overflow-hidden">
+                <!-- Mobile filters -->
+                <div class="sticky top-0 z-30 bg-kong-bg-dark border-b border-kong-border">
+                  <div class="flex gap-2 px-3 py-2 justify-between">
+                    <button
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'market_cap' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      on:click={() => toggleSort("market_cap")}
                     >
-                      {#each $virtualItems as { token, y } (token.canister_id)}
-                        <div
-                          class="absolute w-full"
-                          style="transform: translateY({y}px)"
-                          on:click={() => goto(`/stats/${token.canister_id}`)}
-                        >
-                          <div class="mx-4">
-                            <TokenCardMobile
-                              {token}
-                              isConnected={$auth.isConnected}
-                              isFavorite={$currentWalletFavorites.includes(token.canister_id)}
-                              priceClass={getPriceClass(token)}
-                              trendClass={getTrendClass(token)}
-                            />
-                          </div>
-                        </div>
-                      {/each}
-                    </div>
+                      MCap
+                      <ChevronDown
+                        size={16}
+                        class="transition-transform {sortDirection === 'asc' && sortBy === 'market_cap' ? 'rotate-180' : ''}"
+                      />
+                    </button>
+                    <button
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'volume' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      on:click={() => toggleSort("volume")}
+                    >
+                      Volume
+                      <ChevronDown
+                        size={16}
+                        class="transition-transform {sortDirection === 'asc' && sortBy === 'volume' ? 'rotate-180' : ''}"
+                      />
+                    </button>
+                    <button
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'price_change' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      on:click={() => toggleSort("price_change")}
+                    >
+                      24h %
+                      <ChevronDown
+                        size={16}
+                        class="transition-transform {sortDirection === 'asc' && sortBy === 'price_change' ? 'rotate-180' : ''}"
+                      />
+                    </button>
                   </div>
                 </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </Panel>
-    {/if}
+
+                <!-- Scrollable content -->
+                <div class="flex-1 overflow-auto">
+                  <div class="space-y-2.5 px-2 py-2">
+                    {#each $paginatedTokens as token, index (token.canister_id)}
+                      <button
+                        class="w-full"
+                        on:click={() => goto(`/stats/${token.canister_id}`)}
+                      >
+                        <TokenCardMobile
+                          {token}
+                          isConnected={$auth.isConnected}
+                          isFavorite={$favoriteTokenIds.includes(token.canister_id)}
+                          trendClass={getTrendClass(token)}
+                          showHotIcon={isTopVolume(token)}
+                          priceClass={getTrendClass(token)}
+                        />
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    </Panel>
   </div>
 </section>
 
 <style scoped lang="postcss">
   section {
-    height: calc(100vh - 6rem);
-  }
-
-  .h-full {
-    height: 100%;
+    @apply h-[calc(100vh-6rem)];
   }
 
   .custom-scrollbar {
-    height: 100%;
-    overflow: auto;
+    @apply h-full overflow-auto;
   }
 
-  .mobile-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+  th {
+    transition: background-color 0.2s;
   }
 
-  .mobile-scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+  th:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 </style>

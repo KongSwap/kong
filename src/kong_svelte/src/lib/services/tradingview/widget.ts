@@ -10,15 +10,12 @@ declare global {
 
 export async function loadTradingViewLibrary() {
   try {
-    console.log('Loading TradingView library...');
     if (window.TradingView) {
-      console.log('TradingView already loaded');
       return;
     }
 
     // Load the library
     const script = document.createElement('script');
-    // Use absolute path and add crossorigin attribute
     script.src = window.location.origin + '/charting_library/charting_library/charting_library.js';
     script.type = 'text/javascript';
     script.async = true;
@@ -29,7 +26,6 @@ export async function loadTradingViewLibrary() {
         // Add a small delay to ensure the library is fully initialized
         setTimeout(() => {
           if (window.TradingView) {
-            console.log('TradingView library loaded and initialized successfully');
             resolve(true);
           } else {
             reject(new Error('TradingView failed to initialize'));

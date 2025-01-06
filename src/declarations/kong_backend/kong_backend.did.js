@@ -398,7 +398,6 @@ export const idlFactory = ({ IDL }) => {
   const ICTokenReply = IDL.Record({
     'fee' : IDL.Nat,
     'decimals' : IDL.Nat8,
-    'token' : IDL.Text,
     'token_id' : IDL.Nat32,
     'chain' : IDL.Text,
     'name' : IDL.Text,
@@ -412,7 +411,6 @@ export const idlFactory = ({ IDL }) => {
   const LPTokenReply = IDL.Record({
     'fee' : IDL.Nat,
     'decimals' : IDL.Nat8,
-    'token' : IDL.Text,
     'token_id' : IDL.Nat32,
     'chain' : IDL.Text,
     'name' : IDL.Text,
@@ -427,20 +425,24 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Vec(TokenReply),
     'Err' : IDL.Text,
   });
-  const BalancesReply = IDL.Record({
+  const LPBalancesReply = IDL.Record({
     'ts' : IDL.Nat64,
     'usd_balance' : IDL.Float64,
     'balance' : IDL.Float64,
     'name' : IDL.Text,
     'amount_0' : IDL.Float64,
     'amount_1' : IDL.Float64,
+    'address_0' : IDL.Text,
+    'address_1' : IDL.Text,
     'symbol_0' : IDL.Text,
     'symbol_1' : IDL.Text,
     'usd_amount_0' : IDL.Float64,
     'usd_amount_1' : IDL.Float64,
+    'chain_0' : IDL.Text,
+    'chain_1' : IDL.Text,
     'symbol' : IDL.Text,
   });
-  const UserBalancesReply = IDL.Variant({ 'LP' : BalancesReply });
+  const UserBalancesReply = IDL.Variant({ 'LP' : LPBalancesReply });
   const UserBalancesResult = IDL.Variant({
     'Ok' : IDL.Vec(UserBalancesReply),
     'Err' : IDL.Text,

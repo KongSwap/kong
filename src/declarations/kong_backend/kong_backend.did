@@ -181,17 +181,21 @@ type UserReply = record {
 type UserResult = variant { Ok : UserReply; Err : text };
 
 type UserBalancesReply = variant {
-    LP : BalancesReply;
+    LP : LPBalancesReply;
 };
-type BalancesReply = record {
+type LPBalancesReply = record {
     name : text;
     symbol : text;
     balance : float64;
     usd_balance : float64;
+    chain_0 : text;
     symbol_0 : text;
+    address_0 : text;
     amount_0 : float64;
     usd_amount_0 : float64;
+    chain_1 : text;
     symbol_1 : text;
+    address_1 : text;
     amount_1 : float64;
     usd_amount_1 : float64;
     ts : nat64;
@@ -215,7 +219,6 @@ type LPTokenReply = record {
     name : text;
     chain : text;
     symbol : text;
-    token : text;
     pool_id_of : nat32;
     address : text;
     decimals : nat8;
@@ -228,7 +231,6 @@ type ICTokenReply = record {
     name : text;
     chain : text;
     symbol : text;
-    token : text;
     canister_id : text;
     decimals : nat8;	
     fee : nat;
@@ -262,13 +264,13 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
+    on_kong : bool;             // flag indicating if displayed on Kong Swap
     tvl : nat;                  // USD value of TVL
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
     rolling_24h_num_swaps : nat;
     rolling_24h_apy : float64;
     lp_token_symbol : text;
-    on_kong : bool;             // flag indicating if displayed on Kong Swap
 };
 type PoolsResult = variant { Ok : PoolsReply; Err : text };
 

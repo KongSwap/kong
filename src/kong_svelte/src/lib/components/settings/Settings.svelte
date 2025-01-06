@@ -1,14 +1,15 @@
 <script lang="ts">
   import Toggle from "../common/Toggle.svelte";
   import { settingsStore } from '$lib/services/settings/settingsStore';
-  import { tokenStore } from '$lib/services/tokens/tokenStore';
   import { toastStore } from '$lib/stores/toastStore';
   import { kongDB } from '$lib/services/db';
-  import { assetCache } from '$lib/services/assetCache';
   import { onMount, onDestroy } from "svelte";
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
+  import { fade, fly } from 'svelte/transition';
+  import { themeStore } from '$lib/stores/themeStore';
+  import { Sun, Moon } from 'lucide-svelte';
 
   let soundEnabled = true;
   let settingsSubscription: () => void;
@@ -16,6 +17,7 @@
   let slippageInputValue = '2.0';
   let isMobile = false;
   let isCustomSlippage = false;
+  let showSlippageInfo = false;
 
   // Predefined slippage values for quick selection
   const quickSlippageValues = [1, 2, 3, 5];
@@ -48,6 +50,26 @@
     isCustomSlippage = !quickSlippageValues.includes(slippageValue);
   }
 
+  // Initialize slippage from localStorage or default to 2.0
+  function initializeSlippageFromStorage() {
+    if (browser) {
+      const storedSlippage = localStorage.getItem('slippage');
+      if (storedSlippage) {
+        const value = parseFloat(storedSlippage);
+        slippageValue = value;
+        slippageInputValue = value.toString();
+        isCustomSlippage = !quickSlippageValues.includes(value);
+      }
+    }
+  }
+
+  // Save slippage to localStorage
+  function saveSlippageToStorage(value: number) {
+    if (browser) {
+      localStorage.setItem('slippage', value.toString());
+    }
+  }
+
   function handleQuickSlippageSelect(value: number) {
     if (!$auth.isConnected) {
       toastStore.error('Please connect your wallet to save settings');
@@ -57,10 +79,8 @@
     slippageValue = value;
     slippageInputValue = value.toString();
     isCustomSlippage = false;
+    saveSlippageToStorage(value);
     toastStore.success(`Slippage updated to ${value}%`);
-    if (value > 10) {
-      toastStore.warning('Hmm... high slippage. Trade carefully!');
-    }
   }
 
   function handleSlippageChange(e: Event) {
@@ -71,9 +91,7 @@
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
-      if (boundedValue > 10) {
-        toastStore.warning('Hmm... high slippage. Trade carefully!');
-      }
+      saveSlippageToStorage(boundedValue);
     }
   }
 
@@ -97,40 +115,31 @@
         settingsStore.updateSetting('max_slippage', value);
         slippageValue = value;
         isCustomSlippage = !quickSlippageValues.includes(value);
-        if (value > 10) {
-          toastStore.warning('Hmm... high slippage. Trade carefully!');
-        }
       }
     }
   }
 
-  function handleSlippageBlur() {
+  function handleSlippageBlur(e: Event) {
     if (!$auth.isConnected) {
-      // Reset to default value
-      slippageInputValue = '2.0';
-      slippageValue = 2.0;
-      isCustomSlippage = false;
+      // Reset to stored value or default
+      initializeSlippageFromStorage();
       toastStore.error('Please connect your wallet to save settings');
       return;
     }
     
     const value = parseFloat(slippageInputValue);
     if (isNaN(value) || value < 0 || value > 99) {
-      // Reset to last valid value from settings
-      slippageInputValue = $settingsStore.max_slippage?.toString() || '2.0';
-      slippageValue = $settingsStore.max_slippage || 2.0;
-      isCustomSlippage = !quickSlippageValues.includes(slippageValue);
+      // Reset to last valid value from settings or storage
+      initializeSlippageFromStorage();
     } else {
       const boundedValue = Math.min(Math.max(value, 0), 99);
       slippageValue = boundedValue;
       slippageInputValue = boundedValue.toString();
       settingsStore.updateSetting('max_slippage', boundedValue);
       isCustomSlippage = !quickSlippageValues.includes(boundedValue);
+      saveSlippageToStorage(boundedValue);
       if (boundedValue !== value) {
         toastStore.success(`Slippage bounded to ${boundedValue}%`);
-      }
-      if (boundedValue > 10) {
-        toastStore.warning('Hmm... high slippage. Trade carefully!');
       }
     }
   }
@@ -147,8 +156,8 @@
 
   async function clearFavorites() {
     if (confirm('Are you sure you want to clear your favorite tokens?')) {
-      await tokenStore.clearUserData();
-      await tokenStore.loadTokens(true);
+      // TODO: readd clearing favorites
+      await kongDB.favorite_tokens.clear();
       toastStore.success('Favorites cleared successfully. Please refresh the page for changes to take effect.');
     }
   }
@@ -156,7 +165,6 @@
   async function resetDatabase() {
     try {
       await kongDB.delete();
-      await assetCache.clearCache();
       toastStore.success('Database cleared successfully');
       window.location.reload();
     } catch (error) {
@@ -175,191 +183,378 @@
     handleResize();
     if (browser) {
       window.addEventListener('resize', handleResize);
+      initializeSlippageFromStorage();
       return () => window.removeEventListener('resize', handleResize);
     }
   });
+
+  // Helper function to determine slippage risk level
+  function getSlippageRiskLevel(value: number): 'safe' | 'warning' | 'danger' {
+    if (value <= 2) return 'safe';
+    if (value <= 5) return 'warning';
+    return 'danger';
+  }
+
+  function handleThemeToggle() {
+    themeStore.toggleTheme();
+  }
+
+  // Add this function to handle done click
+  function handleDone() {
+    // You can add any cleanup or save logic here if needed
+    window.history.back();
+  }
 </script>
 
-<div class="settings-container">
-  <div class="setting-sections">
-    <!-- Slippage Section -->
-    <div class="setting-section">
-      <div class="setting-header">
-        <h3>Slippage Tolerance</h3>
+<div class="settings">
+  <!-- Slippage Section -->
+  <div class="settings-section slippage-section">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <h3 class="settings-title">Slippage Tolerance</h3>
+        <button 
+          class="text-muted hover:text-primary p-1 -m-1 rounded-md transition-colors"
+          on:click={() => showSlippageInfo = !showSlippageInfo}
+          aria-label="Slippage information"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" stroke-width="2"/>
+            <path stroke-width="2" d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </button>
       </div>
-      <div class="slippage-content">
-        <div class="quick-slippage-buttons">
-          {#each quickSlippageValues as value}
-            <button
-              class="quick-slippage-button"
-              class:active={slippageValue === value}
-              on:click={() => handleQuickSlippageSelect(value)}
-            >
-              {value}%
-            </button>
-          {/each}
-          <div class="custom-slippage-input" class:active={isCustomSlippage}>
-            <input
-              type="text"
-              class="slippage-input"
-              value={slippageInputValue}
-              on:input={handleSlippageInput}
-              on:change={handleSlippageChange}
-              on:blur={handleSlippageBlur}
-              placeholder="Custom"
-            />
-            <span class="percentage-symbol">%</span>
+    </div>
+
+    <div class="settings-content">
+      {#if showSlippageInfo}
+        <div class="info-panel" transition:fly={{ y: -10, duration: 200 }}>
+          <div class="flex gap-2">
+            <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="space-y-2">
+              <p class="text-xs text-kong-text-secondary">Maximum acceptable price difference between estimated and actual trade price.</p>
+              <div class="flex gap-4 text-xs">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500/50"></span>
+                  <span class="text-green-500">0.1-2%</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500/50"></span>
+                  <span class="text-yellow-500">2-5%</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500/50"></span>
+                  <span class="text-kong-error">5%+</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        {#if slippageValue > 10}
-          <div class="warning-text">
-            Warning: High slippage may result in unfavorable trades
+      {/if}
+
+      <div class="slippage-controls">
+        {#each quickSlippageValues as value}
+          <button
+            class="slippage-btn"
+            class:active={slippageValue === value}
+            class:warning={getSlippageRiskLevel(value) === 'warning'}
+            class:danger={getSlippageRiskLevel(value) === 'danger'}
+            on:click={() => handleQuickSlippageSelect(value)}
+          >
+            {value}%
+          </button>
+        {/each}
+        <div 
+          class="slippage-input-wrapper" 
+          class:active={isCustomSlippage}
+          class:warning={getSlippageRiskLevel(slippageValue) === 'warning'}
+          class:danger={getSlippageRiskLevel(slippageValue) === 'danger'}
+        >
+          <input
+            type="text"
+            class="w-full min-w-[40px] bg-transparent text-right text-xs md:text-sm"
+            value={isCustomSlippage ? slippageInputValue : "Custom"}
+            on:focus={(e) => {
+              const input = e.target as HTMLInputElement;
+              if (!isCustomSlippage) {
+                input.value = '';
+              }
+            }}
+            on:input={handleSlippageInput}
+            on:change={handleSlippageChange}
+            on:blur={handleSlippageBlur}
+            placeholder="Custom"
+          />
+          <span class="text-muted text-xs md:text-sm">%</span>
+        </div>
+      </div>
+
+      {#if slippageValue > 5}
+        <div class="warning-message error">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>High slippage warning</span>
+        </div>
+      {:else if slippageValue > 2}
+        <div class="warning-message warning">
+          <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Use caution</span>
+        </div>
+      {/if}
+    </div>
+  </div>
+
+  <div class="settings-grid">
+    <!-- General Section -->
+    <div class="settings-section">
+      <h3 class="settings-title">General</h3>
+      <div class="settings-items">
+        <div class="settings-item">
+          <div class="flex items-center gap-2">
+            <span class="text-sm">Theme</span>
           </div>
-        {/if}
+          <button
+            class="theme-toggle-btn"
+            on:click={handleThemeToggle}
+            aria-label={$themeStore === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            <div class="icons-container">
+              {#if $themeStore === 'dark'}
+                <div in:fade={{ duration: 200 }}>
+                  <Moon class="theme-icon moon" size={20} strokeWidth={2} />
+                </div>
+              {:else}
+                <div in:fade={{ duration: 200 }}>
+                  <Sun class="theme-icon sun" size={20} strokeWidth={2} color="rgb(234 179 8)" />
+                </div>
+              {/if}
+            </div>
+          </button>
+        </div>
+
+        <div class="settings-item">
+          <div class="flex items-center gap-2">
+            <span class="text-sm">Sound Effects</span>
+            <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          </div>
+          <Toggle 
+            checked={soundEnabled} 
+            on:change={handleToggleSound}
+            size="md"
+          />
+        </div>
       </div>
     </div>
 
-    <!-- Other Settings -->
-    <div class="setting-row">
-      <span class="setting-label">Sound Effects</span>
-      <Toggle checked={soundEnabled} on:change={handleToggleSound} />
-    </div>
+    <!-- Data Section -->
+    <div class="settings-section">
+      <h3 class="settings-title">Data</h3>
+      <div class="settings-items">
+        <div class="settings-item">
+          <span class="text-sm">Favorite Tokens</span>
+          <button class="btn-secondary" on:click={clearFavorites}>Clear</button>
+        </div>
 
-    <div class="setting-row">
-      <span class="setting-label">Favorite Tokens</span>
-      <button class="action-button" on:click={clearFavorites}>
-        Clear Favorites
-      </button>
-    </div>
-
-    <div class="setting-row">
-      <span class="setting-label">Clear App Data</span>
-      <button class="action-button warning" on:click={resetDatabase}>
-        Clear Data
-      </button>
+        <div class="settings-item">
+          <span class="text-sm">Reload Application</span>
+          <button class="btn-destructive" on:click={resetDatabase}>Reload</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <style lang="postcss">
-  .settings-container {
-    @apply w-full text-white;
+  .settings {
+    @apply w-full max-w-2xl mx-auto space-y-6 p-4;
   }
 
-  .setting-sections {
-    @apply grid gap-4 max-w-full;
+  /* Add specific styles for the slippage section */
+  .slippage-section {
+    @apply md:max-w-none;
   }
 
-  .setting-section {
-    @apply grid gap-4 bg-black/20 rounded-lg p-4 
-           border border-white/10 backdrop-blur-sm
-           w-full max-w-full overflow-hidden;
+  .settings-content {
+    @apply space-y-3 bg-kong-bg-dark/20 rounded-lg border border-kong-border p-4;
+    @apply md:max-w-3xl md:mx-auto;
   }
 
-  .setting-header {
-    @apply grid grid-flow-col auto-cols-max items-center gap-2 border-b border-white/15 pb-3;
+  .slippage-controls {
+    @apply flex flex-wrap items-center gap-2;
+    @apply md:justify-center md:gap-3;
   }
 
-  .setting-header h3 {
-    @apply text-lg font-semibold text-white;
+  .settings-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
   }
 
-  .slippage-content {
-    @apply flex flex-wrap gap-2;
+  .settings-section {
+    @apply space-y-3;
+    height: fit-content;
   }
 
-  .quick-slippage-buttons {
-    @apply flex flex-wrap gap-2 flex-1;
+  .settings-title {
+    @apply text-sm font-medium text-kong-text-primary;
   }
 
-  .quick-slippage-button {
-    @apply px-6 py-2.5 rounded-lg 
-           bg-gray-800 text-white/90 text-base font-medium
-           border border-gray-700 transition-all duration-200
-           hover:bg-gray-700 hover:border-gray-600
-           focus:outline-none focus:ring-2 focus:ring-blue-500/50
-           flex-1 min-w-[80px] text-center;
+  .info-panel {
+    @apply bg-kong-bg-dark/40 rounded-md border border-kong-border p-3;
   }
 
-  .quick-slippage-button.active {
-    @apply bg-blue-600 text-white border-blue-500
-           ring-2 ring-blue-500/50;
+  .slippage-btn {
+    @apply px-3 py-1.5 text-xs font-medium rounded-md
+           bg-kong-bg-dark/40 text-kong-text-primary
+           border border-kong-border
+           hover:bg-kong-bg-dark/60 hover:border-kong-border-light
+           transition-all duration-200;
   }
 
-  .custom-slippage-input {
-    @apply flex items-center gap-2
-           px-4 py-2 rounded-lg bg-gray-800 
-           border-2 border-dashed border-gray-600 transition-all duration-200
-           hover:bg-gray-700 hover:border-gray-500
-           min-w-[120px] flex-1;
+  .slippage-btn.active {
+    @apply bg-kong-primary/10 border-kong-primary/30
+           text-kong-primary ring-1 ring-kong-primary/30;
   }
 
-  .custom-slippage-input.active {
-    @apply border-blue-500 bg-blue-600/80 border-solid
-           ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/20;
+  .slippage-btn.warning.active {
+    @apply bg-yellow-500/10 border-yellow-500/30
+           text-yellow-500 ring-1 ring-yellow-500/30;
   }
 
-  .slippage-input {
-    @apply w-full bg-transparent text-white/90 text-base font-medium
-           focus:outline-none text-right pr-1;
+  .slippage-btn.danger.active {
+    @apply bg-kong-error/10 border-kong-error/30
+           text-kong-error ring-1 ring-kong-error/30;
   }
 
-  .percentage-symbol {
-    @apply text-white/70 font-medium;
+  .slippage-input-wrapper {
+    @apply px-3 py-1.5 text-xs md:text-sm font-medium rounded-md
+           bg-kong-bg-dark/40 border border-kong-border
+           flex items-center gap-1
+           w-[100px] md:w-[120px]
+           focus-within:ring-1 focus-within:ring-kong-primary/30
+           focus-within:border-kong-primary/30
+           transition-all duration-200;
   }
 
-  .warning-text {
-    @apply text-yellow-500 text-sm font-medium;
+  .slippage-input-wrapper input {
+    @apply text-kong-text-primary placeholder-kong-text-secondary text-right;
   }
 
-  .setting-row {
-    @apply flex items-center justify-between py-3 px-4 
-           bg-black/20 rounded-lg border border-white/10
-           hover:bg-black/30 transition-all duration-200;
+  .slippage-input-wrapper:not(.active) input {
+    @apply text-kong-text-secondary;
   }
 
-  .setting-label {
-    @apply text-white/90 text-base font-medium;
+  .warning-message {
+    @apply flex items-center gap-1.5 text-xs p-2 rounded-md;
   }
 
-  .action-button {
-    @apply w-[140px] px-4 py-2 rounded-lg 
-           bg-blue-600 text-white text-sm font-medium
-           border border-blue-500 transition-all duration-200
-           hover:bg-blue-500 hover:border-blue-400
-           focus:outline-none focus:ring-2 focus:ring-blue-500/50
-           text-center whitespace-nowrap;
+  .warning-message.warning {
+    @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20;
   }
 
-  .action-button.warning {
-    @apply bg-red-600 border-red-500
-           hover:bg-red-500 hover:border-red-400
-           focus:ring-red-500/50;
+  .warning-message.error {
+    @apply bg-kong-error/10 text-kong-error border border-kong-error/20;
   }
 
-  .action-button:hover {
-    @apply transform -translate-y-0.5 shadow-lg shadow-blue-500/20;
+  .settings-items {
+    @apply divide-y divide-kong-border rounded-md border border-kong-border
+           bg-kong-bg-dark/20;
   }
 
-  .action-button.warning:hover {
-    @apply shadow-red-500/20;
+  .settings-item {
+    @apply flex items-center justify-between p-2
+           hover:bg-kong-bg-dark/40 transition-colors;
+    min-height: 44px;
   }
 
-  @media (max-width: 768px) {
-    .setting-header h3 {
-      @apply text-base;
+  .btn-secondary, .btn-destructive {
+    @apply px-3 py-1.5 text-xs font-medium rounded-md
+           min-w-[70px] h-[32px]
+           flex items-center justify-center
+           transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-kong-bg-dark/40 text-kong-text-primary
+           border border-kong-border
+           hover:bg-kong-bg-dark/60 hover:border-kong-border-light;
+  }
+
+  .btn-destructive {
+    @apply bg-kong-error/10 text-kong-error
+           border border-kong-error/20
+           hover:bg-kong-error/20 hover:border-kong-error/30;
+  }
+
+  @media (min-width: 768px) {
+    .settings-content {
+      @apply p-5;
     }
-    
-    .quick-slippage-button {
-      @apply px-4 py-2 text-sm min-w-[70px];
+
+    .slippage-controls {
+      @apply gap-3;
     }
-    
-    .custom-slippage-input {
-      @apply min-w-[100px];
+
+    .slippage-btn, .slippage-input-wrapper {
+      @apply text-sm;
     }
-    
-    .action-button {
-      @apply w-[120px] px-3 py-1.5;
-    }
+  }
+
+  .done-section {
+    @apply flex justify-center pt-4 md:pt-6;
+  }
+
+  .btn-primary {
+    @apply px-8 py-2 text-sm font-medium rounded-md
+           bg-kong-primary text-white
+           hover:bg-kong-primary/80
+           transition-colors duration-200
+           min-w-[120px];
+  }
+
+  .text-muted {
+    @apply text-kong-text-disabled;
+    transition: color 0.2s ease;
+  }
+
+  .text-yellow-500 {
+    color: rgb(234 179 8); /* Tailwind yellow-500 */
+    transition: color 0.2s ease;
+  }
+
+  .text-blue-400 {
+    color: rgb(96 165 250); /* Tailwind blue-400 */
+    transition: color 0.2s ease;
+  }
+
+  .theme-toggle-btn {
+    @apply relative flex items-center justify-center
+           w-10 h-10 rounded-md
+           bg-kong-bg-dark/40 border border-kong-border
+           hover:bg-kong-bg-dark/60 hover:border-kong-border-light
+           transition-all duration-200;
+  }
+
+  .icons-container {
+    @apply relative flex items-center justify-center
+           w-full h-full;
+  }
+
+  .theme-icon {
+    @apply flex items-center justify-center;
+  }
+
+  .theme-icon.sun {
+    @apply text-yellow-500;
+    color: rgb(234 179 8); /* Tailwind yellow-500 */
+  }
+
+  .theme-icon.moon {
+    @apply text-blue-400;
+    color: rgb(96 165 250); /* Tailwind blue-400 */
   }
 </style>

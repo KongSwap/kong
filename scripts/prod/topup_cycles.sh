@@ -3,7 +3,7 @@ NETWORK="--network ic"
 ./switch_prod.sh
 
 KONG_BACKEND=$(dfx canister id ${NETWORK} kong_backend)
-KONG_FRONTEND=$(dfx canister id ${NETWORK} kong_frontend)
+KONG_SVELTE=$(dfx canister id ${NETWORK} kong_svelte)
 
 #dfx ledger ${NETWORK} balance      # get ICP balance
 #dfx ledger ${NETWORK} account-id   # get account-id to send ICP to

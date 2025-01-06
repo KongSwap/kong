@@ -18,22 +18,7 @@ declare global {
       in_tokens: bigint;
       in_usd: string;
     }
-
-    interface UserPoolBalance {
-      amount_0: bigint;
-      amount_1: bigint;
-      balance: bigint;
-      name: string;
-      symbol: string;
-      symbol_0: string;
-      symbol_1: string;
-      ts: bigint;
-      pool_id: number;
-      usd_amount_0: number;
-      usd_amount_1: number;
-      usd_balance: number;
-    }
-
+    
     interface Transaction {
       type: 'send' | 'receive';
       amount: string;
@@ -53,32 +38,6 @@ declare global {
       total_24h_volume: bigint;
       total_24h_lp_fee: bigint;
       total_24h_num_swaps: number;
-  }
-  
-   interface Pool {
-      pool_id: number;
-      name: string;
-      symbol: string;
-      chain_0: string;
-      symbol_0: string;
-      address_0: string;
-      balance_0: bigint;
-      lp_fee_0: bigint;
-      chain_1: string;
-      symbol_1: string;
-      address_1: string;
-      balance_1: bigint;
-      lp_fee_1: bigint;
-      price: number;
-      price_usd: string;
-      lp_fee_bps: number;
-      rolling_24h_volume: bigint;
-      rolling_24h_lp_fee: bigint;
-      rolling_24h_num_swaps: number;
-      rolling_24h_apy: number;
-      lp_token_symbol: string;
-      tvl: bigint;
-      on_kong: boolean;
   }
   
   // Swap Types

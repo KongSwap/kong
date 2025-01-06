@@ -30,7 +30,8 @@ function createSidebarStore() {
         toggleExpand: () => {
             update(state => ({
                 ...state,
-                isExpanded: false,  // Always collapse when toggling
+                isExpanded: !state.isExpanded,  // Actually toggle the state
+                isOpen: true,  // Make sure sidebar is open
                 width: 527  // Keep consistent width
             }));
         },
@@ -58,15 +59,13 @@ function createSidebarStore() {
         toggleOpen: () => {
             update(state => ({ ...state, isOpen: !state.isOpen }));
         },
-        collapse: async () => {
-            const currentState = get({ subscribe });
-            if (currentState.isExpanded) {
-                update(state => ({ ...state, isExpanded: false, width: 527 }));
-                // Wait for animations to complete only if we were expanded
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-            // Close the sidebar
-            update(state => ({ ...state, isOpen: false }));
+        collapse: () => {
+            update(state => ({ 
+                ...state, 
+                isExpanded: false, 
+                width: 527,
+                isOpen: false 
+            }));
         }
     };
 }

@@ -1,26 +1,41 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-// Always use modern theme, ignoring stored value
-const storedMode = browser ? localStorage.getItem('themeMode') : 'dark';
+type Theme = 'dark' | 'light';
 
-// Create a readonly store that always returns 'modern'
-export const themeStore = writable('modern');
-export const themeModeStore = writable(storedMode || 'dark');
+function createThemeStore() {
+  const { subscribe, set } = writable<Theme>('dark');
 
-// Subscribe to changes and update localStorage
-if (browser) {
-  themeStore.subscribe(() => {
-    localStorage.setItem('theme', 'modern');
-    document.documentElement.setAttribute('data-theme', 'modern');
-  });
-
-  themeModeStore.subscribe((value) => {
-    localStorage.setItem('themeMode', value);
-    if (value === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+  return {
+    subscribe,
+    set,
+    initTheme: () => {
+      if (browser) {
+        // Get stored theme or default to dark
+        const storedTheme = localStorage.getItem('theme') as Theme || 'dark';
+        
+        // Set theme in localStorage and DOM
+        localStorage.setItem('theme', storedTheme);
+        document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+        
+        // Update store
+        set(storedTheme);
+        
+        // Mark theme as ready
+        document.documentElement.setAttribute('data-theme-ready', 'true');
+      }
+    },
+    toggleTheme: () => {
+      if (browser) {
+        const currentTheme = localStorage.getItem('theme') as Theme || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        localStorage.setItem('theme', newTheme);
+        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+        set(newTheme);
+      }
     }
-  });
+  };
 }
+
+export const themeStore = createThemeStore();

@@ -12,7 +12,10 @@
   }
 
   // Declare our state variables
-  let { token } = $props<{ token: FE.Token }>();
+  let { token, className = '' } = $props<{ 
+    token: FE.Token;
+    className?: string;
+  }>();
   let transactions = $state<FE.Transaction[]>([]);
   let isLoadingTxns = $state(false);
   let error = $state<string | null>(null);
@@ -193,10 +196,10 @@
   });
 </script>
 
-<Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
-  <div class="flex flex-col h-[600px]">
-    <div class="p-4">
-      <h2 class="text-2xl font-semibold text-white/80">Transaction Feed</h2>
+<Panel variant="transparent" type="main" {className}>
+  <div class="flex flex-col max-h-[300px]">
+    <div class="p-4 pb-0">
+      <h2 class="text-xl font-semibold text-kong-text-primary/80">Recent Transactions</h2>
     </div>
     <div class="flex-1 overflow-y-auto p-4">
       {#if isLoadingTxns && transactions.length === 0}
@@ -206,10 +209,10 @@
       {:else if error}
         <div class="text-red-400 text-center py-4">{error}</div>
       {:else if transactions.length === 0}
-        <div class="text-white text-center py-4">No transactions found</div>
+        <div class="text-kong-text-primary text-center py-4">No transactions found</div>
       {:else}
         <div class="-mx-4">
-          <table class="w-full text-left text-white/80">
+          <table class="w-full text-left text-kong-text-primary/80">
             <tbody>
               {#each transactions as tx}
                 <TransactionRow
