@@ -561,8 +561,8 @@ service : {
 
     // user() - returns user information
     get_user : () -> (UserResult) query;
-    // user_balances(principal_id, opt lp_token_wildcard) - returns all user balances or specific LP token balances (current only supports balance of LP tokens)
-    user_balances : (text, opt text) -> (UserBalancesResult) query;
+    // user_balances(principal_id) - return user's LP balances
+    user_balances : (text) -> (UserBalancesResult) query;
     // messages(opt message_id) - returns specific message or all messages of the user
     messages : (opt nat64) -> (MessagesResult) query;
     // requests(opt request_id) - return specific request or most recent requests
