@@ -327,14 +327,6 @@ type RequestsResult = variant { Ok : vec RequestsReply; Err : text };
 
 type TransfersResult = variant { Ok : vec TransferIdReply; Err : text };
 
-type AddTokenArgs = record {
-    token : text;
-};
-type AddTokenReply = variant {
-    IC : ICTokenReply;
-};
-type AddTokenResult = variant { Ok : AddTokenReply; Err : text };
-
 type AddPoolArgs = record {
     token_0 : text;
     amount_0 : nat;
@@ -632,6 +624,5 @@ service : {
     send : (SendArgs) -> (SendResult);
 
     // admin functions
-    add_token : (AddTokenArgs) -> (AddTokenResult);
     check_pools : () -> (CheckPoolsResult);
 }
