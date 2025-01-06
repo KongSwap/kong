@@ -206,9 +206,14 @@ pub fn update(token: &StableToken) {
 }
 
 pub fn remove(token_id: u32) -> Result<(), String> {
-    TOKEN_MAP
-        .with(|m| m.borrow_mut().remove(&StableTokenId(token_id)))
-        .ok_or(format!("Failed to remove token_id #{}", token_id))?;
+    let token = get_by_token_id(token_id).ok_or(format!("Token_id #{} not found", token_id))?;
+    // set is_removed to true to remove token
+    let remove_token = match token {
+        StableToken::IC(token) => &StableToken::IC(ICToken { is_removed: true, ..token }),
+        StableToken::LP(token) => &StableToken::LP(LPToken { is_removed: true, ..token }),
+    };
+    update(remove_token);
+
     Ok(())
 }
 

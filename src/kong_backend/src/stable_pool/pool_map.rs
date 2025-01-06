@@ -176,10 +176,9 @@ pub fn update(pool: &StablePool) {
 }
 
 pub fn remove(pool_id: u32) -> Result<(), String> {
-    // remove pool
-    let pool = POOL_MAP
-        .with(|m| m.borrow_mut().remove(&StablePoolId(pool_id)))
-        .ok_or("Unable to remove pool".to_string())?;
+    let pool = get_by_pool_id(pool_id).ok_or_else(|| format!("Pool #{} not found", pool_id))?;
+    // set is_removed to true to remove pool
+    update(&StablePool { is_removed: true, ..pool });
 
     // remove LP token
     token_map::remove(pool.lp_token_id)?;

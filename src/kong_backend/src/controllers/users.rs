@@ -70,11 +70,3 @@ fn edit_user(user_profile: String) -> Result<String, String> {
 
     Ok("User updated".to_string())
 }
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_user(user_id: u32) -> Result<String, String> {
-    match USER_MAP.with(|m| m.borrow_mut().remove(&StableUserId(user_id))) {
-        Some(_) => Ok(format!("User {} removed", user_id)),
-        None => Err("User not found".to_string()),
-    }
-}

@@ -78,15 +78,12 @@ pub fn archive_to_kong_data(lp_token: &StableLPToken) -> Result<(), String> {
 }
 
 pub fn remove(lp_token_id: u32) -> Result<(), String> {
-    LP_TOKEN_MAP.with(|m| {
-        let mut lp_tokens = m.borrow_mut();
-        let keys_to_remove: Vec<_> = lp_tokens
-            .iter()
-            .filter_map(|(k, v)| if v.token_id == lp_token_id { Some(k) } else { None })
-            .collect();
-        for key in keys_to_remove {
-            lp_tokens.remove(&key);
-        }
+    let lp_token = get_by_token_id(lp_token_id).ok_or(format!("LP token_id #{} not found", lp_token_id))?;
+    // set amount=0 to remove lp_token
+    update(&StableLPToken {
+        amount: nat_zero(),
+        ..lp_token
     });
+
     Ok(())
 }
