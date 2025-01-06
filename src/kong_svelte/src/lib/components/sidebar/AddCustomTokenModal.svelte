@@ -229,7 +229,7 @@
     margin-bottom: 0.75rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
   }
 
   input {
@@ -238,7 +238,7 @@
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.75rem;
-    color: white;
+    @apply text-kong-text-primary;
     font-size: 1rem;
     transition: all 0.2s;
   }
@@ -250,7 +250,7 @@
   }
 
   input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    @apply text-kong-text-primary/30;
   }
 
   .error-message {
@@ -285,18 +285,18 @@
 
   .cancel-button {
     background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .cancel-button:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
-    color: white;
+    @apply text-kong-text-primary;
   }
 
   .submit-button {
     background: rgb(59, 130, 246);
-    color: white;
+    @apply text-kong-text-primary;
     border: 1px solid rgba(59, 130, 246, 0.5);
   }
 
@@ -335,21 +335,21 @@
     justify-content: center;
     font-size: 1.75rem;
     font-weight: 500;
-    color: white;
+    @apply text-kong-text-primary;
   }
 
   .token-info h3 {
     margin: 0 0 0.375rem;
     font-size: 1.5rem;
     font-weight: 600;
-    color: white;
+    @apply text-kong-text-primary;
     line-height: 1.2;
   }
 
   .token-symbol {
     margin: 0;
     font-size: 1rem;
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
   }
 
   .token-details {
@@ -371,13 +371,13 @@
   }
 
   .detail-label {
-    color: rgba(255, 255, 255, 0.7);
+    @apply text-kong-text-primary/70;
     font-size: 0.875rem;
     font-weight: 500;
   }
 
   .detail-value {
-    color: white;
+    @apply text-kong-text-primary;
     font-size: 0.875rem;
   }
 
@@ -396,7 +396,7 @@
 
   .standard-tag {
     background: rgba(59, 130, 246, 0.15);
-    color: rgb(96, 165, 250);
+    @apply text-kong-text-primary;
     padding: 0.375rem 0.75rem;
     border-radius: 0.5rem;
     font-size: 0.75rem;
@@ -405,7 +405,7 @@
   }
 
   .detail-value.highlight {
-    color: rgb(96, 165, 250);
+    @apply text-kong-text-primary;
     font-weight: 500;
   }
 </style> 

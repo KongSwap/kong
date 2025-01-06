@@ -614,7 +614,7 @@
   }
 
   .id-header {
-      @apply flex justify-between items-center text-white/70 text-sm;
+      @apply flex justify-between items-center text-kong-primary/70 text-sm;
   }
 
   .header-actions {
@@ -626,7 +626,7 @@
              bg-white/5 backdrop-blur-sm
              border border-white/10
              hover:border-white/20 hover:bg-white/10
-             text-white/70 hover:text-white
+             text-kong-primary/70 hover:text-kong-primary
              transition-all duration-200
              flex items-center justify-center gap-2;
 
@@ -640,7 +640,7 @@
   }
 
   .input-wrapper input {
-      @apply w-full h-11 rounded-lg text-white px-4
+      @apply w-full h-11 rounded-lg text-kong-primary px-4
              bg-white/5 backdrop-blur-sm
              border border-white/10 
              hover:border-white/20
@@ -648,7 +648,7 @@
              transition-colors;
 
       &::placeholder {
-          @apply text-white/30;
+          @apply text-kong-primary/30;
       }
 
       &.error { 
@@ -680,15 +680,15 @@
   }
 
   .account-label {
-      @apply text-sm text-white/70;
+      @apply text-sm text-kong-primary/70;
   }
 
   .account-balance {
-      @apply text-white font-medium;
+      @apply text-kong-primary font-medium;
   }
 
   .send-btn {
-      @apply h-12 w-full rounded-lg bg-indigo-500 text-white font-medium 
+      @apply h-12 w-full rounded-lg bg-indigo-500 text-kong-primary font-medium 
              hover:bg-indigo-600 disabled:opacity-50 mt-4;
   }
 
@@ -712,11 +712,11 @@
               @apply flex items-baseline justify-center gap-2;
               
               .amount {
-                  @apply text-3xl font-bold text-white;
+                  @apply text-3xl font-bold text-kong-primary;
               }
               
               .symbol {
-                  @apply text-lg text-white/70;
+                  @apply text-lg text-kong-primary/70;
               }
           }
       }
@@ -728,17 +728,17 @@
               @apply flex justify-between items-center p-3 rounded-lg bg-white/5;
               
               .label {
-                  @apply text-sm text-white/60;
+                  @apply text-sm text-kong-primary/60;
               }
               
               .value {
-                  @apply text-sm text-white/90;
+                  @apply text-sm text-kong-primary/90;
               }
               
               &.total {
                   @apply mt-4 bg-white/10;
                   .label, .value {
-                      @apply font-medium text-white;
+                      @apply font-medium text-kong-primary;
                   }
               }
           }
@@ -752,11 +752,11 @@
           }
           
           .cancel-btn {
-              @apply bg-white/10 hover:bg-white/15 text-white/90;
+              @apply bg-white/10 hover:bg-white/15 text-kong-primary/90;
           }
           
           .confirm-btn {
-              @apply bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed;
+              @apply bg-indigo-500 hover:bg-indigo-600 text-kong-primary disabled:opacity-50 disabled:cursor-not-allowed;
               &.loading {
                   @apply bg-indigo-500/50;
               }
@@ -790,15 +790,15 @@
       @apply px-3 py-1 rounded-lg text-sm
              bg-white/5 backdrop-blur-sm
              border border-white/10
-             text-white/70
+             text-kong-primary/70
              transition-all duration-200;
 
       &.active {
-          @apply bg-indigo-500/20 border-indigo-500 text-white;
+          @apply bg-indigo-500/20 border-indigo-500 text-kong-primary;
       }
   }
 
   .balance-display {
-      @apply text-sm text-white/60 mt-2 px-1;
+      @apply text-sm text-kong-primary/60 mt-2 px-1;
   }
 </style>

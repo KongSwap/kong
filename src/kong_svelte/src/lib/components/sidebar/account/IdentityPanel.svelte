@@ -437,7 +437,7 @@
   }
 
   .id-header {
-    @apply flex justify-between items-center text-white/70 text-sm mb-2;
+    @apply flex justify-between items-center text-kong-text-primary/70 text-sm mb-2;
   }
 
   .header-actions {
@@ -449,7 +449,7 @@
            bg-white/5 backdrop-blur-sm
            border border-white/10
            hover:border-white/20 hover:bg-white/10
-           text-white/70 hover:text-white
+           text-kong-text-primary/70 hover:text-kong-text-primary
            transition-all duration-200
            flex items-center justify-center gap-2;
   }
@@ -474,7 +474,7 @@
            bg-white/5 backdrop-blur-sm
            border border-white/10 
            hover:border-white/20
-           text-white/90
+           text-kong-text-primary/90
            transition-colors;
   }
 
@@ -491,11 +491,11 @@
   }
 
   .info-tooltip p {
-    @apply text-white/90 text-sm mb-2;
+    @apply text-kong-text-primary/90 text-sm mb-2;
   }
 
   .info-tooltip ul {
-    @apply list-disc pl-5 text-sm text-white/70;
+    @apply list-disc pl-5 text-sm text-kong-text-primary/70;
   }
 
   .info-tooltip li {
@@ -503,7 +503,7 @@
   }
 
   .id-header {
-    @apply flex justify-between items-center text-white/70 text-sm;
+    @apply flex justify-between items-center text-kong-text-primary/70 text-sm;
   }
 
   .header-actions {
@@ -515,7 +515,7 @@
            bg-white/5 backdrop-blur-sm
            border border-white/10
            hover:border-white/20 hover:bg-white/10
-           text-white/70 hover:text-white
+           text-kong-text-primary/70 hover:text-kong-text-primary
            transition-all duration-200
            flex items-center justify-center gap-2;
   }

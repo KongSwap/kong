@@ -39,7 +39,7 @@
                 {formatToNonZeroDecimal(poolShare.toString())}% of pool
               </span>
             {:else}
-              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-500 whitespace-nowrap">
                 New Position
               </span>
             {/if}
