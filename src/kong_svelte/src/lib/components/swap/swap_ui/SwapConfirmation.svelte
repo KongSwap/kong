@@ -7,6 +7,7 @@
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { onMount, onDestroy } from "svelte";
   import { formatTokenValue } from "$lib/utils/tokenFormatters";
+  import { fade } from "svelte/transition";
   import { toastStore } from "$lib/stores/toastStore";
   import { createEventDispatcher } from "svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
@@ -192,7 +193,7 @@
       <p class="error-message">{error}</p>
     </div>
   {:else if payToken && receiveToken}
-    <div class="confirmation-container px-4">
+    <div class="confirmation-container px-4" transition:fade={{ duration: 200 }}>
       <div class="content-wrapper">
         <div class="sections-wrapper">
           <PayReceiveSection

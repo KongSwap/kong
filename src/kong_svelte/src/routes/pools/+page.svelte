@@ -7,8 +7,6 @@
     liveUserPools,
     filteredLivePools,
     poolSearchTerm,
-    poolSortColumn,
-    poolSortDirection,
   } from "$lib/services/pools/poolStore";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
   import Panel from "$lib/components/common/Panel.svelte";
@@ -31,6 +29,8 @@
   import { browser } from "$app/environment";
   import { getPoolPriceUsd } from "$lib/utils/statsUtils";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import DataTable from "$lib/components/common/DataTable.svelte";
+  import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 
   // Navigation state
   const activeSection = writable("pools");
@@ -41,24 +41,8 @@
   let isMobile = writable(false);
   let searchTerm = "";
   let searchDebounceTimer: NodeJS.Timeout;
-  const KONG_CANISTER_ID = "o7oak-iyaaa-aaaaq-aadzq-cai";
-
-  onMount(() => {
-    window.addEventListener("resize", checkMobile);
-    checkMobile();
-
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  });
-
-  const checkMobile = () => {
-    $isMobile = window.innerWidth < 768;
-  };
-
-  $: if (browser) {
-    checkMobile();
-  }
+  const mobileSortColumn = writable("rolling_24h_volume");
+  const mobileSortDirection = writable<"asc" | "desc">("desc");
 
   const tokenMap = derived(formattedTokens, ($tokens) => {
     const map = new Map();
@@ -69,25 +53,6 @@
     }
     return map;
   });
-
-  const highestApr = derived(livePools, ($pools) => {
-    if (!$pools || $pools.length === 0) return 0;
-    return Math.max(...$pools.map((pool) => Number(pool.rolling_24h_apy)));
-  });
-
-  function toggleSort(column: string) {
-    if ($poolSortColumn === column) {
-      poolSortDirection.set($poolSortDirection === "asc" ? "desc" : "asc");
-    } else {
-      poolSortColumn.set(column);
-      poolSortDirection.set("desc");
-    }
-  }
-
-  function getSortIcon(column: string) {
-    if ($poolSortColumn !== column) return ArrowUpDown;
-    return $poolSortDirection === "asc" ? ArrowUp : ArrowDown;
-  }
 
   function handlePoolClick(event) {
     const pool = event.detail;
@@ -111,12 +76,78 @@
     }, 300);
   }
 
+  onMount(() => {
+    window.addEventListener("resize", checkMobile);
+    checkMobile();
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  });
+
+  const checkMobile = () => {
+    $isMobile = window.innerWidth < 768;
+  };
+
+  $: if (browser) {
+    checkMobile();
+  }
+
   onDestroy(() => {
     clearTimeout(searchDebounceTimer);
     // reset search properties
     searchTerm = "";
     poolSearchTerm.set("");
   });
+
+  function handleMobileSort(column: string) {
+    mobileSortColumn.update(currentColumn => {
+      if (currentColumn === column) {
+        mobileSortDirection.update(d => d === "asc" ? "desc" : "asc");
+      } else {
+        mobileSortColumn.set(column);
+        mobileSortDirection.set("desc");
+      }
+      return column;
+    });
+  }
+
+  const sortedMobilePools = derived(
+    [filteredLivePools, mobileSortColumn, mobileSortDirection],
+    ([$filteredLivePools, $mobileSortColumn, $mobileSortDirection]) => {
+      let sorted = [...$filteredLivePools];
+      sorted.sort((a, b) => {
+        // Always ensure KONG is at the top regardless of sort
+        if (a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID) return -1;
+        if (b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID) return 1;
+
+        let aValue, bValue;
+        switch ($mobileSortColumn) {
+          case 'price':
+            aValue = Number(getPoolPriceUsd(a));
+            bValue = Number(getPoolPriceUsd(b));
+            break;
+          case 'tvl':
+            aValue = Number(a.tvl);
+            bValue = Number(b.tvl);
+            break;
+          case 'rolling_24h_volume':
+            aValue = Number(a.rolling_24h_volume);
+            bValue = Number(b.rolling_24h_volume);
+            break;
+          case 'rolling_24h_apy':
+            aValue = Number(a.rolling_24h_apy);
+            bValue = Number(b.rolling_24h_apy);
+            break;
+          default:
+            aValue = Number(a.rolling_24h_volume);
+            bValue = Number(b.rolling_24h_volume);
+        }
+        return $mobileSortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      });
+      return sorted;
+    }
+  );
 </script>
 
 <PageHeader
@@ -128,7 +159,7 @@
       label: "Volume 24H",
       value: `${formatUsdValue(
         formatBalance(
-          $livePools.reduce(
+          $filteredLivePools.reduce(
             (acc, pool) => acc + Number(pool.rolling_24h_volume),
             0,
           ),
@@ -142,7 +173,7 @@
       label: "TVL",
       value: `${formatUsdValue(
         formatBalance(
-          $livePools.reduce((acc, pool) => acc + Number(pool.tvl), 0),
+          $filteredLivePools.reduce((acc, pool) => acc + Number(pool.tvl), 0),
           6,
           2,
         ),
@@ -151,7 +182,7 @@
     },
     {
       label: "Highest APY",
-      value: `${$highestApr.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+      value: `${Math.max(...$filteredLivePools.map(pool => Number(pool.rolling_24h_apy))).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
       icon: Flame,
       hideOnMobile: true,
     },
@@ -161,18 +192,18 @@
 <section class="flex flex-col w-full h-[calc(100vh-13.8rem)] px-2 pb-4 mt-4">
   <div class="z-10 flex flex-col w-full h-full mx-auto gap-4 max-w-[1300px]">
     {#if $activeSection === "pools"}
-      <Panel className="flex-1 {$isMobile ? '' : '!p-0'}">
-        <div class="overflow-hidden flex flex-col">
+      <Panel className="flex-1 {$isMobile ? '' : '!p-0'}" variant="transparent">
+        <div class="overflow-hidden flex flex-col h-full">
           <!-- Header with full-width search and "My Pools" button -->
           <div class="flex flex-col sticky top-0 z-20">
-            <div class="flex flex-col gap-3 sm:gap-0 sticky top-0 z-10">
+            <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
               <div class="sm:hidden px-2 space-y-2">
                 <!-- Row 1: View Toggle & Search -->
                 <div class="flex gap-2 w-full">
                   <!-- View Toggle -->
                   <div
-                    class="flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden"
+                    class="flex border border-kong-border rounded-lg overflow-hidden"
                   >
                     <button
                       class="px-3 py-2 text-sm {$activePoolView === 'all'
@@ -227,7 +258,7 @@
                       class="flex-1 flex bg-kong-bg-dark border border-kong-border rounded-lg overflow-hidden"
                     >
                       <select
-                        bind:value={$poolSortColumn}
+                        bind:value={$mobileSortColumn}
                         class="flex-1 bg-transparent text-kong-text-primary text-sm focus:outline-none px-3 py-2"
                       >
                         <option value="rolling_24h_volume">Volume 24H</option>
@@ -237,14 +268,11 @@
                       </select>
                       <div class="w-px bg-kong-border"></div>
                       <button
-                        on:click={() =>
-                          poolSortDirection.update((d) =>
-                            d === "asc" ? "desc" : "asc",
-                          )}
+                        on:click={() => mobileSortDirection.update(d => d === "asc" ? "desc" : "asc")}
                         class="px-3 text-[#60A5FA]"
                       >
                         <svelte:component
-                          this={$poolSortDirection === "asc"
+                          this={$mobileSortDirection === "asc"
                             ? ArrowUp
                             : ArrowDown}
                           class="w-4 h-4"
@@ -342,110 +370,87 @@
             </div>
           </div>
 
-          <div class="h-full custom-scrollbar overflow-y-auto">
+          <div class="flex-1 overflow-hidden">
             {#if $activePoolView === "all"}
               <!-- All Pools View -->
-              <div class="overflow-auto {$isMobile ? '' : ''} custom-scrollbar">
+              <div class="h-full overflow-auto">
                 <!-- Desktop Table View -->
-                <table
-                  class="w-full hidden md:table relative [&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4"
-                >
-                  <thead class="sticky top-0 z-10 bg-kong-bg-dark">
-                    <tr
-                      class="h-10 border-b border-kong-border bg-kong-bg-dark"
-                    >
-                      <th
-                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
-                        on:click={() => toggleSort("pool_name")}
-                      >
-                        Pool
-                        <svelte:component
-                          this={getSortIcon("pool_name")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </th>
-                      <th
-                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
-                        on:click={() => toggleSort("price")}
-                      >
-                        Price
-                        <svelte:component
-                          this={getSortIcon("price")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </th>
-                      <th
-                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
-                        on:click={() => toggleSort("tvl")}
-                      >
-                        TVL
-                        <svelte:component
-                          this={getSortIcon("tvl")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </th>
-                      <th
-                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
-                        on:click={() => toggleSort("rolling_24h_volume")}
-                      >
-                        Volume 24H
-                        <svelte:component
-                          this={getSortIcon("rolling_24h_volume")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </th>
-                      <th
-                        class="text-left text-sm font-medium text-kong-text-secondary cursor-pointer"
-                        on:click={() => toggleSort("rolling_24h_apy")}
-                      >
-                        APY
-                        <svelte:component
-                          this={getSortIcon("rolling_24h_apy")}
-                          class="inline w-3.5 h-3.5 ml-1"
-                        />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="!px-4 h-full">
-                    {#each $filteredLivePools as pool, i (pool.address_0 + pool.address_1)}
-                      <PoolRow
-                        on:click={() =>
-                          goto(
-                            `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
-                          )}
-                        pool={{
-                          ...pool,
-                          tvl: BigInt(pool.tvl),
-                          rolling_24h_volume: BigInt(pool.rolling_24h_volume),
-                          displayTvl: Number(pool.tvl) / 1e6,
-                        } as BE.Pool & { displayTvl: number }}
-                        tokenMap={$tokenMap}
-                        isEven={i % 2 === 0}
-                        isKongPool={pool.address_0 === KONG_CANISTER_ID ||
-                          pool.address_1 === KONG_CANISTER_ID}
-                      />
-                    {/each}
-                  </tbody>
-                </table>
+                <div class="hidden lg:block">
+                  <DataTable
+                    data={$filteredLivePools}
+                    rowKey="pool_id"
+                    columns={[
+                      {
+                        key: 'pool_name',
+                        title: 'Pool',
+                        align: 'left',
+                        width: '30%',
+                        sortable: true,
+                        component: PoolRow,
+                        sortValue: (row) => `${row.symbol_0}/${row.symbol_1}`
+                      },
+                      {
+                        key: 'price',
+                        title: 'Price',
+                        align: 'right',
+                        width: '17.5%',
+                        sortable: true,
+                        sortValue: (row) => Number(getPoolPriceUsd(row)),
+                        formatter: (row) => getPoolPriceUsd(row)
+                      },
+                      {
+                        key: 'tvl',
+                        title: 'TVL',
+                        align: 'right',
+                        width: '17.5%',
+                        sortable: true,
+                        sortValue: (row) => Number(row.tvl),
+                        formatter: (row) => formatUsdValue(formatBalance(Number(row.tvl), 6, 2))
+                      },
+                      {
+                        key: 'rolling_24h_volume',
+                        title: 'Volume 24H',
+                        align: 'right',
+                        width: '17.5%',
+                        sortable: true,
+                        sortValue: (row) => Number(row.rolling_24h_volume),
+                        formatter: (row) => formatUsdValue(formatBalance(Number(row.rolling_24h_volume), 6, 2))
+                      },
+                      {
+                        key: 'rolling_24h_apy',
+                        title: 'APY',
+                        align: 'right',
+                        width: '17.5%',
+                        sortable: true,
+                        sortValue: (row) => Number(row.rolling_24h_apy),
+                        formatter: (row) => `${Number(row.rolling_24h_apy).toFixed(2)}%`
+                      }
+                    ]}
+                    itemsPerPage={100}
+                    defaultSort={{ column: 'rolling_24h_volume', direction: 'desc' }}
+                    onRowClick={(row) => goto(`/pools/add?token0=${row.address_0}&token1=${row.address_1}`)}
+                    isKongRow={(row) => row.address_0 === KONG_CANISTER_ID || row.address_1 === KONG_CANISTER_ID}
+                  />
+                </div>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="md:hidden space-y-2.5 mt-2 h-full">
-                  {#each $filteredLivePools || [] as pool, i (pool.address_0 + pool.address_1)}
+                <div class="lg:hidden space-y-3 px-3 pb-3 h-full overflow-auto">
+                  {#each $sortedMobilePools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <button
                       on:click={() =>
                         goto(
                           `/pools/add?token0=${pool.address_0}&token1=${pool.address_1}`,
                         )}
-                      class="w-full text-left bg-kong-bg-dark rounded-lg border border-kong-border hover:border-[#60A5FA]/30 transition-all duration-200
+                      class="w-full text-left bg-kong-bg-dark rounded-xl border border-kong-border/50 hover:border-[#60A5FA]/30 hover:bg-kong-bg-dark/80 active:scale-[0.99] transition-all duration-200 overflow-hidden shadow-lg backdrop-blur-sm
                             {pool.address_0 === KONG_CANISTER_ID ||
                       pool.address_1 === KONG_CANISTER_ID
-                        ? 'bg-gradient-to-b from-[rgba(0,255,128,0.02)] to-[rgba(0,255,128,0.01)] active:bg-[rgba(0,255,128,0.04)]'
-                        : ''}"
+                        ? 'bg-gradient-to-br from-[rgba(0,255,128,0.05)] to-[rgba(0,255,128,0.02)] active:bg-[rgba(0,255,128,0.04)] shadow-[inset_0_1px_1px_rgba(0,255,128,0.1)]'
+                        : 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'}"
                     >
-                      <!-- Pool Header -->
-                      <div class="p-3 border-b border-kong-border">
-                        <div class="flex items-center justify-between">
-                          <div class="flex items-center gap-2">
+                      <div class="p-4">
+                        <!-- Pool Header -->
+                        <div class="flex items-center justify-between mb-4">
+                          <div class="flex items-center gap-2.5">
                             <TokenImages
                               tokens={[
                                 $tokenMap.get(pool.address_0),
@@ -453,79 +458,44 @@
                               ]}
                               size={28}
                             />
-                            <div>
-                              <div
-                                class="text-sm font-medium text-kong-text-primary"
-                              >
-                                {pool.symbol_0}/{pool.symbol_1}
-                              </div>
+                            <div class="text-base font-medium text-kong-text-primary">
+                              {pool.symbol_0}/{pool.symbol_1}
                             </div>
                           </div>
-                          <div class="text-[#60A5FA] text-sm font-medium">
-                            {Number(pool.rolling_24h_apy).toFixed(2)}% APY
+                          <div class="text-[#60A5FA] text-base font-medium flex items-center gap-1.5 bg-[#60A5FA]/5 px-2.5 py-1 rounded-lg">
+                            <Flame class="w-4 h-4" />
+                            {Number(pool.rolling_24h_apy).toFixed(2)}%
                           </div>
                         </div>
-                      </div>
 
-                      <!-- Pool Stats -->
-                      <div class="p-3">
-                        <div class="grid grid-cols-2 gap-2">
-                          <div>
-                            <div
-                              class="text-xs text-kong-text-secondary mb-0.5"
-                            >
+                        <!-- Pool Stats -->
+                        <div class="grid grid-cols-3 gap-4">
+                          <div class="bg-black/20 rounded-lg p-2.5">
+                            <div class="text-xs text-kong-text-secondary mb-1">
                               Price
                             </div>
-                            <div
-                              class="text-sm font-medium text-kong-text-primary"
-                            >
+                            <div class="text-sm font-medium text-kong-text-primary">
                               {getPoolPriceUsd(pool)}
                             </div>
                           </div>
-                          <div>
-                            <div
-                              class="text-xs text-kong-text-secondary mb-0.5"
-                            >
+                          <div class="bg-black/20 rounded-lg p-2.5">
+                            <div class="text-xs text-kong-text-secondary mb-1">
                               TVL
                             </div>
-                            <div
-                              class="text-sm font-medium text-kong-text-primary"
-                            >
+                            <div class="text-sm font-medium text-kong-text-primary">
                               {formatUsdValue(
                                 formatBalance(Number(pool.tvl), 6, 2),
                               )}
                             </div>
                           </div>
-                          <div class="mt-2">
-                            <div
-                              class="text-xs text-kong-text-secondary mb-0.5"
-                            >
+                          <div class="bg-black/20 rounded-lg p-2.5">
+                            <div class="text-xs text-kong-text-secondary mb-1">
                               Volume 24h
                             </div>
-                            <div
-                              class="text-sm font-medium text-kong-text-primary"
-                            >
+                            <div class="text-sm font-medium text-kong-text-primary">
                               {formatUsdValue(
                                 formatBalance(
                                   Number(pool.rolling_24h_volume),
-                                  6,
-                                  2,
-                                ),
-                              )}
-                            </div>
-                          </div>
-                          <div class="mt-2">
-                            <div
-                              class="text-xs text-kong-text-secondary mb-0.5"
-                            >
-                              Fees 24h
-                            </div>
-                            <div
-                              class="text-sm font-medium text-kong-text-primary"
-                            >
-                              {formatUsdValue(
-                                formatBalance(
-                                  Number(pool.rolling_24h_lp_fee),
                                   6,
                                   2,
                                 ),

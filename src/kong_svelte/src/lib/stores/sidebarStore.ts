@@ -59,12 +59,13 @@ function createSidebarStore() {
         toggleOpen: () => {
             update(state => ({ ...state, isOpen: !state.isOpen }));
         },
-        collapse: async () => {
-            update(state => ({ ...state, isExpanded: false, width: 527 }));
-            // Wait for animations to complete
-            await new Promise(resolve => setTimeout(resolve, 200));
-            // Close the sidebar
-            update(state => ({ ...state, isOpen: false }));
+        collapse: () => {
+            update(state => ({ 
+                ...state, 
+                isExpanded: false, 
+                width: 527,
+                isOpen: false 
+            }));
         }
     };
 }

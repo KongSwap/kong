@@ -27,13 +27,9 @@
 	<meta name="twitter:image" content="https://www.kongswap.io/images/banner.webp" />
 
 	<script>
-		let theme = localStorage.getItem('theme');
-		if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-			document.documentElement.classList.add('dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-		}
-		document.documentElement.setAttribute('data-theme-ready', 'true');
+		// Initialize with dark theme
+		const theme = localStorage.getItem('theme') || 'dark';
+		document.documentElement.classList.toggle('dark', theme === 'dark');
 	</script>
 
 	%sveltekit.head%

@@ -1,10 +1,11 @@
 <script lang="ts">
   import { formatBalance } from '$lib/utils/numberFormatUtils';
-  import { fade, scale, fly } from "svelte/transition";
+  import { fade, scale } from "svelte/transition";
   import { backOut } from "svelte/easing";
   import coinReceivedSound from "$lib/assets/sounds/coin_received.mp3";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
+  import Panel from '$lib/components/common/Panel.svelte';
 
   export let show = false;
   export let payAmount: string = "0";
@@ -64,149 +65,92 @@
 
 {#if show && isValid}
   <div
-    class="fixed inset-0 bg-black/50 backdrop-blur-md z-[100] flex items-center justify-center"
-    transition:fade={{ duration: 300 }}
+    class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center"
+    transition:fade={{ duration: 200 }}
     on:click={handleClose}
   >
     <div
-      class="modal-container p-7 rounded-md max-w-md w-full mx-4 shadow-2xl relative overflow-hidden"
-      transition:scale={{ duration: 400, easing: backOut }}
+      class="max-w-md w-full mx-4"
       on:click|stopPropagation
     >
-      <!-- Animated gradient border -->
-      <div class="absolute inset-0 bg-kong-bg-dark/30 rounded-md animate-gradient-x" />
-      
-      <!-- Glowing success indicator -->
-      <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-40 h-40 bg-kong-primary/20 rounded-full blur-3xl animate-pulse" />
-      
-      <div class="text-center space-y-6 relative z-10" in:scale={{ delay: 200, duration: 400 }}>
-        <div class="flex items-center justify-center relative">
-          <div class="absolute inset-0 bg-gradient-to-b from-kong-primary/10 to-transparent rounded-full blur-xl" />
-          <img 
-            src="/stats/banana_dance.gif" 
-            class="w-28 opacity-90 hover:scale-110 transition-transform duration-300 drop-shadow-xl" 
-            alt="Success" 
-          />
-        </div>
-        
-        <div class="space-y-6">
-          <div class="space-y-2">
-            <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-kong-primary to-kong-accent-blue">
-              Trade Completed! 🎉
-            </h2>
-            <p class="text-kong-text-secondary text-sm">Your transaction was successful</p>
+      <Panel 
+        variant="transparent"
+        type="main"
+        className="w-full p-8"
+      >
+        <div class="text-center space-y-6">
+          <!-- Success Icon -->
+          <div class="flex justify-center">
+            <img 
+              src="/stats/banana_dance.gif" 
+              class="w-24 opacity-90 hover:scale-110 transition-transform duration-300" 
+              alt="Success" 
+            />
           </div>
           
-          <div class="trade-details-container group">
-            <div class="flex items-center justify-between mb-4">
-              <div class="text-sm text-kong-primary/70">You sent</div>
-              <div class="font-medium text-kong-text-primary flex items-center gap-2">
-                <div class="token-amount-display">
-                  <img src={payToken.logo_url} alt={payToken.symbol} class="w-6 h-6 rounded-full shadow-md" />
-                  <span>{payAmount} {payToken.symbol}</span>
-                </div>
+          <!-- Title -->
+          <div>
+            <h2 class="text-2xl font-semibold text-kong-text-primary">
+              Trade Completed
+            </h2>
+            <p class="text-kong-text-secondary text-sm mt-2">Transaction successful</p>
+          </div>
+          
+          <!-- Trade Details -->
+          <div class="bg-kong-bg-dark/30 rounded-lg p-6 space-y-4 border border-kong-border/20">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-kong-text-secondary">You sent</span>
+              <div class="flex items-center gap-3">
+                <img src={payToken.logo_url} alt={payToken.symbol} class="w-6 h-6 rounded-full" />
+                <span class="text-kong-text-primary text-lg">{payAmount} {payToken.symbol}</span>
               </div>
             </div>
 
-            <div class="flex justify-center my-3">
-              <div class="text-indigo-400/50 text-xl group-hover:scale-110 transition-transform">↓</div>
+            <div class="flex justify-center">
+              <div class="text-kong-text-secondary text-xl">↓</div>
             </div>
 
             <div class="flex items-center justify-between">
-              <div class="text-sm text-kong-primary/70">You received</div>
-              <div class="font-medium text-kong-text-primary flex items-center gap-2">
-                <div class="token-amount-display">
-                  <img src={receiveToken.logo_url} alt={receiveToken.symbol} class="w-6 h-6 rounded-full shadow-md" />
-                  <span>{receiveAmount} {receiveToken.symbol}</span>
-                </div>
+              <span class="text-sm text-kong-text-secondary">You received</span>
+              <div class="flex items-center gap-3">
+                <img src={receiveToken.logo_url} alt={receiveToken.symbol} class="w-6 h-6 rounded-full" />
+                <span class="text-kong-text-primary text-lg">{receiveAmount} {receiveToken.symbol}</span>
               </div>
             </div>
           </div>
 
-          <div class="flex flex-col gap-3 text-white">
+          <!-- Action Buttons -->
+          <div class="flex flex-col gap-3 pt-2">
             <div class="flex gap-3">
               <button 
-                class="action-button copy-button group"
+                class="flex-1 py-3 px-4 rounded-lg bg-kong-primary/90 hover:bg-kong-primary text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 on:click={copyTradeDetails}
               >
-                <i class="fas fa-copy mr-2 group-hover:scale-110 transition-transform"></i>
+                <i class="fas fa-copy"></i>
                 <span>Copy Details</span>
               </button>
               <button 
-                class="action-button share-button group"
+                class="flex-1 py-3 px-4 rounded-lg bg-kong-accent-blue/90 hover:bg-kong-accent-blue text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 on:click={shareOnX}
               >
-                <i class="fab fa-x-twitter mr-2 group-hover:scale-110 transition-transform"></i>
+                <i class="fab fa-x-twitter"></i>
                 <span>Share on X</span>
               </button>
             </div>
             <button 
-              class="action-button close-button group"
+              class="w-full py-3 px-4 rounded-lg bg-kong-accent-red/90 hover:bg-kong-accent-red text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
               on:click={handleClose}
             >
-              <i class="fas fa-times mr-2 group-hover:scale-110 transition-transform"></i>
+              <i class="fas fa-times"></i>
               <span>Close</span>
             </button>
           </div>
         </div>
-      </div>
+      </Panel>
     </div>
   </div>
 {/if}
 
-<style scoped lang="postcss">
-  .modal-container {
-    @apply bg-kong-bg-dark/95;
-    box-shadow: 
-      0 0 60px rgba(66, 153, 225, 0.15),
-      inset 0 0 20px rgba(66, 153, 225, 0.1);
-  }
-
-  .trade-details-container {
-    @apply bg-kong-bg-dark/50 backdrop-blur rounded-xl p-6
-           border border-kong-border/30 hover:border-kong-border/50 
-           transition-all duration-300 shadow-lg hover:shadow-xl
-           hover:bg-kong-bg-dark/60;
-  }
-
-  .token-amount-display {
-    @apply flex items-center gap-2 bg-kong-bg-dark/30 
-           px-3 py-1.5 rounded-lg border border-kong-border/20;
-  }
-
-  .action-button {
-    @apply flex-1 py-3.5 px-4 rounded-xl font-semibold text-sm
-           transition-all duration-200 flex items-center justify-center
-           border border-kong-border/30 hover:border-kong-border/50
-           shadow-md hover:shadow-xl relative overflow-hidden;
-  }
-
-  .copy-button {
-    @apply bg-gradient-to-r from-kong-primary/90 to-kong-primary
-           hover:from-kong-primary hover:to-kong-primary
-           hover:-translate-y-0.5;
-  }
-
-  .share-button {
-    @apply bg-gradient-to-r from-kong-accent-blue/80 to-kong-accent-blue
-           hover:from-kong-accent-blue hover:to-kong-accent-blue
-           hover:-translate-y-0.5;
-  }
-
-  .close-button {
-    @apply bg-gradient-to-r from-kong-accent-red/90 to-kong-accent-red
-           hover:from-kong-accent-red hover:to-kong-accent-red
-           hover:-translate-y-0.5;
-  }
-
-  @keyframes gradient-x {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  .animate-gradient-x {
-    animation: gradient-x 15s ease infinite;
-    background-size: 200% 200%;
-  }
+<style>
+  /* Remove all existing styles and keep it minimal */
 </style>

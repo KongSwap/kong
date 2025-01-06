@@ -3,7 +3,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { tokenStore, loadBalance, liveTokens } from "$lib/services/tokens/tokenStore";
+  import { tokenStore, loadBalance, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import BigNumber from "bignumber.js";
@@ -148,7 +148,7 @@
     if (!tokenInfo || panelType !== "pay") return;
 
     const canisterId = tokenInfo.canister_id;
-    const balance = $tokenStore.balances[canisterId]?.in_tokens;
+    const balance = $storedBalancesStore[canisterId]?.in_tokens;
     const isPending = $tokenStore.pendingBalanceRequests.has(canisterId);
     const now = Date.now();
     const lastCheck = lastBalanceCheck[canisterId] || 0;
@@ -163,7 +163,6 @@
         formattedBalance = calculateAvailableBalance(balance);
       });
     } else if (!isPending && 
-               !$tokenStore.isLoading && 
                (now - lastCheck) > DEBOUNCE_DELAY) {
       
       // Update last check time
@@ -280,7 +279,7 @@
           return;
         }
 
-        const balance = $tokenStore.balances[token.canister_id]?.in_tokens;
+        const balance = $storedBalancesStore[token.canister_id]?.in_tokens;
         if (!balance) {
           console.error("Balance not available for token", token.symbol);
           toastStore.error(`Balance not available for ${token.symbol}`);
@@ -546,7 +545,7 @@
               class:clickable={title === "You Pay" && !disabled}
               on:click={handleMaxClick}
             >
-              {formatTokenBalance($tokenStore.balances[token.canister_id]?.in_tokens.toString() || "0", token.decimals)}
+              {formatTokenBalance($storedBalancesStore[token.canister_id]?.in_tokens.toString() || "0", token.decimals)}
               {token.symbol}
             </button>
           </div>

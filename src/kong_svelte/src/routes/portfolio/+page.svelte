@@ -18,7 +18,7 @@
   );
 
   import { onMount, onDestroy } from "svelte";
-  import { portfolioValue, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { portfolioValue, storedBalancesStore, tokenStore } from "$lib/services/tokens/tokenStore";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import { getChartColors, getChartOptions } from '$lib/components/portfolio/chartConfig';
@@ -83,7 +83,7 @@
 
   $: portfolioData = (() => {
     const tokens = $liveTokens;
-    const balances = $tokenStore.balances;
+    const balances = $storedBalancesStore;
     const userPools = $liveUserPools;
     
     const dataKey = safeSerialize({ 
@@ -152,7 +152,7 @@
   $: riskMetrics = (() => {
     const { topPositions, otherPositions } = processPortfolioData(
       $liveTokens,
-      $tokenStore.balances,
+      $storedBalancesStore,
       $liveUserPools
     );
     return calculateRiskMetrics([...topPositions, ...otherPositions]);
@@ -161,7 +161,7 @@
   $: {
     const totalValue = Number($portfolioValue.replace(/[^0-9.-]+/g, ""));
     const tokenValue = $liveTokens.reduce((acc, token) => {
-      const balance = $tokenStore.balances[token.canister_id]?.in_usd;
+      const balance = $storedBalancesStore[token.canister_id]?.in_usd;
       return acc + (balance ? Number(balance) : 0);
     }, 0);
     const lpValue = totalValue - tokenValue;
@@ -185,7 +185,7 @@
 
   // Calculate portfolio stats
   function calculatePortfolioStats(): PortfolioStats {
-    const tokens = Object.keys($tokenStore.balances).filter(id => $tokenStore.balances[id]?.in_usd !== "0").length;
+    const tokens = Object.keys($storedBalancesStore).filter(id => $storedBalancesStore[id]?.in_usd !== "0").length;
     const pools = $liveUserPools.length;
     
     const monthValues = portfolioHistory

@@ -17,10 +17,36 @@ body {
   min-height: 100vh;
 }
 
-/* Light theme defaults (muted blue tones) */
+/* Update the root styles to default to dark theme values */
 :root {
-  --bg-dark: 216 237 248;          /* #E2EDF8 - Muted blue background */
-  --bg-light: 235 244 252;         /* #EBF4FC - Lighter muted blue */
+  /* Dark theme values as default */
+  --bg-dark: 25 28 39;             /* #191C27 */
+  --bg-light: 40 46 61;            /* #282E3D */
+  --primary: 59 130 246;           /* #3B82F6 */
+  --primary-hover: 61 91 249;      /* #3D5BF9 */
+  --secondary: 34 211 238;         /* #22D3EE */
+  --secondary-hover: 14 165 233;   /* #0EA5E9 */
+  --accent-blue: 0 145 234;        /* #0091EA */
+  --accent-red: 209 27 27;         /* #d11b1b */
+  --accent-green: 0 180 115;       /* #00b473 */
+  --accent-green-hover: 0 160 105;
+  --accent-blue-hover: 0 145 234;
+  --accent-red-hover: 175 48 48;
+  --text-primary: 255 255 255;     /* #FFFFFF */
+  --text-secondary: 155 161 176;   /* #9BA1B0 */
+  --text-disabled: 107 114 128;    /* #6B7280 */
+  --border: 42 47 61;              /* #2A2F3D */
+  --border-light: 55 65 81;        /* #374151 */
+  --logo-brightness: 1;
+  --logo-invert: 0;
+  --logo-hover-brightness: 0.9;
+  color-scheme: dark light; /* Dark first */
+}
+
+/* Light theme overrides */
+:root:not(.dark) {
+  --bg-dark: 216 237 248;          /* #E2EDF8 */
+  --bg-light: 235 244 252;         /* #EBF4FC */
   --primary: 37 99 235;            /* #2563EB (unchanged) */
   --primary-hover: 29 78 216;      /* #1D4ED8 (unchanged) */
   --secondary: 8 145 178;          /* #0891B2 (unchanged) */

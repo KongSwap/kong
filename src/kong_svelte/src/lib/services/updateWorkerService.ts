@@ -4,7 +4,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { loadBalances, loadTokens } from "./tokens/tokenStore";
+import { loadBalances } from "./tokens/tokenStore";
 import { loadPools } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
@@ -12,6 +12,7 @@ import * as Comlink from "comlink";
 import type { StateWorkerApi } from "$lib/workers/stateWorker";
 import { appLoader } from "$lib/services/appLoader";
 import { kongDB } from "./db";
+import { TokenService } from "./tokens";
 
 class UpdateWorkerService {
   private stateWorker: Worker | null = null;
@@ -61,7 +62,7 @@ class UpdateWorkerService {
       const tokens = await kongDB.tokens.toArray();
       if (!tokens?.length) {
         console.log("No tokens found, loading tokens...");
-        await loadTokens();
+        await TokenService.fetchTokens();
       }
 
       // Initialize state worker after price worker is ready
@@ -129,10 +130,10 @@ class UpdateWorkerService {
         console.log("Updating token balances for wallet:", walletId);
         await Promise.all([
           loadBalances(walletId),
-          loadTokens(true),
+          TokenService.fetchTokens(),
         ]);
       } else {  
-        await loadTokens(true);
+        await TokenService.fetchTokens();
       }
   
       console.log("Token balances updated successfully");

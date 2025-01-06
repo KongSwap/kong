@@ -1,6 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 import { get } from 'svelte/store';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
+import { storedBalancesStore, tokenStore } from '$lib/services/tokens/tokenStore';
 
 /**
  * Formats a display value based on token decimals
@@ -92,9 +92,9 @@ export function hasInsufficientBalance(
         const deposit1 = new BigNumber(amount1.replace(/[,_]/g, ''));
 
         // Grab balances from our token store
-        const storeValue = get(tokenStore);
-        const balance0 = storeValue.balances[token0.canister_id];
-        const balance1 = storeValue.balances[token1.canister_id];
+        const storeValue = get(storedBalancesStore);
+        const balance0 = storeValue[token0.canister_id];
+        const balance1 = storeValue[token1.canister_id];
 
         if (!balance0 || !balance1) return true;
 

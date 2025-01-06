@@ -16,17 +16,23 @@
 
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
+  let initializationError: Error | null = null;
 
-  function init() {
+  async function init() {
+    console.log("init() called in layout");
     if (initializationPromise) {
+      console.log("Using existing initialization promise");
       return initializationPromise;
     }
 
     initializationPromise = (async () => {
       try {
+        console.log("Starting app initialization...");
         await appLoader.initialize();
+        console.log("App initialization complete");
       } catch (error) {
         console.error("Initialization error:", error);
+        initializationError = error as Error;
         initializationPromise = null;
         throw error;
       }
@@ -36,9 +42,14 @@
   }
 
   onMount(() => {
-    init();
+    console.log("Layout component mounted");
+    // Call init immediately and handle any errors
+    init().catch(error => {
+      console.error("Failed to initialize app:", error);
+      initializationError = error;
+    });
+    
     if (browser) {
-      // Initialize theme from localStorage or system preference
       themeStore.initTheme();
     }
   });
@@ -48,6 +59,12 @@
     updateWorkerService.destroy();
   });
 </script>
+
+{#if initializationError}
+  <div class="error-message">
+    Failed to initialize app: {initializationError.message}
+  </div>
+{/if}
 
 <svelte:head>
   <title>{pageTitle} - Rumble in the crypto jungle!</title>

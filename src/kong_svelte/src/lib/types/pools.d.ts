@@ -26,6 +26,7 @@ declare global {
       rolling_24h_volume: bigint;
       rolling_24h_apy: number;
       rolling_24h_lp_fee: bigint;
+      rolling_24h_num_swaps: bigint;
       address_0?: string;
       address_1?: string;
       symbol_0: string;

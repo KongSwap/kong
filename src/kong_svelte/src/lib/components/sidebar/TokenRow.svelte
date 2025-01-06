@@ -8,7 +8,7 @@
   } from "$lib/utils/tokenFormatters";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
-  import { tokenStore } from "$lib/services/tokens";
+  import { tokenStore, storedBalancesStore } from "$lib/services/tokens";
   import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
@@ -18,18 +18,36 @@
 
   let showTokenDetails = false;
   let isPressed = false;
-  let localFavorite = false; // Local state for immediate feedback
-  let formattedBalance = "";
+  let localFavorite = false;
+  let formattedBalance = "0";
+  let formattedUsdValue = "$0.00";
   let lastLogTime = 0;
   const LOG_THROTTLE = 1000; // 1 second
   let isFavorite = false;
   let dropdownVisible = false;
 
-
   // Subscribe to the store and update local dropdown visibility
   activeDropdownId.subscribe((id) => {
     dropdownVisible = id === token.canister_id;
   });
+
+  // Update balance formatting when storedBalances changes
+  $: {
+    const balance = $storedBalancesStore[token.canister_id];
+    if (balance) {
+      formattedBalance = formatTokenBalance(
+        balance.in_tokens?.toString() || "0",
+        token.decimals,
+      );
+      formattedUsdValue = formatUsdValue(balance.in_usd || "0");
+    }
+
+    // Throttle logging
+    const now = Date.now();
+    if (now - lastLogTime > LOG_THROTTLE) {
+      lastLogTime = now;
+    }
+  }
 
   // Replace the reactive statement with an async function
   async function updateFavoriteStatus() {
@@ -58,20 +76,6 @@
       // Add more actions as needed
     }
     dropdownVisible = false;
-  }
-
-  $: {
-    const balance = $tokenStore.balances[token.canister_id]?.in_tokens;
-    formattedBalance = formatTokenBalance(
-      balance?.toString() || "0",
-      token.decimals,
-    );
-
-    // Throttle logging
-    const now = Date.now();
-    if (now - lastLogTime > LOG_THROTTLE) {
-      lastLogTime = now;
-    }
   }
 
   function handleRowClick() {
@@ -173,9 +177,7 @@
             {formattedBalance}
           </div>
           <div class="text-[13px] text-kong-text-primary/70">
-            {formatUsdValue(
-              $tokenStore.balances[token.canister_id]?.in_usd || "0",
-            )}
+            {formattedUsdValue}
           </div>
         </div>
 

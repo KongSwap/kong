@@ -19,7 +19,7 @@
     tokenStore,
     getTokenDecimals,
     liveTokens,
-    loadTokens
+    storedBalancesStore,
   } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
@@ -187,7 +187,7 @@
   // Helper functions
   function getTokenBalance(tokenId: string): string {
     if (!tokenId) return "0";
-    const balance = $tokenStore.balances[tokenId]?.in_tokens ?? BigInt(0);
+    const balance = $storedBalancesStore[tokenId]?.in_tokens ?? BigInt(0);
     const token = $liveTokens.find((t) => t.canister_id === tokenId);
     return token
       ? (Number(balance) / Math.pow(10, token.decimals)).toString()

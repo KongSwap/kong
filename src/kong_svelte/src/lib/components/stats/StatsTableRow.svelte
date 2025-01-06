@@ -16,10 +16,31 @@
   export let token: StatsToken;
   export let isConnected: boolean;
   export let isFavorite: boolean;
-  export let priceClass: string;
   export let trendClass: string;
   export let kongCanisterId: string;
   export let showHotIcon = false;
+  
+
+  let flashClass = '';
+  let priceSpanClass = '';
+
+  // Watch for price changes using metrics.previous_price
+  $: {
+    if (token?.metrics?.price && token?.metrics?.previous_price) {
+      const currentPrice = Number(token.metrics.price);
+      const previousPrice = Number(token.metrics.previous_price);
+      
+      if (!isNaN(currentPrice) && !isNaN(previousPrice) && currentPrice !== previousPrice) {
+        flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
+        priceSpanClass = currentPrice > previousPrice ? 'price-up' : 'price-down';
+        
+        setTimeout(() => {
+          flashClass = '';
+          priceSpanClass = '';
+        }, 2000);
+      }
+    }
+  }
 
   const handleFavoriteClick = async (e: MouseEvent) => {
     e.stopPropagation();
@@ -43,7 +64,7 @@
 </script>
 
 <tr
-  class="stats-row h-[44px] border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer {priceClass}"
+  class="stats-row h-[44px] border-b border-white/5 hover:bg-white/5 transition-colors duration-200 cursor-pointer {flashClass}"
   class:kong-special-row={token.canister_id === kongCanisterId}
   on:click={() => goto(`/stats/${token.canister_id}`)}
 >
@@ -87,6 +108,7 @@
   </td>
   <td class="col-price price-cell text-right">
     <span
+      class="{priceSpanClass}"
       use:tooltip={{
         text: `$${Number(token?.metrics?.price).toLocaleString(undefined, {
           minimumFractionDigits: 2,
@@ -115,7 +137,7 @@
     <span>{formatUsdValue(token?.metrics?.volume_24h)}</span>
   </td>
   <td class="col-mcap text-right">
-    <span>{token?.metrics?.market_cap}</span>
+    <span>{formatUsdValue(token?.metrics?.market_cap)}</span>
   </td>
   <td class="col-tvl text-right pr-3">
     <span>{formatUsdValue(token?.metrics?.tvl || 0)}</span>
@@ -153,5 +175,63 @@
     td {
       @apply font-medium;
     }
+  }
+
+  .flash-green {
+    animation: flash-green 2s ease-out;
+  }
+
+  .flash-red {
+    animation: flash-red 2s ease-out;
+  }
+
+  .price-up {
+    @apply text-green-400;
+    animation: price-flash-up 2s ease-out;
+  }
+
+  .price-down {
+    @apply text-red-400;
+    animation: price-flash-down 2s ease-out;
+  }
+
+  @keyframes flash-green {
+    0% {
+      background-color: rgba(34, 197, 94, 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes flash-red {
+    0% {
+      background-color: rgba(239, 68, 68, 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes price-flash-up {
+    0% {
+      color: rgb(74, 222, 128);
+    }
+    100% {
+      color: rgb(156, 163, 175);
+    }
+  }
+
+  @keyframes price-flash-down {
+    0% {
+      color: rgb(248, 113, 113);
+    }
+    100% {
+      color: rgb(156, 163, 175);
+    }
+  }
+
+  .price-cell span {
+    @apply transition-colors duration-200;
   }
 </style> 

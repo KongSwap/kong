@@ -47,8 +47,8 @@
     }
   });
 
-  async function handleClose() {
-    await sidebarStore.collapse();
+  function handleClose() {
+    sidebarStore.collapse();
   }
 
   function setActiveTab(tab: "tokens" | "pools" | "history") {
@@ -63,8 +63,8 @@
   <div class="fixed inset-0 z-100 isolation-isolate pointer-events-none">
     <div
       class="backdrop"
-      in:fade|local={{ duration: 150 }}
-      out:fade|local={{ duration: 150 }}
+      in:fade|local={{ duration: 100 }}
+      out:fade|local={{ duration: 100 }}
       on:click={handleClose}
       role="button"
       tabindex="-1"
@@ -92,8 +92,8 @@
       >
         <div
           class={`sidebar-wrapper ${isExpanded ? "inset-1rem w-auto" : ""}`}
-          in:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
-          out:fly|local={{ x: 300, duration: 200, easing: cubicOut }}
+          in:fly|local={{ x: 300, duration: 150, easing: cubicOut }}
+          out:fly|local={{ x: 300, duration: 150, easing: cubicOut }}
         >
           <Panel
             width="100%"

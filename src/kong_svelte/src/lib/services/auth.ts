@@ -8,6 +8,7 @@ import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { loadBalances } from "./tokens";
+import { kongDB } from "./db";
 
 // Export the list of available wallets
 export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
@@ -28,6 +29,7 @@ export const canisterIDLs = {
 
 // Add a constant for the storage key
 const LAST_WALLET_KEY = "kongSelectedWallet";
+const AUTO_CONNECT_ATTEMPTED_KEY = "kongAutoConnectAttempted";
 
 function createAuthStore(pnp: PNP) {
   const store = writable({
@@ -47,7 +49,7 @@ function createAuthStore(pnp: PNP) {
     }
   };
 
-  return {
+  const storeObj = {
     subscribe,
     pnp,
     async connect(walletId: string, isAutoConnect = false) {
@@ -70,13 +72,17 @@ function createAuthStore(pnp: PNP) {
         } else {
           console.error("Invalid connection result format:", result);
           set({ isConnected: false, account: null, isInitialized: true });
-          localStorage.removeItem(LAST_WALLET_KEY);
+          if (!isAutoConnect) {
+            localStorage.removeItem(LAST_WALLET_KEY);
+          }
           return null;
         }
       } catch (error) {
         console.error("Connection error:", error);
         set({ isConnected: false, account: null, isInitialized: true });
-        localStorage.removeItem(LAST_WALLET_KEY);
+        if (!isAutoConnect) {
+          localStorage.removeItem(LAST_WALLET_KEY);
+        }
         throw error;
       }
     },
@@ -86,20 +92,14 @@ function createAuthStore(pnp: PNP) {
         const result = await pnp.disconnect();
         set({ isConnected: false, account: null, isInitialized: true });
         // zero out token balances
-        tokenStore.update((state) => ({
-          ...state,
-          balances: Object.keys(state.balances).reduce(
-            (acc, key) => {
-              acc[key] = { in_tokens: 0n, in_usd: "0" };
-              return acc;
-            },
-            {} as Record<string, TokenBalance>,
-          ),
-        }));
+        await kongDB.token_balances.clear();
+        await kongDB.user_pools.clear();
         // Clear saved wallet on disconnect
         if (browser) {
           localStorage.removeItem(LAST_WALLET_KEY);
           localStorage.removeItem("kongSelectedWallet");
+          // Clear the auto-connect attempt flag
+          sessionStorage.removeItem(AUTO_CONNECT_ATTEMPTED_KEY);
         }
 
         return result;
@@ -126,6 +126,39 @@ function createAuthStore(pnp: PNP) {
       });
     },
   };
+
+  // Define attemptAutoConnect after we have the store object with connect method
+  storeObj.attemptAutoConnect = async () => {
+    if (!browser) return;
+        
+    // Don't attempt if already connected
+    if (pnp.isWalletConnected()) {
+      return;
+    }
+    
+    // Clear the auto-connect flag since we're not connected
+    sessionStorage.removeItem(AUTO_CONNECT_ATTEMPTED_KEY);
+    
+    // Check if we've already attempted auto-connect this session
+    const attempted = sessionStorage.getItem(AUTO_CONNECT_ATTEMPTED_KEY);
+    if (attempted) {
+      return;
+    }
+
+    try {
+      const lastWallet = localStorage.getItem(LAST_WALLET_KEY);
+      
+      if (lastWallet) {
+        await storeObj.connect(lastWallet, true);
+      }
+    } catch (error) {
+      console.warn("Auto-connect failed with error:", error);
+    } finally {
+      sessionStorage.setItem(AUTO_CONNECT_ATTEMPTED_KEY, "true");
+    }
+  };
+
+  return storeObj;
 }
 
 export type AuthStore = ReturnType<typeof createAuthStore>;

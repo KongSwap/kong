@@ -1,13 +1,52 @@
 <script lang="ts">
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
+  import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { derived, get } from "svelte/store";
+  import { Flame, TrendingUp, Wallet, PiggyBank } from "lucide-svelte";
+  import { livePools } from "$lib/services/pools/poolStore";
+  import { tooltip } from "$lib/actions/tooltip";
 
-  export let pool: BE.Pool & { displayTvl: number };
-  export let tokenMap: Map<string, any>;
-  export let isEven: boolean;
-  export let isKongPool: boolean;
+  export let row: any;
+
+  const tokenMap = derived(formattedTokens, ($tokens) => {
+    const map = new Map();
+    if ($tokens) {
+      $tokens.forEach((token) => {
+        map.set(token.canister_id, token);
+      });
+    }
+    return map;
+  });
+
+  $: pool = {
+    ...row,
+    tvl: BigInt(row.tvl),
+    rolling_24h_volume: BigInt(row.rolling_24h_volume),
+    displayTvl: Number(row.tvl) / 1e6
+  };
+
+  $: isKongPool = pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID;
+
+  $: isTopVolume = Number(pool.rolling_24h_volume) > 0 && [...$livePools]
+    .sort((a, b) => Number(b.rolling_24h_volume) - Number(a.rolling_24h_volume))
+    .slice(0, 5)
+    .map(p => p.pool_id)
+    .includes(pool.pool_id);
+
+  $: isTopTVL = Number(pool.tvl) > 0 && [...$livePools]
+    .sort((a, b) => Number(b.tvl) - Number(a.tvl))
+    .slice(0, 5)
+    .map(p => p.pool_id)
+    .includes(pool.pool_id);
+
+  $: isTopAPY = Number(pool.rolling_24h_apy) > 0 && [...$livePools]
+    .sort((a, b) => Number(b.rolling_24h_apy) - Number(a.rolling_24h_apy))
+    .slice(0, 5)
+    .map(p => p.pool_id)
+    .includes(pool.pool_id);
 
   let isMobile = false;
   let showDetailsButton = true;
@@ -31,62 +70,78 @@
 
 {#if !isMobile}
   <!-- Desktop view (table row) -->
-  <tr class="cursor-pointer {isEven ? 'even' : ''} {isKongPool ? 'kong-special-row' : ''}" on:click>
-    <td class="pool-cell">
-      <div class="pool-info">
-        <TokenImages
-          tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          overlap={true}
-          size={28}
-        />
-        <div class="pool-details">
-          <div class="pool-name">
-            {pool.symbol_0}/{pool.symbol_1}
-          </div>
+  <div class="pool-info">
+    <TokenImages
+      tokens={[
+        get(tokenMap).get(pool.address_0),
+        get(tokenMap).get(pool.address_1)
+      ]}
+      overlap={true}
+      size={28}
+    />
+    <div class="pool-details">
+      <div class="pool-name">
+        <div class="flex items-center gap-2">
+          <span>{pool.symbol_0}/{pool.symbol_1}</span>
+          {#if isTopVolume || isTopTVL || isTopAPY}
+            <div class="flex gap-1 items-center">
+              {#if isTopVolume}
+                <div use:tooltip={{ text: "Top 5 by Volume", direction: "top" }}>
+                  <Flame class="w-5 h-5 text-orange-400" />
+                </div>
+              {/if}
+              {#if isTopTVL}
+                <div use:tooltip={{ text: "Top 5 by TVL", direction: "top" }}>
+                  <PiggyBank class="w-5 h-5 text-pink-500" />
+                </div>
+              {/if}
+              {#if isTopAPY}
+                <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                  <TrendingUp class="w-5 h-5 text-green-400" />
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
-    </td>
-    <td class="price-cell">
-      <div class="price-info">
-        <div class="price-value">
-          ${formatToNonZeroDecimal(pool.price)}
-        </div>
-      </div>
-    </td>
-    <td class="tvl-cell">
-      <div class="tvl-info">
-        <div class="tvl-value">
-          {formatUsdValue(Number(pool.tvl) / 10 ** 6)}
-        </div>
-      </div>
-    </td>
-    <td class="volume-cell">
-      <div class="volume-info">
-        <div class="volume-value">
-          {formatUsdValue(fromRawAmount(pool.rolling_24h_volume.toString(), 6))}
-        </div>
-      </div>
-    </td>
-    <td class="apy-cell">
-      <div class="apy-info">
-        <div class="apy-value">
-          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
-        </div>
-      </div>
-    </td>
-  </tr>
+    </div>
+  </div>
 {:else}
   <!-- Mobile view (simplified card) -->
   <div class="mobile-pool-card">
     <div class="card-header">
       <div class="token-info">
         <TokenImages
-          tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
+          tokens={[
+            get(tokenMap).get(pool.address_0),
+            get(tokenMap).get(pool.address_1)
+          ]}
           size={32}
           overlap={true}
         />
         <div class="token-details">
-          <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
+          <div class="flex items-center gap-2">
+            <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
+            {#if isTopVolume || isTopTVL || isTopAPY}
+              <div class="flex gap-1 items-center">
+                {#if isTopVolume}
+                  <div use:tooltip={{ text: "Top 5 by Volume", direction: "top" }}>
+                    <Flame class="w-4 h-4 text-orange-400" />
+                  </div>
+                {/if}
+                {#if isTopTVL}
+                  <div use:tooltip={{ text: "Top 5 by TVL", direction: "top" }}>
+                    <PiggyBank class="w-4 h-4 text-pink-400" />
+                  </div>
+                {/if}
+                {#if isTopAPY}
+                  <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                    <TrendingUp class="w-4 h-4 text-green-400" />
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
           <span class="tvl-badge">TVL: ${pool.tvl}</span>
         </div>
       </div>
@@ -95,53 +150,8 @@
 {/if}
 
 <style scoped lang="postcss">
-  tr {
-    transition: colors 150ms;
-  }
-
-  tr:hover {
-    @apply bg-kong-border;
-  }
-
-  tr.kong-special-row {
-    @apply border border-kong-primary bg-kong-primary/10 !important;
-
-    td {
-      font-weight: 500;
-    }
-
-    &:hover {
-      @apply bg-kong-accent-green text-black;
-    }
-  }
-
-  td {
-    font-size: 0.875rem;
-    @apply border-b border-kong-border/50 py-2 px-2;
-  }
-
-  .price-cell,
-  .tvl-cell,
-  .volume-cell,
-  .apy-cell {
-    width: 15%;
-    text-align: left;
-  }
-
   .pool-info {
-    @apply flex items-center gap-2 pl-2;
-  }
-
-  .pool-cell {
-    width: 30%;
-  }
-
-  .price-cell,
-  .tvl-cell,
-  .volume-cell,
-  .apy-cell {
-    width: 15%;
-    text-align: right;
+    @apply flex items-center gap-2;
   }
 
   .pool-details {
@@ -155,23 +165,6 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-  }
-
-  .price-info,
-  .tvl-info,
-  .volume-info,
-  .apy-info {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-  }
-
-  .price-value,
-  .tvl-value,
-  .volume-value,
-  .apy-value {
-    font-weight: 500;
-    font-size: 1rem;
   }
 
   /* Mobile Card Styles */

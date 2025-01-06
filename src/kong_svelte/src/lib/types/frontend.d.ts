@@ -29,11 +29,11 @@ declare global {
         previous_price?: string;
         volume_24h: string;
         market_cap: string;
+        formatted_market_cap?: string;
         tvl: string;
         updated_at: string;
         price_change_24h?: string;
-        historical_price?: number;
-        historical_timestamp?: number;
+        previous_price?: number;
       };
       logo_url: string;
       total_24h_volume: string;
@@ -43,6 +43,7 @@ declare global {
       formattedBalance?: string;
       formattedUsdValue?: string;
       marketCapRank?: number;
+      volumeRank?: number;
     }
 
     interface Transaction {

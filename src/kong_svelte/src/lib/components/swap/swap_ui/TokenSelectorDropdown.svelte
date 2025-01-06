@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, storedBalancesStore, tokenStore } from "$lib/services/tokens/tokenStore";
   import { scale, fade } from "svelte/transition";
   import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
@@ -130,8 +130,8 @@
         }
 
         // Get USD values from tokenStore balances
-        const aBalance = $tokenStore.balances[a.token.canister_id]?.in_usd || 0n;
-        const bBalance = $tokenStore.balances[b.token.canister_id]?.in_usd || 0n;
+        const aBalance = $storedBalancesStore[a.token.canister_id]?.in_usd || 0n;
+        const bBalance = $storedBalancesStore[b.token.canister_id]?.in_usd || 0n;
         
         // Convert BigInts to numbers for comparison
         const aValue = Number(aBalance);
@@ -288,7 +288,7 @@
   });
 
   function getTokenBalance(token: FE.Token): bigint {
-    const balance = $tokenStore.balances[token.canister_id];
+    const balance = $storedBalancesStore[token.canister_id];
     return balance?.in_tokens || BigInt(0);
   }
 
@@ -417,7 +417,7 @@
             <div class="scrollable-section">
               <div class="tokens-container">
                 {#each filteredTokens as { token, matches }, i (token.canister_id)}
-                  {@const balance = $tokenStore.balances[token?.canister_id]}
+                  {@const balance = $storedBalancesStore[token?.canister_id]}
 
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <!-- svelte-ignore a11y-no-static-element-interactions -->

@@ -1,7 +1,6 @@
 import { writable, derived, type Readable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { fromTokenDecimals } from '$lib/services/tokens/tokenStore';
-import { tokenStore } from '$lib/services/tokens/tokenStore';
+import { fromTokenDecimals, storedBalancesStore } from '$lib/services/tokens/tokenStore';
 import { liveTokens } from "$lib/services/tokens/tokenStore";
 import { SwapService } from './SwapService';
 import { get } from 'svelte/store';
@@ -89,11 +88,11 @@ function createSwapStore(): SwapStore {
   const { subscribe, set, update } = writable<SwapState>(initialState);
 
   const isInputExceedingBalance = derived(
-    [tokenStore, { subscribe }],
-    ([$tokenStore, $swapState]) => {
+    [storedBalancesStore, { subscribe }],
+    ([$storedBalancesStore, $swapState]) => {
       if (!$swapState.payToken || !$swapState.payAmount) return false;
       
-      const balance = $tokenStore.balances[$swapState.payToken.canister_id]?.in_tokens || BigInt(0);
+      const balance = $storedBalancesStore[$swapState.payToken.canister_id]?.in_tokens || BigInt(0);
       const payAmountBN = new BigNumber($swapState.payAmount);
       const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken.decimals);
       return Number(payAmountInTokens) > Number(balance);

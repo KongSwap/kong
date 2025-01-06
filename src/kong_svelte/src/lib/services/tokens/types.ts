@@ -1,8 +1,4 @@
 export interface TokenState {
-  balances: Record<string, FE.TokenBalance>;
-  isLoading: boolean;
-  error: Error | null;
-  lastTokensFetch: Date | null;
   activeSwaps: Record<string, any>;
   pendingBalanceRequests: Set<string>;
 }
@@ -18,5 +14,13 @@ export interface KongImage {
   id?: number;
   canister_id?: string;
   image_url?: string;
+  timestamp: number;
+}
+
+export interface TokenBalance {
+  wallet_id: string;
+  canister_id: string;
+  in_tokens: bigint;
+  in_usd: string;
   timestamp: number;
 }

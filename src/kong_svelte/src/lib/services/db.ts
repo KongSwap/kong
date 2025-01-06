@@ -3,10 +3,10 @@ import Dexie, {
   type Table,
   type Transaction,
 } from "dexie";
-import type { KongImage, FavoriteToken } from "$lib/services/tokens/types";
+import type { KongImage, FavoriteToken, TokenBalance } from "$lib/services/tokens/types";
 import type { Settings } from "$lib/services/settings/types";
 
-const CURRENT_VERSION = 9;
+const CURRENT_VERSION = 10;
 
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
@@ -18,7 +18,8 @@ export class KongDB extends Dexie {
   user_pools!: Table<UserPoolBalance, string>;
   pool_totals!: Table<FE.PoolTotal, string>;
   allowances!: Table<FE.AllowanceData, string>;
-  previous_version!: Table<number, string>
+  previous_version!: Table<number, string>;
+  token_balances!: Table<TokenBalance, string>;
 
   constructor() {
     super("kong_db");
@@ -33,7 +34,8 @@ export class KongDB extends Dexie {
       favorite_tokens: null,
       settings: null,
       allowances: null,
-      previous_version: null
+      previous_version: null,
+      token_balances: null,
     });
 
     // Next version recreates the schema
@@ -47,6 +49,7 @@ export class KongDB extends Dexie {
       settings: "principal_id, timestamp",
       allowances: "[address+wallet_address], wallet_address, timestamp",
       previous_version: "version",
+      token_balances: "[wallet_id+canister_id], wallet_id, canister_id, timestamp",
     });
 
     // Initialize all tables
@@ -59,6 +62,7 @@ export class KongDB extends Dexie {
     this.settings = this.table("settings");
     this.allowances = this.table("allowances");
     this.previous_version = this.table("previous_version");
+    this.token_balances = this.table("token_balances");
   }
 }
 
@@ -113,6 +117,24 @@ kongDB.user_pools.hook.updating.subscribe((
   modifications: { [key: string]: any },
   primKey: string,
   obj: UserPoolBalance,
+  transaction: Transaction,
+) => {
+  modifications.timestamp = Date.now();
+  return modifications;
+});
+
+kongDB.token_balances.hook.creating.subscribe((
+  primKey: string,
+  obj: TokenBalance,
+  transaction: Transaction,
+) => {
+  obj.timestamp = Date.now();
+});
+
+kongDB.token_balances.hook.updating.subscribe((
+  modifications: { [key: string]: any },
+  primKey: string,
+  obj: TokenBalance,
   transaction: Transaction,
 ) => {
   modifications.timestamp = Date.now();

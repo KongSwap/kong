@@ -14,10 +14,8 @@ interface ExtendedPool extends BE.Pool {
 // Create a stable reference for pools data
 const stablePoolsStore = writable<ExtendedPool[]>([]);
 
-// Create a store for the search term and sort parameters
+// Create a store for the search term
 export const poolSearchTerm = writable("");
-export const poolSortColumn = writable("rolling_24h_volume");
-export const poolSortDirection = writable<"asc" | "desc">("desc");
 
 // Use the stable store for pools list to prevent unnecessary re-renders
 export const poolsList: Readable<BE.Pool[]> = derived(
@@ -59,13 +57,13 @@ export const livePools = readable<ExtendedPool[]>([], (set) => {
   };
 });
 
-// Derived store for filtered and sorted pools
+// Derived store for filtered pools
 export const filteredLivePools = derived(
-  [livePools, poolSearchTerm, poolSortColumn, poolSortDirection],
-  ([$livePools, $poolSearchTerm, $poolSortColumn, $poolSortDirection]) => {
+  [livePools, poolSearchTerm],
+  ([$livePools, $poolSearchTerm]) => {
     let result = [...$livePools];
 
-    // 1. Filter by search term
+    // Filter by search term
     if ($poolSearchTerm) {
       const search = $poolSearchTerm.toLowerCase();
       result = result.filter((pool) => {
@@ -78,47 +76,6 @@ export const filteredLivePools = derived(
         );
       });
     }
-
-    // 2. Sort
-    const direction = $poolSortDirection === "asc" ? 1 : -1;
-    result.sort((a, b) => {
-      // Always put Kong pools first
-      const aHasKong =
-        a.address_0 === KONG_CANISTER_ID || a.address_1 === KONG_CANISTER_ID;
-      const bHasKong =
-        b.address_0 === KONG_CANISTER_ID || b.address_1 === KONG_CANISTER_ID;
-
-      if (aHasKong && !bHasKong) return -1;
-      if (!aHasKong && bHasKong) return 1;
-
-      switch ($poolSortColumn) {
-        case "pool_name": {
-          const nameA = `${a.symbol_0}/${a.symbol_1}`.toLowerCase();
-          const nameB = `${b.symbol_0}/${b.symbol_1}`.toLowerCase();
-          return direction * nameA.localeCompare(nameB);
-        }
-        case "rolling_24h_volume": {
-          const diff =
-            BigInt(a.rolling_24h_volume) - BigInt(b.rolling_24h_volume);
-          return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
-        }
-        case "tvl": {
-          const diff = BigInt(a.tvl || 0) - BigInt(b.tvl || 0);
-          return direction * (diff > 0n ? 1 : diff < 0n ? -1 : 0);
-        }
-        case "rolling_24h_apy":
-          return (
-            direction * (Number(a.rolling_24h_apy) - Number(b.rolling_24h_apy))
-          );
-        case "price": {
-          const priceA = getPoolPriceUsd(a);
-          const priceB = getPoolPriceUsd(b);
-          return direction * (priceA - priceB);
-        }
-        default:
-          return 0;
-      }
-    });
 
     return result;
   },

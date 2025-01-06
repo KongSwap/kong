@@ -26,35 +26,34 @@ export class TokenService {
     string,
     { price: number; timestamp: number }
   >();
-  private static readonly CACHE_DURATION = 10 * 1000; // 10 seconds
-  public static readonly TOKEN_CACHE_DURATION = 12 * 1000; // 10 seconds
+  private static readonly ICP_PRICE_CACHE_DURATION = 10 * 1000; // 10 seconds
 
   public static async fetchTokens(): Promise<FE.Token[]> {
-    let cachedTokens: FE.Token[] = [];
     try {
-      cachedTokens = (await kongDB.tokens
-        .where("timestamp")
-        .above(Date.now() - this.TOKEN_CACHE_DURATION)
-        .toArray()) as FE.Token[];
+      const freshTokens = await this.fetchFromNetwork();
+      const existingTokens = await kongDB.tokens.toArray();
+      
+      // Add timestamps and preserve previous prices
+      const tokensWithTimestamp = freshTokens.map(token => {
+        const existingToken = existingTokens.find(et => et.canister_id === token.canister_id);
+        return {
+          ...token,
+          timestamp: Date.now(),
+          metrics: {
+            ...token.metrics,
+            previous_price: existingToken?.metrics?.price || token.metrics.price
+          }
+        };
+      });
+
+      // Store in DB with timestamp
+      await kongDB.tokens.bulkPut(tokensWithTimestamp);
+      
+      return tokensWithTimestamp;
     } catch (error) {
-      console.error("Error fetching cached tokens:", error);
+      console.error("[TokenService] Error fetching fresh tokens:", error);
+      throw error;
     }
-
-    let freshTokens: FE.Token[] = [];
-    try {
-      freshTokens = await this.fetchFromNetwork();
-    } catch (error) {
-      console.error("Error fetching fresh tokens:", error);
-    }
-
-    await kongDB.tokens.bulkPut(
-      freshTokens.map((token) => ({
-        ...token,
-        timestamp: Date.now(),
-      })),
-    );
-
-    return freshTokens;
   }
 
   private static async fetchFromNetwork(): Promise<FE.Token[]> {
@@ -88,9 +87,16 @@ export class TokenService {
     if (!tokens) tokens = await kongDB.tokens.toArray();
     if (!principalId && !get(auth).isConnected) return {};
 
+    const authStore = get(auth);
+
+    if (!authStore.isConnected) {
+      return {};
+    }
+
     let principal = principalId
       ? principalId
-      : get(auth).account.owner;
+      : authStore.account.owner;
+
 
     if (typeof principal === "string") {
       principal = Principal.fromText(principal);
@@ -317,7 +323,7 @@ export class TokenService {
     try {
       const now = Date.now();
       const cached = this.priceCache.get("ICP_USD");
-      if (cached && now - cached.timestamp < this.CACHE_DURATION) {
+      if (cached && now - cached.timestamp < this.ICP_PRICE_CACHE_DURATION) {
         return cached.price;
       }
       const pool = await kongDB.pools

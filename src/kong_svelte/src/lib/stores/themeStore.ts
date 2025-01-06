@@ -6,45 +6,34 @@ type Theme = 'dark' | 'light';
 function createThemeStore() {
   const { subscribe, set } = writable<Theme>('dark');
 
-  function validateTheme(theme: string | null): Theme {
-    return theme === 'dark' || theme === 'light' ? theme : 'dark';
-  }
-
-  let initialized = false;
-
   return {
     subscribe,
-    setTheme: (theme: Theme) => {
+    set,
+    initTheme: () => {
       if (browser) {
-        localStorage.setItem('theme', theme);
-        document.documentElement.classList.remove('dark', 'light');
-        document.documentElement.classList.add(theme);
-        set(theme);
+        // Get stored theme or default to dark
+        const storedTheme = localStorage.getItem('theme') as Theme || 'dark';
+        
+        // Set theme in localStorage and DOM
+        localStorage.setItem('theme', storedTheme);
+        document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+        
+        // Update store
+        set(storedTheme);
+        
+        // Mark theme as ready
+        document.documentElement.setAttribute('data-theme-ready', 'true');
       }
     },
     toggleTheme: () => {
       if (browser) {
-        const currentTheme = validateTheme(localStorage.getItem('theme'));
-        const newTheme: Theme = currentTheme === 'dark' ? 'light' : 'dark';
+        const currentTheme = localStorage.getItem('theme') as Theme || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
         localStorage.setItem('theme', newTheme);
-        document.documentElement.classList.remove('dark', 'light');
-        document.documentElement.classList.add(newTheme);
+        document.documentElement.classList.toggle('dark', newTheme === 'dark');
         set(newTheme);
       }
-    },
-    initTheme: () => {
-      if (initialized || !browser) return;
-      
-      const theme = localStorage.getItem('theme');
-      if (theme) {
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-      } else {
-        // Check system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.classList.toggle('dark', prefersDark);
-      }
-      
-      initialized = true;
     }
   };
 }

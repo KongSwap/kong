@@ -13,6 +13,7 @@
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
+  import { Droplets, ArrowLeftRight } from "lucide-svelte";
     import { kongDB } from "$lib/services/db";
 
   if (!formattedTokens || !livePools) {
@@ -273,7 +274,9 @@
                       `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
                     )}
                 >
-                  Add LP
+                <div class="flex items-center gap-2">
+                 <Droplets class="w-4 h-4" /> Add Liquidity
+                </div>
                 </ButtonV2>
                 <ButtonV2
                   variant="solid"
@@ -283,7 +286,9 @@
                       `/swap?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
                     )}
                 >
-                  Swap
+                  <div class="flex items-center gap-2">
+                    <ArrowLeftRight class="w-4 h-4" /> Swap
+                  </div>
                 </ButtonV2>
               </div>
             </div>

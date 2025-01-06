@@ -7,8 +7,9 @@
   import { auth } from '$lib/services/auth';
   import { liveQuery } from "dexie";
   import { browser } from '$app/environment';
-  import { fly } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
   import { themeStore } from '$lib/stores/themeStore';
+  import { Sun, Moon } from 'lucide-svelte';
 
   let soundEnabled = true;
   let settingsSubscription: () => void;
@@ -315,22 +316,24 @@
         <div class="settings-item">
           <div class="flex items-center gap-2">
             <span class="text-sm">Theme</span>
-            {#if $themeStore === 'dark'}
-              <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            {:else}
-              <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            {/if}
           </div>
-          <Toggle 
-            checked={$themeStore === 'dark'} 
-            on:change={handleThemeToggle}
-            showKongMonke={true}
-            size="md"
-          />
+          <button
+            class="theme-toggle-btn"
+            on:click={handleThemeToggle}
+            aria-label={$themeStore === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            <div class="icons-container">
+              {#if $themeStore === 'dark'}
+                <div in:fade={{ duration: 200 }}>
+                  <Moon class="theme-icon moon" size={20} strokeWidth={2} />
+                </div>
+              {:else}
+                <div in:fade={{ duration: 200 }}>
+                  <Sun class="theme-icon sun" size={20} strokeWidth={2} color="rgb(234 179 8)" />
+                </div>
+              {/if}
+            </div>
+          </button>
         </div>
 
         <div class="settings-item">
@@ -364,16 +367,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Add the done button section -->
-  <div class="done-section">
-    <button 
-      class="btn-primary"
-      on:click={handleDone}
-    >
-      Done
-    </button>
   </div>
 </div>
 
@@ -521,5 +514,47 @@
            hover:bg-kong-primary/80
            transition-colors duration-200
            min-w-[120px];
+  }
+
+  .text-muted {
+    @apply text-kong-text-disabled;
+    transition: color 0.2s ease;
+  }
+
+  .text-yellow-500 {
+    color: rgb(234 179 8); /* Tailwind yellow-500 */
+    transition: color 0.2s ease;
+  }
+
+  .text-blue-400 {
+    color: rgb(96 165 250); /* Tailwind blue-400 */
+    transition: color 0.2s ease;
+  }
+
+  .theme-toggle-btn {
+    @apply relative flex items-center justify-center
+           w-10 h-10 rounded-md
+           bg-kong-bg-dark/40 border border-kong-border
+           hover:bg-kong-bg-dark/60 hover:border-kong-border-light
+           transition-all duration-200;
+  }
+
+  .icons-container {
+    @apply relative flex items-center justify-center
+           w-full h-full;
+  }
+
+  .theme-icon {
+    @apply flex items-center justify-center;
+  }
+
+  .theme-icon.sun {
+    @apply text-yellow-500;
+    color: rgb(234 179 8); /* Tailwind yellow-500 */
+  }
+
+  .theme-icon.moon {
+    @apply text-blue-400;
+    color: rgb(96 165 250); /* Tailwind blue-400 */
   }
 </style>

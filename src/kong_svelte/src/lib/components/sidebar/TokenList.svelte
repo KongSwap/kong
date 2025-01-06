@@ -1,10 +1,10 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, tokenStore, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
-  import { Search } from "lucide-svelte";
+  import { Search, Loader2 } from "lucide-svelte";
   import { searchToken, getMatchDisplay } from "$lib/utils/searchUtils";
   import { sortTokens, filterByBalance } from "$lib/utils/sortUtils";
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
@@ -38,9 +38,16 @@
   let debouncedSearchQuery = "";
   let searchMatches: Record<string, SearchMatch> = {};
   let filteredTokens: FE.Token[] = [];
+  let isInitialLoad = true;
+  let isRefreshing = false;
 
+  // Add a writable store for tracking refresh state
+  let refreshingTokens = new Set<string>();
+
+  // Update the onMount to only load favorites
   onMount(async () => {
     await FavoriteService.loadFavorites();
+    isInitialLoad = false;
   });
 
   // Debounce search input
@@ -52,18 +59,10 @@
   }
 
   async function updateFilteredTokens() {
-    const balances = Object.entries($tokenStore.balances).reduce((acc, [key, value]) => ({
-      ...acc,
-      [key]: {
-        in_usd: value.in_usd,
-        in_tokens: value.in_tokens.toString()
-      }
-    }), {} as Record<string, { in_usd: string, in_tokens: string }>);
-
     const filteredAndSorted = await sortTokens(
       $formattedTokens.filter((token) => {
         // Check zero balance condition
-        if (!filterByBalance(token, $tokenStore.balances, $hideZeroStore)) {
+        if (!filterByBalance(token, $storedBalancesStore, $hideZeroStore)) {
           return false;
         }
 
@@ -80,7 +79,7 @@
 
         return false;
       }),
-      balances,
+      $storedBalancesStore,
       FavoriteService,
       sortDirection as "asc" | "desc",
     );
@@ -88,17 +87,12 @@
     filteredTokens = filteredAndSorted;
   }
 
-  // Watch for initial token load
-  $: if ($formattedTokens.length > 0) {
-    updateFilteredTokens();
-  }
-
-  // Watch for other changes
+  // Update the watch statement to use storedBalancesStore
   $: if (
     debouncedSearchQuery ||
     $hideZeroStore ||
     sortDirection ||
-    Object.keys($tokenStore.balances).length > 0
+    $storedBalancesStore
   ) {
     updateFilteredTokens();
   }
@@ -110,6 +104,24 @@
       searchInput,
       onClear: () => (searchQuery = ""),
     });
+  }
+
+  // Update the isRefreshing computed property
+  $: isRefreshing = refreshingTokens.size > 0;
+
+  // Add this to track pending balance requests
+  $: {
+    const pendingRequests = $tokenStore.pendingBalanceRequests;
+    refreshingTokens = pendingRequests;
+  }
+
+  function getTokenBalance(tokenId: string): string {
+    if (!tokenId) return "0";
+    const balance = $storedBalancesStore[tokenId]?.in_tokens ?? "0";
+    const token = $liveTokens.find((t) => t.canister_id === tokenId);
+    return token
+      ? (Number(balance) / Math.pow(10, token.decimals)).toString()
+      : "0";
   }
 </script>
 
@@ -199,6 +211,13 @@
   </div>
 
   <div class="token-list-content">
+    {#if isRefreshing}
+      <div class="refresh-indicator" transition:fade>
+        <Loader2 class="animate-spin" size={16} />
+        <span>Refreshing balances...</span>
+      </div>
+    {/if}
+    
     <div class="token-rows">
       {#each filteredTokens as token (token.canister_id)}
         <div class="token-row-wrapper" transition:slide={{ duration: 200 }}>
@@ -229,7 +248,10 @@
 
       {#if filteredTokens.length === 0}
         <div class="empty-state" transition:fade>
-          {#if searchQuery}
+          {#if isInitialLoad}
+            <Loader2 class="animate-spin" size={20} />
+            <p>Loading tokens...</p>
+          {:else if searchQuery}
             <p>No tokens found matching "{searchQuery}"</p>
             <button
               class="clear-search-button"
@@ -336,11 +358,17 @@
 
   .empty-state {
     @apply flex flex-col items-center justify-center gap-2
-           min-h-[120px] text-white/40 text-xs;
+           min-h-[120px] text-kong-text-secondary text-xs;
   }
 
   .clear-search-button {
     @apply px-3 py-1.5 bg-kong-bg-dark/70 text-white/70 text-xs font-medium rounded-md
            transition-all duration-200 hover:bg-gray-700/90 hover:text-white;
+  }
+
+  .refresh-indicator {
+    @apply flex items-center justify-center gap-2 py-2 
+           text-kong-text-secondary text-xs bg-kong-bg-light/50
+           border-b border-kong-border/30;
   }
 </style>

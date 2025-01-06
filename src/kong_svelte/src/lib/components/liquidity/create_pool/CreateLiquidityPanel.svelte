@@ -6,7 +6,7 @@
   import InitialPriceInput from "./InitialPriceInput.svelte";
   import PoolWarning from "./PoolWarning.svelte";
   import { liquidityStore } from "$lib/services/liquidity/liquidityStore";
-  import { tokenStore, loadBalances, liveTokens } from "$lib/services/tokens/tokenStore";
+  import { loadBalances, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { calculateAmount1FromPrice, validateTokenSelect, updateQueryParams, doesPoolExist } from "$lib/utils/poolCreationUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { page } from '$app/stores';
@@ -72,8 +72,8 @@
     }
   }
   $: poolExists = token0 && token1 ? doesPoolExist(token0, token1, $livePools) : null;
-  $: token0Balance = $tokenStore.balances[token0?.canister_id]?.in_tokens?.toString() || "0";
-  $: token1Balance = $tokenStore.balances[token1?.canister_id]?.in_tokens?.toString() || "0";
+  $: token0Balance = $storedBalancesStore[token0?.canister_id]?.in_tokens?.toString() || "0";
+  $: token1Balance = $storedBalancesStore[token1?.canister_id]?.in_tokens?.toString() || "0";
 
   function handleTokenSelect(index: 0 | 1, token: FE.Token) {
     const otherToken = index === 0 ? token1 : token0;

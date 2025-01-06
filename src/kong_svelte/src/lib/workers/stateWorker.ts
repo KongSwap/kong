@@ -1,4 +1,4 @@
-import { loadTokens } from '$lib/services/tokens';
+import { TokenService } from '$lib/services/tokens';
 import * as Comlink from 'comlink';
 
 export interface StateWorkerApi {
@@ -14,16 +14,16 @@ class StateWorkerImpl implements StateWorkerApi {
   // ----------------------------------------------------
   // 1) Lower intervals to allow more frequent updates
   // ----------------------------------------------------
-  private readonly ACTIVE_TOKEN_INTERVAL = 5000;          // 5 seconds when active
-  private readonly BACKGROUND_TOKEN_INTERVAL = 10000;     // 10 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 5000;          // 5 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 10000;      // 10 seconds when in background
+  private readonly ACTIVE_TOKEN_INTERVAL = 15000;          // 5 seconds when active
+  private readonly BACKGROUND_TOKEN_INTERVAL = 60000;     // 10 seconds when in background
+  private readonly ACTIVE_POOL_INTERVAL = 15000;          // 5 seconds when active
+  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 10 seconds when in background
 
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests
   // ----------------------------------------------------
-  private readonly TOKEN_UPDATE_THROTTLE = 4000; // Don't post token updates more often than every 4s
-  private readonly POOL_UPDATE_THROTTLE  = 4000; // Don't post pool updates more often than every 4s
+  private readonly TOKEN_UPDATE_THROTTLE = 15000; // Don't post token updates more often than every 4s
+  private readonly POOL_UPDATE_THROTTLE  = 15000; // Don't post pool updates more often than every 4s
 
   // ----------------------------------------------------
   // 3) Track whether an update is already in progress
@@ -110,7 +110,7 @@ class StateWorkerImpl implements StateWorkerApi {
     this.tokenUpdateInProgress = true;
     try {
       // Load tokens first to ensure we have fresh data
-      loadTokens(true).catch(error => {
+      TokenService.fetchTokens().catch(error => {
         console.error("Error loading tokens:", error);
       });
       
