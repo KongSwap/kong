@@ -26,10 +26,21 @@ vi.mock('$lib/services/tokens/tokenStore', () => {
     }
   };
 
+  const balancesStoreValue = {
+    'token0-id': { in_tokens: '200000000000' },
+    'token1-id': { in_tokens: '200000000000' }
+  };
+
   return {
     tokenStore: {
       subscribe: vi.fn((callback) => {
         callback(storeValue);
+        return { unsubscribe: vi.fn() };
+      })
+    },
+    storedBalancesStore: {
+      subscribe: vi.fn((callback) => {
+        callback(balancesStoreValue);
         return { unsubscribe: vi.fn() };
       })
     }
