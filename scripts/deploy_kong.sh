@@ -84,48 +84,48 @@ done
 # Deploy Internet Identity for local network
 [ "${NETWORK}" == "local" ] && dfx deploy internet_identity --network "${NETWORK}"
 
-# # Deploy test token ledgers, faucet, mint and create tokens and pools for local/staging
-# if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
+# Deploy test token ledgers, faucet, mint and create tokens and pools for local/staging
+if [[ "${NETWORK}" =~ ^(local|staging)$ ]]; then
 
-#     # Deploy test token ledger canisters
-#     LEDGER_SCRIPTS=(
-#         "deploy_ksusdt_ledger.sh"
-#         "deploy_ksicp_ledger.sh"
-#         "deploy_ksbtc_ledger.sh"
-#         "deploy_kseth_ledger.sh"
-#         "deploy_kskong_ledger.sh"
-#     )
+    # Deploy test token ledger canisters
+    LEDGER_SCRIPTS=(
+        "deploy_ksusdt_ledger.sh"
+        "deploy_ksicp_ledger.sh"
+        "deploy_ksbtc_ledger.sh"
+        "deploy_kseth_ledger.sh"
+        "deploy_kskong_ledger.sh"
+    )
 
-#     for script in "${LEDGER_SCRIPTS[@]}"; do
-#         [ -f "${script}" ] && {
-#             echo "Running ${script}"
-#             bash "${script}" "${NETWORK}"
-#         } || echo "Warning: ${script} not found"
-#     done
+    for script in "${LEDGER_SCRIPTS[@]}"; do
+        [ -f "${script}" ] && {
+            echo "Running ${script}"
+            bash "${script}" "${NETWORK}"
+        } || echo "Warning: ${script} not found"
+    done
 
-#     # deploy test token faucet canister
-#     [ -f "deploy_kong_faucet.sh" ] && {
-#         bash "deploy_kong_faucet.sh" "${NETWORK}"
-#     } || echo "Warning: deploy_kong_faucet.sh not found"
+    # deploy test token faucet canister
+    [ -f "deploy_kong_faucet.sh" ] && {
+        bash "deploy_kong_faucet.sh" "${NETWORK}"
+    } || echo "Warning: deploy_kong_faucet.sh not found"
 
-# 	# mint test tokens to kong_faucet
-#     [ -f "faucet_mint.sh" ] && {
-#         bash "faucet_mint.sh" "${NETWORK}"
-#     } || echo "Warning: user_mint.sh not found"
+	# mint test tokens to kong_faucet
+    [ -f "faucet_mint.sh" ] && {
+        bash "faucet_mint.sh" "${NETWORK}"
+    } || echo "Warning: user_mint.sh not found"
 
-# 	# mint test tokens to kong_user1
-#     [ -f "user_mint.sh" ] && {
-#         bash "user_mint.sh" "${NETWORK}"
-#     } || echo "Warning: user_mint.sh not found"
+	# mint test tokens to kong_user1
+    [ -f "user_mint.sh" ] && {
+        bash "user_mint.sh" "${NETWORK}"
+    } || echo "Warning: user_mint.sh not found"
 
-#     # deploy tokens and pools
-#     [ -f "deploy_tokens_pools.sh" ] && {
-#         bash "deploy_tokens_pools.sh" "${NETWORK}"
-#     } || echo "Warning: deploy_tokens_pools.sh not found"
-# fi
+    # deploy tokens and pools
+    [ -f "deploy_tokens_pools.sh" ] && {
+        bash "deploy_tokens_pools.sh" "${NETWORK}"
+    } || echo "Warning: deploy_tokens_pools.sh not found"
+fi
 
-# if [[ "${NETWORK}" == "ic" ]]; then
-#     # calculate sha256 for SNS proposal
-#     echo "SHA256 for kong_backend.wasm.gz:"
-#     sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
-# fi
+if [[ "${NETWORK}" == "ic" ]]; then
+    # calculate sha256 for SNS proposal
+    echo "SHA256 for kong_backend.wasm.gz:"
+    sha256sum "${DFX_ROOT}"/ic/canisters/kong_backend/kong_backend.wasm.gz
+fi

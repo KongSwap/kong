@@ -34,11 +34,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = read_settings()?;
     let dfx_pem_file = &config.dfx_pem_file;
     let db_host = &config.database.host;
+    let db_port = &config.database.port;
     let db_user = &config.database.user;
     let db_password = &config.database.password;
     let db_name = &config.database.db_name;
     let mut db_config = tokio_postgres::Config::new();
     db_config.host(db_host);
+    db_config.port(*db_port);
     db_config.user(db_user);
     db_config.password(db_password);
     db_config.dbname(db_name);
@@ -77,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.contains(&"--updates".to_string()) {
         let kong_data = KongData::new(&agent, is_mainnet).await;
-        get_db_updates(None, &kong_data, &db_client, &tokens_map, &pools_map).await?;
+        get_db_updates(None, &kong_data, &db_client, tokens_map, pools_map).await?;
     }
 
     if args.contains(&"--kong_backend".to_string()) {

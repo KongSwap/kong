@@ -8,6 +8,7 @@ export const parseTokens = async (
   data: {tokens: FE.Token[], total: number},
 ): Promise<FE.Token[]> => {
   try {
+    console.log(data);
     const existingTokens = await kongDB.tokens.toArray();
     const icTokens: FE.Token[] = await Promise.all(data.tokens.map(async (token) => {
       const logoUrl = DEFAULT_LOGOS[token.canister_id] || 
@@ -33,7 +34,7 @@ export const parseTokens = async (
           logo_url: logoUrl,
           address: token.address || token.canister_id,
           fee: Number(token.fee),
-          fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
+          fee_fixed: token?.fee_fixed ? BigInt(token.fee_fixed.replaceAll("_", "")).toString() : "0",
           token: token.token_type || '',
           token_type: token.token_type || '',
           chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
@@ -46,7 +47,7 @@ export const parseTokens = async (
           ...existingToken,
           logo_url: logoUrl,
           fee: Number(token.fee),
-          fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
+          fee_fixed: token?.fee_fixed ? BigInt(token.fee_fixed.replaceAll("_", "")).toString() : "0",
           token: token.token_type || '',
           token_type: token.token_type || '',
           chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
