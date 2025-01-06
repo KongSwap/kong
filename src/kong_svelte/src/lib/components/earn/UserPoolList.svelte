@@ -5,6 +5,7 @@
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ChevronDown, Plus, Minus } from "lucide-svelte";
+  import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
 
   export let searchQuery = "";
 
@@ -12,6 +13,8 @@
   let processedPools: any[] = [];
   let error: string | null = null;
   let expandedPoolId: string | null = null;
+  let selectedPool: any = null;
+  let showUserPoolModal = false;
 
   function createSearchableText(
     poolBalance: any,
@@ -75,7 +78,17 @@
     .sort((a, b) => Number(b.usd_balance) - Number(a.usd_balance));
 
   function handlePoolItemClick(pool: any) {
-    expandedPoolId = expandedPoolId === pool.id ? null : pool.id;
+    if (expandedPoolId === pool.id) {
+      expandedPoolId = null;
+    } else {
+      selectedPool = pool;
+      showUserPoolModal = true;
+    }
+  }
+
+  function handleLiquidityRemoved() {
+    showUserPoolModal = false;
+    selectedPool = null;
   }
 </script>
 
@@ -279,6 +292,14 @@
     </div>
   {/if}
 </div>
+
+{#if selectedPool}
+  <UserPool
+    pool={selectedPool}
+    bind:showModal={showUserPoolModal}
+    on:liquidityRemoved={handleLiquidityRemoved}
+  />
+{/if}
 
 <style lang="postcss">
   .pools-grid {

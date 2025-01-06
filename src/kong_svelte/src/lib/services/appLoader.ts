@@ -84,7 +84,7 @@ export class AppLoader {
 
       // If wallet is connected, load balances
       if (wallet?.isConnected && wallet?.account?.owner) {
-        await loadBalances(wallet.account.owner);
+        await loadBalances(wallet.account.owner.toString());
       }
     } catch (error) {
       console.error("Failed to initialize tokens:", error);

@@ -15,7 +15,7 @@
   const dispatch = createEventDispatcher();
 
   export let pool: any;
-  export let showModal: boolean = false;
+  export let showModal = false;
 
   // Calculate USD value for tokens using proper price lookup
   function calculateTokenUsdValue(amount: string, tokenSymbol: string): string {
@@ -56,6 +56,7 @@
   // Reset state when modal opens/closes
   $: if (!showModal) {
     resetState();
+    dispatch('liquidityRemoved');
   }
 
   function resetState() {
@@ -265,7 +266,10 @@
 
 <Modal
   bind:isOpen={showModal}
-  onClose={() => (showModal = false)}
+  onClose={() => {
+    showModal = false;
+    dispatch('liquidityRemoved');
+  }}
   variant="solid"
   width="min(420px, 95vw)"
   height="auto"

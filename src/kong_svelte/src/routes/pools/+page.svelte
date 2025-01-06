@@ -198,7 +198,7 @@
           <div class="flex flex-col sticky top-0 z-20">
             <div class="flex flex-col gap-3 sm:gap-0">
               <!-- Mobile-only buttons -->
-              <div class="sm:hidden px-2 space-y-2">
+              <div class="sm:hidden space-y-2">
                 <!-- Row 1: View Toggle & Search -->
                 <div class="flex gap-2 w-full">
                   <!-- View Toggle -->
@@ -375,7 +375,7 @@
               <!-- All Pools View -->
               <div class="h-full overflow-auto">
                 <!-- Desktop Table View -->
-                <div class="hidden lg:block">
+                <div class="hidden lg:flex lg:flex-col h-full">
                   <DataTable
                     data={$filteredLivePools}
                     rowKey="pool_id"
@@ -434,7 +434,7 @@
                 </div>
 
                 <!-- Mobile/Tablet Card View -->
-                <div class="lg:hidden space-y-3 px-3 pb-3 h-full overflow-auto">
+                <div class="lg:hidden space-y-3 pb-3 h-full overflow-auto py-2">
                   {#each $sortedMobilePools || [] as pool, i (pool.address_0 + pool.address_1)}
                     <button
                       on:click={() =>

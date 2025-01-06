@@ -425,7 +425,7 @@
                   <div class="mobile-nav-btn-icon">
                     <Award size={18} />
                   </div>
-                  <span>Statistics</span>
+                  <span>Analytics</span>
                 </button>
               </div>
             {/if}

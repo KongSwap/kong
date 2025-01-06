@@ -13,6 +13,7 @@ import type { StateWorkerApi } from "$lib/workers/stateWorker";
 import { appLoader } from "$lib/services/appLoader";
 import { kongDB } from "./db";
 import { TokenService } from "./tokens";
+import { PoolService } from "./pools";
 
 class UpdateWorkerService {
   private stateWorker: Worker | null = null;
@@ -144,6 +145,10 @@ class UpdateWorkerService {
   }
 
   private async updatePools() {
+    const user = get(auth);
+    if (user) {
+      await PoolService.fetchUserPoolBalances(true);
+    }
     await loadPools();
   }
 

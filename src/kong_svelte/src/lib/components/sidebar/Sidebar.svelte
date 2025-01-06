@@ -142,7 +142,7 @@
                     Import Token
                     </div>
                   </ButtonV2>
-                  <ButtonV2
+                  <!-- <ButtonV2
                   variant="transparent"
                   theme="primary"
                   className="add-token-button mb-1 !text-kong-text-primary/50"
@@ -152,7 +152,7 @@
                   <Coins size={16} />
                   Manage Tokens
                 </div>
-                </ButtonV2>
+                </ButtonV2> -->
                 </div>
               </footer>
             </div>
@@ -184,7 +184,7 @@
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     pointer-events: auto;
-    cursor: pointer;
+    cursor: zoom-out;
   }
 
   .sidebar-wrapper {

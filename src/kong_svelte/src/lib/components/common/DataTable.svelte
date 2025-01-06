@@ -143,26 +143,23 @@
     const currentPrice = row.metrics?.price;
     const previousPrice = previousPrices.get(key);
     
-    if (previousPrice !== undefined && currentPrice !== previousPrice) {
-      const flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
-      
-      // Clear existing timeout
-      if (flashTimeouts.has(key)) {
-        clearTimeout(flashTimeouts.get(key));
-      }
-
-      // Set new timeout
-      const timeout = setTimeout(() => {
-        rowFlashStates.delete(key);
-        rowFlashStates = rowFlashStates;
-        flashTimeouts.delete(key);
-      }, flashDuration);
-
-      flashTimeouts.set(key, timeout);
-      rowFlashStates.set(key, { class: flashClass, timeout });
+    // Clear existing timeout if any
+    if (flashTimeouts.has(key)) {
+      clearTimeout(flashTimeouts.get(key));
     }
 
-    previousPrices.set(key, currentPrice);
+    const flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
+    
+    // Set new timeout
+    const timeout = setTimeout(() => {
+      rowFlashStates.delete(key);
+      rowFlashStates = new Map(rowFlashStates); // Create new reference to trigger reactivity
+      flashTimeouts.delete(key);
+    }, flashDuration);
+
+    flashTimeouts.set(key, timeout);
+    rowFlashStates.set(key, { class: flashClass, timeout });
+    rowFlashStates = new Map(rowFlashStates); // Create new reference to trigger reactivity
   }
 
   // Store previous prices for flash animations
@@ -205,30 +202,17 @@
 
   // Watch for price changes
   $: {
-    data.forEach(row => {
+    for (const row of data) {
+      const key = row[rowKey];
       const currentPrice = row.metrics?.price;
-      const previousPrice = previousPrices.get(row[rowKey]);
+      const previousPrice = previousPrices.get(key);
       
       if (previousPrice !== undefined && currentPrice !== previousPrice) {
-        const flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
-        
-        // Clear existing timeout if any
-        if (rowFlashStates.get(row[rowKey])?.timeout) {
-          clearTimeout(rowFlashStates.get(row[rowKey])?.timeout);
-        }
-
-        // Set new flash state
-        const timeout = setTimeout(() => {
-          rowFlashStates.delete(row[rowKey]);
-          rowFlashStates = rowFlashStates; // trigger reactivity
-        }, 2000);
-
-        rowFlashStates.set(row[rowKey], { class: flashClass, timeout });
+        updatePriceFlash(row);
       }
-
-      // Update previous price
-      previousPrices.set(row[rowKey], currentPrice);
-    });
+      
+      previousPrices.set(key, currentPrice);
+    }
   }
 
   // Add helper function to get trend class
@@ -287,7 +271,10 @@
           {@const isKong = isKongRow ? isKongRow(row) : false}
           {@const flashState = rowFlashStates.get(row[rowKey])}
           <tr
-            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 {onRowClick ? 'cursor-pointer' : ''} {flashState?.class || ''} {(isKongRow ? isKongRow(row) : isKongToken(row)) ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
+            class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 
+              {onRowClick ? 'cursor-pointer' : ''} 
+              {rowFlashStates.get(row[rowKey])?.class || ''} 
+              {(isKongRow ? isKongRow(row) : isKongToken(row)) ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}
@@ -300,19 +287,6 @@
                   <svelte:component this={column.component} {row} />
                 {:else}
                   <div class="inline-block w-full {column.key === 'price_change_24h' ? getTrendClass(value) : ''}">
-                    {#if column.key === 'pool_name' && (memoizedTopByVolume?.has(row[rowKey]) || memoizedTopByTVL?.has(row[rowKey]) || memoizedTopByAPY?.has(row[rowKey]))}
-                      <div class="inline-flex gap-1 mr-2">
-                        {#if memoizedTopByVolume?.has(row[rowKey])}
-                          <Flame class="w-4 h-4 text-orange-400" />
-                        {/if}
-                        {#if memoizedTopByTVL?.has(row[rowKey])}
-                          <Wallet class="w-4 h-4 text-blue-400" />
-                        {/if}
-                        {#if memoizedTopByAPY?.has(row[rowKey])}
-                          <TrendingUp class="w-4 h-4 text-green-400" />
-                        {/if}
-                      </div>
-                    {/if}
                     {formattedValue}
                   </div>
                 {/if}
@@ -388,5 +362,32 @@
   th {
     position: relative;
     background-color: var(--kong-bg-dark);
+  }
+
+  /* Add these flash animation styles */
+  .flash-green {
+    animation: flashGreen 2s ease-out;
+  }
+
+  .flash-red {
+    animation: flashRed 2s ease-out;
+  }
+
+  @keyframes flashGreen {
+    0% {
+      background-color: rgba(34, 197, 94, 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes flashRed {
+    0% {
+      background-color: rgba(239, 68, 68, 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
   }
 </style> 

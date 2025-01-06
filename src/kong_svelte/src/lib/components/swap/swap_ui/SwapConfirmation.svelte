@@ -6,7 +6,6 @@
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
   import { onMount, onDestroy } from "svelte";
-  import { formatTokenValue } from "$lib/utils/tokenFormatters";
   import { fade } from "svelte/transition";
   import { toastStore } from "$lib/stores/toastStore";
   import { createEventDispatcher } from "svelte";
@@ -26,7 +25,7 @@
   let isLoading = false;
   let error = "";
   let quoteUpdateInterval: ReturnType<typeof setInterval>;
-  const QUOTE_UPDATE_INTERVAL = 1500; // 1.5 seconds
+  const QUOTE_UPDATE_INTERVAL = 1000; // 1 second
 
   $: payUsdValue = formatBalance(payAmount.toString(), payToken?.decimals);
   $: receiveUsdValue = formatBalance(
@@ -185,7 +184,8 @@
   {onClose}
   variant="solid"
   height="auto"
-  className="!p-0"
+  maxHeight="90vh"
+  className="mobile:!p-0"
 >
   {#if error}
     <div class="error-container">
@@ -249,7 +249,7 @@
   .confirmation-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    width: 100%;
     backdrop-filter: blur(16px);
     @apply rounded-md;
     transition: all 0.3s ease-in-out;
@@ -281,8 +281,13 @@
   }
 
   .button-container {
-    padding-top: 16px;
+    padding: 16px;
     margin-top: auto;
+    width: 100%;
+    position: sticky;
+    bottom: 0;
+    backdrop-filter: blur(8px);
+    border-radius: 0 0 12px 12px;
   }
 
   .error-container {
@@ -318,7 +323,7 @@
     position: relative;
     width: 100%;
     padding: 16px;
-    @apply rounded-b-md;
+    @apply rounded-md;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: linear-gradient(
       135deg,
@@ -468,11 +473,12 @@
   @media (max-width: 640px) {
     .confirmation-container {
       padding: 0;
+      height: auto;
     }
 
     .content-wrapper {
-      padding: 0;
-      justify-content: space-between;
+      padding: 16px;
+      height: auto;
     }
 
     .sections-wrapper {
@@ -481,8 +487,9 @@
     }
 
     .button-container {
-      padding-top: 0;
+      padding: 16px;
       margin-top: 0;
+      border-radius: 0;
     }
 
     .error-container {

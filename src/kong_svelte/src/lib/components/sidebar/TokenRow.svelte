@@ -8,7 +8,7 @@
   } from "$lib/utils/tokenFormatters";
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
-  import { tokenStore, storedBalancesStore } from "$lib/services/tokens";
+  import { storedBalancesStore } from "$lib/services/tokens";
   import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
@@ -252,7 +252,6 @@
 {#if showTokenDetails}
   <TokenDetails
     {token}
-    isOpen={showTokenDetails}
     on:close={() => (showTokenDetails = false)}
   />
 {/if}

@@ -435,4 +435,96 @@
   .modal-text {
     @apply text-center text-sm text-kong-text-secondary;
   }
+
+  .id-header {
+    @apply flex justify-between items-center text-white/70 text-sm mb-2;
+  }
+
+  .header-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .action-button {
+    @apply h-8 px-3 rounded-lg 
+           bg-white/5 backdrop-blur-sm
+           border border-white/10
+           hover:border-white/20 hover:bg-white/10
+           text-white/70 hover:text-white
+           transition-all duration-200
+           flex items-center justify-center gap-2;
+  }
+
+  .button-text {
+    @apply hidden md:inline;
+  }
+
+  .action-button:active {
+    @apply border-indigo-500 bg-indigo-500/10;
+  }
+
+  .id-card {
+    @apply flex flex-col gap-2 p-4 
+           bg-black/20 backdrop-blur-sm
+           border border-white/10 
+           rounded-lg;
+  }
+
+  .input-wrapper input {
+    @apply w-full h-11 rounded-lg px-4
+           bg-white/5 backdrop-blur-sm
+           border border-white/10 
+           hover:border-white/20
+           text-white/90
+           transition-colors;
+  }
+
+  .monospace-input {
+    @apply font-mono text-sm;
+    cursor: default;
+    user-select: all;
+  }
+
+  .info-tooltip {
+    @apply p-4 rounded-lg
+           bg-white/5 backdrop-blur-sm
+           border border-white/10;
+  }
+
+  .info-tooltip p {
+    @apply text-white/90 text-sm mb-2;
+  }
+
+  .info-tooltip ul {
+    @apply list-disc pl-5 text-sm text-white/70;
+  }
+
+  .info-tooltip li {
+    @apply mb-1;
+  }
+
+  .id-header {
+    @apply flex justify-between items-center text-white/70 text-sm;
+  }
+
+  .header-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .action-button {
+    @apply h-8 px-3 rounded-lg 
+           bg-white/5 backdrop-blur-sm
+           border border-white/10
+           hover:border-white/20 hover:bg-white/10
+           text-white/70 hover:text-white
+           transition-all duration-200
+           flex items-center justify-center gap-2;
+  }
+
+  .button-text {
+    @apply hidden md:inline;
+  }
+
+  .action-button:active {
+    @apply border-indigo-500 bg-indigo-500/10;
+  }
 </style>

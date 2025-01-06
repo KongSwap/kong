@@ -19,17 +19,13 @@
   let initializationError: Error | null = null;
 
   async function init() {
-    console.log("init() called in layout");
     if (initializationPromise) {
-      console.log("Using existing initialization promise");
       return initializationPromise;
     }
 
     initializationPromise = (async () => {
       try {
-        console.log("Starting app initialization...");
         await appLoader.initialize();
-        console.log("App initialization complete");
       } catch (error) {
         console.error("Initialization error:", error);
         initializationError = error as Error;
@@ -42,8 +38,6 @@
   }
 
   onMount(() => {
-    console.log("Layout component mounted");
-    // Call init immediately and handle any errors
     init().catch(error => {
       console.error("Failed to initialize app:", error);
       initializationError = error;

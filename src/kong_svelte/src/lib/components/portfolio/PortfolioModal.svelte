@@ -81,7 +81,13 @@
       return currentData.data;
     }
 
-    const { topPositions, otherPositions } = processPortfolioData(tokens, balances, userPools);
+    // Make sure userPools are included in the position calculations
+    const { topPositions, otherPositions } = processPortfolioData(
+      tokens, 
+      balances, 
+      userPools
+    );
+
     const { colors, getBorderColors } = getChartColors();
     const borderColors = getBorderColors(colors);
     
@@ -136,15 +142,26 @@
   $: {
     Promise.all([$portfolioValue, $storedBalances, riskMetrics]).then(([portfolioVal, balances, metrics]) => {
       const totalValue = Number(portfolioVal.replace(/[^0-9.-]+/g, ""));
+      
+      // Calculate token value
       const tokenValue = $liveTokens.reduce((acc, token) => {
         const balance = balances[token.canister_id]?.in_usd;
         return acc + (balance ? Number(balance) : 0);
       }, 0);
-      const lpValue = totalValue - tokenValue;
       
-      tokenPercentage = totalValue ? Math.round((tokenValue / totalValue) * 100) : 0;
-      lpPercentage = totalValue ? Math.round((lpValue / totalValue) * 100) : 0;
-      riskScore = metrics.diversificationScore;
+      // Calculate LP value from userPools
+      const lpValue = $liveUserPools.reduce((acc, pool) => {
+        // Try both possible value fields
+        const poolValue = Number(pool.value_usd) || Number(pool.usd_balance) || 0;
+        return acc + poolValue;
+      }, 0);
+      
+      // Calculate total value as sum of token and LP values
+      const calculatedTotal = tokenValue + lpValue;
+      
+      // Calculate percentages using the calculated total to ensure they add up to 100%
+      tokenPercentage = calculatedTotal > 0 ? Math.round((tokenValue / calculatedTotal) * 100) : 0;
+      lpPercentage = calculatedTotal > 0 ? Math.round((lpValue / calculatedTotal) * 100) : 0;
     });
   }
 
@@ -159,13 +176,15 @@
       balances,
       $liveUserPools
     );
-    return calculateRiskMetrics([...topPositions, ...otherPositions]);
+    const allPositions = [...topPositions, ...otherPositions].filter(pos => pos.value > 0);    
+    const metrics = calculateRiskMetrics(allPositions);
+    return metrics;
   })();
 
   // Calculate percentages
   $: {
     Promise.resolve(diversityMetrics).then(metrics => {
-      diversityScore = 100 - metrics.diversificationScore;
+      diversityScore = metrics?.diversificationScore || 0;
     });
   }
 </script>
@@ -228,11 +247,11 @@
             <div class="flex items-center gap-3">
               <div class="flex-grow h-2 bg-kong-bg-dark rounded-full overflow-hidden">
                 <div 
-                  class="h-full bg-gradient-to-r from-green-500 to-red-500 transition-all duration-300" 
+                  class="h-full bg-gradient-to-r from-red-500 to-green-500 transition-all duration-300" 
                   style="width: {diversityScore}%"
                 />
               </div>
-              <span class="text-sm font-medium">{diversityScore}/100</span>
+              <span class="text-sm font-medium">{diversityScore || 0}/100</span>
             </div>
           </div>
           

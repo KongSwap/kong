@@ -220,7 +220,7 @@
     
     <div class="token-rows">
       {#each filteredTokens as token (token.canister_id)}
-        <div class="token-row-wrapper" transition:slide={{ duration: 200 }}>
+        <div class="token-row-wrapper">
           <TokenRow
             {token}
             on:toggleFavorite={async ({ detail }) => {
@@ -229,15 +229,13 @@
             }}
           />
           {#if searchQuery && searchMatches[token.canister_id]?.type === "canister"}
-            <div class="match-indicator" transition:fade>
+            <div class="match-indicator" transition:fade={{ duration: 150 }}>
               <span class="match-type">canister:</span>
               <code class="match-label">{token.canister_id}</code>
             </div>
           {:else if searchQuery && searchMatches[token.canister_id]?.type}
-            <div class="match-indicator" transition:fade>
-              <span class="match-type"
-                >{searchMatches[token.canister_id].type}:</span
-              >
+            <div class="match-indicator" transition:fade={{ duration: 150 }}>
+              <span class="match-type">{searchMatches[token.canister_id].type}:</span>
               <span class="match-label">
                 {@html getMatchDisplay(searchMatches[token.canister_id])}
               </span>
@@ -273,7 +271,7 @@
 
 <style scoped lang="postcss">
   .token-list-container {
-    @apply flex flex-col min-h-[86dvh] relative;
+    @apply flex flex-col min-h-[87dvh] relative;
   }
 
   .search-section {

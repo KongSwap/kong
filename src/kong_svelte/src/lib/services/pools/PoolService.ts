@@ -194,12 +194,12 @@ export class PoolService {
       } else {
         // Handle ICRC1 tokens
         const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
-          IcrcService.icrc1Transfer(
+          IcrcService.transfer(
             params.token_0,
             KONG_BACKEND_CANISTER_ID,
             params.amount_0,
           ),
-          IcrcService.icrc1Transfer(
+          IcrcService.transfer(
             params.token_1,
             KONG_BACKEND_CANISTER_ID,
             params.amount_1,

@@ -159,7 +159,6 @@ export class KongDatafeed {
     subscriberUID: string
   ): void {
     if (!this.fromTokenId || !this.toTokenId) {
-      console.log('[subscribeBars]: No token IDs available');
       return;
     }
     

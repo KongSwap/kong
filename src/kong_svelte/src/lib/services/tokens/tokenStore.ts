@@ -12,7 +12,7 @@ import type { TokenState, TokenBalance } from "./types";
 function createTokenStore() {
   const initialState: TokenState = {
     activeSwaps: {},
-    pendingBalanceRequests: new Set<string>()
+    pendingBalanceRequests: new Set<string>(),
   };
   const store = writable<TokenState>(initialState);
 
@@ -23,19 +23,19 @@ function createTokenStore() {
       return get(store).pendingBalanceRequests.has(canisterId);
     },
     addPendingRequest: (canisterId: string) => {
-      store.update(s => {
+      store.update((s) => {
         const pendingBalanceRequests = new Set(s.pendingBalanceRequests);
         pendingBalanceRequests.add(canisterId);
         return { ...s, pendingBalanceRequests };
       });
     },
     removePendingRequest: (canisterId: string) => {
-      store.update(s => {
+      store.update((s) => {
         const pendingBalanceRequests = new Set(s.pendingBalanceRequests);
         pendingBalanceRequests.delete(canisterId);
         return { ...s, pendingBalanceRequests };
       });
-    }
+    },
   };
 }
 
@@ -45,19 +45,19 @@ export const liveTokens = readable<FE.Token[]>([], (set) => {
   if (!browser) {
     return;
   }
-    
+
   const subscription = liveQuery(() => kongDB.tokens.toArray()).subscribe({
     next: (tokens) => {
       set(tokens || []);
     },
     error: (error) => {
-      set([]); 
+      set([]);
     },
   });
-  
+
   return () => {
     subscription?.unsubscribe();
-  }
+  };
 });
 
 export const formattedTokens = derived(liveTokens, ($liveTokens) => {
@@ -72,8 +72,25 @@ const getCurrentWalletId = (): string => {
   return wallet?.account?.owner?.toString() || "anonymous";
 };
 
-// Create a temporary store for user pools that we'll sync later
-const userPoolsStore = writable<UserPoolBalance[]>([]);
+// Instead, create our own live query for user pools
+export const userPoolsStore = readable<UserPoolBalance[]>([], (set) => {
+  if (!browser) {
+    set([]);
+    return;
+  }
+
+  const subscription = liveQuery(async () => {
+    const pools = await kongDB.user_pools.toArray();
+    return pools;
+  }).subscribe({
+    next: (value) => set(value),
+    error: (err) => console.error("[userPoolsStore] Error:", err),
+  });
+
+  return () => {
+    if (subscription) subscription.unsubscribe();
+  };
+});
 
 export const getStoredBalances = async (walletId: string) => {
   if (!walletId || walletId === "anonymous") {
@@ -82,19 +99,22 @@ export const getStoredBalances = async (walletId: string) => {
 
   try {
     const storedBalances = await kongDB.token_balances
-      .where('wallet_id')
+      .where("wallet_id")
       .equals(walletId)
       .toArray();
 
-    return storedBalances.reduce((acc, balance) => {
-      acc[balance.canister_id] = {
-        in_tokens: balance.in_tokens,
-        in_usd: balance.in_usd
-      };
-      return acc;
-    }, {} as Record<string, FE.TokenBalance>);
+    return storedBalances.reduce(
+      (acc, balance) => {
+        acc[balance.canister_id] = {
+          in_tokens: balance.in_tokens,
+          in_usd: balance.in_usd,
+        };
+        return acc;
+      },
+      {} as Record<string, FE.TokenBalance>,
+    );
   } catch (error) {
-    console.error('Error getting stored balances:', error);
+    console.error("Error getting stored balances:", error);
     return {};
   }
 };
@@ -108,13 +128,14 @@ export const updateStoredBalances = async (walletId: string) => {
   storedBalancesStore.set(balances);
 };
 
-// Make portfolioValue sync by using the stored balances
+// Update the portfolioValue derived store to use the new userPoolsStore
 export const portfolioValue = derived(
   [tokenStore, liveTokens, userPoolsStore, storedBalancesStore],
   ([$tokenStore, $liveTokens, $userPools, $storedBalances]) => {
+    // Calculate token values
     const tokenValue = ($liveTokens || []).reduce((acc, token) => {
       const balance = $storedBalances[token.canister_id]?.in_usd;
-      if (balance && balance !== '0') {
+      if (balance && balance !== "0") {
         return acc + Number(balance);
       }
       return acc;
@@ -122,53 +143,60 @@ export const portfolioValue = derived(
 
     // Calculate pool values
     const poolValue = ($userPools || []).reduce((acc, pool) => {
-      const balance = pool.usd_balance;
-      if (balance && Number(balance) > 0) {
-        return acc + Number(balance);
-      }
-      return acc;
+      const value = Number(pool.usd_balance) || 0;
+      return acc + value;
     }, 0);
 
     // Combine values and format
     const totalValue = tokenValue + poolValue;
-    return totalValue.toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return totalValue.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
-  }
+  },
 );
 
-export const loadBalances = async (owner: string, opts?: { tokens?: FE.Token[], forceRefresh?: boolean }) => {
-  let { tokens, forceRefresh } = opts || { tokens: await kongDB.tokens.toArray(), forceRefresh: false };
+export const loadBalances = async (
+  owner: string,
+  opts?: { tokens?: FE.Token[]; forceRefresh?: boolean },
+) => {
+  let { tokens, forceRefresh } = opts || {
+    tokens: await kongDB.tokens.toArray(),
+    forceRefresh: false,
+  };
   const currentWalletId = getCurrentWalletId();
-  
-  if(!currentWalletId || currentWalletId === "anonymous") {
+
+  if (!currentWalletId || currentWalletId === "anonymous") {
     return {};
   }
 
   try {
-    const balances = await TokenService.fetchBalances(tokens, owner, forceRefresh);
-    
-    // Store balances in the database
-    const balanceEntries = Object.entries(balances).map(([canisterId, balance]) => ({
-      wallet_id: currentWalletId,
-      canister_id: canisterId,
-      in_tokens: balance.in_tokens,
-      in_usd: balance.in_usd,
-      timestamp: Date.now()
-    }));
+    const balances = await TokenService.fetchBalances(
+      tokens,
+      owner,
+      forceRefresh,
+    );
 
-    await kongDB.token_balances.bulkPut(balanceEntries);
-    
-    // Update both stores
-    tokenStore.update(state => ({
-      ...state,
-      balances
-    }));
-    
+    // Store balances in the database
+    Object.entries(balances).map(
+      async ([canisterId, balance]) => {
+        const entry = {
+          wallet_id: currentWalletId,
+          canister_id: canisterId,
+          in_tokens: balance.in_tokens,
+          in_usd: balance.in_usd,
+          timestamp: Date.now(),
+        };
+
+        await kongDB.token_balances.put(entry);
+
+        return entry;
+      },
+    );
+
     // Update the storedBalancesStore
     await updateStoredBalances(currentWalletId);
-    
+
     return balances;
   } catch (error) {
     console.error("Error loading balances:", error);
@@ -195,7 +223,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
     // Check database first if not forcing refresh
     if (!forceRefresh) {
       const existingBalance = await kongDB.token_balances
-        .where(['wallet_id', 'canister_id'])
+        .where(["wallet_id", "canister_id"])
         .equals([owner, canisterId])
         .first();
 
@@ -203,29 +231,33 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
         const balance = {
           [canisterId]: {
             in_tokens: existingBalance.in_tokens,
-            in_usd: existingBalance.in_usd
-          }
+            in_usd: existingBalance.in_usd,
+          },
         };
-        
+
         // Update storedBalancesStore
         await updateStoredBalances(owner);
-        
+
         tokenStore.removePendingRequest(canisterId);
         return balance;
       }
     }
 
-    const balances = await TokenService.fetchBalances([token], owner, forceRefresh);
-    
+    const balances = await TokenService.fetchBalances(
+      [token],
+      owner,
+      forceRefresh,
+    );
+
     if (balances[canisterId]) {
       await kongDB.token_balances.put({
         wallet_id: owner,
         canister_id: canisterId,
         in_tokens: balances[canisterId].in_tokens,
         in_usd: balances[canisterId].in_usd,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       // Update storedBalancesStore
       await updateStoredBalances(owner);
     }
@@ -233,7 +265,7 @@ export const loadBalance = async (canisterId: string, forceRefresh = false) => {
     tokenStore.removePendingRequest(canisterId);
     return balances;
   } catch (error) {
-    console.error('Error loading balance:', error);
+    console.error("Error loading balance:", error);
     tokenStore.removePendingRequest(canisterId);
     return {};
   }
@@ -244,9 +276,13 @@ export const getTokenDecimals = async (canisterId: string) => {
   return token?.decimals || 0;
 };
 
-export const fromTokenDecimals = (amount: BigNumber | string, decimals: number): bigint => {
+export const fromTokenDecimals = (
+  amount: BigNumber | string,
+  decimals: number,
+): bigint => {
   try {
-    const amountBN = typeof amount === 'string' ? new BigNumber(amount || '0') : amount;
+    const amountBN =
+      typeof amount === "string" ? new BigNumber(amount || "0") : amount;
     if (amountBN.isNaN()) {
       return BigInt(0);
     }
@@ -256,7 +292,7 @@ export const fromTokenDecimals = (amount: BigNumber | string, decimals: number):
     const wholePart = result.integerValue(BigNumber.ROUND_DOWN).toString();
     return BigInt(wholePart);
   } catch (error) {
-    console.error('Error converting to token decimals:', error);
+    console.error("Error converting to token decimals:", error);
     return BigInt(0);
   }
 };

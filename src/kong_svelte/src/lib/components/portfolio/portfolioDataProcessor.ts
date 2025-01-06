@@ -19,70 +19,57 @@ export interface PortfolioMetrics {
   };
 }
 
-export const processPortfolioData = (
-  tokens: FE.Token[],
-  balances: { [canister_id: string]: TokenBalance },
-  userPools: UserPoolBalance[]
-) => {
-  // Process token balances
-  const tokenData = tokens
-    .filter(token => {
-      const balance = balances[token.canister_id]?.in_usd;
-      const numBalance = typeof balance === 'string' 
-        ? Number(balance)
-        : Number(balance);
-      return balance && balance !== '0' && !isNaN(numBalance);
-    })
-    .map(token => ({
-      label: token.symbol,
-      balance: typeof balances[token.canister_id]?.in_usd === 'string'
-        ? Number(balances[token.canister_id].in_usd)
-        : Number(balances[token.canister_id]?.in_usd || 0)
-    }));
+export function processPortfolioData(tokens: any[], balances: any, userPools: any[]) {
+  // Process token positions
+  const tokenPositions = tokens.map(token => {
+    const balance = balances[token.canister_id]?.in_usd || 0;
+    const value = Number(balance);
+    return {
+      name: token.symbol,
+      value: value,
+      type: 'token'
+    };
+  }).filter(pos => pos.value > 0);
 
-  // Process pool positions
-  const poolData = userPools
-    .filter(pool => pool.usd_balance && Number(pool.usd_balance) > 0)
-    .map(pool => ({
-      label: `${pool.symbol_0}/${pool.symbol_1} LP`,
-      balance: Number(pool.usd_balance)
-    }));
+  // Process LP positions
+  const lpPositions = userPools.map(pool => {
+    const value = Number(pool.value_usd) || Number(pool.usd_balance) || 0;
+    return {
+      name: `${pool.symbol_0}/${pool.symbol_1} LP`,
+      value: value,
+      type: 'lp'
+    };
+  }).filter(pos => pos.value > 0);
 
-  // Combine and sort data
-  const combinedData = [...tokenData, ...poolData]
-    .sort((a, b) => b.balance - a.balance);
+  // Combine all positions and sort by value
+  const allPositions = [...tokenPositions, ...lpPositions]
+    .sort((a, b) => b.value - a.value);
 
+  // Split into top positions and others
+  const topPositions = allPositions.slice(0, 5);
+  const otherPositions = allPositions.slice(5);
+
+  // If there are other positions, sum them up
+  const otherSum = otherPositions.reduce((sum, pos) => sum + pos.value, 0);
+  if (otherSum > 0) {
+    topPositions.push({
+      name: 'Others',
+      value: otherSum,
+      type: 'other'
+    });
+  }
+
+  return { topPositions, otherPositions };
+}
+
+export function createChartData(topPositions: any[], otherPositions: any[], colors: string[], borderColors: string[]) {
   return {
-    topPositions: combinedData.slice(0, 5),
-    otherPositions: combinedData.slice(5)
-  };
-};
-
-export const createChartData = (
-  topPositions: PortfolioPosition[],
-  otherPositions: PortfolioPosition[],
-  colors: string[],
-  borderColors: string[]
-) => {
-  const otherSum = otherPositions.reduce((sum, item) => sum + item.balance, 0);
-  
-  const labels = [
-    ...topPositions.map(item => item.label),
-    ...(otherPositions.length > 0 ? ['Others'] : [])
-  ];
-  
-  const data = [
-    ...topPositions.map(item => item.balance),
-    ...(otherPositions.length > 0 ? [otherSum] : [])
-  ];
-
-  return {
-    labels,
+    labels: topPositions.map(pos => pos.name),
     datasets: [{
-      data,
-      backgroundColor: colors.slice(0, labels.length),
-      borderColor: borderColors.slice(0, labels.length),
+      data: topPositions.map(pos => pos.value),
+      backgroundColor: colors.slice(0, topPositions.length),
+      borderColor: borderColors.slice(0, topPositions.length),
       borderWidth: 1
     }]
   };
-}; 
+} 

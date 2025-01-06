@@ -70,15 +70,24 @@
       if (allowedCanisterIds.length > 0) {
         return allowedCanisterIds.includes(token.canister_id);
       }
+
+      // Apply hide zero balances filter
+      if (hideZeroBalances) {
+        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        if (balance <= 0n) {
+          return false;
+        }
+      }
+
       return true;
-    }),
+    })
   );
 
   // Get counts based on the base filtered tokens
   let allTokensCount = $derived(baseFilteredTokens.length);
   let ckTokensCount = $derived(
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck"))
-      .length,
+      .length
   );
 
   // Then apply UI filters for display
@@ -312,7 +321,7 @@
       <div
         class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
         bind:this={dropdownElement}
-        on:click|preventDefault
+        on:click|stopPropagation
         transition:scale={{
           duration: 200,
           start: 0.95,
@@ -369,7 +378,7 @@
                   {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <button
-                      on:click={() => (standardFilter = tab.id)}
+                      on:click={() => setStandardFilter(tab.id)}
                       class="filter-btn"
                       class:active={standardFilter === tab.id}
                       aria-label="Show {tab.label.toLowerCase()} tokens"
@@ -384,16 +393,16 @@
 
                 <div class="filter-options">
                   <label class="filter-toggle">
-                    <input type="checkbox" bind:checked={hideZeroBalances} />
+                    <input
+                      type="checkbox"
+                      bind:checked={hideZeroBalances}
+                    />
                     <span class="toggle-label">Hide zero balances</span>
                   </label>
 
                   <div
                     class="sort-toggle"
-                    on:click={() => {
-                      sortDirection = sortDirection === "desc" ? "asc" : "desc";
-                      sortColumn = sortColumn === "value" ? "volume" : "value";
-                    }}
+                    on:click={toggleSort}
                   >
                     <span class="toggle-label">Sort by value</span>
                     <svg
@@ -754,15 +763,33 @@
     height: 1rem;
     border-radius: 0.25rem;
     border: 1px solid #2a2d3d;
-    background-color: #2a2d3d;
-    transition: background-color 0.2s;
+    background-color: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    position: relative;
+    margin: 0;
   }
 
   .filter-toggle input[type="checkbox"]:checked {
     background-color: #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  .filter-toggle input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
 
   .filter-toggle input[type="checkbox"]:focus {
+    outline: none;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
   }
 

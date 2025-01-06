@@ -241,7 +241,10 @@ export class SwapService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
+        { 
+          anon: false, 
+          requiresSigning: auth.pnp.activeWallet.id === 'plug' 
+        },
       );
       const result = await actor.swap_async(params);
       return result;
@@ -259,7 +262,7 @@ export class SwapService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
+        { anon: true }
       );
       const result = await actor.requests(requestIds);
       return result;
@@ -319,7 +322,7 @@ export class SwapService {
           requiredAllowance,
         );
       } else if (payToken.icrc1) {
-        const result = await IcrcService.icrc1Transfer(
+        const result = await IcrcService.transfer(
           payToken,
           params.backendPrincipal,
           payAmount,
@@ -362,7 +365,10 @@ export class SwapService {
         const actor = auth.pnp.getActor(
           KONG_BACKEND_CANISTER_ID,
           canisterIDLs.kong_backend,
-          { anon: false, requiresSigning: true },
+          { 
+            anon: false, 
+            requiresSigning: auth.pnp.activeWallet.id === 'plug' 
+          },
         );
         const result = await actor.swap(swapParams);
 

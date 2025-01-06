@@ -1,11 +1,11 @@
 import { derived, writable, type Readable, readable } from "svelte/store";
 import { PoolService } from "./PoolService";
-import { formatPoolData, getPoolPriceUsd } from "$lib/utils/statsUtils";
+import { formatPoolData } from "$lib/utils/statsUtils";
 import { eventBus } from "$lib/services/tokens/eventBus";
 import { kongDB } from "../db";
-import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { liveQuery } from "dexie";
 import { browser } from "$app/environment";
+import { userPoolsStore } from "$lib/services/tokens/tokenStore";
 
 interface ExtendedPool extends BE.Pool {
   displayTvl?: number;
@@ -114,24 +114,7 @@ export const livePoolTotals = readable<FE.PoolTotal[]>([], (set) => {
   };
 });
 
-export const liveUserPools = readable<UserPoolBalance[]>([], (set) => {
-  if (!browser) {
-    set([]);
-    return;
-  }
-
-  const subscription = liveQuery(async () => {
-    const pools = await kongDB.user_pools.toArray();
-    return pools;
-  }).subscribe({
-    next: (value) => set(value),
-    error: (err) => console.error("[liveUserPools] Error:", err),
-  });
-
-  return () => {
-    if (subscription) subscription.unsubscribe();
-  };
-});
+export { userPoolsStore as liveUserPools };
 
 export const loadPools = async () => {
   try {

@@ -14,13 +14,14 @@
   export let title: string | HTMLElement = '';
   export let variant: "solid" | "transparent" = "solid";
   export let width = "600px";
-  export let height = "80vh";
+  export let height = "auto";
   export let minHeight: string = "auto";
   export let onClose: () => void = () => {};
   export let loading = false;
   export let closeOnEscape = true;
   export let closeOnClickOutside = true;
   export let className: string = "";
+  export let maxHeight = "80vh";
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -37,7 +38,7 @@
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
         modalWidth = isMobile ? "100%" : width;
-        modalHeight = isMobile ? "90vh" : height;
+        modalHeight = isMobile ? "auto" : height;
       };
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
@@ -134,8 +135,8 @@
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         bind:this={modalElement}
-        class="relative will-change-transform max-w-full max-h-full touch-pan-x"
-        style="width: {modalWidth}; height: {modalHeight};"
+        class="relative will-change-transform max-w-full px-1 overflow-auto"
+        style="width: {modalWidth}; max-height: {maxHeight};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
         on:mouseup={handleDragEnd}
@@ -172,7 +173,6 @@
               on:touchmove={handleDragMove}
               on:touchend={handleDragEnd}
             >
-              <!-- Place your "pull-down" bar or similar here -->
             </div>
 
             <header class="flex justify-between items-center px-4">

@@ -156,10 +156,6 @@
     }
   }
 
-  $: if ($auth.isConnected) {
-    PoolService.fetchUserPoolBalances(false);
-  }
-
   async function loadUserPoolComponent() {
     const module = await import('$lib/components/liquidity/pools/UserPool.svelte');
     UserPoolComponent = module.default;
@@ -233,7 +229,7 @@
       {:else if error}
         <div class="state-message error" in:fade>
           <p>{error}</p>
-          <button class="retry-button" on:click={() => PoolService.fetchUserPoolBalances()}>
+          <button class="retry-button" on:click={() => PoolService.fetchUserPoolBalances(true)}>
             Retry
           </button>
         </div>

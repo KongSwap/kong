@@ -96,26 +96,29 @@
       return;
     }
 
+    // Wait for container to be ready
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
     try {
-      console.log('Loading TradingView library...');
       await loadTradingViewLibrary();
 
       const isMobile = window.innerWidth < 768;
       
       // Get container dimensions
-      const containerWidth = chartContainer.clientWidth;
-      const containerHeight = chartContainer.clientHeight;
+      const containerWidth = chartWrapper.clientWidth;
+      const containerHeight = chartWrapper.clientHeight;
       
-      console.log('Container dimensions:', { containerWidth, containerHeight });
-
       if (!containerWidth || !containerHeight) {
-        console.warn('Container has zero dimensions');
+        console.warn('Container has zero dimensions:', containerWidth, containerHeight);
+        // Retry after a short delay
+        setTimeout(() => initChart(), 100);
         return;
       }
 
+      console.log('Initializing chart with dimensions:', containerWidth, containerHeight);
+
       // Get current price from poolStore
       const currentPrice = $livePools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
-      console.log('Current price:', currentPrice);
 
       // Pass current price to datafeed
       const datafeed = new KongDatafeed(
@@ -134,7 +137,6 @@
         theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       });
 
-      console.log('Creating TradingView widget...');
       const widget = new window.TradingView.widget(chartConfig);
 
       widget.onChartReady(() => {
@@ -304,7 +306,7 @@
 
 <div class="chart-wrapper h-full" bind:this={chartWrapper}>
   <div
-    class="chart-container h-full w-full"
+    class="chart-container h-full w-full relative"
     bind:this={chartContainer}
   >
     {#if hasNoData}
@@ -373,15 +375,20 @@
     position: relative;
     width: 100%;
     height: 100%;
+    min-height: 400px;
     background: transparent;
     border-radius: 12px;
     overflow: hidden;
   }
 
   .chart-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   :global(.layout__area--top) {

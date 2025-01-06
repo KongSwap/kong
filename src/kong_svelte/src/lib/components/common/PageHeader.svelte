@@ -17,14 +17,14 @@
     <div class="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-6 md:gap-4 -mt-2">
       <!-- Left side: Title -->
       <div class="flex flex-col gap-2 w-full md:w-auto">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
           <svelte:component 
             this={icon} 
             class="w-6 h-6 sm:w-7 sm:h-7 text-kong-primary"
           />
           <h1 class="text-xl sm:text-2xl font-medium text-kong-text-primary">{title}</h1>
         </div>
-        <p class="text-kong-text-secondary text-sm max-w-[600px]">{description}</p>
+        <p class="text-kong-text-secondary text-sm max-w-[600px] hidden md:block">{description}</p>
       </div>
 
       <!-- Right side: Stats -->

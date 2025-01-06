@@ -15,6 +15,7 @@
     ArrowUpDown,
     TrendingUp,
     Flame,
+    ChevronDown,
   } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
@@ -30,7 +31,6 @@
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
-  const ITEM_HEIGHT = 80; // Height of each token card in pixels
   const ITEMS_PER_PAGE = 100;
   const currentPage = writable(1);
 
@@ -38,6 +38,8 @@
   let isMobile = false;
   let searchTerm = "";
   let showFavoritesOnly = false;
+  let sortBy = "market_cap";
+  let sortDirection: "asc" | "desc" = "desc";
 
   // Favorites state - needs to be a store since it's shared with other components
   const favoriteTokenIds = writable<string[]>([]);
@@ -151,12 +153,51 @@
     }
   );
 
+  $: sortedTokens = derived(
+    [filteredTokens],
+    ([$filteredTokens]) => {
+      let sorted = [...$filteredTokens];
+      
+      // First separate KONG from other tokens
+      const kongToken = sorted.find(t => t.canister_id === KONG_CANISTER_ID);
+      const otherTokens = sorted.filter(t => t.canister_id !== KONG_CANISTER_ID);
+      
+      // Sort the other tokens
+      switch (sortBy) {
+        case "market_cap":
+          otherTokens.sort((a, b) => {
+            const aValue = Number(a.metrics?.market_cap || 0);
+            const bValue = Number(b.metrics?.market_cap || 0);
+            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+          });
+          break;
+        case "volume":
+          otherTokens.sort((a, b) => {
+            const aValue = Number(a.metrics?.volume_24h || 0);
+            const bValue = Number(b.metrics?.volume_24h || 0);
+            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+          });
+          break;
+        case "price_change":
+          otherTokens.sort((a, b) => {
+            const aValue = Number(a.metrics?.price_change_24h || 0);
+            const bValue = Number(b.metrics?.price_change_24h || 0);
+            return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
+          });
+          break;
+      }
+
+      // Return KONG at the top followed by sorted tokens
+      return kongToken ? [kongToken, ...otherTokens] : otherTokens;
+    }
+  );
+
   $: paginatedTokens = derived(
-    [filteredTokens, currentPage],
-    ([$filteredTokens, $currentPage]) => {
+    [sortedTokens, currentPage],
+    ([$sortedTokens, $currentPage]) => {
       const start = ($currentPage - 1) * ITEMS_PER_PAGE;
       const end = start + ITEMS_PER_PAGE;
-      return $filteredTokens.slice(start, end);
+      return $sortedTokens.slice(start, end);
     }
   );
 
@@ -167,7 +208,7 @@
   function getTrendClass(token: FE.Token): string {
     return token?.metrics?.price_change_24h
       ? Number(token.metrics.price_change_24h) > 0
-        ? "text-kong-primary"
+        ? "text-kong-accent-green"
         : Number(token.metrics.price_change_24h) < 0
           ? "text-kong-accent-red"
           : ""
@@ -202,6 +243,15 @@
   function goToPage(page: number) {
     if (page >= 1 && page <= $totalPages) {
       currentPage.set(page);
+    }
+  }
+
+  function toggleSort(newSortBy: string) {
+    if (sortBy === newSortBy) {
+      sortDirection = sortDirection === "desc" ? "asc" : "desc";
+    } else {
+      sortBy = newSortBy;
+      sortDirection = "desc";
     }
   }
 
@@ -397,23 +447,62 @@
                 isKongRow={(row) => row.canister_id === KONG_CANISTER_ID}
               />
             {:else}
-              <div class="flex-1 overflow-auto">
-                <div class="space-y-2.5 px-3 pb-3">
-                  {#each $paginatedTokens as token, index (token.canister_id)}
+              <div class="flex flex-col h-full overflow-hidden">
+                <!-- Mobile filters -->
+                <div class="sticky top-0 z-30 bg-kong-bg-dark border-b border-kong-border">
+                  <div class="flex gap-2 px-3 py-2 justify-between">
                     <button
-                      class="w-full"
-                      on:click={() => goto(`/stats/${token.canister_id}`)}
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'market_cap' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      on:click={() => toggleSort("market_cap")}
                     >
-                      <TokenCardMobile
-                        {token}
-                        isConnected={$auth.isConnected}
-                        isFavorite={$favoriteTokenIds.includes(token.canister_id)}
-                        trendClass={getTrendClass(token)}
-                        showHotIcon={isTopVolume(token)}
-                        priceClass={getTrendClass(token)}
+                      MCap
+                      <ChevronDown
+                        size={16}
+                        class="transition-transform {sortDirection === 'asc' && sortBy === 'market_cap' ? 'rotate-180' : ''}"
                       />
                     </button>
-                  {/each}
+                    <button
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'volume' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      on:click={() => toggleSort("volume")}
+                    >
+                      Volume
+                      <ChevronDown
+                        size={16}
+                        class="transition-transform {sortDirection === 'asc' && sortBy === 'volume' ? 'rotate-180' : ''}"
+                      />
+                    </button>
+                    <button
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm {sortBy === 'price_change' ? 'bg-kong-primary text-white' : 'bg-kong-background-secondary'}"
+                      on:click={() => toggleSort("price_change")}
+                    >
+                      24h %
+                      <ChevronDown
+                        size={16}
+                        class="transition-transform {sortDirection === 'asc' && sortBy === 'price_change' ? 'rotate-180' : ''}"
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Scrollable content -->
+                <div class="flex-1 overflow-auto">
+                  <div class="space-y-2.5 px-2 py-2">
+                    {#each $paginatedTokens as token, index (token.canister_id)}
+                      <button
+                        class="w-full"
+                        on:click={() => goto(`/stats/${token.canister_id}`)}
+                      >
+                        <TokenCardMobile
+                          {token}
+                          isConnected={$auth.isConnected}
+                          isFavorite={$favoriteTokenIds.includes(token.canister_id)}
+                          trendClass={getTrendClass(token)}
+                          showHotIcon={isTopVolume(token)}
+                          priceClass={getTrendClass(token)}
+                        />
+                      </button>
+                    {/each}
+                  </div>
                 </div>
               </div>
             {/if}

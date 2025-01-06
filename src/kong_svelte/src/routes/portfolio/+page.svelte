@@ -99,11 +99,7 @@
     const { topPositions, otherPositions } = processPortfolioData(tokens, balances, userPools);
     const { colors, getBorderColors } = getChartColors();
     const borderColors = getBorderColors(colors);
-    
     const chartData = createChartData(topPositions, otherPositions, colors, borderColors);
-
-    console.log('Portfolio data:', { topPositions, otherPositions, chartData });
-
     currentData = { key: dataKey, data: chartData };
     return chartData;
   })();
@@ -119,9 +115,7 @@
     }
 
     const isDark = document.documentElement.classList.contains('dark');
-    
-    console.log('Creating doughnut chart with data:', portfolioData);
-    
+        
     chart = new Chart(canvas, {
       type: 'doughnut',
       data: portfolioData,
@@ -145,7 +139,6 @@
   }
 
   $: if (canvas && portfolioData?.datasets?.[0]?.data?.length) {
-    console.log('Triggering chart update');
     setTimeout(updateChart, 0);
   }
 

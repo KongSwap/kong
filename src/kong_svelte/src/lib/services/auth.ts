@@ -9,6 +9,7 @@ import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { loadBalances } from "./tokens";
 import { kongDB } from "./db";
+import { PoolService } from "./pools/PoolService";
 
 // Export the list of available wallets
 export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
@@ -63,7 +64,10 @@ function createAuthStore(pnp: PNP) {
             isInitialized: true,
           };
           set(newState);
-          await loadBalances(result.owner.toString());
+          Promise.all([
+            loadBalances(result.owner.toString()),
+            PoolService.fetchUserPoolBalances(true),
+          ]);
           selectedWalletId.set(walletId);
           isConnected.set(true);
           principalId.set(result.owner.toString());
@@ -89,7 +93,7 @@ function createAuthStore(pnp: PNP) {
 
     async disconnect() {
       try {
-        const result = await pnp.disconnect();
+        const result = pnp.disconnect();
         set({ isConnected: false, account: null, isInitialized: true });
         // zero out token balances
         await kongDB.token_balances.clear();
