@@ -324,9 +324,9 @@
   }
 
   .toggle-switch {
-    @apply w-7 h-4 bg-gray-700 rounded-full transition-colors duration-200
+    @apply w-7 h-4 bg-kong-bg-dark rounded-full transition-colors duration-200
            before:content-[''] before:absolute before:w-3 before:h-3 
-           before:bg-gray-400 before:rounded-full before:transition-transform
+           before:bg-kong-text-secondary before:rounded-full before:transition-transform
            before:duration-200 before:translate-x-0.5 before:translate-y-0.5;
   }
 
@@ -335,7 +335,7 @@
   }
 
   .filter-toggle input:checked + .toggle-switch::before {
-    @apply translate-x-3.5 bg-blue-400;
+    @apply translate-x-3.5 bg-kong-text-primary;
   }
 
   .token-row-wrapper {

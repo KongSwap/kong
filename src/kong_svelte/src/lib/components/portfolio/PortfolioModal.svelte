@@ -234,7 +234,7 @@
 
       <!-- Stats Section -->
       <div class="bg-kong-bg-light rounded-xl p-6 shadow-sm flex flex-col justify-between">        
-        <div class="space-y-4">
+        <div class="space-y-4 flex flex-col justify-between h-full">
           <!-- Portfolio Value -->
           <div class="text-center mb-4">
             <p class="text-sm font-medium text-kong-text-secondary">Total Portfolio Value</p>
@@ -260,12 +260,12 @@
             <h4 class="text-xs font-medium text-kong-text-secondary uppercase tracking-wider mb-2">Asset Types</h4>
             <div class="grid grid-cols-2 gap-4">
               <div class="stat-item">
-                <span class="stat-label">Tokens</span>
-                <span class="stat-value">{tokenPercentage}%</span>
+                <span class="stat-value text-center">{tokenPercentage}%</span>
+                <span class="stat-label text-center">Tokens</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">LP Positions</span>
-                <span class="stat-value">{lpPercentage}%</span>
+                <span class="stat-value text-center">{lpPercentage}%</span>
+                <span class="stat-label text-center">LP Positions</span>
               </div>
             </div>
           </div>

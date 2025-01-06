@@ -349,6 +349,7 @@
           src="/titles/logo-white-wide.png"
           alt="Kong Logo" 
           class="logo-wide"
+          class:light-logo={$themeStore === 'light'}
         />
         <button class="mobile-close-btn" on:click={() => (navOpen = false)}>
           <X size={20} />
@@ -496,7 +497,6 @@
       on:click={() => sidebarStore.close()}
     />
     <Sidebar
-      isOpen={true}
       onClose={() => sidebarStore.close()}
     />
   </div>
@@ -638,6 +638,14 @@
 
   /* Update logo styles */
   .light-logo {
-    @apply invert brightness-[0.75] transition-all duration-200;
+    @apply invert brightness-[0.8] transition-all duration-200;
+  }
+
+  .mobile-menu-header .logo-wide {
+    @apply transition-all duration-200;
+  }
+
+  .mobile-menu-header .logo-wide.light-logo {
+    @apply invert brightness-[0.2];
   }
 </style>
