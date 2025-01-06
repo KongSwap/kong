@@ -29,10 +29,13 @@ use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
+use crate::stable_user::principal_id_map::create_principal_id_map;
 
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
+
+    create_principal_id_map();
 
     // start the background timer to process claims
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
@@ -100,6 +103,8 @@ fn pre_upgrade() {
 
 #[post_upgrade]
 async fn post_upgrade() {
+    create_principal_id_map();
+
     // start the background timer to process claims
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {

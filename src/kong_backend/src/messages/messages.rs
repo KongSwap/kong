@@ -9,9 +9,9 @@ use crate::stable_user::user_map;
 
 #[query(guard = "not_in_maintenance_mode_and_caller_is_not_anonymous")]
 pub async fn messages(message_id: Option<u64>) -> Result<Vec<MessagesReply>, String> {
-    let user_id = match user_map::get_by_caller() {
-        Ok(Some(caller)) => caller.user_id,
-        Ok(None) | Err(_) => return Ok(Vec::new()),
+    let user_id = match user_map::get_by_caller()? {
+        Some(caller) => caller.user_id,
+        None => return Ok(Vec::new()), // user is anonymous so just return an empty list
     };
     let messages = message_map::get_by_message_id(message_id, Some(user_id), None)
         .iter()
