@@ -42,6 +42,10 @@
     void updateFavorites();
   });
 
+  function toggleSort() {
+    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+  }
+
   async function updateFavorites() {
     const newFavorites = new Map<string, boolean>();
     await Promise.all(
