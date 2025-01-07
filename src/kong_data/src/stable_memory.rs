@@ -1,6 +1,7 @@
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableDBUpdateId};
@@ -30,6 +31,9 @@ pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(9);
 pub const DB_UPDATE_MEMORY_ID: MemoryId = MemoryId::new(50);
 
 thread_local! {
+    // static variable to store the map of principal_id to user_id
+    pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
+
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
     // return a memory that can be used by stable structures
     pub static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =

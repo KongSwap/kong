@@ -126,6 +126,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
         });
         _ = archive_to_kong_data(&user);
     }
+
     Ok(user.user_id)
 }
 
