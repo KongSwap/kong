@@ -92,7 +92,7 @@ function createSwapStore(): SwapStore {
     ([$storedBalancesStore, $swapState]) => {
       if (!$swapState.payToken || !$swapState.payAmount) return false;
       
-      const balance = $storedBalancesStore[$swapState.payToken.canister_id]?.in_tokens || BigInt(0);
+      const balance = $storedBalancesStore[$swapState.payToken.canister_id] || BigInt(0);
       const payAmountBN = new BigNumber($swapState.payAmount);
       const payAmountInTokens = fromTokenDecimals(payAmountBN, $swapState.payToken.decimals);
       return Number(payAmountInTokens) > Number(balance);

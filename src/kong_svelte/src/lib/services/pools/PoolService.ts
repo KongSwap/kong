@@ -380,7 +380,6 @@ export class PoolService {
           canisterIDLs.kong_backend
         );
         const res = await actor.user_balances(auth.pnp?.account?.owner?.toString(), []);
-        
         if (!res.Ok) {
           throw new Error("Failed to fetch user balances");
         }
@@ -511,12 +510,12 @@ export class PoolService {
       } else {
         // Handle ICRC1 tokens
         const [transfer0Result, transfer1Result, actorResult] = await Promise.all([
-          IcrcService.icrc1Transfer(
+          IcrcService.transfer(
             params.token_0,
             KONG_BACKEND_CANISTER_ID,
             params.amount_0,
           ),
-          IcrcService.icrc1Transfer(
+          IcrcService.transfer(
             params.token_1,
             KONG_BACKEND_CANISTER_ID,
             params.amount_1,

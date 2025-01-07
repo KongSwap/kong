@@ -56,14 +56,16 @@ export async function sortTokens(
  */
 export function filterByBalance(
   token: FE.Token,
-  tokenBalances: Record<string, { in_tokens: string | bigint }>,
+  tokenBalances: Record<string, { in_tokens: string | bigint, in_usd: string }>,
   hideZeroBalances: boolean
 ): boolean {
   if (!hideZeroBalances) return true;
 
   try {
-    const balance = BigInt(tokenBalances[token.canister_id]?.in_tokens || '0');
-    return balance > 0n;
+    const balanceRecord = tokenBalances[token.canister_id];
+    const balance = parseFloat(balanceRecord?.in_usd || '0');
+
+    return balance > 0.01;
   } catch (e) {
     console.warn(`Error checking balance for token ${token.canister_id}:`, e);
     return true; // Show tokens with invalid balance format
