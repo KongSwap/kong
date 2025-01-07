@@ -152,6 +152,15 @@
       }, 150);
     }
   }
+
+  function handleImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    const textElement = img.nextElementSibling as HTMLElement;
+    img.style.display = 'none';
+    if (textElement) {
+      textElement.style.display = 'block';
+    }
+  }
 </script>
 
 <div class="mb-4 w-full top-0 left-0 z-50 relative">
@@ -168,7 +177,14 @@
             alt="Kong Logo" 
             class="h-[30px] transition-all duration-200"
             class:light-logo={$themeStore === 'light'}
+            on:error={handleImageError}
           />
+          <span 
+            class="hidden text-xl font-bold text-kong-text-primary"
+            style="display: none;"
+          >
+            KONG
+          </span>
         </button>
 
         <nav class="flex items-center gap-0.5">
@@ -181,6 +197,7 @@
               >
                 <button
                   class="nav-link {activeTab === tab ? 'active' : ''}"
+                  on:click={() => goto('/pools')}
                 >
                   {tab.toUpperCase()}
                   <ChevronDown size={16} />
@@ -283,7 +300,14 @@
             alt="Kong Logo" 
             class="h-6 transition-all duration-200"
             class:light-logo={$themeStore === 'light'}
+            on:error={handleImageError}
           />
+          <span 
+            class="hidden text-lg font-bold text-kong-text-primary"
+            style="display: none;"
+          >
+            KONG
+          </span>
         </button>
       </div>
     {/if}

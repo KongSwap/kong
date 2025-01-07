@@ -20,6 +20,36 @@ export class IcrcService {
     throw error;
   }
 
+  private static async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    initialDelay: number = 1000
+  ): Promise<T> {
+    let retries = 0;
+    while (true) {
+      try {
+        return await operation();
+      } catch (error) {
+        const isCorsError = error?.message?.includes('CORS') || error?.message?.includes('Access-Control-Allow-Origin');
+        const isRateLimitError = error?.message?.includes('429');
+        
+        if (retries >= maxRetries || (!isCorsError && !isRateLimitError)) {
+          throw error;
+        }
+        
+        const delay = initialDelay * Math.pow(2, retries);
+        if (isRateLimitError) {
+          console.log(`Rate limited, retrying in ${delay}ms...`);
+        } else if (isCorsError) {
+          console.log(`CORS error encountered, retrying in ${delay}ms...`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+      }
+    }
+  }
+
   public static async getIcrc1Balance(
     token: FE.Token,
     principal: Principal,
@@ -30,25 +60,29 @@ export class IcrcService {
       const actor = await auth.getActor(
         token.canister_id,
         canisterIDLs["icrc2"],
-        { anon: true, requiresSigning: false },
+        { anon: true, requiresSigning: false }
       );
 
-      // Get default balance
-      const defaultBalance = await actor.icrc1_balance_of({
-        owner: principal,
-        subaccount: [],
-      });
+      // Get default balance with retry logic
+      const defaultBalance = await this.retryWithBackoff(async () => 
+        actor.icrc1_balance_of({
+          owner: principal,
+          subaccount: [],
+        })
+      );
 
       // If we don't need separate balances or there's no subaccount, return total
       if (!separateBalances || !subaccount) {
         return defaultBalance;
       }
 
-      // Get subaccount balance
-      const subaccountBalance = await actor.icrc1_balance_of({
-        owner: principal,
-        subaccount: [subaccount],
-      });
+      // Get subaccount balance with retry logic
+      const subaccountBalance = await this.retryWithBackoff(async () =>
+        actor.icrc1_balance_of({
+          owner: principal,
+          subaccount: [subaccount],
+        })
+      );
 
       return {
         default: defaultBalance,
@@ -56,6 +90,9 @@ export class IcrcService {
       };
     } catch (error) {
       console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
+      if (error?.message?.includes('CORS') || error?.message?.includes('Access-Control-Allow-Origin')) {
+        console.warn('CORS error encountered, will retry with exponential backoff');
+      }
       return separateBalances ? { default: BigInt(0), subaccount: BigInt(0) } : BigInt(0);
     }
   }
@@ -286,7 +323,6 @@ export class IcrcService {
                 created_at_time: opts.createdAtTime ? [{ timestamp_nanos: opts.createdAtTime }] : [],
             };
 
-            console.log("Ledger transfer args:", transfer_args);
             return await ledgerActor.transfer(transfer_args);
         }
 

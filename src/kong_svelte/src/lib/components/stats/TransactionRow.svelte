@@ -3,6 +3,7 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { formatTimestamp } from "$lib/utils/dateFormatters";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { getPrincipalColor } from "$lib/utils/principalColorUtils";
 
   export let tx: FE.Transaction;
   export let token: FE.Token;
@@ -44,7 +45,8 @@
   <td class="px-4 py-3">
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
       <span
-        class="px-2 py-0.5 text-xs bg-kong-primary/80 text-white rounded-full whitespace-nowrap"
+        class="px-2 py-0.5 text-xs rounded-full whitespace-nowrap dark:text-white text-kong-text-primary"
+        style="background-color: {getPrincipalColor(tx.user?.principal_id || '')};"
       >
         {tx.user?.principal_id?.slice(0, 8)}
       </span>

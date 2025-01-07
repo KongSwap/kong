@@ -49,7 +49,7 @@
             on:click={() => copyToClipboard(token.canister_id)}
             title="Click to copy"
           >
-            {token.canister_id.slice(0, 6)}...{token.canister_id.slice(-4)}
+            {token.canister_id}
           </button>
           <span class="stat-label">Canister ID</span>
         </div>
@@ -154,6 +154,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     font-family: var(--font-mono);
+    font-size: 0.75rem;
   }
 
   .canister-id:hover {

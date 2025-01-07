@@ -222,10 +222,6 @@
   function calculateEarnings(timeframe: number): string {
     // Use APY from the actual pool
     if (!actualPool?.rolling_24h_apy || !pool.usd_balance) {
-      console.log("Missing data for earnings calc:", {
-        apy: actualPool?.rolling_24h_apy,
-        balance: pool.usd_balance,
-      });
       return "0";
     }
 

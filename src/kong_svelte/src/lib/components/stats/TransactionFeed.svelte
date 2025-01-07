@@ -6,6 +6,18 @@
   import { fetchTransactions } from "$lib/services/transactions";
   import TransactionRow from "./TransactionRow.svelte";
 
+  // Function to generate a consistent color from a principal ID
+  function getPrincipalColor(principalId: string): string {
+    // Use a simple hash function to generate a number from the string
+    const hash = principalId.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    // Generate HSL color with fixed saturation and lightness for readability
+    const hue = Math.abs(hash % 360);
+    return `hsl(${hue}, 70%, 65%)`;
+  }
+
   // Ensure formattedTokens is initialized
   if (!formattedTokens) {
     throw new Error("Stores are not initialized");
@@ -53,52 +65,69 @@
       return;
     }
 
-    try {
-      if (append) {
-        isLoadingMore = true;
-      } else if (!isRefresh) {
-        isLoadingTxns = true;
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError;
+
+    while (retryCount < maxRetries) {
+      try {
+        if (append) {
+          isLoadingMore = true;
+        } else if (!isRefresh) {
+          isLoadingTxns = true;
+        }
+
+        const newTransactions = await fetchTransactions(
+          token.token_id,
+          page,
+          pageSize,
+        );
+
+        if (isRefresh) {
+          // Compare new transactions with existing ones and highlight differences
+          const existingIds = new Set(transactions.map((t) => t.tx_id));
+          const updatedTransactions = newTransactions.map((tx) => {
+            if (!existingIds.has(tx.tx_id)) {
+              newTransactionIds.add(tx.tx_id);
+              clearTransactionHighlight(tx.tx_id);
+            }
+            return tx;
+          });
+          transactions = updatedTransactions;
+          newTransactionIds = newTransactionIds; // Trigger reactivity
+        } else if (append) {
+          transactions = [...transactions, ...newTransactions];
+        } else {
+          transactions = newTransactions;
+        }
+
+        hasMore = newTransactions.length === pageSize;
+        currentPage = page;
+        error = null;
+        break; // Success, exit retry loop
+      } catch (err) {
+        lastError = err;
+        console.warn(`Attempt ${retryCount + 1} failed:`, err);
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          // Wait before retrying, with exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        }
       }
-
-      const newTransactions = await fetchTransactions(
-        token.token_id,
-        page,
-        pageSize,
-      );
-
-      if (isRefresh) {
-        // Compare new transactions with existing ones and highlight differences
-        const existingIds = new Set(transactions.map((t) => t.tx_id));
-        const updatedTransactions = newTransactions.map((tx) => {
-          if (!existingIds.has(tx.tx_id)) {
-            newTransactionIds.add(tx.tx_id);
-            clearTransactionHighlight(tx.tx_id);
-          }
-          return tx;
-        });
-        transactions = updatedTransactions;
-        newTransactionIds = newTransactionIds; // Trigger reactivity
-      } else if (append) {
-        transactions = [...transactions, ...newTransactions];
-      } else {
-        transactions = newTransactions;
-      }
-
-      hasMore = newTransactions.length === pageSize;
-      currentPage = page;
-      error = null;
-    } catch (error) {
-      console.error("Failed to fetch transactions:", error);
-      error =
-        error instanceof Error ? error.message : "Failed to load transactions";
-      hasMore = false;
-    } finally {
-      isLoadingMore = false;
-      isLoadingTxns = false;
     }
+
+    if (retryCount === maxRetries) {
+      console.error("Failed to fetch transactions after", maxRetries, "attempts:", lastError);
+      error = lastError instanceof Error ? lastError.message : "Failed to load transactions";
+      hasMore = false;
+    }
+
+    isLoadingMore = false;
+    isLoadingTxns = false;
   };
 
-  // Set up auto-refresh interval
+  // Set up auto-refresh interval with error handling
   $effect(() => {
     if (token?.token_id) {
       // Clear existing interval if any
@@ -106,9 +135,12 @@
         clearInterval(refreshInterval);
       }
 
-      // Set up new interval
+      // Set up new interval with error handling
       refreshInterval = setInterval(() => {
-        loadTransactionData(1, false, true);
+        loadTransactionData(1, false, true).catch(err => {
+          console.error("Error in refresh interval:", err);
+          // Don't show error UI for background refresh failures
+        });
       }, 10000) as unknown as number;
 
       // Clean up on token change

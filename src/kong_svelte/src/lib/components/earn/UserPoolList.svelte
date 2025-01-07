@@ -6,6 +6,8 @@
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { ChevronDown, Plus, Minus } from "lucide-svelte";
   import UserPool from "$lib/components/liquidity/pools/UserPool.svelte";
+  import { livePools } from "$lib/services/pools/poolStore";
+  import BigNumber from "bignumber.js";
 
   export let searchQuery = "";
 
@@ -47,6 +49,9 @@
           const token1 = $liveTokens.find(
             (t) => t.symbol === poolBalance.symbol_1,
           );
+          const matchingPool = $livePools.find(
+            (p) => p.symbol_0 === poolBalance.symbol_0 && p.symbol_1 === poolBalance.symbol_1
+          );
 
           return {
             id: poolBalance.name,
@@ -54,13 +59,13 @@
             symbol: poolBalance.symbol,
             symbol_0: poolBalance.symbol_0,
             symbol_1: poolBalance.symbol_1,
-            balance: poolBalance.balance.toString(),
+            balance: poolBalance.balance,
             amount_0: poolBalance.amount_0,
             amount_1: poolBalance.amount_1,
             usd_balance: poolBalance.usd_balance,
             address_0: poolBalance.symbol_0,
             address_1: poolBalance.symbol_1,
-            searchableText: createSearchableText(poolBalance, token0, token1),
+            searchableText: createSearchableText(poolBalance, token0, token1)
           };
         });
     } else {
@@ -114,9 +119,9 @@
   {:else}
     <div class="pools-grid">
       {#each processedPools as pool (pool.id)}
-        <div class="pool-container" in:slide={{ duration: 200 }}>
+        <div in:slide={{ duration: 200 }}>
           <div
-            class="group rounded-lg border border-kong-border dark:border-kong-border bg-white/90 dark:bg-kong-bg-dark/40 backdrop-blur-lg p-3.5 shadow-sm hover:shadow-md transition-all"
+            class="group rounded-lg border border-kong-border bg-kong-bg-dark/30 backdrop-blur-lg p-3.5 shadow-sm hover:shadow-md transition-all"
             class:expanded={expandedPoolId === pool.id}
             on:click={() => handlePoolItemClick(pool)}
             on:keydown={(e) => e.key === "Enter" && handlePoolItemClick(pool)}
@@ -125,7 +130,7 @@
           >
             <!-- Card Header -->
             <div class="space-y-3">
-              <div class="flex items-start justify-between">
+              <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <div class="relative">
                     <TokenImages
@@ -138,7 +143,7 @@
                   </div>
                   <div>
                     <h3
-                      class="text-base font-semibold text-slate-900 dark:text-slate-100"
+                      class="text-base font-semibold text-kong-text-primary/95"
                     >
                       {pool.symbol_0}/{pool.symbol_1}
                     </h3>
@@ -150,40 +155,9 @@
                     </p>
                   </div>
                 </div>
-                <ChevronDown
-                  size={16}
-                  class={`text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
-                    expandedPoolId === pool.id ? "rotate-180" : ""
-                  }`}
-                />
-              </div>
-
-              <!-- Stats Row -->
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <p
-                    class="text-xs font-medium text-slate-500 dark:text-slate-400"
-                  >
-                    Share
-                  </p>
-                  <p
-                    class="text-sm font-semibold text-slate-900 dark:text-slate-100"
-                  >
-                    {(Number(pool.balance) / 100).toFixed(2)}%
-                  </p>
-                </div>
-                <div class="text-right">
-                  <p
-                    class="text-xs font-medium text-slate-500 dark:text-slate-400"
-                  >
-                    Value
-                  </p>
-                  <p
-                    class="text-sm font-semibold text-slate-900 dark:text-slate-100"
-                  >
-                    ${formatToNonZeroDecimal(pool.usd_balance)}
-                  </p>
-                </div>
+                <p class="text-sm font-semibold text-kong-text-primary/95">
+                  ${formatToNonZeroDecimal(pool.usd_balance)}
+                </p>
               </div>
             </div>
 
@@ -224,7 +198,7 @@
                           />
                           <div>
                             <p
-                              class="text-sm font-medium text-slate-900 dark:text-slate-100"
+                              class="text-sm font-medium text-kong-text-primary/20 text-kong-text-primary"
                             >
                               {token.symbol}
                             </p>
@@ -244,26 +218,11 @@
                     {/each}
                   </div>
 
-                  <!-- Share Info -->
-                  <div
-                    class="flex items-center justify-between p-2.5 rounded-md bg-slate-50/50 dark:bg-kong-bg-light"
-                  >
-                    <span
-                      class="text-xs font-medium text-slate-500 dark:text-slate-400"
-                      >Pool Share</span
-                    >
-                    <span
-                      class="text-sm font-medium text-slate-900 dark:text-slate-100"
-                    >
-                      {(Number(pool.balance) / 100).toFixed(4)}%
-                    </span>
-                  </div>
-
                   <!-- Actions -->
                   <div class="flex justify-end gap-2 pt-1">
                     <!-- Add LP Button -->
                     <button
-                      class="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-kong-border dark:bg-kong-bg-light dark:text-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      class="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-kong-text-primary/20 hover:bg-kong-border dark:bg-kong-bg-light text-kong-text-primary dark:hover:bg-slate-700 transition-colors"
                       on:click|stopPropagation={() => {
                         // Add LP logic here
                       }}
@@ -274,7 +233,7 @@
 
                     <!-- Remove LP Button -->
                     <button
-                      class="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-kong-border dark:bg-kong-bg-light dark:text-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      class="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-kong-text-primary/20 hover:bg-kong-border dark:bg-kong-bg-light text-kong-text-primary dark:hover:bg-slate-700 transition-colors"
                       on:click|stopPropagation={() => {
                         // Remove LP logic here
                       }}
@@ -317,7 +276,7 @@
            h-40
            rounded-lg
            bg-white/90 dark:bg-kong-bg-dark/40 backdrop-blur-lg
-           text-slate-900 dark:text-slate-50
+           text-kong-text-primary/20 dark:text-slate-50
            border border-kong-border dark:border-kong-border
            shadow-sm;
   }

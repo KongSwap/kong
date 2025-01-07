@@ -406,7 +406,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    min-height: 700px;
+    min-height: 00px;
   }
 
   .mobile-swap-section {

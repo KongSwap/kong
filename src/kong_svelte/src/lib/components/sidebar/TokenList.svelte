@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { formattedTokens, tokenStore, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, tokenStore, storedBalancesStore } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { Search, Loader2 } from "lucide-svelte";
@@ -9,7 +9,7 @@
   import { sortTokens, filterByBalance } from "$lib/utils/sortUtils";
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
   import { browser } from "$app/environment";
-  import { writable } from "svelte/store";
+  import { writable, derived } from "svelte/store";
 
   type SearchMatch = {
     type: "name" | "symbol" | "canister" | null;
@@ -17,111 +17,99 @@
     matchedText?: string;
   };
 
-  // Create a writable store for hideZeroBalances
-  const hideZeroStore = writable(false);
-  if (browser) {
-    const storedValue = localStorage.getItem('kong_hide_zero_balances');
-    hideZeroStore.set(storedValue === 'true');
+  // Create persistent hideZero store
+  const hideZeroStore = writable(browser ? localStorage.getItem('kong_hide_zero_balances') === 'true' : false);
+  
+  // Persist hideZero changes
+  $: if (browser) {
+    localStorage.setItem('kong_hide_zero_balances', $hideZeroStore.toString());
   }
 
-  // Subscribe to changes and save to localStorage
-  if (browser) {
-    hideZeroStore.subscribe((value) => {
-      localStorage.setItem('kong_hide_zero_balances', value.toString());
-    });
-  }
-
-  let searchQuery = "";
   let searchInput: HTMLInputElement;
   let sortDirection = "desc";
-  let searchDebounceTimer: NodeJS.Timeout;
-  let debouncedSearchQuery = "";
-  let searchMatches: Record<string, SearchMatch> = {};
-  let filteredTokens: FE.Token[] = [];
+  
+  // Create a more efficient search store
+  const searchQuery = writable("");
+  const debouncedSearch = derived(searchQuery, ($query, set) => {
+    const timer = setTimeout(() => {
+      set($query.toLowerCase());
+    }, 400);
+    
+    return () => clearTimeout(timer);
+  });
+
+  // Create a writable store for sort direction
+  const sortDirectionStore = writable<"asc" | "desc">("desc");
+
+  // Create derived store for filtered and sorted tokens
+  const filteredTokens = derived(
+    [formattedTokens, debouncedSearch, hideZeroStore, storedBalancesStore, sortDirectionStore],
+    ([$tokens, $search, $hideZero, $balances, $sortDirection], set) => {
+      const matches: Record<string, SearchMatch> = {};
+      
+      const filtered = $tokens.filter(token => {
+        // Check zero balance first
+        if (!filterByBalance(token, $balances, $hideZero)) {
+          return false;
+        }
+
+        if (!$search) {
+          matches[token.canister_id] = { type: null, query: "" };
+          return true;
+        }
+
+        const match = searchToken(token, $search);
+        if (match) {
+          matches[token.canister_id] = match;
+          return true;
+        }
+
+        return false;
+      });
+
+      // Sort tokens using the current sort direction
+      sortTokens(filtered, $balances, FavoriteService, $sortDirection)
+        .then(sorted => {
+          set({ tokens: sorted, matches });
+        });
+    },
+    { tokens: [], matches: {} }
+  );
+
+  // Derived store for refresh state
+  const refreshState = derived(
+    tokenStore,
+    ($store) => ({
+      isRefreshing: $store.pendingBalanceRequests.size > 0,
+      refreshingTokens: $store.pendingBalanceRequests
+    })
+  );
+
   let isInitialLoad = true;
-  let isRefreshing = false;
 
-  // Add a writable store for tracking refresh state
-  let refreshingTokens = new Set<string>();
-
-  // Update the onMount to only load favorites
   onMount(async () => {
     await FavoriteService.loadFavorites();
     isInitialLoad = false;
   });
 
-  // Debounce search input
-  $: {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      debouncedSearchQuery = searchQuery.toLowerCase();
-    }, 400);
-  }
-
-  async function updateFilteredTokens() {
-    const filteredAndSorted = await sortTokens(
-      $formattedTokens.filter((token) => {
-        // Check zero balance condition
-        if (!filterByBalance(token, $storedBalancesStore, $hideZeroStore)) {
-          return false;
-        }
-
-        if (!debouncedSearchQuery) {
-          searchMatches[token.canister_id] = { type: null, query: "" };
-          return true;
-        }
-
-        const match = searchToken(token, debouncedSearchQuery);
-        if (match) {
-          searchMatches[token.canister_id] = match;
-          return true;
-        }
-
-        return false;
-      }),
-      $storedBalancesStore,
-      FavoriteService,
-      sortDirection as "asc" | "desc",
-    );
-
-    filteredTokens = filteredAndSorted;
-  }
-
-  // Update the watch statement to use storedBalancesStore
-  $: if (
-    debouncedSearchQuery ||
-    $hideZeroStore ||
-    sortDirection ||
-    $storedBalancesStore
-  ) {
-    updateFilteredTokens();
-  }
-
   // Handle keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
     handleSearchKeyboard(event, {
-      searchQuery,
+      searchQuery: $searchQuery,
       searchInput,
-      onClear: () => (searchQuery = ""),
+      onClear: () => searchQuery.set("")
     });
   }
 
-  // Update the isRefreshing computed property
-  $: isRefreshing = refreshingTokens.size > 0;
-
-  // Add this to track pending balance requests
-  $: {
-    const pendingRequests = $tokenStore.pendingBalanceRequests;
-    refreshingTokens = pendingRequests;
+  // Fix searchQuery clear button
+  function clearSearch() {
+    searchQuery.set("");
+    searchInput.focus();
   }
 
-  function getTokenBalance(tokenId: string): string {
-    if (!tokenId) return "0";
-    const balance = $storedBalancesStore[tokenId]?.in_tokens ?? "0";
-    const token = $liveTokens.find((t) => t.canister_id === tokenId);
-    return token
-      ? (Number(balance) / Math.pow(10, token.decimals)).toString()
-      : "0";
+  // Function to toggle sort direction
+  function toggleSort() {
+    sortDirectionStore.update(current => current === "desc" ? "asc" : "desc");
   }
 </script>
 
@@ -140,20 +128,17 @@
         </div>
         <input
           bind:this={searchInput}
-          bind:value={searchQuery}
+          bind:value={$searchQuery}
           type="text"
           placeholder="Search tokens..."
           class="search-input"
           on:keydown={handleKeydown}
         />
-        {#if searchQuery}
+        {#if $searchQuery}
           <button
             class="clear-button"
             aria-label="Clear search"
-            on:click|stopPropagation={() => {
-              searchQuery = "";
-              searchInput.focus();
-            }}
+            on:click|stopPropagation={clearSearch}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -187,9 +172,7 @@
 
         <button
           class="sort-toggle"
-          on:click={() => {
-            sortDirection = sortDirection === "desc" ? "asc" : "desc";
-          }}
+          on:click={toggleSort}
         >
           <span class="toggle-label text-xs">Value</span>
           <svg
@@ -201,7 +184,7 @@
             stroke="currentColor"
             stroke-width="2"
             class="sort-arrow"
-            class:ascending={sortDirection === "asc"}
+            class:ascending={$sortDirectionStore === "asc"}
           >
             <path d="M12 20V4M5 13l7 7 7-7" />
           </svg>
@@ -211,7 +194,7 @@
   </div>
 
   <div class="token-list-content">
-    {#if isRefreshing}
+    {#if $refreshState.isRefreshing}
       <div class="refresh-indicator" transition:fade>
         <Loader2 class="animate-spin" size={16} />
         <span>Refreshing balances...</span>
@@ -219,44 +202,40 @@
     {/if}
     
     <div class="token-rows">
-      {#each filteredTokens as token (token.canister_id)}
+      {#each $filteredTokens.tokens as token (token.canister_id)}
         <div class="token-row-wrapper">
           <TokenRow
             {token}
             on:toggleFavorite={async ({ detail }) => {
               await FavoriteService.toggleFavorite(detail.canisterId);
-              filteredTokens = [...filteredTokens];
             }}
           />
-          {#if searchQuery && searchMatches[token.canister_id]?.type === "canister"}
+          {#if $searchQuery && $filteredTokens.matches[token.canister_id]?.type === "canister"}
             <div class="match-indicator" transition:fade={{ duration: 150 }}>
               <span class="match-type">canister:</span>
               <code class="match-label">{token.canister_id}</code>
             </div>
-          {:else if searchQuery && searchMatches[token.canister_id]?.type}
+          {:else if $searchQuery && $filteredTokens.matches[token.canister_id]?.type}
             <div class="match-indicator" transition:fade={{ duration: 150 }}>
-              <span class="match-type">{searchMatches[token.canister_id].type}:</span>
+              <span class="match-type">{$filteredTokens.matches[token.canister_id].type}:</span>
               <span class="match-label">
-                {@html getMatchDisplay(searchMatches[token.canister_id])}
+                {@html getMatchDisplay($filteredTokens.matches[token.canister_id])}
               </span>
             </div>
           {/if}
         </div>
       {/each}
 
-      {#if filteredTokens.length === 0}
+      {#if $filteredTokens.tokens.length === 0}
         <div class="empty-state" transition:fade>
-          {#if isInitialLoad}
+          {#if isInitialLoad || $formattedTokens.length === 0}
             <Loader2 class="animate-spin" size={20} />
             <p>Loading tokens...</p>
-          {:else if searchQuery}
-            <p>No tokens found matching "{searchQuery}"</p>
+          {:else if $searchQuery}
+            <p>No tokens found matching "{$searchQuery}"</p>
             <button
               class="clear-search-button"
-              on:click={() => {
-                searchQuery = "";
-                searchInput.focus();
-              }}
+              on:click={clearSearch}
             >
               Clear Search
             </button>

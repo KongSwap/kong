@@ -88,46 +88,32 @@ export class TokenService {
     if (!principalId && !get(auth).isConnected) return {};
 
     const authStore = get(auth);
+    if (!authStore.isConnected) return {};
 
-    if (!authStore.isConnected) {
-      return {};
-    }
-
-    let principal = principalId
-      ? principalId
-      : authStore.account.owner;
-
-
+    let principal = principalId ? principalId : authStore.account.owner;
     if (typeof principal === "string") {
       principal = Principal.fromText(principal);
     }
 
-    if (forceRefresh) {
-      Promise.all(
-        tokens.map((token) => this.fetchBalance(token, principalId, true)),
-      );
-    }
-    // Use batch balance fetching
-    const balances = await IcrcService.batchGetBalances(tokens, principal);
-    const prices = await Promise.all(
-      tokens.map((token) => this.getCachedPrice(token)),
-    );
+    // Pre-fetch all prices in parallel while getting balances
+    const [balances, prices] = await Promise.all([
+      IcrcService.batchGetBalances(tokens, principal),
+      Promise.all(tokens.map(token => this.getCachedPrice(token)))
+    ]);
 
-    return tokens.reduce(
-      (acc, token, index) => {
-        const balance = balances.get(token.canister_id) || BigInt(0);
-        const price = prices[index] || 0;
-        const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
-        const usdValue = parseFloat(tokenAmount) * price;
+    // Process results in a single pass
+    return tokens.reduce((acc, token, index) => {
+      const balance = balances.get(token.canister_id) || BigInt(0);
+      const price = prices[index] || 0;
+      const tokenAmount = formatBalance(balance.toString(), token.decimals).replace(/,/g, '');
+      const usdValue = parseFloat(tokenAmount) * price;
 
-        acc[token.canister_id] = {
-          in_tokens: balance,
-          in_usd: usdValue.toString(),
-        };
-        return acc;
-      },
-      {} as Record<string, TokenBalance>,
-    );
+      acc[token.canister_id] = {
+        in_tokens: balance,
+        in_usd: usdValue.toString(),
+      };
+      return acc;
+    }, {} as Record<string, TokenBalance>);
   }
 
   public static async fetchBalance(

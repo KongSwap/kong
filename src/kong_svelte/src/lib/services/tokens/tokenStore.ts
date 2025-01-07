@@ -171,31 +171,27 @@ export const loadBalances = async (
   }
 
   try {
+    // Get fresh balances
     const balances = await TokenService.fetchBalances(
       tokens,
       owner,
       forceRefresh,
     );
 
-    // Store balances in the database
-    Object.entries(balances).map(
-      async ([canisterId, balance]) => {
-        const entry = {
-          wallet_id: currentWalletId,
-          canister_id: canisterId,
-          in_tokens: balance.in_tokens,
-          in_usd: balance.in_usd,
-          timestamp: Date.now(),
-        };
+    // Batch update the database
+    const entries = Object.entries(balances).map(([canisterId, balance]) => ({
+      wallet_id: currentWalletId,
+      canister_id: canisterId,
+      in_tokens: balance.in_tokens,
+      in_usd: balance.in_usd,
+      timestamp: Date.now(),
+    }));
 
-        await kongDB.token_balances.put(entry);
-
-        return entry;
-      },
-    );
-
-    // Update the storedBalancesStore
-    await updateStoredBalances(currentWalletId);
+    // Use bulkPut for better performance
+    await kongDB.token_balances.bulkPut(entries);
+    
+    // Update the store
+    storedBalancesStore.set(balances);
 
     return balances;
   } catch (error) {

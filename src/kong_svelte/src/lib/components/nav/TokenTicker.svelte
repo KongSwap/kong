@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { liveQuery } from "dexie";
   import { kongDB } from "$lib/services/db";
   import { ArrowUp, ArrowDown } from "lucide-svelte";
@@ -201,11 +202,11 @@
 
 <div
   bind:this={tickerElement}
-  class="w-full overflow-hidden border-b border-kong-text-primary/10 text-sm bg-kong-bg-dark/80 shadow-lg"
+  class="w-full overflow-hidden border-b border-kong-text-primary/10 text-sm bg-kong-bg-dark/80 shadow-lg h-8 flex items-center"
 >
-  <div class="ticker-container">
+  <div class="ticker-container h-full flex items-center">
     <div
-      class="ticker-content"
+      class="ticker-content h-full flex items-center"
       role="list"
       class:paused={isChartHovered || !isVisible || isTickerHovered}
       on:mouseenter={() => (isTickerHovered = true)}
@@ -214,7 +215,7 @@
       {#each $tokenStore as token, index (token.canister_id)}
         {#if token.metrics}
           <button
-            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 {priceFlashStates.get(
+            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
               token.canister_id,
             )?.class || ''}"
             on:click={() => goto(`/stats/${token.address}`)}
@@ -245,7 +246,7 @@
       {#each $tokenStore as token, index (token.canister_id + "_dup")}
         {#if token.metrics}
           <button
-            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 py-1.5 {priceFlashStates.get(
+            class="flex items-center gap-2 cursor-pointer whitespace-nowrap relative px-4 h-full {priceFlashStates.get(
               token.canister_id,
             )?.class || ''}"
             on:click={() => goto(`/stats/${token.address}`)}
@@ -279,10 +280,11 @@
 
 {#if hoveredToken && isVisible}
   <button
-    class="fixed z-[999] w-[300px] h-[150px] bg-kong-bg-dark border border-kong-border rounded-xl shadow-lg overflow-hidden"
+    class="fixed z-[999] w-[300px] h-[150px] bg-kong-bg-dark border border-kong-border rounded-xl shadow-lg overflow-hidden {$page.url.pathname === `/stats/${hoveredToken.address}` ? 'ring-2 ring-kong-accent-green' : ''}"
     style="left: {chartPosition.x}px; top: {chartPosition.y}px;"
     on:mouseenter={handleChartMouseEnter}
     on:mouseleave={handleChartMouseLeave}
+    on:click={() => goto(`/stats/${hoveredToken.address}`)}
     transition:fade={{ duration: 150 }}
   >
     <div class="flex justify-between items-center px-2">
@@ -300,7 +302,7 @@
         >
           {formatToNonZeroDecimal(
             Number(hoveredToken.metrics.price_change_24h),
-          )}
+          )}%
         </span>
       </div>
     </div>
