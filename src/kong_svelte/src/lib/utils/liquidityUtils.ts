@@ -135,7 +135,6 @@ export function getButtonText(
     loadingState: string
 ): string {
     if (!token0 || !token1) return "Select Tokens";
-    if (!poolExists) return "Pool Does Not Exist";
     if (hasInsufficientBalance) return "Insufficient Balance";
     if (!amount0 || !amount1) return "Enter Amounts";
     if (loading) return loadingState || "Loading...";

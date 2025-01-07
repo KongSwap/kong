@@ -61,7 +61,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> =>
                 : DEFAULT_LOGOS.DEFAULT),
             address: token.address || token.canister_id,
             fee: Number(token.fee),
-            fee_fixed: BigInt(token.fee_fixed.replaceAll("_", "")).toString(),
+            fee_fixed: BigInt(token?.fee_fixed?.replaceAll("_", "") || "0").toString(),
             token: token.token_type || '',
             token_type: token.token_type || '',
             chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',

@@ -16,7 +16,6 @@
   import { SwapService } from "$lib/services/swap/SwapService";
   import { auth, selectedWalletId } from "$lib/services/auth";
   import {
-    tokenStore,
     getTokenDecimals,
     liveTokens,
     storedBalancesStore,
@@ -146,7 +145,6 @@
     if ($swapState.isProcessing) return "Processing...";
     if ($swapState.error) return $swapState.error;
     if (insufficientFunds) return "Insufficient Funds";
-    if (!hasValidPool) return "Pool Does Not Exist";
     if ($swapState.swapSlippage > userMaxSlippage)
       return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
     if (!$auth?.account?.owner) return "Click to Connect Wallet";
@@ -230,7 +228,6 @@
     if (!$swapState.payToken || !$swapState.receiveToken)
       return "Select tokens to trade";
     if (!owner) return "Connect to trade";
-    if (!hasValidPool) return "Pool does not exist";
     if (insufficientFunds) {
       const balance = getTokenBalance($swapState.payToken?.canister_id);
       return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
@@ -327,10 +324,7 @@
       return;
     }
 
-    if (!hasValidPool) {
-      toastStore.error("This pool does not exist");
-      return;
-    }
+
 
     if ($swapState.swapSlippage > userMaxSlippage) {
       toggleSettingsModal();
@@ -679,16 +673,16 @@
         class="swap-button"
         class:error={$swapState.error ||
           $swapState.swapSlippage > userMaxSlippage ||
-          insufficientFunds ||
-          !hasValidPool}
+          insufficientFunds
+          }
         class:processing={$swapState.isProcessing}
         class:ready={!$swapState.error &&
           $swapState.swapSlippage <= userMaxSlippage &&
-          !insufficientFunds &&
-          hasValidPool}
+          !insufficientFunds
+        }
         class:shine-animation={buttonText === "SWAP"}
         on:click={handleButtonAction}
-        disabled={!hasValidPool || $swapState.isProcessing || insufficientFunds}
+        disabled={$swapState.isProcessing || insufficientFunds}
         title={getButtonTooltip(
           $auth?.account?.owner,
           $swapState.swapSlippage > userMaxSlippage,
