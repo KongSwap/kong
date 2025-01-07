@@ -427,6 +427,17 @@
           {title}
         </h2>
         <div class="flex items-center gap-2">
+          {#if panelType === "pay" && process.env.DFX_NETWORK !== 'ic'}
+            <button 
+              class="onramp-button"
+              on:click={() => {
+                const event = new CustomEvent('onramp');
+                window.dispatchEvent(event);
+              }}
+            >
+              Buy ICP with Fiat
+            </button>
+          {/if}
           {#if showPrice && $animatedSlippage > 0}
             <div
               class="flex items-center gap-1.5 bg-white/10 p-1 rounded-md"
@@ -670,6 +681,23 @@
     40% { 
       transform: scale(1);
       opacity: 1;
+    }
+  }
+
+  .onramp-button {
+    @apply font-semibold text-sm;
+    @apply text-kong-text-primary/70 hover:text-kong-text-primary/90;
+    @apply bg-kong-primary/40 hover:bg-kong-primary/60;
+    @apply px-4 py-0.5 rounded-lg;
+    @apply border border-kong-primary/80;
+    @apply cursor-pointer;
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  @media (max-width: 420px) {
+    .onramp-button {
+      font-size: 0.75rem;
+      padding: 0.375rem 0.75rem;
     }
   }
 </style>
