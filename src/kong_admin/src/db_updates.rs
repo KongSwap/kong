@@ -1,5 +1,5 @@
 use chrono::Local;
-use kong_lib::stable_update::stable_update::{StableMemory, StableUpdate};
+use kong_lib::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use std::collections::BTreeMap;
 use tokio_postgres::Client;
 
@@ -15,7 +15,7 @@ use crate::users::insert_user_on_database;
 use super::kong_data::KongData;
 
 pub async fn get_db_updates(
-    update_id: Option<u64>,
+    db_update_id: Option<u64>,
     kong_data: &KongData,
     db_client: &Client,
     mut tokens_map: BTreeMap<u32, u8>,
@@ -25,8 +25,8 @@ pub async fn get_db_updates(
     let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
     println!("\n--- DB updates @ {} ---", formatted_time);
 
-    let json = kong_data.backup_db_updates(update_id).await?;
-    let db_updates: Vec<StableUpdate> = serde_json::from_str(&json)?;
+    let json = kong_data.backup_db_updates(db_update_id).await?;
+    let db_updates: Vec<StableDBUpdate> = serde_json::from_str(&json)?;
 
     let mut last_update_id = 0;
     for db_update in db_updates.iter() {

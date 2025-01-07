@@ -72,7 +72,7 @@ fn update_user(stable_user_json: String) -> Result<String, String> {
     // add to UpdateMap for archiving to database
     let ts = get_time();
     let update = StableDBUpdate {
-        update_id: 0,
+        db_update_id: 0,
         stable_memory: StableMemory::UserMap(user),
         ts,
     };

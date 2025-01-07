@@ -19,7 +19,7 @@ pub mod stable_request;
 pub mod stable_token;
 pub mod stable_transfer;
 pub mod stable_tx;
-pub mod stable_update;
+pub mod stable_db_update;
 pub mod stable_user;
 pub mod swap;
 mod swap_amounts;
