@@ -5,11 +5,19 @@ use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
 use crate::stable_db_update::db_update_map;
 use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
-use crate::stable_memory::USER_MAP;
+use crate::stable_memory::{PRINCIPAL_ID_MAP, USER_MAP};
 use crate::stable_user::principal_id_map::{self, create_principal_id_map};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_principal_id_map() -> Result<String, String> {
+    PRINCIPAL_ID_MAP.with(|m| {
+        let map = m.borrow();
+        serde_json::to_string(&*map).map_err(|e| format!("Failed to serialize principal_id_map: {}", e))
+    })
+}
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
