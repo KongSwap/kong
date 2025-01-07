@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import { onMount, onDestroy } from "svelte";
-  import { Droplet, Settings as SettingsIcon, Copy, Flame, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank } from "lucide-svelte";
+  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
   import { tooltip } from "$lib/actions/tooltip";
@@ -34,10 +34,10 @@
       comingSoon: false
     },
     { 
-      label: 'Heatmap',
-      description: 'Visualize token price changes',
-      path: '/stats/heatmap',
-      icon: Flame,
+      label: 'Bubbles',
+      description: 'Visualize token price changes with bubbles',
+      path: '/stats/bubbles',
+      icon: ChartScatter,
       comingSoon: false
     }
   ];
