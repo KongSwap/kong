@@ -9,10 +9,12 @@
   let containerElement: HTMLElement;
   let animationFrameId: number;
   let isInitialized = false;
+  let isMobile = false;
+  let maxTokens = 100;
 
   // Subscribe to liveTokens store
   $: {
-    tokens = $liveTokens.filter(token => Number(token.metrics?.volume_24h) > 0 && Number(token.metrics?.tvl) > 100);
+    tokens = $liveTokens.filter(token => Number(token.metrics?.volume_24h) > 0 && Number(token.metrics?.tvl) > 100).slice(0, maxTokens);
     if (tokens.length > 0 && containerElement && !isInitialized) {
       isInitialized = true;
       initializePositions();
@@ -23,7 +25,9 @@
   function calcBubbleSize(changePercent: number | string | null | undefined) {
     const numericValue = typeof changePercent === 'string' ? parseFloat(changePercent) : changePercent;
     const absVal = Math.abs(numericValue || 0);
-    return 100 + absVal * 3;
+    // Make bubbles smaller on mobile
+    const baseSize = isMobile ? 70 : 100;
+    return baseSize + absVal * (isMobile ? 2 : 3);
   }
 
   function getBubbleColor(changePercent: number | string | null | undefined) {
@@ -174,38 +178,54 @@
   }
 
   function calcLogoSize(bubbleSize: number) {
-    // Make logo size about 35% of the bubble size
-    return Math.max(24, bubbleSize * 0.35);
+    // Slightly larger logos on mobile for better visibility
+    const scaleFactor = isMobile ? 0.4 : 0.35;
+    return Math.max(20, bubbleSize * scaleFactor);
   }
 
   function calcFontSize(bubbleSize: number) {
-    // Make font sizes directly proportional to bubble diameter
-    // Symbol should be ~8% of bubble size, price ~6%
-    const symbolSize = Math.max(0.7, Math.min(1.4, bubbleSize * 0.08));
-    const priceSize = Math.max(0.6, Math.min(1.2, bubbleSize * 0.06));
+    // Adjust font sizes for mobile and scale with bubble size more aggressively
+    const mobileScale = isMobile ? 0.85 : 1;
+    // More aggressive scaling for smaller bubbles
+    const sizeScale = Math.pow(bubbleSize / 100, 0.8); // Non-linear scaling
+    const symbolSize = Math.max(0.45, Math.min(1.1, bubbleSize * 0.06 * mobileScale * sizeScale));
+    const priceSize = Math.max(0.35, Math.min(0.9, bubbleSize * 0.045 * mobileScale * sizeScale));
     return { symbolSize, priceSize };
   }
 
   // Add a style for long symbols
   function getSymbolStyle(symbol: string, fontSize: number) {
-    // Reduce font size for long symbols
+    // More aggressive reduction for long symbols
     if (symbol && symbol.length > 4) {
-      return `font-size: ${fontSize * 0.8}rem; letter-spacing: -0.5px;`;
+      const reductionFactor = Math.min(0.7, 0.9 - (symbol.length - 4) * 0.05); // Scales down more for longer symbols
+      return `font-size: ${fontSize * reductionFactor}rem; letter-spacing: -0.5px;`;
     }
     return `font-size: ${fontSize}rem;`;
   }
 
-  onMount(() => {
-    if (containerElement) {
-      const resizeObserver = new ResizeObserver(() => {
+  function handleResize() {
+    if (typeof window !== 'undefined') {
+      isMobile = window.innerWidth < 768;
+      maxTokens = isMobile ? 20 : 100;
+      if (containerElement) {
         const rect = containerElement.getBoundingClientRect();
         containerWidth = rect.width;
         containerHeight = rect.height;
-      });
+        initializePositions();
+      }
+    }
+  }
 
+  onMount(() => {
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    if (containerElement) {
+      const resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(containerElement);
 
       return () => {
+        window.removeEventListener('resize', handleResize);
         resizeObserver.disconnect();
         if (animationFrameId) {
           cancelAnimationFrame(animationFrameId);
@@ -221,6 +241,10 @@
     width: 100%;
     height: 85vh;
     overflow: hidden;
+    /* Add touch handling for mobile */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   .bubble {
@@ -256,7 +280,8 @@
 
   .token-label {
     max-width: 90%;
-    padding: 0.25rem;
+    /* Adjust padding for mobile */
+    padding: clamp(0.15rem, 2vw, 0.25rem);
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -270,19 +295,36 @@
 
   .token-logo {
     border-radius: 50%;
-    margin-bottom: 0.25em;
+    margin-bottom: clamp(0.15em, 1.5vw, 0.25em);
     object-fit: contain;
   }
 
   .token-symbol {
     font-weight: bold;
-    margin-bottom: 0.15em;
+    margin-bottom: clamp(0.1em, 1vw, 0.15em);
     line-height: 1;
+    /* Prevent text wrapping */
+    white-space: nowrap;
   }
 
   .price-change {
     opacity: 0.9;
     line-height: 1;
+  }
+
+  /* Add mobile-specific styles */
+  @media (max-width: 768px) {
+    .bubbles-container {
+      height: 80vh; /* Slightly shorter on mobile */
+    }
+
+    .bubble-hitbox:hover .bubble {
+      transform: none; /* Disable hover effect on mobile */
+    }
+
+    .bubble:active {
+      transform: scale(1.05); /* Use active state instead of hover */
+    }
   }
 </style>
 
