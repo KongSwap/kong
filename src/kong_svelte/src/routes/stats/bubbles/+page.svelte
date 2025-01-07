@@ -159,7 +159,7 @@
     currentSimulation = d3.forceSimulation(tokens)
       .force("x", d3.forceX(width / 2).strength(SIMULATION_CONSTANTS.CENTER_STRENGTH))
       .force("y", d3.forceY(height / 2).strength(SIMULATION_CONSTANTS.CENTER_STRENGTH))
-      .force("collide", d3.forceCollide().radius(d => getRadius(d, radiusScale) + 2).strength(SIMULATION_CONSTANTS.COLLISION_STRENGTH))
+      .force("collide", d3.forceCollide().radius(d => getRadius(d, radiusScale) + 5).strength(1))
       .force("charge", d3.forceManyBody().strength(SIMULATION_CONSTANTS.CHARGE_STRENGTH))
       .force("float", d3.forceRadial(
         d => 40 + Math.random() * 60,
