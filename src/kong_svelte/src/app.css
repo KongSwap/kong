@@ -78,11 +78,11 @@ body {
   --secondary: 34 211 238;         /* #22D3EE */
   --secondary-hover: 14 165 233;   /* #0EA5E9 */
   --accent-blue: 0 145 234;        /* #0091EA */
-  --accent-red: 209 27 27;         /* #d11b1b */
+  --accent-red: 234 67 53;        /* #EA4335 - Google red */
   --accent-green: 0 180 115;       /* #00b473 */
   --accent-green-hover: 0 160 105;
   --accent-blue-hover: 0 145 234;
-  --accent-red-hover: 175 48 48;
+  --accent-red-hover: 217 48 37;  /* #D93025 - Darker Google red */
   --text-primary: 255 255 255;     /* #FFFFFF */
   --text-secondary: 155 161 176;   /* #9BA1B0 */
   --text-disabled: 107 114 128;    /* #6B7280 */

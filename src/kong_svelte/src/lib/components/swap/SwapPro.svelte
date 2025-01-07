@@ -199,7 +199,6 @@
     position: relative;
     @apply px-4;
     padding-top: 0;
-    margin-top: -1rem;
     overflow: hidden;
   }
 
