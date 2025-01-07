@@ -1,82 +1,149 @@
 <script lang="ts">
   import { fade, slide } from "svelte/transition";
-  import { auth } from "$lib/services/auth";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { goto } from "$app/navigation";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
-  import { ChevronRight, Search, X, ArrowUpDown } from "lucide-svelte";
+  import { ChevronRight, Search, X, ArrowUpDown, Loader2 } from "lucide-svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-    import { PoolService } from "$lib/services/pools";
+  import { PoolService } from "$lib/services/pools";
+  import { get } from "svelte/store";
 
-  export let filterPair: {token0?: string, token1?: string} = {}; // Filter by specific token pair
-  export let filterToken: string = ''; // Filter by single token
-  export let initialSearch: string = ""; // Initial search term
-  export let pool: any = null; // Single pool to display
+  // Add TypeScript interfaces
+  interface Pool {
+    symbol_0?: string;
+    symbol_1?: string;
+    balance: string;
+    usd_balance: string | number;
+    name?: string;
+    searchableText?: string;
+  }
 
+  interface FilterPair {
+    token0?: string;
+    token1?: string;
+  }
+
+  // Typed props
+  export let filterPair: FilterPair = {};
+  export let filterToken = "";
+  export let initialSearch = "";
+  export let pool: Pool | null = null;
+
+  // State variables
   let loading = true;
   let error: string | null = null;
-  let processedPools: any[] = [];
-  let selectedPool = null;
+  let processedPools: Pool[] = [];
+  let selectedPool: Pool | null = null;
   let showUserPoolModal = false;
   let searchQuery = initialSearch;
   let searchInput: HTMLInputElement;
-  let searchDebounceTimer: NodeJS.Timeout;
-  let debouncedSearchQuery = '';
-  let sortDirection = 'desc';
   let isSearching = false;
   let searchResultsReady = false;
   let initialFilterApplied = false;
   let UserPoolComponent: any;
+  let sortDirection: 'asc' | 'desc' = 'desc';
 
-  // Update loading state when pools update
-  $: {
-    if ($liveUserPools !== undefined) {
-      loading = false;
+  // Memoized search state
+  const SEARCH_DEBOUNCE = 150;
+  let searchDebounceTimer: ReturnType<typeof setTimeout>;
+  $: debouncedSearchQuery = createDebouncedSearch(searchQuery);
+
+  function createDebouncedSearch(query: string): string {
+    if (!initialFilterApplied || searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`) {
+      isSearching = true;
+      searchResultsReady = false;
+      clearTimeout(searchDebounceTimer);
+      
+      searchDebounceTimer = setTimeout(() => {
+        searchResultsReady = true;
+        isSearching = false;
+      }, SEARCH_DEBOUNCE);
     }
+    return query.toLowerCase();
   }
 
-  // Process pool balances when they update
+  // Optimize pool processing with memoization
+  function processPool(poolBalance: UserPoolBalance) {
+    const token0 = $liveTokens.find(t => t.symbol === poolBalance.symbol_0);
+    const token1 = $liveTokens.find(t => t.symbol === poolBalance.symbol_1);
+
+    const searchTerms = [
+      poolBalance.symbol_0,
+      poolBalance.symbol_1,
+      `${poolBalance.symbol_0}/${poolBalance.symbol_1}`,
+      poolBalance.name || '',
+      token0?.name || '',
+      token1?.name || '',
+      token0?.canister_id || '',
+      token1?.canister_id || '',
+      getTokenAliases(poolBalance.symbol_0),
+      getTokenAliases(poolBalance.symbol_1),
+    ];
+
+    return {
+      ...poolBalance,
+      searchableText: searchTerms.filter(Boolean).join(' ').toLowerCase()
+    };
+  }
+
+  function getTokenAliases(symbol: string): string {
+    const aliases: Record<string, string> = {
+      'ICP': 'internet computer protocol dfinity',
+      'USDT': 'tether usdt',
+      'BTC': 'bitcoin btc',
+      'ETH': 'ethereum eth'
+    };
+    return aliases[symbol] || '';
+  }
+
+  // Optimize pool filtering
+  function filterPools(pools: Pool[]): Pool[] {
+    const filtered = pools.filter(poolItem => {
+      if (pool) {
+        return poolItem.symbol_0 === pool.symbol_0 && 
+               poolItem.symbol_1 === pool.symbol_1;
+      }
+
+      if (debouncedSearchQuery) {
+        return poolItem.searchableText?.includes(debouncedSearchQuery);
+      }
+
+      if (filterPair.token0 && filterPair.token1) {
+        return (poolItem.symbol_0 === filterPair.token0 && poolItem.symbol_1 === filterPair.token1) ||
+               (poolItem.symbol_0 === filterPair.token1 && poolItem.symbol_1 === filterPair.token0);
+      }
+
+      if (filterToken) {
+        return poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken;
+      }
+
+      return true;
+    });
+
+    return filtered;
+  }
+
+  // Add separate sort function
+  function sortPools(pools: Pool[]): Pool[] {
+    return [...pools].sort((a, b) => {
+      const aValue = Number(a.usd_balance) || 0;
+      const bValue = Number(b.usd_balance) || 0;
+      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+    });
+  }
+
+  // Combined reactive statement for pool processing
   $: {
     if (Array.isArray($liveUserPools)) {
-      processedPools = $liveUserPools
-        .filter(poolBalance => {
-          const hasBalance = Number(poolBalance.balance) > 0;
-          return hasBalance;
-        })
-        .map(poolBalance => {
-          const token0 = $liveTokens.find(t => t.symbol === poolBalance.symbol_0);
-          const token1 = $liveTokens.find(t => t.symbol === poolBalance.symbol_1);
-          
-          // Create searchable text with more variations and aliases
-          const searchableText = [
-            poolBalance.symbol_0,
-            poolBalance.symbol_1,
-            `${poolBalance.symbol_0}/${poolBalance.symbol_1}`,
-            poolBalance.name || '',
-            token0?.name || '',
-            token1?.name || '',
-            token0?.canister_id || '',
-            token1?.canister_id || '',
-            // Add common aliases
-            poolBalance.symbol_0 === 'ICP' ? 'internet computer protocol dfinity' : '',
-            poolBalance.symbol_1 === 'ICP' ? 'internet computer protocol dfinity' : '',
-            poolBalance.symbol_0 === 'USDT' ? 'tether usdt' : '',
-            poolBalance.symbol_1 === 'USDT' ? 'tether usdt' : '',
-            poolBalance.symbol_0 === 'BTC' ? 'bitcoin btc' : '',
-            poolBalance.symbol_1 === 'BTC' ? 'bitcoin btc' : '',
-            poolBalance.symbol_0 === 'ETH' ? 'ethereum eth' : '',
-            poolBalance.symbol_1 === 'ETH' ? 'ethereum eth' : '',
-          ].join(' ').toLowerCase();
-          
-          return {
-            ...poolBalance,
-            searchableText
-          };
-        });
+      loading = false;
+      const processed = $liveUserPools
+        .filter(poolBalance => Number(poolBalance.balance) > 0)
+        .map(poolBalance => processPool(poolBalance));
+      
+      processedPools = sortPools(processed as Pool[]);  // Apply initial sort
 
-      // If we have a specific pool to display, immediately filter for it
       if (pool && !initialFilterApplied) {
         searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;
         debouncedSearchQuery = searchQuery.toLowerCase();
@@ -89,82 +156,59 @@
     }
   }
 
-  // Debounce search input only when user is actively searching
-  $: if (!initialFilterApplied || searchQuery !== `${pool?.symbol_0}/${pool?.symbol_1}`) {
-    isSearching = true;
-    searchResultsReady = false;
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      debouncedSearchQuery = searchQuery.toLowerCase();
-      setTimeout(() => {
-        searchResultsReady = true;
-        isSearching = false;
-      }, 100);
-    }, 150);
+  // Update the reactive statement for filtered pools to only sort once
+  $: filteredPools = filterPools(processedPools);
+
+  // Add a new reactive statement to handle sorting
+  $: {
+    if (filteredPools.length > 0) {
+      filteredPools = sortPools(filteredPools);
+    }
   }
 
-  // Filter pools based on search, pair filter, and token filter
-  $: filteredPools = processedPools
-    .filter(poolItem => {
-      if (pool) {
-        return poolItem.symbol_0 === pool.symbol_0 && poolItem.symbol_1 === pool.symbol_1;
-      }
-      
-      if (debouncedSearchQuery) {
-        return poolItem.searchableText.includes(debouncedSearchQuery);
-      }
-      
-      if (filterPair.token0 && filterPair.token1) {
-        return (poolItem.symbol_0 === filterPair.token0 && poolItem.symbol_1 === filterPair.token1) ||
-               (poolItem.symbol_0 === filterPair.token1 && poolItem.symbol_1 === filterPair.token0);
-      }
-      
-      if (filterToken) {
-        return poolItem.symbol_0 === filterToken || poolItem.symbol_1 === filterToken;
-      }
-      
-      return true;
-    })
-    .sort((a, b) => sortDirection === 'desc' ? 
-      Number(b.usd_balance) - Number(a.usd_balance) : 
-      Number(a.usd_balance) - Number(b.usd_balance)
-    );
-
-
-  function handleAddLiquidity() {
-    goto('/pools/add');
+  // Event handlers
+  const handleAddLiquidity = () => {
+    goto("/pools/add");
     sidebarStore.collapse();
-  }
+  };
 
-  async function handlePoolItemClick(poolItem) {
+  const handlePoolItemClick = async (poolItem: Pool) => {
     if (!UserPoolComponent) {
-      await loadUserPoolComponent();
+      UserPoolComponent = (await import("$lib/components/liquidity/pools/UserPool.svelte")).default;
     }
     selectedPool = poolItem;
     showUserPoolModal = true;
-  }
+  };
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && searchQuery) {
+  const handleKeydown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && searchQuery) {
       event.preventDefault();
-      searchQuery = '';
+      searchQuery = "";
+      searchInput.focus();
+    } else if (event.key === "/" && document.activeElement !== searchInput) {
+      event.preventDefault();
       searchInput.focus();
     }
-    else if (event.key === '/' && document.activeElement !== searchInput) {
-      event.preventDefault();
-      searchInput.focus();
-    }
+  };
+
+  // Update the sort toggle handler
+  function toggleSort() {
+    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+    // Force a re-sort when direction changes
+    filteredPools = sortPools([...filteredPools]);
   }
 
-  async function loadUserPoolComponent() {
-    const module = await import('$lib/components/liquidity/pools/UserPool.svelte');
-    UserPoolComponent = module.default;
+  // Add a reactive statement to trigger resort when direction changes
+  $: {
+    if (processedPools.length > 0) {
+      filteredPools = filterPools(processedPools);
+    }
   }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="px-2 min-h-[87vh]" on:keydown={handleKeydown}>
-    {#if !pool}
+  {#if !pool}
     <div class="search-bar">
       <div class="search-controls">
         <div class="search-input-wrapper">
@@ -179,10 +223,10 @@
             class="search-input"
           />
           {#if searchQuery}
-            <button 
+            <button
               class="clear-button"
               on:click={() => {
-                searchQuery = '';
+                searchQuery = "";
                 searchInput.focus();
               }}
               aria-label="Clear search"
@@ -192,44 +236,50 @@
           {/if}
         </div>
 
-        <button 
-          class="sort-toggle" 
-          on:click={() => sortDirection = sortDirection === 'desc' ? 'asc' : 'desc'}
-          aria-label={`Sort by value ${sortDirection === 'desc' ? 'ascending' : 'descending'}`}
+        <button
+          class="sort-toggle"
+          on:click={toggleSort}
+          aria-label={`Sort by value ${sortDirection === "desc" ? "ascending" : "descending"}`}
         >
           <span class="toggle-label">Value</span>
-          <div class="sort-icon-wrapper" class:ascending={sortDirection === 'asc'}>
+          <div
+            class="sort-icon-wrapper"
+            class:ascending={sortDirection === "asc"}
+          >
             <ArrowUpDown size={14} />
           </div>
         </button>
       </div>
 
-      <button 
-        class="add-position-button" 
+      <button
+        class="add-position-button"
         on:click={handleAddLiquidity}
         aria-label="Add new position"
       >
         +
       </button>
     </div>
-    {/if}
+  {/if}
 
   <div class="px-2">
     <div class="pool-list">
       {#if loading && processedPools.length === 0}
-        <div class="state-message" in:fade>
-          <div class="loading-spinner"></div>
-          <p>Loading your positions...</p>
+        <div class="empty-state" in:fade>
+          <Loader2 class="animate-spin" size={20} />
+          <p>Loading positions...</p>
         </div>
       {:else if !pool && (isSearching || !searchResultsReady)}
-        <div class="state-message" in:fade>
-          <div class="loading-spinner"></div>
+        <div class="empty-state" in:fade>
+          <Loader2 class="animate-spin" size={20} />
           <p>Finding pools...</p>
         </div>
       {:else if error}
         <div class="state-message error" in:fade>
           <p>{error}</p>
-          <button class="retry-button" on:click={() => PoolService.fetchUserPoolBalances(true)}>
+          <button
+            class="retry-button"
+            on:click={() => PoolService.fetchUserPoolBalances(true)}
+          >
             Retry
           </button>
         </div>
@@ -237,10 +287,10 @@
         <div class="state-message" in:fade>
           {#if searchQuery && !pool}
             <p>No pools found matching "{searchQuery}"</p>
-            <button 
+            <button
               class="clear-search-button"
               on:click={() => {
-                searchQuery = '';
+                searchQuery = "";
                 searchInput.focus();
               }}
             >
@@ -258,8 +308,8 @@
       {:else}
         {#each filteredPools as poolItem}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <div 
-            class="pool-item" 
+          <div
+            class="pool-item"
             in:slide={{ duration: 200 }}
             on:click={() => handlePoolItemClick(poolItem)}
             role="button"
@@ -268,28 +318,36 @@
             <div class="pool-content">
               <div class="pool-left">
                 <div class="token-images-wrapper">
-                  <TokenImages 
+                  <TokenImages
                     tokens={[
-                      $liveTokens.find(token => token.symbol === poolItem.symbol_0),
-                      $liveTokens.find(token => token.symbol === poolItem.symbol_1)
-                    ]} 
+                      $liveTokens.find(
+                        (token) => token.symbol === poolItem.symbol_0,
+                      ),
+                      $liveTokens.find(
+                        (token) => token.symbol === poolItem.symbol_1,
+                      ),
+                    ]}
                     size={32}
                     overlap={true}
                   />
                 </div>
                 <div class="pool-info">
-                  <div class="pool-pair">{poolItem.symbol_0}/{poolItem.symbol_1}</div>
+                  <div class="pool-pair">
+                    {poolItem.symbol_0}/{poolItem.symbol_1}
+                  </div>
                   <div class="pool-balance">
                     {Number(poolItem.balance).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
-                      maximumFractionDigits: 8
+                      maximumFractionDigits: 8,
                     })} LP
                   </div>
                 </div>
               </div>
               <div class="pool-right">
                 <div class="value-info">
-                  <div class="usd-value">${formatToNonZeroDecimal(poolItem.usd_balance)}</div>
+                  <div class="usd-value">
+                    ${formatToNonZeroDecimal(poolItem.usd_balance)}
+                  </div>
                 </div>
                 <div class="view-details">
                   <ChevronRight size={18} class="details-arrow" />
@@ -304,11 +362,11 @@
 </div>
 
 {#if selectedPool && UserPoolComponent}
-  <svelte:component 
+  <svelte:component
     this={UserPoolComponent}
     pool={selectedPool}
     bind:showModal={showUserPoolModal}
-    on:close={() => showUserPoolModal = false}
+    on:close={() => (showUserPoolModal = false)}
   />
 {/if}
 
@@ -419,13 +477,11 @@
            group-hover:text-kong-text-secondary;
   }
 
-
   .clear-search-button {
     @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
            transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
            border border-kong-border/40 hover:border-kong-accent-blue/30;
   }
-
 
   .state-message {
     @apply flex flex-col items-center justify-center gap-4 min-h-[200px] 
@@ -441,7 +497,9 @@
     @apply text-red-400;
   }
 
-  .retry-button, .clear-search-button, .add-first-position {
+  .retry-button,
+  .clear-search-button,
+  .add-first-position {
     @apply px-4 py-2 bg-kong-bg-dark/40 text-kong-text-secondary text-xs font-medium rounded-lg
            transition-all duration-200 hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
            border border-kong-border/40 hover:border-kong-accent-blue/30
@@ -451,5 +509,10 @@
   .add-first-position {
     @apply bg-kong-accent-blue/90 text-white hover:bg-kong-accent-blue 
            hover:text-white border-transparent;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-2
+           min-h-[120px] text-kong-text-secondary text-xs;
   }
 </style>

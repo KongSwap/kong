@@ -217,17 +217,6 @@
 </Portal>
 
 <style scoped>
-  @media (max-width: 768px) {
-    .modal-container {
-      cursor: grab;
-      user-select: none;
-    }
-
-    .modal-container:active {
-      cursor: grabbing;
-    }
-  }
-
   .action-button {
     cursor: pointer;
     display: flex;

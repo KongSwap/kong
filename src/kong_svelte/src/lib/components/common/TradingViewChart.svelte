@@ -96,27 +96,30 @@
       return;
     }
 
-    // Wait for container to be ready
-    await new Promise(resolve => setTimeout(resolve, 0));
-    
-    try {
-      await loadTradingViewLibrary();
+    // Wait for next tick and check dimensions
+    const checkDimensions = () => {
+      return new Promise((resolve) => {
+        const check = () => {
+          // Force a reflow to ensure dimensions are calculated
+          chartWrapper?.offsetHeight;
+          const width = chartWrapper?.clientWidth;
+          const height = chartWrapper?.clientHeight;
+          
+          if (width && height) {
+            resolve({ width, height });
+          } else {
+            requestAnimationFrame(check);
+          }
+        };
+        check();
+      });
+    };
 
+    try {
+      const dimensions = await checkDimensions();
+      await loadTradingViewLibrary();
       const isMobile = window.innerWidth < 768;
       
-      // Get container dimensions
-      const containerWidth = chartWrapper.clientWidth;
-      const containerHeight = chartWrapper.clientHeight;
-      
-      if (!containerWidth || !containerHeight) {
-        console.warn('Container has zero dimensions:', containerWidth, containerHeight);
-        // Retry after a short delay
-        setTimeout(() => initChart(), 100);
-        return;
-      }
-
-      console.log('Initializing chart with dimensions:', containerWidth, containerHeight);
-
       // Get current price from poolStore
       const currentPrice = $livePools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
 
@@ -131,8 +134,8 @@
         symbol: props.symbol || `${props.baseToken.symbol}/${props.quoteToken.symbol}`,
         datafeed,
         container: chartContainer,
-        containerWidth,
-        containerHeight,
+        containerWidth: dimensions.width,
+        containerHeight: dimensions.height,
         isMobile,
         theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       });
@@ -254,44 +257,29 @@
     }
   }, 300);
 
+  let initObserver: ResizeObserver;
+  let resizeObserver: ResizeObserver;
+
   onMount(() => {
+    // Initial data fetch when component mounts
+    if ((props.quoteToken && props.baseToken) || props.poolId) {
+      debouncedFetchData();
+    }
+
+    // Setup resize handling
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (chart && chart._ready) {
-          chart.applyOptions({
-            width: width,
-            height: height
-          });
-        }
+      const { width, height } = entries[0].contentRect;
+      if (chart && chart._ready && width && height) {
+        chart.applyOptions({ width, height });
       }
     });
 
     if (chartWrapper) {
       resizeObserver.observe(chartWrapper);
-      // Initial data fetch when component mounts
-      if ((props.quoteToken && props.baseToken) || props.poolId) {
-        debouncedFetchData();
-      }
     }
-
-    const themeObserver = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'class' && chart && chart._ready) {
-          const isDark = document.documentElement.classList.contains('dark');
-          chart.changeTheme(isDark ? 'dark' : 'light');
-        }
-      });
-    });
-
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
 
     return () => {
       resizeObserver.disconnect();
-      themeObserver.disconnect();
       if (chart) {
         try {
           chart.remove();
@@ -300,6 +288,7 @@
           console.warn("Error cleaning up chart:", e);
         }
       }
+      debouncedFetchData.cancel();
     };
   });
 </script>

@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { toastStore } from "$lib/stores/toastStore";
   import { onMount, onDestroy } from "svelte";
-  import { Droplet, Settings as SettingsIcon, Copy, Menu, X, Wallet, ChevronDown, Coins, Award, PiggyBank } from "lucide-svelte";
+  import { Droplet, Settings as SettingsIcon, Copy, ChartScatter, Menu, ChartCandlestick, X, Wallet, ChevronDown, Coins, Award, PiggyBank } from "lucide-svelte";
   import { TokenService } from "$lib/services/tokens/TokenService";
   import { loadBalances } from "$lib/services/tokens";
   import { tooltip } from "$lib/actions/tooltip";
@@ -22,8 +22,25 @@
   let activeTab: "swap" | "earn" | "stats" = "swap";
   let navOpen = false;
   let closeTimeout: ReturnType<typeof setTimeout>;
-  let activeDropdown: 'swap' | 'earn' | null = null;
+  let activeDropdown: 'swap' | 'earn' | 'stats' | null = null;
   const tabs = ["swap", "earn", "stats"] as const;
+
+  const statsOptions = [
+    { 
+      label: 'Overview',
+      description: 'View general statistics and platform metrics',
+      path: '/stats',
+      icon: ChartCandlestick,
+      comingSoon: false
+    },
+    { 
+      label: 'Bubbles',
+      description: 'Visualize token price changes with bubbles',
+      path: '/stats/bubbles',
+      icon: ChartScatter,
+      comingSoon: false
+    }
+  ];
 
   function handleOpenSettings() {
     showSettings = true;
@@ -152,9 +169,18 @@
       }, 150);
     }
   }
+
+  function handleImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    const textElement = img.nextElementSibling as HTMLElement;
+    img.style.display = 'none';
+    if (textElement) {
+      textElement.style.display = 'block';
+    }
+  }
 </script>
 
-<div class="mb-4 w-full top-0 left-0 z-50 relative">
+<div class="mb-4 w-full top-0 left-0 z-50 relative pt-2">
   <div class="mx-auto h-16 flex items-center justify-between px-6">
     <div class="flex items-center gap-10">
       {#if isMobile}
@@ -168,7 +194,14 @@
             alt="Kong Logo" 
             class="h-[30px] transition-all duration-200"
             class:light-logo={$themeStore === 'light'}
+            on:error={handleImageError}
           />
+          <span 
+            class="hidden text-xl font-bold text-kong-text-primary"
+            style="display: none;"
+          >
+            KONG
+          </span>
         </button>
 
         <nav class="flex items-center gap-0.5">
@@ -181,6 +214,7 @@
               >
                 <button
                   class="nav-link {activeTab === tab ? 'active' : ''}"
+                  on:click={() => goto('/pools')}
                 >
                   {tab.toUpperCase()}
                   <ChevronDown size={16} />
@@ -258,17 +292,52 @@
                   </div>
                 {/if}
               </div>
-            {:else}
-              <button
-                class="nav-link {activeTab === tab ? 'active' : ''}"
-                on:click={async () => {
-                  await goto(`/${tab}`);
-                  onTabChange(tab);
-                  goto(`/${tab}`);
-                }}
+            {:else if tab === 'stats'}
+              <div 
+                class="nav-dropdown"
+                on:mouseenter={() => showDropdown('stats')}
+                on:mouseleave={hideDropdown}
               >
-                {tab.toUpperCase()}
-              </button>
+                <button
+                  class="nav-link {activeTab === tab ? 'active' : ''}"
+                  on:click={() => goto('/stats')}
+                >
+                  {tab.toUpperCase()}
+                  <ChevronDown size={16} />
+                </button>
+                
+                {#if activeDropdown === 'stats'}
+                  <div class="absolute top-full left-[-20px] min-w-[480px] p-3 bg-kong-bg-dark/70 backdrop-blur-md border border-kong-border rounded-md shadow-lg z-[61]" transition:fade={{ duration: 150 }}>
+                    <div class="px-5 pb-3 text-xs font-semibold tracking-wider text-kong-text-secondary border-b border-kong-border mb-2">STATS OPTIONS</div>
+                    {#each statsOptions as option}
+                      <button
+                        class="w-full grid grid-cols-[80px_1fr] items-center text-left relative rounded-md overflow-hidden px-4 py-4 transition-all duration-150 hover:bg-kong-text-primary/5 disabled:opacity-70 disabled:cursor-not-allowed group"
+                        on:click={async () => {
+                          if (!option.comingSoon) {
+                            hideDropdown();
+                            await goto(option.path);
+                            onTabChange('stats');
+                          }
+                        }}
+                        class:disabled={option.comingSoon}
+                      >
+                        <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-md bg-kong-text-primary/5 text-kong-text-primary transition-all duration-300 ease-out transform group-hover:scale-110 group-hover:bg-kong-text-primary/10 group-hover:text-kong-primary">
+                          <svelte:component this={option.icon} size={20} />
+                        </div>
+                        <div class="flex flex-col gap-1 pt-0.5">
+                          <div class="flex items-center gap-2">
+                            <span class="text-[15px] font-semibold text-kong-text-primary group-hover:text-kong-primary">{option.label}</span>
+                            {#if option.comingSoon}
+                              <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-kong-primary/15 text-kong-primary tracking-wide">Coming Soon</span>
+                            {/if}
+                          </div>
+                          <span class="text-sm text-kong-text-secondary leading-normal">{option.description}</span>
+                        </div>
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
             {/if}
           {/each}
         </nav>
@@ -283,7 +352,14 @@
             alt="Kong Logo" 
             class="h-6 transition-all duration-200"
             class:light-logo={$themeStore === 'light'}
+            on:error={handleImageError}
           />
+          <span 
+            class="hidden text-lg font-bold text-kong-text-primary"
+            style="display: none;"
+          >
+            KONG
+          </span>
         </button>
       </div>
     {/if}
@@ -352,7 +428,7 @@
           class:light-logo={$themeStore === 'light'}
         />
         <button class="mobile-close-btn" on:click={() => (navOpen = false)}>
-          <X size={20} />
+          <X size={16} />
         </button>
       </div>
 
@@ -415,19 +491,29 @@
             {:else if tab === 'stats'}
               <div class="mobile-nav-group">
                 <div class="mobile-nav-group-title">STATS</div>
-                <button
-                  class="mobile-nav-btn {activeTab === 'stats' ? 'active' : ''}"
-                  on:click={() => {
-                    onTabChange('stats');
-                    goto('/stats');
-                    navOpen = false;
-                  }}
-                >
-                  <div class="mobile-nav-btn-icon">
-                    <Award size={18} />
-                  </div>
-                  <span>Analytics</span>
-                </button>
+                {#each statsOptions as option}
+                  <button
+                    class="mobile-nav-btn {activeTab === 'stats' && $page.url.pathname === option.path ? 'active' : ''}"
+                    on:click={() => {
+                      if (!option.comingSoon) {
+                        onTabChange('stats');
+                        goto(option.path);
+                        navOpen = false;
+                      }
+                    }}
+                    class:disabled={option.comingSoon}
+                  >
+                    <div class="mobile-nav-btn-icon">
+                      <svelte:component this={option.icon} size={18} />
+                    </div>
+                    <div class="mobile-nav-btn-content">
+                      <span>{option.label}</span>
+                      {#if option.comingSoon}
+                        <span class="coming-soon-badge">Soon</span>
+                      {/if}
+                    </div>
+                  </button>
+                {/each}
               </div>
             {/if}
           {/each}
@@ -503,7 +589,6 @@
 {/if}
 
 <style scoped lang="postcss">
-
   .nav-link {
     @apply relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
   }
@@ -517,8 +602,6 @@
     text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 
-
-
   /* Mobile Menu */
   .mobile-menu-content {
     @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col;
@@ -531,6 +614,7 @@
 
   .mobile-menu-header .logo-wide {
     filter: brightness(var(--logo-brightness, 1)) invert(var(--logo-invert, 0));
+    width: 180px;
   }
 
   .mobile-nav-btn {
@@ -573,7 +657,7 @@
   }
 
   .mobile-close-btn {
-    @apply w-8 h-8 flex items-center justify-center rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors duration-200;
+    @apply w-7 h-7 flex items-center justify-center rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors duration-200;
   }
 
   .mobile-nav {
@@ -617,11 +701,11 @@
   }
 
   .mobile-menu-footer {
-    @apply p-4 border-t border-kong-border;
+    @apply p-0;
   }
 
   .mobile-wallet-btn {
-    @apply w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
+    @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
   }
 
   .coming-soon-badge {

@@ -109,7 +109,7 @@
       chart = new Chart(canvas, {
         type: 'doughnut',
         data,
-        options: getChartOptions(isDark)
+        options: getChartOptions(isDark) as any
       });
     });
   }
@@ -141,18 +141,15 @@
   // Calculate percentages
   $: {
     Promise.all([$portfolioValue, $storedBalances, riskMetrics]).then(([portfolioVal, balances, metrics]) => {
-      const totalValue = Number(portfolioVal.replace(/[^0-9.-]+/g, ""));
-      
       // Calculate token value
-      const tokenValue = $liveTokens.reduce((acc, token) => {
-        const balance = balances[token.canister_id]?.in_usd;
-        return acc + (balance ? Number(balance) : 0);
+      const tokenValue = Object.values(balances).reduce((acc, balance) => {
+        const usdValue = balance?.in_usd ? Number(balance.in_usd) : 0;
+        return acc + usdValue;
       }, 0);
       
       // Calculate LP value from userPools
       const lpValue = $liveUserPools.reduce((acc, pool) => {
-        // Try both possible value fields
-        const poolValue = Number(pool.value_usd) || Number(pool.usd_balance) || 0;
+        const poolValue = Number(pool.usd_balance) || 0;
         return acc + poolValue;
       }, 0);
       
@@ -219,46 +216,32 @@
     </button>
   </div>
   
-  <div class="portfolio-content p-4 flex flex-col gap-6">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="portfolio-content p-4 flex flex-col gap-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <!-- Chart Section -->
-      <div class="bg-kong-bg-light rounded-xl p-6 shadow-sm">
+      <div class="bg-kong-bg-light rounded-xl p-4 shadow-lg border border-kong-border/10 hover:border-kong-border/20 transition-all">
         <h3 class="text-sm font-medium text-kong-text-secondary mb-4">Asset Distribution</h3>
         <div 
           class="chart-wrapper flex items-center justify-center" 
-          style="position: relative; height:250px; width:100%"
+          style="position: relative; height:300px; width:100%"
         >
           <canvas bind:this={canvas}></canvas>
         </div>
       </div>
 
       <!-- Stats Section -->
-      <div class="bg-kong-bg-light rounded-xl p-6 shadow-sm flex flex-col justify-between">        
-        <div class="space-y-4 flex flex-col justify-between h-full">
+      <div class="bg-kong-bg-light rounded-xl p-4 shadow-lg border border-kong-border/10 hover:border-kong-border/20 transition-all">        
+        <div class="space-y-6 flex flex-col justify-between h-full">
           <!-- Portfolio Value -->
-          <div class="text-center mb-4">
-            <p class="text-sm font-medium text-kong-text-secondary">Total Portfolio Value</p>
-            <p class="text-3xl font-bold text-kong-text-primary">${displayValue}</p>
+          <div class="mb-6">
+            <h4 class="text-sm font-medium text-kong-text-secondary mb-2">Total Portfolio Value</h4>
+            <p class="text-4xl font-bold text-kong-text-primary">${displayValue}</p>
           </div>
 
-          <!-- Asset Diversity -->
-          <div class="stat-group">
-            <h4 class="text-xs font-medium text-kong-text-secondary uppercase tracking-wider mb-2">Asset Diversity</h4>
-            <div class="flex items-center gap-3">
-              <div class="flex-grow h-2 bg-kong-bg-dark rounded-full overflow-hidden">
-                <div 
-                  class="h-full bg-gradient-to-r from-red-500 to-green-500 transition-all duration-300" 
-                  style="width: {diversityScore}%"
-                />
-              </div>
-              <span class="text-sm font-medium">{diversityScore || 0}/100</span>
-            </div>
-          </div>
-          
           <!-- Asset Types -->
           <div class="stat-group">
-            <h4 class="text-xs font-medium text-kong-text-secondary uppercase tracking-wider mb-2">Asset Types</h4>
-            <div class="grid grid-cols-2 gap-4">
+            <h4 class="text-sm font-medium text-kong-text-secondary mb-4">Asset Types</h4>
+            <div class="grid grid-cols-2 gap-6">
               <div class="stat-item">
                 <span class="stat-value text-center">{tokenPercentage}%</span>
                 <span class="stat-label text-center">Tokens</span>
@@ -269,6 +252,20 @@
               </div>
             </div>
           </div>
+
+          <!-- Asset Diversity -->
+          <div class="stat-group">
+            <h4 class="text-sm font-medium text-kong-text-secondary mb-4">Asset Diversity</h4>
+            <div class="flex items-center gap-4">
+              <div class="flex-grow h-3 bg-kong-bg-dark rounded-full overflow-hidden">
+                <div 
+                  class="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 transition-all duration-300" 
+                  style="width: {diversityScore}%"
+                />
+              </div>
+              <span class="text-base font-semibold min-w-[60px] text-right">{diversityScore || 0}/100</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -277,32 +274,32 @@
 
 <style>
   .stat-group {
-    @apply border-b border-kong-border pb-4 last:border-0 last:pb-0;
+    @apply pb-6 last:pb-0;
   }
 
   .stat-item {
-    @apply flex flex-col p-3 bg-kong-bg-dark rounded-lg;
+    @apply flex flex-col p-4 bg-kong-bg-dark rounded-xl border border-kong-border/10 hover:border-kong-border/20 transition-all;
   }
 
   .stat-label {
-    @apply text-sm text-kong-text-secondary;
+    @apply text-sm font-medium text-kong-text-secondary mt-1;
   }
 
   .stat-value {
-    @apply text-lg font-semibold text-kong-text-primary;
+    @apply text-2xl font-bold text-kong-text-primary;
   }
 
   .chart-wrapper {
     color: rgb(var(--text-primary));
     position: relative;
     height: auto !important;
-    min-height: 200px;
-    max-height: 250px;
+    min-height: 300px;
+    max-height: 300px;
     width: 100%;
   }
 
   .chart-wrapper canvas {
-    max-height: 250px !important;
+    max-height: 300px !important;
   }
 
   .portfolio-content {
@@ -313,11 +310,11 @@
 
   @media (max-width: 768px) {
     .grid {
-      gap: 1rem !important;
+      gap: 1.5rem !important;
     }
     
     .stat-group {
-      padding-bottom: 1rem;
+      padding-bottom: 1.5rem;
     }
   }
 </style> 

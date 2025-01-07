@@ -12,10 +12,10 @@ function createThemeStore() {
     initTheme: () => {
       if (browser) {
         // Get stored theme or default to dark
-        const storedTheme = localStorage.getItem('theme') as Theme || 'dark';
+        const storedTheme = localStorage.getItem('kongTheme') as Theme || 'dark';
         
         // Set theme in localStorage and DOM
-        localStorage.setItem('theme', storedTheme);
+        localStorage.setItem('kongTheme', storedTheme);
         document.documentElement.classList.toggle('dark', storedTheme === 'dark');
         
         // Update store
@@ -27,10 +27,10 @@ function createThemeStore() {
     },
     toggleTheme: () => {
       if (browser) {
-        const currentTheme = localStorage.getItem('theme') as Theme || 'dark';
+        const currentTheme = localStorage.getItem('kongTheme') as Theme || 'dark';
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         
-        localStorage.setItem('theme', newTheme);
+        localStorage.setItem('kongTheme', newTheme);
         document.documentElement.classList.toggle('dark', newTheme === 'dark');
         set(newTheme);
       }

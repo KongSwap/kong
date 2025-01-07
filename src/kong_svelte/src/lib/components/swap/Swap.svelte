@@ -4,13 +4,13 @@
   import SwapConfirmation from "./swap_ui/SwapConfirmation.svelte";
   import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
   import BananaRain from "$lib/components/common/BananaRain.svelte";
-  import Portal from 'svelte-portal';
+  import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
   import { fade } from "svelte/transition";
   import { onMount, createEventDispatcher } from "svelte";
   import { get } from "svelte/store";
   import { replaceState } from "$app/navigation";
-  import { page } from '$app/stores';
+  import { page } from "$app/stores";
   import { SwapLogicService } from "$lib/services/swap/SwapLogicService";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import { SwapService } from "$lib/services/swap/SwapService";
@@ -25,9 +25,12 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { swapStatusStore } from "$lib/services/swap/swapStore";
   import { sidebarStore } from "$lib/stores/sidebarStore";
-  import { CKUSDT_CANISTER_ID, KONG_BACKEND_CANISTER_ID, KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
-    import { livePools } from "$lib/services/pools/poolStore";
-
+  import {
+    ICP_CANISTER_ID,
+    KONG_BACKEND_CANISTER_ID,
+    KONG_CANISTER_ID,
+  } from "$lib/constants/canisterConstants";
+  import { livePools } from "$lib/services/pools/poolStore";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -137,7 +140,8 @@
       Number(getTokenBalance($swapState.payToken.canister_id));
 
   $: buttonText = (() => {
-    if (!$swapState.payToken || !$swapState.receiveToken) return "Select Tokens";
+    if (!$swapState.payToken || !$swapState.receiveToken)
+      return "Select Tokens";
     if (showSuccessModal) return "Swap";
     if ($swapState.isProcessing) return "Processing...";
     if ($swapState.error) return $swapState.error;
@@ -153,23 +157,23 @@
   // Initialize tokens when they become available
   $: if ($liveTokens.length > 0 && !isInitialized) {
     isInitialized = true;
-    
+
     // If initial tokens are provided, verify they exist in liveTokens
-    const fromToken = initialFromToken 
-      ? $liveTokens.find(t => t.canister_id === initialFromToken.canister_id)
-      : $liveTokens.find(t => t.canister_id === CKUSDT_CANISTER_ID); // ICP
+    const fromToken = initialFromToken
+      ? $liveTokens.find((t) => t.canister_id === initialFromToken.canister_id)
+      : $liveTokens.find((t) => t.canister_id === ICP_CANISTER_ID); // ICP
 
     const toToken = initialToToken
-      ? $liveTokens.find(t => t.canister_id === initialToToken.canister_id)
-      : $liveTokens.find(t => t.canister_id === KONG_CANISTER_ID); // ckUSDT
+      ? $liveTokens.find((t) => t.canister_id === initialToToken.canister_id)
+      : $liveTokens.find((t) => t.canister_id === KONG_CANISTER_ID); // ckUSDT
 
     // Update swap state with verified tokens
-    swapState.update(state => ({
+    swapState.update((state) => ({
       ...state,
       payToken: fromToken || null,
       receiveToken: toToken || null,
-      payAmount: '',
-      receiveAmount: ''
+      payAmount: "",
+      receiveAmount: "",
     }));
   }
 
@@ -195,21 +199,26 @@
   }
 
   // Modify the poolExists function to add more debugging
-  function poolExists(payToken: FE.Token | null, receiveToken: FE.Token | null): boolean {
+  function poolExists(
+    payToken: FE.Token | null,
+    receiveToken: FE.Token | null,
+  ): boolean {
     if (!payToken || !receiveToken) {
       return false;
     }
-    
+
     if ($livePools.length === 0) {
       return true; // Return true when pools aren't loaded yet
     }
-    
-    const exists = $livePools.some(pool => 
-      (pool.symbol_0 === payToken.symbol && pool.symbol_1 === receiveToken.symbol) ||
-      (pool.symbol_0 === receiveToken.symbol && pool.symbol_1 === payToken.symbol)
+
+    const exists = $livePools.some(
+      (pool) =>
+        (pool.symbol_0 === payToken.symbol &&
+          pool.symbol_1 === receiveToken.symbol) ||
+        (pool.symbol_0 === receiveToken.symbol &&
+          pool.symbol_1 === payToken.symbol),
     );
-  
-    
+
     return exists;
   }
 
@@ -218,7 +227,8 @@
     slippageTooHigh: boolean,
     error: string | null,
   ): string {
-    if (!$swapState.payToken || !$swapState.receiveToken) return "Select tokens to trade";
+    if (!$swapState.payToken || !$swapState.receiveToken)
+      return "Select tokens to trade";
     if (!owner) return "Connect to trade";
     if (!hasValidPool) return "Pool does not exist";
     if (insufficientFunds) {
@@ -339,17 +349,17 @@
 
   // Initialization functions
   async function initializeComponent(): Promise<void> {
-    try {  
+    try {
       // Only initialize default tokens if no URL parameters are present
-      const token0Id = get(page).url.searchParams.get('token0');
-      const token1Id = get(page).url.searchParams.get('token1');
-      
+      const token0Id = get(page).url.searchParams.get("token0");
+      const token1Id = get(page).url.searchParams.get("token1");
+
       if (!token0Id && !token1Id && !isInitialized && $liveTokens.length > 0) {
         isInitialized = true;
         swapState.initializeTokens(initialFromToken, initialToToken);
       }
     } catch (error) {
-      console.error('Error initializing component:', error);
+      console.error("Error initializing component:", error);
     }
   }
 
@@ -374,16 +384,16 @@
 
   function handleTokenSelect(panelType: PanelType) {
     if (panelType === "pay") {
-      swapState.update((s) => ({ 
-        ...s, 
+      swapState.update((s) => ({
+        ...s,
         showPayTokenSelector: true,
-        error: null // Reset error state when selecting new token
+        error: null, // Reset error state when selecting new token
       }));
     } else {
-      swapState.update((s) => ({ 
-        ...s, 
+      swapState.update((s) => ({
+        ...s,
         showReceiveTokenSelector: true,
-        error: null // Reset error state when selecting new token
+        error: null, // Reset error state when selecting new token
       }));
     }
   }
@@ -399,11 +409,11 @@
     const tempReceiveAmount = $swapState.receiveAmount;
 
     // Update tokens and reset error state
-    swapState.update(s => ({
+    swapState.update((s) => ({
       ...s,
       payToken: s.receiveToken,
       receiveToken: tempPayToken,
-      error: null // Reset error state when reversing tokens
+      error: null, // Reset error state when reversing tokens
     }));
 
     // Set the new pay amount
@@ -545,21 +555,21 @@
     isQuoteLoading = false;
 
     // Immediately reset all relevant state
-    swapState.update(state => ({
+    swapState.update((state) => ({
       ...state,
-      payAmount: '',
-      receiveAmount: '',
+      payAmount: "",
+      receiveAmount: "",
       error: null,
       isProcessing: false,
       showConfirmation: false,
       showBananaRain: false,
-      swapSlippage: 0,  // Reset slippage
-      lpFees: null,     // Reset fees
-      routingPath: null // Reset routing
+      swapSlippage: 0, // Reset slippage
+      lpFees: null, // Reset fees
+      routingPath: null, // Reset routing
     }));
 
     // Reset previous values to prevent unnecessary quote updates
-    previousPayAmount = '';
+    previousPayAmount = "";
     previousPayToken = null;
     previousReceiveToken = null;
   }
@@ -570,9 +580,9 @@
   // Add a reactive statement to update button state when tokens change
   $: {
     if ($swapState.payToken || $swapState.receiveToken) {
-      swapState.update(s => ({
+      swapState.update((s) => ({
         ...s,
-        error: null // Reset error state when tokens change
+        error: null, // Reset error state when tokens change
       }));
     }
   }
@@ -581,20 +591,20 @@
   $: {
     // When URL params or tokens change, update the swap state
     if ($page && $liveTokens.length > 0) {
-      const token0Id = $page.url.searchParams.get('token0');
-      const token1Id = $page.url.searchParams.get('token1');
-      
+      const token0Id = $page.url.searchParams.get("token0");
+      const token1Id = $page.url.searchParams.get("token1");
+
       if (token0Id && token1Id) {
-        const token0 = $liveTokens.find(t => t.canister_id === token0Id);
-        const token1 = $liveTokens.find(t => t.canister_id === token1Id);
-        
+        const token0 = $liveTokens.find((t) => t.canister_id === token0Id);
+        const token1 = $liveTokens.find((t) => t.canister_id === token1Id);
+
         if (token0 && token1) {
-          swapState.update(state => ({
+          swapState.update((state) => ({
             ...state,
             payToken: token0,
             receiveToken: token1,
-            payAmount: '',
-            receiveAmount: ''
+            payAmount: "",
+            receiveAmount: "",
           }));
         }
       }
@@ -602,104 +612,99 @@
   }
 </script>
 
-<!-- Template content -->
-<div class="swap-container">
-  <div class="swap-wrapper">
-    <div class="swap-container" in:fade={{ duration: 420 }}>
-      <div class="panels-container">
-        <div class="panels-wrapper">
-          <div class="panel">
-            <SwapPanel
-              title={PANELS[0].title}
-              token={$swapState.payToken}
-              amount={$swapState.payAmount}
-              onAmountChange={handleAmountChange}
-              onTokenSelect={() => handleTokenSelect("pay")}
-              showPrice={false}
-              slippage={$swapState.swapSlippage}
-              disabled={false}
-              panelType="pay"
-              otherToken={$swapState.receiveToken}
-            />
-          </div>
-
-          <button
-            class="switch-button"
-            class:disabled={isProcessing}
-            class:rotating={isRotating}
-            on:click={handleReverseTokens}
-            disabled={isProcessing}
-            aria-label="Switch tokens position"
-          >
-            <div class="switch-button-inner">
-              <svg
-                class="switch-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M7.5 3.5L4.5 6.5L7.5 9.5M4.5 6.5H16.5C18.71 6.5 20.5 8.29 20.5 10.5C20.5 11.48 20.14 12.37 19.55 13.05M16.5 20.5L19.5 17.5L16.5 14.5M19.5 17.5H7.5C5.29 17.5 3.5 15.71 3.5 13.5C3.5 12.52 3.86 11.63 4.45 10.95"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </div>
-          </button>
-
-          <div class="panel">
-            <SwapPanel
-              title={PANELS[1].title}
-              token={$swapState.receiveToken}
-              amount={$swapState.receiveAmount}
-              onAmountChange={handleAmountChange}
-              onTokenSelect={() => handleTokenSelect("receive")}
-              showPrice={true}
-              slippage={$swapState.swapSlippage}
-              disabled={false}
-              panelType="receive"
-              otherToken={$swapState.payToken}
-            />
-          </div>
-        </div>
-
-        <div class="swap-footer">
-          <button
-            class="swap-button"
-            class:error={$swapState.error || 
-              $swapState.swapSlippage > userMaxSlippage || 
-              insufficientFunds || 
-              !hasValidPool}
-            class:processing={$swapState.isProcessing}
-            class:ready={!$swapState.error && 
-              $swapState.swapSlippage <= userMaxSlippage && 
-              !insufficientFunds && 
-              hasValidPool}
-            class:shine-animation={buttonText === "SWAP"}
-            on:click={handleButtonAction}
-            disabled={!hasValidPool || $swapState.isProcessing || insufficientFunds}
-            title={getButtonTooltip(
-              $auth?.account?.owner,
-              $swapState.swapSlippage > userMaxSlippage,
-              $swapState.error,
-            )}
-          >
-            <div class="button-content">
-              {#if $swapState.isProcessing}
-                <div class="loading-spinner" />
-              {/if}
-              <span class="swap-button-text">{buttonText}</span>
-            </div>
-            <div class="button-glow" />
-            <div class="shine-effect" />
-            <div class="ready-glow" />
-          </button>
-        </div>
+<div class="swap-container" in:fade={{ duration: 420 }}>
+  <div class="panels-container">
+    <div class="panels-wrapper">
+      <div class="panel">
+        <SwapPanel
+          title={PANELS[0].title}
+          token={$swapState.payToken}
+          amount={$swapState.payAmount}
+          onAmountChange={handleAmountChange}
+          onTokenSelect={() => handleTokenSelect("pay")}
+          showPrice={false}
+          slippage={$swapState.swapSlippage}
+          disabled={false}
+          panelType="pay"
+          otherToken={$swapState.receiveToken}
+        />
       </div>
+
+      <button
+        class="switch-button"
+        class:disabled={isProcessing}
+        class:rotating={isRotating}
+        on:click={handleReverseTokens}
+        disabled={isProcessing}
+        aria-label="Switch tokens position"
+      >
+        <div class="switch-button-inner">
+          <svg
+            class="switch-icon"
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7.5 3.5L4.5 6.5L7.5 9.5M4.5 6.5H16.5C18.71 6.5 20.5 8.29 20.5 10.5C20.5 11.48 20.14 12.37 19.55 13.05M16.5 20.5L19.5 17.5L16.5 14.5M19.5 17.5H7.5C5.29 17.5 3.5 15.71 3.5 13.5C3.5 12.52 3.86 11.63 4.45 10.95"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+      </button>
+
+      <div class="panel">
+        <SwapPanel
+          title={PANELS[1].title}
+          token={$swapState.receiveToken}
+          amount={$swapState.receiveAmount}
+          onAmountChange={handleAmountChange}
+          onTokenSelect={() => handleTokenSelect("receive")}
+          showPrice={true}
+          slippage={$swapState.swapSlippage}
+          disabled={false}
+          panelType="receive"
+          otherToken={$swapState.payToken}
+        />
+      </div>
+    </div>
+
+    <div class="swap-footer">
+      <button
+        class="swap-button"
+        class:error={$swapState.error ||
+          $swapState.swapSlippage > userMaxSlippage ||
+          insufficientFunds ||
+          !hasValidPool}
+        class:processing={$swapState.isProcessing}
+        class:ready={!$swapState.error &&
+          $swapState.swapSlippage <= userMaxSlippage &&
+          !insufficientFunds &&
+          hasValidPool}
+        class:shine-animation={buttonText === "SWAP"}
+        on:click={handleButtonAction}
+        disabled={!hasValidPool || $swapState.isProcessing || insufficientFunds}
+        title={getButtonTooltip(
+          $auth?.account?.owner,
+          $swapState.swapSlippage > userMaxSlippage,
+          $swapState.error,
+        )}
+      >
+        <div class="button-content">
+          {#if $swapState.isProcessing}
+            <div class="loading-spinner" />
+          {/if}
+          <span class="swap-button-text">{buttonText}</span>
+        </div>
+        <div class="button-glow" />
+        <div class="shine-effect" />
+        <div class="ready-glow" />
+      </button>
     </div>
   </div>
 </div>
@@ -750,9 +755,9 @@
         swapState.setShowConfirmation(false);
       }}
       on:quoteUpdate={({ detail }) => {
-        swapState.update(state => ({
+        swapState.update((state) => ({
           ...state,
-          receiveAmount: detail.receiveAmount
+          receiveAmount: detail.receiveAmount,
         }));
       }}
     />
@@ -774,87 +779,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-  }
-
-  .mode-selector {
-    position: relative;
-    display: flex;
-    gap: 2px;
-    margin-bottom: 12px;
-    padding: 3px;
-    border-radius: 12px;
-    border: 1px solid theme('colors.kong.border');
-    box-shadow: 
-      0 4px 12px rgba(0, 0, 0, 0.15),
-      inset 0 1px 1px rgba(255, 255, 255, 0.05);
-  }
-
-  .mode-selector-background {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: calc(50% - 3px);
-    height: calc(100% - 6px);
-    background: linear-gradient(
-      135deg,
-      theme('colors.kong.accent-blue/15'),
-      theme('colors.kong.primary/20')
-    );
-    border-radius: 10px;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    border: 1px solid theme('colors.kong.accent-blue/15');
-  }
-
-  .mode-button {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 9px;
-    font-size: 14px;
-    font-weight: 500;
-    color: theme('colors.kong.text-secondary');
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .mode-text {
-    @apply text-sm font-medium text-kong-text-secondary;
-    position: relative;
-    z-index: 2;
-    transition: all 0.2s ease;
-    letter-spacing: 0.01em;
-  }
-
-  .mode-button:hover:not(.selected) .mode-text {
-    color: theme('colors.kong.text-primary');
-  }
-
-  .mode-button.selected .mode-text {
-    @apply text-white font-semibold;
-  }
-
-  .mode-button.selected {
-    background: transparent;
-    box-shadow: none;
-  }
-
-  /* Simplify hover effect */
-  .mode-button:hover:not(.selected)::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 9px;
-    background: theme('colors.kong.primary/5');
-    opacity: 1;
-  }
-
-  .mode-button:active:not(.selected) {
-    transform: scale(0.98);
   }
 
   .button-content {
@@ -1123,16 +1047,6 @@
     z-index: 1;
   }
 
-  .button-text {
-    @apply text-white font-semibold text-lg;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-
   /* Add subtle bounce animation for the emoji */
   @keyframes subtle-bounce {
     0%,
@@ -1247,27 +1161,5 @@
       opacity: 0.5;
       transform: scale(1.02);
     }
-  }
-
-  /* Update the selected state styles */
-  .mode-button.selected::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: 11px;
-    background: linear-gradient(
-      135deg,
-      rgba(0, 161, 250, 0.3),
-      rgba(59, 130, 246, 0.3)
-    );
-    z-index: -1;
-    opacity: 0.5;
-  }
-
-  .mode-button.selected {
-    background: rgba(26, 29, 46, 0.6);
-    box-shadow: 
-      0 2px 8px rgba(0, 0, 0, 0.1),
-      inset 0 1px 2px rgba(255, 255, 255, 0.05);
   }
 </style>

@@ -406,7 +406,7 @@
                   false
               );
               balances = {
-                  default: result
+                  default: typeof result === 'bigint' ? result : BigInt(0)
               };
           }
       } catch (error) {
@@ -439,7 +439,7 @@
                       title="Scan QR Code"
                   >
                       <Camera class="w-4 h-4" />
-                      <span class="button-text">Scan QR</span>
+                      <span class="button-text text-nowrap">Scan QR</span>
                   </button>
                   <button 
                       type="button"
@@ -660,40 +660,9 @@
       }
   }
 
-  .account-selector {
-      @apply grid grid-cols-2 gap-3 mt-3;
-  }
-
-  .account-option {
-      @apply h-16 rounded-lg border border-white/10 
-             bg-white/5 backdrop-blur-sm
-             hover:border-white/20 hover:bg-white/10
-             transition-all duration-200;
-
-      &.selected {
-          @apply border-indigo-500 bg-indigo-500/10;
-      }
-  }
-
-  .account-details {
-      @apply flex flex-col items-center justify-center h-full gap-1;
-  }
-
-  .account-label {
-      @apply text-sm text-kong-text-primary/70;
-  }
-
-  .account-balance {
-      @apply text-kong-text-primary font-medium;
-  }
-
   .send-btn {
       @apply h-12 w-full rounded-lg bg-indigo-500 text-kong-text-primary font-medium 
              hover:bg-indigo-600 disabled:opacity-50 mt-4;
-  }
-
-  .error-message {
-      @apply text-red-400 text-sm px-2 mb-2;
   }
 
   .validation-status {

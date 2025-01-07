@@ -119,7 +119,7 @@
   {/if}
 
   <div
-    class="flex-1 cursor-pointer origin-center transition-all duration-200 border border-transparent relative z-[95] group"
+    class="flex-1 cursor-pointer origin-center px-2 transition-all duration-200 border border-transparent relative z-[95] group"
     class:pressed={isPressed}
     class:bg-kong-bg-light={dropdownVisible}
     class:border-kong-border={dropdownVisible}
@@ -174,7 +174,7 @@
       <div class="flex items-center h-full">
         <div class="flex flex-col items-end gap-0.5">
           <div class="text-sm font-medium text-kong-text-primary">
-            {formattedBalance}
+            {formattedBalance.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')}{formattedBalance.includes('.') ? '.' + formattedBalance.split('.')[1] : ''}
           </div>
           <div class="text-[13px] text-kong-text-primary/70">
             {formattedUsdValue}
