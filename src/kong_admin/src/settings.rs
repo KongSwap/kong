@@ -4,6 +4,7 @@ use std::fs::File;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Database {
     pub host: String,
+    pub port: u16,
     pub user: String,
     pub password: String,
     pub db_name: String,

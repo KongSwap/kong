@@ -165,21 +165,20 @@ pub fn insert(pool: &StablePool) -> Result<u32, String> {
         let pool_id = kong_settings_map::inc_pool_map_idx();
         let insert_pool = StablePool { pool_id, ..pool.clone() };
         map.insert(StablePoolId(pool_id), insert_pool.clone());
-        archive_pool_to_kong_data(insert_pool);
+        _ = archive_to_kong_data(&insert_pool);
         Ok(pool_id)
     })
 }
 
 pub fn update(pool: &StablePool) {
     POOL_MAP.with(|m| m.borrow_mut().insert(StablePoolId(pool.pool_id), pool.clone()));
-    archive_pool_to_kong_data(pool.clone());
+    _ = archive_to_kong_data(pool);
 }
 
 pub fn remove(pool_id: u32) -> Result<(), String> {
-    // remove pool
-    let pool = POOL_MAP
-        .with(|m| m.borrow_mut().remove(&StablePoolId(pool_id)))
-        .ok_or("Unable to remove pool".to_string())?;
+    let pool = get_by_pool_id(pool_id).ok_or_else(|| format!("Pool #{} not found", pool_id))?;
+    // set is_removed to true to remove pool
+    update(&StablePool { is_removed: true, ..pool });
 
     // remove LP token
     token_map::remove(pool.lp_token_id)?;
@@ -190,22 +189,25 @@ pub fn remove(pool_id: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn archive_pool_to_kong_data(pool: StablePool) {
+fn archive_to_kong_data(pool: &StablePool) -> Result<(), String> {
+    let pool_id = pool.pool_id;
+    let pool_json = match serde_json::to_string(pool) {
+        Ok(pool_json) => pool_json,
+        Err(e) => return Err(format!("Failed to serialize pool_id #{}. {}", pool_id, e)),
+    };
+
     ic_cdk::spawn(async move {
-        match serde_json::to_string(&pool) {
-            Ok(pool_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_pool", (pool_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool.pool_id, e)),
-                }
-            }
-            Err(e) => error_log(&format!("Failed to serialize pool_id #{}. {}", pool.pool_id, e)),
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_pool", (pool_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive pool_id #{}. {}", pool_id, e)),
         }
     });
+
+    Ok(())
 }

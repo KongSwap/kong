@@ -133,7 +133,7 @@ async fn check_arguments(
 
     // either token_0 and token_1 must be valid token
     if token_0.is_none() && token_1.is_none() {
-        return Err("Token_0 or Token_1 is required".to_string());
+        Err("Token_0 or Token_1 is required".to_string())?
     }
 
     // check tx_id_0 is valid block index Nat
@@ -149,7 +149,7 @@ async fn check_arguments(
 
     // either tx_id_0 or tx_id_1 must be valid
     if tx_id_0.is_none() && tx_id_1.is_none() {
-        return Err("Tx_id_0 or Tx_id_1 is required".to_string());
+        Err("Tx_id_0 or Tx_id_1 is required".to_string())?
     }
 
     // transfer_id_0 is used to store if the transfer was successful
@@ -175,7 +175,7 @@ async fn check_arguments(
 
     // one of the transfers must be successful
     if transfer_id_0.is_err() && transfer_id_1.is_err() {
-        return Err("Failed to verify transfers".to_string());
+        Err("Failed to verify transfers".to_string())?
     }
 
     Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1))
@@ -273,7 +273,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. Pool not found", request_id));
+                Err(format!("Req #{} failed. Pool not found", request_id))?
             }
         }
     } else {
@@ -293,7 +293,7 @@ async fn process_add_liquidity(
             ts,
         )
         .await;
-        return Err(format!("Req #{} failed. Pool not found", request_id));
+        Err(format!("Req #{} failed. Pool not found", request_id))?
     };
 
     // both transfers must be successful
@@ -341,7 +341,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
 

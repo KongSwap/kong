@@ -19,7 +19,7 @@ pub mod stable_request;
 pub mod stable_token;
 pub mod stable_transfer;
 pub mod stable_tx;
-pub mod stable_update;
+pub mod stable_db_update;
 pub mod stable_user;
 pub mod swap;
 mod swap_amounts;
@@ -30,4 +30,4 @@ pub mod user;
 mod user_balances;
 
 pub const APP_NAME: &str = "Kong Lib";
-pub const APP_VERSION: &str = "v0.0.15";
+pub const APP_VERSION: &str = "v0.0.16";

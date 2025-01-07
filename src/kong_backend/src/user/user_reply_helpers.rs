@@ -1,6 +1,5 @@
 use candid::Principal;
 
-use super::user_name::to_user_name;
 use super::user_reply::UserReply;
 
 use crate::ic::id::principal_to_account_id;
@@ -18,16 +17,10 @@ pub fn to_user_reply(user: &StableUser) -> UserReply {
         user_id: user.user_id,
         principal_id: user.principal_id.clone(),
         account_id: account_id.to_string(),
-        user_name: if user.user_id == 0 {
-            "".to_string()
-        } else {
-            to_user_name(&user.user_name)
-        },
         my_referral_code: user.my_referral_code.clone(),
         referred_by,
         referred_by_expires_at: user.referred_by_expires_at,
         fee_level: user.fee_level,
         fee_level_expires_at: user.fee_level_expires_at,
-        campaign1_flags: user.campaign1_flags.clone(),
     }
 }

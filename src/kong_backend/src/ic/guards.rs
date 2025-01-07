@@ -25,8 +25,8 @@ pub fn caller_is_kingkong() -> Result<(), String> {
     if is_caller_controller() {
         return Ok(());
     }
-    let user = user_map::get_by_caller().ok().flatten().unwrap_or_default();
-    if !KONG_SETTINGS.with(|s| s.borrow().get().kingkong.iter().any(|k| *k == user.user_id)) {
+    let user_id = user_map::get_by_caller()?.ok_or("Caller is not King Kong")?.user_id;
+    if !KONG_SETTINGS.with(|s| s.borrow().get().kingkong.iter().any(|k| *k == user_id)) {
         return Err("Caller is not King Kong".to_string());
     }
     Ok(())

@@ -4,11 +4,13 @@ use serde::Deserialize;
 
 use super::{APP_NAME, APP_VERSION};
 
-use crate::ic::logging::info_log;
+use crate::{ic::logging::info_log, stable_user::principal_id_map::create_principal_id_map};
 
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
+
+    create_principal_id_map();
 }
 
 #[pre_upgrade]
@@ -18,6 +20,8 @@ fn pre_upgrade() {
 
 #[post_upgrade]
 async fn post_upgrade() {
+    create_principal_id_map();
+
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }
 

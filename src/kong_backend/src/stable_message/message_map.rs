@@ -45,22 +45,25 @@ pub fn insert(message: &StableMessage) -> Result<u64, String> {
 }
 
 #[allow(dead_code)]
-fn archive_message(message: StableMessage) {
+fn archive_to_kong_data(message: &StableMessage) -> Result<(), String> {
+    let message_id = message.message_id;
+    let message_json = match serde_json::to_string(message) {
+        Ok(message_json) => message_json,
+        Err(e) => Err(format!("Failed to serialize message_id #{}. {}", message_id, e))?,
+    };
+
     ic_cdk::spawn(async move {
-        match serde_json::to_string(&message) {
-            Ok(message_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_message", (message_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive message_id#{}. {}", message.message_id, e)),
-                }
-            }
-            Err(e) => error_log(&format!("Failed to serialize message_id #{}. {}", message.message_id, e)),
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_message", (message_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive message_id#{}. {}", message_id, e)),
         }
     });
+
+    Ok(())
 }

@@ -2,6 +2,7 @@ use ic_cdk_timers::TimerId;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeMap;
 
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
@@ -49,6 +50,9 @@ thread_local! {
 
     // static variable to store the timer id for the background transfer archive timer
     pub static TRANSFER_MAP_ARCHIVE_TIMER_ID: Cell<TimerId> = Cell::default();
+
+    // static variable to store the map of principal_id to user_id
+    pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
 
     // MEMORY_MANAGER is given management of the entire stable memory. Given a 'MemoryId', it can
     // return a memory that can be used by stable structures

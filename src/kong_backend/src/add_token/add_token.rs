@@ -31,14 +31,14 @@ use crate::stable_token::token_map;
 #[update(guard = "caller_is_kingkong")]
 async fn add_token(args: AddTokenArgs) -> Result<AddTokenReply, String> {
     if token_map::get_by_address(&args.token).is_ok() {
-        return Err(format!("Token {} already exists", args.token));
+        Err(format!("Token {} already exists", args.token))?
     }
 
     // Only IC tokens of format IC.CanisterId supported
     match token_map::get_chain(&args.token) {
         Some(chain) if chain == IC_CHAIN => to_add_token_reply(&add_ic_token(&args.token).await?),
-        Some(chain) if chain == LP_CHAIN => Err("LP tokens not supported".to_string()),
-        Some(_) | None => Err("Chain not specified or supported".to_string()),
+        Some(chain) if chain == LP_CHAIN => Err("LP tokens not supported".to_string())?,
+        Some(_) | None => Err("Chain not specified or supported".to_string())?,
     }
 }
 

@@ -64,12 +64,12 @@ pub async fn add_liquidity_transfer_from_async(args: AddLiquidityArgs) -> Result
 
 async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Nat, Nat), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
-        return Err("Invalid zero amounts".to_string());
+        Err("Invalid zero amounts".to_string())?
     }
 
     // check to make sure tx_id_0 and tx_id_1 is not specified
     if args.tx_id_0.is_some() || args.tx_id_1.is_some() {
-        return Err("Tx_id_0 and Tx_id_1 not supported".to_string());
+        Err("Tx_id_0 and Tx_id_1 not supported".to_string())?
     }
 
     // add_amount_0 and add_amount_1 are the amounts to be added to the pool with the current state
@@ -80,7 +80,7 @@ async fn check_arguments(args: &AddLiquidityArgs) -> Result<(u32, StablePool, Na
     let token_0 = pool.token_0();
     let token_1 = pool.token_1();
     if !token_0.is_icrc2() || !token_1.is_icrc2() {
-        return Err("Tokens must support ICRC2".to_string());
+        Err("Tokens must support ICRC2".to_string())?
     }
 
     // make sure user is registered, if not create a new user
@@ -512,18 +512,18 @@ async fn return_token(
 
 pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
-        let request = requests.first().ok_or("Request not found")?;
-        request_map::archive_request_to_kong_data(request.request_id);
+        let request =
+            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+        request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::AddLiquidity(ref reply) => {
                 for claim_id in reply.claim_ids.iter() {
-                    claim_map::archive_claim_to_kong_data(*claim_id);
+                    claim_map::archive_to_kong_data(*claim_id)?;
                 }
                 for transfer_id_reply in reply.transfer_ids.iter() {
-                    transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+                    transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id)?;
                 }
-                tx_map::archive_tx_to_kong_data(reply.tx_id);
+                tx_map::archive_to_kong_data(reply.tx_id)?;
             }
             _ => Err("Invalid reply type".to_string())?,
         }

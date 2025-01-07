@@ -2,10 +2,18 @@ use ic_cdk::{query, update};
 use std::collections::BTreeMap;
 
 use crate::ic::guards::caller_is_kingkong;
-use crate::stable_memory::USER_MAP;
+use crate::stable_memory::{PRINCIPAL_ID_MAP, USER_MAP};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_principal_id_map() -> Result<String, String> {
+    PRINCIPAL_ID_MAP.with(|m| {
+        let map = m.borrow();
+        serde_json::to_string(&*map).map_err(|e| format!("Failed to serialize principal_id_map: {}", e))
+    })
+}
 
 /// serialize USER_MAP for backup
 #[query(hidden = true, guard = "caller_is_kingkong")]
@@ -69,12 +77,4 @@ fn edit_user(user_profile: String) -> Result<String, String> {
     USER_MAP.with(|m| m.borrow_mut().insert(StableUserId(user.user_id), user));
 
     Ok("User updated".to_string())
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_user(user_id: u32) -> Result<String, String> {
-    match USER_MAP.with(|m| m.borrow_mut().remove(&StableUserId(user_id))) {
-        Some(_) => Ok(format!("User {} removed", user_id)),
-        None => Err("User not found".to_string()),
-    }
 }

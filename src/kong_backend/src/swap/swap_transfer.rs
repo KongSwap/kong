@@ -74,7 +74,7 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
         Ok(token) => token,
         Err(e) => {
             request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(&e));
-            return Err(e);
+            Err(e)?
         }
     };
 
@@ -86,12 +86,12 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
             TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
             _ => {
                 request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                return Err("Pay tx_id not supported".to_string());
+                Err("Pay tx_id not supported".to_string())?
             }
         },
         None => {
             request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
-            return Err("Pay tx_id required".to_string());
+            Err("Pay tx_id required".to_string())?
         }
     };
 
@@ -134,7 +134,7 @@ async fn process_swap(
             ts,
         )
         .await;
-        return Err(format!("Req #{} failed. Pay amount is zero", request_id));
+        Err(format!("Req #{} failed. Pay amount is zero", request_id))?
     }
     // use specified max slippage or use default
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
@@ -155,7 +155,7 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         },
         None => Address::PrincipalId(caller_id),
@@ -176,7 +176,7 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
 
@@ -209,7 +209,7 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
             if transfer_map::contain(token_id, tx_id) {
                 let e = format!("Duplicate block id #{}", tx_id);
                 request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
-                return Err(e);
+                Err(e)?
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,
