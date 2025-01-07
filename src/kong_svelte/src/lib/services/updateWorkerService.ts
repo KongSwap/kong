@@ -72,7 +72,9 @@ class UpdateWorkerService {
         new URL("../workers/stateWorker.ts", import.meta.url),
         { type: "module" }
       );
+      console.log("Wrapping worker with Comlink...");
       this.stateWorkerApi = Comlink.wrap<StateWorkerApi>(this.stateWorker);
+      console.log("Setting up worker message handler...");
       this.stateWorker.onmessage = this.handleStateWorkerMessage.bind(this);
 
       console.log("Starting worker updates...");
@@ -93,13 +95,16 @@ class UpdateWorkerService {
   }
 
   private handleVisibilityChange() {
+    console.log("Visibility changed, document.hidden:", document.hidden);
     this.isInBackground = document.hidden;
     if (document.hidden) {
       if (this.stateWorker) {
+        console.log("Document hidden, pausing worker");
         this.stateWorker.postMessage({ type: "pause" });
       }
     } else {
       if (this.stateWorker) {
+        console.log("Document visible, resuming worker");
         this.stateWorker.postMessage({ type: "resume" });
       }
       this.forceUpdate();
@@ -153,7 +158,6 @@ class UpdateWorkerService {
   }
 
   private async startUpdates() {
-
     try {
       console.log("Starting worker updates...");
 
@@ -163,12 +167,9 @@ class UpdateWorkerService {
         totalAssets: (await kongDB.tokens.toArray())?.length || 0,
       });
 
-      await Promise.all(
-        [
-          this.updateTokens(),
-          this.updatePools(),
-        ].filter(Boolean),
-      );
+      console.log("Starting worker API updates...");
+      await this.stateWorkerApi?.startUpdates();
+      console.log("Worker API updates started");
 
       return true;
     } catch (error) {

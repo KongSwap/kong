@@ -41,13 +41,20 @@ export class TokenService {
           timestamp: Date.now(),
           metrics: {
             ...token.metrics,
-            previous_price: existingToken?.metrics?.price || token.metrics.price
+            previous_price: existingToken?.metrics?.price || token.metrics.price,
+            price: token.metrics.price,
+            volume_24h: token.metrics.volume_24h,
+            total_supply: token.metrics.total_supply,
+            market_cap: token.metrics.market_cap,
+            tvl: token.metrics.tvl,
+            updated_at: token.metrics.updated_at,
+            price_change_24h: token.metrics.price_change_24h
           }
         };
       });
 
-      // Store in DB with timestamp
-      await kongDB.tokens.bulkPut(tokensWithTimestamp);
+      // Store in DB with timestamp, using bulkPut with replace to trigger updates
+      await kongDB.tokens.bulkPut(tokensWithTimestamp, { allKeys: true });
       
       return tokensWithTimestamp;
     } catch (error) {
