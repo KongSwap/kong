@@ -6,7 +6,7 @@ import Dexie, {
 import type { KongImage, FavoriteToken, TokenBalance } from "$lib/services/tokens/types";
 import type { Settings } from "$lib/services/settings/types";
 
-const CURRENT_VERSION = 10;
+const CURRENT_VERSION = 11;
 
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
@@ -40,7 +40,7 @@ export class KongDB extends Dexie {
 
     // Next version recreates the schema
     this.version(CURRENT_VERSION).stores({
-      tokens: "canister_id, timestamp, metrics.volume_24h",
+      tokens: "canister_id, timestamp, metrics.volume_24h, metrics.price, metrics.tvl, metrics.market_cap, metrics.price_change_24h",
       images: "++id, canister_id, timestamp",
       pools: "id, address_0, address_1, timestamp",
       user_pools: "++id, [symbol_0+symbol_1], address_0, address_1",

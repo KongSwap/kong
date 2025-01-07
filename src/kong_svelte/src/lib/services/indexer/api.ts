@@ -28,7 +28,7 @@ export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> =>
     if (canisterIds && canisterIds.length > 0) {
       // Use POST with body if we have canister IDs
       options.method = 'POST';
-      options.body = JSON.stringify({ canister_ids: ["ryjl3-tyaaa-aaaaa-aaaba-cai"] });
+      options.body = JSON.stringify({ canister_ids: canisterIds });
     } else {
       // Use GET if no canister IDs
       options.method = 'GET';
@@ -50,25 +50,32 @@ export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> =>
       return {
         ...token,
         metrics: {
-              ...token.metrics,
-              previous_price: existingToken?.metrics?.price || "0",
-            },
-            logo_url: DEFAULT_LOGOS[token.canister_id] || 
-              (token?.logo_url
-                ? token.logo_url.startsWith('http')
-                  ? token.logo_url
-                  : `${INDEXER_URL}${token.logo_url.startsWith('/') ? '' : '/'}${token.logo_url}`
-                : DEFAULT_LOGOS.DEFAULT),
-            address: token.address || token.canister_id,
-            fee: Number(token.fee),
-            fee_fixed: BigInt(token?.fee_fixed?.replaceAll("_", "") || "0").toString(),
-            token: token.token_type || '',
-            token_type: token.token_type || '',
-            chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
-            pool_symbol: token.pool_symbol ?? "Pool not found",
-            pools: [],
-          };
-      }));
+          ...token.metrics,
+          previous_price: existingToken?.metrics?.price || token.metrics.price,
+          price: token.metrics.price,
+          volume_24h: token.metrics.volume_24h,
+          total_supply: token.metrics.total_supply,
+          market_cap: token.metrics.market_cap,
+          tvl: token.metrics.tvl,
+          updated_at: token.metrics.updated_at,
+          price_change_24h: token.metrics.price_change_24h
+        },
+        logo_url: DEFAULT_LOGOS[token.canister_id] || 
+          (token?.logo_url
+            ? token.logo_url.startsWith('http')
+              ? token.logo_url
+              : `${INDEXER_URL}${token.logo_url.startsWith('/') ? '' : '/'}${token.logo_url}`
+            : DEFAULT_LOGOS.DEFAULT),
+        address: token.address || token.canister_id,
+        fee: Number(token.fee),
+        fee_fixed: BigInt(token?.fee_fixed?.replaceAll("_", "") || "0").toString(),
+        token: token.token_type || '',
+        token_type: token.token_type || '',
+        chain: token.token_type === 'IC' ? 'ICP' : token.chain || '',
+        pool_symbol: token.pool_symbol ?? "Pool not found",
+        pools: [],
+      };
+    }));
   } catch (error) {
     console.error('Error fetching tokens:', error);
     throw error;

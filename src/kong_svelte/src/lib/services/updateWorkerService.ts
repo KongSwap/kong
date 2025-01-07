@@ -55,8 +55,6 @@ class UpdateWorkerService {
   // -------------------- Private Methods --------------------
 
   private async initializeWorker(): Promise<void> {
-    console.log("Initializing update worker services...");
-
     document.addEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
 
     try {
@@ -75,7 +73,6 @@ class UpdateWorkerService {
       this.stateWorkerApi = Comlink.wrap<StateWorkerApi>(this.stateWorker);
       this.stateWorker.onmessage = this.handleStateWorkerMessage.bind(this);
 
-      console.log("Starting worker updates...");
       const updateStarted = await this.startUpdates();
       if (!updateStarted) {
         console.warn("Failed to start worker updates, falling back to direct updates");
@@ -84,7 +81,6 @@ class UpdateWorkerService {
       }
 
       this.isInitialized = true;
-      console.log("Worker initialization complete");
     } catch (error) {
       console.error("Error during worker initialization:", error);
       this.startFallbackUpdates();
@@ -96,10 +92,12 @@ class UpdateWorkerService {
     this.isInBackground = document.hidden;
     if (document.hidden) {
       if (this.stateWorker) {
+        console.log("Document hidden, pausing worker");
         this.stateWorker.postMessage({ type: "pause" });
       }
     } else {
       if (this.stateWorker) {
+        console.log("Document visible, resuming worker");
         this.stateWorker.postMessage({ type: "resume" });
       }
       this.forceUpdate();
@@ -128,7 +126,6 @@ class UpdateWorkerService {
 
     try {
       if (walletId) {
-        console.log("Updating token balances for wallet:", walletId);
         await Promise.all([
           loadBalances(walletId),
           TokenService.fetchTokens(),
@@ -137,7 +134,6 @@ class UpdateWorkerService {
         await TokenService.fetchTokens();
       }
   
-      console.log("Token balances updated successfully");
     } catch (error) {
       console.error("Error updating token balances:", error);
       throw error;
@@ -153,22 +149,15 @@ class UpdateWorkerService {
   }
 
   private async startUpdates() {
-
     try {
-      console.log("Starting worker updates...");
-
       appLoader.updateLoadingState({
         isLoading: true,
         assetsLoaded: 0,
         totalAssets: (await kongDB.tokens.toArray())?.length || 0,
       });
 
-      await Promise.all(
-        [
-          this.updateTokens(),
-          this.updatePools(),
-        ].filter(Boolean),
-      );
+      await this.stateWorkerApi?.startUpdates();
+      console.log("Worker API updates started");
 
       return true;
     } catch (error) {
@@ -197,14 +186,11 @@ class UpdateWorkerService {
   }
 
   private handleStateWorkerMessage(event: MessageEvent) {
-    console.log("Received worker message:", event.data);
     if (event.data.type === 'token_update') {
-      console.log("Processing token update...");
       this.updateTokens().catch(error => {
         console.error("Error updating tokens:", error);
       });
     } else if (event.data.type === 'pool_update') {
-      console.log("Processing pool update...");
       this.updatePools().catch(error => {
         console.error("Error updating pools:", error);
       });

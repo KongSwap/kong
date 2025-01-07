@@ -29,6 +29,7 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import DataTable from "$lib/components/common/DataTable.svelte";
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
+  import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
 
   const ITEMS_PER_PAGE = 100;
@@ -407,7 +408,7 @@
                     title: 'Price',
                     align: 'right',
                     sortable: true,
-                    formatter: (row) => "$" + formatToNonZeroDecimal(row.metrics?.price || 0)
+                    component: PriceCell
                   },
                   {
                     key: 'price_change_24h',

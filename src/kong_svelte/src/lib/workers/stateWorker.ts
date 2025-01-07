@@ -15,15 +15,15 @@ class StateWorkerImpl implements StateWorkerApi {
   // 1) Lower intervals to allow more frequent updates
   // ----------------------------------------------------
   private readonly ACTIVE_TOKEN_INTERVAL = 15000;          // 5 seconds when active
-  private readonly BACKGROUND_TOKEN_INTERVAL = 60000;     // 10 seconds when in background
+  private readonly BACKGROUND_TOKEN_INTERVAL = 60000;     // 30 seconds when in background
   private readonly ACTIVE_POOL_INTERVAL = 15000;          // 5 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 10 seconds when in background
+  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 30 seconds when in background
 
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests
   // ----------------------------------------------------
-  private readonly TOKEN_UPDATE_THROTTLE = 15000; // Don't post token updates more often than every 4s
-  private readonly POOL_UPDATE_THROTTLE  = 15000; // Don't post pool updates more often than every 4s
+  private readonly TOKEN_UPDATE_THROTTLE = 5000; // Don't post token updates more often than every 5s
+  private readonly POOL_UPDATE_THROTTLE  = 5000; // Don't post pool updates more often than every 5s
 
   // ----------------------------------------------------
   // 3) Track whether an update is already in progress
@@ -57,6 +57,7 @@ class StateWorkerImpl implements StateWorkerApi {
   // -------------------------------------------------------------------
   private scheduleTokenUpdates(): void {
     if (this.tokenInterval) {
+      console.log("Clearing existing token interval");
       clearInterval(this.tokenInterval);
     }
 
@@ -94,7 +95,7 @@ class StateWorkerImpl implements StateWorkerApi {
   // Throttled + “in-progress” check for token updates
   // -------------------------------------------------------------------
   private postTokenUpdate() {
-    console.log("postTokenUpdate");
+    console.log("postTokenUpdate called");
     // If we're already updating tokens, skip
     if (this.tokenUpdateInProgress) {
       console.warn("Skipping token update – already in progress.");
@@ -116,13 +117,13 @@ class StateWorkerImpl implements StateWorkerApi {
       
       // Post message to main thread to trigger balance updates
       self.postMessage({ type: 'token_update', timestamp: now });
-      console.log("Token update message posted");
     } catch (error) {
       console.error("Error in postTokenUpdate:", error);
     } finally {
       // Mark completion
       this.lastTokenUpdate = now;
       this.tokenUpdateInProgress = false;
+      console.log("Token update completed");
     }
   }
 
@@ -131,12 +132,10 @@ class StateWorkerImpl implements StateWorkerApi {
   // -------------------------------------------------------------------
   private postPoolUpdate() {
     if (this.poolUpdateInProgress) {
-      console.warn("Skipping pool update – already in progress.");
       return;
     }
     const now = Date.now();
     if (now - this.lastPoolUpdate < this.POOL_UPDATE_THROTTLE) {
-      console.warn("Skipping pool update – too soon since last update.");
       return;
     }
 
@@ -170,8 +169,10 @@ const workerInstance = new StateWorkerImpl();
 // Listen for pause/resume from the main thread
 self.addEventListener('message', (event) => {
   if (event.data.type === 'pause') {
+    console.log("Pausing worker");
     workerInstance.pause();
   } else if (event.data.type === 'resume') {
+    console.log("Resuming worker");
     workerInstance.resume();
   }
 });
