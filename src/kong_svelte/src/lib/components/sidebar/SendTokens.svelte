@@ -406,7 +406,7 @@
                   false
               );
               balances = {
-                  default: result
+                  default: typeof result === 'bigint' ? result : BigInt(0)
               };
           }
       } catch (error) {
@@ -439,7 +439,7 @@
                       title="Scan QR Code"
                   >
                       <Camera class="w-4 h-4" />
-                      <span class="button-text">Scan QR</span>
+                      <span class="button-text text-nowrap">Scan QR</span>
                   </button>
                   <button 
                       type="button"
