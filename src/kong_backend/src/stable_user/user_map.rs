@@ -7,7 +7,6 @@ use crate::ic::logging::error_log;
 use crate::ic::{get_time::get_time, management::get_pseudo_seed};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::USER_MAP;
-use crate::user::user_name::generate_user_name;
 
 /// return StableUser by user_id
 ///
@@ -76,10 +75,10 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
         // once a user is created, the referrer code cannot be updated
         Ok(Some(mut user)) => {
             // update last login timestamp to now
-            user.last_login_ts = get_time();
+            let now = get_time();
             // check if referred_by is expired
             if let Some(referred_by_expires_at) = user.referred_by_expires_at {
-                if user.last_login_ts > referred_by_expires_at {
+                if now > referred_by_expires_at {
                     user.referred_by = None;
                     user.referred_by_expires_at = None;
                     update = true;
@@ -87,7 +86,7 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
             }
             // check if fee_level is expired
             if let Some(fee_level_expires_at) = user.fee_level_expires_at {
-                if user.last_login_ts > fee_level_expires_at {
+                if now > fee_level_expires_at {
                     user.fee_level = 0;
                     user.fee_level_expires_at = None;
                     update = true;
@@ -108,7 +107,6 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
             };
             let user = StableUser {
                 user_id: kong_settings_map::inc_user_map_idx(),
-                user_name: generate_user_name(&mut rng),
                 my_referral_code: generate_referral_code(&mut rng),
                 referred_by,
                 referred_by_expires_at,

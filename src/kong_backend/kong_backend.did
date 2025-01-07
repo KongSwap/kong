@@ -170,13 +170,11 @@ type UserReply = record {
     user_id : nat32;
     principal_id : text;
     account_id : text;
-    user_name : text;
     my_referral_code : text;
     referred_by : opt text;
     referred_by_expires_at : opt nat64;
     fee_level : nat8;
     fee_level_expires_at : opt nat64;
-    campaign1_flags : vec bool;
 };
 type UserResult = variant { Ok : UserReply; Err : text };
 
