@@ -58,7 +58,7 @@
           return true;
         }
 
-        const match = searchToken(token, $search);
+        const match = searchToken(token, $search as string);
         if (match) {
           matches[token.canister_id] = match;
           return true;

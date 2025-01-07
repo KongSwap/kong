@@ -9,7 +9,6 @@
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { PoolService } from "$lib/services/pools";
   import { get } from "svelte/store";
-  import type { UserPoolBalance } from '$lib/services/pools/poolStore';
 
   // Add TypeScript interfaces
   interface Pool {
@@ -143,7 +142,7 @@
         .filter(poolBalance => Number(poolBalance.balance) > 0)
         .map(poolBalance => processPool(poolBalance));
       
-      processedPools = sortPools(processed);  // Apply initial sort
+      processedPools = sortPools(processed as Pool[]);  // Apply initial sort
 
       if (pool && !initialFilterApplied) {
         searchQuery = `${pool.symbol_0}/${pool.symbol_1}`;

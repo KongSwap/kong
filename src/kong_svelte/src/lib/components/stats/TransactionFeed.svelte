@@ -6,25 +6,13 @@
   import { fetchTransactions } from "$lib/services/transactions";
   import TransactionRow from "./TransactionRow.svelte";
 
-  // Function to generate a consistent color from a principal ID
-  function getPrincipalColor(principalId: string): string {
-    // Use a simple hash function to generate a number from the string
-    const hash = principalId.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
-    
-    // Generate HSL color with fixed saturation and lightness for readability
-    const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 70%, 65%)`;
-  }
-
   // Ensure formattedTokens is initialized
   if (!formattedTokens) {
     throw new Error("Stores are not initialized");
   }
 
   // Declare our state variables
-  let { token, className = '' } = $props<{ 
+  let { token, className = "" } = $props<{
     token: FE.Token;
     className?: string;
   }>();
@@ -109,17 +97,27 @@
         lastError = err;
         console.warn(`Attempt ${retryCount + 1} failed:`, err);
         retryCount++;
-        
+
         if (retryCount < maxRetries) {
           // Wait before retrying, with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, retryCount) * 1000),
+          );
         }
       }
     }
 
     if (retryCount === maxRetries) {
-      console.error("Failed to fetch transactions after", maxRetries, "attempts:", lastError);
-      error = lastError instanceof Error ? lastError.message : "Failed to load transactions";
+      console.error(
+        "Failed to fetch transactions after",
+        maxRetries,
+        "attempts:",
+        lastError,
+      );
+      error =
+        lastError instanceof Error
+          ? lastError.message
+          : "Failed to load transactions";
       hasMore = false;
     }
 
@@ -137,7 +135,7 @@
 
       // Set up new interval with error handling
       refreshInterval = setInterval(() => {
-        loadTransactionData(1, false, true).catch(err => {
+        loadTransactionData(1, false, true).catch((err) => {
           console.error("Error in refresh interval:", err);
           // Don't show error UI for background refresh failures
         });
@@ -231,7 +229,9 @@
 <Panel variant="transparent" type="main" {className}>
   <div class="flex flex-col max-h-[300px]">
     <div class="p-4 pb-0">
-      <h2 class="text-xl font-semibold text-kong-text-primary/80">Recent Transactions</h2>
+      <h2 class="text-xl font-semibold text-kong-text-primary/80">
+        Recent Transactions
+      </h2>
     </div>
     <div class="flex-1 overflow-y-auto p-4">
       {#if isLoadingTxns && transactions.length === 0}
@@ -241,7 +241,9 @@
       {:else if error}
         <div class="text-red-400 text-center py-4">{error}</div>
       {:else if transactions.length === 0}
-        <div class="text-kong-text-primary text-center py-4">No transactions found</div>
+        <div class="text-kong-text-primary text-center py-4">
+          No transactions found
+        </div>
       {:else}
         <div class="-mx-4">
           <table class="w-full text-left text-kong-text-primary/80">
