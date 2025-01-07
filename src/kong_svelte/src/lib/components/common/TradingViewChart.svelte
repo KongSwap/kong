@@ -106,7 +106,6 @@
           const height = chartWrapper?.clientHeight;
           
           if (width && height) {
-            console.log('Container dimensions found:', width, height);
             resolve({ width, height });
           } else {
             requestAnimationFrame(check);
@@ -121,8 +120,6 @@
       await loadTradingViewLibrary();
       const isMobile = window.innerWidth < 768;
       
-      console.log('Initializing chart with dimensions:', dimensions.width, dimensions.height);
-
       // Get current price from poolStore
       const currentPrice = $livePools.find(p => p.pool_id === selectedPoolId)?.price || 1000;
 

@@ -109,7 +109,7 @@
       chart = new Chart(canvas, {
         type: 'doughnut',
         data,
-        options: getChartOptions(isDark)
+        options: getChartOptions(isDark) as any
       });
     });
   }

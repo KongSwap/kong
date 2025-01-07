@@ -4,7 +4,6 @@ import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_back
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
 import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
 import { pnp } from "./pnp/PnpInitializer";
-import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
 import { loadBalances } from "./tokens";
@@ -129,37 +128,6 @@ function createAuthStore(pnp: PNP) {
         requiresSigning: options.requiresSigning,
       });
     },
-  };
-
-  // Define attemptAutoConnect after we have the store object with connect method
-  storeObj.attemptAutoConnect = async () => {
-    if (!browser) return;
-        
-    // Don't attempt if already connected
-    if (pnp.isWalletConnected()) {
-      return;
-    }
-    
-    // Clear the auto-connect flag since we're not connected
-    sessionStorage.removeItem(AUTO_CONNECT_ATTEMPTED_KEY);
-    
-    // Check if we've already attempted auto-connect this session
-    const attempted = sessionStorage.getItem(AUTO_CONNECT_ATTEMPTED_KEY);
-    if (attempted) {
-      return;
-    }
-
-    try {
-      const lastWallet = localStorage.getItem(LAST_WALLET_KEY);
-      
-      if (lastWallet) {
-        await storeObj.connect(lastWallet, true);
-      }
-    } catch (error) {
-      console.warn("Auto-connect failed with error:", error);
-    } finally {
-      sessionStorage.setItem(AUTO_CONNECT_ATTEMPTED_KEY, "true");
-    }
   };
 
   return storeObj;
