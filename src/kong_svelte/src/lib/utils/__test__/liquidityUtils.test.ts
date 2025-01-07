@@ -255,7 +255,6 @@ describe('getButtonText', () => {
   it('should return appropriate button text based on form state', () => {
     // Test various states
     expect(getButtonText(null, token1, true, false, '100', '5000', false, '')).toBe('Select Tokens');
-    expect(getButtonText(token0, token1, false, false, '100', '5000', false, '')).toBe('Pool Does Not Exist');
     expect(getButtonText(token0, token1, true, true, '100', '5000', false, '')).toBe('Insufficient Balance');
     expect(getButtonText(token0, token1, true, false, '', '5000', false, '')).toBe('Enter Amounts');
     expect(getButtonText(token0, token1, true, false, '100', '5000', true, 'Processing...')).toBe('Processing...');

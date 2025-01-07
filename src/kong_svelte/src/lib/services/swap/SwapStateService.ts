@@ -164,20 +164,7 @@ function createSwapStore(): SwapStore {
           (pool.symbol_0 === currentState.payToken?.symbol && pool.symbol_1 === currentState.receiveToken?.symbol) ||
           (pool.symbol_0 === currentState.receiveToken?.symbol && pool.symbol_1 === currentState.payToken?.symbol)
         );
-        if (!hasValidPool) {
-          update(state => ({
-            ...state,
-            error: "Pool does not exist",
-            isCalculating: false
-          }));
-          return;
-        } else {
-          update(state => ({
-            ...state,
-            error: null,
-            isCalculating: false
-          }));
-        }
+
         const quote = await SwapService.getSwapQuote(
           currentState.payToken,
           currentState.receiveToken,
