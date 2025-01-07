@@ -46,8 +46,6 @@
     baseToken = selectedPool?.address_0 === fromToken?.canister_id ? fromToken : toToken;
     quoteToken = selectedPool?.address_0 === toToken?.canister_id ? fromToken : toToken;
   }
-  // Create the symbol from the pool tokens
-  $: chartSymbol = baseToken && quoteToken ? `${quoteToken?.symbol}/${baseToken?.symbol}` : '';
 
   // Handle token selection changes
   function handleTokenChange(event: CustomEvent) {
@@ -276,18 +274,6 @@
       gap: 1rem;
     }
 
-    :global(.chart-area) {
-      height: 60vh !important;
-      min-height: 300px;
-      max-height: 450px;
-    }
-
-    :global(.transaction-feed) {
-      height: calc(40vh - 120px) !important;
-      min-height: 200px;
-      max-height: 300px;
-    }
-
     .right-section {
       width: 100%;
       min-width: 0;
@@ -299,19 +285,33 @@
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      height: calc(100vh - 120px);
+      height: auto;
+      padding: 0.5rem;
+      overflow: visible;
     }
 
     :global(.chart-area) {
-      flex: 1;
-      height: 60vh !important;
+      flex: none;
+      height: 400px !important;
       min-height: 300px;
-      max-height: 450px;
+      max-height: 400px;
+      margin-bottom: 1rem;
+    }
+
+    :global(.transaction-feed) {
+      flex: none;
+      height: 300px !important;
+      min-height: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+      border-top: 1px solid rgb(var(--border) / 0.8);
+      padding-top: 1rem;
     }
 
     .chart-wrapper {
       height: 100%;
       min-height: 300px;
+      margin-bottom: 0;
     }
   }
 
@@ -366,7 +366,7 @@
     display: flex;
     gap: 2px;
     background: rgb(var(--bg-light) / 0.5);
-    padding: 3px;
+    padding: 0x;
     border-radius: 12px;
     margin-bottom: 0.5rem;
     border: 1px solid rgb(var(--border) / 0.8);
@@ -374,7 +374,7 @@
 
   .tab-button {
     flex: 1;
-    padding: 0.625rem;
+    padding: 0.4rem;
     text-align: center;
     background: rgb(var(--bg-dark));
     color: rgb(var(--text-secondary));

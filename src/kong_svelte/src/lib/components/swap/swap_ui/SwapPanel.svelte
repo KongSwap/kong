@@ -414,7 +414,7 @@
 <Panel
   variant="transparent"
   width="auto"
-  className="token-panel w-full max-w-[690px] !rounded-xl !p-4"
+  className="max-w-xl !rounded-xl !p-4 !h-full"
 >
   <div
     class="flex flex-col min-h-[165px] max-h-[220px] box-border relative rounded-lg"
@@ -580,13 +580,13 @@
   }
 
   .token-selector-button {
-    min-width: 180px;
+    min-width: 100px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: background-color 150ms;
     gap: 0.75rem;
@@ -604,7 +604,7 @@
 
   .token-symbol {
     color: rgb(var(--text-primary));
-    @apply font-semibold text-xl;
+    @apply font-semibold text-lg;
   }
 
   @media (max-width: 420px) {

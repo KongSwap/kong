@@ -34,8 +34,8 @@
       comingSoon: false
     },
     { 
-      label: 'Price Heatmap',
-      description: 'Visualize token price changes across different timeframes',
+      label: 'Heatmap',
+      description: 'Visualize token price changes',
       path: '/stats/heatmap',
       icon: Flame,
       comingSoon: false
@@ -428,7 +428,7 @@
           class:light-logo={$themeStore === 'light'}
         />
         <button class="mobile-close-btn" on:click={() => (navOpen = false)}>
-          <X size={20} />
+          <X size={16} />
         </button>
       </div>
 
@@ -589,7 +589,6 @@
 {/if}
 
 <style scoped lang="postcss">
-
   .nav-link {
     @apply relative h-16 px-5 flex items-center text-sm font-semibold text-kong-text-secondary tracking-wider transition-all duration-200;
   }
@@ -603,8 +602,6 @@
     text-shadow: 0 0px 30px theme(colors.kong.primary);
   }
 
-
-
   /* Mobile Menu */
   .mobile-menu-content {
     @apply fixed top-0 left-0 h-full w-[85%] max-w-[320px] flex flex-col;
@@ -617,6 +614,7 @@
 
   .mobile-menu-header .logo-wide {
     filter: brightness(var(--logo-brightness, 1)) invert(var(--logo-invert, 0));
+    width: 180px;
   }
 
   .mobile-nav-btn {
@@ -659,7 +657,7 @@
   }
 
   .mobile-close-btn {
-    @apply w-8 h-8 flex items-center justify-center rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors duration-200;
+    @apply w-7 h-7 flex items-center justify-center rounded-lg text-kong-text-secondary hover:text-kong-text-primary bg-kong-text-primary/5 hover:bg-kong-text-primary/10 transition-colors duration-200;
   }
 
   .mobile-nav {
@@ -703,11 +701,11 @@
   }
 
   .mobile-menu-footer {
-    @apply p-4 border-t border-kong-border;
+    @apply p-0;
   }
 
   .mobile-wallet-btn {
-    @apply w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
+    @apply w-full flex items-center justify-center gap-2 px-4 py-1.5 bg-kong-primary/15 hover:bg-kong-primary/20 text-kong-text-primary font-semibold border border-kong-primary/30 hover:border-kong-primary/40 transition-all duration-200;
   }
 
   .coming-soon-badge {
