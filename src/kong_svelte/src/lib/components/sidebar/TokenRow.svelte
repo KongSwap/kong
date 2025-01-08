@@ -220,7 +220,7 @@
                   activeDropdownId.set(null);
                   sidebarStore.collapse();
                   goto(
-                    `/swap?token0=${token.canister_id}&token1=${CKUSDT_CANISTER_ID}`,
+                    `/swap?from=${token.canister_id}&to=${token.canister_id === CKUSDT_CANISTER_ID ? ICP_CANISTER_ID : CKUSDT_CANISTER_ID}`,
                   );
                 }}
               >
