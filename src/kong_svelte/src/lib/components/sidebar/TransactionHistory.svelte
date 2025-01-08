@@ -91,7 +91,7 @@
     }
 
     try {
-      const pageSize = 10; // Reduced page size for smoother loading
+      const pageSize = 25; // Reduced page size for smoother loading
       const response = await TokenService.fetchUserTransactions(
         $auth.account?.owner?.toString(),
         currentPage,
@@ -410,7 +410,7 @@
 
   <!-- Transaction List -->
   <div 
-    class="flex-1 overflow-y-auto px-2 pt-2 mb-4 scrollbar-custom bg-kong-bg-dark/50 rounded-b-lg"
+    class="flex-1 overflow-y-auto pt-2 mb-4 scrollbar-custom rounded-b-lg"
     bind:this={listContainer}
     on:scroll={handleScroll}
   >
@@ -431,7 +431,7 @@
         <div class="absolute w-full" style="transform: translateY({translateY}px)">
           {#each visibleTransactions as tx (tx.tx_id)}
             <div 
-              class="mb-2 px-2 sm:px-3 h-12 rounded-lg bg-kong-bg-light/50 hover:bg-kong-bg-dark/40 border border-kong-border hover:border-kong-primary/70 transition-all duration-100 flex items-center cursor-pointer"
+              class="mb-2 sm:px-3 h-12 rounded-lg hover:bg-kong-bg-dark/40 border border-kong-border-light hover:border-kong-primary/70 transition-all duration-100 flex items-center cursor-pointer"
               on:click={() => handleTransactionClick(tx)}
             >
               <div class="p-1.5 rounded-full bg-kong-bg-dark/50 mr-2 sm:mr-3 shrink-0">

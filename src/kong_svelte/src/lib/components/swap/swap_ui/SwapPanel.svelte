@@ -4,9 +4,8 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import { tokenStore, loadBalance, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
-  import { formatBalance, formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
-  import BigNumber from "bignumber.js";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
@@ -54,8 +53,6 @@
   let calculatedUsdValue = $state(0);
   let previousValue = $state("0");
   let isMobile = $state(false);
-  let formattedBalance = $state("0");
-  let displayBalance = $state("0");
   let lastBalanceCheck = $state<Record<string, number>>({});
   const DEBOUNCE_DELAY = 1000; // 1 second between balance checks
 
@@ -148,21 +145,11 @@
     if (!tokenInfo || panelType !== "pay") return;
 
     const canisterId = tokenInfo.canister_id;
-    const balance = $storedBalancesStore[canisterId]?.in_tokens;
     const isPending = $tokenStore.pendingBalanceRequests.has(canisterId);
     const now = Date.now();
     const lastCheck = lastBalanceCheck[canisterId] || 0;
     
-    if (balance !== undefined) {
-      // Update display values without triggering another effect
-      queueMicrotask(() => {
-        displayBalance = formatTokenBalance(
-          balance.toString(),
-          tokenInfo.decimals
-        );
-        formattedBalance = calculateAvailableBalance(balance);
-      });
-    } else if (!isPending && 
+    if (!isPending && 
                (now - lastCheck) > DEBOUNCE_DELAY) {
       
       // Update last check time
@@ -176,36 +163,6 @@
       });
     }
   });
-
-  function calculateAvailableBalance(balance: bigint): string {
-    if (!balance || !tokenInfo) return "0";
-
-    try {
-      // Get the fee amount
-      const feesInTokens = tokenInfo.fee_fixed
-        ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
-        : 0n;
-
-      // Convert to BigNumber for safer math
-      const balanceBN = new BigNumber(balance.toString());
-      const amountBN = new BigNumber(amount || "0");
-      const feesBN = new BigNumber(feesInTokens.toString());
-
-      // Calculate available balance
-      const availableBalance = balanceBN
-        .minus(amountBN)
-        .minus(feesBN);
-
-      // Format with proper decimals
-      return formatBalance(
-        availableBalance.toString(),
-        tokenInfo.decimals
-      );
-    } catch (error) {
-      console.error("Error calculating available balance:", error);
-      return "0";
-    }
-  }
 
   // Animation and value updates using $effect
   $effect(() => {
@@ -400,15 +357,6 @@
         : 'down';
     }
   });
-
-  // Helper function to update display values
-  function updateDisplayValues(balance: bigint) {
-    displayBalance = formatTokenBalance(
-      balance.toString(),
-      tokenInfo?.decimals || DEFAULT_DECIMALS
-    );
-    formattedBalance = calculateAvailableBalance(balance);
-  }
 </script>
 
 <Panel

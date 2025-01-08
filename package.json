@@ -13,16 +13,6 @@
     "start": "npm --workspace=src/kong_svelte start",
     "test": "npm run test --workspaces"
   },
-  "dependencies": {
-    "@dfinity/agent": "2.2.0",
-    "@dfinity/auth-client": "2.2.0",
-    "@dfinity/candid": "2.2.0",
-    "@dfinity/identity": "2.2.0",
-    "@dfinity/ledger-icp": "2.6.5",
-    "@dfinity/nns": "8.1.0",
-    "@dfinity/principal": "2.2.0",
-    "@dfinity/utils": "2.8.0"
-  },
   "workspaces": [
     "src/kong_svelte"
   ],
