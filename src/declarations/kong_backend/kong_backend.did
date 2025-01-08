@@ -170,13 +170,11 @@ type UserReply = record {
     user_id : nat32;
     principal_id : text;
     account_id : text;
-    user_name : text;
     my_referral_code : text;
     referred_by : opt text;
     referred_by_expires_at : opt nat64;
     fee_level : nat8;
     fee_level_expires_at : opt nat64;
-    campaign1_flags : vec bool;
 };
 type UserResult = variant { Ok : UserReply; Err : text };
 
@@ -326,14 +324,6 @@ type RequestsReply = record {
 type RequestsResult = variant { Ok : vec RequestsReply; Err : text };
 
 type TransfersResult = variant { Ok : vec TransferIdReply; Err : text };
-
-type AddTokenArgs = record {
-    token : text;
-};
-type AddTokenReply = variant {
-    IC : ICTokenReply;
-};
-type AddTokenResult = variant { Ok : AddTokenReply; Err : text };
 
 type AddPoolArgs = record {
     token_0 : text;
@@ -569,8 +559,8 @@ service : {
 
     // user() - returns user information
     get_user : () -> (UserResult) query;
-    // user_balances(principal_id, opt lp_token_wildcard) - returns all user balances or specific LP token balances (current only supports balance of LP tokens)
-    user_balances : (text, opt text) -> (UserBalancesResult) query;
+    // user_balances(principal_id) - return user's LP balances
+    user_balances : (text) -> (UserBalancesResult) query;
     // messages(opt message_id) - returns specific message or all messages of the user
     messages : (opt nat64) -> (MessagesResult) query;
     // requests(opt request_id) - return specific request or most recent requests
@@ -632,6 +622,5 @@ service : {
     send : (SendArgs) -> (SendResult);
 
     // admin functions
-    add_token : (AddTokenArgs) -> (AddTokenResult);
     check_pools : () -> (CheckPoolsResult);
 }

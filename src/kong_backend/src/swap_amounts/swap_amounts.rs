@@ -24,12 +24,7 @@ pub fn swap_amounts(pay_token: String, pay_amount: Nat, receive_token: String) -
 
     let (receive_amount, price, mid_price, slippage, txs) =
         swap::swap_amounts::swap_amounts(&pay_token, Some(&pay_amount), &receive_token)?;
-    let mut swap_amounts_tx_reply = Vec::new();
-    txs.iter().for_each(|tx| {
-        if let Some(tx_reply) = to_swap_amounts_tx_reply(tx) {
-            swap_amounts_tx_reply.push(tx_reply);
-        }
-    });
+    let swap_amounts_tx_reply: Vec<_> = txs.iter().filter_map(to_swap_amounts_tx_reply).collect();
 
     Ok(SwapAmountsReply {
         pay_chain,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
+  import { formattedTokens, storedBalancesStore, tokenStore } from "$lib/services/tokens/tokenStore";
   import { scale, fade } from "svelte/transition";
   import { flip } from "svelte/animate";
   import { cubicOut } from "svelte/easing";
@@ -8,8 +8,9 @@
   import Portal from "svelte-portal";
   import { Star } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
-  import { formatBalance, formatUsdValue } from "$lib/utils/tokenFormatters";
+  import { formatUsdValue, formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
+    import { FavoriteService } from "$lib/services/tokens/favoriteService";
 
   const props = $props();
   const {
@@ -33,6 +34,28 @@
   let sortColumn = $state("value");
   let standardFilter = $state("all");
 
+  // First, create a reactive store for favorites
+  let favoriteTokens = $state(new Map<string, boolean>());
+
+  // Update favorites when baseFilteredTokens changes
+  $effect(() => {
+    void updateFavorites();
+  });
+
+  function toggleSort() {
+    sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+  }
+
+  async function updateFavorites() {
+    const newFavorites = new Map<string, boolean>();
+    await Promise.all(
+      baseFilteredTokens.map(async (token) => {
+        newFavorites.set(token.canister_id, await FavoriteService.isFavorite(token.canister_id));
+      })
+    );
+    favoriteTokens = newFavorites;
+  }
+
   // Get filtered tokens before any UI filters (search, favorites, etc)
   let baseFilteredTokens = $derived(
     tokens.filter((token) => {
@@ -51,26 +74,30 @@
       if (allowedCanisterIds.length > 0) {
         return allowedCanisterIds.includes(token.canister_id);
       }
+
+      // Apply hide zero balances filter
+      if (hideZeroBalances) {
+        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        if (balance <= 0n) {
+          return false;
+        }
+      }
+
       return true;
-    }),
+    })
   );
 
   // Get counts based on the base filtered tokens
   let allTokensCount = $derived(baseFilteredTokens.length);
   let ckTokensCount = $derived(
     baseFilteredTokens.filter((t) => t.symbol.toLowerCase().startsWith("ck"))
-      .length,
-  );
-  let favoritesCount = $derived(
-    baseFilteredTokens.filter((t) => tokenStore.isFavorite(t.canister_id))
-      .length,
+      .length
   );
 
   // Then apply UI filters for display
   let filteredTokens = $derived(
     baseFilteredTokens
       .map((token): TokenMatch | null => {
-        // Validate token before processing
         if (!token?.canister_id || !token?.symbol || !token?.name) {
           console.warn("Incomplete token data:", token);
           return null;
@@ -89,52 +116,50 @@
           case "ck":
             return match.token.symbol.toLowerCase().startsWith("ck");
           case "favorites":
-            return tokenStore.isFavorite(match.token.canister_id);
+            return favoriteTokens.get(match.token.canister_id) || false;
           case "all":
           default:
-            // Apply balance filter if enabled
             if (hideZeroBalances) {
-              const balance =
-                $tokenStore.balances[match.token.canister_id]?.in_tokens ||
-                BigInt(0);
-              return balance > 0;
+              const balance = getTokenBalance(match.token);
+              return balance > BigInt(0);
             }
             return true;
         }
       })
       .sort((a, b) => {
-        // Then sort by favorites
-        const aFavorite = tokenStore.isFavorite(a.token.canister_id);
-        const bFavorite = tokenStore.isFavorite(b.token.canister_id);
+        // Sort by favorites
+        const aFavorite = favoriteTokens.get(a.token.canister_id) || false;
+        const bFavorite = favoriteTokens.get(b.token.canister_id) || false;
         if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
 
-        // Sort by sortColumn first
-        const aValue = Number(
-          parseFloat(a.token.formattedUsdValue.replaceAll(',', '')) || 0,
-        );
-        const bValue = Number(
-          parseFloat(b.token.formattedUsdValue.replaceAll(',', '')) || 0,
-        );
-        if (aValue !== bValue)
-          return sortDirection === "desc" ? bValue - aValue : aValue - bValue;
-
-        // Sort by volume last
-        const volumeA = Number(a.token.volume || 0);
-        const volumeB = Number(b.token.volume || 0);
-        if (volumeA !== volumeB)
-          return sortDirection === "desc"
-            ? volumeB - volumeA
-            : volumeA - volumeB;
-
-        // Then sort by best match if searching
-        if (searchQuery) {
-          const aMinIndex = Math.min(...a.matches.map((m) => m.index));
-          const bMinIndex = Math.min(...b.matches.map((m) => m.index));
-          if (aMinIndex !== bMinIndex) return aMinIndex - bMinIndex;
+                // Secondary token sorting
+                const isASecondary = SECONDARY_TOKEN_IDS.includes(a.token.canister_id);
+        const isBSecondary = SECONDARY_TOKEN_IDS.includes(b.token.canister_id);
+        
+        if (isASecondary || isBSecondary) {
+          if (isASecondary && !isBSecondary) return -1;
+          if (!isASecondary && isBSecondary) return 1;
+          return SECONDARY_TOKEN_IDS.indexOf(a.token.canister_id) - SECONDARY_TOKEN_IDS.indexOf(b.token.canister_id);
         }
 
-        return 0;
-      }),
+        // Get USD values from tokenStore balances
+        const aBalance = $storedBalancesStore[a.token.canister_id]?.in_usd || 0n;
+        const bBalance = $storedBalancesStore[b.token.canister_id]?.in_usd || 0n;
+        
+        // Convert BigInts to numbers for comparison
+        const aValue = Number(aBalance);
+        const bValue = Number(bBalance);
+
+        // Sort based on direction
+        if (sortColumn === 'value') {
+          return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+        }
+
+        // Sort by volume if that's selected
+        const volumeA = Number(a.token.metrics?.volume_24h || 0);
+        const volumeB = Number(b.token.metrics?.volume_24h || 0);
+        return sortDirection === 'desc' ? volumeB - volumeA : volumeA - volumeB;
+      })
   );
 
   const SECONDARY_TOKEN_IDS = [
@@ -154,10 +179,23 @@
     }
   });
 
-  function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
+  async function handleFavoriteClick(e: MouseEvent, token: FE.Token) {
     e.preventDefault();
     e.stopPropagation();
-    tokenStore.toggleFavorite(token.canister_id);
+    const isFavorite = favoriteTokens.get(token.canister_id) || false;
+    
+    if (isFavorite) {
+      await FavoriteService.removeFavorite(token.canister_id);
+    } else {
+      await FavoriteService.addFavorite(token.canister_id);
+    }
+    
+    // Update the local state immediately
+    favoriteTokens.set(token.canister_id, !isFavorite);
+    favoriteTokens = new Map(favoriteTokens); // Trigger reactivity
+    
+    // Then refresh all favorites to ensure sync
+    void updateFavorites();
   }
 
   type TokenMatch = {
@@ -207,15 +245,10 @@
   }
 
   function handleSelect(token: FE.Token) {
-    // Get the current balance from the store before updating
-    const existingBalance = $tokenStore.balances[token.canister_id]?.in_tokens;
-    
-    // Only update if we have a valid balance
-    const balance = existingBalance || token.balance || BigInt(0);
-    
+    const balance = getTokenBalance(token);
     onSelect({
-        ...token,
-        balance: balance,
+      ...token,
+      balance
     });
     searchQuery = "";
   }
@@ -264,8 +297,15 @@
   onDestroy(cleanup);
 
   onMount(async () => {
-    await tokenStore.loadFavorites();
+    await FavoriteService.loadFavorites();
   });
+
+  function getTokenBalance(token: FE.Token): bigint {
+    const balance = $storedBalancesStore[token.canister_id];
+    return balance?.in_tokens || BigInt(0);
+  }
+
+  let favoritesCount = $derived(Array.from(favoriteTokens.values()).filter(Boolean).length);
 </script>
 
 {#if show}
@@ -285,7 +325,7 @@
       <div
         class="dropdown-container {expandDirection} {isMobile ? 'mobile' : ''}"
         bind:this={dropdownElement}
-        on:click|preventDefault
+        on:click|stopPropagation
         transition:scale={{
           duration: 200,
           start: 0.95,
@@ -299,7 +339,8 @@
             <!-- svelte-ignore a11y-click-events-have-key-events -->
             <button
               class="close-button"
-              on:click|self={() => {
+              on:click={(e) => {
+                e.stopPropagation();
                 swapState.closeTokenSelector();
                 onClose();
               }}
@@ -341,7 +382,7 @@
                   {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <button
-                      on:click={() => (standardFilter = tab.id)}
+                      on:click={() => setStandardFilter(tab.id)}
                       class="filter-btn"
                       class:active={standardFilter === tab.id}
                       aria-label="Show {tab.label.toLowerCase()} tokens"
@@ -356,16 +397,16 @@
 
                 <div class="filter-options">
                   <label class="filter-toggle">
-                    <input type="checkbox" bind:checked={hideZeroBalances} />
+                    <input
+                      type="checkbox"
+                      bind:checked={hideZeroBalances}
+                    />
                     <span class="toggle-label">Hide zero balances</span>
                   </label>
 
                   <div
                     class="sort-toggle"
-                    on:click={() => {
-                      sortDirection = sortDirection === "desc" ? "asc" : "desc";
-                      sortColumn = sortColumn === "value" ? "volume" : "value";
-                    }}
+                    on:click={toggleSort}
                   >
                     <span class="toggle-label">Sort by value</span>
                     <svg
@@ -389,7 +430,7 @@
             <div class="scrollable-section">
               <div class="tokens-container">
                 {#each filteredTokens as { token, matches }, i (token.canister_id)}
-                  {@const balance = $tokenStore.balances[token?.canister_id]}
+                  {@const balance = $storedBalancesStore[token?.canister_id]}
 
                   <!-- svelte-ignore a11y-click-events-have-key-events -->
                   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -419,17 +460,15 @@
                           <!-- svelte-ignore a11y-no-static-element-interactions -->
                           <button
                             class="favorite-button"
-                            class:active={tokenStore.isFavorite(
-                              token.canister_id,
-                            )}
+                            class:active={favoriteTokens.get(token.canister_id)}
                             on:click={(e) => handleFavoriteClick(e, token)}
-                            title={tokenStore.isFavorite(token.canister_id)
+                            title={favoriteTokens.get(token.canister_id)
                               ? "Remove from favorites"
                               : "Add to favorites"}
                           >
                             <Star
                               size={14}
-                              fill={tokenStore.isFavorite(token.canister_id)
+                              fill={favoriteTokens.get(token.canister_id)
                                 ? "#ffd700"
                                 : "none"}
                             />
@@ -448,11 +487,11 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right text-kong-text-primary text-sm">
+                    <div class="token-right text-white text-sm">
                       <span class="token-balance flex flex-col text-right">
-                        {token.formattedBalance || "0"}
+                        {formatTokenBalance(balance?.in_tokens?.toString() || "0", token.decimals)}
                         <span class="token-balance-label text-xs">
-                          {formatUsdValue(token.formattedUsdValue || "0")}
+                          {formatUsdValue(balance?.in_usd || "0")}
                         </span>
                       </span>
                       {#if currentToken?.canister_id === token.canister_id}
@@ -484,7 +523,7 @@
   </Portal>
 {/if}
 
-<style>
+<style scoped lang="postcss">
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -498,15 +537,15 @@
 
   .dropdown-container {
     position: relative;
-    background-color: #1a1b23;
-    border: 1px solid #2a2d3d;
-    border-radius: 0.75rem;
-    box-shadow:
-      0 20px 25px -5px rgb(0 0 0 / 0.1),
-      0 8px 10px -6px rgb(0 0 0 / 0.1);
+    background: rgba(26, 29, 46, 0.4);
+    backdrop-filter: blur(11px);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    width: 400px;
+    width: 480px;
     height: min(600px, 85vh);
+    border-radius: 16px;
   }
 
   .dropdown-container.mobile {
@@ -526,36 +565,29 @@
   }
 
   .modal-header {
+    @apply p-4 border-b border-white/10;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem;
-    border-bottom: 1px solid #2a2d3d;
-    background-color: #15161c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .modal-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: white;
-    margin: 0;
-    line-height: 1.25;
+    @apply text-lg font-semibold text-white;
   }
 
   .close-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
+    width: 2.0rem;
+    height: 2.0rem;
     border-radius: 0.5rem;
     color: white;
     transition: all 0.2s;
   }
 
   .close-button:hover {
-    background-color: rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);
   }
 
@@ -583,19 +615,18 @@
   }
 
   .scrollable-section::-webkit-scrollbar-track {
-    background: #15161c;
+    background: rgba(26, 29, 46, 0.4);
     border-radius: 0.25rem;
   }
 
   .scrollable-section::-webkit-scrollbar-thumb {
-    background: #2a2d3d;
+    background: rgba(255, 255, 255, 0.06);
     border-radius: 0.25rem;
   }
 
   .search-section {
     z-index: 10;
-    border-bottom: 1px solid #2a2d3d;
-    background-color: #15161c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .search-input-wrapper {
@@ -622,15 +653,14 @@
   }
 
   .filter-bar {
-    border-bottom: 1px solid #2a2d3d;
-    background-color: #15161c;
+    @apply pb-1 border-b border-white/10;
   }
 
   .filter-buttons {
     display: flex;
     width: 100%;
     margin-bottom: 0.5rem;
-    border-bottom: 1px solid #2a2d3d;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .filter-btn {
@@ -673,19 +703,15 @@
   }
 
   .filter-btn.active {
-    color: #eab308;
-    background-color: rgba(234, 179, 8, 0.05);
+    @apply text-kong-primary bg-kong-primary/10;
   }
 
   .filter-btn::after {
+    @apply absolute bottom-0 left-0 w-full h-px;
+    @apply bg-kong-primary;
     content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
     width: 100%;
-    height: 2px;
     transform: scaleX(0);
-    background-color: #eab308;
     transition: transform 0.2s;
     transform-origin: center;
   }
@@ -741,15 +767,33 @@
     height: 1rem;
     border-radius: 0.25rem;
     border: 1px solid #2a2d3d;
-    background-color: #2a2d3d;
-    transition: background-color 0.2s;
+    background-color: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    position: relative;
+    margin: 0;
   }
 
   .filter-toggle input[type="checkbox"]:checked {
     background-color: #3b82f6;
+    border-color: #3b82f6;
+  }
+
+  .filter-toggle input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
 
   .filter-toggle input[type="checkbox"]:focus {
+    outline: none;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
   }
 
@@ -792,16 +836,26 @@
     position: relative;
   }
 
-  .token-item.disabled:hover {
-    background-color: transparent;
+  .token-item.disabled .token-right {
+    /* Hide the balance info when disabled */
+    visibility: hidden;
   }
 
   .token-item.disabled::after {
     content: "Selected in other panel";
     position: absolute;
     right: 1rem;
-    font-size: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.5);
+    background-color: rgb(37, 41, 62); /* Match dropdown background */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+  }
+
+  .token-item.disabled:hover {
+    background-color: transparent;
   }
 
   .token-info {

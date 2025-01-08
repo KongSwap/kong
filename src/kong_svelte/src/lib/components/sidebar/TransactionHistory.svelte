@@ -1,402 +1,335 @@
 <script lang="ts">
-    import { auth } from '$lib/services/auth';
-    import { fly, fade } from 'svelte/transition';
-    import { cubicOut } from 'svelte/easing';
-    import LoadingIndicator from '$lib/components/stats/LoadingIndicator.svelte';
-    import { formatTokenAmount } from '$lib/utils/numberFormatUtils';
-    import { TokenService, tokenStore } from '$lib/services/tokens';
-    import { onMount } from 'svelte';
-    import { formatToNonZeroDecimal } from '$lib/utils/numberFormatUtils';
+  import { auth } from "$lib/services/auth";
+  import { fade } from "svelte/transition";
+  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
+  import { formatBalance } from "$lib/utils/numberFormatUtils";
+  import { TokenService } from "$lib/services/tokens";
+  import { kongDB } from "$lib/services/db";
+  import { liveQuery } from "dexie";
 
-    // Accept transactions prop for live data
-    export let transactions: any[] = [];
+  let isLoading = false;
+  let error: string | null = null;
+  let processedTransactions: any[] = [];
+  let pollInterval: NodeJS.Timer;
 
-    interface TransactionData {
-        ts: bigint;
-        txs: Array<any>;
-        request_id: bigint;
-        status: string;
-        tx_id: bigint;
-        pay_symbol?: string;
-        pay_chain?: string;
-        receive_symbol?: string;
-        receive_chain?: string;
-        pay_amount?: string;
-        receive_amount?: string;
+  // Add filter state
+  let selectedFilter: string = "all";
+  const filterOptions = [
+    { id: "all", label: "All" },
+    { id: "swap", label: "Swap" },
+    { id: "pool", label: "Pool" },
+  ];
+
+  function processTransaction(tx: any) {
+    // First check if we have a valid transaction object
+    if (!tx) return null;
+
+    // Helper function to format timestamp
+    const formatTimestamp = (ts: bigint | number | string) => {
+      // Convert to number and ensure it's in milliseconds
+      const timestamp = typeof ts === "bigint" ? Number(ts) : Number(ts);
+      // If timestamp is in nanoseconds or microseconds, convert to milliseconds
+      const msTimestamp = timestamp > 1e12 ? timestamp / 1e6 : timestamp;
+      return new Date(msTimestamp).toLocaleString();
+    };
+
+    if ("AddLiquidity" in tx) {
+      const data = tx.AddLiquidity;
+      return {
+        type: "Add Liquidity",
+        status: data.status,
+        formattedDate: formatTimestamp(data.ts),
+        symbol_0: data.symbol_0,
+        symbol_1: data.symbol_1,
+        amount_0: formatBalance(data.amount_0.toString(), 8),
+        amount_1: formatBalance(data.amount_1.toString(), 8),
+        lp_amount: formatBalance(data.add_lp_token_amount.toString(), 8),
+      };
+    } else if ("Swap" in tx) {
+      const data = tx.Swap;
+      return {
+        type: "Swap",
+        status: data.status,
+        formattedDate: formatTimestamp(data.ts),
+        pay_symbol: data.pay_symbol,
+        receive_symbol: data.receive_symbol,
+        pay_amount: formatBalance(data.pay_amount.toString(), 8),
+        receive_amount: formatBalance(data.receive_amount.toString(), 8),
+        price: data.price,
+        slippage: data.slippage,
+      };
+    } else if ("RemoveLiquidity" in tx) {
+      const data = tx.RemoveLiquidity;
+      return {
+        type: "Remove Liquidity",
+        status: data.status,
+        formattedDate: formatTimestamp(data.ts),
+        symbol_0: data.symbol_0,
+        symbol_1: data.symbol_1,
+        amount_0: formatBalance(data.amount_0.toString(), 8),
+        amount_1: formatBalance(data.amount_1.toString(), 8),
+        lp_amount: formatBalance(data.remove_lp_token_amount.toString(), 8),
+      };
     }
+    console.log("Unhandled transaction type:", tx);
+    return null;
+  }
 
-    let isLoading = false;
-    let error: string | null = null;
-    let processedTransactions: any[] = [];
-    let pollInterval: NodeJS.Timer;
+  async function loadTransactions() {
+    isLoading = true;
+    error = null;
 
-    // Add filter state
-    let selectedFilter: string = 'all';
-    const filterOptions = [
-        { id: 'all', label: 'All' },
-        { id: 'swap', label: 'Swaps' },
-        { id: 'pool', label: 'Pool' },
-        { id: 'send', label: 'Send' }
-    ];
+    try {
+      if (!$auth.isConnected) {
+        processedTransactions = [];
+        return;
+      }
 
-    function processTransaction(tx: any) {
-        // First check if we have a valid transaction object
-        if (!tx) return null;
-
-        // Helper function to format timestamp
-        const formatTimestamp = (ts: bigint | number | string) => {
-            // Convert to number and ensure it's in milliseconds
-            const timestamp = typeof ts === 'bigint' ? Number(ts) : Number(ts);
-            // If timestamp is in nanoseconds or microseconds, convert to milliseconds
-            const msTimestamp = timestamp > 1e12 ? timestamp / 1e6 : timestamp;
-            return new Date(msTimestamp).toLocaleString();
-        };
-
-        if ('AddLiquidity' in tx) {
-            const data = tx.AddLiquidity;
-            return {
-                type: 'Add Liquidity',
-                status: data.status,
-                formattedDate: formatTimestamp(data.ts),
-                symbol_0: data.symbol_0,
-                symbol_1: data.symbol_1,
-                amount_0: formatTokenAmount(data.amount_0.toString(), 8),
-                amount_1: formatTokenAmount(data.amount_1.toString(), 8),
-                lp_amount: formatTokenAmount(data.add_lp_token_amount.toString(), 8)
-            };
-        } else if ('Swap' in tx) {
-            const data = tx.Swap;
-            return {
-                type: 'Swap',
-                status: data.status,
-                formattedDate: formatTimestamp(data.ts),
-                pay_symbol: data.pay_symbol,
-                receive_symbol: data.receive_symbol,
-                pay_amount: formatTokenAmount(data.pay_amount.toString(), 8),
-                receive_amount: formatTokenAmount(data.receive_amount.toString(), 8),
-                price: data.price,
-                slippage: data.slippage
-            };
-        } else if ('RemoveLiquidity' in tx) {
-            const data = tx.RemoveLiquidity;
-            return {
-                type: 'Remove Liquidity',
-                status: data.status,
-                formattedDate: formatTimestamp(data.ts),
-                symbol_0: data.symbol_0,
-                symbol_1: data.symbol_1,
-                amount_0: formatTokenAmount(data.amount_0.toString(), 8),
-                amount_1: formatTokenAmount(data.amount_1.toString(), 8),
-                lp_amount: formatTokenAmount(data.remove_lp_token_amount.toString(), 8)
-            };
-        }
-        console.log('Unhandled transaction type:', tx);
-        return null;
+      const response = await TokenService.fetchUserTransactions();
+      if (response.Ok) {
+        processedTransactions = response.Ok.map(processTransaction).filter(
+          (tx) => tx !== null,
+        );
+        console.log("Processed transactions:", processedTransactions);
+      } else if (response.Err) {
+        error =
+          typeof response.Err === "string"
+            ? response.Err
+            : "Failed to load transactions";
+      }
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      error = err.message || "Failed to load transactions";
+    } finally {
+      isLoading = false;
     }
+  }
 
-    async function loadTransactions() {
-        isLoading = true;
-        error = null;
-        
-        try {
-            if (!$auth.isConnected) {
-                processedTransactions = [];
-                return;
-            }
-
-            const response = await TokenService.fetchUserTransactions();
-            if (response.Ok) {
-                processedTransactions = response.Ok
-                    .map(processTransaction)
-                    .filter(tx => tx !== null);
-                console.log("Processed transactions:", processedTransactions);
-            } else if (response.Err) {
-                error = typeof response.Err === 'string' ? response.Err : 'Failed to load transactions';
-            }
-        } catch (err) {
-            console.error("Error fetching transactions:", err);
-            error = err.message || "Failed to load transactions";
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    // Watch auth store changes
-    $: if ($auth.isConnected) {
-        loadTransactions();
-    }
-
-    onMount(() => {
-        // Poll every 30 seconds if connected
-        pollInterval = setInterval(() => {
-            if ($auth.isConnected) {
-                loadTransactions();
-            }
-        }, 30000);
-
-        return () => {
-            if (pollInterval) clearInterval(pollInterval);
-        };
-    });
+  // Watch auth store changes
+  $: if ($auth.isConnected) {
+    loadTransactions();
+  }
 </script>
 
 <div class="transaction-history-wrapper">
-    <div class="notice-banner">
-        {#if selectedFilter === 'send'}
-            Note: Send transaction tracking will be available soon!
-        {:else}
-            Showing your 20 most recent actions. More insights coming soon! 🌎
-        {/if}
-    </div>
-
-    <!-- Add filter buttons at the top -->
-    <div class="filter-buttons">
-        {#each filterOptions as option}
-            <button 
-                class="filter-btn {selectedFilter === option.id ? 'active' : ''}"
-                on:click={() => selectedFilter = option.id}
-            >
-                {option.label}
-            </button>
-        {/each}
-    </div>
-    
-    <div class="transaction-history-content">
-        <div class="transaction-history">
-            {#if isLoading}
-                <div class="loading-state" in:fade>
-                    <LoadingIndicator />
-                    <p>Loading your transaction history...</p>
-                </div>
-            {:else if error}
-                <div class="error-state" in:fade>
-                    <p>{error}</p>
-                </div>
-            {:else if selectedFilter === 'send'}
-                <div class="empty-state" in:fade>
-                    <p>Send transaction tracking is coming soon!</p>
-                </div>
-            {:else if processedTransactions.length === 0}
-                <div class="empty-state" in:fade>
-                    <p>No actions found</p>
-                </div>
-            {:else}
-                {#each processedTransactions.filter(tx => {
-                    if (selectedFilter === 'all') return true;
-                    if (selectedFilter === 'swap') return tx.type === 'Swap';
-                    if (selectedFilter === 'pool') return tx.type === 'Add Liquidity' || tx.type === 'Remove Liquidity';
-                    if (selectedFilter === 'send') return tx.type === 'Send';
-                    return true;
-                }) as tx}
-                    <div class="transaction-item" in:fade>
-                        <div class="transaction-header">
-                            <span class="timestamp">{tx.formattedDate}</span>
-                            <span class="status {tx.status ? tx.status.toLowerCase().replace('_', '-') : 'pending'}">{tx.status ? tx.status.replace('_', ' ') : 'Pending'}</span>
-                        </div>
-                        <div class="transaction-details">
-                            <div class="transaction-type">{tx.type}</div>
-                            {#if tx.type === 'Add Liquidity'}
-                                <div class="amount-row">
-                                    <span>Added:</span>
-                                    <span>
-                                        {tx.amount_0} {tx.symbol_0} + 
-                                        {tx.amount_1} {tx.symbol_1}
-                                    </span>
-                                </div>
-                                <div class="amount-row">
-                                    <span>Received:</span>
-                                    <span>{tx.lp_amount} LP</span>
-                                </div>
-                            {:else if tx.type === 'Swap'}
-                                <div class="amount-row">
-                                    <span>Paid:</span>
-                                    <span>{tx.pay_amount} {tx.pay_symbol}</span>
-                                </div>
-                                <div class="amount-row">
-                                    <span>Received:</span>
-                                    <span>{tx.receive_amount} {tx.receive_symbol}</span>
-                                </div>
-                                <div class="amount-row">
-                                    <span>Slippage:</span>
-                                    <span>{tx.slippage}%</span>
-                                </div>
-                            {:else if tx.type === 'Remove Liquidity'}
-                                <div class="amount-row">
-                                    <span>Removed:</span>
-                                    <span>
-                                        {tx.amount_0} {tx.symbol_0} + 
-                                        {tx.amount_1} {tx.symbol_1}
-                                    </span>
-                                </div>
-                                <div class="amount-row">
-                                    <span>Received:</span>
-                                    <span>{tx.lp_amount} LP</span>
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-                {/each}
-            {/if}
+  <nav class="flex rounded-lg bg-kong-bg-light/50 border border-kong-border mx-2 mt-2">
+    {#each filterOptions as option}
+      <button
+        class="tab-button flex-1 relative"
+        class:active={selectedFilter === option.id}
+        on:click={() => (selectedFilter = option.id)}
+        role="tab"
+        aria-selected={selectedFilter === option.id}
+        aria-controls={`${option.id}-panel`}
+      >
+        <div class="flex items-center justify-center gap-1.5 py-2">
+          {#if selectedFilter === option.id}
+            <div class="absolute inset-0 bg-kong-accent-blue/5" />
+            <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-kong-accent-blue" />
+          {/if}
+          <span class="relative z-10 text-xs font-medium">
+            {option.label}
+          </span>
         </div>
-    </div>
+      </button>
+    {/each}
+  </nav>
+
+  <div class="transaction-history-content">
+    {#if isLoading}
+      <div class="state-message" in:fade>
+        <LoadingIndicator />
+        <p>Loading your transaction history...</p>
+      </div>
+    {:else if error}
+      <div class="state-message error" in:fade>
+        <p>{error}</p>
+      </div>
+    {:else if selectedFilter === "send"}
+      <div class="state-message" in:fade>
+        <p>Send transaction tracking is coming soon!</p>
+      </div>
+    {:else if processedTransactions.length === 0}
+      <div class="state-message" in:fade>
+        <p>No actions found</p>
+      </div>
+    {:else}
+      <div class="transaction-list">
+        {#each processedTransactions.filter((tx) => {
+          if (selectedFilter === "all") return true;
+          if (selectedFilter === "swap") return tx.type === "Swap";
+          if (selectedFilter === "pool") return tx.type === "Add Liquidity" || tx.type === "Remove Liquidity";
+          if (selectedFilter === "send") return tx.type === "Send";
+          return true;
+        }) as tx}
+          <div class="transaction-item" in:fade>
+            <div class="transaction-header">
+              <div class="flex items-center gap-2">
+                <span class="transaction-type-icon">
+                  {#if tx.type === "Swap"}
+                    🔄
+                  {:else if tx.type === "Add Liquidity"}
+                    ➕
+                  {:else if tx.type === "Remove Liquidity"}
+                    ➖
+                  {/if}
+                </span>
+                <span class="transaction-type">{tx.type}</span>
+              </div>
+              <span
+                class="status {tx.status
+                  ? tx.status.toLowerCase().replace('_', '-')
+                  : 'pending'}"
+              >
+                {tx.status ? tx.status.replace("_", " ") : "Pending"}
+              </span>
+            </div>
+            <div class="transaction-details">
+              <div class="timestamp">{tx.formattedDate}</div>
+              {#if tx.type === "Add Liquidity"}
+                <div class="amount-row">
+                  <span class="label">Added</span>
+                  <span class="value">
+                    {tx.amount_0}
+                    {tx.symbol_0} + {tx.amount_1}
+                    {tx.symbol_1}
+                  </span>
+                </div>
+                <div class="amount-row">
+                  <span class="label">Received</span>
+                  <span class="value highlight">{tx.lp_amount} LP</span>
+                </div>
+              {:else if tx.type === "Swap"}
+                <div class="amount-row">
+                  <span class="label">Paid</span>
+                  <span class="value">{tx.pay_amount} {tx.pay_symbol}</span>
+                </div>
+                <div class="amount-row">
+                  <span class="label">Received</span>
+                  <span class="value highlight"
+                    >{tx.receive_amount} {tx.receive_symbol}</span
+                  >
+                </div>
+                <div class="amount-row">
+                  <span class="label">Slippage</span>
+                  <span class="value text-gray-400">{tx.slippage}%</span>
+                </div>
+              {:else if tx.type === "Remove Liquidity"}
+                <div class="amount-row">
+                  <span class="label">Removed</span>
+                  <span class="value">
+                    {tx.amount_0}
+                    {tx.symbol_0} + {tx.amount_1}
+                    {tx.symbol_1}
+                  </span>
+                </div>
+                <div class="amount-row">
+                  <span class="label">Burned</span>
+                  <span class="value">{tx.lp_amount} LP</span>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style lang="postcss">
   .transaction-history-wrapper {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+    @apply flex flex-col h-full bg-kong-bg-dark/20  min-h-[87vh];
   }
 
-  .notice-banner {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: rgb(147, 197, 253);
-    padding: 0.75rem;
-    text-align: center;
-    font-size: 0.875rem;
-    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  .tab-button {
+    @apply py-0 px-2 text-kong-text-secondary font-medium text-xs
+           transition-all duration-200 border-r border-kong-border/50
+           hover:text-kong-text-primary relative overflow-hidden;
+  }
+
+  .tab-button:last-child {
+    @apply border-r-0;
+  }
+
+  .tab-button.active {
+    @apply text-kong-accent-blue font-semibold;
   }
 
   .transaction-history-content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-    margin-top: 1rem;
+    @apply flex-1 overflow-y-auto min-h-0 p-2 space-y-1.5;
   }
 
-  .transaction-history-content::-webkit-scrollbar {
-    width: 6px;
+  .state-message {
+    @apply flex flex-col items-center justify-center gap-2 min-h-[180px] 
+           text-kong-text-secondary text-xs bg-kong-bg-light/50 rounded-lg 
+           border border-kong-border/50;
   }
 
-  .transaction-history-content::-webkit-scrollbar-track {
-    background: transparent;
+  .state-message.error {
+    @apply text-kong-accent-red bg-kong-accent-red/10 border-kong-accent-red/20;
   }
 
-  .transaction-history-content::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-  }
-
-  .transaction-history-content::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .transaction-history {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    min-height: 100%;
+  .transaction-list {
+    @apply flex flex-col gap-1.5;
   }
 
   .transaction-item {
-    background-color: rgba(31, 41, 55, 0.5);
-    border-radius: 0.5rem;
-    padding: 1rem;
+    @apply bg-kong-bg-light/50 backdrop-blur-sm rounded-lg p-2 border border-kong-border/50
+           hover:bg-kong-bg-light/70 transition-all duration-200
+           hover:border-kong-border;
   }
 
   .transaction-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
+    @apply flex justify-between items-center mb-1.5;
   }
 
-  .timestamp {
-    font-size: 0.875rem;
-    color: rgb(156, 163, 175);
-  }
-
-  .status {
-    font-size: 0.875rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-  }
-
-  .status.completed {
-    background-color: rgba(34, 197, 94, 0.2);
-    color: rgb(74, 222, 128);
-  }
-
-  .status.pending {
-    background-color: rgba(234, 179, 8, 0.2);
-    color: rgb(250, 204, 21);
-  }
-
-  .status.failed {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: rgb(248, 113, 113);
-  }
-
-  .transaction-details {
-    margin-top: 0.5rem;
-  }
-
-  .amount-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.875rem;
-  }
-
-  .loading-state,
-  .error-state,
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    min-height: 160px;
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 0.875rem;
+  .transaction-type-icon {
+    @apply text-sm opacity-90;
   }
 
   .transaction-type {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
-    margin-bottom: 0.5rem;
+    @apply text-xs font-semibold text-kong-text-primary;
   }
 
+  .timestamp {
+    @apply text-[11px] text-kong-text-secondary/80 mb-1.5 font-medium;
+  }
+
+  .status {
+    @apply text-[11px] px-2 py-0.5 rounded-full font-medium border-none;
+  }
+
+  .status.completed,
   .status.success {
-    background-color: rgba(34, 197, 94, 0.2);
-    color: rgb(74, 222, 128);
+    @apply bg-kong-accent-green/10 text-kong-accent-green;
   }
 
   .status.pending {
-    background-color: rgba(234, 179, 8, 0.2);
-    color: rgb(250, 204, 21);
+    @apply bg-kong-warning/10 text-kong-warning;
   }
 
   .status.failed {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: rgb(248, 113, 113);
+    @apply bg-kong-accent-red/10 text-kong-accent-red;
   }
 
-  .filter-buttons {
-    display: flex;
-    gap: 0.5rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid rgb(55, 65, 81);
+  .transaction-details {
+    @apply space-y-1 bg-kong-bg-dark/5 rounded-lg p-1.5;
   }
 
-  .filter-btn {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
-    color: rgb(156, 163, 175);
-    transition: background-color 0.2s;
+  .amount-row {
+    @apply flex justify-between items-center text-xs py-0.5;
   }
 
-  .filter-btn:hover {
-    background-color: rgba(55, 65, 81, 0.5);
+  .amount-row .label {
+    @apply text-kong-text-secondary/90 font-medium;
   }
 
-  .filter-btn.active {
-    background-color: rgba(59, 130, 246, 0.2);
-    color: rgb(96, 165, 250);
+  .amount-row .value {
+    @apply text-kong-text-primary font-mono tracking-tight text-right flex-shrink-0 ml-2
+           font-medium;
+  }
+
+  .amount-row .value.highlight {
+    @apply text-kong-accent-blue font-semibold;
   }
 </style>

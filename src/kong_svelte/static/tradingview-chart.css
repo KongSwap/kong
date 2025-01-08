@@ -1,26 +1,40 @@
-:root:not(.theme-dark),
+/* Dark theme styles */
 :root.theme-dark,
 .theme-dark:root {
   --tv-color-platform-background: rgba(8, 10, 19, 1) !important;
   --tv-color-pane-background: rgba(8, 10, 19, 1) !important;
 }
 
-.chart-controls-bar,
-.chart-page .chart-container-border {
+/* Light theme styles */
+:root:not(.theme-dark) {
+  --tv-color-platform-background: #FFFFFF !important;
+  --tv-color-pane-background: #FFFFFF !important;
+}
+
+/* Dark theme specific elements */
+.theme-dark .chart-controls-bar,
+.theme-dark .chart-page .chart-container-border,
+.theme-dark .drawing-toolbar,
+.theme-dark .group-2JyOhh7Z,
+.theme-dark .group-wWM3zP_M-,
+.theme-dark .chart-toolbar,
+.theme-dark .toggleButton-3zv4iS2j,
+.theme-dark .button-2ioYhFEY,
+.theme-dark .button-2ioYhFEY.isInteractive-20uLObIc {
   background-color: rgba(8, 10, 19, 1) !important;
   border-color: transparent !important;
 }
 
-.drawing-toolbar,
-.group-2JyOhh7Z,
-.group-wWM3zP_M-,
-.chart-toolbar {
-  background-color: rgba(8, 10, 19, 1) !important;
-  border-color: transparent !important;
-}
-
-.toggleButton-3zv4iS2j,
-.button-2ioYhFEY,
-.button-2ioYhFEY.isInteractive-20uLObIc {
-  background-color: rgba(8, 10, 19, 1) !important;
+/* Light theme specific elements */
+:root:not(.theme-dark) .chart-controls-bar,
+:root:not(.theme-dark) .chart-page .chart-container-border,
+:root:not(.theme-dark) .drawing-toolbar,
+:root:not(.theme-dark) .group-2JyOhh7Z,
+:root:not(.theme-dark) .group-wWM3zP_M-,
+:root:not(.theme-dark) .chart-toolbar,
+:root:not(.theme-dark) .toggleButton-3zv4iS2j,
+:root:not(.theme-dark) .button-2ioYhFEY,
+:root:not(.theme-dark) .button-2ioYhFEY.isInteractive-20uLObIc {
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
 }

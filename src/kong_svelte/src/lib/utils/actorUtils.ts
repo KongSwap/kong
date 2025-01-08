@@ -3,9 +3,7 @@ import { Actor, HttpAgent } from "@dfinity/agent";
 // In-memory cache for anonymous actors
 const actorCache = new Map<string, any>();
 
-// Helper function to create anonymous actor
 export const createAnonymousActorHelper = (canisterId: string, idl: any) => {
-  // Check cache first
   const cacheKey = `${canisterId}-${idl.name || "anonymous"}`;
   if (actorCache.has(cacheKey)) {
     return actorCache.get(cacheKey);
@@ -18,7 +16,6 @@ export const createAnonymousActorHelper = (canisterId: string, idl: any) => {
         : "https://icp0.io",
   });
 
-  // Always fetch root key in local development
   if (process.env.DFX_NETWORK !== "ic") {
     agent.fetchRootKey();
   }
@@ -28,7 +25,6 @@ export const createAnonymousActorHelper = (canisterId: string, idl: any) => {
     canisterId,
   });
 
-  // Cache the actor
   actorCache.set(cacheKey, actor);
   return actor;
 };

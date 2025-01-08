@@ -82,10 +82,6 @@ export interface AddPoolReply {
 }
 export type AddPoolResult = { 'Ok' : AddPoolReply } |
   { 'Err' : string };
-export interface AddTokenArgs { 'token' : string }
-export type AddTokenReply = { 'IC' : ICTokenReply };
-export type AddTokenResult = { 'Ok' : AddTokenReply } |
-  { 'Err' : string };
 export interface CheckPoolsReply {
   'expected_balance' : ExpectedBalance,
   'diff_balance' : bigint,
@@ -385,14 +381,12 @@ export type UserBalancesResult = { 'Ok' : Array<UserBalancesReply> } |
   { 'Err' : string };
 export interface UserReply {
   'account_id' : string,
-  'user_name' : string,
   'fee_level_expires_at' : [] | [bigint],
   'referred_by' : [] | [string],
   'user_id' : number,
   'fee_level' : number,
   'principal_id' : string,
   'referred_by_expires_at' : [] | [bigint],
-  'campaign1_flags' : Array<boolean>,
   'my_referral_code' : string,
 }
 export type UserResult = { 'Ok' : UserReply } |
@@ -450,7 +444,6 @@ export interface _SERVICE {
     AddLiquidityAsyncResult
   >,
   'add_pool' : ActorMethod<[AddPoolArgs], AddPoolResult>,
-  'add_token' : ActorMethod<[AddTokenArgs], AddTokenResult>,
   'check_pools' : ActorMethod<[], CheckPoolsResult>,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc10_supported_standards' : ActorMethod<
@@ -484,7 +477,7 @@ export interface _SERVICE {
   'swap_async' : ActorMethod<[SwapArgs], SwapAsyncResult>,
   'tokens' : ActorMethod<[[] | [string]], TokensResult>,
   'txs' : ActorMethod<[[] | [string]], TxsResult>,
-  'user_balances' : ActorMethod<[string, [] | [string]], UserBalancesResult>,
+  'user_balances' : ActorMethod<[string], UserBalancesResult>,
   'validate_add_liquidity' : ActorMethod<[], ValidateAddLiquidityResult>,
   'validate_remove_liquidity' : ActorMethod<[], ValidateRemoveLiquidityResult>,
 }

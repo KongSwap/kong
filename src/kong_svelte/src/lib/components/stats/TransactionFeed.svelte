@@ -12,7 +12,10 @@
   }
 
   // Declare our state variables
-  let { token } = $props<{ token: FE.Token }>();
+  let { token, className = "" } = $props<{
+    token: FE.Token;
+    className?: string;
+  }>();
   let transactions = $state<FE.Transaction[]>([]);
   let isLoadingTxns = $state(false);
   let error = $state<string | null>(null);
@@ -50,52 +53,79 @@
       return;
     }
 
-    try {
-      if (append) {
-        isLoadingMore = true;
-      } else if (!isRefresh) {
-        isLoadingTxns = true;
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError;
+
+    while (retryCount < maxRetries) {
+      try {
+        if (append) {
+          isLoadingMore = true;
+        } else if (!isRefresh) {
+          isLoadingTxns = true;
+        }
+
+        const newTransactions = await fetchTransactions(
+          token.token_id,
+          page,
+          pageSize,
+        );
+
+        if (isRefresh) {
+          // Compare new transactions with existing ones and highlight differences
+          const existingIds = new Set(transactions.map((t) => t.tx_id));
+          const updatedTransactions = newTransactions.map((tx) => {
+            if (!existingIds.has(tx.tx_id)) {
+              newTransactionIds.add(tx.tx_id);
+              clearTransactionHighlight(tx.tx_id);
+            }
+            return tx;
+          });
+          transactions = updatedTransactions;
+          newTransactionIds = newTransactionIds; // Trigger reactivity
+        } else if (append) {
+          transactions = [...transactions, ...newTransactions];
+        } else {
+          transactions = newTransactions;
+        }
+
+        hasMore = newTransactions.length === pageSize;
+        currentPage = page;
+        error = null;
+        break; // Success, exit retry loop
+      } catch (err) {
+        lastError = err;
+        console.warn(`Attempt ${retryCount + 1} failed:`, err);
+        retryCount++;
+
+        if (retryCount < maxRetries) {
+          // Wait before retrying, with exponential backoff
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, retryCount) * 1000),
+          );
+        }
       }
-
-      const newTransactions = await fetchTransactions(
-        token.token_id,
-        page,
-        pageSize,
-      );
-
-      if (isRefresh) {
-        // Compare new transactions with existing ones and highlight differences
-        const existingIds = new Set(transactions.map((t) => t.tx_id));
-        const updatedTransactions = newTransactions.map((tx) => {
-          if (!existingIds.has(tx.tx_id)) {
-            newTransactionIds.add(tx.tx_id);
-            clearTransactionHighlight(tx.tx_id);
-          }
-          return tx;
-        });
-        transactions = updatedTransactions;
-        newTransactionIds = newTransactionIds; // Trigger reactivity
-      } else if (append) {
-        transactions = [...transactions, ...newTransactions];
-      } else {
-        transactions = newTransactions;
-      }
-
-      hasMore = newTransactions.length === pageSize;
-      currentPage = page;
-      error = null;
-    } catch (error) {
-      console.error("Failed to fetch transactions:", error);
-      error =
-        error instanceof Error ? error.message : "Failed to load transactions";
-      hasMore = false;
-    } finally {
-      isLoadingMore = false;
-      isLoadingTxns = false;
     }
+
+    if (retryCount === maxRetries) {
+      console.error(
+        "Failed to fetch transactions after",
+        maxRetries,
+        "attempts:",
+        lastError,
+      );
+      error =
+        lastError instanceof Error
+          ? lastError.message
+          : "Failed to load transactions";
+      hasMore = false;
+    }
+
+    isLoadingMore = false;
+    isLoadingTxns = false;
   };
 
-  // Set up auto-refresh interval
+  // Set up auto-refresh interval with error handling
   $effect(() => {
     if (token?.token_id) {
       // Clear existing interval if any
@@ -103,9 +133,12 @@
         clearInterval(refreshInterval);
       }
 
-      // Set up new interval
+      // Set up new interval with error handling
       refreshInterval = setInterval(() => {
-        loadTransactionData(1, false, true);
+        loadTransactionData(1, false, true).catch((err) => {
+          console.error("Error in refresh interval:", err);
+          // Don't show error UI for background refresh failures
+        });
       }, 10000) as unknown as number;
 
       // Clean up on token change
@@ -193,10 +226,12 @@
   });
 </script>
 
-<Panel variant="blue" type="main" className="flex-1 md:w-1/2 !p-0">
-  <div class="flex flex-col h-[600px]">
-    <div class="p-4">
-      <h2 class="text-2xl font-semibold text-white/80">Transaction Feed</h2>
+<Panel variant="transparent" type="main" {className}>
+  <div class="flex flex-col max-h-[300px]">
+    <div class="p-4 pb-0">
+      <h2 class="text-xl font-semibold text-kong-text-primary/80">
+        Recent Transactions
+      </h2>
     </div>
     <div class="flex-1 overflow-y-auto p-4">
       {#if isLoadingTxns && transactions.length === 0}
@@ -206,10 +241,12 @@
       {:else if error}
         <div class="text-red-400 text-center py-4">{error}</div>
       {:else if transactions.length === 0}
-        <div class="text-white text-center py-4">No transactions found</div>
+        <div class="text-kong-text-primary text-center py-4">
+          No transactions found
+        </div>
       {:else}
         <div class="-mx-4">
-          <table class="w-full text-left text-white/80">
+          <table class="w-full text-left text-kong-text-primary/80">
             <tbody>
               {#each transactions as tx}
                 <TransactionRow

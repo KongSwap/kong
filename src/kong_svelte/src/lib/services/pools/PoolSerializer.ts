@@ -23,7 +23,7 @@ const poolSchema = z.object({
   rolling_24h_apy: z.number(),
   lp_token_symbol: z.string(),
   tvl: z.string().or(z.bigint()).transform(val => BigInt(val)),
-  is_removed: z.boolean()
+  is_removed: z.boolean(),
 });
 
 const poolResponseSchema = z.object({
@@ -58,12 +58,12 @@ export class PoolSerializer {
           lp_fee_bps: pool.lp_fee_bps,
           rolling_24h_volume: pool.rolling_24h_volume,
           rolling_24h_lp_fee: pool.rolling_24h_lp_fee,
-          rolling_24h_num_swaps: pool.rolling_24h_num_swaps,
+          rolling_24h_num_swaps: BigInt(pool.rolling_24h_num_swaps),
           rolling_24h_apy: pool.rolling_24h_apy,
           lp_token_symbol: pool.lp_token_symbol,
           tvl: pool.tvl,
           is_removed: pool.is_removed,
-          lp_token_supply: BigInt(0)
+          lp_token_supply: pool.balance_0 + pool.balance_1
         })),
         total_tvl: parsed.total_tvl,
         total_24h_volume: parsed.total_24h_volume,
@@ -97,12 +97,12 @@ export class PoolSerializer {
       lp_fee_bps: parsed.lp_fee_bps,
       rolling_24h_volume: parsed.rolling_24h_volume,
       rolling_24h_lp_fee: parsed.rolling_24h_lp_fee,
-      rolling_24h_num_swaps: parsed.rolling_24h_num_swaps,
+      rolling_24h_num_swaps: BigInt(parsed.rolling_24h_num_swaps),
       rolling_24h_apy: parsed.rolling_24h_apy,
       lp_token_symbol: parsed.lp_token_symbol,
       tvl: BigInt(parsed.tvl),
       is_removed: parsed.is_removed,
-      lp_token_supply: BigInt(0)
+      lp_token_supply: BigInt(parsed.balance_0 + parsed.balance_1)
     };
   }
 } 

@@ -1,16 +1,52 @@
 <script lang="ts">
-  import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { onMount } from "svelte";
   import { formatUsdValue, fromRawAmount } from "$lib/utils/tokenFormatters";
-  import { getPoolPriceUsd } from "$lib/utils/statsUtils";
+  import { KONG_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { formattedTokens } from "$lib/services/tokens/tokenStore";
+  import { derived, get } from "svelte/store";
+  import { Flame, TrendingUp, Wallet, PiggyBank } from "lucide-svelte";
+  import { livePools } from "$lib/services/pools/poolStore";
+  import { tooltip } from "$lib/actions/tooltip";
 
-  export let pool: BE.Pool;
-  export let tokenMap: Map<string, any>;
-  export let isEven: boolean;
-  export let isKongPool = false;
-  export let onAddLiquidity: (token0: string, token1: string) => void;
-  export let onShowDetails: () => void;
+  export let row: any;
+
+  const tokenMap = derived(formattedTokens, ($tokens) => {
+    const map = new Map();
+    if ($tokens) {
+      $tokens.forEach((token) => {
+        map.set(token.canister_id, token);
+      });
+    }
+    return map;
+  });
+
+  $: pool = {
+    ...row,
+    tvl: BigInt(row.tvl),
+    rolling_24h_volume: BigInt(row.rolling_24h_volume),
+    displayTvl: Number(row.tvl) / 1e6
+  };
+
+  $: isKongPool = pool.address_0 === KONG_CANISTER_ID || pool.address_1 === KONG_CANISTER_ID;
+
+  $: isTopVolume = Number(pool.rolling_24h_volume) > 0 && [...$livePools]
+    .sort((a, b) => Number(b.rolling_24h_volume) - Number(a.rolling_24h_volume))
+    .slice(0, 5)
+    .map(p => p.pool_id)
+    .includes(pool.pool_id);
+
+  $: isTopTVL = Number(pool.tvl) > 0 && [...$livePools]
+    .sort((a, b) => Number(b.tvl) - Number(a.tvl))
+    .slice(0, 5)
+    .map(p => p.pool_id)
+    .includes(pool.pool_id);
+
+  $: isTopAPY = Number(pool.rolling_24h_apy) > 0 && [...$livePools]
+    .sort((a, b) => Number(b.rolling_24h_apy) - Number(a.rolling_24h_apy))
+    .slice(0, 5)
+    .map(p => p.pool_id)
+    .includes(pool.pool_id);
 
   let isMobile = false;
   let showDetailsButton = true;
@@ -30,156 +66,92 @@
       window.removeEventListener("resize", checkMobile);
     };
   });
-
-  function handleAddLiquidity() {
-    onAddLiquidity(pool.address_0, pool.address_1);
-  }
-
 </script>
 
 {#if !isMobile}
   <!-- Desktop view (table row) -->
-  <tr class="{isEven ? 'even' : ''} {isKongPool ? 'kong-special-row' : ''}">
-    <td class="pool-cell">
-      <div class="pool-info">
-        <TokenImages
-          tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
-          size={24}
-        />
-        <div class="pool-details">
-          <div class="pool-name">
-            {pool.symbol_0}/{pool.symbol_1}
-          </div>
+  <div class="pool-info">
+    <TokenImages
+      tokens={[
+        get(tokenMap).get(pool.address_0),
+        get(tokenMap).get(pool.address_1)
+      ]}
+      overlap={true}
+      size={28}
+    />
+    <div class="pool-details">
+      <div class="pool-name">
+        <div class="flex items-center gap-2">
+          <span>{pool.symbol_0}/{pool.symbol_1}</span>
+          {#if isTopVolume || isTopTVL || isTopAPY}
+            <div class="flex gap-1 items-center">
+              {#if isTopVolume}
+                <div use:tooltip={{ text: "Top 5 by Volume", direction: "top" }}>
+                  <Flame class="w-5 h-5 text-orange-400" />
+                </div>
+              {/if}
+              {#if isTopTVL}
+                <div use:tooltip={{ text: "Top 5 by TVL", direction: "top" }}>
+                  <PiggyBank class="w-5 h-5 text-pink-500" />
+                </div>
+              {/if}
+              {#if isTopAPY}
+                <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                  <TrendingUp class="w-5 h-5 text-green-400" />
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
-    </td>
-    <td class="price-cell">
-      <div class="price-info">
-        <div class="price-value">
-          {getPoolPriceUsd(pool) || 0}
-        </div>
-      </div>
-    </td>
-    <td class="tvl-cell">
-      <div class="tvl-info">
-        <div class="tvl-value">
-          {formatUsdValue(Number(pool.tvl) / 10 ** 6)}
-        </div>
-      </div>
-    </td>
-    <td class="volume-cell">
-      <div class="volume-info">
-        <div class="volume-value">
-          {formatUsdValue(fromRawAmount(pool.rolling_24h_volume.toString(), 6))}
-        </div>
-      </div>
-    </td>
-    <td class="apy-cell">
-      <div class="apy-info">
-        <div class="apy-value">
-          {formatToNonZeroDecimal(pool.rolling_24h_apy)}%
-        </div>
-      </div>
-    </td>
-    <td class="actions-cell">
-      <div class="actions">
-        <button class="action-btn add-lp" on:click={handleAddLiquidity}>
-          Add LP
-        </button>
-        {#if showDetailsButton}
-          <button class="action-btn details" on:click={onShowDetails}>
-            Details
-          </button>
-        {/if}
-      </div>
-    </td>
-  </tr>
+    </div>
+  </div>
 {:else}
   <!-- Mobile view (simplified card) -->
   <div class="mobile-pool-card">
     <div class="card-header">
       <div class="token-info">
         <TokenImages
-          tokens={[tokenMap.get(pool.address_0), tokenMap.get(pool.address_1)]}
+          tokens={[
+            get(tokenMap).get(pool.address_0),
+            get(tokenMap).get(pool.address_1)
+          ]}
           size={32}
           overlap={true}
         />
         <div class="token-details">
-          <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
+          <div class="flex items-center gap-2">
+            <span class="token-pair">{pool.symbol_0}/{pool.symbol_1}</span>
+            {#if isTopVolume || isTopTVL || isTopAPY}
+              <div class="flex gap-1 items-center">
+                {#if isTopVolume}
+                  <div use:tooltip={{ text: "Top 5 by Volume", direction: "top" }}>
+                    <Flame class="w-4 h-4 text-orange-400" />
+                  </div>
+                {/if}
+                {#if isTopTVL}
+                  <div use:tooltip={{ text: "Top 5 by TVL", direction: "top" }}>
+                    <PiggyBank class="w-4 h-4 text-pink-400" />
+                  </div>
+                {/if}
+                {#if isTopAPY}
+                  <div use:tooltip={{ text: "Top 5 by APY", direction: "top" }}>
+                    <TrendingUp class="w-4 h-4 text-green-400" />
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
           <span class="tvl-badge">TVL: ${pool.tvl}</span>
         </div>
-      </div>
-      <div class="card-actions">
-        <button class="action-btn details" on:click={onShowDetails}>
-          Details
-        </button>
       </div>
     </div>
   </div>
 {/if}
 
-<style lang="scss">
-  tr {
-    transition: colors 150ms;
-    padding: 0 1rem;
-  }
-
-  tr:hover {
-    background-color: #1a1b23;
-  }
-
-  tr.kong-special-row {
-    background: rgba(0, 255, 128, 0.02);
-
-    td {
-      font-weight: 500;
-    }
-
-    &:hover {
-      background: rgba(0, 255, 128, 0.04);
-    }
-  }
-
-  td {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    color: #8890a4;
-    border-bottom: 1px solid #2a2d3da8;
-    height: 64px;
-  }
-
-  .price-cell,
-  .tvl-cell,
-  .volume-cell,
-  .apy-cell {
-    width: 15%;
-    text-align: left;
-  }
-
-  .actions-cell {
-    text-align: right;
-  }
-
+<style scoped lang="postcss">
   .pool-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .pool-cell {
-    width: 30%;
-  }
-
-  .price-cell,
-  .tvl-cell,
-  .volume-cell,
-  .apy-cell {
-    width: 15%;
-    text-align: right;
-  }
-
-  .actions-cell {
-    width: 10%;
+    @apply flex items-center gap-2;
   }
 
   .pool-details {
@@ -188,67 +160,11 @@
   }
 
   .pool-name {
-    color: white;
     font-weight: 500;
     font-size: 1rem;
-  }
-
-  .price-info,
-  .tvl-info,
-  .volume-info,
-  .apy-info {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-  }
-
-  .price-value,
-  .tvl-value,
-  .volume-value,
-  .apy-value {
-    color: white;
-    font-weight: 500;
-    font-size: 1rem;
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-
-  .action-btn {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border-radius: 0.375rem;
-    transition: all 150ms;
-    white-space: nowrap;
-  }
-
-  .add-lp {
-    background-color: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-  }
-
-  .add-lp:hover {
-    background-color: rgba(59, 130, 246, 0.3);
-    border-color: rgba(59, 130, 246, 0.5);
-    color: #93c5fd;
-  }
-
-  .details {
-    background-color: rgba(107, 114, 128, 0.2);
-    color: #9ca3af;
-    border: 1px solid rgba(107, 114, 128, 0.3);
-  }
-
-  .details:hover {
-    background-color: rgba(107, 114, 128, 0.3);
-    border-color: rgba(107, 114, 128, 0.5);
-    color: #d1d5db;
+    gap: 0.25rem;
   }
 
   /* Mobile Card Styles */
@@ -257,7 +173,7 @@
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
-    border: 1px solid #2a2d3d;
+    @apply border border-kong-border;
   }
 
   .card-header {
@@ -279,19 +195,11 @@
   }
 
   .token-pair {
-    color: white;
     font-weight: 500;
   }
 
   .tvl-badge {
     font-size: 0.75rem;
-    color: #8890a4;
-  }
-
-  .card-actions {
-    display: flex;
-    align-items: center;
-    height: 100%;
   }
 
   @media (max-width: 640px) {

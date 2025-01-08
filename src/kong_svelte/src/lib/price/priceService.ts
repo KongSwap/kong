@@ -17,7 +17,7 @@ const historicalPriceCache = new Map<string, {
 }>();
 
 // Cache duration for historical prices (e.g. 5 minutes)
-const HISTORICAL_PRICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const HISTORICAL_PRICE_CACHE_DURATION = 10 * 1000; // 5 minutes in milliseconds
 
 async function acquireTokenLock(tokenId: string): Promise<void> {
   while (tokenLocks.has(tokenId)) {

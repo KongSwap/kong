@@ -7,16 +7,21 @@
   import Portal from "svelte-portal";
   import Toast from "./Toast.svelte";
   import { createEventDispatcher } from 'svelte';
+  import { tick } from 'svelte';
   const dispatch = createEventDispatcher();
 
   export let isOpen = false;
-  export let title: string;
-  export let onClose: () => void;
-  export let variant: "green" | "yellow" = "green";
+  export let title: string | HTMLElement = '';
+  export let variant: "solid" | "transparent" = "solid";
   export let width = "600px";
-  export let height = "80vh";
+  export let height = "auto";
   export let minHeight: string = "auto";
-
+  export let onClose: () => void = () => {};
+  export let loading = false;
+  export let closeOnEscape = true;
+  export let closeOnClickOutside = true;
+  export let className: string = "";
+  export let maxHeight = "80vh";
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -24,6 +29,7 @@
   let currentX = 0;
   let isDragging = false;
   let modalElement: HTMLDivElement;
+  let titleElement: HTMLElement;
 
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
 
@@ -32,7 +38,7 @@
       const updateDimensions = () => {
         isMobile = window.innerWidth <= 768;
         modalWidth = isMobile ? "100%" : width;
-        modalHeight = isMobile ? "90vh" : height;
+        modalHeight = isMobile ? "auto" : height;
       };
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
@@ -72,22 +78,27 @@
     if (Math.abs(currentX) > SLIDE_THRESHOLD) {
       // Slide out completely before closing
       modalElement.style.transform = `translateX(${Math.sign(currentX) * window.innerWidth}px)`;
-      setTimeout(onClose, 300);
+      setTimeout(handleClose, 300);
     } else {
       // Spring back to original position
       modalElement.style.transform = 'translateX(0)';
     }
   }
 
+  function handleClose() {
+    onClose();
+    dispatch('close');
+  }
+
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
-      onClose();
+    if (event.target === event.currentTarget && closeOnClickOutside) {
+      handleClose();
     }
   }
 
   function handleEscape(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-      onClose();
+    if (event.key === "Escape" && closeOnEscape) {
+      handleClose();
     }
   }
 
@@ -96,14 +107,24 @@
       dispatch('introend');
     }
   }
+
+  $: if (isOpen && title && typeof title === 'string' && title.includes('<')) {
+    tick().then(() => {
+      if (titleElement) {
+        titleElement.innerHTML = title;
+      }
+    });
+  }
 </script>
 
 <svelte:window on:keydown={handleEscape} />
 <Portal target="#portal-target">
   <Toast />
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   {#if isOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="modal-overlay"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99999] grid place-items-center will-change-opacity"
       on:click={handleBackdropClick}
       transition:fade={{ duration: 200 }}
       role="dialog"
@@ -111,9 +132,11 @@
       aria-labelledby="modal-title"
       on:introend={handleTransitionEnd}
     >
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         bind:this={modalElement}
-        class="modal-container"
+        class="relative will-change-transform max-w-full px-1 overflow-auto"
+        style="width: {modalWidth}; max-height: {maxHeight};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
         on:mouseup={handleDragEnd}
@@ -127,26 +150,48 @@
           opacity: 0,
           easing: cubicOut,
         }}
-        style="width: {modalWidth}; height: {modalHeight};"
       >
         <Panel
-          {variant}
-          width={modalWidth}
-          height={modalHeight}
-          className="modal-panel"
+          variant={variant}
+          width="100%"
+          height="100%"
+          className="!py-0 {className}"
         >
-          <div class="modal-content" style="height: {height}; min-height: {minHeight};">
-            <header class="modal-header">
-              <h2 id="modal-title" class="modal-title">{title}</h2>
+          <div class="modal-content flex flex-col min-h-full" style="height: {height}; min-height: {minHeight};">
+            {#if loading}
+              <div class="loading-overlay">
+                <div class="spinner"></div>
+              </div>
+            {/if}
+            <div 
+              class="drag-handle touch-pan-x"
+              on:mousedown={handleDragStart}
+              on:mousemove={handleDragMove}
+              on:mouseup={handleDragEnd}
+              on:mouseleave={handleDragEnd}
+              on:touchstart={handleDragStart}
+              on:touchmove={handleDragMove}
+              on:touchend={handleDragEnd}
+            >
+            </div>
+
+            <header class="flex justify-between items-center px-4">
+              <slot name="title">
+                {#if typeof title === 'string'}
+                  <h2 class="text-lg font-semibold py-4">{title}</h2>
+                {:else}
+                  <div bind:this={titleElement}></div>
+                {/if}
+              </slot>
               <button
-                class="action-button close-button !border-0 !shadow-none group relative"
-                on:click={onClose}
+                class="action-button !flex !justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
+                on:click={handleClose}
                 aria-label="Close modal"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="#ff4444"
                   stroke="currentColor"
@@ -161,7 +206,7 @@
               </button>
             </header>
 
-            <div class="modal-body">
+            <div class="flex-1 flex flex-col overflow-y-auto scrollbar-custom">
               <slot />
             </div>
           </div>
@@ -172,69 +217,7 @@
 </Portal>
 
 <style scoped>
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 99999;
-    display: grid;
-    place-items: center;
-    overflow: auto;
-    will-change: opacity;
-  }
-
-  .modal-container {
-    position: relative;
-    will-change: transform;
-    max-width: 100%;
-    max-height: 100%;
-    touch-action: pan-x;
-  }
-
-  .modal-content {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    min-height: var(--min-height, auto);
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 1rem;
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
-
-  .modal-title {
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 2rem;
-    font-weight: 500;
-    color: white;
-    margin: 0;
-    letter-spacing: 0.02em;
-  }
-
-  .modal-body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    margin: 0rem;
-    padding: 0rem;
-  }
-
   .action-button {
-    border: 1px solid var(--sidebar-border);
-    padding: 6px;
-    border-radius: 4px;
-    color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -244,43 +227,5 @@
     width: 40px;
     height: 40px;
     flex-shrink: 0;
-  }
-
-  .close-button {
-    background: rgba(186, 49, 49, 0.4);
-    color: #ffffff;
-  }
-
-  .close-button:hover {
-    background: rgba(255, 68, 68, 0.5);
-    transform: translateY(-1px);
-  }
-
-  @media (max-width: 768px) {
-    .modal-overlay {
-      padding: 0.4rem;
-    }
-
-
-    .modal-header {
-      padding-bottom: 1rem;
-    }
-
-    .modal-title {
-      font-size: 1.75rem;
-    }
-
-    .modal-body {
-      margin: 0rem;
-    }
-
-    .modal-container {
-      cursor: grab;
-      user-select: none;
-    }
-
-    .modal-container:active {
-      cursor: grabbing;
-    }
   }
 </style>
