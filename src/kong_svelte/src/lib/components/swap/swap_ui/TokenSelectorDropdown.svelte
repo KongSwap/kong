@@ -34,6 +34,11 @@
   let sortColumn = $state("value");
   let standardFilter = $state("all");
 
+  function setStandardFilter(filter: "all" | "ck" | "favorites") {
+    standardFilter = filter;
+    searchQuery = ""; // Reset search when changing filters
+  }
+
   // First, create a reactive store for favorites
   let favoriteTokens = $state(new Map<string, boolean>());
 
