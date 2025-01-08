@@ -44,7 +44,7 @@ pub enum StableMemory {
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct StableDBUpdate {
-    pub update_id: u64,
+    pub db_update_id: u64,
     pub stable_memory: StableMemory,
     pub ts: u64,
 }

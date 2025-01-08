@@ -117,7 +117,7 @@ async fn process_swap(
         Err(e) => {
             request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
             return_pay_token(request_id, user_id, &caller_id, pay_token, pay_amount, None, &mut transfer_ids, ts).await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
     let receive_amount = args.receive_amount.as_ref();
