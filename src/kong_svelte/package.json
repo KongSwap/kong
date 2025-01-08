@@ -22,6 +22,8 @@
     "@dfinity/auth-client": "2.2.0",
     "@dfinity/candid": "2.2.0",
     "@dfinity/identity": "2.2.0",
+    "@dfinity/ledger-icp": "2.6.5",
+    "@dfinity/nns": "8.1.0",
     "@dfinity/principal": "2.2.0",
     "@dfinity/utils": "2.8.0",
     "@windoge98/plug-n-play": "0.0.22",
@@ -33,7 +35,10 @@
     "dexie": "4.0.10",
     "html5-qrcode": "^2.3.8",
     "hyperid": "^3.3.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "@moonpay/moonpay-js": "^0.6.2",
+    "d3": "^7.9.0",
+    "svelte-tiny-virtual-list": "^2.1.2"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.1",

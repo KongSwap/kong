@@ -8,16 +8,15 @@ import { get } from "svelte/store";
 import {
   CKUSDT_CANISTER_ID,
   ICP_CANISTER_ID,
-  KONG_BACKEND_CANISTER_ID,
+  INDEXER_URL,
+  KONG_DATA_PRINCIPAL,
 } from "$lib/constants/canisterConstants";
 import { loadPools } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { kongDB } from "../db";
-import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
-import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
 import { toastStore } from "$lib/stores/toastStore";
 
 export class TokenService {
@@ -297,15 +296,13 @@ export class TokenService {
     }
   }
 
-  public static async fetchUserTransactions(): Promise<any> {
+  public static async fetchUserTransactions(principalId: string, page: number = 1, limit: number = 50, tx_type: string = null): Promise<any> {
     try {
-      const actor = await createAnonymousActorHelper(
-        KONG_BACKEND_CANISTER_ID,
-        kongBackendIDL,
-      );
-      const txs = await actor.txs([auth.pnp?.account?.owner?.toString()]);
-
-      return txs;
+      console.log("Loading user transactions...");
+      const url = `${INDEXER_URL}/api/users/${principalId}/transactions?page=${page}&limit=${limit}${tx_type ? `&tx_type=${tx_type}` : ''}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("Error fetching user transactions:", error);
       return { Ok: [] };
@@ -342,7 +339,7 @@ export class TokenService {
   public static async faucetClaim() {
     const actor = auth.pnp.getActor(
       process.env.CANISTER_ID_KONG_FAUCET,
-      kongFaucetIDL,
+      canisterIDLs.kong_faucet,
       { anon: false, requiresSigning: false },
     );
     const result = await actor.claim();
