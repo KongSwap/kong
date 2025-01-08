@@ -267,7 +267,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each memoizedPaginatedData as row (row[rowKey])}
+        {#each memoizedPaginatedData as row, i (i)}
           {@const isKong = isKongRow ? isKongRow(row) : false}
           {@const flashState = rowFlashStates.get(row[rowKey])}
           <tr

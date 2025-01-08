@@ -20,11 +20,6 @@
     { id: "pool", label: "Pool" },
   ];
 
-  const transactions = liveQuery(async () => {
-    const dbTransactions = await kongDB.transactions.toArray();
-    return dbTransactions;
-  });
-
   function processTransaction(tx: any) {
     // First check if we have a valid transaction object
     if (!tx) return null;

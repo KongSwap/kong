@@ -42,9 +42,9 @@ declare global {
       tvl?: bigint;
       volume_24h?: string;
       apr?: number;
-      is_removed?: boolean;
       timestamp?: number;
       ts?: number;
+      is_removed: boolean;
     }
   }
 }
