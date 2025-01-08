@@ -82,6 +82,7 @@ pub fn swap_amounts(
     Ok(max_swap)
 }
 
+/// returns (receive_amount_with_gas_and_fees, price, mid_price, slippage, swap)
 #[allow(clippy::complexity)]
 fn one_step_swaps(
     pay_token_id: u32,
@@ -505,7 +506,7 @@ fn swap_amount_0(
     let gas_fee = use_gas_fee.map_or_else(|| token_1.fee(), |fee| fee.clone());
 
     if amount_1 > reserve_1 {
-        return Err(format!("Insufficient {} in pool", token_1.symbol()));
+        Err(format!("Insufficient {} in pool", token_1.symbol()))?
     }
 
     Ok(SwapCalc {
@@ -594,7 +595,7 @@ fn swap_amount_1(
     let gas_fee = use_gas_fee.map_or_else(|| token_0.fee(), |fee| fee.clone());
 
     if amount_0 > reserve_0 {
-        return Err(format!("Insufficient {} in pool", token_0.symbol()));
+        Err(format!("Insufficient {} in pool", token_0.symbol()))?
     }
 
     Ok(SwapCalc {

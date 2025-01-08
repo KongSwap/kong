@@ -479,8 +479,6 @@ pub async fn insert_tx_on_database(
                 )
                 .await?;
 
-            db_client.execute("DELETE FROM swap_pool_tx WHERE tx_id = $1", &[&tx_id]).await?;
-
             for swap in v.txs.iter() {
                 let pool_id = swap.pool_id as i32;
                 let pay_token_id = swap.pay_token_id as i32;
