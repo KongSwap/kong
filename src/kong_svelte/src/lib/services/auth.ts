@@ -1,13 +1,14 @@
-import { writable, get } from "svelte/store";
+import { writable } from "svelte/store";
 import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
 import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
 import { pnp } from "./pnp/PnpInitializer";
-import { tokenStore } from "$lib/services/tokens/tokenStore";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { TokenService } from "./tokens";
+import { loadBalances } from "./tokens";
+import { kongDB } from "./db";
+import { PoolService } from "./pools/PoolService";
 
 // Export the list of available wallets
 export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
@@ -28,6 +29,7 @@ export const canisterIDLs = {
 
 // Add a constant for the storage key
 const LAST_WALLET_KEY = "kongSelectedWallet";
+const AUTO_CONNECT_ATTEMPTED_KEY = "kongAutoConnectAttempted";
 
 function createAuthStore(pnp: PNP) {
   const store = writable({
@@ -47,7 +49,7 @@ function createAuthStore(pnp: PNP) {
     }
   };
 
-  return {
+  const storeObj = {
     subscribe,
     pnp,
     async connect(walletId: string, isAutoConnect = false) {
@@ -61,49 +63,46 @@ function createAuthStore(pnp: PNP) {
             isInitialized: true,
           };
           set(newState);
+          Promise.all([
+            loadBalances(result.owner.toString()),
+            PoolService.fetchUserPoolBalances(true),
+          ]);
           selectedWalletId.set(walletId);
           isConnected.set(true);
           principalId.set(result.owner.toString());
           saveLastWallet(walletId);
-          const balances = await TokenService.fetchBalances(
-            null,
-            result.owner.toString(),
-          );
-          tokenStore.updateBalances(balances);
           return result;
         } else {
           console.error("Invalid connection result format:", result);
           set({ isConnected: false, account: null, isInitialized: true });
-          localStorage.removeItem(LAST_WALLET_KEY);
+          if (!isAutoConnect) {
+            localStorage.removeItem(LAST_WALLET_KEY);
+          }
           return null;
         }
       } catch (error) {
         console.error("Connection error:", error);
         set({ isConnected: false, account: null, isInitialized: true });
-        localStorage.removeItem(LAST_WALLET_KEY);
+        if (!isAutoConnect) {
+          localStorage.removeItem(LAST_WALLET_KEY);
+        }
         throw error;
       }
     },
 
     async disconnect() {
       try {
-        const result = await pnp.disconnect();
+        const result = pnp.disconnect();
         set({ isConnected: false, account: null, isInitialized: true });
         // zero out token balances
-        tokenStore.update((state) => ({
-          ...state,
-          balances: Object.keys(state.balances).reduce(
-            (acc, key) => {
-              acc[key] = { in_tokens: 0n, in_usd: "0" };
-              return acc;
-            },
-            {} as Record<string, TokenBalance>,
-          ),
-        }));
+        await kongDB.token_balances.clear();
+        await kongDB.user_pools.clear();
         // Clear saved wallet on disconnect
         if (browser) {
           localStorage.removeItem(LAST_WALLET_KEY);
           localStorage.removeItem("kongSelectedWallet");
+          // Clear the auto-connect attempt flag
+          sessionStorage.removeItem(AUTO_CONNECT_ATTEMPTED_KEY);
         }
 
         return result;
@@ -130,6 +129,8 @@ function createAuthStore(pnp: PNP) {
       });
     },
   };
+
+  return storeObj;
 }
 
 export type AuthStore = ReturnType<typeof createAuthStore>;

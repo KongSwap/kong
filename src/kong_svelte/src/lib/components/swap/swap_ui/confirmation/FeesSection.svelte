@@ -74,7 +74,7 @@
 
   .label {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.8);
+    @apply text-kong-text-secondary;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -86,13 +86,12 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: white;
+    @apply text-kong-text-primary;
   }
 
   .info-icon {
     font-size: 12px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 50%;
+    @apply bg-kong-bg-dark rounded;
     width: 16px;
     height: 16px;
     display: inline-flex;
@@ -111,13 +110,11 @@
     top: 100%;
     left: 0;
     margin-top: 6px;
-    background: rgba(0,0,0,0.85);
-    color: #fff;
+    @apply bg-kong-bg-dark text-kong-text-primary rounded;
     font-size: 12px;
     padding: 8px;
-    border-radius: 8px;
     width: 180px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    @apply shadow-kong-bg-dark;
     line-height: 1.4;
     z-index: 10;
   }
@@ -129,7 +126,7 @@
     left: 10px;
     border-width: 6px;
     border-style: solid;
-    border-color: transparent transparent rgba(0,0,0,0.85) transparent;
+    @apply border-kong-bg-dark border-t-transparent border-r-transparent border-l-transparent border-b-kong-bg-dark;
   }
 
   @media (max-width: 640px) {

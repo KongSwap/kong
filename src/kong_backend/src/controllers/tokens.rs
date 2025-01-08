@@ -37,7 +37,7 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
     };
 
     for (_, v) in tokens {
-        token_map::insert(&v)?;
+        token_map::update(&v);
     }
 
     Ok("Tokens updated".to_string())

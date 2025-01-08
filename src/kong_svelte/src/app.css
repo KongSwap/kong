@@ -1,15 +1,133 @@
-@import url("https://fonts.googleapis.com/css2?family=Alumni+Sans:ital,wght@0,100..900;1,100..900&family=Press+Start+2P&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&family=Space+Grotesk:wght@300..700&display=swap");
 @import "./styles/stats.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Set a more neutral, professional default font and tidy up the body styling. */
 body {
-  background-color: #5bb2cf;
+  @apply bg-kong-bg-dark transition-colors duration-200;
+  /* Consider using a professional default like Inter or Space Grotesk */
   font-family: "Exo 2", sans-serif;
+  color: var(--text-primary);
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;
   min-height: 100vh;
+}
+
+/* Update the root styles to default to dark theme values */
+:root {
+  /* Dark theme values as default */
+  --bg-dark: 25 28 39;             /* #191C27 */
+  --bg-light: 40 46 61;            /* #282E3D */
+  --primary: 59 130 246;           /* #3B82F6 */
+  --primary-hover: 61 91 249;      /* #3D5BF9 */
+  --secondary: 34 211 238;         /* #22D3EE */
+  --secondary-hover: 14 165 233;   /* #0EA5E9 */
+  --accent-blue: 0 145 234;        /* #0091EA */
+  --accent-red: 209 27 27;         /* #d11b1b */
+  --accent-green: 0 180 115;       /* #00b473 */
+  --accent-green-hover: 0 160 105;
+  --accent-blue-hover: 0 145 234;
+  --accent-red-hover: 175 48 48;
+  --text-primary: 255 255 255;     /* #FFFFFF */
+  --text-secondary: 155 161 176;   /* #9BA1B0 */
+  --text-disabled: 107 114 128;    /* #6B7280 */
+  --border: 42 47 61;              /* #2A2F3D */
+  --border-light: 55 65 81;        /* #374151 */
+  --logo-brightness: 1;
+  --logo-invert: 0;
+  --logo-hover-brightness: 0.9;
+  color-scheme: dark light; /* Dark first */
+}
+
+/* Light theme overrides */
+:root:not(.dark) {
+  --bg-dark: 216 237 248;          /* #E2EDF8 */
+  --bg-light: 235 244 252;         /* #EBF4FC */
+  --primary: 37 99 235;            /* #2563EB (unchanged) */
+  --primary-hover: 29 78 216;      /* #1D4ED8 (unchanged) */
+  --secondary: 8 145 178;          /* #0891B2 (unchanged) */
+  --secondary-hover: 14 116 144;   /* #0E7490 (unchanged) */
+  --accent-blue: 2 132 199;        /* #0284C7 (unchanged) */
+  --accent-red: 220 38 38;         /* #DC2626 (unchanged) */
+  --accent-green: 5 150 105;       /* #059669 (unchanged) */
+  --accent-green-hover: 4 120 87;  /* #047857 (unchanged) */
+  --accent-blue-hover: 3 105 161;  /* #0369A1 (unchanged) */
+  --accent-red-hover: 185 28 28;   /* #B91C1C (unchanged) */
+  --text-primary: 15 23 42;        /* #0F172A - Darker blue-gray */
+  --text-secondary: 51 65 85;      /* #334155 - Mid blue-gray */
+  --text-disabled: 148 163 184;    /* #94A3B8 - Light blue-gray */
+  --border: 214 226 240;          /* #D6E2F0 - Muted blue border */
+  --border-light: 235 244 252;    /* #EBF4FC - Lighter muted border */
+  --logo-brightness: 0.75;
+  --logo-invert: 1;
+  --logo-hover-brightness: 0.65;
+  --chart-text-color: #334155;    /* Darker blue-gray for better contrast */
+  color-scheme: light dark; /* Helps with system transitions */
+}
+
+/* Dark theme overrides (more neutral navy background) */
+:root.dark {
+  --bg-dark: 25 28 39;             /* #191C27 -> deeper, more neutral */
+  --bg-light: 40 46 61;            /* #282E3D */
+  --primary: 59 130 246;           /* #3B82F6 */
+  --primary-hover: 61 91 249;      /* #3D5BF9 */
+  --secondary: 34 211 238;         /* #22D3EE */
+  --secondary-hover: 14 165 233;   /* #0EA5E9 */
+  --accent-blue: 0 145 234;        /* #0091EA */
+  --accent-red: 234 67 53;        /* #EA4335 - Google red */
+  --accent-green: 0 180 115;       /* #00b473 */
+  --accent-green-hover: 0 160 105;
+  --accent-blue-hover: 0 145 234;
+  --accent-red-hover: 217 48 37;  /* #D93025 - Darker Google red */
+  --text-primary: 255 255 255;     /* #FFFFFF */
+  --text-secondary: 155 161 176;   /* #9BA1B0 */
+  --text-disabled: 107 114 128;    /* #6B7280 */
+  --border: 42 47 61;              /* #2A2F3D */
+  --border-light: 55 65 81;        /* #374151 */
+  --logo-brightness: 1;
+  --logo-invert: 0;
+  --logo-hover-brightness: 0.9;
+}
+
+/* Update the gradient for light theme with more muted blue tones */
+:root:not(.dark) .page-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(214 226 240) 0%,    /* #D6E2F0 - Muted blue top */
+    rgb(226 237 248) 45%,   /* #E2EDF8 - Mid muted blue */
+    rgb(235 244 252) 100%   /* #EBF4FC - Light muted blue */
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Make the nebula effect more muted */
+:root:not(.dark) .nebula {
+  opacity: 0.06;
+  filter: blur(100px);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(214, 226, 240, 0.9),  /* #D6E2F0 - Muted blue */
+    rgba(226, 237, 248, 0.0)   /* #E2EDF8 - Fade to muted blue */
+  );
+  transform: translateY(-20%);
+}
+
+/* Slightly stronger shadow for better depth */
+:root:not(.dark) .content-wrapper {
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 -5px 15px rgba(37, 99, 235, 0.03);  /* Blue-tinted shadow */
+}
+
+/* Add this to your CSS */
+html:not([data-theme-ready]) {
+  visibility: hidden;
 }

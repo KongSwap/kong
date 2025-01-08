@@ -45,7 +45,7 @@ fn update_pools(tokens: String) -> Result<String, String> {
     };
 
     for (_, v) in pools {
-        pool_map::insert(&v)?;
+        pool_map::update(&v);
     }
 
     Ok("Pools updated".to_string())

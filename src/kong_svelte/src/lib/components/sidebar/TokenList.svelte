@@ -1,300 +1,241 @@
 <script lang="ts">
-  import { fade, slide } from 'svelte/transition';
+  import { fade, slide } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { formattedTokens, tokenStore } from "$lib/services/tokens/tokenStore";
-  import { onMount } from 'svelte';
-  import { DEFAULT_LOGOS } from "$lib/services/tokens/tokenLogos";
+  import { formattedTokens, tokenStore, storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import { onMount } from "svelte";
+  import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import { Search, Loader2 } from "lucide-svelte";
+  import { searchToken, getMatchDisplay } from "$lib/utils/searchUtils";
+  import { sortTokens, filterByBalance } from "$lib/utils/sortUtils";
+  import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
+  import { browser } from "$app/environment";
+  import { writable, derived } from "svelte/store";
 
-  type ProcessedToken = FE.Token & {
-    isFavorite?: boolean;
-    balances: string;
-  };
-
-  export let tokens: FE.Token[] = [];
-  let searchQuery = '';
-  let searchInput: HTMLInputElement;
-  let hideZeroBalances = false;
-  let sortDirection = 'desc';
-  let searchDebounceTimer: NodeJS.Timeout;
-  let debouncedSearchQuery = '';
-  
-  onMount(async () => {
-    await tokenStore.loadFavorites();
-  });
-  
-  // At the start of the component, add validation logging
-  $: {
-    if (tokens) {
-      const invalidTokens = tokens.filter(t => !t || !t.canister_id);
-      if (invalidTokens.length > 0) {
-        console.warn('TokenList: Found invalid tokens:', invalidTokens);
-      }
-    }
-  }
-
-  // Debounce search input
-  $: {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      debouncedSearchQuery = searchQuery.toLowerCase();
-    }, 150);
-  }
-
-  // Add new type for search matches
   type SearchMatch = {
-    type: 'name' | 'symbol' | 'canister' | null;
+    type: "name" | "symbol" | "canister" | null;
     query: string;
     matchedText?: string;
   };
 
-  // Add to script section
-  let searchMatches: Record<string, SearchMatch> = {};
-
-  // Filtered tokens using formattedTokens
-  $: filteredTokens = $formattedTokens
-    .filter(token => {
-      // First check zero balances if enabled
-      if (hideZeroBalances && (!token.balance || BigInt(token.balance) <= 0n)) {
-        return false;
-      }
-      
-      if (!debouncedSearchQuery) {
-        searchMatches[token.canister_id] = { type: null, query: '' };
-        return true;
-      }
-      
-      const query = debouncedSearchQuery.trim().toLowerCase();
-      
-      // Check canister ID first
-      const canisterId = token.canister_id;
-      if (canisterId.toLowerCase().includes(query)) {
-        searchMatches[token.canister_id] = {
-          type: 'canister',
-          query,
-          matchedText: canisterId
-        };
-        return true;
-      }
-      
-      // Check name
-      if (token.name?.toLowerCase().includes(query)) {
-        searchMatches[token.canister_id] = {
-          type: 'name',
-          query,
-          matchedText: token.name
-        };
-        return true;
-      }
-      
-      // Check symbol
-      if (token.symbol?.toLowerCase().includes(query)) {
-        searchMatches[token.canister_id] = {
-          type: 'symbol',
-          query,
-          matchedText: token.symbol
-        };
-        return true;
-      }
-      
-      return false;
-    })
-    .sort((a, b) => {
-      const aIsFavorite = tokenStore.isFavorite(a.canister_id);
-      const bIsFavorite = tokenStore.isFavorite(b.canister_id);
-      
-      if (aIsFavorite !== bIsFavorite) {
-        return aIsFavorite ? -1 : 1;
-      }
-      
-      // Parse the values properly, handling 'k', 'M', etc.
-      const parseValue = (str: string) => {
-        if (!str) return 0;
-        const num = str.replace(/,/g, '');
-        if (num.endsWith('k')) {
-          return parseFloat(num) * 1000;
-        }
-        if (num.endsWith('M')) {
-          return parseFloat(num) * 1000000;
-        }
-        return parseFloat(num);
-      };
-      
-      const aValue = parseValue(a.formattedUsdValue || '0');
-      const bValue = parseValue(b.formattedUsdValue || '0');
-      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
-    });
-
-  function handleAddLiquidity() {
-    console.log('Add liquidity clicked');
+  // Create persistent hideZero store
+  const hideZeroStore = writable(browser ? localStorage.getItem('kong_hide_zero_balances') === 'true' : false);
+  
+  // Persist hideZero changes
+  $: if (browser) {
+    localStorage.setItem('kong_hide_zero_balances', $hideZeroStore.toString());
   }
+
+  let searchInput: HTMLInputElement;
+  let sortDirection = "desc";
+  
+  // Create a more efficient search store
+  const searchQuery = writable("");
+  const debouncedSearch = derived(searchQuery, ($query, set) => {
+    const timer = setTimeout(() => {
+      set($query.toLowerCase());
+    }, 400);
+    
+    return () => clearTimeout(timer);
+  });
+
+  // Create a writable store for sort direction
+  const sortDirectionStore = writable<"asc" | "desc">("desc");
+
+  // Create derived store for filtered and sorted tokens
+  const filteredTokens = derived(
+    [formattedTokens, debouncedSearch, hideZeroStore, storedBalancesStore, sortDirectionStore],
+    ([$tokens, $search, $hideZero, $balances, $sortDirection], set) => {
+      const matches: Record<string, SearchMatch> = {};
+      
+      const filtered = $tokens.filter(token => {
+        // Check zero balance first
+        if (!filterByBalance(token, $balances, $hideZero)) {
+          return false;
+        }
+
+        if (!$search) {
+          matches[token.canister_id] = { type: null, query: "" };
+          return true;
+        }
+
+        const match = searchToken(token, $search as string);
+        if (match) {
+          matches[token.canister_id] = match;
+          return true;
+        }
+
+        return false;
+      });
+
+      // Sort tokens using the current sort direction
+      sortTokens(filtered, $balances, FavoriteService, $sortDirection)
+        .then(sorted => {
+          set({ tokens: sorted, matches });
+        });
+    },
+    { tokens: [], matches: {} }
+  );
+
+  // Derived store for refresh state
+  const refreshState = derived(
+    tokenStore,
+    ($store) => ({
+      isRefreshing: $store.pendingBalanceRequests.size > 0,
+      refreshingTokens: $store.pendingBalanceRequests
+    })
+  );
+
+  let isInitialLoad = true;
+
+  onMount(async () => {
+    await FavoriteService.loadFavorites();
+    isInitialLoad = false;
+  });
 
   // Handle keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
-    // Clear search on Escape
-    if (event.key === 'Escape' && searchQuery) {
-      event.preventDefault();
-      searchQuery = '';
-      searchInput.focus();
-    }
-    // Focus search on forward slash
-    else if (event.key === '/' && document.activeElement !== searchInput) {
-      event.preventDefault();
-      searchInput.focus();
-    }
+    handleSearchKeyboard(event, {
+      searchQuery: $searchQuery,
+      searchInput,
+      onClear: () => searchQuery.set("")
+    });
   }
 
-  // Update the helper function for match display
-  function getMatchDisplay(match: SearchMatch): string {
-    if (!match.matchedText) return '';
-    
-    const query = match.query.toLowerCase();
-    const text = match.matchedText;
-    const index = text.toLowerCase().indexOf(query);
-    
-    if (index === -1) return text;
-    
-    const before = text.slice(0, index);
-    const highlighted = text.slice(index, index + query.length);
-    const after = text.slice(index + query.length);
-    
-    return `${before}<span class="match-highlight">${highlighted}</span>${after}`;
+  // Fix searchQuery clear button
+  function clearSearch() {
+    searchQuery.set("");
+    searchInput.focus();
   }
 
-  let touchStartY = 0;
-  let isSwiping = false;
-
-  function handleTouchStart(event: TouchEvent) {
-    touchStartY = event.touches[0].clientY;
-    isSwiping = false;
-  }
-
-  function handleTouchMove(event: TouchEvent) {
-    const touchY = event.touches[0].clientY;
-    const deltaY = Math.abs(touchY - touchStartY);
-    
-    if (deltaY > 10) {
-      isSwiping = true;
-    }
-  }
-
-  function handleTouchEnd(event: TouchEvent) {
-    if (isSwiping) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    isSwiping = false;
+  // Function to toggle sort direction
+  function toggleSort() {
+    sortDirectionStore.update(current => current === "desc" ? "asc" : "desc");
   }
 </script>
 
-<div class="token-list" on:keydown={handleKeydown}>
-  <div class="tokens-header">
-    
-    <div class="controls-wrapper">
-      <div class="search-section">
-        <div class="search-input-wrapper">
-          <input
-            bind:this={searchInput}
-            bind:value={searchQuery}
-            type="text"
-            placeholder="Search by name, symbol, or canister ID"
-            class="search-input"
-            on:keydown={handleKeydown}
-          />
-          {#if searchQuery}
-            <button 
-              class="action-button"
-              on:click|stopPropagation={() => {
-                searchQuery = '';
-                searchInput.focus();
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          {/if}
+<div
+  class="token-list-container h-full min-h-full"
+  on:keydown={handleKeydown}
+  role="listbox"
+  aria-label="Token List"
+  tabindex="0"
+>
+  <div class="search-section">
+    <div class="flex items-center gap-2 px-2">
+      <div class="search-input-wrapper flex-1">
+        <div class="search-icon-wrapper">
+          <Search size={16} class="search-icon" />
         </div>
+        <input
+          bind:this={searchInput}
+          bind:value={$searchQuery}
+          type="text"
+          placeholder="Search tokens..."
+          class="search-input"
+          on:keydown={handleKeydown}
+        />
+        {#if $searchQuery}
+          <button
+            class="clear-button"
+            aria-label="Clear search"
+            on:click|stopPropagation={clearSearch}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        {/if}
       </div>
 
-      <div class="filter-bar">
-        <div class="filter-options">
-          <label class="filter-toggle">
-            <input
-              type="checkbox"
-              bind:checked={hideZeroBalances}
-            />
-            <span class="toggle-label">Hide zero balances</span>
-          </label>
+      <div class="flex items-center gap-2">
+        <label
+          class="filter-toggle flex items-center gap-2 text-gray-400 hover:text-white"
+        >
+          <span class="toggle-label text-xs">Hide zero</span>
+          <input
+            type="checkbox"
+            checked={$hideZeroStore}
+            on:change={(e) => hideZeroStore.set(e.currentTarget.checked)}
+            class="sr-only"
+          />
+          <div class="toggle-switch"></div>
+        </label>
 
-          <div class="sort-toggle" on:click={() => {
-            sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
-          }}>
-            <span class="toggle-label">Sort by value</span>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2"
-              class="sort-arrow"
-              class:ascending={sortDirection === 'asc'}
-            >
-              <path d="M12 20V4M5 13l7 7 7-7"/>
-            </svg>
-          </div>
-        </div>
+        <button
+          class="sort-toggle"
+          on:click={toggleSort}
+        >
+          <span class="toggle-label text-xs">Value</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="sort-arrow"
+            class:ascending={$sortDirectionStore === "asc"}
+          >
+            <path d="M12 20V4M5 13l7 7 7-7" />
+          </svg>
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="tokens-content">
-    <div 
-      class="tokens-container"
-      on:touchstart={handleTouchStart}
-      on:touchmove={handleTouchMove}
-      on:touchend={handleTouchEnd}
-    >
-      {#each filteredTokens as token (token.canister_id)}
-        <div 
-          class="token-row-wrapper" 
-          transition:slide={{ duration: 200 }}
-        >
+  <div class="token-list-content">
+    {#if $refreshState.isRefreshing}
+      <div class="refresh-indicator" transition:fade>
+        <Loader2 class="animate-spin" size={16} />
+        <span>Refreshing balances...</span>
+      </div>
+    {/if}
+    
+    <div class="token-rows">
+      {#each $filteredTokens.tokens as token (token.canister_id)}
+        <div class="token-row-wrapper">
           <TokenRow
             {token}
             on:toggleFavorite={async ({ detail }) => {
-              await tokenStore.toggleFavorite(detail.canisterId);
-              filteredTokens = [...filteredTokens];
+              await FavoriteService.toggleFavorite(detail.canisterId);
             }}
           />
-          {#if searchQuery && searchMatches[token.canister_id]?.type === 'canister'}
-            <div class="match-indicator" transition:fade>
+          {#if $searchQuery && $filteredTokens.matches[token.canister_id]?.type === "canister"}
+            <div class="match-indicator" transition:fade={{ duration: 150 }}>
               <span class="match-type">canister:</span>
               <code class="match-label">{token.canister_id}</code>
             </div>
-          {:else if searchQuery && searchMatches[token.canister_id]?.type}
-            <div class="match-indicator" transition:fade>
-              <span class="match-type">{searchMatches[token.canister_id].type}:</span>
+          {:else if $searchQuery && $filteredTokens.matches[token.canister_id]?.type}
+            <div class="match-indicator" transition:fade={{ duration: 150 }}>
+              <span class="match-type">{$filteredTokens.matches[token.canister_id].type}:</span>
               <span class="match-label">
-                {@html getMatchDisplay(searchMatches[token.canister_id])}
+                {@html getMatchDisplay($filteredTokens.matches[token.canister_id])}
               </span>
             </div>
           {/if}
         </div>
       {/each}
-      
-      {#if filteredTokens.length === 0}
+
+      {#if $filteredTokens.tokens.length === 0}
         <div class="empty-state" transition:fade>
-          {#if searchQuery}
-            <p>No tokens found matching "{searchQuery}"</p>
-            <button 
+          {#if isInitialLoad || $formattedTokens.length === 0}
+            <Loader2 class="animate-spin" size={20} />
+            <p>Loading tokens...</p>
+          {:else if $searchQuery}
+            <p>No tokens found matching "{$searchQuery}"</p>
+            <button
               class="clear-search-button"
-              on:click={() => {
-                searchQuery = '';
-                searchInput.focus();
-              }}
+              on:click={clearSearch}
             >
               Clear Search
             </button>
@@ -307,201 +248,104 @@
   </div>
 </div>
 
-<style lang="postcss">
-  .token-list {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .tokens-content {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .controls-wrapper {
-    display: flex;
-    flex-direction: column;
+<style scoped lang="postcss">
+  .token-list-container {
+    @apply flex flex-col min-h-[87dvh] relative;
   }
 
   .search-section {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    @apply sticky top-0 z-20 py-2 bg-kong-bg-light;
+    @apply border-b border-kong-border;
+  }
+
+  .token-list-content {
+    @apply flex-1 overflow-hidden;
+  }
+
+  .token-rows {
+    @apply h-full overflow-y-auto py-1.5 px-2;
   }
 
   .search-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
+    @apply relative flex items-center flex-1 bg-kong-bg-dark/30 rounded-lg border border-kong-border/40;
+  }
+
+  .search-icon-wrapper {
+    @apply absolute left-3 z-10 flex items-center pointer-events-none;
   }
 
   .search-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    padding: 0.75rem 0;
-    color: white;
-    font-size: 1rem;
-    transition: border-color 0.2s;
+    @apply w-full bg-transparent border-none py-2 pl-9 pr-3.5 text-sm
+           text-kong-text-primary placeholder-kong-text-secondary/70 
+           focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40;
   }
 
-  .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .search-input:focus {
-    outline: none;
-    border-bottom-color: rgba(255, 255, 255, 0.5);
-  }
-
-  .action-button {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    color: rgba(255, 255, 255, 0.7);
-    transition: color 0.2s;
-  }
-
-  .action-button:hover {
-    color: white;
-  }
-
-  .filter-bar {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .filter-options {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-  }
-
-  .filter-toggle:hover {
-    color: white;
+  .clear-button {
+    @apply absolute right-2 text-kong-text-secondary hover:text-kong-text-primary transition-colors p-1;
   }
 
   .sort-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .sort-toggle:hover {
-    color: white;
+    @apply flex items-center gap-1.5 text-gray-400 cursor-pointer 
+           hover:text-white transition-colors whitespace-nowrap bg-kong-bg-dark/40
+           px-2 py-1.5 rounded-md border border-gray-700/50 h-[34px];
   }
 
   .sort-arrow {
-    transition: transform 0.2s;
+    @apply transition-transform duration-200;
   }
 
   .sort-arrow.ascending {
-    transform: rotate(180deg);
+    @apply rotate-180;
   }
 
-  .toggle-label {
-    user-select: none;
+  .filter-toggle {
+    @apply relative flex items-center cursor-pointer h-[34px] px-2;
   }
 
-  .tokens-container {
-    height: 100%;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #2a2d3d transparent;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y pinch-zoom;
+  .toggle-switch {
+    @apply w-7 h-4 bg-kong-bg-dark rounded-full transition-colors duration-200
+           before:content-[''] before:absolute before:w-3 before:h-3 
+           before:bg-kong-text-secondary before:rounded-full before:transition-transform
+           before:duration-200 before:translate-x-0.5 before:translate-y-0.5;
+  }
+
+  .filter-toggle input:checked + .toggle-switch {
+    @apply bg-blue-900;
+  }
+
+  .filter-toggle input:checked + .toggle-switch::before {
+    @apply translate-x-3.5 bg-kong-text-primary;
   }
 
   .token-row-wrapper {
-    touch-action: pan-y;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .tokens-container::-webkit-scrollbar {
-    width: 0.375rem;
-  }
-
-  .tokens-container::-webkit-scrollbar-track {
-    background: #15161c;
-    border-radius: 0.25rem;
-  }
-
-  .tokens-container::-webkit-scrollbar-thumb {
-    background: #2a2d3d;
-    border-radius: 0.25rem;
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    min-height: 160px;
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 0.875rem;
-  }
-
-  .clear-search-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.7);
-    border-radius: 0.5rem;
-    transition: all 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .clear-search-button:hover {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.2);
+    @apply mb-0.5 last:mb-0;
   }
 
   .match-indicator {
-    padding: 0.25rem 1rem;
-    font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    @apply px-2 py-0.5 text-xs flex items-center gap-2 text-gray-400;
   }
 
   .match-type {
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: capitalize;
+    @apply capitalize;
   }
 
   .match-label {
-    display: inline-block;
-    padding: 0 0.5rem;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.6);
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-family: monospace;
+    @apply font-mono;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-2
+           min-h-[120px] text-kong-text-secondary text-xs;
+  }
+
+  .clear-search-button {
+    @apply px-3 py-1.5 bg-kong-bg-dark/70 text-white/70 text-xs font-medium rounded-md
+           transition-all duration-200 hover:bg-gray-700/90 hover:text-white;
+  }
+
+  .refresh-indicator {
+    @apply flex items-center justify-center gap-2 py-2 
+           text-kong-text-secondary text-xs bg-kong-bg-light/50
+           border-b border-kong-border/30;
   }
 </style>

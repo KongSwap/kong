@@ -47,3 +47,4 @@ KONG_CANISTER=$(dfx canister id ${NETWORK} kong_backend)
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("KONG", 50_000_000_000, "ckBTC")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckUSDC", 5_000_000, "KONG")'
 # dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ckBTC", 50_000, "KONG")'
+dfx canister call ${NETWORK} ${IDENTITY} ${KONG_CANISTER} swap_amounts '("ICP", 100_000_000, "EXE")'

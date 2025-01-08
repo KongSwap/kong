@@ -14,7 +14,7 @@ kong_backend is responsible for maintaining the states of the pool: token_0, tok
 
 Kong Swap consists of two main canisters:
 
-kong_frontend - the asset canister which holds the frontend React/Javascript code. The deployed canister is used to host the website. It uses AgentJS to then interact with the kong_backend canister.
+kong_svelte - the asset canister which holds the frontend React/Javascript code. The deployed canister is used to host the website. It uses AgentJS to then interact with the kong_backend canister.
 
 kong_backend - the backend canister, written in Rust which contains the stable memory and logic to run the pools
 

@@ -1,12 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import {
-    auth,
-    availableWallets,
-    selectedWalletId,
-  } from "$lib/services/auth";
-  import { isPwa, isMobileBrowser, isPlugAvailable } from '$lib/utils/browser';
-  
+  import { auth, availableWallets, selectedWalletId } from "$lib/services/auth";
+  import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
+  import Modal from "$lib/components/common/Modal.svelte";
+  import { sidebarStore } from "$lib/stores/sidebarStore";
+
   const dispatch = createEventDispatcher();
   let connecting = false;
   let plugDialog: any;
@@ -15,18 +13,19 @@
   const isOnMobile = isMobileBrowser();
 
   // Filter out Plug wallet on mobile unless it's a PWA
-  $: filteredWallets = isOnMobile && !isPwa() 
-    ? availableWallets
-    : availableWallets;
+  $: filteredWallets =
+    isOnMobile && !isPwa() ? availableWallets : availableWallets;
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
 
     // Show modal on mobile if IC object is not present
-    if (isOnMobile && walletId === 'plug' && !isPlugAvailable()) {
+    if (isOnMobile && walletId === "plug" && !isPlugAvailable()) {
       // Dynamically import the dialog component when needed
       if (!plugDialog) {
-        const module = await import('$lib/components/wallet/PlugMobileDialog.svelte');
+        const module = await import(
+          "$lib/components/wallet/PlugMobileDialog.svelte"
+        );
         plugDialog = module.default;
       }
       dialogOpen = true;
@@ -34,8 +33,8 @@
     }
 
     // Redirect to Plug website on desktop if Plug is not installed
-    if (!isOnMobile && walletId === 'plug' && !isPlugAvailable()) {
-      window.open('https://plugwallet.ooo/', '_blank');
+    if (!isOnMobile && walletId === "plug" && !isPlugAvailable()) {
+      window.open("https://plugwallet.ooo/", "_blank");
       return;
     }
 
@@ -55,128 +54,134 @@
   }
 </script>
 
-<div class="wallet-provider">
-  <div class="wallet-list">
-    {#each filteredWallets as wallet}
-      <button
-        class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
-        on:click={() => handleConnect(wallet.id)}
-        disabled={connecting}
-      >
-        <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
-        <div class="wallet-info">
-          <span class="wallet-name">{wallet.name}</span>
-          {#if wallet.id === 'nfid'}
-            <span class="wallet-description">Sign in with Google</span>
-          {/if}
-        </div>
-      </button>
-    {/each}
+<Modal
+  isOpen={true}
+  title="Connect Wallet"
+  onClose={() => sidebarStore.collapse()}
+  width="min(440px, 95vw)"
+  height="auto"
+  variant="transparent"
+>
+  <div class="flex flex-col gap-6">
+    <div class="wallet-connect-body">
+      <div class="wallet-list">
+        {#each filteredWallets as wallet}
+          <button
+            class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
+            on:click={() => handleConnect(wallet.id)}
+            disabled={connecting}
+          >
+            <div class="wallet-content">
+              <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
+              <div class="wallet-info">
+                <span class="wallet-name">{wallet.name}</span>
+                {#if wallet.id === "nfid"}
+                  <span class="wallet-description">Sign in with Google</span>
+                {/if}
+              </div>
+            </div>
+            <svg
+              class="wallet-arrow"
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <p class="text-xs text-kong-text-secondary text-center pb-4">
+        Rumble in the crypto jungle at <a
+          href="#"
+          class="text-kong-primary hover:text-kong-primary-hover">KongSwap.io</a
+        >.
+      </p>
+    </div>
   </div>
-</div>
+</Modal>
 
 {#if plugDialog}
-  <svelte:component 
-    this={plugDialog} 
-    bind:open={dialogOpen} 
-  />
+  <svelte:component this={plugDialog} bind:open={dialogOpen} />
 {/if}
 
-<style>
-  .wallet-provider {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding-top: 1.25rem;
-  }
-
+<style lang="postcss">
   .wallet-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow-y: auto;
+    @apply flex flex-col gap-3 px-1;
   }
 
   .wallet-option {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    width: 100%;
-    padding: 16px 20px;
-    background: rgba(30, 41, 59, 0.5);
-    border-radius: 12px;
-    border: 1px solid rgba(51, 65, 85, 0.3);
-    backdrop-filter: blur(8px);
-    text-align: left;
-    position: relative;
-    transition: all 0.2s;
+    @apply flex items-center justify-between w-full px-4 py-4;
+    @apply bg-kong-bg-dark/10 rounded-xl border border-kong-text-primary/10;
+    @apply transition-all duration-200;
+    backdrop-filter: blur(2px);
+  }
+
+  .wallet-content {
+    @apply flex items-center gap-4;
   }
 
   .wallet-option:hover:not(:disabled) {
-    background: rgba(51, 65, 85, 0.6);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    @apply border-kong-primary bg-kong-primary/25;
+    box-shadow:
+      0 4px 24px -2px rgb(0 0 0 / 0.12),
+      0 2px 8px -2px rgb(0 0 0 / 0.06);
   }
 
   .wallet-option:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    @apply opacity-50 cursor-not-allowed;
   }
 
   .wallet-option.recommended {
-    background: rgba(79, 70, 229, 0.4);
-    border-color: rgba(99, 102, 241, 0.4);
+    @apply bg-kong-primary/10 border-kong-primary/20;
   }
 
   .wallet-option.recommended:hover:not(:disabled) {
-    background: rgba(99, 102, 241, 0.5);
-    border-color: rgba(129, 140, 248, 0.6);
-    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+    @apply bg-kong-primary/25 border-kong-primary/30;
+    box-shadow:
+      0 4px 24px -2px rgb(var(--primary) / 0.15),
+      0 2px 8px -2px rgb(var(--primary) / 0.1);
   }
 
   .wallet-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
-    transition: transform 0.2s;
+    @apply w-12 h-12 rounded-xl;
+    @apply transition-transform duration-200;
+    @apply dark:brightness-100 brightness-[0.85];
+  }
+
+  .wallet-option:hover .wallet-icon {
+    @apply dark:brightness-100 brightness-90;
   }
 
   .wallet-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    @apply flex flex-col gap-1;
+    @apply flex-1;
+    @apply text-left;
   }
 
   .wallet-name {
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 500;
-    font-size: 18px;
-    letter-spacing: 0.05em;
+    @apply text-kong-text-primary font-medium text-lg;
+    @apply text-left;
   }
 
   .wallet-description {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
-    transition: color 0.2s;
+    @apply text-kong-text-secondary text-sm;
   }
 
-  .wallet-option.recommended:hover .wallet-description {
-    color: rgba(255, 255, 255, 0.9);
+  .wallet-arrow {
+    @apply text-kong-text-secondary opacity-50;
+    @apply transition-transform duration-200;
   }
 
-  .wallet-list::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .wallet-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .wallet-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 9999px;
-  }
-
-  .wallet-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.15);
+  .wallet-option:hover .wallet-arrow {
+    @apply transform translate-x-1 opacity-100;
   }
 </style>

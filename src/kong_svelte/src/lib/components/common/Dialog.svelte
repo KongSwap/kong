@@ -51,7 +51,7 @@
               theme="primary"
               variant="solid"
               size="lg"
-              onClick={handleCloseClick}
+              on:click={handleCloseClick}
             />
           {/if}
         </slot>

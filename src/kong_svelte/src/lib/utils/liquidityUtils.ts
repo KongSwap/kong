@@ -1,20 +1,6 @@
 import { BigNumber } from 'bignumber.js';
-import { formatTokenAmount } from './numberFormatUtils';
-import { tokenStore } from '$lib/services/tokens';
 import { get } from 'svelte/store';
-
-/**
- * Validates if a token combination is allowed for liquidity provision
- */
-export function validateTokenCombination(token0Symbol: string, token1Symbol: string, allowedTokens: string[]): boolean {
-    // Token1 (second token) must be in allowed tokens list
-    const hasAllowedToken = allowedTokens.includes(token1Symbol);
-    
-    // Tokens must be different
-    const isDifferentTokens = token0Symbol !== token1Symbol;
-    
-    return hasAllowedToken && isDifferentTokens;
-}
+import { storedBalancesStore, tokenStore } from '$lib/services/tokens/tokenStore';
 
 /**
  * Formats a display value based on token decimals
@@ -22,16 +8,11 @@ export function validateTokenCombination(token0Symbol: string, token1Symbol: str
 export function formatDisplayValue(value: string, tokenDecimals: number): string {
     if (!value || value === "0") return "0";
     
-    const parts = value.split('.');
-    const maxDecimals = tokenDecimals;
-    
-    if (parts.length === 2) {
-        parts[1] = parts[1].slice(0, maxDecimals);
-        if (parts[1].length === 0) return parts[0];
-        return parts.join('.');
-    }
-    
-    return parts[0];
+    const bn = new BigNumber(value).dividedBy(Math.pow(10, tokenDecimals));
+    return bn.toFormat(tokenDecimals, BigNumber.ROUND_DOWN, {
+        groupSeparator: ',',
+        decimalSeparator: '.'
+    });
 }
 
 /**
@@ -47,39 +28,40 @@ export function isValidNumber(value: string): boolean {
 }
 
 /**
- * Calculates the maximum amount considering transfer fees
+ * Calculates the maximum amount considering transfer fees.
  */
 export async function calculateMaxAmount(
     token: FE.Token, 
-    balance: string, 
+    rawBalance: string, 
     feeMultiplier: number = 1
 ): Promise<string> {
     try {
-        // Get real token fee
-        let tokenFee;
-        try {
-            tokenFee = BigInt(token.fee_fixed.toString());
-        } catch (error) {
-            console.error("Error getting token fee, falling back to fee_fixed:", error);
-            if (!token.fee_fixed) {
-                throw new Error("Could not determine token fee");
-            }
-            tokenFee = BigInt(token.fee_fixed.toString().replace(/_/g, ''));
-        }
+        if (!token) return "0";
+        if (!token.fee && !token.fee_fixed) { throw new Error("Could not determine token fee"); }
 
-        const cleanBalance = balance.toString().replace(/_/g, '');
-        const balanceBN = new BigNumber(cleanBalance);
+        const balanceMicro = new BigNumber(rawBalance.replace(/_/g, ''));
+        const tokenFeeMicro = new BigNumber(token.fee_fixed?.toString().replace(/_/g, '') || '0');
+        const totalFeesMicro = tokenFeeMicro.multipliedBy(feeMultiplier);
 
-        // Calculate max amount considering transfer fee
-        const totalFees = new BigNumber(tokenFee.toString()).multipliedBy(feeMultiplier);
-        let maxAmount = balanceBN.minus(totalFees);
-        
-        if (maxAmount.isLessThanOrEqualTo(0) || maxAmount.isNaN()) {
+        // Subtract fee from the balance
+        const maxAmountMicro = balanceMicro.minus(totalFeesMicro);
+
+        if (maxAmountMicro.isLessThan(0) || maxAmountMicro.isNaN()) {
             throw new Error("Insufficient balance to cover fees");
         }
 
-        // Format the max amount for display
-        return formatTokenAmount(maxAmount.toString(), token.decimals);
+        if (maxAmountMicro.isZero()) {
+            return "0";
+        }
+
+        // Convert microtokens → tokens
+        const decimals = token.decimals ?? 6;
+        const maxAmountTokens = maxAmountMicro.dividedBy(Math.pow(10, decimals));
+
+        return maxAmountTokens.toFormat(decimals, BigNumber.ROUND_DOWN, {
+            groupSeparator: ',',
+            decimalSeparator: '.'
+        });
     } catch (err) {
         throw new Error(err instanceof Error ? err.message : "Failed to calculate max amount");
     }
@@ -102,40 +84,40 @@ export function hasInsufficientBalance(
     amount0: string,
     amount1: string,
     token0: FE.Token,
-    token1: FE.Token,
+    token1: FE.Token
 ): boolean {
-    if(!token0 || !token1) return false;
+    if (!token0 || !token1) return false;
     try {
-        // Clean the input values first
-        const cleanAmount0 = amount0.toString().replace(/[,_]/g, '');
-        const cleanAmount1 = amount1.toString().replace(/[,_]/g, '');
-        const store = get(tokenStore);
-        const balance0 = store.balances[token0.canister_id];
-        const balance1 = store.balances[token1.canister_id];
+        const deposit0 = new BigNumber(amount0.replace(/[,_]/g, ''));
+        const deposit1 = new BigNumber(amount1.replace(/[,_]/g, ''));
 
-        // Use BigNumber for precise decimal arithmetic
-        const amount0Decimal = new BigNumber(cleanAmount0)
-            .times(new BigNumber(10).pow(token0.decimals))
-            .integerValue(BigNumber.ROUND_FLOOR);
-        
-        const amount1Decimal = new BigNumber(cleanAmount1)
-            .times(new BigNumber(10).pow(token1.decimals))
-            .integerValue(BigNumber.ROUND_FLOOR);
+        // Grab balances from our token store
+        const storeValue = get(storedBalancesStore);
+        const balance0 = storeValue[token0.canister_id];
+        const balance1 = storeValue[token1.canister_id];
 
-        // Clean and convert balances
-        const balance0Decimal = new BigNumber(balance0?.in_tokens?.toString() || "0");
-        const balance1Decimal = new BigNumber(balance1?.in_tokens?.toString() || "0");
+        if (!balance0 || !balance1) return true;
 
-        // Add fees if needed
-        const fee0 = new BigNumber(token0.fee_fixed || 0);
-        const fee1 = new BigNumber(token1.fee_fixed || 0);
+        // Convert balances to tokens
+        const balance0Tokens = new BigNumber(balance0.in_tokens.toString() ?? '0')
+            .dividedBy(new BigNumber(10).pow(token0.decimals));
+        const balance1Tokens = new BigNumber(balance1.in_tokens.toString() ?? '0')
+            .dividedBy(new BigNumber(10).pow(token1.decimals));
 
-        // Compare amounts with balances
-        return amount0Decimal.plus(fee0).isGreaterThan(balance0Decimal) || 
-               amount1Decimal.plus(fee1).isGreaterThan(balance1Decimal);
+        // Convert fee_fixed (microtokens) to tokens
+        const fee0Tokens = new BigNumber(token0.fee_fixed ?? '0')
+            .dividedBy(new BigNumber(10).pow(token0.decimals));
+        const fee1Tokens = new BigNumber(token1.fee_fixed ?? '0')
+            .dividedBy(new BigNumber(10).pow(token1.decimals));
+
+        // Compare deposit + fee to the user’s token balances
+        const insufficientToken0 = deposit0.plus(fee0Tokens).isGreaterThan(balance0Tokens);
+        const insufficientToken1 = deposit1.plus(fee1Tokens).isGreaterThan(balance1Tokens);
+
+        return insufficientToken0 || insufficientToken1;
     } catch (err) {
         console.error("Error in hasInsufficientBalance:", err);
-        return true; // Return true on error to prevent invalid transactions
+        return true;
     }
 }
 
@@ -153,7 +135,6 @@ export function getButtonText(
     loadingState: string
 ): string {
     if (!token0 || !token1) return "Select Tokens";
-    if (!poolExists) return "Pool Does Not Exist";
     if (hasInsufficientBalance) return "Insufficient Balance";
     if (!amount0 || !amount1) return "Enter Amounts";
     if (loading) return loadingState || "Loading...";
@@ -170,8 +151,8 @@ export function calculatePoolRatio(
     amount1: string
 ): string {
     if (token0 && token1 && amount0 && amount1) {
-        const amt0 = new BigNumber(amount0.toString().replace(/[,_]/g, ''));
-        const amt1 = new BigNumber(amount1.toString().replace(/[,_]/g, ''));
+        const amt0 = new BigNumber(amount0.replace(/[,_]/g, ''));
+        const amt1 = new BigNumber(amount1.replace(/[,_]/g, ''));
         if (amt0.isGreaterThan(0) && amt1.isGreaterThan(0)) {
             return `1 ${token0.symbol} = ${amt1.dividedBy(amt0).toFixed(6)} ${token1.symbol}`;
         }
@@ -198,10 +179,10 @@ export function calculateUsdRatio(
  */
 export function formatLargeNumber(value: string | number | bigint, decimals: number = 2): string {
     const cleanValue = value.toString().replace(/_/g, '');
-    const num = Number(cleanValue) / 1e6; // Convert from microdollars to dollars
+    const num = Number(cleanValue) / 1e6; // Convert from microdollars (or micro-units) to 'whole' units
     return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
+        maximumFractionDigits: decimals,
     }).format(num);
 }
 
@@ -220,20 +201,29 @@ export function processLiquidityInput(
         return defaultValue;
     }
 
-    // Handle decimal point
-    if (cleanValue.includes('.')) {
-        const [whole, decimal] = cleanValue.split('.');
-        cleanValue = `${whole}.${decimal.slice(0, maxDecimals)}`;
-    }
-
-    // Remove leading zeros unless it's "0." or just "0"
+    // If the string has leading zeroes, remove them unless it's "0." or just "0"
     if (cleanValue.length > 1 && cleanValue.startsWith('0') && cleanValue[1] !== '.') {
         cleanValue = cleanValue.replace(/^0+/, '');
     }
+    // If it starts with '.', prefix '0'
+    if (cleanValue.startsWith('.')) {
+        cleanValue = '0' + cleanValue;
+    }
 
-    // If empty or invalid after processing, set to default
+    // Handle decimal part up to maxDecimals
+    if (cleanValue.includes('.')) {
+        const [whole, decimal] = cleanValue.split('.');
+        cleanValue = `${whole || '0'}.${decimal.slice(0, maxDecimals)}`;
+    }
+
+    // If empty or just '.', fallback
     if (!cleanValue || cleanValue === '.') {
         cleanValue = defaultValue;
+    }
+
+    // If there's a trailing dot (like "123."), remove it
+    if (cleanValue.endsWith('.')) {
+        cleanValue = cleanValue.slice(0, -1);
     }
 
     return cleanValue;
@@ -246,10 +236,8 @@ export function calculateUsdValue(
     amount: string,
     tokenPrice: string | number
 ): number {
-    const cleanAmount = amount.toString().replace(/[,_]/g, '');
-    return new BigNumber(cleanAmount)
-        .times(new BigNumber(tokenPrice))
-        .toNumber();
+    const cleanAmount = amount.replace(/[,_]/g, '');
+    return new BigNumber(cleanAmount).times(new BigNumber(tokenPrice)).toNumber();
 }
 
 /**
@@ -289,4 +277,53 @@ export function validateLiquidityForm(
         !hasInsufficientBalance && 
         pool !== null
     );
-} 
+}
+
+export function getPoolForTokenPair(
+    token0: FE.Token | null,
+    token1: FE.Token | null,
+    pools: BE.Pool[]
+): BE.Pool | null {
+    if (!token0 || !token1) return null;
+    
+    return pools.find(p => 
+        (p.address_0 === token0.canister_id && p.address_1 === token1.canister_id) ||
+        (p.address_0 === token1.canister_id && p.address_1 === token0.canister_id)
+    ) || null;
+}
+
+export interface TokenPairState {
+    token0: FE.Token | null;
+    token1: FE.Token | null;
+    amount0: string;
+    amount1: string;
+    error: string | null;
+}
+
+export function validateTokenSelect(
+    selectedToken: FE.Token,
+    otherToken: FE.Token | null,
+    allowedTokens: string[],
+    defaultToken: string,
+    tokens: FE.Token[]
+): { 
+    isValid: boolean;
+    newToken: FE.Token | null;
+    error?: string;
+} {
+    if (!otherToken) { return { isValid: true, newToken: selectedToken };}
+    const hasAllowedToken = allowedTokens.includes(selectedToken.symbol) || allowedTokens.includes(otherToken.symbol);
+    const isDifferentTokens = selectedToken.symbol !== otherToken.symbol;
+    const isValid = hasAllowedToken && isDifferentTokens
+
+    if (!isValid) {
+        const defaultTokenObj = tokens.find(t => t.symbol === defaultToken);
+        return {
+            isValid: false,
+            newToken: defaultTokenObj || null,
+            error: 'One token must be ICP or ckUSDT'
+        };
+    }
+
+    return { isValid: true, newToken: selectedToken };
+}
