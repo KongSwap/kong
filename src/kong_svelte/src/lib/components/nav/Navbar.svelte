@@ -112,7 +112,7 @@
     }
   ];
 
-  function showDropdown(type: 'swap' | 'earn') {
+  function showDropdown(type: 'swap' | 'earn' | 'stats') {
     clearTimeout(closeTimeout);
     activeDropdown = type;
   }

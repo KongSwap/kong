@@ -9,7 +9,7 @@
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { storedBalancesStore } from "$lib/services/tokens";
-  import { CKUSDT_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { activeDropdownId } from "$lib/stores/dropdownStore";
