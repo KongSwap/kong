@@ -30,7 +30,7 @@ pub async fn get_db_updates(
 
     let mut last_update_id = 0;
     for db_update in db_updates.iter() {
-        last_update_id = db_update.update_id;
+        last_update_id = db_update.db_update_id;
         let stable_memory = &db_update.stable_memory;
         match stable_memory {
             StableMemory::KongSettings(_) => (),
@@ -42,7 +42,6 @@ pub async fn get_db_updates(
             StableMemory::TransferMap(transfer) => insert_transfer_on_database(transfer, db_client, &tokens_map).await?,
             StableMemory::ClaimMap(claim) => insert_claim_on_database(claim, db_client, &tokens_map).await?,
             StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, &tokens_map).await?,
-            StableMemory::MessageMap(message) => (),
         }
     }
 

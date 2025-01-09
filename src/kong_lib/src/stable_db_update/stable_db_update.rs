@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use crate::stable_claim::stable_claim::StableClaim;
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::StableLPToken;
-use crate::stable_message::stable_message::StableMessage;
 use crate::stable_pool::stable_pool::StablePool;
 use crate::stable_request::stable_request::StableRequest;
 use crate::stable_token::stable_token::StableToken;
@@ -39,12 +38,11 @@ pub enum StableMemory {
     TransferMap(StableTransfer),
     ClaimMap(StableClaim),
     LPTokenMap(StableLPToken),
-    MessageMap(StableMessage),
 }
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct StableDBUpdate {
-    pub update_id: u64,
+    pub db_update_id: u64,
     pub stable_memory: StableMemory,
     pub ts: u64,
 }

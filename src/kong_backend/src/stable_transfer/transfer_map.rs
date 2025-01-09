@@ -11,10 +11,6 @@ pub fn get_by_transfer_id(transfer_id: u64) -> Option<StableTransfer> {
     TRANSFER_MAP.with(|m| m.borrow().get(&StableTransferId(transfer_id)))
 }
 
-pub fn get(max_requests: usize) -> Vec<StableTransfer> {
-    TRANSFER_MAP.with(|m| m.borrow().iter().rev().take(max_requests).map(|(_, v)| v.clone()).collect())
-}
-
 pub fn contain(token_id: u32, block_id: &Nat) -> bool {
     TRANSFER_MAP.with(|m| {
         m.borrow()

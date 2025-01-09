@@ -11,8 +11,8 @@ use crate::ic::{
     id::{kong_account, kong_backend_id},
 };
 use crate::stable_memory::{
-    CLAIM_MAP, LP_TOKEN_MAP, MESSAGE_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP,
-    TX_ARCHIVE_MAP, TX_MAP, USER_MAP,
+    CLAIM_MAP, LP_TOKEN_MAP, POOL_MAP, REQUEST_ARCHIVE_MAP, REQUEST_MAP, TOKEN_MAP, TRANSFER_ARCHIVE_MAP, TRANSFER_MAP, TX_ARCHIVE_MAP,
+    TX_MAP, USER_MAP,
 };
 
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +43,6 @@ pub struct StableKongSettings {
     pub transfer_map_idx: u64, // counter for TRANSFER_MAP
     pub claim_map_idx: u64,    // counter for CLAIM_MAP
     pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
-    pub message_map_idx: u64,  // counter for MESSAGE_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
     pub stats_interval_secs: u64,
@@ -61,7 +60,6 @@ impl Default for StableKongSettings {
         let pool_map_idx = POOL_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let claim_map_idx = CLAIM_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let lp_token_map_idx = LP_TOKEN_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
-        let message_map_idx = MESSAGE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0));
         let request_map_idx = cmp::max(
             REQUEST_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
             REQUEST_ARCHIVE_MAP.with(|m| m.borrow().iter().map(|(k, _)| k.0).max().unwrap_or(0)),
@@ -101,7 +99,6 @@ impl Default for StableKongSettings {
             transfer_map_idx,
             claim_map_idx,
             lp_token_map_idx,
-            message_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
             transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
             stats_interval_secs: 3600,                   // stats every hour

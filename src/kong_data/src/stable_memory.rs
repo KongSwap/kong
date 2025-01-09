@@ -96,6 +96,6 @@ thread_local! {
 }
 
 /// A helper function to access the memory manager.
-fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
+pub fn with_memory_manager<R>(f: impl FnOnce(&MemoryManager<DefaultMemoryImpl>) -> R) -> R {
     MEMORY_MANAGER.with(|cell| f(&cell.borrow()))
 }

@@ -117,7 +117,7 @@ async fn process_swap(
         Err(e) => {
             request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
             return_pay_token(request_id, user_id, &caller_id, pay_token, pay_amount, None, &mut transfer_ids, ts).await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
     let receive_amount = args.receive_amount.as_ref();
@@ -161,7 +161,7 @@ async fn process_swap(
         None => Address::PrincipalId(caller_id),
     };
 
-    let (receive_amount, mid_price, price, slippage, swaps) =
+    let (receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps) =
         match update_liquidity_pool(request_id, pay_token, pay_amount, &receive_token, receive_amount, max_slippage) {
             Ok((receive_amount, mid_price, price, slippage, swaps)) => (receive_amount, mid_price, price, slippage, swaps),
             Err(e) => {
@@ -186,7 +186,7 @@ async fn process_swap(
         pay_token,
         pay_amount,
         &receive_token,
-        &receive_amount,
+        &receive_amount_with_fees_and_gas,
         &to_address,
         &mut transfer_ids,
         mid_price,

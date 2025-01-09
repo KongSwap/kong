@@ -10,5 +10,4 @@ pub trait KongUpdate {
     async fn update_requests(&self, requests: &str) -> Result<String>;
     async fn update_transfers(&self, txs: &str) -> Result<String>;
     async fn update_txs(&self, txs: &str) -> Result<String>;
-    async fn update_message(&self, message: &str) -> Result<String>;
 }
