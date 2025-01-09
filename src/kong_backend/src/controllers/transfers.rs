@@ -4,9 +4,6 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::{TRANSFER_ARCHIVE_MAP, TRANSFER_MAP};
 use crate::stable_transfer::stable_transfer::{StableTransfer, StableTransferId};
-use crate::stable_transfer::transfer_map;
-use crate::transfers::transfer_reply::TransferIdReply;
-use crate::transfers::transfer_reply_helpers::to_transfer_id;
 
 const MAX_TRANSFERS: usize = 100;
 
