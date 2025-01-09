@@ -25,7 +25,6 @@ fn pre_upgrade() {
 async fn post_upgrade() {
     create_principal_id_map();
 
-    /*
     MESSAGE_MAP.with(|cell| {
         cell.borrow_mut().clear_new();
     });
@@ -35,7 +34,6 @@ async fn post_upgrade() {
             memory.write(0, &[0]);
         }
     });
-    */
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

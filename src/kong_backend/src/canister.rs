@@ -151,7 +151,6 @@ async fn post_upgrade() {
     );
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
-    /*
     MESSAGE_MAP.with(|cell| {
         cell.borrow_mut().clear_new();
     });
@@ -161,7 +160,6 @@ async fn post_upgrade() {
             memory.write(0, &[0]);
         }
     });
-    */
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }
