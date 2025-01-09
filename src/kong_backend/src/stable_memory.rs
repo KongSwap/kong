@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
 use crate::stable_kong_settings::stable_kong_settings::StableKongSettings;
 use crate::stable_lp_token::stable_lp_token::{StableLPToken, StableLPTokenId};
-use crate::stable_message::stable_message::{StableMessage, StableMessageId};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_request::stable_request::{StableRequest, StableRequestId};
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
@@ -28,7 +27,6 @@ pub const REQUEST_MEMORY_ID: MemoryId = MemoryId::new(26);
 pub const TRANSFER_MEMORY_ID: MemoryId = MemoryId::new(27);
 pub const CLAIM_MEMORY_ID: MemoryId = MemoryId::new(28);
 pub const LP_TOKEN_MEMORY_ID: MemoryId = MemoryId::new(29);
-pub const MESSAGE_MEMORY_ID: MemoryId = MemoryId::new(30);
 // archives
 pub const TX_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(204);
 pub const REQUEST_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(205);
@@ -107,11 +105,6 @@ thread_local! {
     // stable memory for storing all LP tokens for users
     pub static LP_TOKEN_MAP: RefCell<StableBTreeMap<StableLPTokenId, StableLPToken, Memory>> = with_memory_manager(|memory_manager| {
         RefCell::new(StableBTreeMap::init(memory_manager.get(LP_TOKEN_MEMORY_ID)))
-    });
-
-    // stable memory for storing all messages
-    pub static MESSAGE_MAP: RefCell<StableBTreeMap<StableMessageId, StableMessage, Memory>> = with_memory_manager(|memory_manager| {
-        RefCell::new(StableBTreeMap::init(memory_manager.get(MESSAGE_MEMORY_ID)))
     });
 
     //

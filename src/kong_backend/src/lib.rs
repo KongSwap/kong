@@ -17,7 +17,6 @@ mod stable_claim;
 mod stable_kong_settings;
 mod stable_lp_token;
 mod stable_memory;
-mod stable_message;
 mod stable_pool;
 mod stable_request;
 mod stable_token;
