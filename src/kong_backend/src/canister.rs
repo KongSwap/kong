@@ -1,6 +1,7 @@
 use candid::{CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_timers::{clear_timer, set_timer_interval};
+use ic_stable_structures::Memory as DefaultMemoryTrait;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::DisplayMessageType::{GenericDisplay, LineDisplay};
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
@@ -9,8 +10,10 @@ use itertools::Itertools;
 use serde::Deserialize;
 use std::time::Duration;
 
+use super::stable_memory::with_memory_manager;
 use super::stable_memory::{
-    CLAIMS_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID, TX_MAP_ARCHIVE_TIMER_ID,
+    CLAIMS_TIMER_ID, MESSAGE_MAP, MESSAGE_MEMORY_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID,
+    TX_MAP_ARCHIVE_TIMER_ID,
 };
 use super::{APP_NAME, APP_VERSION};
 
@@ -147,6 +150,18 @@ async fn post_upgrade() {
         },
     );
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
+
+    /*
+    MESSAGE_MAP.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
+    with_memory_manager(|memory_manager| {
+        let memory = memory_manager.get(MESSAGE_MEMORY_ID);
+        if memory.size() > 0 {
+            memory.write(0, &[0]);
+        }
+    });
+    */
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

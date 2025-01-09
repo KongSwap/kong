@@ -1,7 +1,10 @@
 use candid::CandidType;
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
+use ic_stable_structures::Memory as DefaultMemoryTrait;
 use serde::Deserialize;
 
+use super::stable_memory::with_memory_manager;
+use super::stable_memory::{MESSAGE_MAP, MESSAGE_MEMORY_ID};
 use super::{APP_NAME, APP_VERSION};
 
 use crate::{ic::logging::info_log, stable_user::principal_id_map::create_principal_id_map};
@@ -21,6 +24,18 @@ fn pre_upgrade() {
 #[post_upgrade]
 async fn post_upgrade() {
     create_principal_id_map();
+
+    /*
+    MESSAGE_MAP.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
+    with_memory_manager(|memory_manager| {
+        let memory = memory_manager.get(MESSAGE_MEMORY_ID);
+        if memory.size() > 0 {
+            memory.write(0, &[0]);
+        }
+    });
+    */
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

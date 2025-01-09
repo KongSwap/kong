@@ -8,7 +8,6 @@ mod claims;
 mod controllers;
 mod helpers;
 mod ic;
-mod messages;
 mod pools;
 mod remove_liquidity;
 mod remove_liquidity_amounts;

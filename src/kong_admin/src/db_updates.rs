@@ -42,7 +42,6 @@ pub async fn get_db_updates(
             StableMemory::TransferMap(transfer) => insert_transfer_on_database(transfer, db_client, &tokens_map).await?,
             StableMemory::ClaimMap(claim) => insert_claim_on_database(claim, db_client, &tokens_map).await?,
             StableMemory::LPTokenMap(lptoken) => insert_lp_token_on_database(lptoken, db_client, &tokens_map).await?,
-            StableMemory::MessageMap(message) => (),
         }
     }
 
