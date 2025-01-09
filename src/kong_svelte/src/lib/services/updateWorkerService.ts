@@ -60,12 +60,10 @@ class UpdateWorkerService {
     try {
       const tokens = await kongDB.tokens.toArray();
       if (!tokens?.length) {
-        console.log("No tokens found, loading tokens...");
         await TokenService.fetchTokens();
       }
 
       // Initialize state worker after price worker is ready
-      console.log("Creating state worker...");
       this.stateWorker = new Worker(
         new URL("../workers/stateWorker.ts", import.meta.url),
         { type: "module" }

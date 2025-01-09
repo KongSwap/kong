@@ -1,7 +1,12 @@
 <script lang="ts">
-  import { fade, slide } from "svelte/transition";
+  import { fade } from "svelte/transition";
   import TokenRow from "$lib/components/sidebar/TokenRow.svelte";
-  import { formattedTokens, tokenStore, storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import {
+    formattedTokens,
+    tokenStore,
+    storedBalancesStore,
+    loadBalances,
+  } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { Search, Loader2 } from "lucide-svelte";
@@ -10,6 +15,7 @@
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
   import { browser } from "$app/environment";
   import { writable, derived } from "svelte/store";
+  import { auth } from "$lib/services/auth";
 
   type SearchMatch = {
     type: "name" | "symbol" | "canister" | null;
@@ -18,23 +24,24 @@
   };
 
   // Create persistent hideZero store
-  const hideZeroStore = writable(browser ? localStorage.getItem('kong_hide_zero_balances') === 'true' : false);
-  
+  const hideZeroStore = writable(
+    browser
+      ? localStorage.getItem("kong_hide_zero_balances") === "true"
+      : false,
+  );
+
   // Persist hideZero changes
   $: if (browser) {
-    localStorage.setItem('kong_hide_zero_balances', $hideZeroStore.toString());
+    localStorage.setItem("kong_hide_zero_balances", $hideZeroStore.toString());
   }
 
   let searchInput: HTMLInputElement;
-  let sortDirection = "desc";
-  
-  // Create a more efficient search store
   const searchQuery = writable("");
   const debouncedSearch = derived(searchQuery, ($query, set) => {
     const timer = setTimeout(() => {
       set($query.toLowerCase());
     }, 400);
-    
+
     return () => clearTimeout(timer);
   });
 
@@ -43,11 +50,17 @@
 
   // Create derived store for filtered and sorted tokens
   const filteredTokens = derived(
-    [formattedTokens, debouncedSearch, hideZeroStore, storedBalancesStore, sortDirectionStore],
+    [
+      formattedTokens,
+      debouncedSearch,
+      hideZeroStore,
+      storedBalancesStore,
+      sortDirectionStore,
+    ],
     ([$tokens, $search, $hideZero, $balances, $sortDirection], set) => {
       const matches: Record<string, SearchMatch> = {};
-      
-      const filtered = $tokens.filter(token => {
+
+      const filtered = $tokens.filter((token) => {
         // Check zero balance first
         if (!filterByBalance(token, $balances, $hideZero)) {
           return false;
@@ -68,26 +81,27 @@
       });
 
       // Sort tokens using the current sort direction
-      sortTokens(filtered, $balances, FavoriteService, $sortDirection)
-        .then(sorted => {
+      sortTokens(filtered, $balances, FavoriteService, $sortDirection).then(
+        (sorted) => {
           set({ tokens: sorted, matches });
-        });
+        },
+      );
     },
-    { tokens: [], matches: {} }
+    { tokens: [], matches: {} },
   );
 
   // Derived store for refresh state
-  const refreshState = derived(
-    tokenStore,
-    ($store) => ({
-      isRefreshing: $store.pendingBalanceRequests.size > 0,
-      refreshingTokens: $store.pendingBalanceRequests
-    })
-  );
+  const refreshState = derived(tokenStore, ($store) => ({
+    isRefreshing: $store.pendingBalanceRequests.size > 0,
+    refreshingTokens: $store.pendingBalanceRequests,
+  }));
 
   let isInitialLoad = true;
 
   onMount(async () => {
+    if ($auth.isConnected) {
+      await loadBalances($auth.account.principal);
+    }
     await FavoriteService.loadFavorites();
     isInitialLoad = false;
   });
@@ -97,7 +111,7 @@
     handleSearchKeyboard(event, {
       searchQuery: $searchQuery,
       searchInput,
-      onClear: () => searchQuery.set("")
+      onClear: () => searchQuery.set(""),
     });
   }
 
@@ -109,7 +123,9 @@
 
   // Function to toggle sort direction
   function toggleSort() {
-    sortDirectionStore.update(current => current === "desc" ? "asc" : "desc");
+    sortDirectionStore.update((current) =>
+      current === "desc" ? "asc" : "desc",
+    );
   }
 </script>
 
@@ -170,10 +186,7 @@
           <div class="toggle-switch"></div>
         </label>
 
-        <button
-          class="sort-toggle"
-          on:click={toggleSort}
-        >
+        <button class="sort-toggle" on:click={toggleSort}>
           <span class="toggle-label text-xs">Value</span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -194,13 +207,6 @@
   </div>
 
   <div class="token-list-content">
-    {#if $refreshState.isRefreshing}
-      <div class="refresh-indicator" transition:fade>
-        <Loader2 class="animate-spin" size={16} />
-        <span>Refreshing balances...</span>
-      </div>
-    {/if}
-    
     <div class="token-rows">
       {#each $filteredTokens.tokens as token (token.canister_id)}
         <div class="token-row-wrapper">
@@ -217,9 +223,13 @@
             </div>
           {:else if $searchQuery && $filteredTokens.matches[token.canister_id]?.type}
             <div class="match-indicator" transition:fade={{ duration: 150 }}>
-              <span class="match-type">{$filteredTokens.matches[token.canister_id].type}:</span>
+              <span class="match-type"
+                >{$filteredTokens.matches[token.canister_id].type}:</span
+              >
               <span class="match-label">
-                {@html getMatchDisplay($filteredTokens.matches[token.canister_id])}
+                {@html getMatchDisplay(
+                  $filteredTokens.matches[token.canister_id],
+                )}
               </span>
             </div>
           {/if}
@@ -233,10 +243,7 @@
             <p>Loading tokens...</p>
           {:else if $searchQuery}
             <p>No tokens found matching "{$searchQuery}"</p>
-            <button
-              class="clear-search-button"
-              on:click={clearSearch}
-            >
+            <button class="clear-search-button" on:click={clearSearch}>
               Clear Search
             </button>
           {:else}
@@ -341,11 +348,5 @@
   .clear-search-button {
     @apply px-3 py-1.5 bg-kong-bg-dark/70 text-kong-text-primary/70 text-xs font-medium rounded-md
            transition-all duration-200 hover:bg-gray-700/90 hover:text-kong-text-primary;
-  }
-
-  .refresh-indicator {
-    @apply flex items-center justify-center gap-2 py-2 
-           text-kong-text-secondary text-xs bg-kong-bg-light/50
-           border-b border-kong-border/30;
   }
 </style>

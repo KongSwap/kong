@@ -1,33 +1,78 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
   import Panel from "$lib/components/common/Panel.svelte";
-  import TokenList from "./TokenList.svelte";
   import { auth } from "$lib/services/auth";
   import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-  import TransactionHistory from "./TransactionHistory.svelte";
-  import PoolList from "./PoolList.svelte";
   import ButtonV2 from "../common/ButtonV2.svelte";
   import { Import } from "lucide-svelte";
   import { fly } from 'svelte/transition';
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
+  let TokenListComponent: any;
+  let PoolListComponent: any;
+  let TransactionHistoryComponent: any;
+
+  // Keep track of component loading promises
+  let loadingPromises: Promise<any>[] = [];
+
+  async function loadComponent(importFn: () => Promise<any>) {
+    const promise = importFn();
+    loadingPromises = [...loadingPromises, promise];
+    try {
+      const module = await promise;
+      return module.default;
+    } finally {
+      loadingPromises = loadingPromises.filter(p => p !== promise);
+    }
+  }
 
   async function loadWalletProvider() {
-    const module = await import(
-      "$lib/components/sidebar/WalletProvider.svelte"
+    WalletProviderComponent = await loadComponent(() => 
+      import("$lib/components/sidebar/WalletProvider.svelte")
     );
-    WalletProviderComponent = module.default;
   }
 
   async function loadAddCustomTokenModal() {
-    const module = await import("./AddCustomTokenModal.svelte");
-    AddCustomTokenModalComponent = module.default;
+    AddCustomTokenModalComponent = await loadComponent(() => 
+      import("./AddCustomTokenModal.svelte")
+    );
   }
+
+  async function loadTokenList() {
+    TokenListComponent = await loadComponent(() => 
+      import("./TokenList.svelte")
+    );
+  }
+
+  async function loadPoolList() {
+    PoolListComponent = await loadComponent(() => 
+      import("./PoolList.svelte")
+    );
+  }
+
+  async function loadTransactionHistory() {
+    TransactionHistoryComponent = await loadComponent(() => 
+      import("./TransactionHistory.svelte")
+    );
+  }
+
+  // Cleanup function
+  onDestroy(() => {
+    // Clear component references
+    WalletProviderComponent = null;
+    AddCustomTokenModalComponent = null;
+    TokenListComponent = null;
+    PoolListComponent = null;
+    TransactionHistoryComponent = null;
+    
+    // Cancel any pending loads
+    loadingPromises = [];
+  });
 
   export let onClose: () => void;
 
@@ -62,7 +107,7 @@
 </script>
 
 {#key $sidebarStore.isOpen}
-  <div class="fixed inset-0 z-[100] isolate pointer-events-none">
+  <div class="md:sidebar-wrapper {isExpanded ? 'expanded' : ''} fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
     <div
       class="fixed inset-0 bg-black/40 backdrop-blur-sm cursor-zoom-out pointer-events-auto"
       in:fade|local={{ duration: 200 }}
@@ -119,11 +164,29 @@
                   class="flex flex-col flex-1 h-full gap-1 rounded-lg bg-kong-bg-light !rounded-t-none border-l !rounded-b-lg border-b border-r border-kong-border"
                 >
                   {#if activeTab === "tokens"}
-                    <TokenList />
+                    {#await loadTokenList()}
+                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                    {:then}
+                      {#if TokenListComponent}
+                        <svelte:component this={TokenListComponent} />
+                      {/if}
+                    {/await}
                   {:else if activeTab === "pools"}
-                    <PoolList on:close={handleClose} />
+                    {#await loadPoolList()}
+                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                    {:then}
+                      {#if PoolListComponent}
+                        <svelte:component this={PoolListComponent} on:close={handleClose} />
+                      {/if}
+                    {/await}
                   {:else if activeTab === "history"}
-                    <TransactionHistory />
+                    {#await loadTransactionHistory()}
+                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                    {:then}
+                      {#if TransactionHistoryComponent}
+                        <svelte:component this={TransactionHistoryComponent} />
+                      {/if}
+                    {/await}
                   {/if}
                 </div>
               </main>

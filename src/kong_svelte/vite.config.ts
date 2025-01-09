@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import path from "path";
 import { VitePWA } from 'vite-plugin-pwa';
 import viteCompression from 'vite-plugin-compression';
+import type { UserConfig, UserConfigExport } from 'vite';
 
 dotenv.config({ 
   path: path.resolve(__dirname, "../../.env"),
@@ -138,7 +139,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         },
       },
     },
-    plugins: basePlugins,
+    plugins: basePlugins as any[],
     resolve: {
       alias: [
         {
@@ -167,5 +168,5 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       globals: true,
       setupFiles: ['./test/setup.ts'],
     }
-  };
+  } as UserConfigExport;
 });
