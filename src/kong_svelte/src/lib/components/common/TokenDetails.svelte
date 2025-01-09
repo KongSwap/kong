@@ -19,7 +19,8 @@
   onClose={handleClose}
   title="Send {token.name}"
   width="500px"
-  height="min(420px, 95vh)"
+  variant="transparent"
+  height="auto"
 >
   <div class="tab-content">
     <SendTokens {token} />

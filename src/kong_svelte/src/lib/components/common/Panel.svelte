@@ -37,8 +37,8 @@
 }
 
 .panel.transparent {
-  @apply bg-kong-bg-dark/40;
-  backdrop-filter: blur(var(--blur, 12px));
+  @apply bg-kong-bg-dark/60;
+  backdrop-filter: blur(22px);
   @apply border border-kong-border/50;
   @apply shadow-sm dark:shadow-[0_4px_12px_rgba(0,0,0,0.16)];
   @apply light:bg-kong-bg-dark/95 light:border-kong-border;
@@ -80,8 +80,8 @@
 /* Hover effects for transparent variant */
 .panel.transparent:hover,
 .panel.transparent:has(.panel:hover) {
-  @apply bg-kong-bg-dark/50;
-  @apply border-kong-border/60;
+  @apply bg-kong-bg-dark/60;
+  @apply border-kong-border/80;
   @apply shadow-md dark:shadow-[0_8px_24px_rgba(0,0,0,0.2)];
   @apply light:bg-kong-bg-dark/95;
 }

@@ -49,8 +49,8 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<header class="header">
-  <div class="header-content p-2 flex items-center justify-between">
+<header class="header pt-1.5">
+  <div class="header-content px-1 flex items-center justify-between">
     <!-- Left Section -->
     <div class="left-section flex items-center gap-2 text-sm">
       <button
@@ -169,19 +169,19 @@
   .portfolio-button,
   .refresh-button,
   .action-button {
-    @apply px-1 py-2 rounded-t-lg text-kong-text-secondary text-base
+    @apply px-1 pt-2 pb-3 rounded-t-lg text-kong-text-secondary text-base
            hover:bg-kong-bg-light/50 hover:text-kong-text-primary 
            transition-all duration-200;
   }
 
   .portfolio-button {
-    @apply px-2.5 font-mono font-medium;
+    @apply px-2.5 font-medium;
   }
 
   .tab-button {
     @apply py-1 px-2 text-kong-text-secondary font-medium
            transition-all duration-200 border-r border-kong-border/50
-           hover:text-kong-text-primary relative overflow-hidden uppercase;
+           hover:text-kong-text-primary relative overflow-hidden;
   }
 
   .tab-button:last-child {

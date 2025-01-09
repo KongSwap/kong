@@ -106,7 +106,7 @@
   width="460px"
   height="auto"
 >
-  <div class="flex flex-col min-h-[400px] p-6">
+  <div class="flex flex-col min-h-[400px] px-4 pb-4">
     {#if error}
       <div class="mb-4 text-red-400 text-center p-4 bg-red-400/20 rounded-xl">
         {error}
@@ -114,7 +114,7 @@
     {/if}
 
     <div class="flex-1">
-      <div class="text-white/50 mb-4">You will provide</div>
+      <div class="text-white/50 mb-1">You will provide</div>
       
       <div class="bg-white/5 rounded-xl p-4 space-y-4">
         <div class="flex justify-between items-center">

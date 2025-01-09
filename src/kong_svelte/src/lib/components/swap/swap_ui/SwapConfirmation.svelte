@@ -191,7 +191,7 @@
       <p class="error-message">{error}</p>
     </div>
   {:else if payToken && receiveToken}
-    <div class="confirmation-container " transition:fade={{ duration: 200 }}>
+    <div class="confirmation-container" transition:fade={{ duration: 200 }}>
       <div class="content-wrapper">
         <div class="sections-wrapper">
           <PayReceiveSection
@@ -212,7 +212,7 @@
         </div>
       </div>
     </div>
-    <div class="button-container">
+    <div class="button-container mb-4">
       <button
         class="swap-button"
         class:processing={isLoading}

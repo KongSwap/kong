@@ -10,6 +10,7 @@ import { browser } from "$app/environment";
 import { loadBalances } from "./tokens";
 import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
+import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
 
 // Export the list of available wallets
 export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
@@ -27,6 +28,7 @@ export const canisterIDLs = {
   icrc1: icrc2IDL,
   icrc2: icrc2IDL,
   kong_data: kongDataIDL,
+  sns_governance: snsGovernanceIDL,
 };
 
 // Add a constant for the storage key

@@ -12,6 +12,8 @@
   import { AccountIdentifier } from "@dfinity/ledger-icp";
   import { SubAccount } from "@dfinity/ledger-icp";
   import { auth } from "$lib/services/auth";
+  import { tooltip } from "$lib/actions/tooltip";
+  import TransferConfirmationModal from "./TransferConfirmationModal.svelte";
 
   export let token: FE.Token;
 
@@ -104,7 +106,10 @@
   }
 
   function validateAddress(address: string): boolean {
-    if (!address) return false;
+    if (!address) {
+      errorMessage = "Address is required";
+      return false;
+    }
 
     const cleanAddress = address.trim();
 
@@ -115,10 +120,8 @@
 
     addressType = detectAddressType(cleanAddress);
 
-    // Add check for non-ICP tokens with account ID
     if (addressType === "account" && token.symbol !== "ICP") {
       errorMessage = `Account ID can't be used with ${token.name}`;
-      toastStore.error(errorMessage);
       return false;
     }
 
@@ -127,42 +130,24 @@
       return false;
     }
 
-    // Handle Account ID validation
-    if (addressType === "account") {
-      if (cleanAddress.length !== 64 || !isValidHex(cleanAddress)) {
-        errorMessage = "Invalid Account ID format";
-        return false;
-      }
-      return true;
-    }
-
-    // Handle Principal ID validation
-    try {
-      const principal = Principal.fromText(cleanAddress);
-      if (principal.isAnonymous()) {
-        errorMessage = "Cannot send to anonymous principal";
-        return false;
-      }
-    } catch (err) {
-      errorMessage = "Invalid Principal ID format";
-      return false;
-    }
-
+    // Clear error message on success
     errorMessage = "";
     return true;
   }
 
   function validateAmount(value: string): boolean {
-    if (!value) return false;
+    if (!value) {
+      errorMessage = "Amount is required";
+      return false;
+    }
+    
     const numValue = parseFloat(value);
-
     if (isNaN(numValue) || numValue <= 0) {
       errorMessage = "Amount must be greater than 0";
       return false;
     }
 
-    const currentBalance =
-      selectedAccount === "main" ? balances.default : balances.subaccount;
+    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
     const maxAmount = new BigNumber(currentBalance.toString())
       .dividedBy(new BigNumber(10).pow(token.decimals))
       .minus(
@@ -173,10 +158,11 @@
       .toNumber();
 
     if (numValue > maxAmount) {
-      errorMessage = "Insufficient balance";
+      errorMessage = "Insufficient balance for transfer + fee";
       return false;
     }
 
+    errorMessage = "";
     return true;
   }
 
@@ -194,8 +180,7 @@
     }
 
     amount = value;
-    errorMessage = "";
-    validateAmount(value);
+    validateAmount(value); // Remove errorMessage = "" to let validation set proper message
   }
 
   async function handleSubmit() {
@@ -284,11 +269,9 @@
 
     try {
       const decimals = token.decimals || 8;
-      const amountBigInt = BigInt(
-        Math.floor(Number(amount) * 10 ** decimals).toString(),
-      );
+      const amountBigInt = BigInt(new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString());
 
-      toastStore.info(`Sending ${token.symbol}...`);
+      toastStore.info(`Sending ${amount} ${token.symbol}...`);
 
       const fromSubaccount =
         selectedAccount === "subaccount"
@@ -342,11 +325,18 @@
   $: {
     if (recipientAddress) {
       validateAddress(recipientAddress);
-    } else {
-      addressType = null;
-      errorMessage = "";
+    }
+    if (amount) {
+      validateAmount(amount);
     }
   }
+
+  $: isFormValid = amount && 
+                   recipientAddress && 
+                   !errorMessage && 
+                   addressType !== null && 
+                   validateAddress(recipientAddress) && 
+                   validateAmount(amount);
 
   $: validationMessage = (() => {
     if (!recipientAddress)
@@ -463,9 +453,28 @@
   $: if (selectedAccount) {
     loadBalances();
   }
+
+  function getTooltipMessage(): string {
+    if (!recipientAddress) {
+      return "Enter a recipient address";
+    }
+    if (recipientAddress && !validateAddress(recipientAddress)) {
+      return "Invalid address format";
+    }
+    if (!amount) {
+      return "Enter an amount";
+    }
+    if (amount && !validateAmount(amount)) {
+      return "Invalid amount";
+    }
+    if (errorMessage) {
+      return errorMessage;
+    }
+    return "";
+  }
 </script>
 
-<div class="container">
+<div class="container pb-6 px-4">
   <form on:submit|preventDefault={handleSubmit}>
     <div class="id-card mt-2">
       <div class="id-header">
@@ -473,7 +482,7 @@
         <div class="header-actions">
           <button
             type="button"
-            class="action-button !py-2"
+            class="utility-button"
             on:click={() => (showScanner = true)}
             title="Scan QR Code"
           >
@@ -482,7 +491,7 @@
           </button>
           <button
             type="button"
-            class="action-button"
+            class="utility-button"
             on:click={recipientAddress
               ? () => (recipientAddress = "")
               : handlePaste}
@@ -544,7 +553,7 @@
               </button>
             </div>
           {/if}
-          <button type="button" class="action-button" on:click={setMaxAmount}
+          <button type="button" class="utility-button" on:click={setMaxAmount}
             >Max</button
           >
         </div>
@@ -577,85 +586,29 @@
     <button
       type="submit"
       class="send-btn"
-      disabled={isValidating || !amount || !recipientAddress}
+      class:disabled={!isFormValid || isValidating}
+      class:error={errorMessage}
+      disabled={!isFormValid || isValidating}
+      use:tooltip={{
+        text: getTooltipMessage(),
+        direction: "top",
+        background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark"
+      }}
     >
-      Send Tokens
+      {isValidating ? "Processing..." : "Send Tokens"}
     </button>
   </form>
 
   {#if showConfirmation}
-    <Modal
+    <TransferConfirmationModal
       isOpen={showConfirmation}
       onClose={() => (showConfirmation = false)}
-      title="Confirm Your Transfer"
-      width="min(450px, 95vw)"
-      height="auto"
-    >
-      <div class="confirm-box">
-        <div class="confirm-details">
-          <div class="transfer-summary">
-            <div class="amount-display">
-              <span class="amount">{amount}</span>
-              <span class="symbol">{token.symbol}</span>
-            </div>
-          </div>
-
-          <div class="details-grid">
-            <div class="detail-item">
-              <span class="label">You Send</span>
-              <span class="value">{amount} {token.symbol}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Network Fee</span>
-              <span class="value"
-                >{formatBalance(
-                  tokenFee?.toString() || "10000",
-                  token.decimals,
-                )}
-                {token.symbol}</span
-              >
-            </div>
-            <div class="detail-item">
-              <span class="label">Receiver Gets</span>
-              <span class="value"
-                >{parseFloat(amount).toFixed(token.decimals)}
-                {token.symbol}</span
-              >
-            </div>
-            <div class="detail-item total">
-              <span class="label">Total Amount</span>
-              <span class="value"
-                >{(
-                  parseFloat(amount) +
-                  parseFloat(tokenFee?.toString() || "10000") /
-                    10 ** token.decimals
-                ).toFixed(4)}
-                {token.symbol}</span
-              >
-            </div>
-          </div>
-        </div>
-
-        <div class="confirm-actions">
-          <button class="cancel-btn" on:click={() => (showConfirmation = false)}
-            >Cancel</button
-          >
-          <button
-            class="confirm-btn"
-            class:loading={isValidating}
-            on:click={confirmTransfer}
-            disabled={isValidating}
-          >
-            {#if isValidating}
-              <span class="loading-spinner"></span>
-              Processing...
-            {:else}
-              Confirm Transfer
-            {/if}
-          </button>
-        </div>
-      </div>
-    </Modal>
+      onConfirm={confirmTransfer}
+      {amount}
+      {token}
+      {tokenFee}
+      {isValidating}
+    />
   {/if}
 
   {#if showScanner}
@@ -684,11 +637,9 @@
     @apply flex items-center gap-2;
   }
 
-  .action-button {
-    @apply h-8 px-3 rounded-lg 
-             bg-white/5 backdrop-blur-sm
-             border border-white/10
-             hover:border-white/20 hover:bg-white/10
+  .utility-button {
+    @apply px-3 rounded-lg py-0.5 
+             hover:border-kong-border/20 hover:bg-kong-bg-light
              text-kong-text-primary/70 hover:text-kong-text-primary
              transition-all duration-200
              flex items-center justify-center gap-2;
@@ -698,16 +649,16 @@
     }
 
     &:active {
-      @apply border-indigo-500 bg-indigo-500/10;
+      @apply border-kong-primary bg-kong-primary/20;
     }
   }
 
   .input-wrapper input {
     @apply w-full h-11 rounded-lg text-kong-text-primary px-4
-             bg-white/5 backdrop-blur-sm
-             border border-white/10 
-             hover:border-white/20
-             focus:border-indigo-500 focus:outline-none
+             bg-kong-bg-light backdrop-blur-sm
+             border border-kong-border 
+             hover:border-kong-border
+             focus:border-kong-primary focus:outline-none
              transition-colors;
 
     &::placeholder {
@@ -715,107 +666,41 @@
     }
 
     &.error {
-      @apply border-red-500/50 bg-red-500/5;
+      @apply border-kong-accent-red/50 bg-kong-accent-red/5;
     }
 
     &.valid {
-      @apply border-green-500/50 bg-green-500/5;
+      @apply border-kong-accent-green/50 bg-kong-accent-green/5;
     }
   }
 
   .send-btn {
-    @apply h-12 w-full rounded-lg bg-indigo-500 text-kong-text-primary font-medium 
-             hover:bg-indigo-600 disabled:opacity-50 mt-4;
+    @apply h-12 w-full rounded-lg font-medium mt-4
+           transition-all duration-200;
+
+    &:not(.disabled):not(.error) {
+      @apply bg-kong-primary text-white 
+             hover:bg-kong-accent-green;
+    }
+
+    &.disabled {
+      @apply bg-kong-bg-light text-kong-text-primary/50 
+             cursor-not-allowed border border-kong-border/20;
+    }
+
+    &.error {
+      @apply bg-kong-accent-red text-white
+             hover:bg-kong-accent-red/90;
+    }
   }
 
   .validation-status {
     @apply text-sm mt-1 px-1;
     &.success {
-      @apply text-green-400;
+      @apply text-kong-accent-green;
     }
     &.error {
-      @apply text-red-400;
-    }
-  }
-
-  .confirm-box {
-    @apply p-6;
-
-    .transfer-summary {
-      @apply mb-6 text-center;
-
-      .amount-display {
-        @apply flex items-baseline justify-center gap-2;
-
-        .amount {
-          @apply text-3xl font-bold text-kong-text-primary;
-        }
-
-        .symbol {
-          @apply text-lg text-kong-text-primary/70;
-        }
-      }
-    }
-
-    .details-grid {
-      @apply space-y-3 mb-6;
-
-      .detail-item {
-        @apply flex justify-between items-center p-3 rounded-lg bg-white/5;
-
-        .label {
-          @apply text-sm text-kong-text-primary/60;
-        }
-
-        .value {
-          @apply text-sm text-kong-text-primary/90;
-        }
-
-        &.total {
-          @apply mt-4 bg-white/10;
-          .label,
-          .value {
-            @apply font-medium text-kong-text-primary;
-          }
-        }
-      }
-    }
-
-    .confirm-actions {
-      @apply flex gap-3 pt-4 border-t border-white/10;
-
-      button {
-        @apply flex-1 py-3 rounded-lg font-medium text-center justify-center items-center gap-2;
-      }
-
-      .cancel-btn {
-        @apply bg-white/10 hover:bg-white/15 text-kong-text-primary/90;
-      }
-
-      .confirm-btn {
-        @apply bg-indigo-500 hover:bg-indigo-600 text-kong-text-primary disabled:opacity-50 disabled:cursor-not-allowed;
-        &.loading {
-          @apply bg-indigo-500/50;
-        }
-      }
-    }
-  }
-
-  .loading-spinner {
-    @apply inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
-  }
-
-  @keyframes scan {
-    0% {
-      transform: translateY(-100%);
-      opacity: 0;
-    }
-    50% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(100%);
-      opacity: 0;
+      @apply text-kong-accent-red;
     }
   }
 
@@ -825,13 +710,13 @@
 
   .tab-button {
     @apply px-3 py-1 rounded-lg text-sm
-             bg-white/5 backdrop-blur-sm
-             border border-white/10
+             bg-kong-bg-light backdrop-blur-sm
+             border border-kong-border/10
              text-kong-text-primary/70
              transition-all duration-200;
 
     &.active {
-      @apply bg-indigo-500/20 border-indigo-500 text-kong-text-primary;
+      @apply bg-kong-primary/20 border-kong-primary text-kong-text-primary;
     }
   }
 

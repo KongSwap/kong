@@ -246,7 +246,7 @@
   {onClose}
   width="700px"
   height="auto"
-  className="portfolio-modal"
+  className="portfolio-modal pb-6"
 >
   <div slot="title" class="flex items-center justify-between w-full">
     <h2 class="text-lg font-semibold text-kong-text-primary">Portfolio Overview</h2>
