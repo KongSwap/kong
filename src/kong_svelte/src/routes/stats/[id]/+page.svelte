@@ -216,14 +216,14 @@
       </button>
     </div>
   {:else}
-    <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
+    <div class="flex flex-col max-w-[1300px] mx-auto gap-4">
       <!-- Token Header - Non-fixed with border radius -->
-      <Panel variant="transparent" type="main">
+      <Panel variant="transparent">
         <div class="flex flex-col gap-4">
           <!-- Token info row -->
           <div class="flex items-center justify-between">
             <!-- Left side with back button and token info -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 md:gap-x-0">
               <button
                 title="Back"
                 aria-label="Back"
@@ -244,7 +244,7 @@
                 </svg>
               </button>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 md:gap-x-0">
                 <TokenImages
                   tokens={token ? [token] : []}
                   size={36}
@@ -264,7 +264,7 @@
             </div>
 
             <!-- Desktop tabs - hidden on mobile -->
-            <div class="hidden md:flex items-center gap-6 text-[#8890a4]">
+            <div class="hidden md:flex items-center gap-2 text-[#8890a4]">
               <button
                 role="tab"
                 id="overview-tab"
@@ -330,15 +330,15 @@
         >
 
           <!-- Overview Layout -->
-          <div class="flex flex-col lg:flex-row gap-6">
+          <div class="flex flex-col lg:flex-row gap-4">
             <!-- Mobile-first layout -->
-            <div class="flex flex-col gap-6 w-full lg:hidden">
+            <div class="flex flex-col gap-4 w-full lg:hidden">
               <!-- Add Action Buttons for mobile -->
               <div class="flex items-center gap-2 justify-end">
                 <ButtonV2
                   variant="solid"
                   size="md"
-                  className="w-1/2 text-nowrap flex justify-center"
+                  className="!w-1/2 text-nowrap flex justify-center"
                   on:click={() =>
                     goto(
                       `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
@@ -351,7 +351,7 @@
                 <ButtonV2
                   variant="solid"
                   size="md"
-                  className="w-1/2 text-nowrap flex justify-center"
+                  className="!w-1/2 text-nowrap flex justify-center"
                   on:click={() =>
                     goto(
                       `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
@@ -475,11 +475,11 @@
               <!-- Right Column - Stats -->
               <div class="lg:w-[30%] flex flex-col gap-4">
                           <!-- Action Buttons - Shown on all layouts -->
-          <div class="flex items-center gap-2 justify-end">
+          <div class="flex items-center gap-2 justify-end w-full">
             <ButtonV2
               variant="solid"
               size="md"
-              className="w-1/2 text-nowrap flex justify-center"
+              className="!w-1/2 text-nowrap flex justify-center"
               on:click={() =>
                 goto(
                   `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
@@ -492,7 +492,7 @@
             <ButtonV2
               variant="solid"
               size="md"
-              className="w-1/2 text-nowrap flex justify-center"
+              className="!w-1/2 text-nowrap flex justify-center"
               on:click={() =>
                 goto(
                   `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
