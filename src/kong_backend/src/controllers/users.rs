@@ -66,15 +66,3 @@ fn update_user(stable_user_json: String) -> Result<String, String> {
 
     Ok("User updated".to_string())
 }
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn edit_user(user_profile: String) -> Result<String, String> {
-    let user: StableUser = match serde_json::from_str(&user_profile) {
-        Ok(user_profile) => user_profile,
-        Err(e) => return Err(format!("Invalid user: {}", e)),
-    };
-
-    USER_MAP.with(|m| m.borrow_mut().insert(StableUserId(user.user_id), user));
-
-    Ok("User updated".to_string())
-}
