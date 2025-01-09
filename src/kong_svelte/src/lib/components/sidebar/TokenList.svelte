@@ -158,7 +158,7 @@
 
       <div class="flex items-center gap-2">
         <label
-          class="filter-toggle flex items-center gap-2 text-gray-400 hover:text-white"
+          class="filter-toggle flex items-center gap-2 text-kong-text-secondary hover:text-kong-text-primary"
         >
           <span class="toggle-label text-xs">Hide zero</span>
           <input
@@ -285,8 +285,8 @@
   }
 
   .sort-toggle {
-    @apply flex items-center gap-1.5 text-gray-400 cursor-pointer 
-           hover:text-white transition-colors whitespace-nowrap bg-kong-bg-dark/40
+    @apply flex items-center gap-1.5 text-kong-text-secondary cursor-pointer 
+           hover:text-kong-text-primary transition-colors whitespace-nowrap bg-kong-bg-dark/40
            px-2 py-1.5 rounded-md border border-gray-700/50 h-[34px];
   }
 
@@ -322,7 +322,7 @@
   }
 
   .match-indicator {
-    @apply px-2 py-0.5 text-xs flex items-center gap-2 text-gray-400;
+    @apply px-2 py-0.5 text-xs flex items-center gap-2 text-kong-text-secondary;
   }
 
   .match-type {
@@ -339,8 +339,8 @@
   }
 
   .clear-search-button {
-    @apply px-3 py-1.5 bg-kong-bg-dark/70 text-white/70 text-xs font-medium rounded-md
-           transition-all duration-200 hover:bg-gray-700/90 hover:text-white;
+    @apply px-3 py-1.5 bg-kong-bg-dark/70 text-kong-text-primary/70 text-xs font-medium rounded-md
+           transition-all duration-200 hover:bg-gray-700/90 hover:text-kong-text-primary;
   }
 
   .refresh-indicator {

@@ -2,7 +2,6 @@ import { formatDistance } from "date-fns";
 
 export function formatTimestamp(timestamp: string): string {
   if (!timestamp) {
-    console.log("formatTimestamp: No timestamp provided");
     return "N/A";
   }
 

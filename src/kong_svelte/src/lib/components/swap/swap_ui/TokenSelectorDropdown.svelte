@@ -82,7 +82,7 @@
 
       // Apply hide zero balances filter
       if (hideZeroBalances) {
-        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        const balance = $storedBalancesStore[token.canister_id]?.in_tokens || BigInt(0);
         if (balance <= 0n) {
           return false;
         }

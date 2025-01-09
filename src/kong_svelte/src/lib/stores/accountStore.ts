@@ -2,18 +2,18 @@ import { writable } from 'svelte/store';
 
 interface AccountStoreState {
     showDetails: boolean;
-    activeTab: 'identity' | 'wallet' | 'connection' | 'details';
+    activeTab: 'principal' | 'account';
 }
 
 function createAccountStore() {
     const { subscribe, update, set } = writable<AccountStoreState>({
         showDetails: false,
-        activeTab: 'identity'
+        activeTab: 'principal'
     });
 
     return {
         subscribe,
-        showAccountDetails: (tab: AccountStoreState['activeTab'] = 'identity') => {
+        showAccountDetails: (tab: AccountStoreState['activeTab'] = 'principal') => {
             update(state => ({ ...state, showDetails: true, activeTab: tab }));
         },
         hideAccountDetails: () => {

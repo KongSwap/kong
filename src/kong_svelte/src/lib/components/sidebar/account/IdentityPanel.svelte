@@ -1,6 +1,6 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import QRCode from 'qrcode';
   import { toastStore } from "$lib/stores/toastStore";
   import Modal from "$lib/components/common/Modal.svelte";
@@ -8,6 +8,7 @@
   import { Principal } from '@dfinity/principal';
   import { AccountIdentifier } from '@dfinity/ledger-icp';
   import { SubAccount } from '@dfinity/ledger-icp';
+  import { accountStore } from "$lib/stores/accountStore";
 
   let qrModal = {
     isOpen: false,
@@ -19,8 +20,15 @@
   let accountCopied = false;
   let copyLoading = false;
   let qrLoading = false;
-  let activeTab: 'principal' | 'account' = 'principal';
   let mounted = false;
+  let activeTab: 'principal' | 'account';
+  const unsubscribe = accountStore.subscribe(state => {
+    activeTab = state.activeTab;
+  });
+
+  onDestroy(() => {
+    unsubscribe();
+  });
 
   interface UserIdentity {
     principalId: string;
@@ -41,29 +49,6 @@
   let lastPrincipal = '';
   let lastSubaccount: any = null;
   let cachedAccountIds = { withSubaccount: '', default: '' };
-
-  async function generateQR(text: string | undefined): Promise<string> {
-    if (!text || typeof text !== 'string' || text.trim() === '') return '';
-    
-    try {
-      qrLoading = true;
-      const safeText = text.toString().trim();
-      return await QRCode.toDataURL(safeText, {
-        width: 200,
-        margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        },
-        errorCorrectionLevel: 'H'
-      });
-    } catch (err) {
-      console.error('QR generation failed:', err);
-      return '';
-    } finally {
-      qrLoading = false;
-    }
-  }
 
   async function handleCopy(text: string, type: 'principal' | 'account') {
     try {
@@ -239,7 +224,7 @@
       isOpen={qrModal.isOpen}
       onClose={closeQrModal}
       title={qrModal.title}
-      width="min(400px, 75vw)"
+      width="300px"
       height="auto"
       variant="solid"
     >
@@ -262,16 +247,21 @@
     <div class="card-header">
       <span>Identity Type</span>
     </div>
-    <div class="input-group">
-      <div class="input-wrapper">
-        <select 
-          bind:value={activeTab}
-          class="select-input"
-        >
-          <option value="principal">Principal ID</option>
-          <option value="account">Account ID</option>
-        </select>
-      </div>
+    <div class="tabs-container">
+      <button 
+        class="tab-button"
+        class:active={activeTab === 'principal'}
+        on:click={() => accountStore.setActiveTab('principal')}
+      >
+        Principal ID
+      </button>
+      <button 
+        class="tab-button"
+        class:active={activeTab === 'account'}
+        on:click={() => accountStore.setActiveTab('account')}
+      >
+        Account ID
+      </button>
     </div>
   </div>
 
@@ -337,7 +327,7 @@
 
 <style scoped lang="postcss">
   .container {
-    @apply flex flex-col gap-4 p-4;
+    @apply flex flex-col gap-4;
   }
 
   .card {
@@ -365,14 +355,6 @@
 
   .input-wrapper {
     @apply relative flex items-center;
-  }
-
-  .select-input {
-    @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
-           text-kong-text-primary border border-kong-border
-           hover:border-kong-border focus:border-kong-primary
-           focus:ring-1 focus:ring-kong-primary/20 focus:outline-none
-           transition-all duration-200;
   }
 
   .icon-button {
@@ -444,29 +426,8 @@
     @apply flex items-center gap-2;
   }
 
-  .action-button {
-    @apply h-8 px-3 rounded-lg 
-           bg-white/5 backdrop-blur-sm
-           border border-white/10
-           hover:border-white/20 hover:bg-white/10
-           text-kong-text-primary/70 hover:text-kong-text-primary
-           transition-all duration-200
-           flex items-center justify-center gap-2;
-  }
-
   .button-text {
     @apply hidden md:inline;
-  }
-
-  .action-button:active {
-    @apply border-indigo-500 bg-indigo-500/10;
-  }
-
-  .id-card {
-    @apply flex flex-col gap-2 p-4 
-           bg-black/20 backdrop-blur-sm
-           border border-white/10 
-           rounded-lg;
   }
 
   .input-wrapper input {
@@ -478,53 +439,30 @@
            transition-colors;
   }
 
-  .monospace-input {
-    @apply font-mono text-sm;
-    cursor: default;
-    user-select: all;
-  }
-
-  .info-tooltip {
-    @apply p-4 rounded-lg
-           bg-white/5 backdrop-blur-sm
-           border border-white/10;
-  }
-
-  .info-tooltip p {
-    @apply text-kong-text-primary/90 text-sm mb-2;
-  }
-
-  .info-tooltip ul {
-    @apply list-disc pl-5 text-sm text-kong-text-primary/70;
-  }
-
-  .info-tooltip li {
-    @apply mb-1;
-  }
-
-  .id-header {
-    @apply flex justify-between items-center text-kong-text-primary/70 text-sm;
-  }
-
   .header-actions {
     @apply flex items-center gap-2;
-  }
-
-  .action-button {
-    @apply h-8 px-3 rounded-lg 
-           bg-white/5 backdrop-blur-sm
-           border border-white/10
-           hover:border-white/20 hover:bg-white/10
-           text-kong-text-primary/70 hover:text-kong-text-primary
-           transition-all duration-200
-           flex items-center justify-center gap-2;
   }
 
   .button-text {
     @apply hidden md:inline;
   }
 
-  .action-button:active {
-    @apply border-indigo-500 bg-indigo-500/10;
+  .tabs-container {
+    @apply flex gap-0.5 bg-kong-bg-dark/50 p-0.5 rounded-md border border-kong-border;
+  }
+
+  .tab-button {
+    @apply flex-1 px-3 py-2 text-sm font-medium text-kong-text-secondary
+           rounded-[4px] transition-all duration-200;
+  }
+
+  .tab-button:hover {
+    @apply bg-kong-bg-dark text-kong-text-primary;
+  }
+
+  .tab-button.active {
+    @apply bg-kong-primary text-white font-semibold
+           shadow-[0_2px_8px_rgba(var(--primary)_/_0.3)]
+           scale-[1.02];
   }
 </style>

@@ -298,7 +298,6 @@ export class TokenService {
 
   public static async fetchUserTransactions(principalId: string, page: number = 1, limit: number = 50, tx_type: string = null): Promise<any> {
     try {
-      console.log("Loading user transactions...");
       const url = `${INDEXER_URL}/api/users/${principalId}/transactions?page=${page}&limit=${limit}${tx_type ? `&tx_type=${tx_type}` : ''}`;
       const response = await fetch(url);
       const data = await response.json();
@@ -345,7 +344,6 @@ export class TokenService {
     const result = await actor.claim();
 
     if (result.Ok) {
-      console.log("Tokens minted successfully");
       toastStore.success("Tokens minted successfully");
     } else {
       console.error("Error minting tokens:", result.Err);

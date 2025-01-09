@@ -8,6 +8,7 @@
   import Toast from "./Toast.svelte";
   import { createEventDispatcher } from 'svelte';
   import { tick } from 'svelte';
+  import { X } from "lucide-svelte";
   const dispatch = createEventDispatcher();
 
   export let isOpen = false;
@@ -169,12 +170,12 @@
             <div class="drag-handle touch-pan-x">
             </div>
 
-            <header class="flex justify-between items-center px-4 flex-shrink-0">
+            <header class="flex justify-between items-center flex-shrink-0 pt-3 pb-4 px-2">
               <slot name="title">
                 {#if typeof title === 'string'}
-                  <h2 class="text-lg font-semibold py-4">{title}</h2>
+                  <h2 class="text-lg font-semibold">{title}</h2>
                 {:else}
-                  <div bind:this={titleElement}></div>
+                  <div class="text-lg font-semibold" bind:this={titleElement}></div>
                 {/if}
               </slot>
               <button
@@ -182,25 +183,11 @@
                 on:click={handleClose}
                 aria-label="Close modal"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="#ff4444"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+                <X size={18} />
               </button>
             </header>
 
-            <div class="flex-1 overflow-y-auto scrollbar-custom px-4 pb-4 min-h-0">
+            <div class="flex-1 overflow-y-auto scrollbar-custom min-h-0 pb-6 px-2">
               <slot />
             </div>
           </div>
@@ -218,8 +205,6 @@
     justify-content: center;
     transition: all 0.15s ease;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    width: 40px;
-    height: 40px;
     flex-shrink: 0;
   }
 

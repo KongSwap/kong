@@ -18,7 +18,7 @@
   isOpen={true}
   onClose={handleClose}
   title="Send {token.name}"
-  width="min(700px, 95vw)"
+  width="500px"
   height="min(420px, 95vh)"
 >
   <div class="tab-content">

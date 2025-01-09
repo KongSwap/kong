@@ -31,17 +31,21 @@ export class IcrcService {
         return await operation();
       } catch (error) {
         const isCorsError = error?.message?.includes('CORS') || error?.message?.includes('Access-Control-Allow-Origin');
-        const isRateLimitError = error?.message?.includes('429');
+        const isRateLimitError = error?.message?.includes('429') || error?.message?.includes('Too Many Requests');
+        const effectiveMaxRetries = isRateLimitError ? 8 : maxRetries;
         
-        const effectiveMaxRetries = isRateLimitError ? 5 : maxRetries;
         if (retries >= effectiveMaxRetries || (!isCorsError && !isRateLimitError)) {
+          console.error(`Failed after ${retries} retries:`, error);
           throw error;
         }
         
         const jitter = Math.random() * 1000;
-        const baseDelay = isRateLimitError ? 2000 : initialDelay;
-        const delay = (baseDelay * Math.pow(2, retries)) + jitter;
+        // Use longer base delay for rate limit errors
+        const baseDelay = isRateLimitError ? 5000 : initialDelay;
+        // Exponential backoff with additional time for rate limits
+        const delay = (baseDelay * Math.pow(2, retries)) + jitter + (isRateLimitError ? 2000 : 0);
         
+        console.warn(`Retry ${retries + 1}/${effectiveMaxRetries} after ${delay}ms due to ${isRateLimitError ? 'rate limit' : 'CORS'} error`);
         await new Promise(resolve => setTimeout(resolve, delay));
         retries++;
       }
