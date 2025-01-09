@@ -19,7 +19,7 @@ pub trait Token {
     fn is_icrc1(&self) -> bool;
     fn is_icrc2(&self) -> bool;
     fn is_icrc3(&self) -> bool;
-    fn on_kong(&self) -> bool;
+    fn is_removed(&self) -> bool;
 }
 
 impl Token for StableToken {
@@ -109,10 +109,10 @@ impl Token for StableToken {
         }
     }
 
-    fn on_kong(&self) -> bool {
+    fn is_removed(&self) -> bool {
         match self {
-            LP(token) => token.on_kong,
-            IC(token) => token.on_kong,
+            LP(token) => token.is_removed,
+            IC(token) => token.is_removed,
         }
     }
 }

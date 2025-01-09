@@ -8,7 +8,6 @@ mod claims;
 mod controllers;
 mod helpers;
 mod ic;
-mod messages;
 mod pools;
 mod remove_liquidity;
 mod remove_liquidity_amounts;
@@ -34,4 +33,4 @@ mod user;
 mod user_balances;
 
 pub const APP_NAME: &str = "Kong Swap";
-pub const APP_VERSION: &str = "v0.0.15";
+pub const APP_VERSION: &str = "v0.0.16";

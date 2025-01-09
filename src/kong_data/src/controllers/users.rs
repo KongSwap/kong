@@ -3,12 +3,21 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
-use crate::stable_memory::USER_MAP;
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
 use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
+use crate::stable_memory::{PRINCIPAL_ID_MAP, USER_MAP};
+use crate::stable_user::principal_id_map::{self, create_principal_id_map};
 use crate::stable_user::stable_user::{StableUser, StableUserId};
 
 const MAX_USERS: usize = 1_000;
+
+#[query(hidden = true, guard = "caller_is_kingkong")]
+fn backup_principal_id_map() -> Result<String, String> {
+    PRINCIPAL_ID_MAP.with(|m| {
+        let map = m.borrow();
+        serde_json::to_string(&*map).map_err(|e| format!("Failed to serialize principal_id_map: {}", e))
+    })
+}
 
 #[query(hidden = true, guard = "caller_is_kingkong")]
 fn backup_users(user_id: Option<u32>, num_users: Option<u16>) -> Result<String, String> {
@@ -43,6 +52,8 @@ fn update_users(stable_users_json: String) -> Result<String, String> {
         }
     });
 
+    create_principal_id_map();
+
     Ok("Users updated".to_string())
 }
 
@@ -53,15 +64,15 @@ fn update_user(stable_user_json: String) -> Result<String, String> {
         Err(e) => return Err(format!("Invalid user: {}", e)),
     };
 
-    USER_MAP.with(|user_map| {
-        let mut map = user_map.borrow_mut();
-        map.insert(StableUserId(user.user_id), user.clone());
+    USER_MAP.with(|m| {
+        m.borrow_mut().insert(StableUserId(user.user_id), user.clone());
     });
+    principal_id_map::insert_principal_id(&user);
 
     // add to UpdateMap for archiving to database
     let ts = get_time();
     let update = StableDBUpdate {
-        update_id: 0,
+        db_update_id: 0,
         stable_memory: StableMemory::UserMap(user),
         ts,
     };

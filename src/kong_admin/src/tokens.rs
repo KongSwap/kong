@@ -33,7 +33,7 @@ pub fn serialize_token(token: &StableToken) -> serde_json::Value {
                 "icrc1": token.icrc1,
                 "icrc2": token.icrc2,
                 "icrc3": token.icrc3,
-                "on_kong": token.on_kong,
+                "is_removed": token.is_removed,
             }
         }),
         StableToken::LP(token) => json!({
@@ -42,7 +42,7 @@ pub fn serialize_token(token: &StableToken) -> serde_json::Value {
                 "symbol": token.symbol,
                 "address": token.address,
                 "decimals": token.decimals,
-                "on_kong": token.on_kong,
+                "is_removed": token.is_removed,
             }
         }),
     }
@@ -62,7 +62,7 @@ pub async fn update_tokens_on_database(db_client: &Client) -> Result<BTreeMap<u3
 }
 
 pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Result<BTreeMap<u32, u8>, Box<dyn std::error::Error>> {
-    let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json) = match v {
+    let (token_id, type_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, is_removed, raw_json) = match v {
         StableToken::IC(token) => {
             let decimals = 10_u64.pow(token.decimals as u32 - 1) as f64;
             let fee = token.fee.0.to_f64().unwrap() / decimals;
@@ -78,7 +78,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
                 Some(token.icrc1),
                 Some(token.icrc2),
                 Some(token.icrc3),
-                token.on_kong,
+                token.is_removed,
                 json!(serialize_token(v)),
             )
         }
@@ -94,7 +94,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
             None,
             None,
             None,
-            token.on_kong,
+            token.is_removed,
             json!(serialize_token(v)),
         ),
     };
@@ -102,7 +102,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
     db_client
         .execute(
             "INSERT INTO tokens 
-                (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, on_kong, raw_json)
+                (token_id, token_type, name, symbol, address, canister_id, decimals, fee, icrc1, icrc2, icrc3, is_removed, raw_json)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ON CONFLICT (token_id) DO UPDATE SET
                     token_type = $2,
@@ -115,7 +115,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
                     icrc1 = $9,
                     icrc2 = $10,
                     icrc3 = $11,
-                    on_kong = $12,
+                    is_removed = $12,
                     raw_json = $13",
             &[
                 &token_id,
@@ -129,7 +129,7 @@ pub async fn insert_token_on_database(v: &StableToken, db_client: &Client) -> Re
                 &icrc1,
                 &icrc2,
                 &icrc3,
-                &on_kong,
+                &is_removed,
                 &raw_json,
             ],
         )

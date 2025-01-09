@@ -120,15 +120,4 @@ impl KongUpdate for KongBackend {
         let call_result = Decode!(result.as_slice(), Result<String, String>)?;
         call_result.map_err(|e| anyhow::anyhow!(e))
     }
-
-    #[allow(dead_code)]
-    async fn update_message(&self, message: &str) -> Result<String> {
-        let result = self
-            .agent
-            .update(&self.canister_id, "update_message")
-            .with_arg(Encode!(&message)?)
-            .await?;
-        let call_result = Decode!(result.as_slice(), Result<String, String>)?;
-        call_result.map_err(|e| anyhow::anyhow!(e))
-    }
 }

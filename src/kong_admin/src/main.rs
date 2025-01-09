@@ -3,12 +3,13 @@ use agent::{create_agent, create_identity_from_pem_file};
 use std::env;
 use tokio_postgres::NoTls;
 
+use db_updates::get_db_updates;
 use kong_backend::KongBackend;
 use kong_data::KongData;
-use updates::get_db_updates;
 
 mod agent;
 mod claims;
+mod db_updates;
 mod kong_backend;
 mod kong_data;
 mod kong_settings;
@@ -22,7 +23,6 @@ mod settings;
 mod tokens;
 mod transfers;
 mod txs;
-mod updates;
 mod users;
 
 const LOCAL_REPLICA: &str = "http://localhost:4943";
@@ -77,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let identity = create_identity_from_pem_file(dfx_pem_file);
     let agent = create_agent(replica_url, identity, is_mainnet).await?;
 
-    if args.contains(&"--updates".to_string()) {
+    if args.contains(&"--db_updates".to_string()) {
         let kong_data = KongData::new(&agent, is_mainnet).await;
         get_db_updates(None, &kong_data, &db_client, tokens_map, pools_map).await?;
     }

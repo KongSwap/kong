@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 
 use super::remove_liquidity_args::RemoveLiquidityArgs;
 use super::remove_liquidity_reply::RemoveLiquidityReply;
-use super::remove_liquidity_reply_helpers::{create_remove_liquidity_reply_failed, create_remove_liquidity_reply_with_tx_id};
+use super::remove_liquidity_reply_helpers::{to_remove_liquidity_reply, to_remove_liquidity_reply_failed};
 
 use crate::helpers::nat_helpers::{nat_add, nat_divide, nat_is_zero, nat_multiply, nat_subtract, nat_zero};
 use crate::ic::{address::Address, get_time::get_time, guards::not_in_maintenance_mode, id::caller_id, transfer::icrc1_transfer};
@@ -171,14 +171,14 @@ async fn check_arguments_with_user(args: &RemoveLiquidityArgs, user_id: u32) -> 
     let lp_token_id = lp_token.token_id();
 
     if nat_is_zero(balance_0) && nat_is_zero(balance_1) {
-        return Err("Zero balances in pool".to_string());
+        Err("Zero balances in pool".to_string())?
     }
 
     // Check the user has enough LP tokens
     let user_lp_token_amount =
         lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id).map_or_else(nat_zero, |lp_token| lp_token.amount);
     let remove_lp_token_amount = if user_lp_token_amount == nat_zero() || args.remove_lp_token_amount > user_lp_token_amount {
-        return Err("User has insufficient LP balance".to_string());
+        Err("User has insufficient LP balance".to_string())?
     } else {
         args.remove_lp_token_amount.clone()
     };
@@ -250,14 +250,14 @@ async fn process_remove_liquidity(
     let transfer_lp_token = remove_lp_token(request_id, user_id, &lp_token, remove_lp_token_amount, ts);
     if transfer_lp_token.is_err() {
         return_tokens(request_id, user_id, pool, &transfer_lp_token, remove_lp_token_amount, ts);
-        return Err(format!("Req #{} failed. {}", request_id, transfer_lp_token.unwrap_err()));
+        Err(format!("Req #{} failed. {}", request_id, transfer_lp_token.unwrap_err()))?
     }
 
     // update liquidity pool with new removed amounts
     update_liquidity_pool(request_id, pool, payout_amount_0, payout_lp_fee_0, payout_amount_1, payout_lp_fee_1);
 
     // successful, add tx and update request with reply
-    let reply = send_payout_tokens(
+    send_payout_tokens(
         request_id,
         user_id,
         to_principal_id,
@@ -269,9 +269,7 @@ async fn process_remove_liquidity(
         remove_lp_token_amount,
         ts,
     )
-    .await;
-
-    Ok(reply)
+    .await
 }
 
 fn remove_lp_token(request_id: u64, user_id: u32, lp_token: &StableToken, remove_lp_token_amount: &Nat, ts: u64) -> Result<(), String> {
@@ -361,7 +359,7 @@ async fn send_payout_tokens(
     payout_lp_fee_1: &Nat,
     remove_lp_token_amount: &Nat,
     ts: u64,
-) -> RemoveLiquidityReply {
+) -> Result<RemoveLiquidityReply, String> {
     // Token0
     let token_0 = pool.token_0();
     // Token1
@@ -414,10 +412,13 @@ async fn send_payout_tokens(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::RemoveLiquidity(remove_liquidity_tx.clone()));
-    let reply = create_remove_liquidity_reply_with_tx_id(tx_id, &remove_liquidity_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::RemoveLiquidity(remove_liquidity_tx)) => to_remove_liquidity_reply(remove_liquidity_tx),
+        _ => to_remove_liquidity_reply_failed(pool.pool_id, request_id, ts),
+    };
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply.clone()));
 
-    reply
+    Ok(reply)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -511,24 +512,24 @@ fn return_tokens(
         }
     }
 
-    let reply = create_remove_liquidity_reply_failed(pool.pool_id, request_id, ts);
+    let reply = to_remove_liquidity_reply_failed(pool.pool_id, request_id, ts);
     request_map::update_reply(request_id, Reply::RemoveLiquidity(reply));
 }
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
-        let request = requests.first().ok_or("Request not found")?;
-        request_map::archive_request_to_kong_data(request.request_id);
+        let request =
+            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+        request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::RemoveLiquidity(ref reply) => {
                 for claim_id in reply.claim_ids.iter() {
-                    claim_map::archive_claim_to_kong_data(*claim_id);
+                    claim_map::archive_to_kong_data(*claim_id)?;
                 }
                 for transfer_id_reply in reply.transfer_ids.iter() {
-                    transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+                    transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id)?;
                 }
-                tx_map::archive_tx_to_kong_data(reply.tx_id);
+                tx_map::archive_to_kong_data(reply.tx_id)?;
             }
             _ => Err("Invalid reply type".to_string())?,
         }

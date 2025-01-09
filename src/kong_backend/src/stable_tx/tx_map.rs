@@ -104,27 +104,28 @@ pub fn insert(tx: &StableTx) -> u64 {
     })
 }
 
-pub fn archive_tx_to_kong_data(tx_id: u64) {
-    ic_cdk::spawn(async move {
-        let tx = match get_by_user_and_token_id(Some(tx_id), None, None, Some(1)).pop() {
-            Some(tx) => tx,
-            None => return,
-        };
+pub fn archive_to_kong_data(tx_id: u64) -> Result<(), String> {
+    let tx = match get_by_user_and_token_id(Some(tx_id), None, None, Some(1)).pop() {
+        Some(tx) => tx,
+        None => Err(format!("Failed to archive. tx_id #{} not found", tx_id))?,
+    };
+    let tx_json = match serde_json::to_string(&tx) {
+        Ok(tx_json) => tx_json,
+        Err(e) => Err(format!("Failed to archive tx_id #{}. {}", tx_id, e))?,
+    };
 
-        match serde_json::to_string(&tx) {
-            Ok(tx_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_tx", (tx_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive tx_id #{}. {}", tx.tx_id(), e)),
-                }
-            }
-            Err(e) => error_log(&format!("Failed to serialize tx_id #{}. {}", tx.tx_id(), e)),
+    ic_cdk::spawn(async move {
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_tx", (tx_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive tx_id #{}. {}", tx_id, e)),
         }
     });
+
+    Ok(())
 }

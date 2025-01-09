@@ -121,17 +121,3 @@ pub fn inc_lp_token_map_idx() -> u64 {
         lp_token_map_idx
     })
 }
-
-pub fn inc_message_map_idx() -> u64 {
-    KONG_SETTINGS.with(|s| {
-        let mut map = s.borrow_mut();
-        let kong_settings = map.get();
-        let message_map_idx = kong_settings.message_map_idx + 1;
-        let new_kong_settings = StableKongSettings {
-            message_map_idx,
-            ..kong_settings.clone()
-        };
-        _ = map.set(new_kong_settings);
-        message_map_idx
-    })
-}

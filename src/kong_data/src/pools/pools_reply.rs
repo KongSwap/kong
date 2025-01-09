@@ -27,11 +27,11 @@ pub struct PoolReply {
     pub lp_fee_1: Nat,
     pub price: f64,
     pub lp_fee_bps: u8,
-    pub on_kong: bool,
     pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
     pub lp_token_symbol: String,
+    pub is_removed: bool,
 }

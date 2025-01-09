@@ -15,7 +15,6 @@ declare global {
       icrc2: boolean;
       icrc3: boolean;
       pool_symbol: string;
-      on_kong: boolean;
     }
   
     interface LPToken {
@@ -24,7 +23,6 @@ declare global {
       decimals: number;
       fee: bigint;
       name: string;
-      on_kong: boolean;
       pool_id_of: number;
       pool_symbol: string;
       symbol: string;

@@ -74,7 +74,7 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
         Ok(token) => token,
         Err(e) => {
             request_map::update_status(request_id, StatusCode::PayTokenNotFound, Some(&e));
-            return Err(e);
+            Err(e)?
         }
     };
 
@@ -86,12 +86,12 @@ async fn check_arguments(args: &SwapArgs, request_id: u64, ts: u64) -> Result<(S
             TxId::BlockIndex(pay_tx_id) => verify_transfer_token(request_id, &pay_token, pay_tx_id, &pay_amount, ts).await?,
             _ => {
                 request_map::update_status(request_id, StatusCode::PayTxIdNotSupported, None);
-                return Err("Pay tx_id not supported".to_string());
+                Err("Pay tx_id not supported".to_string())?
             }
         },
         None => {
             request_map::update_status(request_id, StatusCode::PayTxIdNotFound, None);
-            return Err("Pay tx_id required".to_string());
+            Err("Pay tx_id required".to_string())?
         }
     };
 
@@ -117,7 +117,7 @@ async fn process_swap(
         Err(e) => {
             request_map::update_status(request_id, StatusCode::ReceiveTokenNotFound, None);
             return_pay_token(request_id, user_id, &caller_id, pay_token, pay_amount, None, &mut transfer_ids, ts).await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
     let receive_amount = args.receive_amount.as_ref();
@@ -134,15 +134,15 @@ async fn process_swap(
             ts,
         )
         .await;
-        return Err(format!("Req #{} failed. Pay amount is zero", request_id));
+        Err(format!("Req #{} failed. Pay amount is zero", request_id))?
     }
     // use specified max slippage or use default
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
-        Some(ref address) => match get_address(address) {
-            Some(address) => address,
-            None => {
+        Some(ref address) => match get_address(&receive_token, address) {
+            Ok(address) => address,
+            Err(e) => {
                 request_map::update_status(request_id, StatusCode::ReceiveAddressNotFound, None);
                 return_pay_token(
                     request_id,
@@ -155,13 +155,13 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. Invalid receive address", request_id));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         },
         None => Address::PrincipalId(caller_id),
     };
 
-    let (receive_amount, mid_price, price, slippage, swaps) =
+    let (receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps) =
         match update_liquidity_pool(request_id, pay_token, pay_amount, &receive_token, receive_amount, max_slippage) {
             Ok((receive_amount, mid_price, price, slippage, swaps)) => (receive_amount, mid_price, price, slippage, swaps),
             Err(e) => {
@@ -176,17 +176,17 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
 
-    let reply = send_receive_token(
+    send_receive_token(
         request_id,
         user_id,
         pay_token,
         pay_amount,
         &receive_token,
-        &receive_amount,
+        &receive_amount_with_fees_and_gas,
         &to_address,
         &mut transfer_ids,
         mid_price,
@@ -195,9 +195,7 @@ async fn process_swap(
         &swaps,
         ts,
     )
-    .await;
-
-    Ok(reply)
+    .await
 }
 
 async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat, amount: &Nat, ts: u64) -> Result<u64, String> {
@@ -211,7 +209,7 @@ async fn verify_transfer_token(request_id: u64, token: &StableToken, tx_id: &Nat
             if transfer_map::contain(token_id, tx_id) {
                 let e = format!("Duplicate block id #{}", tx_id);
                 request_map::update_status(request_id, StatusCode::VerifyPayTokenFailed, Some(&e));
-                return Err(e);
+                Err(e)?
             }
             let transfer_id = transfer_map::insert(&StableTransfer {
                 transfer_id: 0,

@@ -3,7 +3,7 @@ use candid::Nat;
 use super::swap_amounts::swap_amounts;
 use super::swap_calc::SwapCalc;
 
-use crate::helpers::nat_helpers::nat_to_decimals_f64;
+use crate::helpers::nat_helpers::{nat_is_zero, nat_to_decimals_f64};
 use crate::stable_token::{stable_token::StableToken, token::Token};
 
 pub fn calculate_amounts(
@@ -15,17 +15,22 @@ pub fn calculate_amounts(
 ) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
     let (receive_amount_with_fees_and_gas, price, mid_price, slippage, txs) = swap_amounts(pay_token, Some(pay_amount), receive_token)?;
 
+    // make sure receive_amount is not zero
+    if nat_is_zero(&receive_amount_with_fees_and_gas) {
+        Err("Receive amount is zero".to_string())?;
+    }
+
     // check if receive_amount_with_fees_and_gas is within user's specified
     if let Some(user_receive_amount) = user_receive_amount {
         if receive_amount_with_fees_and_gas < *user_receive_amount {
             let decimals = receive_token.decimals();
             let receive_amount_with_fees_and_gas_f64 = nat_to_decimals_f64(decimals, &receive_amount_with_fees_and_gas).unwrap_or(0_f64);
-            return Err(format!(
+            Err(format!(
                 "Insufficient receive amount. Can only receive {} {} with {}% slippage",
                 receive_amount_with_fees_and_gas_f64,
                 receive_token.symbol(),
                 slippage
-            ));
+            ))?
         }
     }
 
@@ -33,12 +38,12 @@ pub fn calculate_amounts(
     if slippage > user_max_slippage {
         let decimals = receive_token.decimals();
         let receive_amount_with_fees_and_gas_f64 = nat_to_decimals_f64(decimals, &receive_amount_with_fees_and_gas).unwrap_or(0_f64);
-        return Err(format!(
+        Err(format!(
             "Slippage exceeded. Can only receive {} {} with {}% slippage",
             receive_amount_with_fees_and_gas_f64,
             receive_token.symbol(),
             slippage
-        ));
+        ))?
     }
 
     Ok((receive_amount_with_fees_and_gas, mid_price, price, slippage, txs))

@@ -539,7 +539,6 @@ export class PoolService {
         amount_1: params.amount_1,
         tx_id_0: tx_id_0,
         tx_id_1: tx_id_1,
-        on_kong: [true],
         lp_fee_bps: [30] // Hardcoded LP fee basis points
       });
 

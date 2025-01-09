@@ -95,27 +95,28 @@ pub fn update_unclaimed_status(claim_id: u64, request_id: u64) -> Option<StableC
     update_status(claim_id, ClaimStatus::Unclaimed)
 }
 
-pub fn archive_claim_to_kong_data(claim_id: u64) {
-    ic_cdk::spawn(async move {
-        let claim = match get_by_claim_id(claim_id) {
-            Some(claim) => claim,
-            None => return,
-        };
+pub fn archive_to_kong_data(claim_id: u64) -> Result<(), String> {
+    let claim = match get_by_claim_id(claim_id) {
+        Some(claim) => claim,
+        None => Err(format!("Failed to archive. claim_id #{} not found", claim_id))?,
+    };
+    let claim_json = match serde_json::to_string(&claim) {
+        Ok(claim_json) => claim_json,
+        Err(e) => Err(format!("Failed to archive claim_id #{}. {}", claim_id, e))?,
+    };
 
-        match serde_json::to_string(&claim) {
-            Ok(claim_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_claim", (claim_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive claim_id #{}. {}", claim_id, e)),
-                }
-            }
-            Err(e) => error_log(&format!("Failed to serialize claim_id #{}. {}", claim_id, e)),
+    ic_cdk::spawn(async move {
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_claim", (claim_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive claim_id #{}. {}", claim_id, e)),
         }
     });
+
+    Ok(())
 }

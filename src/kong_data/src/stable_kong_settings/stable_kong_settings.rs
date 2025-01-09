@@ -95,7 +95,7 @@ impl Default for StableKongSettings {
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
             lp_tokens_archive_interval_secs: 3600,       // archive lp_positions every hour
-            archive_to_kong_data: false,
+            archive_to_kong_data: true,                  // replicate to kong_data
         }
     }
 }

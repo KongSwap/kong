@@ -15,7 +15,7 @@ use crate::stable_token::token_map;
 use crate::stable_user::user_map;
 
 #[query(guard = "not_in_maintenance_mode")]
-pub async fn user_balances(principal_id: String, symbol: Option<String>) -> Result<Vec<UserBalancesReply>, String> {
+pub async fn user_balances(principal_id: String) -> Result<Vec<UserBalancesReply>, String> {
     let user_id = user_map::get_by_principal_id(&principal_id)
         .ok()
         .flatten()
@@ -25,18 +25,9 @@ pub async fn user_balances(principal_id: String, symbol: Option<String>) -> Resu
     let mut user_balances = Vec::new();
     let ts = get_time();
 
-    // if symbol is provided, get one token converting it to a vector,
-    // otherwise get all tokens
-    let tokens = match symbol {
-        Some(symbol) => {
-            vec![token_map::get_by_token(&symbol)?]
-        }
-        None => token_map::get_on_kong(),
-    };
-
-    tokens.iter().for_each(|token| match token {
+    token_map::get().iter().for_each(|token| match token {
         LP(lp_token) => {
-            if let Some(reply) = user_balance_lp_token_reply(lp_token, user_id, ts) {
+            if let Some(reply) = to_user_balance_lp_token_reply(lp_token, user_id, ts) {
                 user_balances.push(reply);
             }
         }
@@ -46,7 +37,7 @@ pub async fn user_balances(principal_id: String, symbol: Option<String>) -> Resu
     Ok(user_balances)
 }
 
-fn user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option<UserBalancesReply> {
+fn to_user_balance_lp_token_reply(token: &LPToken, user_id: u32, ts: u64) -> Option<UserBalancesReply> {
     let lp_token_id = token.token_id;
     let lp_token = lp_token_map::get_by_token_id_by_user_id(lp_token_id, user_id)?;
     // user balance and total supply of the LP token

@@ -8,11 +8,11 @@ use crate::ic::guards::caller_is_kingkong;
 use crate::remove_liquidity::remove_liquidity::remove_liquidity_from_pool;
 use crate::remove_liquidity::remove_liquidity_args::RemoveLiquidityArgs;
 use crate::stable_lp_token::lp_token_map;
-use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP, USER_MAP};
+use crate::stable_memory::{LP_TOKEN_MAP, POOL_MAP};
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
 use crate::stable_pool::{pool_map, pool_stats};
 use crate::stable_token::token::Token;
-use crate::stable_user::stable_user::StableUserId;
+use crate::stable_user::user_map;
 
 const MAX_POOLS: usize = 1_000;
 
@@ -51,48 +51,33 @@ fn update_pools(tokens: String) -> Result<String, String> {
     Ok("Pools updated".to_string())
 }
 
-/// remove pool, LP token and all LP positions
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_pool(symbol: String) -> Result<String, String> {
-    let pool = pool_map::get_by_token(&symbol)?;
-    let lp_token_id = pool.lp_token_id;
-    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
-    if lp_total_supply > nat_zero() {
-        return Err(format!("LP token total supply is still {}", lp_total_supply));
-    }
-
-    pool_map::remove(pool.pool_id)?;
-
-    Ok(format!("Pool {} removed", symbol))
-}
-
+// remove all LP positions from pool, returning all tokens to users
 #[update(hidden = true, guard = "caller_is_kingkong")]
 async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
     let pool = pool_map::get_by_token(&symbol)?;
     let lp_token_id = pool.lp_token_id;
 
-    // (lp token amount, user_id, principal_id)
-    let lp_users = USER_MAP.with(|u| {
-        let users = u.borrow();
-        LP_TOKEN_MAP.with(|m| {
-            m.borrow()
-                .iter()
-                .filter_map(|(_, v)| {
-                    if v.token_id == lp_token_id {
-                        let user = users.get(&StableUserId(v.user_id))?;
-                        Some((v.amount, user.user_id, user.principal_id))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
-        })
+    // list of all LP positions to remove
+    // (user_id, principal_id, lp token amount)
+    let lp_users = LP_TOKEN_MAP.with(|m| {
+        m.borrow()
+            .iter()
+            .filter_map(|(_, v)| {
+                if v.token_id == lp_token_id {
+                    let user = user_map::get_by_user_id(v.user_id)?;
+                    Some((user.user_id, user.principal_id, v.amount))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
     });
 
+    // remove_liquidity for each user
     let token_0 = pool.token_0().address_with_chain();
     let token_1 = pool.token_1().address_with_chain();
     let mut results = Vec::new();
-    for (remove_lp_token_amount, user_id, principal_id) in lp_users {
+    for (user_id, principal_id, remove_lp_token_amount) in lp_users {
         // skip if user has no LP position
         if remove_lp_token_amount == nat_zero() {
             continue;
@@ -119,10 +104,27 @@ async fn remove_lps_from_pool(symbol: String) -> Result<String, String> {
             }
         }
     }
+
+    // check remaining LP token total supply
     let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
     results.push(format!("Remaining LP token total supply {}", lp_total_supply));
 
     serde_json::to_string(&results).map_err(|e| format!("Failed to serialize remove_liquidity: {}", e))
+}
+
+/// remove pool, token, LP token and all LP positions
+#[update(hidden = true, guard = "caller_is_kingkong")]
+fn remove_pool(symbol: String) -> Result<String, String> {
+    let pool = pool_map::get_by_token(&symbol)?;
+    let lp_token_id = pool.lp_token_id;
+    let lp_total_supply = lp_token_map::get_total_supply(lp_token_id);
+    if lp_total_supply > nat_zero() {
+        return Err(format!("LP token total supply is still {}", lp_total_supply));
+    }
+
+    pool_map::remove(pool.pool_id)?;
+
+    Ok(format!("Pool {} removed", symbol))
 }
 
 /// used to force a pool stats update

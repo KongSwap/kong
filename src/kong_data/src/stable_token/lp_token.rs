@@ -1,9 +1,6 @@
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
-use super::stable_token::StableToken;
-use super::token;
-
 use crate::chains::chains::LP_CHAIN;
 use crate::stable_pool::pool_map;
 use crate::stable_pool::stable_pool::StablePool;
@@ -13,10 +10,15 @@ pub const LP_DECIMALS: u8 = 8; // LP token decimal
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct LPToken {
     pub token_id: u32,
-    pub symbol: String,
     pub address: String, // unique identifier for the token
+    pub symbol: String,
     pub decimals: u8,
-    pub on_kong: bool,
+    #[serde(default = "false_bool")]
+    pub is_removed: bool,
+}
+
+fn false_bool() -> bool {
+    false
 }
 
 impl LPToken {

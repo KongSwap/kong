@@ -3,6 +3,7 @@ use candid::Nat;
 use super::stable_lp_token::{StableLPToken, StableLPTokenId};
 
 use crate::helpers::nat_helpers::{nat_add, nat_zero};
+use crate::ic::logging::error_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::LP_TOKEN_MAP;
 use crate::stable_user::user_map;
@@ -43,46 +44,46 @@ pub fn insert(lp_token: &StableLPToken) -> Result<u64, String> {
             ..lp_token.clone()
         };
         map.insert(StableLPTokenId(lp_token_id), insert_lp_token.clone());
-        archive_lp_token_to_kong_data(insert_lp_token);
+        _ = archive_to_kong_data(&insert_lp_token);
         Ok(lp_token_id)
     })
 }
 
 pub fn update(lp_token: &StableLPToken) {
     LP_TOKEN_MAP.with(|m| m.borrow_mut().insert(StableLPTokenId(lp_token.lp_token_id), lp_token.clone()));
-    archive_lp_token_to_kong_data(lp_token.clone());
+    _ = archive_to_kong_data(lp_token);
 }
 
-pub fn archive_lp_token_to_kong_data(lp_token: StableLPToken) {
+pub fn archive_to_kong_data(lp_token: &StableLPToken) -> Result<(), String> {
+    let lp_token_id = lp_token.lp_token_id;
+    let lp_token_json = match serde_json::to_string(lp_token) {
+        Ok(lp_token_json) => lp_token_json,
+        Err(e) => Err(format!("Failed to serialize lp_token_id #{}. {}", lp_token_id, e))?,
+    };
+
     ic_cdk::spawn(async move {
-        match serde_json::to_string(&lp_token) {
-            Ok(lp_token_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_lp_token", (lp_token_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => ic_cdk::print(format!("Failed to archive lp_token #{}. {}", lp_token.lp_token_id, e)),
-                }
-            }
-            Err(e) => ic_cdk::print(format!("Failed to serialize lp_token #{}. {}", lp_token.lp_token_id, e)),
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_lp_token", (lp_token_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive lp_token #{}. {}", lp_token_id, e)),
         }
     });
+
+    Ok(())
 }
 
 pub fn remove(lp_token_id: u32) -> Result<(), String> {
-    LP_TOKEN_MAP.with(|m| {
-        let mut lp_tokens = m.borrow_mut();
-        let keys_to_remove: Vec<_> = lp_tokens
-            .iter()
-            .filter_map(|(k, v)| if v.token_id == lp_token_id { Some(k) } else { None })
-            .collect();
-        for key in keys_to_remove {
-            lp_tokens.remove(&key);
-        }
+    let lp_token = get_by_token_id(lp_token_id).ok_or(format!("LP token_id #{} not found", lp_token_id))?;
+    // set amount=0 to remove lp_token
+    update(&StableLPToken {
+        amount: nat_zero(),
+        ..lp_token
     });
+
     Ok(())
 }

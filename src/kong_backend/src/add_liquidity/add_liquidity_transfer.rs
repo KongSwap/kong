@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 use super::add_liquidity::TokenIndex;
 use super::add_liquidity_args::AddLiquidityArgs;
 use super::add_liquidity_reply::AddLiquidityReply;
-use super::add_liquidity_reply_helpers::{create_add_liquidity_reply_failed, create_add_liquidity_reply_with_tx_id};
+use super::add_liquidity_reply_helpers::{to_add_liquidity_reply, to_add_liquidity_reply_failed};
 use super::add_liquidity_transfer_from::archive_to_kong_data;
 use super::add_liquidity_transfer_from::{transfer_from_token, update_liquidity_pool};
 
@@ -133,7 +133,7 @@ async fn check_arguments(
 
     // either token_0 and token_1 must be valid token
     if token_0.is_none() && token_1.is_none() {
-        return Err("Token_0 or Token_1 is required".to_string());
+        Err("Token_0 or Token_1 is required".to_string())?
     }
 
     // check tx_id_0 is valid block index Nat
@@ -149,7 +149,7 @@ async fn check_arguments(
 
     // either tx_id_0 or tx_id_1 must be valid
     if tx_id_0.is_none() && tx_id_1.is_none() {
-        return Err("Tx_id_0 or Tx_id_1 is required".to_string());
+        Err("Tx_id_0 or Tx_id_1 is required".to_string())?
     }
 
     // transfer_id_0 is used to store if the transfer was successful
@@ -175,7 +175,7 @@ async fn check_arguments(
 
     // one of the transfers must be successful
     if transfer_id_0.is_err() && transfer_id_1.is_err() {
-        return Err("Failed to verify transfers".to_string());
+        Err("Failed to verify transfers".to_string())?
     }
 
     Ok((token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1))
@@ -273,7 +273,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. Pool not found", request_id));
+                Err(format!("Req #{} failed. Pool not found", request_id))?
             }
         }
     } else {
@@ -293,7 +293,7 @@ async fn process_add_liquidity(
             ts,
         )
         .await;
-        return Err(format!("Req #{} failed. Pool not found", request_id));
+        Err(format!("Req #{} failed. Pool not found", request_id))?
     };
 
     // both transfers must be successful
@@ -341,7 +341,7 @@ async fn process_add_liquidity(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
 
@@ -358,8 +358,10 @@ async fn process_add_liquidity(
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddLiquidity(add_liquidity_tx.clone()));
-
-    let reply = create_add_liquidity_reply_with_tx_id(tx_id, &add_liquidity_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::AddLiquidity(add_liquidity_tx)) => to_add_liquidity_reply(add_liquidity_tx),
+        _ => to_add_liquidity_reply_failed(pool.pool_id, request_id, &transfer_ids, &Vec::new(), ts),
+    };
     request_map::update_reply(request_id, Reply::AddLiquidity(reply.clone()));
 
     Ok(reply)
@@ -466,7 +468,7 @@ async fn return_tokens(
     }
 
     let pool_id = pool_id.unwrap_or(0);
-    let reply = create_add_liquidity_reply_failed(pool_id, request_id, transfer_ids, &claim_ids, ts);
+    let reply = to_add_liquidity_reply_failed(pool_id, request_id, transfer_ids, &claim_ids, ts);
     request_map::update_reply(request_id, Reply::AddLiquidity(reply));
 }
 

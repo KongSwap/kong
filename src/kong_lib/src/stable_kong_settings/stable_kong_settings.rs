@@ -38,7 +38,6 @@ pub struct StableKongSettings {
     pub transfer_map_idx: u64, // counter for TRANSFER_MAP
     pub claim_map_idx: u64,    // counter for CLAIM_MAP
     pub lp_token_map_idx: u64, // counter for LP_TOKEN_MAP
-    pub message_map_idx: u64,  // counter for MESSAGE_MAP
     pub claims_interval_secs: u64,
     pub transfer_expiry_nanosecs: u64,
     pub stats_interval_secs: u64,
@@ -59,7 +58,6 @@ impl Default for StableKongSettings {
         let transfer_map_idx = 0;
         let claim_map_idx = 0;
         let lp_token_map_idx = 0;
-        let message_map_idx = 0;
         Self {
             kong_backend_id: kong_backend_id(),
             kong_backend_account: kong_account(),
@@ -87,7 +85,6 @@ impl Default for StableKongSettings {
             transfer_map_idx,
             claim_map_idx,
             lp_token_map_idx,
-            message_map_idx,
             claims_interval_secs: 300,                   // claims every 5 minutes
             transfer_expiry_nanosecs: 3_600_000_000_000, // 1 hour (nano seconds)
             stats_interval_secs: 3600,                   // stats every hour
@@ -95,7 +92,7 @@ impl Default for StableKongSettings {
             txs_archive_interval_secs: 3600,             // archive txs every hour
             transfers_archive_interval_secs: 3600,       // archive transfers every hour
             lp_tokens_archive_interval_secs: 3600,       // archive lp_positions every hour
-            archive_to_kong_data: false,
+            archive_to_kong_data: true,                  // replicate to kong_data
         }
     }
 }
