@@ -18,6 +18,7 @@ import { kongDB } from "../db";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { toastStore } from "$lib/stores/toastStore";
+import { formattedTokens } from "./tokenStore";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -421,5 +422,10 @@ export class TokenService {
       toastStore.error('Error fetching token metadata');
       return null;
     }
+  }
+
+  public static async loadBalances(principal?: string): Promise<void> {
+    // Implementation here
+    // This should update some store with the balances
   }
 }

@@ -7,7 +7,7 @@ import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { pnp } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { loadBalances } from "./tokens";
+import { TokenService } from "./tokens/TokenService";
 import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
@@ -68,7 +68,7 @@ function createAuthStore(pnp: PNP) {
           };
           set(newState);
           Promise.all([
-            loadBalances(result.owner.toString()),
+            TokenService.loadBalances(result.owner.toString()),
             PoolService.fetchUserPoolBalances(true),
           ]);
           selectedWalletId.set(walletId);
