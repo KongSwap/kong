@@ -208,7 +208,7 @@
             <div class="drag-handle touch-pan-x"></div>
 
             <header
-              class="flex justify-between items-center flex-shrink-0 px-3 py-2"
+              class="flex justify-between items-center flex-shrink-0 px-3 pb-2 pt-3"
             >
               <slot name="title">
                 {#if typeof title === "string"}
