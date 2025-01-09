@@ -185,16 +185,6 @@ export const idlFactory = ({ IDL }) => {
   const Icrc28TrustedOriginsResponse = IDL.Record({
     'trusted_origins' : IDL.Vec(IDL.Text),
   });
-  const MessagesReply = IDL.Record({
-    'ts' : IDL.Nat64,
-    'title' : IDL.Text,
-    'message' : IDL.Text,
-    'message_id' : IDL.Nat64,
-  });
-  const MessagesResult = IDL.Variant({
-    'Ok' : IDL.Vec(MessagesReply),
-    'Err' : IDL.Text,
-  });
   const PoolReply = IDL.Record({
     'tvl' : IDL.Nat,
     'lp_token_symbol' : IDL.Text,
@@ -491,7 +481,6 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'icrc28_trusted_origins' : IDL.Func([], [Icrc28TrustedOriginsResponse], []),
-    'messages' : IDL.Func([IDL.Opt(IDL.Nat64)], [MessagesResult], ['query']),
     'pools' : IDL.Func([IDL.Opt(IDL.Text)], [PoolsResult], ['query']),
     'remove_liquidity' : IDL.Func(
         [RemoveLiquidityArgs],
