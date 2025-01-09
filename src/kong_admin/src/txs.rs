@@ -53,7 +53,7 @@ pub fn serialize_tx(tx: &StableTx) -> serde_json::Value {
                 "add_lp_token_amount": tx.add_lp_token_amount.to_string(),
                 "transfer_ids": tx.transfer_ids,
                 "claim_ids": tx.claim_ids,
-                "on_kong": tx.on_kong,
+                "is_removed": tx.is_removed,
                 "ts": tx.ts,
             }
         }),
@@ -201,7 +201,7 @@ pub async fn insert_tx_on_database(
             let add_lp_token_amount = round_f64(v.add_lp_token_amount.0.to_f64().unwrap() / 10_u64.pow(8_u32) as f64, 8_u8);
             let transfer_ids = v.transfer_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
             let claims_ids = v.claim_ids.iter().map(|x| *x as i64).collect::<Vec<i64>>();
-            let on_kong = v.on_kong;
+            let is_removed = v.is_removed;
             let ts = v.ts as f64 / 1_000_000_000.0;
 
             db_client
@@ -223,7 +223,7 @@ pub async fn insert_tx_on_database(
             db_client
                 .execute(
                     "INSERT INTO add_pool_tx
-                        (tx_id, pool_id, request_id, user_id, status, amount_0, amount_1, add_lp_token_amount, transfer_ids, claim_ids, on_kong, ts)
+                        (tx_id, pool_id, request_id, user_id, status, amount_0, amount_1, add_lp_token_amount, transfer_ids, claim_ids, is_removed, ts)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12))
                         ON CONFLICT (tx_id) DO UPDATE SET
                             pool_id = $2,
@@ -235,9 +235,9 @@ pub async fn insert_tx_on_database(
                             add_lp_token_amount = $8,
                             transfer_ids = $9,
                             claim_ids = $10,
-                            on_kong = $11,
+                            is_removed = $11,
                             ts = to_timestamp($12)",
-                    &[&tx_id, &pool_id, &request_id, &user_id, &status, &amount_0, &amount_1, &add_lp_token_amount, &transfer_ids, &claims_ids, &on_kong, &ts],
+                    &[&tx_id, &pool_id, &request_id, &user_id, &status, &amount_0, &amount_1, &add_lp_token_amount, &transfer_ids, &claims_ids, &is_removed, &ts],
                 )
                 .await?;
         }
@@ -478,8 +478,6 @@ pub async fn insert_tx_on_database(
                     ],
                 )
                 .await?;
-
-            db_client.execute("DELETE FROM swap_pool_tx WHERE tx_id = $1", &[&tx_id]).await?;
 
             for swap in v.txs.iter() {
                 let pool_id = swap.pool_id as i32;

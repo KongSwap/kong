@@ -18,7 +18,7 @@ fn backup_db_updates(update_id: Option<u64>) -> Result<String, String> {
 
 #[update(hidden = true, guard = "caller_is_kingkong")]
 fn remove_db_updates(update_id: u64) -> Result<String, String> {
-    db_update_map::remove_old_update_id(update_id);
+    db_update_map::remove_old_updates(update_id);
 
     Ok("DB updates removed".to_string())
 }

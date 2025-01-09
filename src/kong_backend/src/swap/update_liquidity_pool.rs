@@ -25,7 +25,7 @@ pub fn update_liquidity_pool(
     request_map::update_status(request_id, StatusCode::CalculatePoolAmounts, None);
 
     match calculate_amounts(pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
-        Ok((receive_amount, price, mid_price, slippage, swaps)) => {
+        Ok((receive_amount_with_fees_and_gas, price, mid_price, slippage, swaps)) => {
             request_map::update_status(request_id, StatusCode::CalculatePoolAmountsSuccess, None);
 
             // update the pool, in some cases there could be multiple pools
@@ -87,7 +87,7 @@ pub fn update_liquidity_pool(
 
             request_map::update_status(request_id, StatusCode::UpdatePoolAmountsSuccess, None);
 
-            Ok((receive_amount, mid_price, price, slippage, swaps))
+            Ok((receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps))
         }
         Err(e) => {
             request_map::update_status(request_id, StatusCode::CalculatePoolAmountsFailed, Some(&e));

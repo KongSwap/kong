@@ -141,7 +141,6 @@ export class IcrcService {
     if (!token?.canister_id) {
       throw new Error("Invalid token: missing canister_id");
     }
-    ``;
 
     try {
       const expiresAt =

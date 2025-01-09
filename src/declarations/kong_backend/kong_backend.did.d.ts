@@ -38,6 +38,8 @@ export interface AddLiquidityReply {
   'amount_0' : bigint,
   'amount_1' : bigint,
   'claim_ids' : BigUint64Array | bigint[],
+  'address_0' : string,
+  'address_1' : string,
   'symbol_0' : string,
   'symbol_1' : string,
   'chain_0' : string,
@@ -54,7 +56,6 @@ export interface AddPoolArgs {
   'tx_id_0' : [] | [TxId],
   'tx_id_1' : [] | [TxId],
   'lp_fee_bps' : [] | [number],
-  'on_kong' : [] | [boolean],
 }
 export interface AddPoolReply {
   'ts' : bigint,
@@ -64,22 +65,22 @@ export interface AddPoolReply {
   'lp_token_symbol' : string,
   'add_lp_token_amount' : bigint,
   'transfer_ids' : Array<TransferIdReply>,
+  'name' : string,
   'amount_0' : bigint,
   'amount_1' : bigint,
   'claim_ids' : BigUint64Array | bigint[],
+  'address_0' : string,
+  'address_1' : string,
   'symbol_0' : string,
   'symbol_1' : string,
+  'pool_id' : number,
   'chain_0' : string,
   'chain_1' : string,
+  'is_removed' : boolean,
   'symbol' : string,
   'lp_fee_bps' : number,
-  'on_kong' : boolean,
 }
 export type AddPoolResult = { 'Ok' : AddPoolReply } |
-  { 'Err' : string };
-export interface AddTokenArgs { 'token' : string, 'on_kong' : [] | [boolean] }
-export type AddTokenReply = { 'IC' : ICTokenReply };
-export type AddTokenResult = { 'Ok' : AddTokenReply } |
   { 'Err' : string };
 export interface CheckPoolsReply {
   'expected_balance' : ExpectedBalance,
@@ -104,8 +105,8 @@ export interface ICTokenReply {
   'icrc1' : boolean,
   'icrc2' : boolean,
   'icrc3' : boolean,
+  'is_removed' : boolean,
   'symbol' : string,
-  'on_kong' : boolean,
 }
 export interface ICTransferReply {
   'is_send' : boolean,
@@ -144,9 +145,9 @@ export interface LPTokenReply {
   'name' : string,
   'address' : string,
   'pool_id_of' : number,
+  'is_removed' : boolean,
   'total_supply' : bigint,
   'symbol' : string,
-  'on_kong' : boolean,
 }
 export interface MessagesReply {
   'ts' : bigint,
@@ -181,10 +182,10 @@ export interface PoolReply {
   'price' : number,
   'chain_0' : string,
   'chain_1' : string,
+  'is_removed' : boolean,
   'symbol' : string,
   'rolling_24h_lp_fee' : bigint,
   'lp_fee_bps' : number,
-  'on_kong' : boolean,
 }
 export interface PoolsReply {
   'total_24h_lp_fee' : bigint,
@@ -231,6 +232,8 @@ export interface RemoveLiquidityReply {
   'amount_0' : bigint,
   'amount_1' : bigint,
   'claim_ids' : BigUint64Array | bigint[],
+  'address_0' : string,
+  'address_1' : string,
   'symbol_0' : string,
   'symbol_1' : string,
   'chain_0' : string,
@@ -331,6 +334,8 @@ export interface SwapReply {
   'claim_ids' : BigUint64Array | bigint[],
   'pay_symbol' : string,
   'receive_symbol' : string,
+  'receive_address' : string,
+  'pay_address' : string,
   'price' : number,
   'pay_chain' : string,
   'slippage' : number,
@@ -344,7 +349,9 @@ export interface SwapTxReply {
   'receive_amount' : bigint,
   'pay_symbol' : string,
   'receive_symbol' : string,
+  'receive_address' : string,
   'pool_symbol' : string,
+  'pay_address' : string,
   'price' : number,
   'pay_chain' : string,
   'lp_fee' : bigint,
@@ -374,14 +381,12 @@ export type UserBalancesResult = { 'Ok' : Array<UserBalancesReply> } |
   { 'Err' : string };
 export interface UserReply {
   'account_id' : string,
-  'user_name' : string,
   'fee_level_expires_at' : [] | [bigint],
   'referred_by' : [] | [string],
   'user_id' : number,
   'fee_level' : number,
   'principal_id' : string,
   'referred_by_expires_at' : [] | [bigint],
-  'campaign1_flags' : Array<boolean>,
   'my_referral_code' : string,
 }
 export type UserResult = { 'Ok' : UserReply } |
@@ -440,14 +445,6 @@ export interface _SERVICE {
   >,
   'add_pool' : ActorMethod<[AddPoolArgs], AddPoolResult>,
   'check_pools' : ActorMethod<[], CheckPoolsResult>,
-  'get_requests' : ActorMethod<
-    [[] | [bigint], [] | [number], [] | [number]],
-    RequestsResult
-  >,
-  'get_txs' : ActorMethod<
-    [[] | [bigint], [] | [bigint], [] | [number], [] | [number]],
-    TxsResult
-  >,
   'get_user' : ActorMethod<[], UserResult>,
   'icrc10_supported_standards' : ActorMethod<
     [],
@@ -480,7 +477,7 @@ export interface _SERVICE {
   'swap_async' : ActorMethod<[SwapArgs], SwapAsyncResult>,
   'tokens' : ActorMethod<[[] | [string]], TokensResult>,
   'txs' : ActorMethod<[[] | [string]], TxsResult>,
-  'user_balances' : ActorMethod<[string, [] | [string]], UserBalancesResult>,
+  'user_balances' : ActorMethod<[string], UserBalancesResult>,
   'validate_add_liquidity' : ActorMethod<[], ValidateAddLiquidityResult>,
   'validate_remove_liquidity' : ActorMethod<[], ValidateRemoveLiquidityResult>,
 }

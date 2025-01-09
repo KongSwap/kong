@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 use crate::ic::guards::caller_is_kingkong;
 use crate::stable_memory::TOKEN_MAP;
 use crate::stable_token::stable_token::{StableToken, StableTokenId};
-use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
 
 const MAX_TOKENS: usize = 1_000;
@@ -42,12 +41,4 @@ fn update_tokens(stable_tokens: String) -> Result<String, String> {
     }
 
     Ok("Tokens updated".to_string())
-}
-
-#[update(hidden = true, guard = "caller_is_kingkong")]
-fn remove_token(symbol: String) -> Result<String, String> {
-    let token = token_map::get_by_token(&symbol)?;
-    token_map::remove(token.token_id())?;
-
-    Ok(format!("Token {} removed", symbol))
 }

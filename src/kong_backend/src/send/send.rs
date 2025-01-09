@@ -3,7 +3,7 @@ use ic_cdk::update;
 
 use super::send_args::SendArgs;
 use super::send_reply::SendReply;
-use super::send_reply_helpers::{create_send_reply_failed, create_send_reply_with_tx_id};
+use super::send_reply_helpers::{to_send_reply, to_send_reply_failed};
 
 use crate::chains::chains::LP_CHAIN;
 use crate::ic::{get_time::get_time, guards::not_in_maintenance_mode};
@@ -25,7 +25,7 @@ async fn send(args: SendArgs) -> Result<SendReply, String> {
     let lp_token = match token_map::get_by_token(&args.token) {
         Ok(LP(token)) => token,
         Err(e) => return Err(e),
-        _ => return Err("Token not supported".to_string()),
+        _ => Err("Token not supported".to_string())?,
     };
     let lp_token_id = lp_token.token_id;
     let lp_token_chain = LP_CHAIN;
@@ -93,17 +93,19 @@ fn process_send(
         Err(e) => {
             request_map::update_status(request_id, StatusCode::SendLPTokenToUserFailed, Some(&e));
 
-            let reply = create_send_reply_failed(request_id, lp_token_chain, lp_token_symbol, amount, to_address, ts);
+            let reply = to_send_reply_failed(request_id, lp_token_chain, lp_token_symbol, amount, to_address, ts);
             request_map::update_reply(request_id, Reply::Send(reply.clone()));
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?;
         }
     }
 
     // successful, add send_tx and update request with reply
     let send_tx = SendTx::new_success(from_user_id, request_id, to_user_id, lp_token_id, amount, ts);
     let tx_id = tx_map::insert(&StableTx::Send(send_tx.clone()));
-
-    let reply = create_send_reply_with_tx_id(tx_id, &send_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::Send(send_tx)) => to_send_reply(send_tx),
+        _ => to_send_reply_failed(request_id, lp_token_chain, lp_token_symbol, amount, to_address, ts),
+    };
     request_map::update_reply(request_id, Reply::Send(reply.clone()));
 
     Ok(reply)
@@ -111,12 +113,12 @@ fn process_send(
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
-        let request = requests.first().ok_or("Request not found")?;
-        request_map::archive_request_to_kong_data(request.request_id);
+        let request =
+            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+        request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::Send(ref reply) => {
-                tx_map::archive_tx_to_kong_data(reply.tx_id);
+                tx_map::archive_to_kong_data(reply.tx_id)?;
             }
             _ => Err("Invalid reply type".to_string())?,
         }

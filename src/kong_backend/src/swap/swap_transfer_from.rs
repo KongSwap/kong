@@ -91,20 +91,20 @@ async fn check_arguments(args: &SwapArgs) -> Result<(u32, StableToken, Nat, Stab
     let max_slippage = args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
     // use specified address or default to caller's principal id
     let to_address = match args.receive_address {
-        Some(ref address) => get_address(address).ok_or("Invalid receive address")?,
+        Some(ref address) => get_address(&receive_token, address)?,
         None => Address::PrincipalId(caller_id()),
     };
     if nat_is_zero(&pay_amount) {
-        return Err("Pay amount is zero".to_string());
+        Err("Pay amount is zero".to_string())?;
     }
 
     // check to make sure pay_tx_id is not specified
     if args.pay_tx_id.is_some() {
-        return Err("Pay tx_id not supported".to_string());
+        Err("Pay tx_id not supported".to_string())?;
     }
 
     if !pay_token.is_icrc2() {
-        return Err("Pay token must support ICRC2".to_string());
+        Err("Pay token must support ICRC2".to_string())?;
     }
 
     // make sure user is registered, if not create a new user with referred_by if specified
@@ -142,7 +142,7 @@ async fn process_swap(
         .map_err(|e| format!("Pay token transfer_from failed. {}", e))?;
 
     // re-calculate receive_amount and swaps with the latest pool state
-    let (receive_amount, mid_price, price, slippage, swaps) =
+    let (receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps) =
         match update_liquidity_pool(request_id, pay_token, pay_amount, receive_token, receive_amount, max_slippage) {
             Ok((receive_amount, mid_price, price, slippage, swaps)) => (receive_amount, mid_price, price, slippage, swaps),
             Err(e) => {
@@ -158,17 +158,17 @@ async fn process_swap(
                     ts,
                 )
                 .await;
-                return Err(format!("Req #{} failed. {}", request_id, e));
+                Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
 
-    let reply = send_receive_token(
+    send_receive_token(
         request_id,
         user_id,
         pay_token,
         pay_amount,
         receive_token,
-        &receive_amount,
+        &receive_amount_with_fees_and_gas,
         to_address,
         &mut transfer_ids,
         mid_price,
@@ -177,9 +177,7 @@ async fn process_swap(
         &swaps,
         ts,
     )
-    .await;
-
-    Ok(reply)
+    .await
 }
 
 async fn transfer_from_token(

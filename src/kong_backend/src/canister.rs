@@ -1,6 +1,7 @@
 use candid::{CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_timers::{clear_timer, set_timer_interval};
+use ic_stable_structures::Memory as DefaultMemoryTrait;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::DisplayMessageType::{GenericDisplay, LineDisplay};
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
@@ -9,8 +10,10 @@ use itertools::Itertools;
 use serde::Deserialize;
 use std::time::Duration;
 
+use super::stable_memory::with_memory_manager;
 use super::stable_memory::{
-    CLAIMS_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID, TX_MAP_ARCHIVE_TIMER_ID,
+    CLAIMS_TIMER_ID, MESSAGE_MAP, MESSAGE_MEMORY_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID,
+    TX_MAP_ARCHIVE_TIMER_ID,
 };
 use super::{APP_NAME, APP_VERSION};
 
@@ -29,10 +32,13 @@ use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
+use crate::stable_user::principal_id_map::create_principal_id_map;
 
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
+
+    create_principal_id_map();
 
     // start the background timer to process claims
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
@@ -100,6 +106,8 @@ fn pre_upgrade() {
 
 #[post_upgrade]
 async fn post_upgrade() {
+    create_principal_id_map();
+
     // start the background timer to process claims
     let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
@@ -142,6 +150,16 @@ async fn post_upgrade() {
         },
     );
     TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
+
+    MESSAGE_MAP.with(|cell| {
+        cell.borrow_mut().clear_new();
+    });
+    with_memory_manager(|memory_manager| {
+        let memory = memory_manager.get(MESSAGE_MEMORY_ID);
+        if memory.size() > 0 {
+            memory.write(0, &[0]);
+        }
+    });
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

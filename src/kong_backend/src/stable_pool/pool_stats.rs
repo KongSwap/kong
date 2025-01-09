@@ -69,7 +69,7 @@ pub fn update_pool_stats() -> Result<(), String> {
         }
     });
 
-    let pools = pool_map::get_on_kong();
+    let pools = pool_map::get();
     let thousand = Nat::from(1_000_000_000_u32);
     for mut pool in pools {
         // skip pools with less than $1000 TVL

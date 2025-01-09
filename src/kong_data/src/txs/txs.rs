@@ -22,5 +22,6 @@ fn txs(principal_id: Option<String>, tx_id: Option<u64>, token_id: Option<u32>, 
     .iter()
     .map(to_txs_reply)
     .collect();
+
     Ok(txs)
 }

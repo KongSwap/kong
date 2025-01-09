@@ -23,15 +23,15 @@ fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Resul
         // Token0
         let token_0 = pool.token_0();
         let chain_0 = token_0.chain();
-        let symbol_0 = token_0.symbol();
         let address_0 = token_0.address();
+        let symbol_0 = token_0.symbol();
         let reserve_0 = nat_add(&pool.balance_0, &pool.lp_fee_0);
         let fee_0 = token_0.fee();
         // Token1
         let token_1 = pool.token_1();
         let chain_1 = token_1.chain();
-        let symbol_1 = token_1.symbol();
         let address_1 = token_1.address();
+        let symbol_1 = token_1.symbol();
         let reserve_1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
         let fee_1 = token_1.fee();
         // LP token
@@ -62,13 +62,13 @@ fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Resul
         return Ok(AddLiquidityAmountsReply {
             symbol,
             chain_0,
-            symbol_0,
             address_0,
+            symbol_0,
             amount_0: amount,
             fee_0,
             chain_1,
-            symbol_1,
             address_1,
+            symbol_1,
             amount_1,
             fee_1,
             add_lp_token_amount,
@@ -78,15 +78,15 @@ fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Resul
         // Token0
         let token_0 = pool.token_0();
         let chain_0 = token_0.chain();
-        let symbol_0 = token_0.symbol();
         let address_0 = token_0.address();
+        let symbol_0 = token_0.symbol();
         let reserve_0 = nat_add(&pool.balance_0, &pool.lp_fee_0);
         let fee_0 = token_0.fee();
         // Token1
         let token_1 = pool.token_1();
         let chain_1 = token_1.chain();
-        let symbol_1 = token_1.symbol();
         let address_1 = token_1.address();
+        let symbol_1 = token_1.symbol();
         let reserve_1 = nat_add(&pool.balance_1, &pool.lp_fee_1);
         let fee_1 = token_1.fee();
         // LP token
@@ -116,13 +116,13 @@ fn add_liquidity_amounts(token_0: String, amount: Nat, token_1: String) -> Resul
         return Ok(AddLiquidityAmountsReply {
             symbol,
             chain_0,
-            symbol_0,
             address_0,
+            symbol_0,
             amount_0,
             fee_0,
             chain_1,
-            symbol_1,
             address_1,
+            symbol_1,
             amount_1: amount,
             fee_1,
             add_lp_token_amount,

@@ -39,12 +39,12 @@ declare global {
       lp_token_supply: bigint;
       symbol: string;
       lp_fee_bps: number;
-      on_kong: boolean;
       tvl?: bigint;
       volume_24h?: string;
       apr?: number;
       timestamp?: number;
       ts?: number;
+      is_removed: boolean;
     }
   }
 }

@@ -21,7 +21,6 @@
   export let closeOnEscape = true;
   export let closeOnClickOutside = true;
   export let className: string = "";
-
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;

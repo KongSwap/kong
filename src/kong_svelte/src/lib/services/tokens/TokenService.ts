@@ -18,6 +18,7 @@ import { kongDB } from "../db";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { toastStore } from "$lib/stores/toastStore";
+import { browser } from "$app/environment";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -64,7 +65,9 @@ export class TokenService {
 
   private static async fetchFromNetwork(): Promise<FE.Token[]> {
     let retries = 3;
+    let lastError: Error | null = null;
 
+    // First try the indexer API
     while (retries > 0) {
       try {
         return await fetchTokens();
@@ -78,7 +81,6 @@ export class TokenService {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-    return [];
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
@@ -398,7 +400,6 @@ export class TokenService {
         icrc1: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
         icrc2: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-2") ? true : false,
         icrc3: Object.values(supportedStandards).find((standard: any) => standard.name === "ICRC-3") ? true : false,
-        on_kong: false,
         pool_symbol: "",
         pools: [],
         timestamp: Date.now(),

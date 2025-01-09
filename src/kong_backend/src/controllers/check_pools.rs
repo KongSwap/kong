@@ -39,7 +39,7 @@ fn to_check_pool_reply(
 /// for each token, the actual, expected, and difference in balances
 #[update(hidden = true, guard = "caller_is_kingkong")]
 async fn check_pools() -> Result<Vec<CheckPoolReply>, String> {
-    let tokens = token_map::get_on_kong();
+    let tokens = token_map::get();
     // for each token, get the actual, expected, and difference in balances asynchonously
     let futures = tokens
         .iter()

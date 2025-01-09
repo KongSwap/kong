@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 
 use crate::ic::get_time::get_time;
 use crate::ic::guards::{caller_is_kingkong, caller_is_kong_backend};
+use crate::stable_db_update::db_update_map;
+use crate::stable_db_update::stable_db_update::{StableDBUpdate, StableMemory};
 use crate::stable_memory::POOL_MAP;
 use crate::stable_pool::stable_pool::{StablePool, StablePoolId};
-use crate::stable_db_update::stable_db_update::{StableMemory, StableDBUpdate};
-use crate::stable_db_update::db_update_map;
 
 const MAX_POOLS: usize = 1_000;
 
@@ -62,7 +62,7 @@ fn update_pool(stable_pool_json: String) -> Result<String, String> {
     // add to UpdateMap for archiving to database
     let ts = get_time();
     let update = StableDBUpdate {
-        update_id: 0,
+        db_update_id: 0,
         stable_memory: StableMemory::PoolMap(pool),
         ts,
     };

@@ -20,7 +20,6 @@ declare global {
       icrc1: boolean;
       icrc2: boolean;
       icrc3: boolean;
-      on_kong: boolean;
       pool_symbol: string;
       pools: any[];
       metrics: {

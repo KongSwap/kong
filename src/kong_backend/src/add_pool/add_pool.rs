@@ -4,7 +4,7 @@ use icrc_ledger_types::icrc1::account::Account;
 
 use super::add_pool_args::AddPoolArgs;
 use super::add_pool_reply::AddPoolReply;
-use super::add_pool_reply_helpers::{create_add_pool_reply_failed, create_add_pool_reply_with_tx_id};
+use super::add_pool_reply_helpers::{to_add_pool_reply, to_add_pool_reply_failed};
 
 use crate::add_token::add_token::{add_ic_token, add_lp_token};
 use crate::chains::chains::{IC_CHAIN, LP_CHAIN};
@@ -15,7 +15,7 @@ use crate::ic::{
     get_time::get_time,
     guards::not_in_maintenance_mode,
     icp::is_icp,
-    id::{caller_id, is_caller_controller},
+    id::caller_id,
     transfer::{icrc1_transfer, icrc2_transfer_from},
     verify::verify_transfer,
 };
@@ -54,7 +54,7 @@ enum TokenIndex {
 /// * `Err(String)` - An error message if the operation fails.
 #[update(guard = "not_in_maintenance_mode")]
 pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
-    let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount, on_kong) =
+    let (user_id, token_0, add_amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, kong_fee_bps, add_lp_token_amount) =
         check_arguments(&args).await?;
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddPool(args), ts));
@@ -71,7 +71,6 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
         lp_fee_bps,
         kong_fee_bps,
         &add_lp_token_amount,
-        on_kong,
         ts,
     )
     .await
@@ -98,7 +97,7 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
 ///
 /// # Returns
 ///
-/// * `Ok((user_id, token_0, amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps, on_kong))`
+/// * `Ok((user_id, token_0, amount_0, tx_id_0, token_1, add_amount_1, tx_id_1, lp_fee_bps))`
 /// *   `user_id` - The user id.
 /// *   `token_0` - The first token.
 /// *   `amount_0` - The amount of the first token.
@@ -109,13 +108,12 @@ pub async fn add_pool(args: AddPoolArgs) -> Result<AddPoolReply, String> {
 /// *   `lp_fee_bps` - The liquidity pool fee basis points.
 /// *   `kong_fee_bps` - The liquidity pool Kong fee basis points.
 /// *   `add_lp_token_amount` - The amount of LP token to be added to the pool.
-/// *   `on_kong` - Whether the pool is on Kong.
 /// * `Err(String)` - An error message if the operation fails.
 async fn check_arguments(
     args: &AddPoolArgs,
-) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat, bool), String> {
+) -> Result<(u32, StableToken, Nat, Option<Nat>, StableToken, Nat, Option<Nat>, u8, u8, Nat), String> {
     if nat_is_zero(&args.amount_0) || nat_is_zero(&args.amount_1) {
-        return Err("Invalid zero amounts".to_string());
+        Err("Invalid zero amounts".to_string())?
     }
 
     let lp_fee_bps = match args.lp_fee_bps {
@@ -124,31 +122,23 @@ async fn check_arguments(
     };
 
     let default_kong_fee_bps = kong_settings_map::get().default_kong_fee_bps;
-    // only controllers can set kong_fee_bps otherwise use default
-    let kong_fee_bps = match is_caller_controller() {
-        true => args.kong_fee_bps.unwrap_or(default_kong_fee_bps),
-        false => default_kong_fee_bps,
-    };
-
-    if kong_fee_bps > lp_fee_bps {
-        return Err("Kong fee cannot be greater than LP fee".to_string());
+    let kong_fee_bps = default_kong_fee_bps;
+    if lp_fee_bps < kong_fee_bps {
+        Err(format!("LP fee cannot be less than Kong fee of {}", kong_fee_bps))?
     }
-
-    // add a token and pool to Kong
-    let on_kong = args.on_kong.unwrap_or(false);
 
     // check tx_id_0 and tx_id_1 are valid block index Nat
     let tx_id_0 = match &args.tx_id_0 {
         Some(tx_id_0) => match tx_id_0 {
             TxId::BlockIndex(block_id) => Some(block_id).cloned(),
-            _ => return Err("Unsupported tx_id_0".to_string()),
+            _ => Err("Unsupported tx_id_0".to_string())?,
         },
         None => None,
     };
     let tx_id_1 = match &args.tx_id_1 {
         Some(tx_id_1) => match tx_id_1 {
             TxId::BlockIndex(block_id) => Some(block_id).cloned(),
-            _ => return Err("Unsupported tx_id_1".to_string()),
+            _ => Err("Unsupported tx_id_1".to_string())?,
         },
         None => None,
     };
@@ -157,13 +147,11 @@ async fn check_arguments(
     let token_1 = match args.token_1.as_str() {
         token if is_ckusdt(token) => token_map::get_ckusdt()?,
         token if is_icp(token) => token_map::get_icp()?,
-        _ => {
-            return Err(format!(
-                "Token_1 must be {} or {}",
-                kong_settings_map::get().ckusdt_symbol,
-                kong_settings_map::get().icp_symbol
-            ))
-        }
+        _ => Err(format!(
+            "Token_1 must be {} or {}",
+            kong_settings_map::get().ckusdt_symbol,
+            kong_settings_map::get().icp_symbol
+        ))?,
     };
 
     // token_0, check if it exists already or needs to be added
@@ -173,9 +161,9 @@ async fn check_arguments(
         Err(_) => {
             // token_0 needs to be added. Only IC tokens of format IC.CanisterId supported
             match token_map::get_chain(&args.token_0) {
-                Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0, on_kong).await?,
-                Some(chain) if chain == LP_CHAIN => return Err("Token_0 LP tokens not supported".to_string()),
-                Some(_) | None => return Err("Token_0 chain not specified or supported".to_string()),
+                Some(chain) if chain == IC_CHAIN => add_ic_token(&args.token_0).await?,
+                Some(chain) if chain == LP_CHAIN => Err("Token_0 LP tokens not supported".to_string())?,
+                Some(_) | None => Err("Token_0 chain not specified or supported".to_string())?,
             }
         }
     };
@@ -183,12 +171,12 @@ async fn check_arguments(
     // make sure LP token does not already exist
     let lp_token_address = token::address(&token_0, &token_1);
     if token_map::exists(&lp_token_address) {
-        return Err(format!("LP token {} already exists", token::symbol(&token_0, &token_1)));
+        Err(format!("LP token {} already exists", token::symbol(&token_0, &token_1)))?
     }
 
     // make sure pool does not already exist
     if pool_map::exists(&token_0, &token_1) {
-        return Err(format!("Pool {} already exists", pool_map::symbol(&token_0, &token_1)));
+        Err(format!("Pool {} already exists", pool_map::symbol(&token_0, &token_1)))?
     }
 
     let (add_amount_0, add_amount_1, add_lp_token_amount) = calculate_amounts(&token_0, &args.amount_0, &token_1, &args.amount_1)?;
@@ -207,7 +195,6 @@ async fn check_arguments(
         lp_fee_bps,
         kong_fee_bps,
         add_lp_token_amount,
-        on_kong,
     ))
 }
 
@@ -235,7 +222,6 @@ async fn process_add_pool(
     lp_fee_bps: u8,
     kong_fee_bps: u8,
     add_lp_token_amount: &Nat,
-    on_kong: bool,
     ts: u64,
 ) -> Result<AddPoolReply, String> {
     let caller_id = caller_id();
@@ -309,7 +295,7 @@ async fn process_add_pool(
     // add LP token
     request_map::update_status(request_id, StatusCode::AddLPToken, None);
     // default to None for LP token metadata
-    let lp_token = match add_lp_token(token_0, token_1, on_kong) {
+    let lp_token = match add_lp_token(token_0, token_1) {
         Ok(lp_token) => {
             request_map::update_status(request_id, StatusCode::AddLPTokenSuccess, None);
             lp_token
@@ -330,7 +316,7 @@ async fn process_add_pool(
                 ts,
             )
             .await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
 
@@ -342,7 +328,6 @@ async fn process_add_pool(
         lp_fee_bps,
         kong_fee_bps,
         lp_token.token_id(),
-        on_kong,
     ) {
         Ok(pool) => {
             request_map::update_status(request_id, StatusCode::AddPoolSuccess, None);
@@ -364,7 +349,7 @@ async fn process_add_pool(
                 ts,
             )
             .await;
-            return Err(format!("Req #{} failed. {}", request_id, e));
+            Err(format!("Req #{} failed. {}", request_id, e))?
         }
     };
 
@@ -381,11 +366,24 @@ async fn process_add_pool(
         add_lp_token_amount,
         &transfer_ids,
         &Vec::new(),
-        on_kong,
         ts,
     );
     let tx_id = tx_map::insert(&StableTx::AddPool(add_pool_tx.clone()));
-    let reply = create_add_pool_reply_with_tx_id(tx_id, &add_pool_tx);
+    let reply = match tx_map::get_by_user_and_token_id(Some(tx_id), None, None, None).first() {
+        Some(StableTx::AddPool(add_pool_tx)) => to_add_pool_reply(add_pool_tx),
+        _ => to_add_pool_reply_failed(
+            request_id,
+            &token_0.chain(),
+            &token_0.address(),
+            &token_0.symbol(),
+            &token_1.chain(),
+            &token_1.address(),
+            &token_1.symbol(),
+            &transfer_ids,
+            &Vec::new(),
+            ts,
+        ),
+    };
     request_map::update_reply(request_id, Reply::AddPool(reply.clone()));
 
     Ok(reply)
@@ -588,13 +586,18 @@ async fn return_tokens(
         .await;
     }
 
-    // Token0
-    let chain_0 = token_0.chain();
-    let symbol_0 = token_0.symbol();
-    // Token1
-    let chain_1 = token_1.chain();
-    let symbol_1 = token_1.symbol();
-    let reply = create_add_pool_reply_failed(&chain_0, &symbol_0, &chain_1, &symbol_1, request_id, transfer_ids, &claim_ids, ts);
+    let reply = to_add_pool_reply_failed(
+        request_id,
+        &token_0.chain(),
+        &token_0.address(),
+        &token_0.symbol(),
+        &token_1.chain(),
+        &token_1.address(),
+        &token_1.symbol(),
+        transfer_ids,
+        &claim_ids,
+        ts,
+    );
     request_map::update_reply(request_id, Reply::AddPool(reply));
 }
 
@@ -661,15 +664,8 @@ async fn return_token(
 }
 
 // add_pool() taken
-fn add_new_pool(
-    token_id_0: u32,
-    token_id_1: u32,
-    lp_fee_bps: u8,
-    kong_fee_bps: u8,
-    lp_token_id: u32,
-    on_kong: bool,
-) -> Result<StablePool, String> {
-    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id, on_kong);
+fn add_new_pool(token_id_0: u32, token_id_1: u32, lp_fee_bps: u8, kong_fee_bps: u8, lp_token_id: u32) -> Result<StablePool, String> {
+    let pool = StablePool::new(token_id_0, token_id_1, lp_fee_bps, kong_fee_bps, lp_token_id);
     let pool_id = pool_map::insert(&pool)?;
 
     // Retrieves the inserted pool by its pool_id
@@ -678,20 +674,20 @@ fn add_new_pool(
 
 fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
     if kong_settings_map::get().archive_to_kong_data {
-        let requests = request_map::get_by_request_and_user_id(Some(request_id), None, None);
-        let request = requests.first().ok_or("Request not found")?;
-        request_map::archive_request_to_kong_data(request.request_id);
+        let request =
+            request_map::get_by_request_id(request_id).ok_or(format!("Failed to archive. request_id #{} not found", request_id))?;
+        request_map::archive_to_kong_data(&request)?;
         match request.reply {
             Reply::AddPool(ref reply) => {
                 for claim_id in reply.claim_ids.iter() {
-                    claim_map::archive_claim_to_kong_data(*claim_id);
+                    claim_map::archive_to_kong_data(*claim_id)?;
                 }
                 for transfer_id_reply in reply.transfer_ids.iter() {
-                    transfer_map::archive_transfer_to_kong_data(transfer_id_reply.transfer_id);
+                    transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id)?;
                 }
-                tx_map::archive_tx_to_kong_data(reply.tx_id);
+                tx_map::archive_to_kong_data(reply.tx_id)?;
             }
-            _ => return Err("Invalid reply type".to_string()),
+            _ => Err("Invalid reply type".to_string())?,
         }
     }
 

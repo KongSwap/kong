@@ -1,6 +1,7 @@
 use candid::Nat;
 
-use super::lp_token_map::{get_by_token_id, get_by_token_id_by_user_id, insert, update};
+use super::lp_token_map;
+use super::lp_token_map::{get_by_token_id_by_user_id, insert, update};
 use super::stable_lp_token::StableLPToken;
 
 use crate::helpers::nat_helpers::{nat_add, nat_subtract};
@@ -19,7 +20,7 @@ use crate::ic::get_time::get_time;
 pub fn transfer(token_id: u32, to_user_id: u32, amount: &Nat) -> Result<StableLPToken, String> {
     let ts = get_time();
 
-    let from_user = match get_by_token_id(token_id) {
+    let from_user = match lp_token_map::get_by_token_id(token_id) {
         Some(from_user_lp_token) => {
             if from_user_lp_token.amount < *amount {
                 return Err("Not enough LP token".to_string());

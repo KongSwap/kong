@@ -23,7 +23,7 @@ const poolSchema = z.object({
   rolling_24h_apy: z.number(),
   lp_token_symbol: z.string(),
   tvl: z.string().or(z.bigint()).transform(val => BigInt(val)),
-  on_kong: z.boolean()
+  is_removed: z.boolean(),
 });
 
 const poolResponseSchema = z.object({
@@ -62,7 +62,7 @@ export class PoolSerializer {
           rolling_24h_apy: pool.rolling_24h_apy,
           lp_token_symbol: pool.lp_token_symbol,
           tvl: pool.tvl,
-          on_kong: pool.on_kong,
+          is_removed: pool.is_removed,
           lp_token_supply: pool.balance_0 + pool.balance_1
         })),
         total_tvl: parsed.total_tvl,
@@ -101,7 +101,7 @@ export class PoolSerializer {
       rolling_24h_apy: parsed.rolling_24h_apy,
       lp_token_symbol: parsed.lp_token_symbol,
       tvl: BigInt(parsed.tvl),
-      on_kong: parsed.on_kong,
+      is_removed: parsed.is_removed,
       lp_token_supply: BigInt(parsed.balance_0 + parsed.balance_1)
     };
   }

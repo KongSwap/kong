@@ -22,5 +22,6 @@ fn txs(principal_id: Option<String>) -> Result<Vec<TxsReply>, String> {
     .iter()
     .map(to_txs_reply)
     .collect();
+
     Ok(txs)
 }

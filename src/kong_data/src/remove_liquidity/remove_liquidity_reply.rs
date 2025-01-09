@@ -8,9 +8,9 @@ use crate::transfers::transfer_reply::TransferIdReply;
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct RemoveLiquidityReply {
     pub tx_id: u64,
-    pub symbol: String,
     pub request_id: u64,
     pub status: String,
+    pub symbol: String,
     pub chain_0: String,
     #[serde(default = "empty_string")]
     pub address_0: String,

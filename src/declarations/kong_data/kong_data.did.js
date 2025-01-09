@@ -25,10 +25,10 @@ export const idlFactory = ({ IDL }) => {
     'price' : IDL.Float64,
     'chain_0' : IDL.Text,
     'chain_1' : IDL.Text,
+    'is_removed' : IDL.Bool,
     'symbol' : IDL.Text,
     'rolling_24h_lp_fee' : IDL.Nat,
     'lp_fee_bps' : IDL.Nat8,
-    'on_kong' : IDL.Bool,
   });
   const PoolsReply = IDL.Record({
     'total_24h_lp_fee' : IDL.Nat,
@@ -48,8 +48,8 @@ export const idlFactory = ({ IDL }) => {
     'icrc1' : IDL.Bool,
     'icrc2' : IDL.Bool,
     'icrc3' : IDL.Bool,
+    'is_removed' : IDL.Bool,
     'symbol' : IDL.Text,
-    'on_kong' : IDL.Bool,
   });
   const LPTokenReply = IDL.Record({
     'fee' : IDL.Nat,
@@ -59,9 +59,9 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'address' : IDL.Text,
     'pool_id_of' : IDL.Nat32,
+    'is_removed' : IDL.Bool,
     'total_supply' : IDL.Nat,
     'symbol' : IDL.Text,
-    'on_kong' : IDL.Bool,
   });
   const TokenReply = IDL.Variant({ 'IC' : ICTokenReply, 'LP' : LPTokenReply });
   const TokensResult = IDL.Variant({
@@ -142,6 +142,7 @@ export const idlFactory = ({ IDL }) => {
     'lp_token_symbol' : IDL.Text,
     'add_lp_token_amount' : IDL.Nat,
     'transfer_ids' : IDL.Vec(TransferIdReply),
+    'name' : IDL.Text,
     'amount_0' : IDL.Nat,
     'amount_1' : IDL.Nat,
     'claim_ids' : IDL.Vec(IDL.Nat64),
@@ -149,11 +150,12 @@ export const idlFactory = ({ IDL }) => {
     'address_1' : IDL.Text,
     'symbol_0' : IDL.Text,
     'symbol_1' : IDL.Text,
+    'pool_id' : IDL.Nat32,
     'chain_0' : IDL.Text,
     'chain_1' : IDL.Text,
+    'is_removed' : IDL.Bool,
     'symbol' : IDL.Text,
     'lp_fee_bps' : IDL.Nat8,
-    'on_kong' : IDL.Bool,
   });
   const RemoveLiquidityReply = IDL.Record({
     'ts' : IDL.Nat64,

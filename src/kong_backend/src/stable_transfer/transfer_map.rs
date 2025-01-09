@@ -11,10 +11,6 @@ pub fn get_by_transfer_id(transfer_id: u64) -> Option<StableTransfer> {
     TRANSFER_MAP.with(|m| m.borrow().get(&StableTransferId(transfer_id)))
 }
 
-pub fn get(max_requests: usize) -> Vec<StableTransfer> {
-    TRANSFER_MAP.with(|m| m.borrow().iter().rev().take(max_requests).map(|(_, v)| v.clone()).collect())
-}
-
 pub fn contain(token_id: u32, block_id: &Nat) -> bool {
     TRANSFER_MAP.with(|m| {
         m.borrow()
@@ -36,27 +32,28 @@ pub fn insert(transfer: &StableTransfer) -> u64 {
     })
 }
 
-pub fn archive_transfer_to_kong_data(transfer_id: u64) {
-    ic_cdk::spawn(async move {
-        let transfer = match get_by_transfer_id(transfer_id) {
-            Some(transfer) => transfer,
-            None => return,
-        };
+pub fn archive_to_kong_data(transfer_id: u64) -> Result<(), String> {
+    let transfer = match get_by_transfer_id(transfer_id) {
+        Some(transfer) => transfer,
+        None => return Err(format!("Failed to archive. transfer_id #{} not found", transfer_id)),
+    };
+    let transfer_json = match serde_json::to_string(&transfer) {
+        Ok(transfer_json) => transfer_json,
+        Err(e) => return Err(format!("Failed to archive transfer_id #{}. {}", transfer_id, e)),
+    };
 
-        match serde_json::to_string(&transfer) {
-            Ok(transfer_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_transfer", (transfer_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive transfer #{}. {}", transfer.transfer_id, e)),
-                }
-            }
-            Err(e) => error_log(&format!("Failed to serialize transfer #{}. {}", transfer.transfer_id, e)),
+    ic_cdk::spawn(async move {
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_transfer", (transfer_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive transfer_id #{}. {}", transfer.transfer_id, e)),
         }
     });
+
+    Ok(())
 }

@@ -23,7 +23,7 @@ CREATE TABLE add_pool_tx (
     add_lp_token_amount DOUBLE PRECISION NOT NULL,
     transfer_ids BIGINT[],
     claim_ids BIGINT[],
-    on_kong BOOLEAN NOT NULL,
+    is_removed BOOLEAN NOT NULL,
     ts TIMESTAMP NOT NULL
 );
 

@@ -1,3 +1,4 @@
+use super::principal_id_map;
 use super::referral_code::{generate_referral_code, REFERRAL_INTERVAL};
 use super::stable_user::{StableUser, StableUserId};
 
@@ -6,7 +7,6 @@ use crate::ic::logging::error_log;
 use crate::ic::{get_time::get_time, management::get_pseudo_seed};
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::USER_MAP;
-use crate::user::user_name::generate_user_name;
 
 /// return StableUser by user_id
 ///
@@ -34,12 +34,10 @@ pub fn get_by_user_id(user_id: u32) -> Option<StableUser> {
 /// * `Err(String)` if user is anonymous
 pub fn get_by_principal_id(principal_id: &str) -> Result<Option<StableUser>, String> {
     principal_id_is_not_anonymous(principal_id)?;
-
-    Ok(USER_MAP.with(|m| {
-        m.borrow()
-            .iter()
-            .find_map(|(_, v)| if v.principal_id == principal_id { Some(v) } else { None })
-    }))
+    Ok(match principal_id_map::get_user_id(principal_id) {
+        Some(user_id) => get_by_user_id(user_id),
+        None => None,
+    })
 }
 
 /// return StableUser of the caller
@@ -71,24 +69,27 @@ pub fn get_user_by_referral_code(referral_code: &str) -> Option<StableUser> {
 }
 
 pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
+    let mut update = false;
     let user = match get_by_caller() {
         // if user already exists, return user profile without updating referrer code
         // once a user is created, the referrer code cannot be updated
         Ok(Some(mut user)) => {
             // update last login timestamp to now
-            user.last_login_ts = get_time();
+            let now = get_time();
             // check if referred_by is expired
             if let Some(referred_by_expires_at) = user.referred_by_expires_at {
-                if user.last_login_ts > referred_by_expires_at {
+                if now > referred_by_expires_at {
                     user.referred_by = None;
                     user.referred_by_expires_at = None;
+                    update = true;
                 }
             }
             // check if fee_level is expired
             if let Some(fee_level_expires_at) = user.fee_level_expires_at {
-                if user.last_login_ts > fee_level_expires_at {
+                if now > fee_level_expires_at {
                     user.fee_level = 0;
                     user.fee_level_expires_at = None;
+                    update = true;
                 }
             }
             user
@@ -106,42 +107,48 @@ pub fn insert(referred_by: Option<&str>) -> Result<u32, String> {
             };
             let user = StableUser {
                 user_id: kong_settings_map::inc_user_map_idx(),
-                user_name: generate_user_name(&mut rng),
                 my_referral_code: generate_referral_code(&mut rng),
                 referred_by,
                 referred_by_expires_at,
                 ..Default::default()
             };
-            archive_user_to_kong_data(user.clone());
+            // insert to principal_id_map
+            principal_id_map::insert_principal_id(&user);
+            update = true;
             user
         }
         Err(e) => Err(e)?, // do not allow anonymous user
     };
 
-    // update user data
-    USER_MAP.with(|m| {
-        let user_id = user.user_id;
-        m.borrow_mut().insert(StableUserId(user_id), user);
-        Ok(user_id)
-    })
+    if update {
+        USER_MAP.with(|m| {
+            m.borrow_mut().insert(StableUserId(user.user_id), user.clone());
+        });
+        _ = archive_to_kong_data(&user);
+    }
+
+    Ok(user.user_id)
 }
 
-fn archive_user_to_kong_data(user: StableUser) {
+fn archive_to_kong_data(user: &StableUser) -> Result<(), String> {
+    let user_id = user.user_id;
+    let user_json = match serde_json::to_string(user) {
+        Ok(user_json) => user_json,
+        Err(e) => Err(format!("Failed to serialize user_id #{}. {}", user_id, e))?,
+    };
+
     ic_cdk::spawn(async move {
-        match serde_json::to_string(&user) {
-            Ok(user_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user.user_id, e)),
-                };
-            }
-            Err(e) => error_log(&format!("Failed to serialize user_id #{}. {}", user.user_id, e)),
-        }
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_user", (user_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive user_id #{}. {}", user_id, e)),
+        };
     });
+
+    Ok(())
 }

@@ -357,6 +357,15 @@
         : 'down';
     }
   });
+
+  // Helper function to update display values
+  function updateDisplayValues(balance: bigint) {
+    displayBalance = formatTokenBalance(
+      balance.toString(),
+      tokenInfo?.decimals || DEFAULT_DECIMALS
+    );
+    formattedBalance = calculateAvailableBalance(balance);
+  }
 </script>
 
 <Panel

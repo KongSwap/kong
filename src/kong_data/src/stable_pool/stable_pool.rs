@@ -4,7 +4,7 @@ use num::BigRational;
 use serde::{Deserialize, Serialize};
 
 use crate::helpers::math_helpers::price_rounded;
-use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision, nat_zero};
+use crate::helpers::nat_helpers::{nat_add, nat_is_zero, nat_to_bigint, nat_to_decimal_precision};
 use crate::stable_token::stable_token::StableToken;
 use crate::stable_token::token::Token;
 use crate::stable_token::token_map;
@@ -37,13 +37,18 @@ pub struct StablePool {
     pub kong_fee_1: Nat,  // Kong's share of the LP fee
     pub lp_fee_bps: u8,   // LP's fee in basis points
     pub kong_fee_bps: u8, // Kong's fee in basis points
-    pub lp_token_id: u32, // token id of the LP token
-    pub on_kong: bool,    // whether the pool is on Kong
     pub tvl: Nat,
     pub rolling_24h_volume: Nat,
     pub rolling_24h_lp_fee: Nat,
     pub rolling_24h_num_swaps: Nat,
     pub rolling_24h_apy: f64,
+    pub lp_token_id: u32, // token id of the LP token
+    #[serde(default = "false_bool")]
+    pub is_removed: bool,
+}
+
+fn false_bool() -> bool {
+    false
 }
 
 impl StablePool {
@@ -56,7 +61,7 @@ impl StablePool {
     }
 
     pub fn address(&self) -> String {
-        format!("{}_{}", self.token_0().address(), self.token_1().address())
+        format!("{}_{}", self.address_0(), self.address_1())
     }
 
     pub fn address_with_chain(&self) -> String {
@@ -75,6 +80,10 @@ impl StablePool {
         self.token_0().chain().to_string()
     }
 
+    pub fn address_0(&self) -> String {
+        self.token_0().address().to_string()
+    }
+
     pub fn symbol_0(&self) -> String {
         self.token_0().symbol().to_string()
     }
@@ -85,6 +94,10 @@ impl StablePool {
 
     pub fn chain_1(&self) -> String {
         self.token_1().chain().to_string()
+    }
+
+    pub fn address_1(&self) -> String {
+        self.token_1().address().to_string()
     }
 
     pub fn symbol_1(&self) -> String {

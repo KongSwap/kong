@@ -166,19 +166,14 @@ pub fn get_icp() -> Result<StableToken, String> {
     token_map::get_by_token_id(kong_settings_map::get().icp_token_id).ok_or("ICP token not found".to_string())
 }
 
-/// return all tokens that are listed on Kong
-pub fn get_on_kong() -> Vec<StableToken> {
+/// return all tokens
+pub fn get() -> Vec<StableToken> {
     TOKEN_MAP.with(|m| {
         m.borrow()
             .iter()
-            .filter_map(|(_, v)| if v.on_kong() { Some(v) } else { None })
+            .filter_map(|(_, v)| if !v.is_removed() { Some(v) } else { None })
             .collect()
     })
-}
-
-/// return all tokens
-pub fn get() -> Vec<StableToken> {
-    TOKEN_MAP.with(|m| m.borrow().iter().map(|(_, v)| v).collect())
 }
 
 // token's address is the unique identifier
@@ -199,39 +194,48 @@ pub fn insert(token: &StableToken) -> Result<u32, String> {
             StableToken::IC(token) => StableToken::IC(ICToken { token_id, ..token.clone() }),
         };
         map.insert(StableTokenId(token_id), insert_token.clone());
-        archive_token_to_kong_data(insert_token);
+        _ = archive_to_kong_data(&insert_token);
         Ok(token_id)
     })
 }
 
+#[allow(dead_code)]
 pub fn update(token: &StableToken) {
     TOKEN_MAP.with(|m| m.borrow_mut().insert(StableTokenId(token.token_id()), token.clone()));
-    archive_token_to_kong_data(token.clone());
+    _ = archive_to_kong_data(token);
 }
 
 pub fn remove(token_id: u32) -> Result<(), String> {
-    TOKEN_MAP
-        .with(|m| m.borrow_mut().remove(&StableTokenId(token_id)))
-        .ok_or(format!("Failed to remove token_id #{}", token_id))?;
+    let token = get_by_token_id(token_id).ok_or(format!("Token_id #{} not found", token_id))?;
+    // set is_removed to true to remove token
+    let remove_token = match token {
+        StableToken::IC(token) => &StableToken::IC(ICToken { is_removed: true, ..token }),
+        StableToken::LP(token) => &StableToken::LP(LPToken { is_removed: true, ..token }),
+    };
+    update(remove_token);
+
     Ok(())
 }
 
-fn archive_token_to_kong_data(token: StableToken) {
+fn archive_to_kong_data(token: &StableToken) -> Result<(), String> {
+    let token_id = token.token_id();
+    let token_json = match serde_json::to_string(token) {
+        Ok(token_json) => token_json,
+        Err(e) => Err(format!("Failed to serialize token_id #{}. {}", token_id, e))?,
+    };
+
     ic_cdk::spawn(async move {
-        match serde_json::to_string(&token) {
-            Ok(token_json) => {
-                let kong_data = kong_settings_map::get().kong_data;
-                match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_token", (token_json,))
-                    .await
-                    .map_err(|e| e.1)
-                    .unwrap_or_else(|e| (Err(e),))
-                    .0
-                {
-                    Ok(_) => (),
-                    Err(e) => error_log(&format!("Failed to archive token_id #{}. {}", token.token_id(), e)),
-                };
-            }
-            Err(e) => error_log(&format!("Failed to serialize token_id #{}. {}", token.token_id(), e)),
-        }
+        let kong_data = kong_settings_map::get().kong_data;
+        match ic_cdk::call::<(String,), (Result<String, String>,)>(kong_data, "update_token", (token_json,))
+            .await
+            .map_err(|e| e.1)
+            .unwrap_or_else(|e| (Err(e),))
+            .0
+        {
+            Ok(_) => (),
+            Err(e) => error_log(&format!("Failed to archive token_id #{}. {}", token_id, e)),
+        };
     });
+
+    Ok(())
 }

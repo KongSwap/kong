@@ -5,5 +5,4 @@ use serde::{Deserialize, Serialize};
 #[derive(CandidType, Debug, Clone, Serialize, Deserialize)]
 pub struct AddTokenArgs {
     pub token: String,
-    pub on_kong: Option<bool>,
 }

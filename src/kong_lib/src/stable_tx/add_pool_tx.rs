@@ -14,7 +14,7 @@ pub struct AddPoolTx {
     pub add_lp_token_amount: Nat,
     pub transfer_ids: Vec<u64>,
     pub claim_ids: Vec<u64>,
-    pub on_kong: bool,
+    pub is_removed: bool,
     pub ts: u64,
 }
 
@@ -29,7 +29,6 @@ impl AddPoolTx {
         add_lp_token_amount: &Nat,
         transfer_ids: &[u64],
         claim_ids: &[u64],
-        on_kong: bool,
         ts: u64,
     ) -> Self {
         Self {
@@ -43,7 +42,7 @@ impl AddPoolTx {
             add_lp_token_amount: add_lp_token_amount.clone(),
             transfer_ids: transfer_ids.to_vec(),
             claim_ids: claim_ids.to_vec(),
-            on_kong,
+            is_removed: false,
             ts,
         }
     }
