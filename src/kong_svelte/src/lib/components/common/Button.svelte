@@ -62,7 +62,7 @@
   style="--progress: {$progress}; width: {width === 'auto' ? 'auto' : typeof width === 'number' ? width + 'px' : width};"
   use:tooltip={{
     text: tooltipText,
-    position: 'top'
+    direction: 'top'
   }}
 >
   <div class="button-content">

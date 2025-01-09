@@ -60,7 +60,6 @@
 
   async function handleConfirm() {
     if (isLoading) {
-      console.log("Already processing, returning");
       return;
     }
 
@@ -184,7 +183,6 @@
   {onClose}
   variant="solid"
   height="auto"
-  maxHeight="90vh"
   className="mobile:!p-0"
 >
   {#if error}
@@ -193,7 +191,7 @@
       <p class="error-message">{error}</p>
     </div>
   {:else if payToken && receiveToken}
-    <div class="confirmation-container px-4" transition:fade={{ duration: 200 }}>
+    <div class="confirmation-container px-2" transition:fade={{ duration: 200 }}>
       <div class="content-wrapper">
         <div class="sections-wrapper">
           <PayReceiveSection
@@ -214,7 +212,7 @@
         </div>
       </div>
     </div>
-    <div class="button-container">
+    <div class="button-container mb-4 px-2">
       <button
         class="swap-button"
         class:processing={isLoading}
@@ -264,8 +262,7 @@
   .sections-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 4px;
+    gap: 16px;;
     flex: 1;
     @apply rounded-md;
   }
@@ -281,7 +278,7 @@
   }
 
   .button-container {
-    padding: 16px;
+    @apply pt-2;
     margin-top: auto;
     width: 100%;
     position: sticky;

@@ -1,55 +1,72 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import { Chart, DoughnutController, ArcElement, Tooltip, Legend } from 'chart.js';
-  import { onMount } from "svelte";
-  import { portfolioValue, tokenStore, getStoredBalances } from "$lib/services/tokens/tokenStore";
+  import { onMount, onDestroy } from "svelte";
+  import { portfolioValue, getStoredBalances } from "$lib/services/tokens/tokenStore";
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { liveUserPools } from "$lib/services/pools/poolStore";
   import { getChartColors, getChartOptions } from './chartConfig';
   import { processPortfolioData, createChartData } from './portfolioDataProcessor';
-  import { calculateRiskMetrics } from './riskAnalyzer';
   import { auth } from "$lib/services/auth";
-  import { derived } from "svelte/store";
+  import { derived, type Readable } from "svelte/store";
 
   Chart.register(DoughnutController, ArcElement, Tooltip, Legend);
 
-  // Create a derived store for balances
-  const storedBalances = derived(auth, async ($auth) => {
+  // Create an AbortController for cleanup
+  let abortController = new AbortController();
+  let updateTimer: ReturnType<typeof setTimeout>;
+  let unsubscribers: (() => void)[] = [];
+
+  // Create a derived store for balances with cleanup
+  const storedBalances:  Readable<FE.TokenBalance[]> = derived(auth, ($auth, set) => {
     const walletId = $auth?.account?.owner?.toString() || "anonymous";
-    return await getStoredBalances(walletId);
-  });
+    
+    const fetchBalances = async () => {
+      try {
+        const balances = await getStoredBalances(walletId);
+        if (!abortController.signal.aborted) {
+          set(balances);
+        }
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error('Failed to fetch balances:', error);
+          set({});
+        }
+      }
+    };
+
+    fetchBalances();
+    
+    return () => {
+      // Cleanup if needed
+    };
+  }, {});  // Initial empty object
 
   export let isOpen = false;
   export let onClose = () => {};
 
   let tokenPercentage = 0;
   let lpPercentage = 0;
-  let riskScore = 0;
-  let dailyChange = 0;
-  let bestPerformer = { symbol: '', change: 0 };
-  let highestValue = 0;
-  let lowestValue = 0;
   let displayValue = '0.00';
-  
   let canvas: HTMLCanvasElement;
   let chart: Chart;
   let currentData: any = null;
 
-  // Update displayValue when portfolioValue changes
-  $: {
-    Promise.resolve($portfolioValue).then(value => {
-      displayValue = value;
+  // Memoize chart instance creation
+  function createChart(data: any) {
+    if (chart) {
+      chart.destroy();
+    }
+    
+    const isDark = document.documentElement.classList.contains('dark');
+    return new Chart(canvas, {
+      type: 'doughnut',
+      data,
+      options: getChartOptions(isDark) as any
     });
   }
 
-  // Add new properties for better organization
-  let portfolioStats = {
-    totalTokens: 0,
-    totalLPPositions: 0,
-    dailyChange: 0,
-    weeklyChange: 0
-  };
-
+  // Optimized refresh handler
   function handleRefresh() {
     if (chart) {
       chart.destroy();
@@ -58,20 +75,32 @@
     updateChart();
   }
 
-  // Helper function to safely serialize data
-  function safeSerialize(obj: any): string {
-    return JSON.stringify(obj, (_, value) =>
-      typeof value === 'bigint' ? value.toString() : value
-    );
-  }
+  // Helper function to safely serialize data with memoization
+  const memoizedSerialize = (() => {
+    let lastInput: any = null;
+    let lastOutput: string = '';
+    
+    return (obj: any): string => {
+      const isEqual = JSON.stringify(obj) === JSON.stringify(lastInput);
+      if (isEqual) return lastOutput;
+      
+      lastInput = obj;
+      lastOutput = JSON.stringify(obj, (_, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      );
+      return lastOutput;
+    };
+  })();
 
-  // Calculate portfolio data
+  // Optimized portfolio data calculation
   $: portfolioData = (async () => {
+    if (abortController.signal.aborted) return null;
+
     const tokens = $liveTokens;
     const balances = await $storedBalances;
     const userPools = $liveUserPools;
     
-    const dataKey = safeSerialize({ 
+    const dataKey = memoizedSerialize({ 
       tokens: tokens.map(t => t.canister_id),
       balances: Object.keys(balances),
       userPools: userPools.map(p => p.id)
@@ -81,7 +110,6 @@
       return currentData.data;
     }
 
-    // Make sure userPools are included in the position calculations
     const { topPositions, otherPositions } = processPortfolioData(
       tokens, 
       balances, 
@@ -90,100 +118,127 @@
 
     const { colors, getBorderColors } = getChartColors();
     const borderColors = getBorderColors(colors);
-    
     const chartData = createChartData(topPositions, otherPositions, colors, borderColors);
 
     currentData = { key: dataKey, data: chartData };
     return chartData;
   })();
 
+  // Optimized chart update with cleanup
   function updateChart() {
-    if (!canvas || !isOpen) return;
+    if (!canvas || !isOpen || abortController.signal.aborted) return;
 
-    Promise.resolve(portfolioData).then(data => {
-      if (chart) {
-        chart.destroy();
+    clearTimeout(updateTimer);
+    updateTimer = setTimeout(async () => {
+      try {
+        const data = await portfolioData;
+        if (!abortController.signal.aborted && data) {
+          chart = createChart(data);
+        }
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error('Failed to update chart:', error);
+        }
       }
-
-      const isDark = document.documentElement.classList.contains('dark');
-      chart = new Chart(canvas, {
-        type: 'doughnut',
-        data,
-        options: getChartOptions(isDark) as any
-      });
-    });
+    }, 0);
   }
 
+  // Reactive chart update with cleanup
   $: if (isOpen && canvas) {
-    setTimeout(() => updateChart(), 0);
+    updateChart();
   }
 
-  onMount(() => {
-    return () => {
-      if (chart) {
-        chart.destroy();
-        chart = null;
-      }
-    };
-  });
+  // Optimized metrics calculation with cleanup
+  async function calculateMetrics() {
+    if (abortController.signal.aborted) return;
 
-  // Calculate risk metrics
-  $: riskMetrics = (async () => {
-    const balances = await $storedBalances;
-    const { topPositions, otherPositions } = processPortfolioData(
-      $liveTokens,
-      balances,
-      $liveUserPools
-    );
-    return calculateRiskMetrics([...topPositions, ...otherPositions]);
-  })();
+    try {
+      const [portfolioVal, balances] = await Promise.all([
+        $portfolioValue,
+        $storedBalances
+      ]);
 
-  // Calculate percentages
-  $: {
-    Promise.all([$portfolioValue, $storedBalances, riskMetrics]).then(([portfolioVal, balances, metrics]) => {
-      // Calculate token value
-      const tokenValue = Object.values(balances).reduce((acc, balance) => {
+      if (abortController.signal.aborted) return;
+
+      // Calculate token value with proper typing
+      const tokenValue = Object.values(balances as Record<string, FE.TokenBalance>).reduce((acc: number, balance: FE.TokenBalance) => {
         const usdValue = balance?.in_usd ? Number(balance.in_usd) : 0;
         return acc + usdValue;
       }, 0);
       
-      // Calculate LP value from userPools
-      const lpValue = $liveUserPools.reduce((acc, pool) => {
-        const poolValue = Number(pool.usd_balance) || 0;
+      // Calculate LP value with proper typing
+      const lpValue = $liveUserPools.reduce((acc: number, pool: any) => {
+        const poolValue = Number(pool.usd_balance || 0);
         return acc + poolValue;
       }, 0);
       
-      // Calculate total value as sum of token and LP values
       const calculatedTotal = tokenValue + lpValue;
       
-      // Calculate percentages using the calculated total to ensure they add up to 100%
-      tokenPercentage = calculatedTotal > 0 ? Math.round((tokenValue / calculatedTotal) * 100) : 0;
-      lpPercentage = calculatedTotal > 0 ? Math.round((lpValue / calculatedTotal) * 100) : 0;
-    });
+      // Update percentages only if we have a total
+      if (calculatedTotal > 0) {
+        tokenPercentage = Math.round((tokenValue / calculatedTotal) * 100);
+        lpPercentage = Math.round((lpValue / calculatedTotal) * 100);
+      } else {
+        tokenPercentage = 0;
+        lpPercentage = 0;
+      }
+
+      // Calculate diversity score based on portfolio composition
+      const positions = [...Object.entries(balances as Record<string, FE.TokenBalance>), ...$liveUserPools.map(p => ['lp', { in_usd: p.usd_balance }])];
+      const totalValue = positions.reduce((acc, [_, balance]) => acc + Number(balance.in_usd || 0), 0);
+      
+      if (totalValue > 0) {
+        const weights = positions.map(([_, balance]) => Number(balance.in_usd || 0) / totalValue);
+        const concentration = weights.reduce((acc, w) => acc + w * w, 0);
+        diversityScore = Math.round((1 - concentration) * 100);
+      } else {
+        diversityScore = 0;
+      }
+
+    } catch (error) {
+      if (!abortController.signal.aborted) {
+        console.error('Failed to calculate metrics:', error);
+      }
+    }
   }
 
-  // Update the riskScore to diversityScore for clarity
-  let diversityScore = 0;
+  // Setup cleanup
+  onMount(() => {
+    // Subscribe to all relevant stores for updates
+    unsubscribers.push(
+      portfolioValue.subscribe(async (value) => {
+        if (!abortController.signal.aborted) {
+          displayValue = value;
+        }
+      }),
 
-  // Calculate diversity metrics
-  $: diversityMetrics = (async () => {
-    const balances = await $storedBalances;
-    const { topPositions, otherPositions } = processPortfolioData(
-      $liveTokens,
-      balances,
-      $liveUserPools
+      // Subscribe to balances and tokens for metrics
+      derived([storedBalances, liveTokens, liveUserPools], ([$balances, $tokens, $pools]) => {
+        return { balances: $balances, tokens: $tokens, pools: $pools };
+      }).subscribe(async () => {
+        if (!abortController.signal.aborted) {
+          await calculateMetrics();
+        }
+      })
     );
-    const allPositions = [...topPositions, ...otherPositions].filter(pos => pos.value > 0);    
-    const metrics = calculateRiskMetrics(allPositions);
-    return metrics;
-  })();
 
-  // Calculate percentages
-  $: {
-    Promise.resolve(diversityMetrics).then(metrics => {
-      diversityScore = metrics?.diversificationScore || 0;
-    });
-  }
+    // Initial calculation
+    calculateMetrics();
+  });
+
+  onDestroy(() => {
+    // Cleanup all resources
+    abortController.abort();
+    clearTimeout(updateTimer);
+    if (chart) {
+      chart.destroy();
+      chart = null;
+    }
+    unsubscribers.forEach(unsub => unsub());
+    currentData = null;
+  });
+
+  let diversityScore = 0;
 </script>
 
 <Modal
@@ -191,10 +246,10 @@
   {onClose}
   width="700px"
   height="auto"
-  className="portfolio-modal"
+  className="portfolio-modal pb-6"
 >
   <div slot="title" class="flex items-center justify-between w-full">
-    <h2 class="text-xl font-semibold text-kong-text-primary">Portfolio Overview</h2>
+    <h2 class="text-lg font-semibold text-kong-text-primary">Portfolio Overview</h2>
     <button
       on:click={handleRefresh}
       class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-kong-text-secondary hover:text-kong-text-primary transition-colors"
@@ -216,14 +271,14 @@
     </button>
   </div>
   
-  <div class="portfolio-content p-4 flex flex-col gap-8">
+  <div class="portfolio-content px-2 flex flex-col gap-8 mt-1">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       <!-- Chart Section -->
       <div class="bg-kong-bg-light rounded-xl p-4 shadow-lg border border-kong-border/10 hover:border-kong-border/20 transition-all">
         <h3 class="text-sm font-medium text-kong-text-secondary mb-4">Asset Distribution</h3>
         <div 
           class="chart-wrapper flex items-center justify-center" 
-          style="position: relative; height:300px; width:100%"
+          style="position: relative; height:100%; width:100%"
         >
           <canvas bind:this={canvas}></canvas>
         </div>
@@ -305,7 +360,6 @@
   .portfolio-content {
     height: 100%;
     max-height: 100vh;
-    overflow-y: auto;
   }
 
   @media (max-width: 768px) {

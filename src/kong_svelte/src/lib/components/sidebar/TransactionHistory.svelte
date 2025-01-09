@@ -110,8 +110,8 @@
           transactions = newTransactions;
         }
 
-        // Update hasMore based on whether we got a full page
-        hasMore = newTransactions.length === pageSize;
+        // Only set hasMore to false if we get zero transactions back
+        hasMore = newTransactions.length > 0;
       } else if (response.Err) {
         error = typeof response.Err === "string" ? response.Err : "Failed to load transactions";
       }
@@ -429,7 +429,7 @@
     {:else}
       <div class="relative" style="height: {totalHeight}px">
         <div class="absolute w-full" style="transform: translateY({translateY}px)">
-          {#each visibleTransactions as tx (tx.tx_id)}
+          {#each visibleTransactions as tx, i (i)}
             <div 
               class="mb-2 sm:px-3 h-12 rounded-lg hover:bg-kong-bg-dark/40 border border-kong-border-light hover:border-kong-primary/70 transition-all duration-100 flex items-center cursor-pointer"
               on:click={() => handleTransactionClick(tx)}

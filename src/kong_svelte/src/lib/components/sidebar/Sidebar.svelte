@@ -1,31 +1,78 @@
 <script lang="ts">
-  import { fly, fade } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
-  import { onMount } from "svelte";
+  import { fade } from "svelte/transition";
+  import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
   import Panel from "$lib/components/common/Panel.svelte";
-  import TokenList from "./TokenList.svelte";
   import { auth } from "$lib/services/auth";
   import { tick } from "svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import SidebarHeader from "$lib/components/sidebar/SidebarHeader.svelte";
-  import TransactionHistory from "./TransactionHistory.svelte";
-  import PoolList from "./PoolList.svelte";
   import ButtonV2 from "../common/ButtonV2.svelte";
-    import { Coins, Import } from "lucide-svelte";
+  import { Import } from "lucide-svelte";
+  import { fly } from 'svelte/transition';
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
+  let TokenListComponent: any;
+  let PoolListComponent: any;
+  let TransactionHistoryComponent: any;
+
+  // Keep track of component loading promises
+  let loadingPromises: Promise<any>[] = [];
+
+  async function loadComponent(importFn: () => Promise<any>) {
+    const promise = importFn();
+    loadingPromises = [...loadingPromises, promise];
+    try {
+      const module = await promise;
+      return module.default;
+    } finally {
+      loadingPromises = loadingPromises.filter(p => p !== promise);
+    }
+  }
 
   async function loadWalletProvider() {
-    const module = await import('$lib/components/sidebar/WalletProvider.svelte');
-    WalletProviderComponent = module.default;
+    WalletProviderComponent = await loadComponent(() => 
+      import("$lib/components/sidebar/WalletProvider.svelte")
+    );
   }
 
   async function loadAddCustomTokenModal() {
-    const module = await import('./AddCustomTokenModal.svelte');
-    AddCustomTokenModalComponent = module.default;
+    AddCustomTokenModalComponent = await loadComponent(() => 
+      import("./AddCustomTokenModal.svelte")
+    );
   }
+
+  async function loadTokenList() {
+    TokenListComponent = await loadComponent(() => 
+      import("./TokenList.svelte")
+    );
+  }
+
+  async function loadPoolList() {
+    PoolListComponent = await loadComponent(() => 
+      import("./PoolList.svelte")
+    );
+  }
+
+  async function loadTransactionHistory() {
+    TransactionHistoryComponent = await loadComponent(() => 
+      import("./TransactionHistory.svelte")
+    );
+  }
+
+  // Cleanup function
+  onDestroy(() => {
+    // Clear component references
+    WalletProviderComponent = null;
+    AddCustomTokenModalComponent = null;
+    TokenListComponent = null;
+    PoolListComponent = null;
+    TransactionHistoryComponent = null;
+    
+    // Cancel any pending loads
+    loadingPromises = [];
+  });
 
   export let onClose: () => void;
 
@@ -59,12 +106,12 @@
   }
 </script>
 
-{#if $sidebarStore.isOpen}
-  <div class="fixed inset-0 z-100 isolation-isolate pointer-events-none">
+{#key $sidebarStore.isOpen}
+  <div class="md:sidebar-wrapper {isExpanded ? 'expanded' : ''} fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
     <div
-      class="backdrop"
-      in:fade|local={{ duration: 100 }}
-      out:fade|local={{ duration: 100 }}
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm cursor-zoom-out pointer-events-auto"
+      in:fade|local={{ duration: 200 }}
+      out:fade|local={{ duration: 200 }}
       on:click={handleClose}
       role="button"
       tabindex="-1"
@@ -72,10 +119,10 @@
     />
     {#if !$auth.isConnected}
       {#await loadWalletProvider()}
-        <div class="wallet-loading-placeholder">Loading...</div>
+        <div class="fixed inset-0 z-[2] flex items-center justify-center text-kong-text-primary">Loading...</div>
       {:then}
         {#if WalletProviderComponent}
-          <svelte:component 
+          <svelte:component
             this={WalletProviderComponent}
             on:login={async () => {
               await tick();
@@ -86,14 +133,16 @@
       {/await}
     {:else}
       <div
-        class="fixed inset-0 z-[2] isolation-isolate pointer-events-none"
+        class="fixed inset-0 z-[2] isolate pointer-events-none"
         role="dialog"
         aria-modal="true"
       >
         <div
-          class={`sidebar-wrapper ${isExpanded ? "inset-1rem w-auto" : ""}`}
-          in:fly|local={{ x: 300, duration: 150, easing: cubicOut }}
-          out:fly|local={{ x: 300, duration: 150, easing: cubicOut }}
+          class={`fixed right-4 top-4 bottom-4 w-[527px] grid transform-gpu backface-hidden pointer-events-auto perspective-1000 ${
+            isExpanded ? "inset-4 w-auto" : ""
+          }`}
+          in:fly={{ x: 20, duration: 200 }}
+          out:fly={{ x: 20, duration: 200 }}
         >
           <Panel
             width="100%"
@@ -110,18 +159,34 @@
               </header>
 
               <!-- Main Content Section -->
-              <main
-                class="min-h-0 px-2 !rounded-t-none !rounded-b-lg flex-1"
-              >
+              <main class="min-h-0 px-2 !rounded-t-none !rounded-b-lg flex-1">
                 <div
                   class="flex flex-col flex-1 h-full gap-1 rounded-lg bg-kong-bg-light !rounded-t-none border-l !rounded-b-lg border-b border-r border-kong-border"
                 >
                   {#if activeTab === "tokens"}
-                    <TokenList />
+                    {#await loadTokenList()}
+                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                    {:then}
+                      {#if TokenListComponent}
+                        <svelte:component this={TokenListComponent} />
+                      {/if}
+                    {/await}
                   {:else if activeTab === "pools"}
-                    <PoolList on:close={handleClose} />
+                    {#await loadPoolList()}
+                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                    {:then}
+                      {#if PoolListComponent}
+                        <svelte:component this={PoolListComponent} on:close={handleClose} />
+                      {/if}
+                    {/await}
                   {:else if activeTab === "history"}
-                    <TransactionHistory />
+                    {#await loadTransactionHistory()}
+                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                    {:then}
+                      {#if TransactionHistoryComponent}
+                        <svelte:component this={TransactionHistoryComponent} />
+                      {/if}
+                    {/await}
                   {/if}
                 </div>
               </main>
@@ -137,9 +202,9 @@
                     className="add-token-button mb-1 !text-kong-text-primary/50"
                     on:click={() => (showAddTokenModal = true)}
                   >
-                  <div class="flex items-center gap-x-2">
-                    <Import size={16} />
-                    Import Token
+                    <div class="flex items-center gap-x-2">
+                      <Import size={16} />
+                      Import Token
                     </div>
                   </ButtonV2>
                   <!-- <ButtonV2
@@ -163,7 +228,7 @@
               <!-- Optional loading state -->
             {:then}
               {#if AddCustomTokenModalComponent}
-                <svelte:component 
+                <svelte:component
                   this={AddCustomTokenModalComponent}
                   on:close={() => (showAddTokenModal = false)}
                 />
@@ -174,60 +239,17 @@
       </div>
     {/if}
   </div>
-{/if}
+{/key}
 
 <style scoped lang="postcss">
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    pointer-events: auto;
-    cursor: zoom-out;
-  }
-
-  .sidebar-wrapper {
-    position: fixed;
-    inset: 1rem 1rem 1rem auto;
-    width: 527px;
-    height: calc(100vh - 2rem);
-    will-change: transform;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    display: grid;
-    z-index: 2;
-    pointer-events: auto;
-  }
-
-  .sidebar-wrapper :global(.panel) {
-    backdrop-filter: blur(20px);
-    height: 100%;
-    display: grid;
-  }
-
   @media (max-width: 768px) {
     .sidebar-wrapper {
-      inset: 0;
-      width: 100%;
-      height: 100vh;
+      @apply fixed inset-0 w-full h-screen;
     }
 
     .sidebar-wrapper.expanded {
-      inset: 0;
+      @apply inset-0;
     }
-  }
-
-  .wallet-connect-header {
-    @apply px-4 text-center;
-  }
-
-  .wallet-connect-body {
-    @apply px-2;
-  }
-
-  .wallet-connect-footer {
-    @apply px-4 pt-2;
   }
 
   :global(.wallet-modal) {

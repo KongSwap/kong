@@ -1,6 +1,7 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
+  import { fade } from 'svelte/transition';
   import QRCode from 'qrcode';
   import { toastStore } from "$lib/stores/toastStore";
   import Modal from "$lib/components/common/Modal.svelte";
@@ -8,19 +9,33 @@
   import { Principal } from '@dfinity/principal';
   import { AccountIdentifier } from '@dfinity/ledger-icp';
   import { SubAccount } from '@dfinity/ledger-icp';
+  import { accountStore } from "$lib/stores/accountStore";
 
   let qrModal = {
     isOpen: false,
     qrData: '',
-    title: ''
+    title: '',
+    loading: false
   };
 
   let principalCopied = false;
   let accountCopied = false;
   let copyLoading = false;
   let qrLoading = false;
-  let activeTab: 'principal' | 'account' = 'principal';
   let mounted = false;
+  let activeTab: 'principal' | 'account';
+  const unsubscribe = accountStore.subscribe(state => {
+    activeTab = state.activeTab;
+  });
+
+  onDestroy(() => {
+    unsubscribe();
+    // Clear any timeouts
+    if (principalCopied || accountCopied) {
+      principalCopied = false;
+      accountCopied = false;
+    }
+  });
 
   interface UserIdentity {
     principalId: string;
@@ -42,28 +57,9 @@
   let lastSubaccount: any = null;
   let cachedAccountIds = { withSubaccount: '', default: '' };
 
-  async function generateQR(text: string | undefined): Promise<string> {
-    if (!text || typeof text !== 'string' || text.trim() === '') return '';
-    
-    try {
-      qrLoading = true;
-      const safeText = text.toString().trim();
-      return await QRCode.toDataURL(safeText, {
-        width: 200,
-        margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        },
-        errorCorrectionLevel: 'H'
-      });
-    } catch (err) {
-      console.error('QR generation failed:', err);
-      return '';
-    } finally {
-      qrLoading = false;
-    }
-  }
+  let error: Error | null = null;
+
+  let loading = true;
 
   async function handleCopy(text: string, type: 'principal' | 'account') {
     try {
@@ -190,7 +186,7 @@
     const text = type === 'principal' ? identity.principalId : identity.defaultAccountId;
     try {
       return await QRCode.toDataURL(text, {
-        width: 200,
+        width: 300,
         margin: 1,
         color: {
           dark: "#000000",
@@ -204,150 +200,199 @@
   }
 
   async function openQrModal(type: 'principal' | 'account') {
-    qrLoading = true;
+    qrModal.loading = true;
+    qrModal.isOpen = true; // Open modal immediately to show loading state
+    
     try {
-      const qrData = await getQRCode(type);
+      const text = type === 'principal' ? identity.principalId : identity.defaultAccountId;
+      const qrData = await QRCode.toDataURL(text, {
+        width: 300,
+        margin: 1,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
       const title = type === 'principal' ? 'Principal ID' : 'Account ID';
-      qrModal = { isOpen: true, qrData, title };
-    } finally {
-      qrLoading = false;
+      qrModal = { ...qrModal, qrData, title, loading: false };
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      toastStore.error('Failed to generate QR code');
+      closeQrModal();
     }
   }
 
   function closeQrModal() {
-    qrModal.isOpen = false;
+    qrModal = { ...qrModal, isOpen: false };
   }
 
   onMount(async () => {
-    mounted = true;
-    await updateIdentity();
+    try {
+      mounted = true;
+      await updateIdentity();
+    } finally {
+      loading = false;
+    }
   });
 
-  $: if (
-    mounted &&
-    auth.pnp?.account?.owner &&
-    identity.principalId !== auth.pnp.account.owner.toString()
-  ) {
-    updateIdentity();
+  // Add memoization for account identifier creation
+  $: accountIds = createAccountIdentifier(
+    auth.pnp?.account?.owner?.toString() || '',
+    auth.pnp?.account?.subaccount
+  );
+
+  // Optimize reactive identity updates
+  $: if (mounted && auth.pnp?.account?.owner) {
+    identity = {
+      principalId: auth.pnp.account.owner.toString(),
+      accountId: accountIds.withSubaccount,
+      defaultAccountId: accountIds.default,
+      principalQR: '',  // Only generate these when needed
+      accountQR: ''     // Only generate these when needed
+    };
+  }
+
+  function handleError(err: Error) {
+    error = err;
+    console.error('IdentityPanel Error:', err);
+    toastStore.error('An error occurred while displaying identity information');
   }
 </script>
 
-<!-- Identity Panel -->
-<div class="container">
-  {#if qrModal.isOpen}
-    <Modal
-      isOpen={qrModal.isOpen}
-      onClose={closeQrModal}
-      title={qrModal.title}
-      width="min(400px, 75vw)"
-      height="auto"
-      variant="solid"
-    >
-      <div class="modal-content">
-        <div class="qr-wrapper">
-          <img 
-            src={qrModal.qrData} 
-            alt={qrModal.title} 
-            class="qr-code" 
+{#if loading}
+  <div class="loading-state">
+    <div class="animate-pulse">
+      <!-- Add loading skeleton here -->
+    </div>
+  </div>
+{:else}
+  <!-- Identity Panel -->
+  <div class="container">
+    {#if qrModal.isOpen}
+      <Modal
+        isOpen={qrModal.isOpen}
+        onClose={closeQrModal}
+        title={qrModal.title}
+        width="400px"
+        height="auto"
+        variant="transparent"
+      >
+        <div class="modal-content">
+          <div class="qr-wrapper">
+            {#if qrModal.loading}
+              <div class="loading-spinner">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-kong-primary"></div>
+              </div>
+            {:else}
+              <img 
+                src={qrModal.qrData} 
+                alt={qrModal.title} 
+                class="qr-code"
+              />
+            {/if}
+          </div>
+          <p class="modal-text">
+            Scan this QR code to share your {qrModal.title?.toLowerCase()}.
+          </p>
+        </div>
+      </Modal>
+    {/if}
+
+    <div class="card">
+      <div class="card-header">
+        <span>Identity Type</span>
+      </div>
+      <div class="tabs-container">
+        <button 
+          class="tab-button"
+          class:active={activeTab === 'principal'}
+          on:click={() => accountStore.setActiveTab('principal')}
+        >
+          Principal ID
+        </button>
+        <button 
+          class="tab-button"
+          class:active={activeTab === 'account'}
+          on:click={() => accountStore.setActiveTab('account')}
+        >
+          Account ID
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span>{activeTab === 'principal' ? 'Principal ID' : 'Account ID'}</span>
+        <div class="header-actions">
+          <button
+            class="icon-button"
+            on:click={() => handleCopy(activeTab === 'principal' ? identity.principalId : identity.defaultAccountId, activeTab)}
+            disabled={copyLoading}
+          >
+            {#if (activeTab === 'principal' ? principalCopied : accountCopied)}
+              <Check class="w-4 h-4 text-kong-success" />
+              <span class="button-text">Copied</span>
+            {:else}
+              <Copy class="w-4 h-4" />
+              <span class="button-text">Copy</span>
+            {/if}
+          </button>
+          <button
+            class="icon-button"
+            on:click={() => openQrModal(activeTab)}
+            disabled={qrLoading}
+          >
+            <QrCode class="w-4 h-4" />
+            <span class="button-text">QR Code</span>
+          </button>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="input-wrapper">
+          <input
+            type="text"
+            readonly
+            value={activeTab === 'principal' ? identity.principalId : identity.defaultAccountId}
+            class="text-input"
           />
         </div>
-        <p class="modal-text">
-          Scan this QR code to share your {qrModal.title.toLowerCase()}.
-        </p>
-      </div>
-    </Modal>
-  {/if}
 
-  <div class="card">
-    <div class="card-header">
-      <span>Identity Type</span>
-    </div>
-    <div class="input-group">
-      <div class="input-wrapper">
-        <select 
-          bind:value={activeTab}
-          class="select-input"
-        >
-          <option value="principal">Principal ID</option>
-          <option value="account">Account ID</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span>{activeTab === 'principal' ? 'Principal ID' : 'Account ID'}</span>
-      <div class="header-actions">
-        <button
-          class="icon-button"
-          on:click={() => handleCopy(activeTab === 'principal' ? identity.principalId : identity.defaultAccountId, activeTab)}
-          disabled={copyLoading}
-        >
-          {#if (activeTab === 'principal' ? principalCopied : accountCopied)}
-            <Check class="w-4 h-4 text-kong-success" />
-            <span class="button-text">Copied</span>
-          {:else}
-            <Copy class="w-4 h-4" />
-            <span class="button-text">Copy</span>
-          {/if}
-        </button>
-        <button
-          class="icon-button"
-          on:click={() => openQrModal(activeTab)}
-          disabled={qrLoading}
-        >
-          <QrCode class="w-4 h-4" />
-          <span class="button-text">QR Code</span>
-        </button>
-      </div>
-    </div>
-    <div class="input-group">
-      <div class="input-wrapper">
-        <input
-          type="text"
-          readonly
-          value={activeTab === 'principal' ? identity.principalId : identity.defaultAccountId}
-          class="text-input"
-        />
-      </div>
-
-      <div class="info-card">
-        <div class="info-content">
-          {#if activeTab === 'principal'}
-            <p class="info-title">Your <strong>Principal ID</strong> is your unique identity on the Internet Computer.</p>
-            <ul class="info-list">
-              <li>Acts as your universal username across IC applications</li>
-              <li>Controls access to your assets and data</li>
-              <li>Is required for interacting with most dApps</li>
-            </ul>
-          {:else}
-            <p class="info-title">Your <strong>Account ID</strong> is used for holding and transferring tokens.</p>
-            <ul class="info-list">
-              <li>If you don't see your tokens, ensure you're using the correct Account ID</li>
-              <li>The Account ID includes a specific subaccount</li>
-              <li>The Default Account ID is commonly used for receiving ICP</li>
-            </ul>
-          {/if}
+        <div class="info-card">
+          <div class="info-content">
+            {#if activeTab === 'principal'}
+              <p class="info-title">Your <strong>Principal ID</strong> is your unique identity on the Internet Computer.</p>
+              <ul class="info-list">
+                <li>Acts as your universal username across IC applications</li>
+                <li>Controls access to your assets and data</li>
+                <li>Is required for interacting with most dApps</li>
+              </ul>
+            {:else}
+              <p class="info-title">Your <strong>Account ID</strong> is used for holding and transferring tokens.</p>
+              <ul class="info-list">
+                <li>If you don't see your tokens, ensure you're using the correct Account ID</li>
+                <li>The Account ID includes a specific subaccount</li>
+                <li>The Default Account ID is commonly used for receiving ICP</li>
+              </ul>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
+{/if}
 
 <style scoped lang="postcss">
   .container {
-    @apply flex flex-col gap-4 p-4;
+    @apply flex flex-col gap-4;
+    contain: content;  /* Isolate this component's rendering */
   }
 
   .card {
-    @apply bg-kong-bg-light rounded-md px-4 py-3
-           border border-kong-border hover:border-kong-border
-           transition-all duration-200;
-
-    &:first-child {
-      @apply mt-0;
-    }
+    contain: layout;  /* Optimize layout calculations */
+    @apply bg-kong-bg-light/20 rounded-md px-4 py-3
+           border border-kong-border/10;
+    @apply hover:border-kong-border;
+    transition: border-color 0.15s ease;
   }
 
   .card-header {
@@ -367,40 +412,33 @@
     @apply relative flex items-center;
   }
 
-  .select-input {
-    @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
-           text-kong-text-primary border border-kong-border
-           hover:border-kong-border focus:border-kong-primary
-           focus:ring-1 focus:ring-kong-primary/20 focus:outline-none
-           transition-all duration-200;
-  }
-
   .icon-button {
     @apply flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium
            rounded-md bg-kong-bg-dark text-kong-text-secondary
            hover:bg-kong-bg-dark/60 hover:text-kong-text-primary
-           disabled:opacity-50 disabled:cursor-not-allowed
-           transition-all duration-200;
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
 
-    .button-text {
-      @apply font-medium;
-    }
+  .button-text {
+    @apply hidden md:inline font-medium;
   }
 
   .qr-wrapper {
-    @apply flex justify-center p-4 bg-white rounded-md
-           border border-kong-border;
+    @apply flex justify-center items-center p-4 bg-white rounded-md
+           border border-kong-border min-h-[256px] min-w-[256px];
   }
 
   .qr-code {
-    @apply w-48 h-48 object-contain;
+    @apply w-64 h-64 object-contain;
   }
 
   .text-input {
     @apply w-full px-4 py-3 bg-kong-bg-dark rounded-md
            text-kong-text-primary border border-kong-border
-           hover:border-kong-border transition-all duration-200
+           hover:border-kong-border
            font-mono text-xs tracking-wider leading-relaxed;
+    transition: border-color 0.15s ease;
   }
 
   .info-card {
@@ -429,102 +467,50 @@
   }
 
   .modal-content {
-    @apply p-6 flex flex-col items-center gap-4;
+    @apply p-4 flex flex-col items-center gap-4;
   }
 
   .modal-text {
     @apply text-center text-sm text-kong-text-secondary;
   }
 
-  .id-header {
-    @apply flex justify-between items-center text-kong-text-primary/70 text-sm mb-2;
-  }
-
   .header-actions {
     @apply flex items-center gap-2;
   }
 
-  .action-button {
-    @apply h-8 px-3 rounded-lg 
-           bg-white/5 backdrop-blur-sm
-           border border-white/10
-           hover:border-white/20 hover:bg-white/10
-           text-kong-text-primary/70 hover:text-kong-text-primary
-           transition-all duration-200
-           flex items-center justify-center gap-2;
-  }
-
   .button-text {
-    @apply hidden md:inline;
-  }
-
-  .action-button:active {
-    @apply border-indigo-500 bg-indigo-500/10;
-  }
-
-  .id-card {
-    @apply flex flex-col gap-2 p-4 
-           bg-black/20 backdrop-blur-sm
-           border border-white/10 
-           rounded-lg;
+    @apply hidden md:inline font-medium;
   }
 
   .input-wrapper input {
     @apply w-full h-11 rounded-lg px-4
-           bg-white/5 backdrop-blur-sm
+           bg-white/5
            border border-white/10 
            hover:border-white/20
-           text-kong-text-primary/90
-           transition-colors;
+           text-kong-text-primary/90;
+    transition: border-color 0.15s ease;
   }
 
-  .monospace-input {
-    @apply font-mono text-sm;
-    cursor: default;
-    user-select: all;
+  .tabs-container {
+    @apply flex gap-0.5 bg-kong-bg-dark/50 p-0.5 rounded-md border border-kong-border;
   }
 
-  .info-tooltip {
-    @apply p-4 rounded-lg
-           bg-white/5 backdrop-blur-sm
-           border border-white/10;
+  .tab-button {
+    @apply flex-1 px-3 py-2 text-sm font-medium text-kong-text-secondary
+           rounded-[4px];
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
-  .info-tooltip p {
-    @apply text-kong-text-primary/90 text-sm mb-2;
+  .tab-button:hover {
+    @apply bg-kong-bg-dark text-kong-text-primary;
   }
 
-  .info-tooltip ul {
-    @apply list-disc pl-5 text-sm text-kong-text-primary/70;
+  .tab-button.active {
+    @apply bg-kong-primary text-white font-semibold
+           shadow-[0_2px_8px_rgba(var(--primary)_/_0.3)];
   }
 
-  .info-tooltip li {
-    @apply mb-1;
-  }
-
-  .id-header {
-    @apply flex justify-between items-center text-kong-text-primary/70 text-sm;
-  }
-
-  .header-actions {
-    @apply flex items-center gap-2;
-  }
-
-  .action-button {
-    @apply h-8 px-3 rounded-lg 
-           bg-white/5 backdrop-blur-sm
-           border border-white/10
-           hover:border-white/20 hover:bg-white/10
-           text-kong-text-primary/70 hover:text-kong-text-primary
-           transition-all duration-200
-           flex items-center justify-center gap-2;
-  }
-
-  .button-text {
-    @apply hidden md:inline;
-  }
-
-  .action-button:active {
-    @apply border-indigo-500 bg-indigo-500/10;
+  .loading-spinner {
+    @apply flex items-center justify-center w-64 h-64;
   }
 </style>

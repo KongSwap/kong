@@ -29,37 +29,7 @@
   title="My Addresses"
   onClose={() => accountStore.hideAccountDetails()}
   height="auto"
+  variant="transparent"
 >
   <IdentityPanel />
 </Modal>
-
-<style>
-  .account-details {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    min-height: 500px;
-    height: 100%;
-  }
-
-  .content-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    min-height: 400px;
-  }
-
-  .content-wrapper::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .content-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .content-wrapper::-webkit-scrollbar-thumb {
-    @apply bg-kong-bg-dark;
-    border-radius: 3px;
-  }
-</style>

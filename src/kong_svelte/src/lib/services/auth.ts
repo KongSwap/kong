@@ -2,14 +2,15 @@ import { writable } from "svelte/store";
 import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
-import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
+import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { pnp } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { loadBalances } from "./tokens";
+import { TokenService } from "./tokens/TokenService";
 import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
+import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
 
 // Export the list of available wallets
 export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
@@ -27,6 +28,7 @@ export const canisterIDLs = {
   icrc1: icrc2IDL,
   icrc2: icrc2IDL,
   kong_data: kongDataIDL,
+  sns_governance: snsGovernanceIDL,
 };
 
 // Add a constant for the storage key
@@ -66,7 +68,7 @@ function createAuthStore(pnp: PNP) {
           };
           set(newState);
           Promise.all([
-            loadBalances(result.owner.toString()),
+            TokenService.loadBalances(result.owner.toString()),
             PoolService.fetchUserPoolBalances(true),
           ]);
           selectedWalletId.set(walletId);

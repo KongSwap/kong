@@ -1,23 +1,54 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onDestroy } from "svelte";
   import { auth, availableWallets, selectedWalletId } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
 
+  interface WalletInfo {
+    id: string;
+    name: string;
+    icon: string;
+    description?: string;
+    recommended?: boolean;
+  }
+
+  // Map available wallets to our WalletInfo structure
+  const walletList: WalletInfo[] = availableWallets.map(wallet => ({
+    id: wallet.id,
+    name: wallet.name,
+    icon: wallet.icon,
+    description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
+    recommended: wallet.id === 'nfid'
+  }));
+
   const dispatch = createEventDispatcher();
   let connecting = false;
   let plugDialog: any;
   let dialogOpen = false;
+  let abortController = new AbortController();
+  let isOpen = true
+
+  onDestroy(() => {
+    // Clean up any pending connection state
+    if (connecting) {
+      connecting = false;
+      abortController.abort();
+    }
+  });
 
   const isOnMobile = isMobileBrowser();
 
   // Filter out Plug wallet on mobile unless it's a PWA
-  $: filteredWallets =
-    isOnMobile && !isPwa() ? availableWallets : availableWallets;
+  $: filteredWallets = isOnMobile && !isPwa() 
+    ? walletList.filter(w => w.id !== 'plug')
+    : walletList;
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
+
+    // Reset abort controller for new connection attempt
+    abortController = new AbortController();
 
     // Show modal on mobile if IC object is not present
     if (isOnMobile && walletId === "plug" && !isPlugAvailable()) {
@@ -42,12 +73,20 @@
       connecting = true;
       selectedWalletId.set(walletId);
       localStorage.setItem("kongSelectedWallet", walletId);
+      
+      // Add timeout to prevent hanging connections
+      const timeoutId = setTimeout(() => abortController.abort(), 30000);
+      
       await auth.connect(walletId);
+      clearTimeout(timeoutId);
+      
       if ($auth.isConnected) dispatch("login");
     } catch (error) {
-      console.error("Failed to connect wallet:", error);
-      selectedWalletId.set("");
-      localStorage.removeItem("kongSelectedWallet");
+      if (!abortController.signal.aborted) {
+        console.error("Failed to connect wallet:", error);
+        selectedWalletId.set("");
+        localStorage.removeItem("kongSelectedWallet");
+      }
     } finally {
       connecting = false;
     }
@@ -55,19 +94,23 @@
 </script>
 
 <Modal
-  isOpen={true}
+  {isOpen}
   title="Connect Wallet"
-  onClose={() => sidebarStore.collapse()}
-  width="min(440px, 95vw)"
+  onClose={() => {
+    sidebarStore.collapse();
+  }}
+  width="440px"
   height="auto"
   variant="transparent"
+  closeOnEscape={!connecting}
+  closeOnClickOutside={!connecting}
 >
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6 pt-2">
     <div class="wallet-connect-body">
       <div class="wallet-list">
         {#each filteredWallets as wallet}
           <button
-            class="wallet-option {wallet.id === 'nfid' ? 'recommended' : ''}"
+            class="wallet-option {wallet.recommended ? 'recommended' : ''}"
             on:click={() => handleConnect(wallet.id)}
             disabled={connecting}
           >
@@ -75,8 +118,8 @@
               <img src={wallet.icon} alt={wallet.name} class="wallet-icon" />
               <div class="wallet-info">
                 <span class="wallet-name">{wallet.name}</span>
-                {#if wallet.id === "nfid"}
-                  <span class="wallet-description">Sign in with Google</span>
+                {#if wallet.description}
+                  <span class="wallet-description">{wallet.description}</span>
                 {/if}
               </div>
             </div>

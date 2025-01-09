@@ -18,7 +18,6 @@ import { kongDB } from "../db";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
 import { toastStore } from "$lib/stores/toastStore";
-import { browser } from "$app/environment";
 
 export class TokenService {
   protected static instance: TokenService;
@@ -300,7 +299,6 @@ export class TokenService {
 
   public static async fetchUserTransactions(principalId: string, page: number = 1, limit: number = 50, tx_type: string = null): Promise<any> {
     try {
-      console.log("Loading user transactions...");
       const url = `${INDEXER_URL}/api/users/${principalId}/transactions?page=${page}&limit=${limit}${tx_type ? `&tx_type=${tx_type}` : ''}`;
       const response = await fetch(url);
       const data = await response.json();
@@ -347,7 +345,6 @@ export class TokenService {
     const result = await actor.claim();
 
     if (result.Ok) {
-      console.log("Tokens minted successfully");
       toastStore.success("Tokens minted successfully");
     } else {
       console.error("Error minting tokens:", result.Err);
@@ -424,5 +421,10 @@ export class TokenService {
       toastStore.error('Error fetching token metadata');
       return null;
     }
+  }
+
+  public static async loadBalances(principal?: string): Promise<void> {
+    // Implementation here
+    // This should update some store with the balances
   }
 }
