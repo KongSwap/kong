@@ -2,7 +2,7 @@ import { writable } from "svelte/store";
 import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
-import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
+import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { pnp } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";

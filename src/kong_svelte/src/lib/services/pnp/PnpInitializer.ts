@@ -5,7 +5,7 @@ import {
   canisterId as kongBackendCanisterId,
 } from "../../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
-import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
+import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
 import { idlFactory as kongDataIDL } from "../../../../../declarations/kong_data";
 import { idlFactory as icpIDL } from "$lib/idls/icp.idl.js";
 
