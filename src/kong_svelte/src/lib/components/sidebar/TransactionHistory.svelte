@@ -1,18 +1,29 @@
 <script lang="ts">
   import { auth } from "$lib/services/auth";
-  import { fade } from "svelte/transition";
-  import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
-  import { formatBalance } from "$lib/utils/numberFormatUtils";
-  import { TokenService } from "$lib/services/tokens";
-  import { kongDB } from "$lib/services/db";
-  import { liveQuery } from "dexie";
+  import { liveTokens, TokenService } from "$lib/services/tokens";
+  import { ArrowRightLeft, Plus, Minus, Loader2 } from "lucide-svelte";
+  import { onMount } from "svelte";
+  import { tick } from "svelte";
+  import { formatDate } from "$lib/utils/dateUtils";
+  import Modal from "$lib/components/common/Modal.svelte";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
 
   let isLoading = false;
   let error: string | null = null;
-  let processedTransactions: any[] = [];
-  let pollInterval: NodeJS.Timer;
+  let transactions: any[] = [];
+  let hasMore = true;
+  let currentPage = 1;
+  let loadingMore = false;
+  let observer: IntersectionObserver;
+  let loadMoreTrigger: HTMLDivElement;
+  let containerHeight: number;
+  let scrollY: number = 0;
+  let listContainer: HTMLDivElement;
 
-  // Add filter state
+  // Constants for virtual scrolling
+  const ITEM_HEIGHT = 56; // 48px height + 8px margin bottom
+  const BUFFER_SIZE = 5; // Number of items to render above/below viewport
+
   let selectedFilter: string = "all";
   const filterOptions = [
     { id: "all", label: "All" },
@@ -20,100 +31,362 @@
     { id: "pool", label: "Pool" },
   ];
 
-  function processTransaction(tx: any) {
-    // First check if we have a valid transaction object
-    if (!tx) return null;
+  // Memoized filtered transactions with type optimization
+  $: filteredTransactions = selectedFilter === "all" 
+    ? transactions 
+    : transactions.filter(tx => {
+        switch (selectedFilter) {
+          case "swap": return tx.type === "Swap";
+          case "pool": return tx.type.includes("Liquidity");
+          default: return true;
+        }
+      });
 
-    // Helper function to format timestamp
-    const formatTimestamp = (ts: bigint | number | string) => {
-      // Convert to number and ensure it's in milliseconds
-      const timestamp = typeof ts === "bigint" ? Number(ts) : Number(ts);
-      // If timestamp is in nanoseconds or microseconds, convert to milliseconds
-      const msTimestamp = timestamp > 1e12 ? timestamp / 1e6 : timestamp;
-      return new Date(msTimestamp).toLocaleString();
-    };
+  // Virtual scrolling calculations
+  $: totalHeight = filteredTransactions.length * ITEM_HEIGHT;
+  $: start = Math.max(0, Math.floor(scrollY / ITEM_HEIGHT) - BUFFER_SIZE);
+  $: end = Math.min(
+    filteredTransactions.length,
+    Math.ceil((scrollY + containerHeight) / ITEM_HEIGHT) + BUFFER_SIZE
+  );
+  $: visibleTransactions = filteredTransactions.slice(start, end);
+  $: translateY = start * ITEM_HEIGHT;
 
-    if ("AddLiquidity" in tx) {
-      const data = tx.AddLiquidity;
-      return {
-        type: "Add Liquidity",
-        status: data.status,
-        formattedDate: formatTimestamp(data.ts),
-        symbol_0: data.symbol_0,
-        symbol_1: data.symbol_1,
-        amount_0: formatBalance(data.amount_0.toString(), 8),
-        amount_1: formatBalance(data.amount_1.toString(), 8),
-        lp_amount: formatBalance(data.add_lp_token_amount.toString(), 8),
-      };
-    } else if ("Swap" in tx) {
-      const data = tx.Swap;
-      return {
-        type: "Swap",
-        status: data.status,
-        formattedDate: formatTimestamp(data.ts),
-        pay_symbol: data.pay_symbol,
-        receive_symbol: data.receive_symbol,
-        pay_amount: formatBalance(data.pay_amount.toString(), 8),
-        receive_amount: formatBalance(data.receive_amount.toString(), 8),
-        price: data.price,
-        slippage: data.slippage,
-      };
-    } else if ("RemoveLiquidity" in tx) {
-      const data = tx.RemoveLiquidity;
-      return {
-        type: "Remove Liquidity",
-        status: data.status,
-        formattedDate: formatTimestamp(data.ts),
-        symbol_0: data.symbol_0,
-        symbol_1: data.symbol_1,
-        amount_0: formatBalance(data.amount_0.toString(), 8),
-        amount_1: formatBalance(data.amount_1.toString(), 8),
-        lp_amount: formatBalance(data.remove_lp_token_amount.toString(), 8),
-      };
-    }
-    console.log("Unhandled transaction type:", tx);
-    return null;
+  let selectedTransaction: any = null;
+  let isModalOpen = false;
+
+  function handleTransactionClick(tx: any) {
+    selectedTransaction = tx;
+    isModalOpen = true;
   }
 
-  async function loadTransactions() {
-    isLoading = true;
-    error = null;
+  function handleScroll(e: Event) {
+    const target = e.target as HTMLDivElement;
+    scrollY = target.scrollTop;
+    
+    // Check if we're near the bottom for infinite scroll
+    const threshold = 100; // Pixels from bottom to trigger load
+    const bottom = target.scrollHeight - target.scrollTop - target.clientHeight < threshold;
+    
+    if (bottom && hasMore && !loadingMore && !isLoading) {
+      currentPage++;
+      loadTransactions(true);
+    }
+  }
+
+  async function loadTransactions(loadMore = false) {
+    if (!$auth.isConnected) {
+      transactions = [];
+      return;
+    }
+
+    if (!loadMore) {
+      isLoading = true;
+      currentPage = 1;
+      transactions = [];
+      hasMore = true;
+    } else {
+      if (loadingMore || !hasMore) return;
+      loadingMore = true;
+    }
 
     try {
-      if (!$auth.isConnected) {
-        processedTransactions = [];
-        return;
-      }
+      const pageSize = 25; // Reduced page size for smoother loading
+      const response = await TokenService.fetchUserTransactions(
+        $auth.account?.owner?.toString(),
+        currentPage,
+        pageSize,
+        null
+      );
 
-      const response = await TokenService.fetchUserTransactions();
-      if (response.Ok) {
-        processedTransactions = response.Ok.map(processTransaction).filter(
-          (tx) => tx !== null,
-        );
-        console.log("Processed transactions:", processedTransactions);
+      if (response.transactions) {
+        const newTransactions = response.transactions
+          .map(processTransaction)
+          .filter(Boolean);
+
+        if (loadMore) {
+          transactions = [...transactions, ...newTransactions];
+        } else {
+          transactions = newTransactions;
+        }
+
+        // Update hasMore based on whether we got a full page
+        hasMore = newTransactions.length === pageSize;
       } else if (response.Err) {
-        error =
-          typeof response.Err === "string"
-            ? response.Err
-            : "Failed to load transactions";
+        error = typeof response.Err === "string" ? response.Err : "Failed to load transactions";
       }
     } catch (err) {
       console.error("Error fetching transactions:", err);
       error = err.message || "Failed to load transactions";
     } finally {
       isLoading = false;
+      loadingMore = false;
     }
   }
 
-  // Watch auth store changes
-  $: if ($auth.isConnected) {
-    loadTransactions();
+  // Create observer once and handle loadMoreTrigger changes with debounce
+  $: if (loadMoreTrigger) {
+    observer?.disconnect();
+    observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && hasMore && !loadingMore && !isLoading) {
+          // Small delay to prevent multiple triggers
+          setTimeout(() => {
+            if (first.isIntersecting) {
+              currentPage++;
+              loadTransactions(true);
+            }
+          }, 100);
+        }
+      },
+      { threshold: 0.1, rootMargin: "200px" }
+    );
+    observer.observe(loadMoreTrigger);
+  }
+
+  onMount(() => {
+    const setup = async () => {
+      await tick();
+      if (listContainer) {
+        containerHeight = listContainer.clientHeight;
+        
+        // Set up resize observer
+        const resizeObserver = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            containerHeight = entry.contentRect.height;
+          }
+        });
+        
+        resizeObserver.observe(listContainer);
+        return () => {
+          resizeObserver.disconnect();
+          observer?.disconnect();
+        };
+      }
+    };
+    
+    setup();
+    return () => {
+      observer?.disconnect();
+    };
+  });
+
+  // Watch filter changes
+  $: if (selectedFilter) {
+    currentPage = 1;
+    loadTransactions(false);
+  }
+
+  function processTransaction(tx: any) {
+    if (!tx?.tx_type) return null;
+
+    const { tx_type, status, timestamp, details } = tx;
+    const formattedDate = formatDate(new Date(timestamp));
+    
+    switch (tx_type) {
+      case 'swap':
+        return {
+          type: "Swap",
+          status,
+          formattedDate,
+          details,
+          tx_id: tx.tx_id
+        };
+      case 'add_liquidity':
+      case 'remove_liquidity':
+        return {
+          type: tx_type === 'add_liquidity' ? "Add Liquidity" : "Remove Liquidity",
+          status,
+          formattedDate,
+          details,
+          tx_id: tx.tx_id
+        };
+      default:
+        return null;
+    }
+  }
+
+  function getTransactionIcon(type: string) {
+    switch (type) {
+      case "Swap":
+        return ArrowRightLeft;
+      case "Add Liquidity":
+        return Plus;
+      case "Remove Liquidity":
+        return Minus;
+      default:
+        return ArrowRightLeft;
+    }
   }
 </script>
 
-<div class="transaction-history-wrapper">
-  <nav class="flex rounded-lg bg-kong-bg-light/50 border border-kong-border mx-2 mt-2">
-    {#each filterOptions as option}
+<Modal
+  isOpen={isModalOpen}
+  variant="transparent"
+  onClose={() => isModalOpen = false}
+  title="Transaction Details"
+  width="400px"
+  height="auto"
+>
+  {#if selectedTransaction}
+    <div class="p-4 space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-kong-text-secondary">Type</span>
+        <span class="text-sm font-medium">{selectedTransaction.type}</span>
+      </div>
+      
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-kong-text-secondary">Status</span>
+        <span class="text-xs px-2 py-1 rounded-full {selectedTransaction.status === 'Success' ? 'bg-kong-accent-green/10 text-kong-accent-green' : 'bg-kong-accent-red/10 text-kong-accent-red'}">
+          {selectedTransaction.status}
+        </span>
+      </div>
+      
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-kong-text-secondary">Date</span>
+        <span class="text-sm">{selectedTransaction.formattedDate}</span>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-kong-text-secondary">Transaction ID</span>
+        <span class="text-sm font-mono">{selectedTransaction.tx_id}</span>
+      </div>
+
+      <div class="space-y-2">
+        <div class="text-sm text-kong-text-secondary mb-2">Transaction Details</div>
+        {#if selectedTransaction.type === "Swap"}
+          <div class="bg-kong-bg-dark/30 p-3 rounded-lg space-y-3">
+            <div class="space-y-2">
+              <div class="text-xs text-kong-text-secondary">From</div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <TokenImages 
+                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.pay_token_canister)]} 
+                    size={22}
+                  />
+                  <span class="text-sm font-medium">{selectedTransaction.details.pay_amount} {selectedTransaction.details.pay_token_symbol}</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Token ID</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.pay_token_id}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Canister</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.pay_token_canister}</span>
+              </div>
+            </div>
+
+            <div class="border-t border-kong-border my-2"></div>
+
+            <div class="space-y-2">
+              <div class="text-xs text-kong-text-secondary">To</div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <TokenImages 
+                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.receive_token_canister)]} 
+                    size={22}
+                  />
+                  <span class="text-sm font-medium">{selectedTransaction.details.receive_amount} {selectedTransaction.details.receive_token_symbol}</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Token ID</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.receive_token_id}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Canister</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.receive_token_canister}</span>
+              </div>
+            </div>
+
+            <div class="border-t border-kong-border my-2"></div>
+
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Price</span>
+                <span class="text-xs">{selectedTransaction.details.price}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Slippage</span>
+                <span class="text-xs">{selectedTransaction.details.slippage}%</span>
+              </div>
+            </div>
+          </div>
+        {:else}
+          <div class="bg-kong-bg-dark/30 p-3 rounded-lg space-y-3">
+            <div class="space-y-2">
+              <div class="text-xs text-kong-text-secondary">Token 1</div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <TokenImages 
+                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.token_0_canister)]} 
+                    size={22}
+                  />
+                  <span class="text-sm font-medium">{selectedTransaction.details.amount_0} {selectedTransaction.details.token_0_symbol}</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Token ID</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.token_0_id}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Canister</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.token_0_canister}</span>
+              </div>
+            </div>
+
+            <div class="border-t border-kong-border my-2"></div>
+
+            <div class="space-y-2">
+              <div class="text-xs text-kong-text-secondary">Token 2</div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <TokenImages 
+                    tokens={[$liveTokens.find(token => token.address === selectedTransaction.details.token_1_canister)]} 
+                    size={22}
+                  />
+                  <span class="text-sm font-medium">{selectedTransaction.details.amount_1} {selectedTransaction.details.token_1_symbol}</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Token ID</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.token_1_id}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Canister</span>
+                <span class="text-xs font-mono">{selectedTransaction.details.token_1_canister}</span>
+              </div>
+            </div>
+
+            <div class="border-t border-kong-border my-2"></div>
+
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">LP Token</span>
+                <span class="text-xs">{selectedTransaction.details.lp_token_symbol}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">LP Amount</span>
+                <span class="text-xs">{selectedTransaction.details.lp_token_amount}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-kong-text-secondary">Pool ID</span>
+                <span class="text-xs">{selectedTransaction.details.pool_id}</span>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
+</Modal>
+
+<div class="flex flex-col h-[87dvh] px-2">
+  <!-- Filter Navigation -->
+  <nav class="flex rounded-t-lg bg-kong-bg-dark/50 mt-2 w-full">
+    {#each filterOptions as option, index}
       <button
         class="tab-button flex-1 relative"
         class:active={selectedFilter === option.id}
@@ -122,9 +395,9 @@
         aria-selected={selectedFilter === option.id}
         aria-controls={`${option.id}-panel`}
       >
-        <div class="flex items-center justify-center gap-1.5 py-2">
+        <div class="flex items-center justify-center gap-1.5 py-2.5">
           {#if selectedFilter === option.id}
-            <div class="absolute inset-0 bg-kong-accent-blue/5" />
+            <div class="absolute inset-0 bg-kong-accent-blue/5 {index === 0 ? 'rounded-tl-lg' : ''} {index === filterOptions.length - 1 ? 'rounded-tr-lg' : ''}" />
             <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-kong-accent-blue" />
           {/if}
           <span class="relative z-10 text-xs font-medium">
@@ -135,201 +408,81 @@
     {/each}
   </nav>
 
-  <div class="transaction-history-content">
-    {#if isLoading}
-      <div class="state-message" in:fade>
-        <LoadingIndicator />
-        <p>Loading your transaction history...</p>
+  <!-- Transaction List -->
+  <div 
+    class="flex-1 overflow-y-auto pt-2 mb-4 scrollbar-custom rounded-b-lg"
+    bind:this={listContainer}
+    on:scroll={handleScroll}
+  >
+    {#if isLoading && !loadingMore}
+      <div class="flex justify-center items-center h-32">
+        <Loader2 class="w-6 h-6 animate-spin text-kong-text-secondary" />
       </div>
     {:else if error}
-      <div class="state-message error" in:fade>
-        <p>{error}</p>
+      <div class="text-kong-accent-red text-sm text-center py-4">
+        {error}
       </div>
-    {:else if selectedFilter === "send"}
-      <div class="state-message" in:fade>
-        <p>Send transaction tracking is coming soon!</p>
-      </div>
-    {:else if processedTransactions.length === 0}
-      <div class="state-message" in:fade>
-        <p>No actions found</p>
+    {:else if filteredTransactions.length === 0}
+      <div class="text-kong-text-secondary text-sm text-center py-4">
+        No transactions found
       </div>
     {:else}
-      <div class="transaction-list">
-        {#each processedTransactions.filter((tx) => {
-          if (selectedFilter === "all") return true;
-          if (selectedFilter === "swap") return tx.type === "Swap";
-          if (selectedFilter === "pool") return tx.type === "Add Liquidity" || tx.type === "Remove Liquidity";
-          if (selectedFilter === "send") return tx.type === "Send";
-          return true;
-        }) as tx}
-          <div class="transaction-item" in:fade>
-            <div class="transaction-header">
-              <div class="flex items-center gap-2">
-                <span class="transaction-type-icon">
-                  {#if tx.type === "Swap"}
-                    🔄
-                  {:else if tx.type === "Add Liquidity"}
-                    ➕
-                  {:else if tx.type === "Remove Liquidity"}
-                    ➖
-                  {/if}
-                </span>
-                <span class="transaction-type">{tx.type}</span>
+      <div class="relative" style="height: {totalHeight}px">
+        <div class="absolute w-full" style="transform: translateY({translateY}px)">
+          {#each visibleTransactions as tx (tx.tx_id)}
+            <div 
+              class="mb-2 sm:px-3 h-12 rounded-lg hover:bg-kong-bg-dark/40 border border-kong-border-light hover:border-kong-primary/70 transition-all duration-100 flex items-center cursor-pointer"
+              on:click={() => handleTransactionClick(tx)}
+            >
+              <div class="p-1.5 rounded-full bg-kong-bg-dark/50 mr-2 sm:mr-3 shrink-0">
+                <svelte:component 
+                  this={getTransactionIcon(tx.type)} 
+                  class="w-3.5 h-3.5 text-kong-text-primary"
+                />
               </div>
-              <span
-                class="status {tx.status
-                  ? tx.status.toLowerCase().replace('_', '-')
-                  : 'pending'}"
-              >
-                {tx.status ? tx.status.replace("_", " ") : "Pending"}
-              </span>
+
+              <div class="flex-1 min-w-0">
+                {#if tx.type === "Swap"}
+                  <div class="flex items-center gap-1 text-[11px] sm:text-xs text-kong-text-secondary truncate">
+                    <span>{tx.details.pay_amount} {tx.details.pay_token_symbol}</span>
+                    <ArrowRightLeft class="w-3 h-3 shrink-0" />
+                    <span>{tx.details.receive_amount} {tx.details.receive_token_symbol}</span>
+                  </div>
+                {:else}
+                  <div class="flex items-center gap-1 text-[11px] sm:text-xs text-kong-text-secondary truncate">
+                    <span>{tx.details.amount_0} {tx.details.token_0_symbol}</span>
+                    <span class="shrink-0">+</span>
+                    <span>{tx.details.amount_1} {tx.details.token_1_symbol}</span>
+                  </div>
+                {/if}
+              </div>
+
+              <div class="ml-2 sm:ml-3 flex items-center gap-1 sm:gap-2 shrink-0">
+                <span class="hidden sm:inline text-xs text-kong-text-secondary">{tx.formattedDate}</span>
+                <span 
+                  class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full shrink-0 min-w-[52px] text-center {tx.status === 'Success' ? 'bg-kong-accent-green/10 text-kong-accent-green' : 'bg-kong-accent-red/10 text-kong-accent-red'}"
+                >
+                  {tx.status}
+                </span>
+              </div>
             </div>
-            <div class="transaction-details">
-              <div class="timestamp">{tx.formattedDate}</div>
-              {#if tx.type === "Add Liquidity"}
-                <div class="amount-row">
-                  <span class="label">Added</span>
-                  <span class="value">
-                    {tx.amount_0}
-                    {tx.symbol_0} + {tx.amount_1}
-                    {tx.symbol_1}
-                  </span>
-                </div>
-                <div class="amount-row">
-                  <span class="label">Received</span>
-                  <span class="value highlight">{tx.lp_amount} LP</span>
-                </div>
-              {:else if tx.type === "Swap"}
-                <div class="amount-row">
-                  <span class="label">Paid</span>
-                  <span class="value">{tx.pay_amount} {tx.pay_symbol}</span>
-                </div>
-                <div class="amount-row">
-                  <span class="label">Received</span>
-                  <span class="value highlight"
-                    >{tx.receive_amount} {tx.receive_symbol}</span
-                  >
-                </div>
-                <div class="amount-row">
-                  <span class="label">Slippage</span>
-                  <span class="value text-gray-400">{tx.slippage}%</span>
-                </div>
-              {:else if tx.type === "Remove Liquidity"}
-                <div class="amount-row">
-                  <span class="label">Removed</span>
-                  <span class="value">
-                    {tx.amount_0}
-                    {tx.symbol_0} + {tx.amount_1}
-                    {tx.symbol_1}
-                  </span>
-                </div>
-                <div class="amount-row">
-                  <span class="label">Burned</span>
-                  <span class="value">{tx.lp_amount} LP</span>
-                </div>
-              {/if}
-            </div>
-          </div>
-        {/each}
+          {/each}
+        </div>
       </div>
+
+      {#if loadingMore}
+        <div class="flex justify-center py-4">
+          <Loader2 class="w-5 h-5 animate-spin text-kong-text-secondary" />
+        </div>
+      {/if}
+
+      {#if !hasMore && transactions.length > 0}
+        <div class="text-center py-4 text-xs text-kong-text-secondary">
+          No more transactions
+        </div>
+      {/if}
+
+      <div bind:this={loadMoreTrigger} class="h-px" />
     {/if}
   </div>
 </div>
-
-<style lang="postcss">
-  .transaction-history-wrapper {
-    @apply flex flex-col h-full bg-kong-bg-dark/20  min-h-[87vh];
-  }
-
-  .tab-button {
-    @apply py-0 px-2 text-kong-text-secondary font-medium text-xs
-           transition-all duration-200 border-r border-kong-border/50
-           hover:text-kong-text-primary relative overflow-hidden;
-  }
-
-  .tab-button:last-child {
-    @apply border-r-0;
-  }
-
-  .tab-button.active {
-    @apply text-kong-accent-blue font-semibold;
-  }
-
-  .transaction-history-content {
-    @apply flex-1 overflow-y-auto min-h-0 p-2 space-y-1.5;
-  }
-
-  .state-message {
-    @apply flex flex-col items-center justify-center gap-2 min-h-[180px] 
-           text-kong-text-secondary text-xs bg-kong-bg-light/50 rounded-lg 
-           border border-kong-border/50;
-  }
-
-  .state-message.error {
-    @apply text-kong-accent-red bg-kong-accent-red/10 border-kong-accent-red/20;
-  }
-
-  .transaction-list {
-    @apply flex flex-col gap-1.5;
-  }
-
-  .transaction-item {
-    @apply bg-kong-bg-light/50 backdrop-blur-sm rounded-lg p-2 border border-kong-border/50
-           hover:bg-kong-bg-light/70 transition-all duration-200
-           hover:border-kong-border;
-  }
-
-  .transaction-header {
-    @apply flex justify-between items-center mb-1.5;
-  }
-
-  .transaction-type-icon {
-    @apply text-sm opacity-90;
-  }
-
-  .transaction-type {
-    @apply text-xs font-semibold text-kong-text-primary;
-  }
-
-  .timestamp {
-    @apply text-[11px] text-kong-text-secondary/80 mb-1.5 font-medium;
-  }
-
-  .status {
-    @apply text-[11px] px-2 py-0.5 rounded-full font-medium border-none;
-  }
-
-  .status.completed,
-  .status.success {
-    @apply bg-kong-accent-green/10 text-kong-accent-green;
-  }
-
-  .status.pending {
-    @apply bg-kong-warning/10 text-kong-warning;
-  }
-
-  .status.failed {
-    @apply bg-kong-accent-red/10 text-kong-accent-red;
-  }
-
-  .transaction-details {
-    @apply space-y-1 bg-kong-bg-dark/5 rounded-lg p-1.5;
-  }
-
-  .amount-row {
-    @apply flex justify-between items-center text-xs py-0.5;
-  }
-
-  .amount-row .label {
-    @apply text-kong-text-secondary/90 font-medium;
-  }
-
-  .amount-row .value {
-    @apply text-kong-text-primary font-mono tracking-tight text-right flex-shrink-0 ml-2
-           font-medium;
-  }
-
-  .amount-row .value.highlight {
-    @apply text-kong-accent-blue font-semibold;
-  }
-</style>

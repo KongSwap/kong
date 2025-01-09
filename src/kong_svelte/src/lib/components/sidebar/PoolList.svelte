@@ -207,61 +207,63 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="px-2 min-h-[87vh]" on:keydown={handleKeydown}>
-  {#if !pool}
-    <div class="search-bar">
-      <div class="search-controls">
-        <div class="search-input-wrapper">
-          <div class="search-icon-wrapper">
-            <Search size={16} />
+<div class="pool-list-container" on:keydown={handleKeydown}>
+  <div class="search-section">
+    {#if !pool}
+      <div class="search-bar">
+        <div class="search-controls">
+          <div class="search-input-wrapper">
+            <div class="search-icon-wrapper">
+              <Search size={16} />
+            </div>
+            <input
+              bind:this={searchInput}
+              bind:value={searchQuery}
+              type="text"
+              placeholder="Search pools by name or token..."
+              class="search-input"
+            />
+            {#if searchQuery}
+              <button
+                class="clear-button"
+                on:click={() => {
+                  searchQuery = "";
+                  searchInput.focus();
+                }}
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            {/if}
           </div>
-          <input
-            bind:this={searchInput}
-            bind:value={searchQuery}
-            type="text"
-            placeholder="Search pools by name or token..."
-            class="search-input"
-          />
-          {#if searchQuery}
-            <button
-              class="clear-button"
-              on:click={() => {
-                searchQuery = "";
-                searchInput.focus();
-              }}
-              aria-label="Clear search"
+
+          <button
+            class="sort-toggle"
+            on:click={toggleSort}
+            aria-label={`Sort by value ${sortDirection === "desc" ? "ascending" : "descending"}`}
+          >
+            <span class="toggle-label">Value</span>
+            <div
+              class="sort-icon-wrapper"
+              class:ascending={sortDirection === "asc"}
             >
-              <X size={14} />
-            </button>
-          {/if}
+              <ArrowUpDown size={14} />
+            </div>
+          </button>
         </div>
 
         <button
-          class="sort-toggle"
-          on:click={toggleSort}
-          aria-label={`Sort by value ${sortDirection === "desc" ? "ascending" : "descending"}`}
+          class="add-position-button"
+          on:click={handleAddLiquidity}
+          aria-label="Add new position"
         >
-          <span class="toggle-label">Value</span>
-          <div
-            class="sort-icon-wrapper"
-            class:ascending={sortDirection === "asc"}
-          >
-            <ArrowUpDown size={14} />
-          </div>
+          +
         </button>
       </div>
+    {/if}
+  </div>
 
-      <button
-        class="add-position-button"
-        on:click={handleAddLiquidity}
-        aria-label="Add new position"
-      >
-        +
-      </button>
-    </div>
-  {/if}
-
-  <div class="px-2">
+  <div class="pool-list-content">
     <div class="pool-list">
       {#if loading && processedPools.length === 0}
         <div class="empty-state" in:fade>
@@ -371,12 +373,25 @@
 {/if}
 
 <style lang="postcss">
-  .pool-list-wrapper {
-    @apply flex flex-col flex-grow min-h-[85vh] overflow-hidden bg-kong-bg-dark/20 rounded-lg gap-1;
+  .pool-list-container {
+    @apply flex flex-col h-[87dvh] relative;
+  }
+
+  .search-section {
+    @apply sticky top-0 z-20 bg-kong-bg-light;
+    @apply border-b border-kong-border;
+  }
+
+  .pool-list-content {
+    @apply flex-1 overflow-hidden relative;
+  }
+
+  .pool-list {
+    @apply absolute inset-0 overflow-y-auto py-1.5 px-2;
   }
 
   .search-bar {
-    @apply flex items-center justify-between p-3 gap-3 border-b border-kong-border/40;
+    @apply flex items-center justify-between p-3 gap-3;
   }
 
   .search-controls {
@@ -384,7 +399,7 @@
   }
 
   .search-input-wrapper {
-    @apply relative flex items-center flex-1;
+    @apply relative flex items-center flex-1 bg-kong-bg-dark/30 rounded-lg border border-kong-border/40;
   }
 
   .search-icon-wrapper {
@@ -392,10 +407,9 @@
   }
 
   .search-input {
-    @apply w-full bg-kong-bg-dark/30 border border-kong-border/40 rounded-lg py-2 pl-9 pr-3.5 text-sm
+    @apply w-full bg-transparent border-none py-2 pl-9 pr-3.5 text-sm
            text-kong-text-primary placeholder-kong-text-secondary/70 
-           focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40
-           focus:border-kong-accent-blue/40 transition-all;
+           focus:outline-none focus:ring-1 focus:ring-kong-accent-blue/40;
   }
 
   .clear-button {
@@ -424,16 +438,12 @@
            active:scale-[0.96] shadow-lg shadow-kong-accent-blue/20 flex-shrink-0;
   }
 
-  .pool-list {
-    @apply flex flex-col gap-1.5 pb-3;
-  }
-
   .pool-item {
     @apply bg-kong-bg-dark/20 rounded-lg p-4 cursor-pointer 
            hover:bg-kong-bg-dark/30 transition-all duration-200
            border border-kong-border/40 hover:border-kong-accent-blue/30
            hover:shadow-lg hover:shadow-kong-accent-blue/5
-           active:scale-[0.995];
+           active:scale-[0.995] mb-1.5 last:mb-0;
   }
 
   .pool-content {

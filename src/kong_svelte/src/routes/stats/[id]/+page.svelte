@@ -4,7 +4,6 @@
   import TradingViewChart from "$lib/components/common/TradingViewChart.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formattedTokens } from "$lib/services/tokens/tokenStore";
-  import {type Pool } from "$lib/services/pools";
   import { livePools } from "$lib/services/pools/poolStore";
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
@@ -62,7 +61,7 @@
   });
 
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
-  let selectedPool = $state<Pool | undefined>(undefined);
+  let selectedPool = $state<BE.Pool | undefined>(undefined);
   let hasManualSelection = $state(false);
   let initialPoolSet = $state(false);
 
@@ -100,7 +99,7 @@
           pool_id: String(highestTvlPool.pool_id),
           tvl: String(highestTvlPool.tvl),
           lp_token_supply: String(highestTvlPool.lp_token_supply),
-        } as unknown as Pool;
+        } as unknown as BE.Pool;
         initialPoolSet = true;
       }
       return;
@@ -118,7 +117,7 @@
         pool_id: String(highestVolumePool.pool_id),
         tvl: String(highestVolumePool.tvl),
         lp_token_supply: String(highestVolumePool.lp_token_supply),
-      } as unknown as Pool;
+      } as unknown as BE.Pool;
       initialPoolSet = true;
     }
   });
@@ -322,7 +321,7 @@
                     tvl: String(pool.tvl),
                     lp_token_supply: String(pool.lp_token_supply),
                     volume_24h: String(pool.daily_volume || "0"),
-                  } as Pool;
+                  } as BE.Pool;
                 }}
               />
               
@@ -432,7 +431,7 @@
                       tvl: String(pool.tvl),
                       lp_token_supply: String(pool.lp_token_supply),
                       volume_24h: String(pool.daily_volume || "0"),
-                    } as Pool;
+                    } as BE.Pool;
                   }}
                 />
                 <TokenStatistics {token} {marketCapRank} />

@@ -3,6 +3,7 @@ import { walletsList, type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
 import { idlFactory as icrc2IDL } from "$lib/idls/ksusdt_ledger/ksusdt_ledger.did.js";
+import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { pnp } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
@@ -25,6 +26,7 @@ export const canisterIDLs = {
   kong_faucet: kongFaucetIDL,
   icrc1: icrc2IDL,
   icrc2: icrc2IDL,
+  kong_data: kongDataIDL,
 };
 
 // Add a constant for the storage key

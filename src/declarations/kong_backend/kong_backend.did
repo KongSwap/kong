@@ -262,6 +262,7 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
+    on_kong : bool;             // flag indicating if displayed on Kong Swap
     tvl : nat;                  // USD value of TVL
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees

@@ -112,7 +112,7 @@
     }
   ];
 
-  function showDropdown(type: 'swap' | 'earn') {
+  function showDropdown(type: 'swap' | 'earn' | 'stats') {
     clearTimeout(closeTimeout);
     activeDropdown = type;
   }
@@ -396,7 +396,7 @@
         {/if}
 
         <button
-          class="h-[34px] px-3.5 flex items-center gap-1.5 rounded-md text-sm font-semibold text-kong-text-primary bg-kong-primary/15 border border-kong-primary/30 transition-all duration-150 hover:bg-kong-primary/20 hover:border-kong-primary/40"
+          class="h-[34px] px-3.5 flex items-center gap-1.5 rounded-md text-sm font-semibold text-kong-text-primary/95 bg-kong-primary/40 border border-kong-primary/80 transition-all duration-150 hover:bg-kong-primary/60 hover:border-kong-primary/90"
           class:selected={$sidebarStore.isOpen}
           on:click={handleConnect}
         >

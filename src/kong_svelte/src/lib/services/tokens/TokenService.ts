@@ -8,17 +8,15 @@ import { get } from "svelte/store";
 import {
   CKUSDT_CANISTER_ID,
   ICP_CANISTER_ID,
-  KONG_BACKEND_CANISTER_ID,
-  KONG_BACKEND_PRINCIPAL
+  INDEXER_URL,
+  KONG_DATA_PRINCIPAL,
 } from "$lib/constants/canisterConstants";
 import { loadPools } from "$lib/services/pools/poolStore";
 import { Principal } from "@dfinity/principal";
 import { IcrcService } from "$lib/services/icrc/IcrcService";
 import { kongDB } from "../db";
-import { idlFactory as kongBackendIDL } from "../../../../../declarations/kong_backend";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { fetchTokens } from "../indexer/api";
-import { idlFactory as kongFaucetIDL } from "../../../../../declarations/kong_faucet";
 import { toastStore } from "$lib/stores/toastStore";
 import { browser } from "$app/environment";
 
@@ -83,49 +81,6 @@ export class TokenService {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-
-    // If indexer fails, try fetching directly from the canister
-    try {
-      console.log("Falling back to canister for token fetch");
-      const actor = await createAnonymousActorHelper(KONG_BACKEND_PRINCIPAL, kongBackendIDL);
-      const result = await actor.tokens(["all"]);
-      
-      if (Array.isArray(result)) {
-        // Transform canister response to FE.Token format
-        return result.map(token => {
-          const { symbol, name, decimals, fee, canister_id, fee_fixed, logo_url } = token;
-          return {
-            symbol,
-            name,
-            decimals,
-            fee,
-            canister_id,
-            fee_fixed,
-            logo_url,
-            address: canister_id,
-            metrics: {
-              price: "0",
-              tvl: "0",
-              price_change_24h: "0",
-              volume_24h: "0",
-              market_cap: "0",
-              total_supply: "0",
-              updated_at: Date.now().toString()
-            },
-            token_type: "IC",
-            chain: "ICP",
-            pools: []
-          } as FE.Token;
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch tokens from canister:", error);
-      // If we have a previous error from the indexer, throw that instead
-      if (lastError) throw lastError;
-      throw error;
-    }
-    
-    throw new Error("Failed to fetch tokens from both indexer and canister");
   }
 
   private static async getCachedPrice(token: FE.Token): Promise<number> {
@@ -343,15 +298,13 @@ export class TokenService {
     }
   }
 
-  public static async fetchUserTransactions(): Promise<any> {
+  public static async fetchUserTransactions(principalId: string, page: number = 1, limit: number = 50, tx_type: string = null): Promise<any> {
     try {
-      const actor = await createAnonymousActorHelper(
-        KONG_BACKEND_CANISTER_ID,
-        kongBackendIDL,
-      );
-      const txs = await actor.txs([auth.pnp?.account?.owner?.toString()]);
-
-      return txs;
+      console.log("Loading user transactions...");
+      const url = `${INDEXER_URL}/api/users/${principalId}/transactions?page=${page}&limit=${limit}${tx_type ? `&tx_type=${tx_type}` : ''}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("Error fetching user transactions:", error);
       return { Ok: [] };
@@ -388,7 +341,7 @@ export class TokenService {
   public static async faucetClaim() {
     const actor = auth.pnp.getActor(
       process.env.CANISTER_ID_KONG_FAUCET,
-      kongFaucetIDL,
+      canisterIDLs.kong_faucet,
       { anon: false, requiresSigning: false },
     );
     const result = await actor.claim();

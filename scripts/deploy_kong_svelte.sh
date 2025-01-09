@@ -19,6 +19,7 @@ www.kongswap.io
 kongswap.io
 www.kingkongswap.com
 kingkongswap.com
+dev.kongswap.io
 EOL
             # Create ii-alternative-origins file for production
             cat > "${static_dir}/ii-alternative-origins" << EOL
@@ -28,6 +29,8 @@ EOL
         "https://kongswap.io",
         "https://www.kingkongswap.com",
         "https://kingkongswap.com",
+        "https://dev.kongswap.io",
+        "https://edoy4-liaaa-aaaar-qakha-cai.icp0.io",
         "https://${canister_id}.icp0.io"
     ]
 }

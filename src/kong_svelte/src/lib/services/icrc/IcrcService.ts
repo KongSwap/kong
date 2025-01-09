@@ -33,16 +33,14 @@ export class IcrcService {
         const isCorsError = error?.message?.includes('CORS') || error?.message?.includes('Access-Control-Allow-Origin');
         const isRateLimitError = error?.message?.includes('429');
         
-        if (retries >= maxRetries || (!isCorsError && !isRateLimitError)) {
+        const effectiveMaxRetries = isRateLimitError ? 5 : maxRetries;
+        if (retries >= effectiveMaxRetries || (!isCorsError && !isRateLimitError)) {
           throw error;
         }
         
-        const delay = initialDelay * Math.pow(2, retries);
-        if (isRateLimitError) {
-          console.log(`Rate limited, retrying in ${delay}ms...`);
-        } else if (isCorsError) {
-          console.log(`CORS error encountered, retrying in ${delay}ms...`);
-        }
+        const jitter = Math.random() * 1000;
+        const baseDelay = isRateLimitError ? 2000 : initialDelay;
+        const delay = (baseDelay * Math.pow(2, retries)) + jitter;
         
         await new Promise(resolve => setTimeout(resolve, delay));
         retries++;
@@ -143,7 +141,6 @@ export class IcrcService {
     if (!token?.canister_id) {
       throw new Error("Invalid token: missing canister_id");
     }
-    ``;
 
     try {
       const expiresAt =
@@ -255,44 +252,6 @@ export class IcrcService {
     }
   }
 
-  private static decodeAccountId(accountId: string): { owner: Principal, subaccount?: number[] } {
-    try {
-        // Add input validation
-        if (!accountId || accountId.length !== 64) {
-            throw new Error(`Invalid account ID length: ${accountId.length}`);
-        }
-        if (!/^[0-9a-fA-F]+$/.test(accountId)) {
-            throw new Error("Invalid account ID format: not hex");
-        }
-
-        const accountIdBytes = this.hex2array(accountId);
-        console.log("Account ID bytes:", accountIdBytes);
-
-        // First 4 bytes are CRC32 checksum, skip them
-        const principalBytes = accountIdBytes.slice(4, 28);  // Changed from 32 to 28
-        const subaccountBytes = accountIdBytes.slice(28);    // Changed from 32 to 28
-
-        console.log("Principal bytes:", principalBytes);
-        console.log("Subaccount bytes:", subaccountBytes);
-
-        // Convert bytes to Principal
-        const principal = Principal.fromUint8Array(principalBytes);
-        console.log("Decoded principal:", principal.toString());
-
-        // If subaccount exists, return it
-        return subaccountBytes.length > 0
-            ? { owner: principal, subaccount: Array.from(subaccountBytes) }
-            : { owner: principal };
-    } catch (error) {
-        console.error("Error decoding account ID:", error);
-        throw new Error(`Invalid account ID format: ${error.message}`);
-    }
-  }
-
-  private static hex2array(hex: string): Uint8Array {
-    const pairs = hex.match(/[\dA-F]{2}/gi) || [];
-    return new Uint8Array(pairs.map(s => parseInt(s, 16)));
-  }
 
   public static async transfer(
     token: FE.Token,

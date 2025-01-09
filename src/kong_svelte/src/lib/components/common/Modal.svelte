@@ -15,13 +15,12 @@
   export let variant: "solid" | "transparent" = "solid";
   export let width = "600px";
   export let height = "auto";
-  export let minHeight: string = "auto";
+  export let minHeight = "auto";
   export let onClose: () => void = () => {};
   export let loading = false;
   export let closeOnEscape = true;
   export let closeOnClickOutside = true;
   export let className: string = "";
-  export let maxHeight = "80vh";
   let isMobile = false;
   let modalWidth = width;
   let modalHeight = height;
@@ -30,7 +29,6 @@
   let isDragging = false;
   let modalElement: HTMLDivElement;
   let titleElement: HTMLElement;
-
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
 
   onMount(() => {
@@ -135,8 +133,8 @@
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         bind:this={modalElement}
-        class="relative will-change-transform max-w-full px-1 overflow-auto"
-        style="width: {modalWidth}; max-height: {maxHeight};"
+        class="relative will-change-transform max-w-full px-1 max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
+        style="width: {modalWidth};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
         on:mouseup={handleDragEnd}
@@ -155,27 +153,22 @@
           variant={variant}
           width="100%"
           height="100%"
-          className="!py-0 {className}"
+          className="!py-0 flex flex-col overflow-hidden {className}"
         >
-          <div class="modal-content flex flex-col min-h-full" style="height: {height}; min-height: {minHeight};">
+          <div 
+            class="modal-content flex flex-col overflow-hidden"
+            style="min-height: {minHeight};"
+          >
             {#if loading}
               <div class="loading-overlay">
                 <div class="spinner"></div>
               </div>
             {/if}
-            <div 
-              class="drag-handle touch-pan-x"
-              on:mousedown={handleDragStart}
-              on:mousemove={handleDragMove}
-              on:mouseup={handleDragEnd}
-              on:mouseleave={handleDragEnd}
-              on:touchstart={handleDragStart}
-              on:touchmove={handleDragMove}
-              on:touchend={handleDragEnd}
-            >
+            
+            <div class="drag-handle touch-pan-x">
             </div>
 
-            <header class="flex justify-between items-center px-4">
+            <header class="flex justify-between items-center px-4 flex-shrink-0">
               <slot name="title">
                 {#if typeof title === 'string'}
                   <h2 class="text-lg font-semibold py-4">{title}</h2>
@@ -206,7 +199,7 @@
               </button>
             </header>
 
-            <div class="flex-1 flex flex-col overflow-y-auto scrollbar-custom">
+            <div class="flex-1 overflow-y-auto scrollbar-custom px-4 pb-4 min-h-0">
               <slot />
             </div>
           </div>
@@ -227,5 +220,10 @@
     width: 40px;
     height: 40px;
     flex-shrink: 0;
+  }
+
+  :global(.modal-content) {
+    max-height: inherit;
+    height: 100%;
   }
 </style>
