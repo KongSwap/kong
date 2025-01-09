@@ -1,7 +1,6 @@
-use ic_cdk_timers::TimerId;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use crate::stable_claim::stable_claim::{StableClaim, StableClaimId};
@@ -33,22 +32,6 @@ pub const REQUEST_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(205);
 pub const TRANSFER_ARCHIVE_MEMORY_ID: MemoryId = MemoryId::new(206);
 
 thread_local! {
-    // static variable to store the timer id for the background claims timer
-    // doesn't need to be in stable memory as they are not persisted across upgrades
-    pub static CLAIMS_TIMER_ID: Cell<TimerId> = Cell::default();
-
-    // static variable to store the timer id for the background stats timer
-    pub static STATS_TIMER_ID: Cell<TimerId> = Cell::default();
-
-    // static variable to store the timer id for the background tx map archive timer
-    pub static TX_MAP_ARCHIVE_TIMER_ID: Cell<TimerId> = Cell::default();
-
-    // static variable to store the timer id for the background request map archive timer
-    pub static REQUEST_MAP_ARCHIVE_TIMER_ID: Cell<TimerId> = Cell::default();
-
-    // static variable to store the timer id for the background transfer archive timer
-    pub static TRANSFER_MAP_ARCHIVE_TIMER_ID: Cell<TimerId> = Cell::default();
-
     // static variable to store the map of principal_id to user_id
     pub static PRINCIPAL_ID_MAP: RefCell<BTreeMap<String, u32>> = RefCell::default();
 
