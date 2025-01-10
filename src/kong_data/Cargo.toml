@@ -14,6 +14,8 @@ prod = []
 
 [dependencies]
 candid = "0.10.10"
+event_store_producer = { git = "https://github.com/open-chat-labs/event-store", rev = "v0.6.0" }
+event_store_producer_cdk_runtime = { git = "https://github.com/open-chat-labs/event-store", rev = "v0.6.0" }
 ic-cdk = "0.17.0"
 ic-cdk-timers = "0.11.0"
 ic-ledger-types = "0.14.0"

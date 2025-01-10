@@ -1,9 +1,10 @@
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use serde::Deserialize;
 
 use super::{APP_NAME, APP_VERSION};
 
+use crate::event_store_client::event_store_client;
 use crate::{ic::logging::info_log, stable_user::principal_id_map::create_principal_id_map};
 
 #[init]
@@ -11,16 +12,21 @@ async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
 
     create_principal_id_map();
+
+    event_store_client::init(event_store_client::default(Principal::anonymous()));
 }
 
 #[pre_upgrade]
 fn pre_upgrade() {
     info_log(&format!("{} canister is upgrading", APP_NAME));
+
+    event_store_client::save_to_stable_memory();
 }
 
 #[post_upgrade]
 async fn post_upgrade() {
     create_principal_id_map();
+    event_store_client::load_from_stable_memory();
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }

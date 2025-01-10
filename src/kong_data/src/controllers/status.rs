@@ -6,9 +6,9 @@ use crate::helpers::math_helpers::{bytes_to_megabytes, to_trillions};
 use crate::ic::guards::caller_is_kingkong;
 
 use crate::stable_memory::{
-    CLAIM_MAP, CLAIM_MEMORY_ID, DB_UPDATE_MAP, DB_UPDATE_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP, LP_TOKEN_MEMORY_ID,
-    MEMORY_MANAGER, POOL_MAP, POOL_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_MAP, TRANSFER_MEMORY_ID,
-    TX_MAP, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
+    CLAIM_MAP, CLAIM_MEMORY_ID, DB_UPDATE_MAP, DB_UPDATE_MEMORY_ID, EVENT_STORE_EVENTS_MEMORY_ID, KONG_SETTINGS_MEMORY_ID, LP_TOKEN_MAP,
+    LP_TOKEN_MEMORY_ID, MEMORY_MANAGER, POOL_MAP, POOL_MEMORY_ID, REQUEST_MAP, REQUEST_MEMORY_ID, TOKEN_MAP, TOKEN_MEMORY_ID, TRANSFER_MAP,
+    TRANSFER_MEMORY_ID, TX_MAP, TX_MEMORY_ID, USER_MAP, USER_MEMORY_ID,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -63,6 +63,7 @@ async fn status() -> Result<String, String> {
             "Stable - Transfer Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(TRANSFER_MEMORY_ID).size())),
             "Stable - Claim Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(CLAIM_MEMORY_ID).size())),
             "Stable - LP Tokens Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(LP_TOKEN_MEMORY_ID).size())),
+            "Stable - EventStore Events": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(EVENT_STORE_EVENTS_MEMORY_ID).size())),
             "Stable - DB Update Map": format!("{} x 64k WASM page", MEMORY_MANAGER.with(|m| m.borrow().get(DB_UPDATE_MEMORY_ID).size())),
             "# of users": get_number_of_users(),
             "# of tokens": get_number_of_tokens(),
