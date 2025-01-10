@@ -10,7 +10,6 @@ async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
 
     create_principal_id_map();
-
     event_store_client::init(event_store_client::default(Principal::anonymous()));
 }
 
