@@ -24,32 +24,22 @@
   const ITEM_HEIGHT = 56; // 48px height + 8px margin bottom
   const BUFFER_SIZE = 5; // Number of items to render above/below viewport
 
-  let selectedFilter: string = "all";
+  type FilterType = 'all' | 'swap' | 'pool';
+  let selectedFilter: FilterType = "all";
   const filterOptions = [
-    { id: "all", label: "All" },
-    { id: "swap", label: "Swap" },
-    { id: "pool", label: "Pool" },
+    { id: "all" as const, label: "All" },
+    { id: "swap" as const, label: "Swap" },
+    { id: "pool" as const, label: "Pool" },
   ];
 
-  // Memoized filtered transactions with type optimization
-  $: filteredTransactions = selectedFilter === "all" 
-    ? transactions 
-    : transactions.filter(tx => {
-        switch (selectedFilter) {
-          case "swap": return tx.type === "Swap";
-          case "pool": return tx.type.includes("Liquidity");
-          default: return true;
-        }
-      });
-
   // Virtual scrolling calculations
-  $: totalHeight = filteredTransactions.length * ITEM_HEIGHT;
+  $: totalHeight = transactions.length * ITEM_HEIGHT;
   $: start = Math.max(0, Math.floor(scrollY / ITEM_HEIGHT) - BUFFER_SIZE);
   $: end = Math.min(
-    filteredTransactions.length,
+    transactions.length,
     Math.ceil((scrollY + containerHeight) / ITEM_HEIGHT) + BUFFER_SIZE
   );
-  $: visibleTransactions = filteredTransactions.slice(start, end);
+  $: visibleTransactions = transactions.slice(start, end);
   $: translateY = start * ITEM_HEIGHT;
 
   let selectedTransaction: any = null;
@@ -92,11 +82,19 @@
 
     try {
       const pageSize = 25; // Reduced page size for smoother loading
+      let txType: 'swap' | 'send' | 'pool' | null = null;
+      
+      if (selectedFilter !== 'all') {
+        txType = selectedFilter;
+      }
+
+      console.log('Fetching transactions with type:', txType); // Debug log
+
       const response = await TokenService.fetchUserTransactions(
         $auth.account?.owner?.toString(),
         currentPage,
         pageSize,
-        selectedFilter === 'all' ? null : selectedFilter as 'swap' | 'add_liquidity' | 'remove_liquidity'
+        txType
       );
 
       if (response.transactions) {
@@ -159,6 +157,10 @@
         });
         
         resizeObserver.observe(listContainer);
+
+        // Load initial transactions
+        loadTransactions(false);
+
         return () => {
           resizeObserver.disconnect();
           observer?.disconnect();
@@ -172,8 +174,8 @@
     };
   });
 
-  // Watch filter changes
-  $: if (selectedFilter) {
+  function handleFilterChange(newFilter: FilterType) {
+    selectedFilter = newFilter;
     currentPage = 1;
     loadTransactions(false);
   }
@@ -184,27 +186,30 @@
     const { tx_type, status, timestamp, details } = tx;
     const formattedDate = formatDate(new Date(timestamp));
     
-    switch (tx_type) {
-      case 'swap':
-        return {
-          type: "Swap",
-          status,
-          formattedDate,
-          details,
-          tx_id: tx.tx_id
-        };
-      case 'add_liquidity':
-      case 'remove_liquidity':
-        return {
-          type: tx_type === 'add_liquidity' ? "Add Liquidity" : "Remove Liquidity",
-          status,
-          formattedDate,
-          details,
-          tx_id: tx.tx_id
-        };
-      default:
-        return null;
+    // Handle all transaction types
+    if (tx_type === 'swap') {
+      return {
+        type: "Swap",
+        status,
+        formattedDate,
+        details,
+        tx_id: tx.tx_id
+      };
+    } else if (tx_type === 'add_liquidity' || tx_type === 'remove_liquidity' || tx_type === 'pool') {
+      const type = tx_type === 'add_liquidity' ? "Add Liquidity" : 
+                  tx_type === 'remove_liquidity' ? "Remove Liquidity" : 
+                  details?.type === 'add' ? "Add Liquidity" : "Remove Liquidity";
+      return {
+        type,
+        status,
+        formattedDate,
+        details,
+        tx_id: tx.tx_id
+      };
     }
+    
+    // Return null for any unhandled transaction types
+    return null;
   }
 
   function getTransactionIcon(type: string) {
@@ -383,14 +388,14 @@
   {/if}
 </Modal>
 
-<div class="flex flex-col h-[87dvh] px-2">
+<div class="flex flex-col min-h-[90dvh] px-2">
   <!-- Filter Navigation -->
   <nav class="flex rounded-t-lg bg-kong-bg-dark/50 mt-2 w-full">
     {#each filterOptions as option, index}
       <button
         class="tab-button flex-1 relative"
         class:active={selectedFilter === option.id}
-        on:click={() => (selectedFilter = option.id)}
+        on:click={() => handleFilterChange(option.id)}
         role="tab"
         aria-selected={selectedFilter === option.id}
         aria-controls={`${option.id}-panel`}
@@ -422,7 +427,7 @@
       <div class="text-kong-accent-red text-sm text-center py-4">
         {error}
       </div>
-    {:else if filteredTransactions.length === 0}
+    {:else if transactions.length === 0}
       <div class="text-kong-text-secondary text-sm text-center py-4">
         No transactions found
       </div>

@@ -299,7 +299,7 @@ export class TokenService {
     principalId: string, 
     page: number = 1, 
     limit: number = 50, 
-    tx_type: 'swap' | 'send' | 'add_liquidity' | 'remove_liquidity' | null = null
+    tx_type: 'swap' | 'send' | 'pool' | null = null
   ): Promise<{ transactions: any[], total_count: number }> {
     try {
       const queryParams = new URLSearchParams({
