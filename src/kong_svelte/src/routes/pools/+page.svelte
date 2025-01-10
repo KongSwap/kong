@@ -20,6 +20,7 @@
     Droplets,
     Flame,
     TrendingUp,
+    PiggyBank,
   } from "lucide-svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
@@ -178,7 +179,7 @@
           2,
         ),
       )}`,
-      icon: TrendingUp,
+      icon: PiggyBank,
     },
     {
       label: "Highest APY",

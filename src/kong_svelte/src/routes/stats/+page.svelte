@@ -10,12 +10,10 @@
   import { liveTokens } from "$lib/services/tokens/tokenStore";
   import { livePoolTotals } from "$lib/services/pools/poolStore";
   import {
-    ArrowUp,
-    ArrowDown,
-    ArrowUpDown,
     TrendingUp,
-    Flame,
     ChevronDown,
+    PiggyBank,
+    HandCoins,
   } from "lucide-svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
@@ -285,12 +283,12 @@
     {
       label: "TVL",
       value: `${formatUsdValue(Number($livePoolTotals[0]?.total_tvl ?? 0) / 1e6)}`,
-      icon: TrendingUp,
+      icon: PiggyBank,
     },
     {
       label: "Fees 24H",
       value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_lp_fee ?? 0) / 1e6)}`,
-      icon: TrendingUp,
+      icon: HandCoins,
       hideOnMobile: true,
     },
   ]}
