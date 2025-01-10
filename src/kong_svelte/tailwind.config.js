@@ -100,6 +100,7 @@ export default {
         "slide-out-to-top": "slide-out-to-top 200ms ease-in",
         "zoom-in": "zoom-in 200ms ease-out",
         "zoom-out": "zoom-out 200ms ease-in",
+        'shine': 'shine 2s infinite linear',
       },
       scale: {
         '98': '0.98',
@@ -152,6 +153,10 @@ export default {
         "zoom-out": {
           "0%": { transform: "scale(1)" },
           "100%": { transform: "scale(0.95)" },
+        },
+        shine: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(50%)' }
         },
       },
     },

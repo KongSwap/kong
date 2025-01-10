@@ -379,7 +379,7 @@ export class PoolService {
           KONG_BACKEND_CANISTER_ID, 
           canisterIDLs.kong_backend
         );
-        const res = await actor.user_balances(auth.pnp?.account?.owner?.toString(), []);
+        const res = await actor.user_balances(auth.pnp?.account?.owner?.toString());
         if (!res.Ok) {
           throw new Error("Failed to fetch user balances");
         }

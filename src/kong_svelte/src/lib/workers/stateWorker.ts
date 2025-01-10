@@ -14,16 +14,16 @@ class StateWorkerImpl implements StateWorkerApi {
   // ----------------------------------------------------
   // 1) Lower intervals to allow more frequent updates
   // ----------------------------------------------------
-  private readonly ACTIVE_TOKEN_INTERVAL = 15000;          // 5 seconds when active
-  private readonly BACKGROUND_TOKEN_INTERVAL = 60000;     // 30 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 15000;          // 5 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 30 seconds when in background
+  private readonly ACTIVE_TOKEN_INTERVAL = 12000;          // 5 seconds when active
+  private readonly BACKGROUND_TOKEN_INTERVAL = 45000;     // 30 seconds when in background
+  private readonly ACTIVE_POOL_INTERVAL = 20000;          // 5 seconds when active
+  private readonly BACKGROUND_POOL_INTERVAL = 45000;      // 30 seconds when in background
 
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests
   // ----------------------------------------------------
   private readonly TOKEN_UPDATE_THROTTLE = 5000; // Don't post token updates more often than every 5s
-  private readonly POOL_UPDATE_THROTTLE  = 5000; // Don't post pool updates more often than every 5s
+  private readonly POOL_UPDATE_THROTTLE  = 15000; // Don't post pool updates more often than every 5s
 
   // ----------------------------------------------------
   // 3) Track whether an update is already in progress
@@ -57,7 +57,6 @@ class StateWorkerImpl implements StateWorkerApi {
   // -------------------------------------------------------------------
   private scheduleTokenUpdates(): void {
     if (this.tokenInterval) {
-      console.log("Clearing existing token interval");
       clearInterval(this.tokenInterval);
     }
 

@@ -1,17 +1,24 @@
 <script lang="ts">
   import { browser } from "$app/environment";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import Panel from "./Panel.svelte";
-  import { fade, scale } from "svelte/transition";
+  import { fade } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
   import Portal from "svelte-portal";
   import Toast from "./Toast.svelte";
-  import { createEventDispatcher } from 'svelte';
-  import { tick } from 'svelte';
+  import { createEventDispatcher } from "svelte";
+  import { tick } from "svelte";
+  import { X } from "lucide-svelte";
+  import { writable } from "svelte/store";
+
   const dispatch = createEventDispatcher();
 
+  // Create a store for managing modal stack
+  const modalStack = writable<{ [key: string]: boolean }>({});
+
   export let isOpen = false;
-  export let title: string | HTMLElement = '';
+  export let modalKey = Math.random().toString(36).substr(2, 9);
+  export let title: string | HTMLElement = "";
   export let variant: "solid" | "transparent" = "solid";
   export let width = "600px";
   export let height = "auto";
@@ -30,6 +37,23 @@
   let modalElement: HTMLDivElement;
   let titleElement: HTMLElement;
   const SLIDE_THRESHOLD = 100; // pixels to trigger close
+  let zIndex = 99999;
+
+  // Watch isOpen changes to handle transitions
+  $: {
+    if (isOpen) {
+      modalStack.update((stack) => ({ ...stack, [modalKey]: true }));
+    }
+  }
+
+  // Subscribe to modalStack to update zIndex
+  const unsubscribe = modalStack.subscribe((stack) => {
+    const modalKeys = Object.keys(stack);
+    const index = modalKeys.indexOf(modalKey);
+    if (index !== -1) {
+      zIndex = 99999 + index + 1;
+    }
+  });
 
   onMount(() => {
     if (browser) {
@@ -40,7 +64,14 @@
       };
       updateDimensions();
       window.addEventListener("resize", updateDimensions);
-      return () => window.removeEventListener("resize", updateDimensions);
+      return () => {
+        window.removeEventListener("resize", updateDimensions);
+        // Clean up any remaining transforms/transitions
+        if (modalElement) {
+          modalElement.style.transform = "";
+          modalElement.style.transition = "";
+        }
+      };
     }
   });
 
@@ -49,18 +80,18 @@
     if (!isMobile) return;
 
     isDragging = true;
-    startX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    startX = "touches" in event ? event.touches[0].clientX : event.clientX;
     currentX = 0;
-    modalElement.style.transition = 'none';
+    modalElement.style.transition = "none";
   }
 
   function handleDragMove(event: MouseEvent | TouchEvent) {
     // Only enable dragging on mobile
     if (!isMobile || !isDragging) return;
-    
-    const x = 'touches' in event ? event.touches[0].clientX : event.clientX;
+
+    const x = "touches" in event ? event.touches[0].clientX : event.clientX;
     currentX = x - startX;
-    
+
     // Apply transform with some resistance
     const resistance = 0.5;
     modalElement.style.transform = `translateX(${currentX * resistance}px)`;
@@ -69,23 +100,27 @@
   function handleDragEnd() {
     // Only enable dragging on mobile
     if (!isMobile || !isDragging) return;
-    
+
     isDragging = false;
-    modalElement.style.transition = 'transform 0.3s ease-out';
-    
+    modalElement.style.transition = "transform 0.3s ease-out";
+
     if (Math.abs(currentX) > SLIDE_THRESHOLD) {
       // Slide out completely before closing
       modalElement.style.transform = `translateX(${Math.sign(currentX) * window.innerWidth}px)`;
       setTimeout(handleClose, 300);
     } else {
       // Spring back to original position
-      modalElement.style.transform = 'translateX(0)';
+      modalElement.style.transform = "translateX(0)";
     }
   }
 
   function handleClose() {
+    modalStack.update((stack) => {
+      const { [modalKey]: _, ...rest } = stack;
+      return rest;
+    });
     onClose();
-    dispatch('close');
+    dispatch("close");
   }
 
   function handleBackdropClick(event: MouseEvent) {
@@ -100,41 +135,52 @@
     }
   }
 
-  function handleTransitionEnd(event: CustomEvent) {
-    if (isOpen) {
-      dispatch('introend');
-    }
-  }
-
-  $: if (isOpen && title && typeof title === 'string' && title.includes('<')) {
+  $: if (isOpen && title && typeof title === "string" && title.includes("<")) {
     tick().then(() => {
       if (titleElement) {
         titleElement.innerHTML = title;
       }
     });
   }
+
+  // Improve cleanup in onDestroy
+  onDestroy(() => {
+    // Clean up modal stack
+    modalStack.update((stack) => {
+      const { [modalKey]: _, ...rest } = stack;
+      return rest;
+    });
+
+    // Clean up subscription
+    unsubscribe();
+
+    // Reset state variables
+    isDragging = false;
+    currentX = 0;
+  });
 </script>
 
 <svelte:window on:keydown={handleEscape} />
 <Portal target="#portal-target">
   <Toast />
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   {#if isOpen}
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99999] grid place-items-center will-change-opacity"
-      on:click={handleBackdropClick}
-      transition:fade={{ duration: 200 }}
+      class="fixed inset-0 grid place-items-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      on:introend={handleTransitionEnd}
+      style="z-index: {zIndex};"
+      transition:fade={{ duration: 150, easing: cubicOut }}
     >
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="fixed inset-0 bg-black/60 backdrop-blur-md"
+        on:click={handleBackdropClick}
+      />
+
       <div
         bind:this={modalElement}
         class="relative will-change-transform max-w-full px-1 max-h-[calc(100vh-40px)] flex flex-col overflow-hidden"
-        style="width: {modalWidth};"
+        style="width: {modalWidth}; z-index: {zIndex + 1};"
         on:mousedown={handleDragStart}
         on:mousemove={handleDragMove}
         on:mouseup={handleDragEnd}
@@ -142,20 +188,14 @@
         on:touchstart={handleDragStart}
         on:touchmove={handleDragMove}
         on:touchend={handleDragEnd}
-        transition:scale={{
-          duration: 200,
-          start: 0.95,
-          opacity: 0,
-          easing: cubicOut,
-        }}
       >
         <Panel
-          variant={variant}
+          {variant}
           width="100%"
           height="100%"
           className="!py-0 flex flex-col overflow-hidden {className}"
         >
-          <div 
+          <div
             class="modal-content flex flex-col overflow-hidden"
             style="min-height: {minHeight};"
           >
@@ -164,42 +204,38 @@
                 <div class="spinner"></div>
               </div>
             {/if}
-            
-            <div class="drag-handle touch-pan-x">
-            </div>
 
-            <header class="flex justify-between items-center px-4 flex-shrink-0">
+            <div class="drag-handle touch-pan-x"></div>
+
+            <header
+              class="flex justify-between items-center flex-shrink-0 px-3 pb-2 pt-3"
+            >
               <slot name="title">
-                {#if typeof title === 'string'}
-                  <h2 class="text-lg font-semibold py-4">{title}</h2>
+                {#if typeof title === "string"}
+                  <h2 class="text-lg font-semibold">{title}</h2>
                 {:else}
-                  <div bind:this={titleElement}></div>
+                  <div
+                    class="text-lg font-semibold"
+                    bind:this={titleElement}
+                  ></div>
                 {/if}
               </slot>
               <button
-                class="action-button !flex !justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
+                class="pt-2 pb-1 !flex !items-center !justify-end hover:text-kong-accent-red !border-0 !shadow-none group relative"
                 on:click={handleClose}
                 aria-label="Close modal"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="#ff4444"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+                <X size={18} />
               </button>
             </header>
 
-            <div class="flex-1 overflow-y-auto scrollbar-custom px-4 pb-4 min-h-0">
+            <div
+              class="h-[1px] bg-gradient-to-r from-transparent via-kong-text-primary/20 to-transparent mb-4"
+            ></div>
+
+            <div
+              class="flex-1 overflow-y-auto scrollbar-custom min-h-0 {className}"
+            >
               <slot />
             </div>
           </div>
@@ -218,12 +254,15 @@
     transition: all 0.15s ease;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     width: 40px;
-    height: 40px;
-    flex-shrink: 0;
   }
 
   :global(.modal-content) {
     max-height: inherit;
     height: 100%;
+  }
+
+  :global(#portal-target) {
+    position: relative;
+    isolation: isolate;
   }
 </style>

@@ -3,7 +3,7 @@
   import AccountDetails from "./AccountDetails.svelte";
   import { accountStore } from "$lib/stores/accountStore";
   import LoadingIndicator from "$lib/components/common/LoadingIndicator.svelte";
-  import { RefreshCw, IdCard, Coins, History, Droplets } from "lucide-svelte";
+  import { RefreshCw, IdCard, Coins, History, Droplets, X, Power } from "lucide-svelte";
   import {
     loadBalances,
     portfolioValue,
@@ -49,20 +49,21 @@
 
 <svelte:window bind:innerWidth={windowWidth} />
 
-<header class="header">
-  <div class="header-content p-2 flex items-center justify-between">
+<header class="header pt-1.5">
+  <div class="header-content px-1 flex items-center justify-between">
     <!-- Left Section -->
-    <div class="left-section flex items-center gap-2">
+    <div class="left-section flex items-center gap-2 text-sm">
       <button
         class="wallet-button flex gap-x-1 items-center text-kong-text-primary hover:text-kong-primary transition-colors"
         on:click={() => accountStore.showAccountDetails()}
         use:tooltip={{ text: "View Account Details", direction: "bottom" }}
       >
         <IdCard size={18} />
+        My Addresses
       </button>
 
       <button
-        class="portfolio-button flex items-center text-sm font-mono font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
+        class="portfolio-button flex items-center font-medium text-kong-text-primary hover:text-kong-primary transition-colors"
         on:click={handlePortfolioClick}
         use:tooltip={{ text: "View Portfolio Distribution", direction: "bottom" }}
       >
@@ -74,7 +75,7 @@
       </button>
 
       <button
-        class="refresh-button text-gray-400 hover:text-white transition-colors"
+        class="refresh-button text-gray-400 hover:text-white transition-colors !px-2 !py-2"
         on:click={handleReload}
         disabled={isRefreshing}
         use:tooltip={{ text: "Refresh Portfolio", direction: "bottom" }}
@@ -88,42 +89,20 @@
     <!-- Right Section -->
     <div class="right-section flex items-center gap-1.5">
       <button
-        class="action-button"
+        class="action-button !px-2 !py-2"
         aria-label="Disconnect Wallet"
         on:click={handleDisconnect}
         use:tooltip={{ text: "Disconnect Wallet", direction: "bottom" }}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-          <line x1="12" y1="2" x2="12" y2="12"></line>
-        </svg>
+        <Power size={20} />
       </button>
       <button
-        class="action-button !p-1"
+        class="action-button !px-2 !py-2"
         aria-label="Close Sidebar"
         on:click={onClose}
         use:tooltip={{ text: "Close Sidebar", direction: "bottom" }}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        <X size={22} />
       </button>
     </div>
   </div>
@@ -151,7 +130,7 @@
             />
           {/if}
           <svelte:component this={icon} size={14} />
-          <span class="relative z-10 text-xs font-semibold">
+          <span class="relative z-10 text-sm">
             {id.charAt(0).toUpperCase() + id.slice(1)}
           </span>
         </div>
@@ -178,7 +157,7 @@
   }
 
   .left-section {
-    @apply flex items-center gap-2;
+    @apply flex items-center gap-1;
   }
 
   .right-section {
@@ -190,20 +169,19 @@
   .portfolio-button,
   .refresh-button,
   .action-button {
-    @apply p-2 rounded-t-lg text-kong-text-secondary
+    @apply px-1 pt-2 pb-3 rounded-t-lg text-kong-text-secondary text-base
            hover:bg-kong-bg-light/50 hover:text-kong-text-primary 
            transition-all duration-200;
   }
 
   .portfolio-button {
-    @apply px-2.5 font-mono font-medium;
+    @apply px-2.5 font-medium;
   }
 
-  /* Tab styles */
   .tab-button {
-    @apply py-1 px-2 text-kong-text-secondary font-medium text-base
+    @apply py-1 px-2 text-kong-text-secondary font-medium
            transition-all duration-200 border-r border-kong-border/50
-           hover:text-kong-text-primary relative overflow-hidden uppercase;
+           hover:text-kong-text-primary relative overflow-hidden;
   }
 
   .tab-button:last-child {
@@ -214,7 +192,6 @@
     @apply text-kong-accent-blue font-semibold;
   }
 
-  /* Animation */
   .animate-spin {
     animation: spin 1s linear infinite;
   }
@@ -228,7 +205,6 @@
     }
   }
 
-  /* Override only the bottom padding for the header-content */
   :global(.header-content) {
     padding-bottom: 0 !important;
   }

@@ -20,6 +20,7 @@ export const INDEXER_URL = getIndexerUrl();
 // Frontend Canister IDs
 export const KONG_SVELTE_CANISTER_ID = process.env.CANISTER_ID_KONG_SVELTE;
 export const KONG_BACKEND_CANISTER_ID = process.env.CANISTER_ID_KONG_BACKEND;
+export const KONG_LEDGER_CANISTER_ID = process.env.CANISTER_ID_KONG_LEDGER;
 
 // Token Canister IDs
 export const BIL_CANISTER_ID = 'ktra4-taaaa-aaaag-atveq-cai';

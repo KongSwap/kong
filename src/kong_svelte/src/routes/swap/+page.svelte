@@ -83,21 +83,3 @@
     <p>Loading tokens...</p>
   {/if}
 </section>
-
-<style>
-  .onramp-button {
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: 600;
-    color: white;
-    border-radius: 12px;
-    transition: all 0.2s ease;
-    background: rgba(55, 114, 255, 0.2);
-    border: none;
-    cursor: pointer;
-  }
-
-  .onramp-button:hover {
-    background: rgba(55, 114, 255, 0.3);
-  }
-</style>

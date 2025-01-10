@@ -262,7 +262,6 @@ type PoolReply = record {
     lp_fee_1 : nat;
     price : float64;
     lp_fee_bps : nat8;
-    on_kong : bool;             // flag indicating if displayed on Kong Swap
     tvl : nat;                  // USD value of TVL
     rolling_24h_volume : nat;   // USD value of rolling 24h volume
     rolling_24h_lp_fee : nat;   // USD value of rolling 24h LP fees
@@ -562,8 +561,6 @@ service : {
     get_user : () -> (UserResult) query;
     // user_balances(principal_id) - return user's LP balances
     user_balances : (text) -> (UserBalancesResult) query;
-    // messages(opt message_id) - returns specific message or all messages of the user
-    messages : (opt nat64) -> (MessagesResult) query;
     // requests(opt request_id) - return specific request or most recent requests
     requests : (opt nat64) -> (RequestsResult) query;
     // txs(opt principal_id) - return transactions filtered by principal id

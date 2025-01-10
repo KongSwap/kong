@@ -14,7 +14,8 @@
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { Droplets, ArrowLeftRight } from "lucide-svelte";
     import { kongDB } from "$lib/services/db";
-
+  import SNSProposals from '$lib/components/stats/SNSProposals.svelte';
+  import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
   if (!formattedTokens || !livePools) {
     throw new Error("Stores are not initialized");
   }
@@ -42,22 +43,23 @@
     }
   });
 
-  // Remove the duplicate state declarations and keep only one effect
-  $effect(async () => {
+  // Replace the async effect with a regular effect
+  $effect(() => {
     const pageId = $page.params.id;
-    const foundToken = await kongDB.tokens.get(pageId);
-
-    if (foundToken) {
-      const converted = foundToken;
-      token = converted;
-      hasManualSelection = false;
-      initialPoolSet = false;
-    } else {
-      console.warn("Token not found:", $page.params.id);
-      token = undefined;
-      hasManualSelection = false;
-      initialPoolSet = false;
-    }
+    // Use .then() instead of async/await
+    kongDB.tokens.get(pageId).then((foundToken) => {
+      if (foundToken) {
+        const converted = foundToken;
+        token = converted;
+        hasManualSelection = false;
+        initialPoolSet = false;
+      } else {
+        console.warn("Token not found:", pageId);
+        token = undefined;
+        hasManualSelection = false;
+        initialPoolSet = false;
+      }
+    });
   });
 
   // First try to find CKUSDT pool with non-zero TVL, then fallback to largest pool
@@ -169,7 +171,7 @@
   });
 
   // Add tab state
-  let activeTab = $state<"overview" | "pools" | "transactions">("overview");
+  let activeTab = $state<"overview" | "pools" | "transactions" | "governance">("overview");
 
   // Add pool selector state
   let isPoolSelectorOpen = $state(false);
@@ -214,13 +216,14 @@
       </button>
     </div>
   {:else}
-    <div class="flex flex-col max-w-[1300px] mx-auto gap-6">
+    <div class="flex flex-col max-w-[1300px] mx-auto gap-4">
       <!-- Token Header - Non-fixed with border radius -->
-      <Panel variant="transparent" type="main">
+      <Panel variant="transparent">
         <div class="flex flex-col gap-4">
+          <!-- Token info row -->
           <div class="flex items-center justify-between">
             <!-- Left side with back button and token info -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 md:gap-x-0">
               <button
                 title="Back"
                 aria-label="Back"
@@ -241,7 +244,7 @@
                 </svg>
               </button>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 md:gap-x-0">
                 <TokenImages
                   tokens={token ? [token] : []}
                   size={36}
@@ -251,46 +254,68 @@
                   <h1
                     class="text-lg md:text-2xl font-bold text-kong-text-primary"
                   >
-                    {token.name}
+                    {token?.name || 'Loading...'}
                   </h1>
                   <div class="text-sm md:text-base text-[#8890a4]">
-                    ({token.symbol})
+                    ({token?.symbol || '...'})
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Right side with tab names -->
-            <div class="hidden md:flex items-center gap-6 text-[#8890a4]">
-              <!-- Trade and add lp buttons -->
-              <div class="flex items-center gap-2 justify-end">
-                <ButtonV2
-                  variant="solid"
-                  size="md"
-                  className="w-full text-nowrap"
-                  on:click={() =>
-                    goto(
-                      `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
-                    )}
+            <!-- Desktop tabs - hidden on mobile -->
+            <div class="hidden md:flex items-center gap-2 text-[#8890a4]">
+              <button
+                role="tab"
+                id="overview-tab"
+                aria-controls="overview-panel"
+                aria-selected={activeTab === "overview"}
+                class="px-4 py-2 rounded-lg {activeTab === 'overview' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
+                on:click={() => activeTab = "overview"}
+              >
+                Overview
+              </button>
+              
+              {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
+                <button
+                  role="tab"
+                  id="governance-tab"
+                  aria-controls="governance-panel"
+                  aria-selected={activeTab === "governance"}
+                  class="px-4 py-2 rounded-lg {activeTab === 'governance' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
+                  on:click={() => activeTab = "governance"}
                 >
-                <div class="flex items-center gap-2">
-                 <Droplets class="w-4 h-4" /> Add Liquidity
-                </div>
-                </ButtonV2>
-                <ButtonV2
-                  variant="solid"
-                  size="md"
-                  on:click={() =>
-                    goto(
-                      `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
-                    )}
-                >
-                  <div class="flex items-center gap-2">
-                    <ArrowLeftRight class="w-4 h-4" /> Swap
-                  </div>
-                </ButtonV2>
-              </div>
+                  Governance
+                </button>
+              {/if}
             </div>
+          </div>
+
+          <!-- Mobile tabs row - shown on mobile, hidden on desktop -->
+          <div class="md:hidden flex items-center gap-2 text-[#8890a4]">
+            <button
+              role="tab"
+              id="overview-tab-mobile"
+              aria-controls="overview-panel"
+              aria-selected={activeTab === "overview"}
+              class="px-4 py-2 rounded-lg flex-1 {activeTab === 'overview' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
+              on:click={() => activeTab = "overview"}
+            >
+              Overview
+            </button>
+            
+            {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
+              <button
+                role="tab"
+                id="governance-tab-mobile"
+                aria-controls="governance-panel"
+                aria-selected={activeTab === "governance"}
+                class="px-4 py-2 rounded-lg flex-1 {activeTab === 'governance' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
+                on:click={() => activeTab = "governance"}
+              >
+                Governance
+              </button>
+            {/if}
           </div>
         </div>
       </Panel>
@@ -303,10 +328,41 @@
           aria-labelledby="overview-tab"
           tabindex="0"
         >
+
           <!-- Overview Layout -->
-          <div class="flex flex-col lg:flex-row gap-6">
+          <div class="flex flex-col lg:flex-row gap-4">
             <!-- Mobile-first layout -->
-            <div class="flex flex-col gap-6 w-full lg:hidden">
+            <div class="flex flex-col gap-4 w-full lg:hidden">
+              <!-- Add Action Buttons for mobile -->
+              <div class="flex items-center gap-2 justify-end">
+                <ButtonV2
+                  variant="solid"
+                  size="md"
+                  className="!w-1/2 text-nowrap flex justify-center"
+                  on:click={() =>
+                    goto(
+                      `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                    )}
+                >
+                  <div class="flex items-center gap-2">
+                    <Droplets class="w-4 h-4" /> Add Liquidity
+                  </div>
+                </ButtonV2>
+                <ButtonV2
+                  variant="solid"
+                  size="md"
+                  className="!w-1/2 text-nowrap flex justify-center"
+                  on:click={() =>
+                    goto(
+                      `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
+                    )}
+                >
+                  <div class="flex items-center gap-2">
+                    <ArrowLeftRight class="w-4 h-4" /> Swap
+                  </div>
+                </ButtonV2>
+              </div>
+
               <!-- Pool Selector -->
               <PoolSelector
                 {selectedPool}
@@ -418,6 +474,35 @@
 
               <!-- Right Column - Stats -->
               <div class="lg:w-[30%] flex flex-col gap-4">
+                          <!-- Action Buttons - Shown on all layouts -->
+          <div class="flex items-center gap-2 justify-end w-full">
+            <ButtonV2
+              variant="solid"
+              size="md"
+              className="!w-1/2 text-nowrap flex justify-center"
+              on:click={() =>
+                goto(
+                  `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                )}
+            >
+              <div class="flex items-center gap-2">
+                <Droplets class="w-4 h-4" /> Add Liquidity
+              </div>
+            </ButtonV2>
+            <ButtonV2
+              variant="solid"
+              size="md"
+              className="!w-1/2 text-nowrap flex justify-center"
+              on:click={() =>
+                goto(
+                  `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
+                )}
+            >
+              <div class="flex items-center gap-2">
+                <ArrowLeftRight class="w-4 h-4" /> Swap
+              </div>
+            </ButtonV2>
+          </div>
                 <PoolSelector
                   {selectedPool}
                   {token}
@@ -436,6 +521,53 @@
                 />
                 <TokenStatistics {token} {marketCapRank} />
               </div>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      {#if activeTab === "governance" && token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
+        <div
+          role="tabpanel"
+          id="governance-panel"
+          aria-labelledby="governance-tab"
+          tabindex="0"
+        >
+          <!-- Use same layout structure as overview -->
+          <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Left Column - Proposals -->
+            <div class="lg:w-[70%]">
+              <SNSProposals 
+                governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.canister_id]} 
+              />
+            </div>
+
+            <!-- Right Column - Stats -->
+            <div class="lg:w-[30%] flex flex-col gap-4">
+              <Panel variant="transparent" type="main">
+                <div class="flex flex-col gap-4">
+                  <h2 class="text-lg font-semibold">About Governance</h2>
+                  <div class="text-kong-text-secondary">
+                    <p class="mb-2">
+                      {token.symbol} token holders can participate in governance by:
+                    </p>
+                    <ul class="list-disc pl-4 space-y-1">
+                      <li>Submitting proposals</li>
+                      <li>Voting on active proposals</li>
+                      <li>Discussing community initiatives</li>
+                    </ul>
+                  </div>
+                  <a
+                    href={`https://nns.ic0.app/proposals/?u=${token.canister_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-kong-primary hover:underline mt-2"
+                  >
+                    View on IC Dashboard →
+                  </a>
+                </div>
+              </Panel>
+              <TokenStatistics {token} {marketCapRank} />
             </div>
           </div>
         </div>

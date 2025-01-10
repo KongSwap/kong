@@ -11,6 +11,7 @@
   import { formatUsdValue, formatTokenBalance } from "$lib/utils/tokenFormatters";
   import { swapState } from "$lib/services/swap/SwapStateService";
     import { FavoriteService } from "$lib/services/tokens/favoriteService";
+  import AddCustomTokenModal from "$lib/components/sidebar/AddCustomTokenModal.svelte";
 
   const props = $props();
   const {
@@ -33,6 +34,7 @@
   let sortDirection = $state("desc");
   let sortColumn = $state("value");
   let standardFilter = $state("all");
+  let showImportModal = $state(false);
 
   function setStandardFilter(filter: "all" | "ck" | "favorites") {
     standardFilter = filter;
@@ -82,7 +84,7 @@
 
       // Apply hide zero balances filter
       if (hideZeroBalances) {
-        const balance = $tokenStore.balances[token.canister_id]?.in_tokens || BigInt(0);
+        const balance = $storedBalancesStore[token.canister_id]?.in_tokens || BigInt(0);
         if (balance <= 0n) {
           return false;
         }
@@ -387,7 +389,7 @@
                   {#each [{ id: "all", label: "All", count: allTokensCount }, { id: "ck", label: "CK", count: ckTokensCount }, { id: "favorites", label: "Favorites", count: favoritesCount }] as tab}
                     <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <button
-                      on:click={() => setStandardFilter(tab.id)}
+                      on:click={() => setStandardFilter(tab.id as "all" | "ck" | "favorites")}
                       class="filter-btn"
                       class:active={standardFilter === tab.id}
                       aria-label="Show {tab.label.toLowerCase()} tokens"
@@ -492,7 +494,7 @@
                         {/if}
                       </div>
                     </div>
-                    <div class="token-right text-white text-sm">
+                    <div class="token-right text-kong-text-primary text-sm">
                       <span class="token-balance flex flex-col text-right">
                         {formatTokenBalance(balance?.in_tokens?.toString() || "0", token.decimals)}
                         <span class="token-balance-label text-xs">
@@ -521,11 +523,41 @@
                 {/each}
               </div>
             </div>
+
+            <div class="fixed-bottom-section">
+              <button
+                class="import-token-button"
+                on:click|stopPropagation={() => showImportModal = true}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Import Custom Token</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </Portal>
+{/if}
+
+{#if showImportModal}
+  <AddCustomTokenModal
+    isOpen={showImportModal}
+    on:close={() => showImportModal = false}
+  />
 {/if}
 
 <style scoped lang="postcss">
@@ -570,7 +602,7 @@
   }
 
   .modal-header {
-    @apply p-4 border-b border-white/10;
+    @apply px-3 py-2 border-b border-white/10;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -578,7 +610,7 @@
   }
 
   .modal-title {
-    @apply text-lg font-semibold text-white;
+    @apply text-base font-semibold text-kong-text-primary;
   }
 
   .close-button {
@@ -601,6 +633,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
   }
 
   .fixed-section {
@@ -638,7 +671,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    padding: 1rem;
+    padding: 0.75rem 0.75rem;
   }
 
   .search-input {
@@ -658,19 +691,19 @@
   }
 
   .filter-bar {
-    @apply pb-1 border-b border-white/10;
+    @apply pb-0.5 border-b border-white/10;
   }
 
   .filter-buttons {
     display: flex;
     width: 100%;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   }
 
   .filter-btn {
     flex: 1;
-    padding: 0.75rem 0;
+    padding: 0.5rem 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -729,7 +762,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1rem 0.4rem;
+    padding: 0 0.75rem 0.25rem;
   }
 
   .sort-toggle {
@@ -805,8 +838,10 @@
   .tokens-container {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.5rem;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    padding-bottom: calc(3rem + 8px);
+    min-height: 100%;
     touch-action: pan-y;
   }
 
@@ -814,7 +849,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem;
+    padding: 0.5rem;
     border-radius: 0.5rem;
     background-color: var(--color-background-secondary);
     cursor: pointer;
@@ -940,6 +975,37 @@
     padding: 0.125rem 0.375rem;
   }
 
+  .fixed-bottom-section {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    @apply px-3 py-1.5;
+    background: rgb(26, 29, 46);
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    z-index: 10;
+  }
+
+  .import-token-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .import-token-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+
   @media (max-width: 768px) {
     .modal-backdrop {
       padding: 0;
@@ -950,5 +1016,17 @@
       height: 100%;
       max-height: 100vh;
     }
+  }
+
+  .scrollable-section::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: linear-gradient(to bottom, transparent, rgb(26, 29, 46));
+    pointer-events: none;
+    z-index: 5;
   }
 </style>

@@ -78,7 +78,7 @@
         type="main"
         className="w-full p-8"
       >
-        <div class="text-center space-y-6">
+        <div class="text-center space-y-6 mb-2">
           <!-- Success Icon -->
           <div class="flex justify-center">
             <img 

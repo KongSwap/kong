@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
-  import { Star, Send, ArrowUpDown, Droplets } from "lucide-svelte";
+  import { Star, Send, HandCoins, ArrowUpDown, Droplets } from "lucide-svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import {
     formatUsdValue,
@@ -9,10 +9,14 @@
   import TokenDetails from "$lib/components/common/TokenDetails.svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
   import { storedBalancesStore } from "$lib/services/tokens";
-  import { CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import {
+    CKUSDT_CANISTER_ID,
+    ICP_CANISTER_ID,
+  } from "$lib/constants/canisterConstants";
   import { goto } from "$app/navigation";
   import { sidebarStore } from "$lib/stores/sidebarStore";
   import { activeDropdownId } from "$lib/stores/dropdownStore";
+  import { accountStore } from "$lib/stores/accountStore";
 
   export let token: any;
 
@@ -65,13 +69,20 @@
     localFavorite = await FavoriteService.toggleFavorite(token.canister_id);
   }
 
-  function handleMenuAction(action: string) {
+  function handleMenuAction(action: string, token: FE.Token) {
+    activeDropdownId.set(null);
     switch (action) {
       case "details":
         showTokenDetails = true;
         break;
       case "swap":
-        // Implement swap navigation
+        goto(
+          `/swap?from=${token.canister_id}&to=${token.canister_id === CKUSDT_CANISTER_ID ? ICP_CANISTER_ID : CKUSDT_CANISTER_ID}`,
+        );
+        sidebarStore.collapse();
+        break;
+      case "receive":
+        accountStore.showAccountDetails("principal");
         break;
       // Add more actions as needed
     }
@@ -141,7 +152,7 @@
   >
     <div
       class="flex items-center justify-between h-14 relative z-[95]
-             group-hover:bg-kong-bg-light/40 group-hover:border-kong-border/10 
+             group-hover:bg-kong-bg-light/40 group-hover:border-kong-border/10
              transition-all duration-200 rounded-lg"
     >
       <div class="flex items-center gap-3">
@@ -152,7 +163,7 @@
         <div class="flex flex-col gap-0.5">
           <div class="flex items-center gap-1.5">
             <button
-              class="p-1 rounded-md text-kong-text-primary/50 bg-white/5 transition-all duration-200 hover:text-white hover:scale-110 hover:bg-white/10 {localFavorite
+              class="p-1 rounded-md text-kong-text-primary/50 bg-white/5 transition-all duration-200 hover:text-kong-text-primary hover:scale-110 hover:bg-white/10 {localFavorite
                 ? 'text-yellow-400 bg-yellow-400/10'
                 : ''}"
               on:click={handleFavoriteClick}
@@ -174,7 +185,13 @@
       <div class="flex items-center h-full">
         <div class="flex flex-col items-end gap-0.5">
           <div class="text-sm font-medium text-kong-text-primary">
-            {formattedBalance.split('.')[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')}{formattedBalance.includes('.') ? '.' + formattedBalance.split('.')[1] : ''}
+            {formattedBalance
+              .split(".")[0]
+              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{formattedBalance.includes(
+              ".",
+            )
+              ? "." + formattedBalance.split(".")[1]
+              : ""}
           </div>
           <div class="text-[13px] text-kong-text-primary/70">
             {formattedUsdValue}
@@ -204,18 +221,29 @@
 
               <!-- Dropdown buttons -->
               <button
-                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-white hover:translate-x-0.5 flex items-center gap-2"
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
                 on:click|stopPropagation={() => {
                   activeDropdownId.set(null);
-                  handleMenuAction("details");
+                  handleMenuAction("details", token);
                 }}
               >
                 <Send size={16} />
-                Send/Receive
+                Send
               </button>
 
               <button
-                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-white hover:translate-x-0.5 flex items-center gap-2"
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
+                on:click|stopPropagation={() => {
+                  activeDropdownId.set(null);
+                  handleMenuAction("receive", token);
+                }}
+              >
+                <HandCoins size={16} />
+                Receive
+              </button>
+
+              <button
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
                 on:click|stopPropagation={() => {
                   activeDropdownId.set(null);
                   sidebarStore.collapse();
@@ -229,7 +257,7 @@
               </button>
 
               <button
-                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-white hover:translate-x-0.5 flex items-center gap-2"
+                class="w-full text-left p-2.5 text-kong-text-primary/90 transition-all duration-200 rounded-md hover:bg-kong-primary/15 hover:text-kong-text-primary hover:translate-x-0.5 flex items-center gap-2"
                 on:click|stopPropagation={() => {
                   activeDropdownId.set(null);
                   sidebarStore.collapse();
@@ -250,8 +278,5 @@
 </div>
 
 {#if showTokenDetails}
-  <TokenDetails
-    {token}
-    on:close={() => (showTokenDetails = false)}
-  />
+  <TokenDetails {token} on:close={() => (showTokenDetails = false)} />
 {/if}

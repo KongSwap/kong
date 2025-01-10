@@ -456,7 +456,6 @@ export interface _SERVICE {
     icrc21_consent_message_response
   >,
   'icrc28_trusted_origins' : ActorMethod<[], Icrc28TrustedOriginsResponse>,
-  'messages' : ActorMethod<[[] | [bigint]], MessagesResult>,
   'pools' : ActorMethod<[[] | [string]], PoolsResult>,
   'remove_liquidity' : ActorMethod<
     [RemoveLiquidityArgs],

@@ -269,7 +269,7 @@
   variant="solid"
   width="min(420px, 95vw)"
   height="auto"
-  className="!p-0 !flex !flex-col !rounded-md !overflow-hidden"
+  className="!flex !flex-col !rounded-md !overflow-hidden !p-0"
 >
   <div slot="title" class="flex items-center gap-3">
     <TokenImages tokens={[token0, token1]} size={24} overlap={true} />
@@ -458,7 +458,7 @@
   }
 
   .pool-header {
-    @apply px-6 pt-2 pb-6 flex flex-col gap-4;
+    @apply px-6 pb-6 flex flex-col gap-2;
   }
 
   .token-amounts {
@@ -509,11 +509,11 @@
   }
 
   .content-section {
-    @apply flex-1 px-6 pb-6 overflow-y-auto;
+    @apply flex-1 px-6 pb-2 overflow-y-auto;
   }
 
   .remove-liquidity-container {
-    @apply flex flex-col gap-4;
+    @apply flex flex-col gap-2;
   }
 
   .input-section {
@@ -566,7 +566,7 @@
   }
 
   .total-value {
-    @apply text-sm text-kong-text-primary/60 text-right pt-2 
+    @apply text-sm text-kong-text-primary/60 text-right pt-1 
            border-t border-kong-border/5;
   }
 
@@ -622,7 +622,7 @@
 
   @media (max-width: 640px) {
     .pool-header {
-      @apply gap-4;
+      @apply gap-2;
     }
 
     .stats-grid {

@@ -20,6 +20,7 @@
     Droplets,
     Flame,
     TrendingUp,
+    PiggyBank,
   } from "lucide-svelte";
   import PageHeader from "$lib/components/common/PageHeader.svelte";
   import PoolDetails from "$lib/components/liquidity/pools/PoolDetails.svelte";
@@ -156,7 +157,7 @@
   icon={Droplets}
   stats={[
     {
-      label: "Volume 24H",
+      label: "Vol 24H",
       value: `${formatUsdValue(
         formatBalance(
           $filteredLivePools.reduce(
@@ -178,7 +179,7 @@
           2,
         ),
       )}`,
-      icon: TrendingUp,
+      icon: PiggyBank,
     },
     {
       label: "Highest APY",
@@ -409,7 +410,7 @@
                       },
                       {
                         key: 'rolling_24h_volume',
-                        title: 'Volume 24H',
+                        title: 'Vol 24H',
                         align: 'right',
                         width: '17.5%',
                         sortable: true,

@@ -143,7 +143,6 @@
       const widget = new window.TradingView.widget(chartConfig);
 
       widget.onChartReady(() => {
-        console.log('Chart is ready');
         widget._ready = true;
         chartStore.set(widget);
         isLoading = false;

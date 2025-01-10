@@ -26,37 +26,8 @@
   const sortDirection = writable<'asc' | 'desc'>(defaultSort.direction || 'desc');
   const totalPages = writable(1);
 
-  // Memoize top metrics sets to avoid recalculation on every render
-  let memoizedTopByVolume: Set<string>;
-  let memoizedTopByTVL: Set<string>;
-  let memoizedTopByAPY: Set<string>;
-  let lastDataLength = 0;
 
-  function updateTopMetrics() {
-    if (data.length === lastDataLength) return;
-    lastDataLength = data.length;
 
-    memoizedTopByVolume = new Set(
-      [...data]
-        .sort((a, b) => Number(b.rolling_24h_volume || 0) - Number(a.rolling_24h_volume || 0))
-        .slice(0, 5)
-        .map(p => p[rowKey])
-    );
-
-    memoizedTopByTVL = new Set(
-      [...data]
-        .sort((a, b) => Number(b.tvl || 0) - Number(a.tvl || 0))
-        .slice(0, 5)
-        .map(p => p[rowKey])
-    );
-
-    memoizedTopByAPY = new Set(
-      [...data]
-        .sort((a, b) => Number(b.rolling_24h_apy || 0) - Number(a.rolling_24h_apy || 0))
-        .slice(0, 5)
-        .map(p => p[rowKey])
-    );
-  }
 
   // Optimize getValue by using a Map for column lookups
   const columnMap = new Map();
@@ -138,28 +109,57 @@
   const flashDuration = 2000;
   let flashTimeouts = new Map();
 
-  function updatePriceFlash(row: any) {
+  // Make the price cache more granular
+  const priceCache = new Map<string, {
+    price: number;
+    timestamp: number;
+    previousPrice: number;
+  }>();
+
+  // Update price tracking logic
+  function trackPriceChanges(rows: any[]) {
+    rows.forEach(row => {
+      const key = row[rowKey];
+      const currentPrice = Number(row.metrics?.price || 0);
+      const cached = priceCache.get(key);
+
+      if (cached && currentPrice !== cached.price) {
+        updatePriceFlash(row, cached.price);
+        priceCache.set(key, {
+          price: currentPrice,
+          timestamp: Date.now(),
+          previousPrice: cached.price
+        });
+      } else if (!cached) {
+        priceCache.set(key, {
+          price: currentPrice,
+          timestamp: Date.now(),
+          previousPrice: currentPrice
+        });
+      }
+    });
+  }
+
+  // Update flash animation logic
+  function updatePriceFlash(row: any, previousPrice: number) {
     const key = row[rowKey];
-    const currentPrice = row.metrics?.price;
-    const previousPrice = previousPrices.get(key);
+    const currentPrice = Number(row.metrics?.price || 0);
     
-    // Clear existing timeout if any
     if (flashTimeouts.has(key)) {
       clearTimeout(flashTimeouts.get(key));
     }
 
     const flashClass = currentPrice > previousPrice ? 'flash-green' : 'flash-red';
     
-    // Set new timeout
     const timeout = setTimeout(() => {
       rowFlashStates.delete(key);
-      rowFlashStates = new Map(rowFlashStates); // Create new reference to trigger reactivity
+      rowFlashStates = new Map(rowFlashStates);
       flashTimeouts.delete(key);
     }, flashDuration);
 
     flashTimeouts.set(key, timeout);
     rowFlashStates.set(key, { class: flashClass, timeout });
-    rowFlashStates = new Map(rowFlashStates); // Create new reference to trigger reactivity
+    rowFlashStates = new Map(rowFlashStates);
   }
 
   // Store previous prices for flash animations
@@ -200,18 +200,10 @@
     }
   }
 
-  // Watch for price changes
+  // Watch data changes more effectively
   $: {
-    for (const row of data) {
-      const key = row[rowKey];
-      const currentPrice = row.metrics?.price;
-      const previousPrice = previousPrices.get(key);
-      
-      if (previousPrice !== undefined && currentPrice !== previousPrice) {
-        updatePriceFlash(row);
-      }
-      
-      previousPrices.set(key, currentPrice);
+    if (data?.length) {
+      trackPriceChanges(data);
     }
   }
 
@@ -274,7 +266,7 @@
             class="h-[44px] border-b border-kong-border/50 hover:bg-kong-bg-light/30 transition-colors duration-200 
               {onRowClick ? 'cursor-pointer' : ''} 
               {rowFlashStates.get(row[rowKey])?.class || ''} 
-              {(isKongRow ? isKongRow(row) : isKongToken(row)) ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
+              {isKong ? 'bg-kong-primary/5 hover:bg-kong-primary/10 border-kong-primary/20' : ''}"
             on:click={() => onRowClick?.(row)}
           >
             {#each columns as column (column.key)}
