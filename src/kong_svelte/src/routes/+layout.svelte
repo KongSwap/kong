@@ -13,7 +13,8 @@
   import { themeStore } from '$lib/stores/themeStore';
   import { browser } from '$app/environment';
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
-
+  import { auth } from "$lib/services/auth";
+  
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
   let initializationError: Error | null = null;
@@ -25,6 +26,7 @@
 
     initializationPromise = (async () => {
       try {
+        await auth.initialize();
         await appLoader.initialize();
       } catch (error) {
         console.error("Initialization error:", error);

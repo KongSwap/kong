@@ -44,22 +44,26 @@ export class AppLoader {
   public async initialize(): Promise<void> {
     // If already initialized, return immediately
     if (this.initialized) {
+      console.log("[AppLoader] Already initialized, skipping");
       return;
     }
 
     // If initialization is in progress, wait for it
     if (this.initializationPromise) {
+      console.log("[AppLoader] Initialization already in progress, waiting...");
       return this.initializationPromise;
     }
 
+    console.log("[AppLoader] Starting initialization...");
     // Create new initialization promise
     this.initializationPromise = (async () => {
       try {
         await this.initializeTokens();
         await this.initializeUpdateWorker();
         this.initialized = true;
+        console.log("[AppLoader] Initialization completed successfully");
       } catch (error) {
-        console.error("AppLoader initialization error:", error);
+        console.error("[AppLoader] Initialization error:", error);
         // Reset initialization state on error
         this.initialized = false;
         this.initializationPromise = null;
@@ -75,19 +79,19 @@ export class AppLoader {
       // Initialize tokens after wallet connection
       const wallet = get(auth);
       
-      // Load tokens and wait for completion
+      // Run token and pool loading in parallel
       await Promise.all([
         TokenService.fetchTokens(),
+        loadPools()
       ]);
 
-      await loadPools();
-
       // If wallet is connected, load balances
-      if (wallet?.isConnected && wallet?.account?.owner) {
+      if (wallet?.isConnected) {
         await loadBalances(wallet.account.owner.toString());
       }
+
     } catch (error) {
-      console.error("Failed to initialize tokens:", error);
+      console.error("[AppLoader] Failed to initialize tokens:", error);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       throw new Error(`Token initialization failed: ${errorMessage}`);
@@ -95,18 +99,21 @@ export class AppLoader {
   }
 
   private async initializeUpdateWorker(): Promise<void> {
+    console.log("[AppLoader] Starting update worker initialization...");
     try {
       const workerInitialized = await updateWorkerService.initialize();
       if (!workerInitialized) {
-        console.warn('Workers failed to initialize, running in fallback mode');
+        console.warn('[AppLoader] Workers failed to initialize, running in fallback mode');
         // Optionally update loading state or show a notification
         this._loadingState.update(state => ({
           ...state,
           errors: [...state.errors, 'Background updates running in fallback mode']
         }));
+      } else {
+        console.log("[AppLoader] Update worker initialized successfully");
       }
     } catch (error) {
-      console.error("Failed to initialize worker:", error);
+      console.error("[AppLoader] Failed to initialize worker:", error);
       // Don't throw the error - just log it and continue
       this._loadingState.update(state => ({
         ...state,

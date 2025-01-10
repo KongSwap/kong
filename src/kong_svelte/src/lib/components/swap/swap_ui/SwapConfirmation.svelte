@@ -185,6 +185,7 @@
   height="auto"
   className="mobile:!p-0"
 >
+<div class="flex flex-col gap-4">
   {#if error}
     <div class="error-container">
       <div class="error-icon">!</div>
@@ -212,7 +213,7 @@
         </div>
       </div>
     </div>
-    <div class="button-container mb-4 px-2">
+    <div class="button-container py-4 px-2">
       <button
         class="swap-button"
         class:processing={isLoading}
@@ -241,6 +242,7 @@
       </button>
     </div>
   {/if}
+</div>
 </Modal>
 
 <style>

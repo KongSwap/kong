@@ -10,6 +10,7 @@
   import ButtonV2 from "../common/ButtonV2.svelte";
   import { Import } from "lucide-svelte";
   import { fly } from 'svelte/transition';
+  import { Loader2 } from "lucide-svelte";
 
   let WalletProviderComponent: any;
   let AddCustomTokenModalComponent: any;
@@ -165,7 +166,10 @@
                 >
                   {#if activeTab === "tokens"}
                     {#await loadTokenList()}
-                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                      <div class="flex flex-col justify-center items-center min-h-[87dvh]">
+                        <Loader2 class="animate-spin" size={20} />
+                        <p>Loading tokens...</p>
+                      </div>
                     {:then}
                       {#if TokenListComponent}
                         <svelte:component this={TokenListComponent} />
@@ -173,7 +177,10 @@
                     {/await}
                   {:else if activeTab === "pools"}
                     {#await loadPoolList()}
-                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                      <div class="flex flex-col justify-center items-center min-h-[87dvh]">
+                        <Loader2 class="animate-spin" size={20} />
+                        <p>Loading pools...</p>
+                      </div>
                     {:then}
                       {#if PoolListComponent}
                         <svelte:component this={PoolListComponent} on:close={handleClose} />
@@ -181,7 +188,10 @@
                     {/await}
                   {:else if activeTab === "history"}
                     {#await loadTransactionHistory()}
-                      <div class="flex justify-center items-center min-h-[87dvh]">Loading...</div>
+                      <div class="flex flex-col justify-center items-center min-h-[87dvh]">
+                        <Loader2 class="animate-spin" size={20} />
+                        <p>Loading transactions...</p>
+                      </div>
                     {:then}
                       {#if TransactionHistoryComponent}
                         <svelte:component this={TransactionHistoryComponent} />
