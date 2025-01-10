@@ -7,7 +7,7 @@ KONG_DATA=kong_data
 if [ "$1" == "ic" ]; then
     bash create_canister_id.sh ic
     KONG_BUILDENV="ic" dfx build ${KONG_DATA} ${NETWORK}
-    bash gzip_kong_data.sh ic
+    echo "Deploy kong_data: dfx deploy ${KONG_DATA} ${NETWORK}"
 elif [ "$1" == "staging" ]; then
     bash create_canister_id.sh staging
     KONG_BUILDENV="staging" dfx deploy ${KONG_DATA} ${NETWORK} ${IDENTITY}
