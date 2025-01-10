@@ -61,10 +61,9 @@
   let isInitialized = false;
   let currentSwapId: string | null = null;
   let previousMode = currentMode;
-  let isTransitioning = false;
   let isRotating = false;
   let rotationCount = 0;
-  let isSettingsModalOpen = false;
+  let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
   let showSettings = false;
@@ -126,11 +125,6 @@
     tokenChange: { fromToken: FE.Token | null; toToken: FE.Token | null };
   }>();
 
-  // Settings modal functions
-  function toggleSettingsModal() {
-    isSettingsModalOpen = !isSettingsModalOpen;
-  }
-
   // Reactive statements
   $: userMaxSlippage = $settingsStore.max_slippage;
 
@@ -145,6 +139,7 @@
       return "Select Tokens";
     if (showSuccessModal) return "Swap";
     if ($swapState.isProcessing) return "Processing...";
+    if (isQuoteLoading) return "Fetching Quote...";
     if ($swapState.error) return $swapState.error;
     if (insufficientFunds) return "Insufficient Funds";
     if ($swapState.swapSlippage > userMaxSlippage)
@@ -240,19 +235,6 @@
     return "Execute swap";
   }
 
-  // Event handlers
-  function handleModeChange(mode: "normal" | "pro"): void {
-    if (mode === currentMode || isTransitioning) return;
-    isTransitioning = true;
-    previousMode = currentMode;
-    setTimeout(() => {
-      dispatch("modeChange", { mode });
-      setTimeout(() => {
-        isTransitioning = false;
-      }, 300);
-    }, 150);
-  }
-
   async function handleSwapClick(): Promise<void> {
     if (!$auth.isConnected) {
       sidebarStore.toggleExpand();
@@ -308,7 +290,16 @@
         lpFees: $swapState.lpFees,
       });
 
-      return typeof result === "bigint";
+      if (typeof result !== 'bigint') {
+        swapState.update((state) => ({
+          ...state,
+          isProcessing: false,
+          error: "Swap failed",
+        }));
+        return false;
+      }
+
+      return true;
     } catch (error) {
       console.error("Swap execution failed:", error);
       swapState.update((state) => ({
@@ -317,6 +308,14 @@
         error: error.message || "Swap failed",
       }));
       return false;
+    } finally {
+      // Always reset processing state if the swap fails
+      if (!$swapStatusStore[currentSwapId]?.details) {
+        swapState.update((state) => ({
+          ...state,
+          isProcessing: false,
+        }));
+      }
     }
   }
 
@@ -466,6 +465,9 @@
       clearTimeout(quoteUpdateTimeout);
     }
 
+    // Set loading state immediately
+    isQuoteLoading = true;
+
     // Debounce the quote update
     quoteUpdateTimeout = setTimeout(async () => {
       try {
@@ -488,6 +490,8 @@
           swapSlippage: 0,
           error: "Failed to get quote",
         }));
+      } finally {
+        isQuoteLoading = false;
       }
     }, 600); // 600ms debounce
   }
@@ -515,20 +519,6 @@
     }
   }
 
-  // Add reactive variables for token changes
-  $: fromToken = $swapState.payToken;
-  $: toToken = $swapState.receiveToken;
-
-  // Watch for token changes and dispatch event
-  $: {
-    if ($swapState.payToken || $swapState.receiveToken) {
-      dispatch("tokenChange", {
-        fromToken: $swapState.payToken,
-        toToken: $swapState.receiveToken,
-      });
-    }
-  }
-
   // Add this to the reactive statements section
   $: if (currentMode !== previousMode) {
     resetSwapState();
@@ -540,6 +530,9 @@
     if (quoteUpdateTimeout) {
       clearTimeout(quoteUpdateTimeout);
     }
+
+    // Reset quote loading state
+    isQuoteLoading = false;
 
     // Immediately reset all relevant state
     swapState.update((state) => ({
@@ -657,6 +650,7 @@
           disabled={false}
           panelType="receive"
           otherToken={$swapState.payToken}
+          isLoading={isQuoteLoading}
         />
       </div>
     </div>
@@ -668,14 +662,15 @@
           $swapState.swapSlippage > userMaxSlippage ||
           insufficientFunds
           }
-        class:processing={$swapState.isProcessing}
+        class:processing={$swapState.isProcessing || isQuoteLoading}
         class:ready={!$swapState.error &&
           $swapState.swapSlippage <= userMaxSlippage &&
-          !insufficientFunds
+          !insufficientFunds &&
+          !isQuoteLoading
         }
         class:shine-animation={buttonText === "SWAP"}
         on:click={handleButtonAction}
-        disabled={$swapState.isProcessing || insufficientFunds}
+        disabled={$swapState.isProcessing || insufficientFunds || isQuoteLoading}
         title={getButtonTooltip(
           $auth?.account?.owner,
           $swapState.swapSlippage > userMaxSlippage,
@@ -683,7 +678,7 @@
         )}
       >
         <div class="button-content">
-          {#if $swapState.isProcessing}
+          {#if $swapState.isProcessing || isQuoteLoading}
             <div class="loading-spinner" />
           {/if}
           <span class="swap-button-text">{buttonText}</span>
