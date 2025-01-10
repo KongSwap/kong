@@ -107,9 +107,9 @@
 </script>
 
 {#key $sidebarStore.isOpen}
-  <div class="md:sidebar-wrapper {isExpanded ? 'expanded' : ''} fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
+  <div class="fixed inset-0 w-full h-screen md:static md:w-auto md:h-auto">
     <div
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm cursor-zoom-out pointer-events-auto"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm cursor-zoom-out pointer-events-auto md:hidden"
       in:fade|local={{ duration: 200 }}
       out:fade|local={{ duration: 200 }}
       on:click={handleClose}
@@ -138,8 +138,8 @@
         aria-modal="true"
       >
         <div
-          class={`fixed right-4 top-4 bottom-4 w-[527px] grid transform-gpu backface-hidden pointer-events-auto perspective-1000 ${
-            isExpanded ? "inset-4 w-auto" : ""
+          class={`fixed right-0 top-0 bottom-0 w-full md:right-4 md:top-4 md:bottom-4 md:w-[527px] grid transform-gpu backface-hidden pointer-events-auto perspective-1000 ${
+            isExpanded ? "inset-0 w-auto" : ""
           }`}
           in:fly={{ x: 20, duration: 200 }}
           out:fly={{ x: 20, duration: 200 }}
@@ -242,16 +242,6 @@
 {/key}
 
 <style scoped lang="postcss">
-  @media (max-width: 768px) {
-    .sidebar-wrapper {
-      @apply fixed inset-0 w-full h-screen;
-    }
-
-    .sidebar-wrapper.expanded {
-      @apply inset-0;
-    }
-  }
-
   :global(.wallet-modal) {
     @apply relative overflow-hidden;
     background: linear-gradient(180deg, #0b1026 0%, #0a0f1f 100%);

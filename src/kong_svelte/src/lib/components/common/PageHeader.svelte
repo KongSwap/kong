@@ -28,18 +28,18 @@
       </div>
 
       <!-- Right side: Stats -->
-      <div class="grid grid-cols-3 xs:grid-cols-2 md:flex justify-start items-start md:items-center gap-y-4 gap-x-4 w-full md:w-auto">
+      <div class="grid grid-cols-3 xs:grid-cols-2 md:flex justify-start items-start md:items-center gap-y-4 gap-x-6 w-full md:w-auto">
         {#each stats as stat}
-          <div class="flex items-center gap-2 justify-center">
-            <div class="p-1.5 rounded-lg bg-kong-primary/10 shrink-0">
+          <div class="flex items-center gap-3 justify-center">
+            <div class="p-2 rounded-lg bg-kong-primary/10 shrink-0">
               <svelte:component 
                 this={stat.icon}
-                class="w-4 h-4 md:h-6 md:w-6 text-kong-primary"
+                class="w-5 h-5 md:h-6 md:w-6 text-kong-primary"
               />
             </div>
             <div class="text-right">
-              <div class="text-[11px] md:text-xs text-kong-text-secondary">{stat.label}</div>
-              <div class="text-xs md:text-sm font-medium text-kong-text-primary">
+              <div class="text-xs md:text-sm text-kong-text-secondary">{stat.label}</div>
+              <div class="text-sm font-medium text-kong-text-primary">
                 {stat.value}
               </div>
             </div>
