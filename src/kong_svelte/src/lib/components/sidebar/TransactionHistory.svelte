@@ -2,11 +2,12 @@
   import { auth } from "$lib/services/auth";
   import { liveTokens, TokenService } from "$lib/services/tokens";
   import { ArrowRightLeft, Plus, Minus, Loader2 } from "lucide-svelte";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { tick } from "svelte";
   import { formatDate } from "$lib/utils/dateUtils";
   import Modal from "$lib/components/common/Modal.svelte";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
+  import { writable, derived } from "svelte/store";
 
   let isLoading = false;
   let error: string | null = null;
@@ -32,67 +33,171 @@
     { id: "pool" as const, label: "Pool" },
   ];
 
-  // Virtual scrolling calculations
-  $: totalHeight = transactions.length * ITEM_HEIGHT;
-  $: start = Math.max(0, Math.floor(scrollY / ITEM_HEIGHT) - BUFFER_SIZE);
-  $: end = Math.min(
-    transactions.length,
-    Math.ceil((scrollY + containerHeight) / ITEM_HEIGHT) + BUFFER_SIZE
+  // Create stores for better state management
+  const transactionStore = writable<any[]>([]);
+  const filterStore = writable<FilterType>("all");
+  const pageStore = writable(1);
+  const loadingStore = writable(false);
+  const loadingMoreStore = writable(false);
+  const hasMoreStore = writable(true);
+  const errorStore = writable<string | null>(null);
+  const scrollYStore = writable(0);
+  const containerHeightStore = writable(0);
+
+  // Derived store for visible transactions
+  const visibleTransactionsStore = derived(
+    [transactionStore, scrollYStore, containerHeightStore],
+    ([$transactions, $scrollY, $containerHeight]) => {
+      const start = Math.max(0, Math.floor($scrollY / ITEM_HEIGHT) - BUFFER_SIZE);
+      const end = Math.min(
+        $transactions.length,
+        Math.ceil(($scrollY + ($containerHeight || 0)) / ITEM_HEIGHT) + BUFFER_SIZE
+      );
+      return {
+        transactions: $transactions.slice(start, end),
+        start,
+        totalHeight: $transactions.length * ITEM_HEIGHT,
+        translateY: start * ITEM_HEIGHT
+      };
+    }
   );
-  $: visibleTransactions = transactions.slice(start, end);
-  $: translateY = start * ITEM_HEIGHT;
 
-  let selectedTransaction: any = null;
-  let isModalOpen = false;
+  // Subscribe to stores for template use
+  $: visible = $visibleTransactionsStore;
+  $: isLoading = $loadingStore;
+  $: loadingMore = $loadingMoreStore;
+  $: hasMore = $hasMoreStore;
+  $: error = $errorStore;
+  $: transactions = $transactionStore;
+  $: selectedFilter = $filterStore;
 
-  function handleTransactionClick(tx: any) {
-    selectedTransaction = tx;
-    isModalOpen = true;
-  }
-
+  // Debounced scroll handler
+  let scrollTimeout: ReturnType<typeof setTimeout>;
   function handleScroll(e: Event) {
     const target = e.target as HTMLDivElement;
-    scrollY = target.scrollTop;
-    
-    // Check if we're near the bottom for infinite scroll
-    const threshold = 100; // Pixels from bottom to trigger load
-    const bottom = target.scrollHeight - target.scrollTop - target.clientHeight < threshold;
-    
-    if (bottom && hasMore && !loadingMore && !isLoading) {
-      currentPage++;
-      loadTransactions(true);
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      scrollYStore.set(target.scrollTop);
+      
+      // Check if we're near the bottom for infinite scroll
+      const threshold = 100;
+      const bottom = target.scrollHeight - target.scrollTop - target.clientHeight < threshold;
+      
+      if (bottom && $hasMoreStore && !$loadingMoreStore && !$loadingStore) {
+        pageStore.update(p => p + 1);
+        loadTransactions(true);
+      }
+    }, 16); // ~60fps
+  }
+
+  onDestroy(() => {
+    clearTimeout(scrollTimeout);
+  });
+
+  // Memoize transaction processing
+  const processedTransactionsCache = new Map<string, any>();
+  function formatAmount(amount: number | string): string {
+    if (typeof amount === 'string') {
+      // Try to parse the string as a number
+      amount = parseFloat(amount);
     }
+    
+    if (isNaN(amount)) return '0';
+    
+    // Convert to string without scientific notation
+    const str = amount.toLocaleString('fullwide', { useGrouping: false, maximumFractionDigits: 20 });
+    
+    // Remove trailing zeros after decimal point
+    if (str.includes('.')) {
+      return str.replace(/\.?0+$/, '');
+    }
+    return str;
+  }
+
+  function processTransaction(tx: any) {
+    const cacheKey = `${tx.tx_id}-${tx.tx_type}-${tx.status}`;
+    if (processedTransactionsCache.has(cacheKey)) {
+      return processedTransactionsCache.get(cacheKey);
+    }
+
+    if (!tx?.tx_type) return null;
+
+    const { tx_type, status, timestamp, details } = tx;
+    const formattedDate = formatDate(new Date(timestamp));
+    
+    let result;
+    if (tx_type === 'swap') {
+      result = {
+        type: "Swap",
+        status,
+        formattedDate,
+        details: {
+          ...details,
+          pay_amount: formatAmount(details.pay_amount),
+          receive_amount: formatAmount(details.receive_amount),
+          price: formatAmount(details.price)
+        },
+        tx_id: tx.tx_id
+      };
+    } else if (tx_type === 'add_liquidity' || tx_type === 'remove_liquidity' || tx_type === 'pool') {
+      const type = tx_type === 'add_liquidity' ? "Add Liquidity" : 
+                  tx_type === 'remove_liquidity' ? "Remove Liquidity" : 
+                  details?.type === 'add' ? "Add Liquidity" : "Remove Liquidity";
+      result = {
+        type,
+        status,
+        formattedDate,
+        details: {
+          ...details,
+          amount_0: formatAmount(details.amount_0),
+          amount_1: formatAmount(details.amount_1),
+          lp_token_amount: formatAmount(details.lp_token_amount)
+        },
+        tx_id: tx.tx_id
+      };
+    } else {
+      return null;
+    }
+
+    processedTransactionsCache.set(cacheKey, result);
+    return result;
+  }
+
+  // Clear cache when filter changes
+  function handleFilterChange(newFilter: FilterType) {
+    filterStore.set(newFilter);
+    pageStore.set(1);
+    processedTransactionsCache.clear();
+    loadTransactions(false);
   }
 
   async function loadTransactions(loadMore = false) {
     if (!$auth.isConnected) {
-      transactions = [];
+      transactionStore.set([]);
       return;
     }
 
     if (!loadMore) {
-      isLoading = true;
-      currentPage = 1;
-      transactions = [];
-      hasMore = true;
+      loadingStore.set(true);
+      pageStore.set(1);
+      transactionStore.set([]);
+      hasMoreStore.set(true);
     } else {
-      if (loadingMore || !hasMore) return;
-      loadingMore = true;
+      if ($loadingMoreStore || !$hasMoreStore) return;
+      loadingMoreStore.set(true);
     }
 
     try {
-      const pageSize = 25; // Reduced page size for smoother loading
+      const pageSize = 25;
       let txType: 'swap' | 'send' | 'pool' | null = null;
       
-      if (selectedFilter !== 'all') {
-        txType = selectedFilter;
+      if ($filterStore !== 'all') {
+        txType = $filterStore;
       }
-
-      console.log('Fetching transactions with type:', txType); // Debug log
 
       const response = await TokenService.fetchUserTransactions(
         $auth.account?.owner?.toString(),
-        currentPage,
+        $pageStore,
         pageSize,
         txType
       );
@@ -103,113 +208,65 @@
           .filter(Boolean);
 
         if (loadMore) {
-          transactions = [...transactions, ...newTransactions];
+          transactionStore.update(txs => [...txs, ...newTransactions]);
         } else {
-          transactions = newTransactions;
+          transactionStore.set(newTransactions);
         }
 
-        // Update hasMore based on total count
-        hasMore = transactions.length < response.total_count;
+        hasMoreStore.set(newTransactions.length < response.total_count);
       } else {
-        error = "Failed to load transactions";
+        errorStore.set("Failed to load transactions");
       }
     } catch (err) {
       console.error("Error fetching transactions:", err);
-      error = err.message || "Failed to load transactions";
+      errorStore.set(err.message || "Failed to load transactions");
     } finally {
-      isLoading = false;
-      loadingMore = false;
+      loadingStore.set(false);
+      loadingMoreStore.set(false);
     }
   }
 
-  // Create observer once and handle loadMoreTrigger changes with debounce
-  $: if (loadMoreTrigger) {
-    observer?.disconnect();
-    observer = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && hasMore && !loadingMore && !isLoading) {
-          // Small delay to prevent multiple triggers
-          setTimeout(() => {
-            if (first.isIntersecting) {
-              currentPage++;
-              loadTransactions(true);
-            }
-          }, 100);
-        }
-      },
-      { threshold: 0.1, rootMargin: "200px" }
-    );
-    observer.observe(loadMoreTrigger);
-  }
-
+  // Use ResizeObserver more efficiently
   onMount(() => {
-    const setup = async () => {
-      await tick();
-      if (listContainer) {
-        containerHeight = listContainer.clientHeight;
-        
-        // Set up resize observer
-        const resizeObserver = new ResizeObserver(entries => {
-          for (const entry of entries) {
-            containerHeight = entry.contentRect.height;
-          }
-        });
-        
-        resizeObserver.observe(listContainer);
+    const resizeObserver = new ResizeObserver(
+      debounce((entries: ResizeObserverEntry[]) => {
+        const entry = entries[0];
+        if (entry) {
+          containerHeightStore.set(entry.contentRect.height);
+        }
+      }, 100)
+    );
 
-        // Load initial transactions
-        loadTransactions(false);
+    if (listContainer) {
+      resizeObserver.observe(listContainer);
+      loadTransactions(false);
+    }
 
-        return () => {
-          resizeObserver.disconnect();
-          observer?.disconnect();
-        };
-      }
-    };
-    
-    setup();
     return () => {
+      resizeObserver.disconnect();
       observer?.disconnect();
+      processedTransactionsCache.clear();
     };
   });
 
-  function handleFilterChange(newFilter: FilterType) {
-    selectedFilter = newFilter;
-    currentPage = 1;
-    loadTransactions(false);
+  // Debounce helper
+  function debounce<T extends (...args: any[]) => any>(
+    fn: T,
+    wait: number
+  ): (...args: Parameters<T>) => void {
+    let timeout: ReturnType<typeof setTimeout>;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), wait);
+    };
   }
 
-  function processTransaction(tx: any) {
-    if (!tx?.tx_type) return null;
+  let selectedTransaction: any = null;
+  let isModalOpen = false;
 
-    const { tx_type, status, timestamp, details } = tx;
-    const formattedDate = formatDate(new Date(timestamp));
-    
-    // Handle all transaction types
-    if (tx_type === 'swap') {
-      return {
-        type: "Swap",
-        status,
-        formattedDate,
-        details,
-        tx_id: tx.tx_id
-      };
-    } else if (tx_type === 'add_liquidity' || tx_type === 'remove_liquidity' || tx_type === 'pool') {
-      const type = tx_type === 'add_liquidity' ? "Add Liquidity" : 
-                  tx_type === 'remove_liquidity' ? "Remove Liquidity" : 
-                  details?.type === 'add' ? "Add Liquidity" : "Remove Liquidity";
-      return {
-        type,
-        status,
-        formattedDate,
-        details,
-        tx_id: tx.tx_id
-      };
-    }
-    
-    // Return null for any unhandled transaction types
-    return null;
+  function handleTransactionClick(tx: any) {
+    selectedTransaction = tx;
+    isModalOpen = true;
   }
 
   function getTransactionIcon(type: string) {
@@ -394,14 +451,14 @@
     {#each filterOptions as option, index}
       <button
         class="tab-button flex-1 relative"
-        class:active={selectedFilter === option.id}
+        class:active={$filterStore === option.id}
         on:click={() => handleFilterChange(option.id)}
         role="tab"
-        aria-selected={selectedFilter === option.id}
+        aria-selected={$filterStore === option.id}
         aria-controls={`${option.id}-panel`}
       >
         <div class="flex items-center justify-center gap-1.5 py-2.5">
-          {#if selectedFilter === option.id}
+          {#if $filterStore === option.id}
             <div class="absolute inset-0 bg-kong-accent-blue/5 {index === 0 ? 'rounded-tl-lg' : ''} {index === filterOptions.length - 1 ? 'rounded-tr-lg' : ''}" />
             <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-kong-accent-blue" />
           {/if}
@@ -432,9 +489,9 @@
         No transactions found
       </div>
     {:else}
-      <div class="relative" style="height: {totalHeight}px">
-        <div class="absolute w-full" style="transform: translateY({translateY}px)">
-          {#each visibleTransactions as tx, i (i)}
+      <div class="relative" style="height: {visible.totalHeight}px">
+        <div class="absolute w-full" style="transform: translateY({visible.translateY}px)">
+          {#each visible.transactions as tx, i (tx.tx_id)}
             <div 
               class="mb-2 sm:px-3 h-12 rounded-lg hover:bg-kong-bg-dark/40 border border-kong-border-light hover:border-kong-primary/70 transition-all duration-100 flex items-center cursor-pointer"
               on:click={() => handleTransactionClick(tx)}
