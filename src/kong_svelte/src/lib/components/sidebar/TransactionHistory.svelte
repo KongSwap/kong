@@ -96,7 +96,7 @@
         $auth.account?.owner?.toString(),
         currentPage,
         pageSize,
-        null
+        selectedFilter === 'all' ? null : selectedFilter as 'swap' | 'add_liquidity' | 'remove_liquidity'
       );
 
       if (response.transactions) {
@@ -110,10 +110,10 @@
           transactions = newTransactions;
         }
 
-        // Only set hasMore to false if we get zero transactions back
-        hasMore = newTransactions.length > 0;
-      } else if (response.Err) {
-        error = typeof response.Err === "string" ? response.Err : "Failed to load transactions";
+        // Update hasMore based on total count
+        hasMore = transactions.length < response.total_count;
+      } else {
+        error = "Failed to load transactions";
       }
     } catch (err) {
       console.error("Error fetching transactions:", err);

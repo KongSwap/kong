@@ -295,15 +295,37 @@ export class TokenService {
     }
   }
 
-  public static async fetchUserTransactions(principalId: string, page: number = 1, limit: number = 50, tx_type: string = null): Promise<any> {
+  public static async fetchUserTransactions(
+    principalId: string, 
+    page: number = 1, 
+    limit: number = 50, 
+    tx_type: 'swap' | 'send' | 'add_liquidity' | 'remove_liquidity' | null = null
+  ): Promise<{ transactions: any[], total_count: number }> {
     try {
-      const url = `${INDEXER_URL}/api/users/${principalId}/transactions?page=${page}&limit=${limit}${tx_type ? `&tx_type=${tx_type}` : ''}`;
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (tx_type) {
+        queryParams.append('tx_type', tx_type);
+      }
+
+      const url = `${INDEXER_URL}/api/users/${principalId}/transactions?${queryParams.toString()}`;
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
-      return data;
+      return {
+        transactions: data.transactions || [],
+        total_count: data.total_count || 0
+      };
     } catch (error) {
       console.error("Error fetching user transactions:", error);
-      return { Ok: [] };
+      return { transactions: [], total_count: 0 };
     }
   }
 
