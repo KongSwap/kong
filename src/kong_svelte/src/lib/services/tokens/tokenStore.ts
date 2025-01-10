@@ -201,6 +201,11 @@ export const loadBalances = async (
 };
 
 export const loadBalance = async (canisterId: string, forceRefresh = false) => {
+  const authStore = get(auth);
+  if(!authStore.isConnected) {
+    return {};
+  }
+
   try {
     if (get(tokenStore).pendingBalanceRequests.has(canisterId)) {
       return {};

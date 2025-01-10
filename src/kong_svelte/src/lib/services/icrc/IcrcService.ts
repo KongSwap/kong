@@ -5,51 +5,134 @@ import { canisterId as kongBackendCanisterId } from "../../../../../declarations
 import { toastStore } from "$lib/stores/toastStore";
 import { allowanceStore } from "../tokens/allowanceStore";
 import { KONG_BACKEND_PRINCIPAL } from "$lib/constants/canisterConstants";
+import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
+
+// Error types for better handling
+const enum ErrorType {
+  CORS = 'CORS',
+  RATE_LIMIT = 'RATE_LIMIT',
+  NETWORK = 'NETWORK',
+  AUTH = 'AUTH',
+  UNKNOWN = 'UNKNOWN'
+}
 
 export class IcrcService {
+  private static readonly MAX_RETRIES = 5;
+  private static readonly INITIAL_DELAY = 1000;
+  private static readonly MAX_CONCURRENT_REQUESTS = 3;
+
+  private static classifyError(error: any): ErrorType {
+    if (!error) return ErrorType.UNKNOWN;
+    const message = error.message?.toLowerCase() || '';
+    
+    if (message.includes('cors') || message.includes('access-control-allow-origin')) {
+      return ErrorType.CORS;
+    }
+    if (message.includes('429') || message.includes('too many requests')) {
+      return ErrorType.RATE_LIMIT;
+    }
+    if (message.includes('network') || message.includes('failed to fetch') || message.includes('net::')) {
+      return ErrorType.NETWORK;
+    }
+    if (message.includes('wallet') || message.includes('authentication')) {
+      return ErrorType.AUTH;
+    }
+    return ErrorType.UNKNOWN;
+  }
+
   private static handleError(methodName: string, error: any) {
     console.error(`Error in ${methodName}:`, error);
-    if (
-      error?.message?.includes("body") ||
-      error?.message?.includes("Wallet connection required")
-    ) {
-      throw new Error(
-        "Please connect your wallet to proceed with this operation.",
-      );
+    const errorType = this.classifyError(error);
+    
+    if (errorType === ErrorType.AUTH) {
+      throw new Error("Please connect your wallet to proceed with this operation.");
     }
+    
+    // Let the retry mechanism handle these types of errors
+    if (errorType === ErrorType.CORS || errorType === ErrorType.NETWORK || errorType === ErrorType.RATE_LIMIT) {
+      throw error;
+    }
+
     throw error;
   }
 
   private static async retryWithBackoff<T>(
     operation: () => Promise<T>,
-    maxRetries: number = 3,
-    initialDelay: number = 1000
+    maxRetries: number = this.MAX_RETRIES,
+    initialDelay: number = this.INITIAL_DELAY
   ): Promise<T> {
     let retries = 0;
-    while (true) {
+    let lastError: any;
+
+    while (retries <= maxRetries) {
       try {
         return await operation();
       } catch (error) {
-        const isCorsError = error?.message?.includes('CORS') || error?.message?.includes('Access-Control-Allow-Origin');
-        const isRateLimitError = error?.message?.includes('429') || error?.message?.includes('Too Many Requests');
-        const effectiveMaxRetries = isRateLimitError ? 8 : maxRetries;
+        lastError = error;
+        const errorType = this.classifyError(error);
         
-        if (retries >= effectiveMaxRetries || (!isCorsError && !isRateLimitError)) {
+        // Don't retry auth errors
+        if (errorType === ErrorType.AUTH) {
+          throw error;
+        }
+
+        if (retries >= maxRetries) {
           console.error(`Failed after ${retries} retries:`, error);
           throw error;
         }
-        
+
+        // Calculate delay based on error type
         const jitter = Math.random() * 1000;
-        // Use longer base delay for rate limit errors
-        const baseDelay = isRateLimitError ? 5000 : initialDelay;
-        // Exponential backoff with additional time for rate limits
-        const delay = (baseDelay * Math.pow(2, retries)) + jitter + (isRateLimitError ? 2000 : 0);
+        let baseDelay = initialDelay;
         
-        console.warn(`Retry ${retries + 1}/${effectiveMaxRetries} after ${delay}ms due to ${isRateLimitError ? 'rate limit' : 'CORS'} error`);
+        switch (errorType) {
+          case ErrorType.RATE_LIMIT:
+            baseDelay = 5000;
+            break;
+          case ErrorType.CORS:
+          case ErrorType.NETWORK:
+            baseDelay = 2000;
+            break;
+        }
+
+        const delay = (baseDelay * Math.pow(1.5, retries)) + jitter;
+        console.warn(`Retry ${retries + 1}/${maxRetries} after ${delay}ms due to ${errorType} error`);
         await new Promise(resolve => setTimeout(resolve, delay));
         retries++;
       }
     }
+
+    throw lastError;
+  }
+
+  private static async withConcurrencyLimit<T>(
+    operations: (() => Promise<T>)[],
+    limit: number = this.MAX_CONCURRENT_REQUESTS
+  ): Promise<T[]> {
+    const results: T[] = [];
+    const executing: Promise<void>[] = [];
+    const queue = [...operations];
+
+    async function executeNext(): Promise<void> {
+      if (queue.length === 0) return;
+      const operation = queue.shift()!;
+      try {
+        const result = await operation();
+        results.push(result);
+      } catch (error) {
+        results.push(null as T);
+        console.error('Operation failed:', error);
+      }
+      await executeNext();
+    }
+
+    // Start initial batch of operations
+    for (let i = 0; i < Math.min(limit, operations.length); i++) {
+      executing.push(executeNext());
+    }
+
+    await Promise.all(executing);
+    return results;
   }
 
   public static async getIcrc1Balance(
@@ -59,10 +142,9 @@ export class IcrcService {
     separateBalances: boolean = false
   ): Promise<{ default: bigint, subaccount: bigint } | bigint> {
     try {
-      const actor = await auth.getActor(
+      const actor = await createAnonymousActorHelper(
         token.canister_id,
-        canisterIDLs["icrc2"],
-        { anon: true, requiresSigning: false }
+        canisterIDLs.icrc1,
       );
 
       // Get default balance with retry logic
@@ -92,14 +174,10 @@ export class IcrcService {
       };
     } catch (error) {
       console.error(`Error getting ICRC1 balance for ${token.symbol}:`, error);
-      if (error?.message?.includes('CORS') || error?.message?.includes('Access-Control-Allow-Origin')) {
-        console.warn('CORS error encountered, will retry with exponential backoff');
-      }
       return separateBalances ? { default: BigInt(0), subaccount: BigInt(0) } : BigInt(0);
     }
   }
 
-  // Add batch balance checking
   public static async batchGetBalances(
     tokens: FE.Token[],
     principal: Principal,
@@ -117,23 +195,35 @@ export class IcrcService {
       return acc;
     }, new Map<string, FE.Token[]>());
 
-    // Fetch balances in parallel for each subnet group
-    await Promise.all(
-      Array.from(tokensBySubnet.values()).map(async (subnetTokens) => {
-        const balances = await Promise.all(
-          subnetTokens.map((token) => 
-            this.getIcrc1Balance(token, principal, subaccount)
-          ),
-        );
+    // Process subnets in parallel with a higher concurrency limit
+    const subnetEntries = Array.from(tokensBySubnet.entries());
+    const subnetOperations = subnetEntries.map(([subnet, subnetTokens]) => async () => {
+      const operations = subnetTokens.map(token => async () => {
+        try {
+          const balance = await this.getIcrc1Balance(token, principal, subaccount);
+          return { token, balance };
+        } catch (error) {
+          console.error(`Failed to get balance for ${token.symbol}:`, error);
+          return { token, balance: BigInt(0) };
+        }
+      });
 
-        subnetTokens.forEach((token, i) => {
-          const balance = balances[i];
-          results.set(token.canister_id, 
+      // Increase concurrency limit for token balance fetching
+      const balances = await this.withConcurrencyLimit(operations, 10);
+      
+      balances.forEach(result => {
+        if (result) {
+          const { token, balance } = result;
+          results.set(
+            token.canister_id,
             typeof balance === 'bigint' ? balance : balance.default
           );
-        });
-      }),
-    );
+        }
+      });
+    });
+
+    // Process all subnets with higher concurrency
+    await this.withConcurrencyLimit(subnetOperations, 5);
 
     return results;
   }

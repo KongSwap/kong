@@ -569,6 +569,7 @@
     isOpen={true}
     title="Settings"
     height="auto"
+    variant="transparent"
     on:close={() => showSettings = false}
   >
     <Settings on:close={() => showSettings = false} />

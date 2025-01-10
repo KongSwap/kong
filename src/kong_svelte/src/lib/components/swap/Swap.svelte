@@ -761,6 +761,7 @@
     isOpen={true}
     title="Settings"
     height="auto"
+    variant="transparent"
     on:close={() => showSettings = false}
   >
     <Settings on:close={() => showSettings = false} />
@@ -783,7 +784,7 @@
 
   .swap-button {
     @apply relative overflow-hidden;
-    @apply w-full py-4 px-6;
+    @apply w-full py-4 px-6 rounded-lg;
     @apply transition-all duration-200 ease-out;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
     margin-top: 4px;
@@ -796,7 +797,6 @@
     box-shadow: 0 2px 6px rgba(55, 114, 255, 0.2);
     transform: translateY(0);
     min-height: 64px;
-    border-radius: 16px;
   }
 
   .swap-button:hover:not(:disabled) {

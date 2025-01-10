@@ -27,7 +27,8 @@ class UpdateWorkerService {
   }
 
   async initialize() {
-    const INIT_TIMEOUT = 120000; // 120 seconds timeout
+    console.log("[UpdateWorkerService] Starting initialization...");
+    const INIT_TIMEOUT = 10000; // 10 seconds timeout
     try {
       await Promise.race([
         this.initializeWorker(),
@@ -35,9 +36,10 @@ class UpdateWorkerService {
           setTimeout(() => reject(new Error("Initialization timeout")), INIT_TIMEOUT),
         ),
       ]);
+      console.log("[UpdateWorkerService] Initialization completed successfully");
       return true;
     } catch (error) {
-      console.error("Failed to initialize update worker service:", error);
+      console.error("[UpdateWorkerService] Failed to initialize update worker service:", error);
       // Start fallback updates if worker initialization fails
       this.startFallbackUpdates();
       return false;
@@ -60,6 +62,7 @@ class UpdateWorkerService {
     try {
       const tokens = await kongDB.tokens.toArray();
       if (!tokens?.length) {
+        console.log("[UpdateWorkerService] No tokens found, fetching...");
         await TokenService.fetchTokens();
       }
 
@@ -73,14 +76,14 @@ class UpdateWorkerService {
 
       const updateStarted = await this.startUpdates();
       if (!updateStarted) {
-        console.warn("Failed to start worker updates, falling back to direct updates");
+        console.warn("[UpdateWorkerService] Failed to start worker updates, falling back to direct updates");
         this.startFallbackUpdates();
         return;
       }
 
       this.isInitialized = true;
     } catch (error) {
-      console.error("Error during worker initialization:", error);
+      console.error("[UpdateWorkerService] Error during worker initialization:", error);
       this.startFallbackUpdates();
       throw error;
     }
@@ -118,7 +121,6 @@ class UpdateWorkerService {
   }
 
   private async updateTokens() {
-    console.log("updateTokens");
     const wallet = get(auth);
     const walletId = wallet?.account?.owner?.toString();
 
@@ -155,7 +157,6 @@ class UpdateWorkerService {
       });
 
       await this.stateWorkerApi?.startUpdates();
-      console.log("Worker API updates started");
 
       return true;
     } catch (error) {
