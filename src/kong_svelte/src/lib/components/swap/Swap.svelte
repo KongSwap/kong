@@ -30,6 +30,8 @@
     KONG_CANISTER_ID,
   } from "$lib/constants/canisterConstants";
   import { livePools } from "$lib/services/pools/poolStore";
+  import Settings from "$lib/components/settings/Settings.svelte";
+  import Modal from "$lib/components/common/Modal.svelte";
 
   // Types
   type PanelType = "pay" | "receive";
@@ -63,9 +65,9 @@
   let isRotating = false;
   let rotationCount = 0;
   let isSettingsModalOpen = false;
-  let isQuoteLoading = false;
   let showSuccessModal = false;
   let successDetails = null;
+  let showSettings = false;
 
   // Subscribe to swap status changes
   $: {
@@ -324,10 +326,8 @@
       return;
     }
 
-
-
     if ($swapState.swapSlippage > userMaxSlippage) {
-      toggleSettingsModal();
+      showSettings = true;
       return;
     }
 
@@ -469,8 +469,6 @@
     // Debounce the quote update
     quoteUpdateTimeout = setTimeout(async () => {
       try {
-        isQuoteLoading = true;
-
         const quote = await SwapService.getSwapQuote(
           state.payToken,
           state.receiveToken,
@@ -490,8 +488,6 @@
           swapSlippage: 0,
           error: "Failed to get quote",
         }));
-      } finally {
-        isQuoteLoading = false;
       }
     }, 600); // 600ms debounce
   }
@@ -544,9 +540,6 @@
     if (quoteUpdateTimeout) {
       clearTimeout(quoteUpdateTimeout);
     }
-
-    // Reset quote loading state
-    isQuoteLoading = false;
 
     // Immediately reset all relevant state
     swapState.update((state) => ({
@@ -767,6 +760,17 @@
   {...successDetails}
   onClose={handleSuccessModalClose}
 />
+
+{#if showSettings}
+  <Modal 
+    isOpen={true}
+    title="Settings"
+    height="auto"
+    on:close={() => showSettings = false}
+  >
+    <Settings on:close={() => showSettings = false} />
+  </Modal>
+{/if}
 
 <style scoped lang="postcss">
   .swap-container {

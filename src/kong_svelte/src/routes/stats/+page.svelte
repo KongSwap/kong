@@ -260,7 +260,7 @@
     if (browser) {
       isMobile = window.innerWidth < 768;
       const handleResize = () => (isMobile = window.innerWidth < 768);
-      window.addEventListener("resize", handleResize);
+      window.addEventListener("resize", handleResize, { passive: true });
     }
 
     return () => {
@@ -278,7 +278,7 @@
   icon={TrendingUp}
   stats={[
     {
-      label: "Volume 24H",
+      label: "Vol 24H",
       value: `${formatUsdValue(Number($livePoolTotals[0]?.total_24h_volume ?? 0) / 1e6)}`,
       icon: TrendingUp,
     },

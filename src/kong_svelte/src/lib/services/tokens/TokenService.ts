@@ -64,9 +64,7 @@ export class TokenService {
 
   private static async fetchFromNetwork(): Promise<FE.Token[]> {
     let retries = 3;
-    let lastError: Error | null = null;
 
-    // First try the indexer API
     while (retries > 0) {
       try {
         return await fetchTokens();
@@ -311,11 +309,6 @@ export class TokenService {
 
   public static async getIcpPrice(): Promise<number> {
     try {
-      const now = Date.now();
-      const cached = this.priceCache.get("ICP_USD");
-      if (cached && now - cached.timestamp < this.ICP_PRICE_CACHE_DURATION) {
-        return cached.price;
-      }
       const pool = await kongDB.pools
         .where("address_0")
         .equals(ICP_CANISTER_ID)
