@@ -354,7 +354,7 @@ export class SwapService {
         pay_token: params.payToken.symbol,
         pay_amount: BigInt(payAmount),
         receive_token: params.receiveToken.symbol,
-        receive_amount: [BigInt(receiveAmount)],
+        receive_amount: [],
         max_slippage: [params.userMaxSlippage],
         receive_address: [],
         referred_by: [],
