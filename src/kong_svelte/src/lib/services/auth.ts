@@ -12,8 +12,16 @@ import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
 
+// Export filtered wallet list (memoized)
+function filterWallets(wallets: PNP[]) {
+  if(process.env.DFX_NETWORK === "ic") {
+    return wallets.filter(wallet => wallet.id !== 'oisy');
+  }
+  return wallets;
+}
+//export const availableWallets = filterWallets(walletsList);
 // Export the list of available wallets
-export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
+export const availableWallets = walletsList;
 
 // Create stores for auth state
 export const selectedWalletId = writable<string | null>(null);
