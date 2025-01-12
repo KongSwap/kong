@@ -7,10 +7,8 @@ export const ICP_CANISTER_ID = process.env.CANISTER_ID_ICP_LEDGER || 'ryjl3-tyaa
 export const KONG_BACKEND_PRINCIPAL = process.env.CANISTER_ID_KONG_BACKEND || '2ipq2-uqaaa-aaaar-qailq-cai';
 export const KONG_DATA_PRINCIPAL = process.env.CANISTER_ID_KONG_DATA || 'cbefx-hqaaa-aaaar-qakrq-cai';
 function getIndexerUrl() {
-    if(process.env.DFX_NETWORK === "local") {
+    if (process.env.DFX_NETWORK === "local") {
         return "http://localhost:8080";
-    } else if (process.env.DFX_NETWORK === "staging") {
-        return "http://api.staging.kongswap.io";
     } else {
         return "https://api.kongswap.io";
     }
