@@ -129,12 +129,17 @@
     }
   },
   "networks": {
-    "local": {
-      "bind": "localhost:4943",
-      "type": "ephemeral",
-      "replica": {
-        "subnet_type": "system"
-      }
+    "ic": {
+      "type": "persistent",
+      "providers": [
+        "https://icp0.io"
+      ]
+    },
+    "staging_fe": {
+      "type": "persistent",
+      "providers": [
+        "https://icp0.io"
+      ]
     },
     "staging": {
       "type": "persistent",
@@ -142,11 +147,12 @@
         "https://icp0.io"
       ]
     },
-    "ic": {
-      "type": "persistent",
-      "providers": [
-        "https://icp0.io"
-      ]
+    "local": {
+      "bind": "localhost:4943",
+      "type": "ephemeral",
+      "replica": {
+        "subnet_type": "system"
+      }
     }
   },
   "version": 1
