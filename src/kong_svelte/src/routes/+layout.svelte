@@ -13,7 +13,9 @@
   import { themeStore } from '$lib/stores/themeStore';
   import { browser } from '$app/environment';
   import TokenTicker from "$lib/components/nav/TokenTicker.svelte";
-
+  import { auth } from "$lib/services/auth";
+  import { kongDB } from "$lib/services/db";
+  
   let pageTitle = $state(process.env.DFX_NETWORK === "ic" ? "KongSwap" : "KongSwap [DEV]");
   let initializationPromise: Promise<void> | null = null;
   let initializationError: Error | null = null;
@@ -25,9 +27,18 @@
 
     initializationPromise = (async () => {
       try {
+        // First initialize the database and wait for it to complete
+        console.log('[App] Initializing database...');
+        await kongDB.initialize();
+        console.log('[App] Database initialization complete');
+
+        // Then initialize auth and app loader
+        console.log('[App] Initializing auth and app loader...');
+        await auth.initialize();
         await appLoader.initialize();
+        console.log('[App] App initialization complete');
       } catch (error) {
-        console.error("Initialization error:", error);
+        console.error("[App] Initialization error:", error);
         initializationError = error as Error;
         initializationPromise = null;
         throw error;
@@ -39,7 +50,7 @@
 
   onMount(() => {
     init().catch(error => {
-      console.error("Failed to initialize app:", error);
+      console.error("[App] Failed to initialize app:", error);
       initializationError = error;
     });
     

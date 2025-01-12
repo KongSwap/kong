@@ -342,7 +342,7 @@
 
   .empty-state {
     @apply flex flex-col items-center justify-center gap-2
-           min-h-[120px] text-kong-text-secondary text-xs;
+           min-h-[89vh] text-kong-text-secondary text-xs;
   }
 
   .clear-search-button {

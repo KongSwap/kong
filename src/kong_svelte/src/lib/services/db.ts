@@ -6,7 +6,12 @@ import Dexie, {
 import type { KongImage, FavoriteToken, TokenBalance } from "$lib/services/tokens/types";
 import type { Settings } from "$lib/services/settings/types";
 
-const CURRENT_VERSION = 11;
+const CURRENT_VERSION = 20;
+
+interface VersionInfo {
+  version: number;
+  timestamp: number;
+}
 
 // Extend Dexie to include the database schema
 export class KongDB extends Dexie {
@@ -18,28 +23,16 @@ export class KongDB extends Dexie {
   user_pools!: Table<UserPoolBalance, string>;
   pool_totals!: Table<FE.PoolTotal, string>;
   allowances!: Table<FE.AllowanceData, string>;
-  previous_version!: Table<number, string>;
+  previous_version!: Table<VersionInfo>;
   token_balances!: Table<TokenBalance, string>;
+  private initPromise: Promise<void> | null = null;
+  private isUpgrading = false;
 
   constructor() {
     super("kong_db");
 
-    // First version deletes all tables
-    this.version(CURRENT_VERSION - 1).stores({
-      tokens: null,
-      images: null,
-      pools: null,
-      user_pools: null,
-      pool_totals: null,
-      favorite_tokens: null,
-      settings: null,
-      allowances: null,
-      previous_version: null,
-      token_balances: null,
-    });
-
-    // Next version recreates the schema
-    this.version(CURRENT_VERSION).stores({
+    // Define the schema for each version
+    const schema = {
       tokens: "canister_id, timestamp, metrics.volume_24h, metrics.price, metrics.tvl, metrics.market_cap, metrics.price_change_24h",
       images: "++id, canister_id, timestamp",
       pools: "id, address_0, address_1, timestamp",
@@ -50,6 +43,48 @@ export class KongDB extends Dexie {
       allowances: "[address+wallet_address], wallet_address, timestamp",
       previous_version: "version",
       token_balances: "[wallet_id+canister_id], wallet_id, canister_id, timestamp",
+    };
+
+    // First, delete all tables in previous version
+    this.version(CURRENT_VERSION - 1).stores({
+      tokens: null,
+      images: null,
+      pools: null,
+      user_pools: null,
+      pool_totals: null,
+      favorite_tokens: null,
+      settings: null,
+      allowances: null,
+      previous_version: null,
+      token_balances: null
+    });
+
+    // Then create new schema in current version
+    this.version(CURRENT_VERSION).stores(schema).upgrade(async () => {
+      console.log(`[DB] Upgrading to version ${CURRENT_VERSION}`);
+      this.isUpgrading = true;
+      
+      try {
+        // Delete the entire database outside of the transaction
+        await Dexie.delete("kong_db");
+        console.log('[DB] Old database deleted');
+        
+        // Reopen with new schema
+        await this.open();
+        console.log('[DB] Database reopened with new schema');
+        
+        // Store the current version
+        await this.previous_version.put({
+          version: CURRENT_VERSION,
+          timestamp: Date.now()
+        }, CURRENT_VERSION.toString());
+        console.log('[DB] Database upgrade complete');
+      } catch (error) {
+        console.error('[DB] Error during upgrade:', error);
+        throw error;
+      } finally {
+        this.isUpgrading = false;
+      }
     });
 
     // Initialize all tables
@@ -63,6 +98,93 @@ export class KongDB extends Dexie {
     this.allowances = this.table("allowances");
     this.previous_version = this.table("previous_version");
     this.token_balances = this.table("token_balances");
+  }
+
+  async initialize() {
+    if (this.isUpgrading) {
+      console.log('[DB] Waiting for upgrade to complete before initializing...');
+      return new Promise((resolve) => {
+        const checkUpgrade = () => {
+          if (!this.isUpgrading) {
+            resolve(this.doInitialize());
+          } else {
+            setTimeout(checkUpgrade, 100);
+          }
+        };
+        checkUpgrade();
+      });
+    }
+    return this.doInitialize();
+  }
+
+  private async doInitialize() {
+    if (!this.initPromise) {
+      this.initPromise = (async () => {
+        try {
+          console.log('[DB] Starting database initialization...');
+          await this.open();
+          const version = await this.previous_version.get('version');
+          console.log(`[DB] Database initialized with version ${version || CURRENT_VERSION}`);
+        } catch (error) {
+          console.error('[DB] Failed to initialize database:', error);
+          this.initPromise = null;
+          throw error;
+        }
+      })();
+    }
+    return this.initPromise;
+  }
+
+  // Method to completely reset the database
+  async resetDatabase() {
+    if (this.isUpgrading) {
+      console.log('[DB] Waiting for upgrade to complete before reset...');
+      return new Promise((resolve) => {
+        const checkUpgrade = () => {
+          if (!this.isUpgrading) {
+            resolve(this.doReset());
+          } else {
+            setTimeout(checkUpgrade, 100);
+          }
+        };
+        checkUpgrade();
+      });
+    }
+    return this.doReset();
+  }
+
+  private async doReset() {
+    try {
+      console.log('[DB] Starting manual database reset...');
+      await this.close();
+      await Dexie.delete("kong_db");
+      console.log('[DB] Database deleted');
+      
+      this.initPromise = null;
+      await this.initialize();
+      console.log('[DB] Database reopened and reinitialized');
+    } catch (error) {
+      console.error("[DB] Error resetting database:", error);
+      throw error;
+    }
+  }
+
+  // Helper method to check if database is ready
+  async waitForReady() {
+    if (this.isUpgrading) {
+      console.log('[DB] Waiting for upgrade to complete...');
+      return new Promise((resolve) => {
+        const checkUpgrade = () => {
+          if (!this.isUpgrading) {
+            resolve(this.initialize());
+          } else {
+            setTimeout(checkUpgrade, 100);
+          }
+        };
+        checkUpgrade();
+      });
+    }
+    return this.initialize();
   }
 }
 
@@ -87,56 +209,30 @@ kongDB.tokens.hook.updating.subscribe((
   modifications.timestamp = Date.now();
 });
 
-kongDB.pools.hook.creating.subscribe((
-  primKey: string,
-  obj: BE.Pool,
-  transaction: Transaction,
-) => {
+// Apply the same pattern to other hooks
+kongDB.pools.hook.creating.subscribe((primKey, obj, transaction) => {
   obj.timestamp = Date.now();
 });
 
-kongDB.pools.hook.updating.subscribe((
-  modifications: { [key: string]: any },
-  primKey: string,
-  obj: BE.Pool,
-  transaction: Transaction,
-) => {
+kongDB.pools.hook.updating.subscribe((modifications, primKey, obj, transaction) => {
   modifications.timestamp = Date.now();
   return modifications;
 });
 
-kongDB.user_pools.hook.creating.subscribe((
-  primKey: string,
-  obj: UserPoolBalance,
-  transaction: Transaction,
-) => {
+kongDB.user_pools.hook.creating.subscribe((primKey, obj, transaction) => {
   obj.timestamp = Date.now();
 });
 
-kongDB.user_pools.hook.updating.subscribe((
-  modifications: { [key: string]: any },
-  primKey: string,
-  obj: UserPoolBalance,
-  transaction: Transaction,
-) => {
+kongDB.user_pools.hook.updating.subscribe((modifications, primKey, obj, transaction) => {
   modifications.timestamp = Date.now();
   return modifications;
 });
 
-kongDB.token_balances.hook.creating.subscribe((
-  primKey: string,
-  obj: TokenBalance,
-  transaction: Transaction,
-) => {
+kongDB.token_balances.hook.creating.subscribe((primKey, obj, transaction) => {
   obj.timestamp = Date.now();
 });
 
-kongDB.token_balances.hook.updating.subscribe((
-  modifications: { [key: string]: any },
-  primKey: string,
-  obj: TokenBalance,
-  transaction: Transaction,
-) => {
+kongDB.token_balances.hook.updating.subscribe((modifications, primKey, obj, transaction) => {
   modifications.timestamp = Date.now();
   return modifications;
 });
