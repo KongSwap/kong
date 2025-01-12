@@ -28,7 +28,15 @@ const CONFIG = {
 } as const;
 
 // Export filtered wallet list (memoized)
-export const availableWallets = walletsList.filter(wallet => wallet.id !== 'oisy');
+function filterWallets(wallets: PNP[]) {
+  if(process.env.DFX_NETWORK === "ic") {
+    return wallets.filter(wallet => wallet.id !== 'oisy');
+  }
+  return wallets;
+}
+//export const availableWallets = filterWallets(walletsList);
+// Export the list of available wallets
+export const availableWallets = walletsList;
 
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);

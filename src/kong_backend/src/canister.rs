@@ -1,6 +1,6 @@
 use candid::{CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
-use ic_cdk_timers::{clear_timer, set_timer_interval};
+use ic_cdk_timers::set_timer_interval;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
 use icrc_ledger_types::icrc21::requests::DisplayMessageType::{GenericDisplay, LineDisplay};
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
@@ -9,9 +9,6 @@ use itertools::Itertools;
 use serde::Deserialize;
 use std::time::Duration;
 
-use super::stable_memory::{
-    CLAIMS_TIMER_ID, REQUEST_MAP_ARCHIVE_TIMER_ID, STATS_TIMER_ID, TRANSFER_MAP_ARCHIVE_TIMER_ID, TX_MAP_ARCHIVE_TIMER_ID,
-};
 use super::{APP_NAME, APP_VERSION};
 
 use crate::add_liquidity::add_liquidity_args::AddLiquidityArgs;
@@ -38,39 +35,35 @@ async fn init() {
     create_principal_id_map();
 
     // start the background timer to process claims
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
         });
     });
-    CLAIMS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to process stats
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
             _ = update_pool_stats();
         });
     });
-    STATS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive tx map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_tx_map(); // archive transaction map
         });
     });
-    TX_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive request map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_request_map();
         });
     });
-    REQUEST_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive transfer map
-    let timer_id = set_timer_interval(
+    _ = set_timer_interval(
         Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
         || {
             ic_cdk::spawn(async {
@@ -78,27 +71,11 @@ async fn init() {
             });
         },
     );
-    TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 }
 
 #[pre_upgrade]
 fn pre_upgrade() {
     info_log(&format!("{} canister is upgrading", APP_NAME));
-
-    // clear the background timer for processing claims
-    CLAIMS_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    // clear the background timer for processing stats
-    STATS_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    // clear the background timer for archiving tx map
-    TX_MAP_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    // clear the background timer for archiving request map
-    REQUEST_MAP_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
-
-    // clear the background timer for archiving transfer map
-    TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| clear_timer(cell.get()));
 }
 
 #[post_upgrade]
@@ -106,39 +83,35 @@ async fn post_upgrade() {
     create_principal_id_map();
 
     // start the background timer to process claims
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().claims_interval_secs), || {
         ic_cdk::spawn(async {
             process_claims().await;
         });
     });
-    CLAIMS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to process stats
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().stats_interval_secs), || {
         ic_cdk::spawn(async {
             _ = update_pool_stats();
         });
     });
-    STATS_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive tx map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().txs_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_tx_map();
         });
     });
-    TX_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive request map
-    let timer_id = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
+    _ = set_timer_interval(Duration::from_secs(kong_settings_map::get().requests_archive_interval_secs), || {
         ic_cdk::spawn(async {
             archive_request_map();
         });
     });
-    REQUEST_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     // start the background timer to archive transfer map
-    let timer_id = set_timer_interval(
+    _ = set_timer_interval(
         Duration::from_secs(kong_settings_map::get().transfers_archive_interval_secs),
         || {
             ic_cdk::spawn(async {
@@ -146,7 +119,6 @@ async fn post_upgrade() {
             });
         },
     );
-    TRANSFER_MAP_ARCHIVE_TIMER_ID.with(|cell| cell.set(timer_id));
 
     info_log(&format!("{} canister is upgraded", APP_NAME));
 }
