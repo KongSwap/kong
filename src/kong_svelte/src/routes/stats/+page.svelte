@@ -29,6 +29,7 @@
   import TokenCell from "$lib/components/stats/TokenCell.svelte";
   import PriceCell from "$lib/components/stats/PriceCell.svelte";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
+    import { TokenService } from "$lib/services/tokens";
 
   const ITEMS_PER_PAGE = 100;
   const currentPage = writable(1);
@@ -255,6 +256,11 @@
   }
 
   onMount(() => {
+    TokenService.fetchTokens().then(() => {
+      console.log("Tokens fetched successfully");
+    }).catch(error => {
+      console.error("Error loading tokens:", error);
+    });
     if (browser) {
       isMobile = window.innerWidth < 768;
       const handleResize = () => (isMobile = window.innerWidth < 768);

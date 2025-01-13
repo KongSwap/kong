@@ -15,9 +15,9 @@ class StateWorkerImpl implements StateWorkerApi {
   // 1) Lower intervals to allow more frequent updates
   // ----------------------------------------------------
   private readonly ACTIVE_TOKEN_INTERVAL = 10000;          // 10 seconds when active
-  private readonly BACKGROUND_TOKEN_INTERVAL = 45000;     // 30 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 10000;          // 10 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 45000;      // 30 seconds when in background
+  private readonly BACKGROUND_TOKEN_INTERVAL = 20000;     // 10 seconds when in background
+  private readonly ACTIVE_POOL_INTERVAL = 30000;          // 30 seconds when active
+  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 60 seconds when in background
 
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests
@@ -93,7 +93,7 @@ class StateWorkerImpl implements StateWorkerApi {
   // -------------------------------------------------------------------
   // Throttled + “in-progress” check for token updates
   // -------------------------------------------------------------------
-  private postTokenUpdate() {
+  private postTokenUpdate(force: boolean = false) {
     // If we're already updating tokens, skip
     if (this.tokenUpdateInProgress) {
       console.warn("Skipping token update – already in progress.");
@@ -101,7 +101,7 @@ class StateWorkerImpl implements StateWorkerApi {
     }
     // If we updated tokens recently, skip
     const now = Date.now();
-    if (now - this.lastTokenUpdate < this.TOKEN_UPDATE_THROTTLE) {
+    if (now - this.lastTokenUpdate < this.TOKEN_UPDATE_THROTTLE && !force) {
       console.warn("Skipping token update – too soon since last update.");
       return;
     }
@@ -155,6 +155,8 @@ class StateWorkerImpl implements StateWorkerApi {
 
   public resume(): void {
     this.isPaused = false;
+    this.postTokenUpdate(true);
+    this.postPoolUpdate();
     this.scheduleTokenUpdates();
     this.schedulePoolUpdates();
   }
