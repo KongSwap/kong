@@ -376,11 +376,11 @@ export class SwapService {
           // Convert amounts using the correct decimals
           const formattedPayAmount = SwapService.fromBigInt(
             result.Ok.pay_amount,
-            await getTokenDecimals(result.Ok.pay_symbol),
+            params.payToken.decimals,
           );
           const formattedReceiveAmount = SwapService.fromBigInt(
             result.Ok.receive_amount,
-            await getTokenDecimals(result.Ok.receive_symbol),
+            params.receiveToken.decimals,
           );
 
           swapStatusStore.updateSwap(swapId, {
