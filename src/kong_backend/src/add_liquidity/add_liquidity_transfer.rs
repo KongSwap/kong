@@ -28,8 +28,9 @@ pub async fn add_liquidity_transfer(args: AddLiquidityArgs) -> Result<AddLiquidi
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
-        check_arguments(&args, request_id, ts).await.inspect_err(|e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(e));
+        check_arguments(&args, request_id, ts).await.inspect_err(|_| {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            _ = archive_to_kong_data(request_id);
         })?;
 
     let result = match process_add_liquidity(
@@ -66,8 +67,9 @@ pub async fn add_liquidity_transfer_async(args: AddLiquidityArgs) -> Result<u64,
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::AddLiquidity(args.clone()), ts));
 
     let (token_0, tx_id_0, transfer_id_0, token_1, tx_id_1, transfer_id_1) =
-        check_arguments(&args, request_id, ts).await.inspect_err(|e| {
-            request_map::update_status(request_id, StatusCode::Failed, Some(e));
+        check_arguments(&args, request_id, ts).await.inspect_err(|_| {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+            _ = archive_to_kong_data(request_id);
         })?;
 
     ic_cdk::spawn(async move {
