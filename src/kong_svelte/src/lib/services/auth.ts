@@ -37,7 +37,7 @@ function filterWallets(wallets: PNP[]) {
 }
 //export const availableWallets = filterWallets(walletsList);
 // Export the list of available wallets
-export const availableWallets = walletsList;
+export const availableWallets = filterWallets(walletsList);
 
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
