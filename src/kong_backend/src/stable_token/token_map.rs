@@ -73,7 +73,7 @@ pub fn get_chain(token: &str) -> Option<String> {
     }
 }
 
-/// get the adress from token string
+/// get the address from token string
 pub fn get_address(token: &str) -> Option<String> {
     let address = match get_chain(token) {
         Some(chain) => {

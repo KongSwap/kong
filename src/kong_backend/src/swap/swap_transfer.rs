@@ -26,8 +26,9 @@ pub async fn swap_transfer(args: SwapArgs) -> Result<SwapReply, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
-    let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
-        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|_| {
+        request_map::update_status(request_id, StatusCode::Failed, None);
+        _ = archive_to_kong_data(request_id);
     })?;
 
     let result = match process_swap(request_id, user_id, &pay_token, &pay_amount, transfer_id, &args, ts).await {
@@ -50,8 +51,9 @@ pub async fn swap_transfer_async(args: SwapArgs) -> Result<u64, String> {
     let ts = get_time();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args.clone()), ts));
 
-    let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|e| {
-        request_map::update_status(request_id, StatusCode::Failed, Some(e));
+    let (pay_token, pay_amount, transfer_id) = check_arguments(&args, request_id, ts).await.inspect_err(|_| {
+        request_map::update_status(request_id, StatusCode::Failed, None);
+        _ = archive_to_kong_data(request_id);
     })?;
 
     ic_cdk::spawn(async move {

@@ -4,7 +4,6 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { loadBalances } from "./tokens/tokenStore";
 import { loadPools } from "./pools/poolStore";
 import { get } from "svelte/store";
 import { auth } from "./auth";
@@ -112,7 +111,6 @@ class UpdateWorkerService {
 
     try {
       await Promise.all([
-        loadBalances(walletId),
         loadPools(),
       ]);
     } catch (error) {
@@ -127,7 +125,6 @@ class UpdateWorkerService {
     try {
       if (walletId) {
         await Promise.all([
-          loadBalances(walletId),
           TokenService.fetchTokens(),
         ]);
       } else {  

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { walletsList } from '@windoge98/plug-n-play';
   import { createEventDispatcher, onDestroy } from "svelte";
   import { auth, availableWallets, selectedWalletId } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
@@ -42,9 +43,6 @@
   const isOnMobile = isMobileBrowser();
 
   // Filter out Plug wallet on mobile unless it's a PWA
-  $: filteredWallets = isOnMobile && !isPwa() 
-    ? walletList.filter(w => w.id !== 'plug')
-    : walletList;
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
@@ -110,7 +108,7 @@
   <div class="flex flex-col gap-6 pt-2">
     <div class="wallet-connect-body">
       <div class="wallet-list">
-        {#each filteredWallets as wallet}
+        {#each walletsList as wallet}
           <button
             class="wallet-option {wallet.recommended ? 'recommended' : ''}"
             on:click={() => handleConnect(wallet.id)}

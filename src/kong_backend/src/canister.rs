@@ -2,11 +2,9 @@ use candid::{decode_one, CandidType, Nat};
 use ic_cdk::{init, post_upgrade, pre_upgrade, query, update};
 use ic_cdk_timers::set_timer_interval;
 use icrc_ledger_types::icrc21::errors::ErrorInfo;
-use icrc_ledger_types::icrc21::requests::DisplayMessageType::{GenericDisplay, LineDisplay};
 use icrc_ledger_types::icrc21::requests::{ConsentMessageMetadata, ConsentMessageRequest};
-use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage, LineDisplayPage};
+use icrc_ledger_types::icrc21::responses::{ConsentInfo, ConsentMessage};
 
-use itertools::Itertools;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -20,16 +18,19 @@ use crate::add_pool::add_pool_reply::AddPoolReply;
 use crate::add_token::add_token_args::AddTokenArgs;
 use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
+use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
 use crate::ic::canister_address::KONG_BACKEND;
+use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_stats::update_pool_stats;
 use crate::stable_request::request_archive::archive_request_map;
+use crate::stable_token::token::Token;
+use crate::stable_token::token_map;
 use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
-
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
@@ -163,55 +164,80 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                     description: "Failed to decode SwapArgs".to_string(),
                 })?
             };
-            match consent_msg_request.user_preferences.device_spec {
-                Some(LineDisplay {
-                    characters_per_line: _characters_per_line,
-                    lines_per_page,
-                }) => {
-                    let mut lines = vec!["Approve KongSwap to swap".to_string()];
-                    lines.push(format!("{} {} for", swap_args.pay_amount, swap_args.pay_token));
-                    lines.push(swap_args.receive_token);
-                    let pages = lines
-                        .into_iter()
-                        .chunks(lines_per_page as usize)
-                        .into_iter()
-                        .map(|page| LineDisplayPage { lines: page.collect() })
-                        .collect();
-                    ConsentMessage::LineDisplayMessage { pages }
+            let Ok(token) = token_map::get_by_token(swap_args.pay_token.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token".to_string(),
+                })?
+            };
+            let decimals = token.decimals();
+            let pay_amount = nat_to_decimals_f64(decimals, &swap_args.pay_amount).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert pay amount to f64".to_string(),
+            })?;
+            let to_address = match swap_args.receive_address {
+                Some(address) => address,
+                None => caller_principal_id(),
+            };
+            let receive_token = match swap_args.receive_amount {
+                Some(amount) => {
+                    let receive_amount = nat_to_f64(&amount).ok_or_else(|| ErrorInfo {
+                        description: "Failed to convert receive amount to f64".to_string(),
+                    })?;
+                    format!("Min. amount {} {}", receive_amount, swap_args.receive_token)
                 }
-                Some(GenericDisplay) | None => ConsentMessage::GenericDisplayMessage(format!(
-                    "Approve KongSwap to swap {} {} for {}",
-                    swap_args.pay_amount, swap_args.pay_token, swap_args.receive_token
-                )),
-            }
+                None => {
+                    let max_slippage = swap_args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
+                    format!("{} (max. slippage {}%)", swap_args.receive_token, max_slippage)
+                }
+            };
+
+            ConsentMessage::GenericDisplayMessage(format!(
+                "# Approve KongSwap swap
+                
+**Pay token:**
+{} {}
+
+**Receive token:**
+{}
+
+**Receive address:**
+{}",
+                pay_amount, swap_args.pay_token, receive_token, to_address
+            ))
         }
-        "add_liqudity" | "add_liquidity_async" => {
+        "add_liquidity" | "add_liquidity_async" => {
             let Ok(add_liquidity_args) = decode_one::<AddLiquidityArgs>(&consent_msg_request.arg) else {
                 Err(ErrorInfo {
                     description: "Failed to decode AddLiquidityArgs".to_string(),
                 })?
             };
-            match consent_msg_request.user_preferences.device_spec {
-                Some(LineDisplay {
-                    characters_per_line: _characters_per_line,
-                    lines_per_page,
-                }) => {
-                    let mut lines = vec!["Approve KongSwap to add liquidity".to_string()];
-                    lines.push(format!("{} {} and", add_liquidity_args.amount_0, add_liquidity_args.token_0));
-                    lines.push(format!("{} {}", add_liquidity_args.amount_1, add_liquidity_args.token_1));
-                    let pages = lines
-                        .into_iter()
-                        .chunks(lines_per_page as usize)
-                        .into_iter()
-                        .map(|page| LineDisplayPage { lines: page.collect() })
-                        .collect();
-                    ConsentMessage::LineDisplayMessage { pages }
-                }
-                Some(GenericDisplay) | None => ConsentMessage::GenericDisplayMessage(format!(
-                    "Approve KongSwap to add liquidity {} {} and {} {}",
-                    add_liquidity_args.amount_0, add_liquidity_args.token_0, add_liquidity_args.amount_1, add_liquidity_args.token_1
-                )),
-            }
+            let Ok(token_0) = token_map::get_by_token(add_liquidity_args.token_0.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_0".to_string(),
+                })?
+            };
+            let decimals_0 = token_0.decimals();
+            let amount_0 = nat_to_decimals_f64(decimals_0, &add_liquidity_args.amount_0).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_0 amount to f64".to_string(),
+            })?;
+            let Ok(token_1) = token_map::get_by_token(add_liquidity_args.token_1.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_1".to_string(),
+                })?
+            };
+            let decimals_1 = token_1.decimals();
+            let amount_1 = nat_to_decimals_f64(decimals_1, &add_liquidity_args.amount_1).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_1 amount to f64".to_string(),
+            })?;
+            ConsentMessage::GenericDisplayMessage(format!(
+                "# Approve KongSwap add liquidity
+
+**Token 0:**
+{} {}
+
+**Token 1:**
+{} {}",
+                amount_0, add_liquidity_args.token_0, amount_1, add_liquidity_args.token_1
+            ))
         }
         "add_pool" => {
             let Ok(add_pool_args) = decode_one::<AddPoolArgs>(&consent_msg_request.arg) else {
@@ -219,47 +245,36 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                     description: "Failed to decode AddPoolArgs".to_string(),
                 })?
             };
-            match consent_msg_request.user_preferences.device_spec {
-                Some(LineDisplay {
-                    characters_per_line: _characters_per_line,
-                    lines_per_page,
-                }) => {
-                    let mut lines = vec!["Approve KongSwap to add pool".to_string()];
-                    lines.push(format!("{} {} and", add_pool_args.amount_0, add_pool_args.token_0));
-                    lines.push(format!("{} {}", add_pool_args.amount_1, add_pool_args.token_1));
-                    let pages = lines
-                        .into_iter()
-                        .chunks(lines_per_page as usize)
-                        .into_iter()
-                        .map(|page| LineDisplayPage { lines: page.collect() })
-                        .collect();
-                    ConsentMessage::LineDisplayMessage { pages }
-                }
-                Some(GenericDisplay) | None => ConsentMessage::GenericDisplayMessage(format!(
-                    "Approve KongSwap to add pool {} {} and {} {}",
-                    add_pool_args.amount_0, add_pool_args.token_0, add_pool_args.amount_1, add_pool_args.token_1
-                )),
-            }
+            let Ok(token_0) = token_map::get_by_token(add_pool_args.token_0.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_0".to_string(),
+                })?
+            };
+            let decimals_0 = token_0.decimals();
+            let amount_0 = nat_to_decimals_f64(decimals_0, &add_pool_args.amount_0).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_0 amount to f64".to_string(),
+            })?;
+            let Ok(token_1) = token_map::get_by_token(add_pool_args.token_1.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_1".to_string(),
+                })?
+            };
+            let decimals_1 = token_1.decimals();
+            let amount_1 = nat_to_decimals_f64(decimals_1, &add_pool_args.amount_1).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_1 amount to f64".to_string(),
+            })?;
+            ConsentMessage::GenericDisplayMessage(format!(
+                "# Approve KongSwap add pool
+
+**Token 0:**
+{} {}
+
+**Token 1:**
+{} {}",
+                amount_0, add_pool_args.token_0, amount_1, add_pool_args.token_1
+            ))
         }
-        _ => match consent_msg_request.user_preferences.device_spec {
-            Some(LineDisplay {
-                characters_per_line: _characters_per_line,
-                lines_per_page,
-            }) => {
-                let mut lines = vec![];
-                lines.push(format!("Approve KongSwap to execute {}", consent_msg_request.method));
-                let pages = lines
-                    .into_iter()
-                    .chunks(lines_per_page as usize)
-                    .into_iter()
-                    .map(|page| LineDisplayPage { lines: page.collect() })
-                    .collect();
-                ConsentMessage::LineDisplayMessage { pages }
-            }
-            Some(GenericDisplay) | None => {
-                ConsentMessage::GenericDisplayMessage(format!("Approve KongSwap to execute {}", consent_msg_request.method))
-            }
-        },
+        _ => ConsentMessage::GenericDisplayMessage(format!("Approve KongSwap to execute {}", consent_msg_request.method)),
     };
 
     let metadata = ConsentMessageMetadata {

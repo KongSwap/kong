@@ -11,6 +11,7 @@ import { TokenService } from "./tokens/TokenService";
 import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
+import { loadBalances } from "./tokens/tokenStore";
 
 // Constants
 const STORAGE_KEYS = {
@@ -36,7 +37,7 @@ function filterWallets(wallets: PNP[]) {
 }
 //export const availableWallets = filterWallets(walletsList);
 // Export the list of available wallets
-export const availableWallets = walletsList;
+export const availableWallets = filterWallets(walletsList);
 
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
@@ -173,7 +174,7 @@ function createAuthStore(pnp: PNP) {
           
           // Load balances in parallel with timeout
           await Promise.all([
-            TokenService.loadBalances(owner),
+            loadBalances(owner),
             PoolService.fetchUserPoolBalances(true),
           ]).catch(error => {
             console.warn("Failed to load initial balances:", error);

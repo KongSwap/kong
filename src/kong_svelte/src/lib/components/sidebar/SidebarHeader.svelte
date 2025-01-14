@@ -11,6 +11,7 @@
   import { auth } from "$lib/services/auth";
   import PortfolioModal from "$lib/components/portfolio/PortfolioModal.svelte";
   import { tooltip } from "$lib/actions/tooltip";
+    import { sidebarStore } from "$lib/stores/sidebarStore";
 
   export let onClose: () => void;
   export let activeTab: "tokens" | "pools" | "history";
@@ -45,6 +46,16 @@
   function handlePortfolioClick() {
     showPortfolioModal = true;
   }
+
+  async function pollBalances() {
+    console.log("Polling balances");
+    // poll every 15 seconds
+    setInterval(async () => {
+      await loadBalances($auth?.account?.owner, { forceRefresh: true });
+    }, 15000);
+  }
+
+  $: $sidebarStore.isOpen == true ? pollBalances() : null;
 </script>
 
 <svelte:window bind:innerWidth={windowWidth} />
