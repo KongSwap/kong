@@ -23,6 +23,8 @@
     recommended: wallet.id === 'nfid'
   }));
 
+  console.log(walletList);
+
   const dispatch = createEventDispatcher();
   let connecting = false;
   let plugDialog: any;
