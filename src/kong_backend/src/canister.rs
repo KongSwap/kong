@@ -20,6 +20,7 @@ use crate::add_token::add_token_reply::AddTokenReply;
 use crate::claims::claims::process_claims;
 use crate::helpers::nat_helpers::{nat_to_decimals_f64, nat_to_f64};
 use crate::ic::canister_address::KONG_BACKEND;
+use crate::ic::id::caller_principal_id;
 use crate::ic::logging::info_log;
 use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_pool::pool_stats::update_pool_stats;
@@ -30,7 +31,6 @@ use crate::stable_transfer::transfer_archive::archive_transfer_map;
 use crate::stable_tx::tx_archive::archive_tx_map;
 use crate::stable_user::principal_id_map::create_principal_id_map;
 use crate::swap::swap_args::SwapArgs;
-
 #[init]
 async fn init() {
     info_log(&format!("{} canister has been initialized", APP_NAME));
@@ -164,13 +164,32 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                     description: "Failed to decode SwapArgs".to_string(),
                 })?
             };
-            let pay_amount = match token_map::get_by_token(swap_args.pay_token.as_str()) {
-                Ok(token) => {
-                    let decimals = token.decimals();
-                    nat_to_decimals_f64(decimals, &swap_args.pay_amount).unwrap_or(nat_to_f64(&swap_args.pay_amount).unwrap_or(0_f64))
-                }
-                Err(_) => nat_to_f64(&swap_args.pay_amount).unwrap_or(0_f64),
+            let Ok(token) = token_map::get_by_token(swap_args.pay_token.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token".to_string(),
+                })?
             };
+            let decimals = token.decimals();
+            let pay_amount = nat_to_decimals_f64(decimals, &swap_args.pay_amount).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert pay amount to f64".to_string(),
+            })?;
+            let to_address = match swap_args.receive_address {
+                Some(address) => address,
+                None => caller_principal_id(),
+            };
+            let receive_amount = match swap_args.receive_amount {
+                Some(amount) => {
+                    let receive_amount = nat_to_f64(&amount).ok_or_else(|| ErrorInfo {
+                        description: "Failed to convert receive amount to f64".to_string(),
+                    })?;
+                    format!("Min. receive amount {}", receive_amount)
+                }
+                None => {
+                    let max_slippage = swap_args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
+                    format!("Max. slippage {}", max_slippage)
+                }
+            };
+
             ConsentMessage::GenericDisplayMessage(format!(
                 "# Approve KongSwap swap
                 
@@ -178,8 +197,11 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
 {} {}
 
 **Receive token:**
+{} {}
+
+**Receive address:**
 {}",
-                pay_amount, swap_args.pay_token, swap_args.receive_token
+                pay_amount, swap_args.pay_token, receive_amount, swap_args.receive_token, to_address
             ))
         }
         "add_liqudity" | "add_liquidity_async" => {
@@ -188,22 +210,24 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                     description: "Failed to decode AddLiquidityArgs".to_string(),
                 })?
             };
-            let amount_0 = match token_map::get_by_token(add_liquidity_args.token_0.as_str()) {
-                Ok(token) => {
-                    let decimals = token.decimals();
-                    nat_to_decimals_f64(decimals, &add_liquidity_args.amount_0)
-                        .unwrap_or(nat_to_f64(&add_liquidity_args.amount_0).unwrap_or(0_f64))
-                }
-                Err(_) => nat_to_f64(&add_liquidity_args.amount_0).unwrap_or(0_f64),
+            let Ok(token_0) = token_map::get_by_token(add_liquidity_args.token_0.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_0".to_string(),
+                })?
             };
-            let amount_1 = match token_map::get_by_token(add_liquidity_args.token_1.as_str()) {
-                Ok(token) => {
-                    let decimals = token.decimals();
-                    nat_to_decimals_f64(decimals, &add_liquidity_args.amount_1)
-                        .unwrap_or(nat_to_f64(&add_liquidity_args.amount_1).unwrap_or(0_f64))
-                }
-                Err(_) => nat_to_f64(&add_liquidity_args.amount_1).unwrap_or(0_f64),
+            let decimals_0 = token_0.decimals();
+            let amount_0 = nat_to_decimals_f64(decimals_0, &add_liquidity_args.amount_0).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_0 amount to f64".to_string(),
+            })?;
+            let Ok(token_1) = token_map::get_by_token(add_liquidity_args.token_1.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_1".to_string(),
+                })?
             };
+            let decimals_1 = token_1.decimals();
+            let amount_1 = nat_to_decimals_f64(decimals_1, &add_liquidity_args.amount_1).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_1 amount to f64".to_string(),
+            })?;
             ConsentMessage::GenericDisplayMessage(format!(
                 "# Approve KongSwap add liquidity
 
@@ -221,20 +245,24 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                     description: "Failed to decode AddPoolArgs".to_string(),
                 })?
             };
-            let amount_0 = match token_map::get_by_token(add_pool_args.token_0.as_str()) {
-                Ok(token) => {
-                    let decimals = token.decimals();
-                    nat_to_decimals_f64(decimals, &add_pool_args.amount_0).unwrap_or(nat_to_f64(&add_pool_args.amount_0).unwrap_or(0_f64))
-                }
-                Err(_) => nat_to_f64(&add_pool_args.amount_0).unwrap_or(0_f64),
+            let Ok(token_0) = token_map::get_by_token(add_pool_args.token_0.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_0".to_string(),
+                })?
             };
-            let amount_1 = match token_map::get_by_token(add_pool_args.token_1.as_str()) {
-                Ok(token) => {
-                    let decimals = token.decimals();
-                    nat_to_decimals_f64(decimals, &add_pool_args.amount_1).unwrap_or(nat_to_f64(&add_pool_args.amount_1).unwrap_or(0_f64))
-                }
-                Err(_) => nat_to_f64(&add_pool_args.amount_1).unwrap_or(0_f64),
+            let decimals_0 = token_0.decimals();
+            let amount_0 = nat_to_decimals_f64(decimals_0, &add_pool_args.amount_0).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_0 amount to f64".to_string(),
+            })?;
+            let Ok(token_1) = token_map::get_by_token(add_pool_args.token_1.as_str()) else {
+                Err(ErrorInfo {
+                    description: "Failed to get token_1".to_string(),
+                })?
             };
+            let decimals_1 = token_1.decimals();
+            let amount_1 = nat_to_decimals_f64(decimals_1, &add_pool_args.amount_1).ok_or_else(|| ErrorInfo {
+                description: "Failed to convert token_1 amount to f64".to_string(),
+            })?;
             ConsentMessage::GenericDisplayMessage(format!(
                 "# Approve KongSwap add pool
 
