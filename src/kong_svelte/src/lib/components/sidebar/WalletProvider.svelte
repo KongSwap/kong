@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { walletsList } from '@windoge98/plug-n-play';
   import { createEventDispatcher, onDestroy } from "svelte";
-  import { auth, availableWallets, selectedWalletId } from "$lib/services/auth";
+  import { auth, selectedWalletId } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
@@ -15,15 +15,12 @@
   }
 
   // Map available wallets to our WalletInfo structure
-  const walletList: WalletInfo[] = availableWallets.map(wallet => ({
+  const walletList: WalletInfo[] = walletsList.map(wallet => ({
     id: wallet.id,
     name: wallet.name,
     icon: wallet.icon,
-    description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
-    recommended: wallet.id === 'nfid'
+    description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined
   }));
-
-  console.log(walletList);
 
   const dispatch = createEventDispatcher();
   let connecting = false;
@@ -91,6 +88,8 @@
       connecting = false;
     }
   }
+
+  $: filteredWallets = isPlugAvailable() ? walletList : walletList.filter(w => w.id !== 'plug');
 </script>
 
 <Modal
@@ -108,7 +107,7 @@
   <div class="flex flex-col gap-6 pt-2">
     <div class="wallet-connect-body">
       <div class="wallet-list">
-        {#each walletsList as wallet}
+        {#each filteredWallets as wallet}
           <button
             class="wallet-option {wallet.recommended ? 'recommended' : ''}"
             on:click={() => handleConnect(wallet.id)}
