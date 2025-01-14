@@ -204,7 +204,7 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                 pay_amount, swap_args.pay_token, receive_token, to_address
             ))
         }
-        "add_liqudity" | "add_liquidity_async" => {
+        "add_liquidity" | "add_liquidity_async" => {
             let Ok(add_liquidity_args) = decode_one::<AddLiquidityArgs>(&consent_msg_request.arg) else {
                 Err(ErrorInfo {
                     description: "Failed to decode AddLiquidityArgs".to_string(),
