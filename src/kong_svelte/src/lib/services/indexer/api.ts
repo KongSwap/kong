@@ -116,7 +116,7 @@ export const fetchChartData = async (
   };
   const interval = intervalMap[resolution] || '1d';
 
-  const url = `${INDEXER_URL}/api/swaps/ohlc_v2?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+  const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${payTokenId}&receive_token_id=${receiveTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
   
   try {
     const response = await fetch(url);
