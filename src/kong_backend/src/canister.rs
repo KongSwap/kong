@@ -177,16 +177,16 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
                 Some(address) => address,
                 None => caller_principal_id(),
             };
-            let receive_amount = match swap_args.receive_amount {
+            let receive_token = match swap_args.receive_amount {
                 Some(amount) => {
                     let receive_amount = nat_to_f64(&amount).ok_or_else(|| ErrorInfo {
                         description: "Failed to convert receive amount to f64".to_string(),
                     })?;
-                    format!("Min. receive amount {}", receive_amount)
+                    format!("Min. amount {} {}", receive_amount, swap_args.receive_token)
                 }
                 None => {
                     let max_slippage = swap_args.max_slippage.unwrap_or(kong_settings_map::get().default_max_slippage);
-                    format!("Max. slippage {}", max_slippage)
+                    format!("{} (max. slippage {}%)", swap_args.receive_token, max_slippage)
                 }
             };
 
@@ -197,11 +197,11 @@ fn icrc21_canister_call_consent_message(consent_msg_request: ConsentMessageReque
 {} {}
 
 **Receive token:**
-{} {}
+{}
 
 **Receive address:**
 {}",
-                pay_amount, swap_args.pay_token, receive_amount, swap_args.receive_token, to_address
+                pay_amount, swap_args.pay_token, receive_token, to_address
             ))
         }
         "add_liqudity" | "add_liquidity_async" => {
