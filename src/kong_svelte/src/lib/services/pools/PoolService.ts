@@ -119,7 +119,7 @@ export class PoolService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
+        { anon: true, requiresSigning: false },
       );
 
       const result = await actor.remove_liquidity_amounts(

@@ -5,7 +5,6 @@
     formattedTokens,
     tokenStore,
     storedBalancesStore,
-    loadBalances,
   } from "$lib/services/tokens/tokenStore";
   import { onMount } from "svelte";
   import { FavoriteService } from "$lib/services/tokens/favoriteService";
@@ -15,7 +14,6 @@
   import { handleSearchKeyboard } from "$lib/utils/keyboardUtils";
   import { browser } from "$app/environment";
   import { writable, derived } from "svelte/store";
-  import { auth } from "$lib/services/auth";
 
   type SearchMatch = {
     type: "name" | "symbol" | "canister" | null;
@@ -99,9 +97,6 @@
   let isInitialLoad = true;
 
   onMount(async () => {
-    if ($auth.isConnected) {
-      await loadBalances($auth.account.principal);
-    }
     await FavoriteService.loadFavorites();
     isInitialLoad = false;
   });
