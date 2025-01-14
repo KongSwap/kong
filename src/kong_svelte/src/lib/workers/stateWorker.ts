@@ -14,10 +14,10 @@ class StateWorkerImpl implements StateWorkerApi {
   // ----------------------------------------------------
   // 1) Lower intervals to allow more frequent updates
   // ----------------------------------------------------
-  private readonly ACTIVE_TOKEN_INTERVAL = 10000;          // 10 seconds when active
+  private readonly ACTIVE_TOKEN_INTERVAL = 5000;          // 5 seconds when active
   private readonly BACKGROUND_TOKEN_INTERVAL = 20000;     // 10 seconds when in background
-  private readonly ACTIVE_POOL_INTERVAL = 30000;          // 30 seconds when active
-  private readonly BACKGROUND_POOL_INTERVAL = 60000;      // 60 seconds when in background
+  private readonly ACTIVE_POOL_INTERVAL = 20000;          // 30 seconds when active
+  private readonly BACKGROUND_POOL_INTERVAL = 40000;      // 60 seconds when in background
 
   // ----------------------------------------------------
   // 2) Throttle settings to prevent duplicate requests

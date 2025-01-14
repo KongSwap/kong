@@ -255,8 +255,8 @@
     }
   }
 
-  onMount(() => {
-    TokenService.fetchTokens().then(() => {
+  onMount(async () => {
+    await TokenService.fetchTokens().then(() => {
       console.log("Tokens fetched successfully");
     }).catch(error => {
       console.error("Error loading tokens:", error);
