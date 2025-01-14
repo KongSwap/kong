@@ -17,7 +17,7 @@
   // Map available wallets to our WalletInfo structure
   const walletList: WalletInfo[] = walletsList.map(wallet => ({
     id: wallet.id,
-    name: wallet.name,
+    name: wallet.name === "Oisy Wallet" ? "OISY Wallet" : wallet.name,
     icon: wallet.icon,
     description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined
   }));
