@@ -27,7 +27,7 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
-    let result = match process_swap(
+    let result = process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -39,17 +39,13 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         ts,
     )
     .await
-    {
-        Ok(reply) => {
-            request_map::update_status(request_id, StatusCode::Success, None);
-            Ok(reply)
-        }
-        Err(e) => {
-            request_map::update_status(request_id, StatusCode::Failed, None);
-            Err(e)
-        }
-    };
-    _ = archive_to_kong_data(request_id);
+    .inspect(|_| {
+        request_map::update_status(request_id, StatusCode::Success, None);
+    })
+    .inspect_err(|_| {
+        request_map::update_status(request_id, StatusCode::Failed, None);
+    });
+    let _ = archive_to_kong_data(request_id);
 
     result
 }
@@ -61,7 +57,7 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
     ic_cdk::spawn(async move {
-        match process_swap(
+        let _ = process_swap(
             request_id,
             user_id,
             &pay_token,
@@ -73,11 +69,13 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             ts,
         )
         .await
-        {
-            Ok(_) => request_map::update_status(request_id, StatusCode::Success, None),
-            Err(_) => request_map::update_status(request_id, StatusCode::Failed, None),
-        };
-        _ = archive_to_kong_data(request_id);
+        .inspect(|_| {
+            request_map::update_status(request_id, StatusCode::Success, None);
+        })
+        .inspect_err(|_| {
+            request_map::update_status(request_id, StatusCode::Failed, None);
+        });
+        let _ = archive_to_kong_data(request_id);
     });
 
     Ok(request_id)
