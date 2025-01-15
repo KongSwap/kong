@@ -2,6 +2,8 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
+    import { TokenService } from "$lib/services/tokens";
+    import { onMount } from "svelte";
 
   export let token: FE.Token;
   export let marketCapRank: number | null;
@@ -23,6 +25,13 @@
     }
     previousPrice = currentPrice;
   }
+
+   onMount(async () => {
+    await TokenService.fetchTokens();
+   })
+
+   $: formattedPrice = formatUsdValue(token?.metrics?.price || 0);
+   $: formattedPriceChange24h = Number(token.metrics.price_change_24h) || 0;
 </script>
 
 <Panel variant="transparent" type="main" className="p-6">
@@ -36,18 +45,14 @@
           class:flash-green={priceFlash === 'up'}
           class:flash-red={priceFlash === 'down'}
         >
-          {formatUsdValue(token?.metrics?.price || 0)}
+          {formattedPrice}
         </div>
-        {#if token?.metrics?.price_change_24h && token.metrics.price_change_24h !== "n/a"}
+        {#if formattedPriceChange24h}
           <div class="text-sm">
             <span
-              class={Number(token.metrics.price_change_24h) > 0
-                ? "text-green-400"
-                : "text-red-400"}
+              class={formattedPriceChange24h > 0 ? "text-green-400" : "text-red-400"}
             >
-              {Number(token.metrics.price_change_24h) > 0 ? "+" : ""}{Number(
-                token.metrics.price_change_24h,
-              ).toFixed(2)}%
+              {formattedPriceChange24h > 0 ? "+" : ""}{formattedPriceChange24h.toFixed(2)}%
             </span>
             <span class="text-kong-text-primary/40 ml-1">24h</span>
           </div>

@@ -158,7 +158,7 @@
       // Load balance
       queueMicrotask(() => {
         if (!$tokenStore.pendingBalanceRequests.has(canisterId)) {
-          loadBalance(canisterId, false);
+          loadBalance(canisterId, true);
         }
       });
     }

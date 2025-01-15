@@ -67,7 +67,7 @@
     if (token0?.canister_id && token1?.canister_id) {
       loadBalances(
         auth.pnp.account?.owner?.toString(),
-        { tokens: [token0, token1], forceRefresh: false }
+        { tokens: [token0, token1], forceRefresh: true }
       );
     }
   }

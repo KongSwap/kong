@@ -10,7 +10,7 @@ import { browser } from "$app/environment";
 import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
-import { loadBalances } from "./tokens/tokenStore";
+import { loadBalances, storedBalancesStore } from "./tokens/tokenStore";
 
 // Constants
 const STORAGE_KEYS = {
@@ -160,6 +160,10 @@ function createAuthStore(pnp: PNP) {
           storage.remove("CONNECTION_RETRY_COUNT");
           sessionStorage.setItem(STORAGE_KEYS.AUTO_CONNECT_ATTEMPTED, "false");
           
+          // Make sure we have no balances from other wallets
+          await kongDB.token_balances.clear();
+          storedBalancesStore.set({});
+
           // Load balances in parallel with timeout
           await Promise.all([
             loadBalances(owner),

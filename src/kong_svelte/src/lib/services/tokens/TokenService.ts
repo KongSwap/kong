@@ -437,9 +437,4 @@ export class TokenService {
       return null;
     }
   }
-
-  public static async loadBalances(principal?: string): Promise<void> {
-    // Implementation here
-    // This should update some store with the balances
-  }
 }

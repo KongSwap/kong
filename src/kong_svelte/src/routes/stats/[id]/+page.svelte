@@ -13,9 +13,10 @@
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
   import { Droplets, ArrowLeftRight } from "lucide-svelte";
-    import { kongDB } from "$lib/services/db";
-  import SNSProposals from '$lib/components/stats/SNSProposals.svelte';
+  import { kongDB } from "$lib/services/db";
+  import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
+
   if (!formattedTokens || !livePools) {
     throw new Error("Stores are not initialized");
   }
@@ -155,15 +156,6 @@
     marketCapRank = rank !== -1 ? rank + 1 : null;
   });
 
-  // Add helper function to calculate 24h volume percentage
-  function calculateVolumePercentage(
-    volume: number,
-    marketCap: number,
-  ): string {
-    if (!marketCap) return "0.00%";
-    return ((volume / marketCap) * 100).toFixed(2) + "%";
-  }
-
   // Add back the isChartDataReady state and effect
   let isChartDataReady = $state(false);
   $effect(() => {
@@ -171,12 +163,9 @@
   });
 
   // Add tab state
-  let activeTab = $state<"overview" | "pools" | "transactions" | "governance">("overview");
-
-  // Add pool selector state
-  let isPoolSelectorOpen = $state(false);
-
-  // Store relevant pools for selection
+  let activeTab = $state<"overview" | "pools" | "transactions" | "governance">(
+    "overview",
+  );
   let relevantPools = $state<BE.Pool[]>([]);
 
   // Update relevantPools when poolStore changes
@@ -254,10 +243,10 @@
                   <h1
                     class="text-lg md:text-2xl font-bold text-kong-text-primary"
                   >
-                    {token?.name || 'Loading...'}
+                    {token?.name || "Loading..."}
                   </h1>
                   <div class="text-sm md:text-base text-[#8890a4]">
-                    ({token?.symbol || '...'})
+                    ({token?.symbol || "..."})
                   </div>
                 </div>
               </div>
@@ -270,20 +259,24 @@
                 id="overview-tab"
                 aria-controls="overview-panel"
                 aria-selected={activeTab === "overview"}
-                class="px-4 py-2 rounded-lg {activeTab === 'overview' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
-                on:click={() => activeTab = "overview"}
+                class="px-4 py-2 rounded-lg {activeTab === 'overview'
+                  ? 'bg-kong-bg-secondary text-kong-text-primary'
+                  : 'hover:text-kong-text-primary'}"
+                on:click={() => (activeTab = "overview")}
               >
                 Overview
               </button>
-              
+
               {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
                 <button
                   role="tab"
                   id="governance-tab"
                   aria-controls="governance-panel"
                   aria-selected={activeTab === "governance"}
-                  class="px-4 py-2 rounded-lg {activeTab === 'governance' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
-                  on:click={() => activeTab = "governance"}
+                  class="px-4 py-2 rounded-lg {activeTab === 'governance'
+                    ? 'bg-kong-bg-secondary text-kong-text-primary'
+                    : 'hover:text-kong-text-primary'}"
+                  on:click={() => (activeTab = "governance")}
                 >
                   Governance
                 </button>
@@ -298,20 +291,24 @@
               id="overview-tab-mobile"
               aria-controls="overview-panel"
               aria-selected={activeTab === "overview"}
-              class="px-4 py-2 rounded-lg flex-1 {activeTab === 'overview' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
-              on:click={() => activeTab = "overview"}
+              class="px-4 py-2 rounded-lg flex-1 {activeTab === 'overview'
+                ? 'bg-kong-bg-secondary text-kong-text-primary'
+                : 'hover:text-kong-text-primary'}"
+              on:click={() => (activeTab = "overview")}
             >
               Overview
             </button>
-            
+
             {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
               <button
                 role="tab"
                 id="governance-tab-mobile"
                 aria-controls="governance-panel"
                 aria-selected={activeTab === "governance"}
-                class="px-4 py-2 rounded-lg flex-1 {activeTab === 'governance' ? 'bg-kong-bg-secondary text-kong-text-primary' : 'hover:text-kong-text-primary'}"
-                on:click={() => activeTab = "governance"}
+                class="px-4 py-2 rounded-lg flex-1 {activeTab === 'governance'
+                  ? 'bg-kong-bg-secondary text-kong-text-primary'
+                  : 'hover:text-kong-text-primary'}"
+                on:click={() => (activeTab = "governance")}
               >
                 Governance
               </button>
@@ -328,7 +325,6 @@
           aria-labelledby="overview-tab"
           tabindex="0"
         >
-
           <!-- Overview Layout -->
           <div class="flex flex-col lg:flex-row gap-4">
             <!-- Mobile-first layout -->
@@ -380,12 +376,16 @@
                   } as BE.Pool;
                 }}
               />
-              
+
               <!-- Token Statistics -->
               <TokenStatistics {token} {marketCapRank} />
-              
+
               <!-- Chart Panel -->
-              <Panel variant="transparent" type="main" className="!p-0 border-none">
+              <Panel
+                variant="transparent"
+                type="main"
+                className="!p-0 border-none"
+              >
                 <div class="h-[450px] min-h-[400px] w-full">
                   {#if isChartDataReady}
                     <TradingViewChart
@@ -419,7 +419,7 @@
                   {/if}
                 </div>
               </Panel>
-              
+
               <!-- Transactions Panel -->
               {#if token && token.canister_id === $page.params.id}
                 <TransactionFeed {token} className="w-full !p-0" />
@@ -431,7 +431,11 @@
               <!-- Left Column - Chart and Transactions -->
               <div class="lg:w-[70%] flex flex-col gap-6">
                 <!-- Chart Panel -->
-                <Panel variant="transparent" type="main" className="!p-0 border-none">
+                <Panel
+                  variant="transparent"
+                  type="main"
+                  className="!p-0 border-none"
+                >
                   <div class="h-[450px] min-h-[400px] w-full">
                     {#if isChartDataReady}
                       <TradingViewChart
@@ -449,7 +453,8 @@
                                   )?.symbol
                             }`
                           : ""}
-                        quoteToken={selectedPool?.address_0 === token?.canister_id
+                        quoteToken={selectedPool?.address_0 ===
+                        token?.canister_id
                           ? $formattedTokens?.find(
                               (t) => t.canister_id === selectedPool?.address_1,
                             )
@@ -474,35 +479,35 @@
 
               <!-- Right Column - Stats -->
               <div class="lg:w-[30%] flex flex-col gap-4">
-                          <!-- Action Buttons - Shown on all layouts -->
-          <div class="flex items-center gap-2 justify-end w-full">
-            <ButtonV2
-              variant="solid"
-              size="md"
-              className="!w-1/2 text-nowrap flex justify-center"
-              on:click={() =>
-                goto(
-                  `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
-                )}
-            >
-              <div class="flex items-center gap-2">
-                <Droplets class="w-4 h-4" /> Add Liquidity
-              </div>
-            </ButtonV2>
-            <ButtonV2
-              variant="solid"
-              size="md"
-              className="!w-1/2 text-nowrap flex justify-center"
-              on:click={() =>
-                goto(
-                  `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
-                )}
-            >
-              <div class="flex items-center gap-2">
-                <ArrowLeftRight class="w-4 h-4" /> Swap
-              </div>
-            </ButtonV2>
-          </div>
+                <!-- Action Buttons - Shown on all layouts -->
+                <div class="flex items-center gap-2 justify-end w-full">
+                  <ButtonV2
+                    variant="solid"
+                    size="md"
+                    className="!w-1/2 text-nowrap flex justify-center"
+                    on:click={() =>
+                      goto(
+                        `/pools/add?token0=${selectedPool?.address_0}&token1=${selectedPool?.address_1}`,
+                      )}
+                  >
+                    <div class="flex items-center gap-2">
+                      <Droplets class="w-4 h-4" /> Add Liquidity
+                    </div>
+                  </ButtonV2>
+                  <ButtonV2
+                    variant="solid"
+                    size="md"
+                    className="!w-1/2 text-nowrap flex justify-center"
+                    on:click={() =>
+                      goto(
+                        `/swap?from=${selectedPool?.address_0}&to=${selectedPool?.address_1}`,
+                      )}
+                  >
+                    <div class="flex items-center gap-2">
+                      <ArrowLeftRight class="w-4 h-4" /> Swap
+                    </div>
+                  </ButtonV2>
+                </div>
                 <PoolSelector
                   {selectedPool}
                   {token}
@@ -537,8 +542,10 @@
           <div class="flex flex-col lg:flex-row gap-6">
             <!-- Left Column - Proposals -->
             <div class="lg:w-[70%]">
-              <SNSProposals 
-                governanceCanisterId={GOVERNANCE_CANISTER_IDS[token.canister_id]} 
+              <SNSProposals
+                governanceCanisterId={GOVERNANCE_CANISTER_IDS[
+                  token.canister_id
+                ]}
               />
             </div>
 
@@ -549,7 +556,8 @@
                   <h2 class="text-lg font-semibold">About Governance</h2>
                   <div class="text-kong-text-secondary">
                     <p class="mb-2">
-                      {token.symbol} token holders can participate in governance by:
+                      {token.symbol} token holders can participate in governance
+                      by:
                     </p>
                     <ul class="list-disc pl-4 space-y-1">
                       <li>Submitting proposals</li>
