@@ -1,5 +1,5 @@
-import { writable, get } from "svelte/store";
-import { walletsList, type PNP } from "@windoge98/plug-n-play";
+import { writable } from "svelte/store";
+import { type PNP } from "@windoge98/plug-n-play";
 import { idlFactory as kongBackendIDL } from "../../../../declarations/kong_backend";
 import { idlFactory as kongFaucetIDL } from "../../../../declarations/kong_faucet";
 import { ICRC2_IDL as icrc2IDL } from "$lib/idls/icrc2.idl.js";
@@ -7,7 +7,6 @@ import { idlFactory as kongDataIDL } from "../../../../declarations/kong_data";
 import { pnp } from "./pnp/PnpInitializer";
 import { createAnonymousActorHelper } from "$lib/utils/actorUtils";
 import { browser } from "$app/environment";
-import { TokenService } from "./tokens/TokenService";
 import { kongDB } from "./db";
 import { PoolService } from "./pools/PoolService";
 import { idlFactory as snsGovernanceIDL } from "$lib/idls/snsGovernance.idl.js";
@@ -27,17 +26,6 @@ const CONFIG = {
   RETRY_DELAY: 2000,
   CONNECTION_TIMEOUT: 30000, // 30 seconds
 } as const;
-
-// Export filtered wallet list (memoized)
-function filterWallets(wallets: PNP[]) {
-  if(process.env.DFX_NETWORK === "ic") {
-    return wallets.filter(wallet => wallet.id !== 'oisy');
-  }
-  return wallets;
-}
-//export const availableWallets = filterWallets(walletsList);
-// Export the list of available wallets
-export const availableWallets = filterWallets(walletsList);
 
 // Create stores with initial states
 export const selectedWalletId = writable<string | null>(null);
