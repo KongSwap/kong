@@ -166,7 +166,7 @@ function createAuthStore(pnp: PNP) {
 
           // Load balances in parallel with timeout
           await Promise.all([
-            loadBalances(owner),
+            loadBalances(owner, { forceRefresh: true }),
             PoolService.fetchUserPoolBalances(true),
           ]).catch(error => {
             console.warn("Failed to load initial balances:", error);
