@@ -73,12 +73,12 @@
     if (hasManualSelection) return;
     if (initialPoolSet) return;
 
-    // Get all pools containing this token
+    // Get all pools containing this token with TVL
     const relevantPools = $livePools.filter((p) => {
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
-
-      return hasToken;
+      const hasTVL = Number(p.tvl) > 0;
+      return hasToken && hasTVL;  // Only filter by TVL initially
     });
 
     // For CKUSDT, prioritize the CKUSDC/CKUSDT pool if it exists and has TVL
@@ -88,7 +88,8 @@
           (p.address_0 === CKUSDC_CANISTER_ID && p.address_1 === CKUSDT_CANISTER_ID) ||
           (p.address_0 === CKUSDT_CANISTER_ID && p.address_1 === CKUSDC_CANISTER_ID)
         );
-        return isCorrectPair;
+        const hasTVL = Number(p.tvl) > 0;
+        return isCorrectPair && hasTVL;
       });
 
       if (ckusdcPool) {
@@ -103,43 +104,20 @@
       }
     }
 
-    if (relevantPools.length === 0) {
-      // If no pools with volume, fall back to pools with just TVL
-      const poolsWithTvl = $livePools.filter((p) => {
-        const hasToken =
-          p.address_0 === token.canister_id ||
-          p.address_1 === token.canister_id;
-        return hasToken;
-      });
+    // Sort first by TVL, then by volume as secondary criteria
+    const sortedPools = relevantPools.sort((a, b) => {
+      const tvlDiff = Number(b.tvl) - Number(a.tvl);
+      if (tvlDiff !== 0) return tvlDiff;
+      return Number(b.volume_24h || 0) - Number(a.volume_24h || 0);
+    });
 
-      if (poolsWithTvl.length > 0) {
-        const sortedByTvl = poolsWithTvl.sort(
-          (a, b) => Number(b.tvl) - Number(a.tvl),
-        );
-        const highestTvlPool = sortedByTvl[0];
-        selectedPool = {
-          ...highestTvlPool,
-          pool_id: String(highestTvlPool.pool_id),
-          tvl: String(highestTvlPool.tvl),
-          lp_token_supply: String(highestTvlPool.lp_token_supply),
-        } as unknown as BE.Pool;
-        initialPoolSet = true;
-      }
-      return;
-    }
-
-    // Sort by 24h volume descending
-    const sortedPools = relevantPools.sort(
-      (a, b) => Number(b.volume_24h) - Number(a.volume_24h),
-    );
-    const highestVolumePool = sortedPools[0];
-
-    if (highestVolumePool) {
+    const highestTvlPool = sortedPools[0];
+    if (highestTvlPool) {
       selectedPool = {
-        ...highestVolumePool,
-        pool_id: String(highestVolumePool.pool_id),
-        tvl: String(highestVolumePool.tvl),
-        lp_token_supply: String(highestVolumePool.lp_token_supply),
+        ...highestTvlPool,
+        pool_id: String(highestTvlPool.pool_id),
+        tvl: String(highestTvlPool.tvl),
+        lp_token_supply: String(highestTvlPool.lp_token_supply),
       } as unknown as BE.Pool;
       initialPoolSet = true;
     }
