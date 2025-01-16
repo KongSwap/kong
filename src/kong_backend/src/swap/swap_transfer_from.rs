@@ -114,10 +114,9 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             )
             .await;
 
+            request_map::update_status(request_id, StatusCode::Success, None);
             let _ = archive_to_kong_data(request_id);
         });
-
-        request_map::update_status(request_id, StatusCode::Success, None);
     });
 
     Ok(request_id)
@@ -200,6 +199,8 @@ async fn process_swap(
                 Err(format!("Req #{} failed. {}", request_id, e))?
             }
         };
+
+    request_map::update_status(request_id, StatusCode::SwapSuccess, None);
 
     Ok((receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps))
 }

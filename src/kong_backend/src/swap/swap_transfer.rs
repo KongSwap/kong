@@ -245,6 +245,8 @@ async fn process_swap(
             }
         };
 
+    request_map::update_status(request_id, StatusCode::SwapSuccess, None);
+
     Ok((
         receive_token,
         receive_amount_with_fees_and_gas,
