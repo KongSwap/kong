@@ -2,6 +2,7 @@
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { toastStore } from "$lib/stores/toastStore";
   import { Principal } from "@dfinity/principal";
+  import Modal from "$lib/components/common/Modal.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
   import QrScanner from "$lib/components/common/QrScanner.svelte";
@@ -13,7 +14,6 @@
   import { auth } from "$lib/services/auth";
   import { tooltip } from "$lib/actions/tooltip";
   import TransferConfirmationModal from "./TransferConfirmationModal.svelte";
-  import { loadBalances } from "$lib/services/tokens/tokenStore";
 
   export let token: FE.Token;
 
@@ -140,15 +140,14 @@
       errorMessage = "Amount is required";
       return false;
     }
-
+    
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) {
       errorMessage = "Amount must be greater than 0";
       return false;
     }
 
-    const currentBalance =
-      selectedAccount === "main" ? balances.default : balances.subaccount;
+    const currentBalance = selectedAccount === "main" ? balances.default : balances.subaccount;
     const maxAmount = new BigNumber(currentBalance.toString())
       .dividedBy(new BigNumber(10).pow(token.decimals))
       .minus(
@@ -270,9 +269,7 @@
 
     try {
       const decimals = token.decimals || 8;
-      const amountBigInt = BigInt(
-        new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString(),
-      );
+      const amountBigInt = BigInt(new BigNumber(amount).times(new BigNumber(10).pow(decimals)).toString());
 
       toastStore.info(`Sending ${amount} ${token.symbol}...`);
 
@@ -297,7 +294,7 @@
         toastStore.success(`Successfully sent ${token.symbol}`);
         recipientAddress = "";
         amount = "";
-        await loadBalances(auth.pnp?.account?.owner, { forceRefresh: true });
+        await loadBalances();
       } else if (result?.Err) {
         const errMsg =
           typeof result.Err === "object"
@@ -334,13 +331,12 @@
     }
   }
 
-  $: isFormValid =
-    amount &&
-    recipientAddress &&
-    !errorMessage &&
-    addressType !== null &&
-    validateAddress(recipientAddress) &&
-    validateAmount(amount);
+  $: isFormValid = amount && 
+                   recipientAddress && 
+                   !errorMessage && 
+                   addressType !== null && 
+                   validateAddress(recipientAddress) && 
+                   validateAmount(amount);
 
   $: validationMessage = (() => {
     if (!recipientAddress)
@@ -406,12 +402,56 @@
     checkCameraAvailability();
   });
 
+  async function loadBalances() {
+    try {
+      if (token?.symbol === "ICP") {
+        const result: any = await IcrcService.getIcrc1Balance(
+          token,
+          auth.pnp?.account?.owner,
+          auth.pnp?.account?.subaccount
+            ? Array.from(auth.pnp.account.subaccount)
+            : undefined,
+          true,
+        );
+
+        balances = {
+          default: result.default || BigInt(0),
+          subaccount: result.subaccount || BigInt(0),
+        };
+
+        // Update token object with both balances
+        token = {
+          ...token,
+          balance: balances.default.toString(),
+          subaccountBalance: balances.subaccount.toString(),
+        };
+      } else {
+        // For non-ICP tokens, just get the main balance
+        const result = await IcrcService.getIcrc1Balance(
+          token,
+          auth.pnp?.account?.owner,
+          undefined,
+          false,
+        );
+        balances = {
+          default: typeof result === "bigint" ? result : BigInt(0),
+        };
+      }
+    } catch (error) {
+      console.error("Error loading balances:", error);
+      balances =
+        token?.symbol === "ICP"
+          ? { default: BigInt(0), subaccount: BigInt(0) }
+          : { default: BigInt(0) };
+    }
+  }
+
   $: if (token && auth.pnp?.account?.owner) {
-    loadBalances(auth.pnp?.account?.owner, { forceRefresh: true });
+    loadBalances();
   }
 
   $: if (selectedAccount) {
-    loadBalances(auth.pnp?.account?.owner, { forceRefresh: true });
+    loadBalances();
   }
 
   function getTooltipMessage(): string {
@@ -552,7 +592,7 @@
       use:tooltip={{
         text: getTooltipMessage(),
         direction: "top",
-        background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark",
+        background: errorMessage ? "bg-kong-accent-red" : "bg-kong-bg-dark"
       }}
     >
       {isValidating ? "Processing..." : "Send Tokens"}
