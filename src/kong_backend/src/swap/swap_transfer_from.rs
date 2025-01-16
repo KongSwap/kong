@@ -6,6 +6,7 @@ use super::calculate_amounts::calculate_amounts;
 use super::return_pay_token::return_pay_token;
 use super::send_receive_token::send_receive_token;
 use super::swap_args::SwapArgs;
+use super::swap_calc::SwapCalc;
 use super::swap_reply::SwapReply;
 use super::update_liquidity_pool::update_liquidity_pool;
 
@@ -26,8 +27,9 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
     let ts = get_time();
     let receive_amount = args.receive_amount.clone();
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
+    let mut transfer_ids = Vec::new();
 
-    let result = process_swap(
+    let (receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps) = process_swap(
         request_id,
         user_id,
         &pay_token,
@@ -35,19 +37,36 @@ pub async fn swap_transfer_from(args: SwapArgs) -> Result<SwapReply, String> {
         &receive_token,
         receive_amount.as_ref(),
         max_slippage,
-        &to_address,
+        &mut transfer_ids,
         ts,
     )
     .await
-    .inspect(|_| {
-        request_map::update_status(request_id, StatusCode::Success, None);
-    })
     .inspect_err(|_| {
         request_map::update_status(request_id, StatusCode::Failed, None);
-    });
+        let _ = archive_to_kong_data(request_id);
+    })?;
+
+    let result = send_receive_token(
+        request_id,
+        user_id,
+        &pay_token,
+        &pay_amount,
+        &receive_token,
+        &receive_amount_with_fees_and_gas,
+        &to_address,
+        &mut transfer_ids,
+        mid_price,
+        price,
+        slippage,
+        &swaps,
+        ts,
+    )
+    .await;
+
+    request_map::update_status(request_id, StatusCode::Success, None);
     let _ = archive_to_kong_data(request_id);
 
-    result
+    Ok(result)
 }
 
 pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
@@ -57,7 +76,9 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
     let request_id = request_map::insert(&StableRequest::new(user_id, &Request::Swap(args), ts));
 
     ic_cdk::spawn(async move {
-        let _ = process_swap(
+        let mut transfer_ids = Vec::new();
+
+        let Ok((receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps)) = process_swap(
             request_id,
             user_id,
             &pay_token,
@@ -65,17 +86,38 @@ pub async fn swap_transfer_from_async(args: SwapArgs) -> Result<u64, String> {
             &receive_token,
             receive_amount.as_ref(),
             max_slippage,
-            &to_address,
+            &mut transfer_ids,
             ts,
         )
         .await
-        .inspect(|_| {
-            request_map::update_status(request_id, StatusCode::Success, None);
-        })
-        .inspect_err(|_| {
+        else {
             request_map::update_status(request_id, StatusCode::Failed, None);
+            let _ = archive_to_kong_data(request_id);
+            return;
+        };
+
+        ic_cdk::spawn(async move {
+            send_receive_token(
+                request_id,
+                user_id,
+                &pay_token,
+                &pay_amount,
+                &receive_token,
+                &receive_amount_with_fees_and_gas,
+                &to_address,
+                &mut transfer_ids,
+                mid_price,
+                price,
+                slippage,
+                &swaps,
+                ts,
+            )
+            .await;
+
+            let _ = archive_to_kong_data(request_id);
         });
-        let _ = archive_to_kong_data(request_id);
+
+        request_map::update_status(request_id, StatusCode::Success, None);
     });
 
     Ok(request_id)
@@ -126,16 +168,15 @@ async fn process_swap(
     receive_token: &StableToken,
     receive_amount: Option<&Nat>,
     max_slippage: f64,
-    to_address: &Address,
+    transfer_ids: &mut Vec<u64>,
     ts: u64,
-) -> Result<SwapReply, String> {
+) -> Result<(Nat, f64, f64, f64, Vec<SwapCalc>), String> {
     let caller_id = caller_id();
     let kong_backend = kong_settings_map::get().kong_backend_account;
-    let mut transfer_ids = Vec::new();
 
     request_map::update_status(request_id, StatusCode::Start, None);
 
-    transfer_from_token(request_id, &caller_id, pay_token, pay_amount, &kong_backend, &mut transfer_ids, ts)
+    transfer_from_token(request_id, &caller_id, pay_token, pay_amount, &kong_backend, transfer_ids, ts)
         .await
         .map_err(|e| format!("Pay token transfer_from failed. {}", e))?;
 
@@ -152,7 +193,7 @@ async fn process_swap(
                     pay_token,
                     pay_amount,
                     Some(receive_token),
-                    &mut transfer_ids,
+                    transfer_ids,
                     ts,
                 )
                 .await;
@@ -160,22 +201,7 @@ async fn process_swap(
             }
         };
 
-    send_receive_token(
-        request_id,
-        user_id,
-        pay_token,
-        pay_amount,
-        receive_token,
-        &receive_amount_with_fees_and_gas,
-        to_address,
-        &mut transfer_ids,
-        mid_price,
-        price,
-        slippage,
-        &swaps,
-        ts,
-    )
-    .await
+    Ok((receive_amount_with_fees_and_gas, mid_price, price, slippage, swaps))
 }
 
 async fn transfer_from_token(
