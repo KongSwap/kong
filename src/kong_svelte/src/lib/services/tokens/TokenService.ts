@@ -21,11 +21,6 @@ import { toastStore } from "$lib/stores/toastStore";
 
 export class TokenService {
   protected static instance: TokenService;
-  private static priceCache = new Map<
-    string,
-    { price: number; timestamp: number }
-  >();
-  private static readonly ICP_PRICE_CACHE_DURATION = 10 * 1000; // 10 seconds
 
   public static async fetchTokens(): Promise<FE.Token[]> {
     try {
@@ -340,13 +335,6 @@ export class TokenService {
       return Number(pool?.price);
     } catch (error) {
       console.error("Error fetching ICP price from CoinCap:", error);
-
-      // Return cached price if available, even if stale
-      const cached = this.priceCache.get("ICP_USD");
-      if (cached) {
-        return cached.price;
-      }
-
       return 0;
     }
   }

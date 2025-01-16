@@ -50,7 +50,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             options: {
               cacheName: 'js-cache',
               expiration: {
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 1 // 1 day
               }
             }
           }

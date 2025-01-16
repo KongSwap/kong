@@ -11,7 +11,7 @@ const config = {
       assets: "dist",
       fallback: "index.html",
       precompress: false,
-      strict: true,
+      strict: false,
     }),
     files: {
       assets: "static",
