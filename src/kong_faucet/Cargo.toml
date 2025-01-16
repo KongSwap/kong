@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 [features]
 local = []
 staging = []
+prod = []
 
 [dependencies]
 kong_lib = { path = "../kong_lib" }
