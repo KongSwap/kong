@@ -12,6 +12,7 @@ use crate::ic::{
 };
 use crate::stable_claim::claim_map;
 use crate::stable_claim::stable_claim::{ClaimStatus, StableClaim};
+use crate::stable_kong_settings::kong_settings_map;
 use crate::stable_memory::CLAIM_MAP;
 use crate::stable_request::{reply::Reply, request::Request, request_map, stable_request::StableRequest, status::StatusCode};
 use crate::stable_token::{stable_token::StableToken, token::Token, token_map};
@@ -68,7 +69,6 @@ pub async fn process_claims() {
             // create new request with CLAIMS_TIMER_USER_ID as user_id
             let request_id = request_map::insert(&StableRequest::new(CLAIMS_TIMER_USER_ID, &Request::Claim(claim.claim_id), ts));
             let claim_id = claim.claim_id;
-
             match process_claim(request_id, claim_id, &token, &claim.amount, to_address, ts).await {
                 Ok(_) => {
                     request_map::update_status(request_id, StatusCode::Success, None);
@@ -79,7 +79,7 @@ pub async fn process_claims() {
                     consecutive_errors += 1;
                 }
             }
-            _ = claim_map::archive_to_kong_data(claim_id);
+            let _ = archive_to_kong_data(request_id);
 
             if consecutive_errors > 4 {
                 error_log("Too many consecutive errors, stopping claims processing.");
@@ -116,17 +116,21 @@ async fn process_claim(
             transfer_ids: to_transfer_ids(&transfer_ids),
             ts,
         },
-        Err(_) => ClaimReply {
-            claim_id,
-            status: "Failed".to_string(),
-            chain: chain.to_string(),
-            symbol: symbol.to_string(),
-            amount: amount.clone(),
-            fee: token.fee(),
-            to_address: to_address.to_string(),
-            transfer_ids: to_transfer_ids(&transfer_ids),
-            ts,
-        },
+        Err(e) => {
+            let reply = ClaimReply {
+                claim_id,
+                status: "Failed".to_string(),
+                chain: chain.to_string(),
+                symbol: symbol.to_string(),
+                amount: amount.clone(),
+                fee: token.fee(),
+                to_address: to_address.to_string(),
+                transfer_ids: to_transfer_ids(&transfer_ids),
+                ts,
+            };
+            request_map::update_reply(request_id, Reply::Claim(reply.clone()));
+            return Err(e);
+        }
     };
 
     request_map::update_reply(request_id, Reply::Claim(reply.clone()));
@@ -181,4 +185,30 @@ async fn send_claim(
             Err(format!("Failed to send claim_id #{}. {}", claim_id, e))
         }
     }
+}
+
+pub fn archive_to_kong_data(request_id: u64) -> Result<(), String> {
+    if !kong_settings_map::get().archive_to_kong_data {
+        return Ok(());
+    }
+
+    if let Some(requst) = request_map::get_by_request_id(request_id) {
+        if let Reply::Claim(ref reply) = requst.reply {
+            // archive request
+            request_map::archive_to_kong_data(&requst)?;
+            // archive claim
+            claim_map::archive_to_kong_data(reply.claim_id)?;
+            // archive transfers
+            reply
+                .transfer_ids
+                .iter()
+                .try_for_each(|transfer_id_reply| transfer_map::archive_to_kong_data(transfer_id_reply.transfer_id))?;
+        } else {
+            return Err("Invalid reply type".to_string());
+        }
+    } else {
+        return Err(format!("Failed to archive. request_id #{} not found", request_id));
+    }
+
+    Ok(())
 }
