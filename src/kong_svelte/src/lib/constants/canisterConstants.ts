@@ -34,5 +34,4 @@ export const CTZ_CANISTER_ID = 'uf2wh-taaaa-aaaaq-aabna-cai';
 export const KINIC_CANISTER_ID = '73mez-iiaaa-aaaaq-aaasq-cai';
 export const DOLR_CANISTER_ID = '6rdgd-kyaaa-aaaaq-aaavq-cai';
 export const KONG_CANISTER_ID = 'o7oak-iyaaa-aaaaq-aadzq-cai';
-export const CLOUD_CANISTER_ID = 'pcj6u-uaaaa-aaaak-aewnq-cai';
 export const ICS_CANISTER_ID = 'ca6gz-lqaaa-aaaaq-aacwa-cai';

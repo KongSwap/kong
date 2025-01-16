@@ -1,5 +1,9 @@
 // src/lib/services/swap/SwapService.ts
-import { getTokenDecimals, liveTokens, loadBalances } from "$lib/services/tokens/tokenStore";
+import {
+  getTokenDecimals,
+  liveTokens,
+  loadBalances,
+} from "$lib/services/tokens/tokenStore";
 import { toastStore } from "$lib/stores/toastStore";
 import { get } from "svelte/store";
 import { Principal } from "@dfinity/principal";
@@ -68,44 +72,54 @@ export class SwapService {
   private static readonly MAX_ATTEMPTS = 200; // 30 seconds
 
   private static isValidNumber(value: string | number): boolean {
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return !isNaN(value) && isFinite(value);
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const num = Number(value);
       return !isNaN(num) && isFinite(num);
     }
     return false;
   }
 
-  public static toBigInt(value: string | number | BigNumber, decimals?: number): bigint {
+  public static toBigInt(
+    value: string | number | BigNumber,
+    decimals?: number,
+  ): bigint {
     try {
       // If decimals provided, handle scaling
       if (decimals !== undefined) {
         const multiplier = new BigNumber(10).pow(decimals);
-        
+
         // If it's a BigNumber instance
         if (value instanceof BigNumber) {
           if (value.isNaN() || !value.isFinite()) {
-            console.warn('Invalid BigNumber value:', value);
+            console.warn("Invalid BigNumber value:", value);
             return BigInt(0);
           }
-          return BigInt(value.times(multiplier).integerValue(BigNumber.ROUND_DOWN).toString());
+          return BigInt(
+            value
+              .times(multiplier)
+              .integerValue(BigNumber.ROUND_DOWN)
+              .toString(),
+          );
         }
 
         // If it's a string or number
         if (!this.isValidNumber(value)) {
-          console.warn('Invalid numeric value:', value);
+          console.warn("Invalid numeric value:", value);
           return BigInt(0);
         }
 
         const bn = new BigNumber(value);
         if (bn.isNaN() || !bn.isFinite()) {
-          console.warn('Invalid conversion to BigNumber:', value);
+          console.warn("Invalid conversion to BigNumber:", value);
           return BigInt(0);
         }
 
-        return BigInt(bn.times(multiplier).integerValue(BigNumber.ROUND_DOWN).toString());
+        return BigInt(
+          bn.times(multiplier).integerValue(BigNumber.ROUND_DOWN).toString(),
+        );
       }
 
       // Original logic for when no decimals provided
@@ -120,7 +134,7 @@ export class SwapService {
       const bn = new BigNumber(value);
       return BigInt(bn.integerValue(BigNumber.ROUND_DOWN).toString());
     } catch (error) {
-      console.error('Error converting to BigInt:', error);
+      console.error("Error converting to BigInt:", error);
       return BigInt(0);
     }
   }
@@ -241,9 +255,9 @@ export class SwapService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { 
-          anon: false, 
-          requiresSigning: auth.pnp.activeWallet.id === 'plug' 
+        {
+          anon: false,
+          requiresSigning: auth.pnp.activeWallet.id === "plug",
         },
       );
       const result = await actor.swap_async(params);
@@ -262,7 +276,7 @@ export class SwapService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: true }
+        { anon: true },
       );
       const result = await actor.requests(requestIds);
       return result;
@@ -281,11 +295,11 @@ export class SwapService {
     const swapId = params.swapId;
     try {
       requireWalletConnection();
-      const tokens = get(liveTokens)
+      const tokens = get(liveTokens);
       const payToken = tokens.find(
-        (t) => t.canister_id === params.payToken.canister_id
+        (t) => t.canister_id === params.payToken.canister_id,
       );
-      
+
       if (!payToken) {
         console.error("Pay token not found:", params.payToken);
         throw new Error(`Pay token ${params.payToken.symbol} not found`);
@@ -293,21 +307,23 @@ export class SwapService {
 
       const payAmount = SwapService.toBigInt(
         params.payAmount,
-        payToken.decimals
+        payToken.decimals,
       );
 
       const receiveToken = tokens.find(
-        (t) => t.canister_id === params.receiveToken.canister_id
+        (t) => t.canister_id === params.receiveToken.canister_id,
       );
-      
+
       if (!receiveToken) {
         console.error("Receive token not found:", params.receiveToken);
-        throw new Error(`Receive token ${params.receiveToken.symbol} not found`);
+        throw new Error(
+          `Receive token ${params.receiveToken.symbol} not found`,
+        );
       }
 
       const receiveAmount = SwapService.toBigInt(
         params.receiveAmount,
-        receiveToken.decimals
+        receiveToken.decimals,
       );
 
       let txId: bigint | false;
@@ -361,90 +377,15 @@ export class SwapService {
         pay_tx_id: txId ? [{ BlockIndex: Number(txId) }] : [],
       };
 
-      if (["oisy"].includes(auth.pnp.activeWallet.id)) {
-        const actor = auth.pnp.getActor(
-          KONG_BACKEND_CANISTER_ID,
-          canisterIDLs.kong_backend,
-          { 
-            anon: false, 
-            requiresSigning: auth.pnp.activeWallet.id === 'plug' 
-          },
-        );
-        const result = await actor.swap(swapParams);
+      const result = await SwapService.swap_async(swapParams);
 
-        if ("Ok" in result) {
-          // Convert amounts using the correct decimals
-          const formattedPayAmount = SwapService.fromBigInt(
-            result.Ok.pay_amount,
-            await getTokenDecimals(result.Ok.pay_symbol),
-          );
-          const formattedReceiveAmount = SwapService.fromBigInt(
-            result.Ok.receive_amount,
-            await getTokenDecimals(result.Ok.receive_symbol),
-          );
-
-          swapStatusStore.updateSwap(swapId, {
-            status: "Success",
-            isProcessing: false,
-            error: null,
-            shouldRefreshQuote: true,
-            lastQuote: null,
-            details: {
-              payAmount: formattedPayAmount,
-              payToken: params.payToken,
-              receiveAmount: formattedReceiveAmount,
-              receiveToken: params.receiveToken,
-            },
-          });
-
-          // Load updated balances immediately and after delays
-          const walletId = auth?.pnp?.account?.owner?.toString();
-
-          if (walletId) {
-            const updateBalances = async () => {
-              try {
-                await loadBalances(
-                  walletId.toString(),
-                  { tokens: [params.payToken, params.receiveToken], forceRefresh: true }
-                );
-              } catch (error) {
-                console.error("Error updating balances:", error);
-              }
-            };
-
-            // Update immediately
-            await updateBalances();
-
-            // Schedule updates with increasing delays
-            const delays = [1000, 2000, 3000, 4000, 5000];
-            delays.forEach((delay) => {
-              setTimeout(async () => {
-                await updateBalances();
-              }, delay);
-            });
-          }
-
-          return BigInt(result.Ok.tx_id);
-        } else {
-          swapStatusStore.updateSwap(swapId, {
-            status: "Failed",
-            isProcessing: false,
-            error: result.Err || "Swap failed",
-          });
-          toastStore.error(result.Err || "Swap failed");
-          return false;
-        }
+      if (result.Ok) {
+        this.monitorTransaction(result?.Ok, swapId);
       } else {
-        const result = await SwapService.swap_async(swapParams);
-
-        if (result.Ok) {
-          this.monitorTransaction(result?.Ok, swapId);
-        } else {
-          console.error("Swap error:", result.Err);
-          return false;
-        }
-        return result.Ok;
+        console.error("Swap error:", result.Err);
+        return false;
       }
+      return result.Ok;
     } catch (error) {
       swapStatusStore.updateSwap(swapId, {
         status: "Failed",
@@ -508,9 +449,7 @@ export class SwapService {
               isProcessing: false,
               error: res.statuses.find((s) => s.includes("Failed")),
             });
-            toastStore.error(
-              res.statuses.find((s) => s.includes("Failed")),
-            );
+            toastStore.error(res.statuses.find((s) => s.includes("Failed")));
             return;
           }
 
@@ -572,10 +511,10 @@ export class SwapService {
 
               const updateBalances = async () => {
                 try {
-                  await loadBalances(
-                    walletId.toString(),
-                    { tokens: [payToken, receiveToken], forceRefresh: true }
-                  );
+                  await loadBalances(walletId.toString(), {
+                    tokens: [payToken, receiveToken],
+                    forceRefresh: true,
+                  });
                 } catch (error) {
                   console.error("Error updating balances:", error);
                 }
@@ -652,15 +591,15 @@ export class SwapService {
   public static async getSwapQuote(
     payToken: FE.Token,
     receiveToken: FE.Token,
-    payAmount: string
+    payAmount: string,
   ): Promise<{ receiveAmount: string; slippage: number }> {
     try {
       // Validate input amount
       if (!payAmount || isNaN(Number(payAmount))) {
-        console.warn('Invalid pay amount:', payAmount);
+        console.warn("Invalid pay amount:", payAmount);
         return {
-          receiveAmount: '0',
-          slippage: 0
+          receiveAmount: "0",
+          slippage: 0,
         };
       }
 
@@ -679,12 +618,12 @@ export class SwapService {
         const receiveDecimals = receiveToken.decimals;
         const receivedAmount = this.fromBigInt(
           quote.Ok.receive_amount,
-          receiveDecimals
+          receiveDecimals,
         );
 
         return {
           receiveAmount: receivedAmount,
-          slippage: quote.Ok.slippage
+          slippage: quote.Ok.slippage,
         };
       } else if ("Err" in quote) {
         throw new Error(quote.Err);

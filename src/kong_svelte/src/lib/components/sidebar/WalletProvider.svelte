@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { walletsList } from '@windoge98/plug-n-play';
   import { createEventDispatcher, onDestroy } from "svelte";
-  import { auth, availableWallets, selectedWalletId } from "$lib/services/auth";
+  import { auth, selectedWalletId } from "$lib/services/auth";
   import { isPwa, isMobileBrowser, isPlugAvailable } from "$lib/utils/browser";
   import Modal from "$lib/components/common/Modal.svelte";
   import { sidebarStore } from "$lib/stores/sidebarStore";
@@ -14,12 +15,11 @@
   }
 
   // Map available wallets to our WalletInfo structure
-  const walletList: WalletInfo[] = availableWallets.map(wallet => ({
+  const walletList: WalletInfo[] = walletsList.map(wallet => ({
     id: wallet.id,
-    name: wallet.name,
+    name: wallet.name === "Oisy Wallet" ? "OISY Wallet" : wallet.name,
     icon: wallet.icon,
-    description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined,
-    recommended: wallet.id === 'nfid'
+    description: wallet.id === 'nfid' ? 'Sign in with Google' : undefined
   }));
 
   const dispatch = createEventDispatcher();
@@ -40,9 +40,6 @@
   const isOnMobile = isMobileBrowser();
 
   // Filter out Plug wallet on mobile unless it's a PWA
-  $: filteredWallets = isOnMobile && !isPwa() 
-    ? walletList.filter(w => w.id !== 'plug')
-    : walletList;
 
   async function handleConnect(walletId: string) {
     if (!walletId || connecting) return;
@@ -91,6 +88,8 @@
       connecting = false;
     }
   }
+
+  $: filteredWallets = isPlugAvailable() ? walletList : walletList.filter(w => w.id !== 'plug');
 </script>
 
 <Modal

@@ -119,7 +119,7 @@ export class PoolService {
       const actor = await auth.pnp.getActor(
         KONG_BACKEND_CANISTER_ID,
         canisterIDLs.kong_backend,
-        { anon: false, requiresSigning: false },
+        { anon: true, requiresSigning: false },
       );
 
       const result = await actor.remove_liquidity_amounts(
@@ -225,14 +225,7 @@ export class PoolService {
         tx_id_1,
       };
 
-
-      let result;
-      if(["oisy"].includes(auth.pnp.activeWallet.id)) {
-        result = await actor.add_liquidity(addLiquidityArgs);
-        await this.fetchUserPoolBalances(true);
-      } else {
-        result = await actor.add_liquidity_async(addLiquidityArgs);
-      }
+      let result = await actor.add_liquidity_async(addLiquidityArgs);
 
       if ("Err" in result) {
         throw new Error(result.Err);
@@ -259,9 +252,10 @@ export class PoolService {
 
     try {
       while (attempts < MAX_ATTEMPTS) {
-        const actor = createAnonymousActorHelper(
+        const actor = await auth.pnp.getActor(
           KONG_BACKEND_CANISTER_ID,
-          canisterIDLs.kong_backend
+          canisterIDLs.kong_backend,
+          { anon: true }
         );
         const result = await actor.requests([requestId]);
 
@@ -302,7 +296,7 @@ export class PoolService {
         }
 
         attempts++;
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between polls
+        await new Promise(resolve => setTimeout(resolve, 500)); // .5 second delay between polls
       }
 
       // If we exit the loop without success/failure
