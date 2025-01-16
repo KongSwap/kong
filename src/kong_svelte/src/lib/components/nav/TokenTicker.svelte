@@ -26,7 +26,7 @@
   const tokenStore = writable<FE.Token[]>([]);
 
   // Track previous prices to detect changes using a more efficient structure
-  const previousPrices = new Map<string, number>();
+  let previousPrices = new Map<string, number>();
 
   // Batch price updates using requestAnimationFrame
   let pendingUpdates = new Set<FE.Token>();
@@ -109,18 +109,34 @@
       observer.observe(tickerElement);
     }
 
-    // Set up liveQuery subscription
+    // Set up liveQuery subscription with price tracking
     const query = liveQuery(async () => {
       const tokens = await kongDB.tokens
         .where("metrics.volume_24h")
         .above(100)
         .toArray();
 
-      const sorted = [...tokens].sort((a, b) => {
-        const volumeA = Number(a.metrics?.volume_24h || 0);
-        const volumeB = Number(b.metrics?.volume_24h || 0);
-        return volumeB - volumeA;
-      }).slice(0, 10);
+      // Sort tokens by volume
+      const sorted = tokens
+        .sort((a, b) => {
+          const volumeA = Number(a.metrics?.volume_24h || 0);
+          const volumeB = Number(b.metrics?.volume_24h || 0);
+          return volumeB - volumeA;
+        })
+        .slice(0, 10); // Keep top 10 by volume
+
+      // Track price changes
+      sorted.forEach(token => {
+        const currentPrice = Number(token.metrics?.price || 0);
+        const prevPrice = previousPrices.get(token.canister_id);
+        
+        if (prevPrice !== undefined && prevPrice !== currentPrice) {
+          pendingUpdates.add(token);
+          scheduleUpdate();
+        }
+        
+        previousPrices.set(token.canister_id, currentPrice);
+      });
 
       return sorted;
     });
@@ -194,9 +210,22 @@
     return `${Math.abs(change).toFixed(2)}%`;
   }
 
-  // Update price flashes when tokens update, but only if visible
+  // Add back a modified version of the reactive statement to handle initial price tracking
   $: if ($tokenStore && isVisible) {
-    $tokenStore.forEach(updatePriceFlash);
+    $tokenStore.forEach(token => {
+      const currentPrice = Number(token.metrics?.price || 0);
+      if (!previousPrices.has(token.canister_id)) {
+        previousPrices.set(token.canister_id, currentPrice);
+      }
+    });
+  }
+
+  $: if (hoveredToken) {
+    console.log('Tokens for chart:', {
+      hoveredSymbol: hoveredToken.symbol,
+      ckUSDT: $tokenStore.find((t) => t.symbol === "ckUSDT"),
+      ICP: $tokenStore.find((t) => t.symbol === "ICP")
+    });
   }
 </script>
 
@@ -288,9 +317,17 @@
     transition:fade={{ duration: 150 }}
   >
     <div class="flex justify-between items-center px-2">
-      <span class="font-medium text-kong-text-primary"
-        >{hoveredToken.symbol}/ICP</span
-      >
+      <span class="font-medium text-kong-text-primary">
+        {#if hoveredToken.symbol === "ICP"}
+          ICP/ckUSDT
+        {:else if hoveredToken.symbol === "ckUSDT"}
+          ckUSDC/ckUSDT
+        {:else if hoveredToken.symbol === "ckUSDC"}
+          ckUSDC/ckUSDT
+        {:else}
+          {hoveredToken.symbol}/ICP
+        {/if}
+      </span>
       <div class="flex items-center gap-2">
         <span class="text-kong-text-primary font-medium">
           ${formatToNonZeroDecimal(Number(hoveredToken.metrics.price))}
@@ -308,8 +345,20 @@
     </div>
     {#key hoveredToken.address}
       <SimpleChart
-        baseToken={hoveredToken}
-        quoteToken={$tokenStore.find((t) => t.symbol === "ICP")}
+        baseToken={
+          hoveredToken.symbol === "ICP" ? 
+            hoveredToken :  // Pass ICP as base for ICP/ckUSDT
+          hoveredToken.symbol === "ckUSDT" || hoveredToken.symbol === "ckUSDC" ?
+            $tokenStore.find((t) => t.symbol === "ckUSDC") ?? hoveredToken :
+            hoveredToken
+        }
+        quoteToken={
+          hoveredToken.symbol === "ICP" ? 
+            $tokenStore.find((t) => t.symbol === "ckUSDT") ?? hoveredToken :
+          hoveredToken.symbol === "ckUSDT" || hoveredToken.symbol === "ckUSDC" ?
+            $tokenStore.find((t) => t.symbol === "ckUSDT") ?? hoveredToken :
+            $tokenStore.find((t) => t.symbol === "ICP") ?? hoveredToken
+        }
       />
     {/key}
   </button>
