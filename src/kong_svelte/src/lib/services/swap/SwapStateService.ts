@@ -87,10 +87,15 @@ function createSwapStore(): SwapStore {
 
   const { subscribe, set, update } = writable<SwapState>(initialState);
 
+  // Create a store for the swap state
+  const swapStore = { subscribe };
+
   const isInputExceedingBalance = derived(
-    [storedBalancesStore, { subscribe }],
+    [storedBalancesStore, swapStore],
     ([$storedBalancesStore, $swapState]) => {
-      if (!$swapState.payToken || !$swapState.payAmount) return false;
+      if (!$swapState.payToken || !$swapState.payAmount) {
+        return false;
+      }
       
       const balance = $storedBalancesStore[$swapState.payToken.canister_id] || BigInt(0);
       const payAmountBN = new BigNumber($swapState.payAmount);

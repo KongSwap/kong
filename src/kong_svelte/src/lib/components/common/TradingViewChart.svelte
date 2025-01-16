@@ -89,6 +89,19 @@
     debouncedFetchData.cancel();
   });
 
+  // Add the derived currentPrice
+  const currentPrice = $derived(() => {
+    const pool = $livePools.find(p => p.pool_id === selectedPoolId);
+    return pool?.price || 1000;
+  });
+
+  // Add the price update effect
+  $effect(() => {
+    if (chart?.datafeed && currentPrice) {
+      chart.datafeed.updateCurrentPrice(currentPrice);
+    }
+  });
+
   const initChart = async () => {
     if (!chartContainer || !props.quoteToken?.token_id || !props.baseToken?.token_id) {
       console.log('Missing required props for chart initialization');
@@ -116,7 +129,7 @@
     };
 
     try {
-      const dimensions = await checkDimensions();
+      const dimensions: { width: number; height: number } = await checkDimensions() as { width: number; height: number };
       await loadTradingViewLibrary();
       const isMobile = window.innerWidth < 768;
       
@@ -141,6 +154,9 @@
       });
 
       const widget = new window.TradingView.widget(chartConfig);
+      
+      // Store datafeed reference
+      widget.datafeed = datafeed;
 
       widget.onChartReady(() => {
         widget._ready = true;

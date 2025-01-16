@@ -56,12 +56,15 @@
     
     if (browser) {
       themeStore.initTheme();
+      updateWorkerService.initialize().catch(console.error);
     }
   });
 
   onDestroy(() => {
-    appLoader.destroy();
-    updateWorkerService.destroy();
+    if (browser) {
+      appLoader.destroy();
+      updateWorkerService.destroy();
+    }
   });
 </script>
 

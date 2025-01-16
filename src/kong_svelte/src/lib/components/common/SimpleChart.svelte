@@ -62,7 +62,10 @@
   }
 
   async function initChart() {
-    if (!canvas || !baseToken?.token_id || !quoteToken?.token_id) return;
+    if (!canvas || !baseToken?.token_id || !quoteToken?.token_id) {
+      console.log('Missing required tokens:', { baseToken, quoteToken });
+      return;
+    }
     isLoading = true;
 
     const ctx = canvas.getContext('2d');
@@ -73,21 +76,71 @@
     const startTime = now - 24 * 60 * 60;
 
     try {
+      console.log('Fetching chart data for:', {
+        base: baseToken.symbol,
+        quote: quoteToken.symbol,
+        baseId: baseToken.token_id,
+        quoteId: quoteToken.token_id
+      });
+
+      // Handle different pair cases
+      let baseId, quoteId;
+      
+      if (baseToken.symbol === "ckUSDC" || quoteToken.symbol === "ckUSDC") {
+        // ckUSDC/ckUSDT pair - ensure ckUSDC is always base
+        baseId = baseToken.symbol === "ckUSDC" ? baseToken.token_id : quoteToken.token_id;
+        quoteId = baseToken.symbol === "ckUSDT" ? baseToken.token_id : quoteToken.token_id;
+      } else if (baseToken.symbol === "ICP") {
+        // ICP/ckUSDT pair
+        baseId = 1; // ICP's fixed token_id
+        quoteId = quoteToken.token_id;
+      } else if (quoteToken.symbol === "ICP") {
+        // TOKEN/ICP pair
+        baseId = baseToken.token_id;
+        quoteId = 1; // ICP's fixed token_id
+      } else {
+        baseId = baseToken.token_id;
+        quoteId = quoteToken.token_id;
+      }
+
+      // Ensure we have valid IDs before fetching
+      if (!baseId || !quoteId) {
+        console.error('Invalid token IDs:', { baseId, quoteId, baseToken, quoteToken });
+        isLoading = false;
+        return;
+      }
+
       const candleData = await fetchChartData(
-        quoteToken.token_id,
-        baseToken.token_id,
+        baseId,
+        quoteId,
         startTime,
         now,
         "15"
       ) as CandleData[];
 
-      if (candleData.length === 0) return;
+      console.log('Received candle data:', {
+        length: candleData.length,
+        first: candleData[0],
+        last: candleData[candleData.length - 1]
+      });
+
+      if (candleData.length === 0) {
+        console.log('No candle data received');
+        isLoading = false;
+        return;
+      }
 
       const firstPrice = parseFloat(candleData[0].close_price as string);
       data = candleData.map(candle => ({
         x: new Date(candle.candle_start * 1000),
         y: parseFloat(candle.close_price as string)
       }));
+
+      console.log('Processed data:', {
+        length: data.length,
+        first: data[0],
+        last: data[data.length - 1]
+      });
 
       const chartColor = getChartColor(priceChange);
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -193,7 +246,8 @@
         }]
       });
     } catch (error) {
-      console.error('Failed to fetch chart data:', error);
+      console.error('Chart initialization failed:', error);
+      isLoading = false;
     } finally {
       isLoading = false;
     }

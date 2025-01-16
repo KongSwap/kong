@@ -1,156 +1,72 @@
 <script lang="ts">
-  export let totalGasFee: number;
-  export let totalLPFee: number;
+  import BigNumber from "bignumber.js";
+
+  export let gasFees: { amount: string; token: string }[] = [];
+  export let lpFees: { amount: string; token: string }[] = [];
   export let userMaxSlippage: number;
   export let receiveToken: FE.Token;
 
-  let showGasTooltip = false;
-  let showLpTooltip = false;
+  $: totalGasFee = gasFees.reduce((total, fee) => 
+    new BigNumber(total).plus(fee.amount).toString(), "0"
+  );
+  
+  $: totalLPFee = lpFees.reduce((total, fee) => 
+    new BigNumber(total).plus(fee.amount).toString(), "0"
+  );
 </script>
 
-<div class="fees-container">
-  <div class="fee-row">
-    <span class="label">
-      Gas Fee
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <span class="info-icon" on:mouseenter={() => showGasTooltip = true} on:mouseleave={() => showGasTooltip = false}>?
-        {#if showGasTooltip}
-          <div class="tooltip">Gas Fee: A network fee required to execute the transaction.</div>
+<div class="fees-section p-4">
+  <h3 class="text-sm font-medium mb-2">Fees</h3>
+  
+  <!-- Gas Fees -->
+  <div class="fee-group mb-2">
+    <span class="text-sm text-gray-400">Network Fees:</span>
+    <div class="fee-details">
+      {#each gasFees as fee}
+        {#if new BigNumber(fee.amount).gt(0)}
+          <div class="fee-item">
+            <span>{fee.amount} {fee.token}</span>
+          </div>
         {/if}
-      </span>
-    </span>
-    <div class="amount">
-      <span class="value">{totalGasFee.toFixed(6)}</span>
-      <span class="token">{receiveToken.symbol}</span>
+      {/each}
     </div>
   </div>
 
-  <div class="fee-row">
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <span class="label">
-      LP Fee
-      <span class="info-icon" on:mouseenter={() => showLpTooltip = true} on:mouseleave={() => showLpTooltip = false}>?
-        {#if showLpTooltip}
-          <div class="tooltip">LP Fee: A fee paid to liquidity providers who enable the swap.</div>
+  <!-- LP Fees -->
+  <div class="fee-group mb-2">
+    <span class="text-sm text-gray-400">Liquidity Provider Fees:</span>
+    <div class="fee-details">
+      {#each lpFees as fee}
+        {#if new BigNumber(fee.amount).gt(0)}
+          <div class="fee-item">
+            <span>{fee.amount} {fee.token}</span>
+          </div>
         {/if}
-      </span>
-    </span>
-    <div class="amount">
-      <span class="value">{totalLPFee.toFixed(6)}</span>
-      <span class="token">{receiveToken.symbol}</span>
+      {/each}
     </div>
   </div>
 
-  <div class="fee-row">
-    <span class="label">Max Slippage</span>
-    <div class="amount">
-      <span class="value">{userMaxSlippage}</span>
-      <span class="token">%</span>
-    </div>
+  <!-- Max Slippage -->
+  <div class="fee-group">
+    <span class="text-sm text-gray-400">Max Slippage:</span>
+    <span>{userMaxSlippage}%</span>
   </div>
 </div>
 
 <style>
-  .fees-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-
+  .fees-section {
+    @apply bg-opacity-50 rounded-lg;
   }
 
-  .fee-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    padding: 4px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  .fee-group {
+    @apply flex justify-between items-center;
   }
 
-  .fee-row:last-child {
-    border-bottom: none;
+  .fee-details {
+    @apply flex flex-col items-end;
   }
 
-  .label {
-    font-size: 14px;
-    @apply text-kong-text-secondary;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .amount {
-    font-size: 16px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    @apply text-kong-text-primary;
-  }
-
-  .info-icon {
-    font-size: 12px;
-    @apply bg-kong-bg-dark rounded;
-    width: 16px;
-    height: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: help;
-    position: relative;
-  }
-
-  .info-icon:hover {
-    background: rgba(255, 255, 255, 0.25);
-  }
-
-  .tooltip {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 6px;
-    @apply bg-kong-bg-dark text-kong-text-primary rounded;
-    font-size: 12px;
-    padding: 8px;
-    width: 180px;
-    @apply shadow-kong-bg-dark;
-    line-height: 1.4;
-    z-index: 10;
-  }
-
-  .tooltip::after {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: 10px;
-    border-width: 6px;
-    border-style: solid;
-    @apply border-kong-bg-dark border-t-transparent border-r-transparent border-l-transparent border-b-kong-bg-dark;
-  }
-
-  @media (max-width: 640px) {
-    .fee-row {
-      padding: 2px 0;
-    }
-
-    .label {
-      font-size: 12px;
-    }
-
-    .amount {
-      font-size: 14px;
-    }
-
-    .info-icon {
-      width: 14px;
-      height: 14px;
-      font-size: 10px;
-    }
-
-    .tooltip {
-      font-size: 11px;
-      width: 150px;
-    }
+  .fee-item {
+    @apply text-sm;
   }
 </style>

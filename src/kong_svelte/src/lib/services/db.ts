@@ -7,6 +7,7 @@ import type { KongImage, FavoriteToken, TokenBalance } from "$lib/services/token
 import type { Settings } from "$lib/services/settings/types";
 
 const CURRENT_VERSION = 20;
+const DB_OPERATION_TIMEOUT = 10000; // 5 seconds timeout
 
 interface VersionInfo {
   version: number;
@@ -155,16 +156,54 @@ export class KongDB extends Dexie {
 
   private async doReset() {
     try {
-      console.log('[DB] Starting manual database reset...');
-      await this.close();
-      await Dexie.delete("kong_db");
-      console.log('[DB] Database deleted');
+      console.log('[DB] Starting database reset...');
       
+      // Force close any pending transactions
+      await Promise.race([
+        this.transaction('rw', this.tables, async () => {
+          // Abort all transactions
+          Dexie.currentTransaction?.abort();
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Transaction abort timeout')), 1000)
+        )
+      ]).catch(err => console.warn('[DB] Transaction abort:', err));
+
+      // Close the database with timeout
+      await Promise.race([
+        this.close(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database close timeout')), DB_OPERATION_TIMEOUT)
+        )
+      ]);
+
+      // Delete the database with timeout
+      await Promise.race([
+        Dexie.delete("kong_db"),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database deletion timeout')), DB_OPERATION_TIMEOUT)
+        )
+      ]);
+
+      console.log('[DB] Database deleted successfully');
+      
+      // Clear any cached data
       this.initPromise = null;
-      await this.initialize();
-      console.log('[DB] Database reopened and reinitialized');
+      
+      // Reinitialize the database
+      await Promise.race([
+        this.initialize(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database initialization timeout')), DB_OPERATION_TIMEOUT)
+        )
+      ]);
+
+      console.log('[DB] Database successfully reset and reinitialized');
+      return true;
     } catch (error) {
-      console.error("[DB] Error resetting database:", error);
+      console.error("[DB] Error during database reset:", error);
+      // Force reload the page as a last resort
+      window.location.reload();
       throw error;
     }
   }

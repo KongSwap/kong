@@ -10,6 +10,7 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { createEventDispatcher } from "svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
+    import BigNumber from "bignumber.js";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -19,8 +20,15 @@
   export let userMaxSlippage: number;
   export let onClose: () => void;
   export let onConfirm: () => Promise<boolean>;
-  export let gasFees: string[] = [];
-  export let lpFees: string[] = [];
+
+  interface Fee {
+    amount: string;
+    token: string;
+    decimals: number;
+  }
+
+  let gasFees: Fee[] = [];
+  let lpFees: Fee[] = [];
 
   let isLoading = false;
   let error = "";
@@ -107,12 +115,14 @@
     }
   });
 
-  function calculateTotalFee(lpFees) {
-    if (!lpFees || !Array.isArray(lpFees)) {
-      return 0;
+  function calculateTotalFee(fees: Fee[]): string {
+    if (!fees || !Array.isArray(fees)) {
+      return "0";
     }
 
-    return lpFees.reduce((total, fee) => total + Number(fee), 0);
+    return fees.reduce((total, fee) => {
+      return new BigNumber(total).plus(new BigNumber(fee.amount)).toString();
+    }, "0");
   }
 
   function cleanComponent() {
@@ -135,7 +145,7 @@
       );
 
       if ("Ok" in quote) {
-        receiveAmount = SwapService.fromBigInt(
+        receiveAmount = formatBalance(
           quote.Ok.receive_amount,
           receiveToken.decimals,
         );
@@ -148,21 +158,22 @@
             ...quote.Ok.txs.map((tx) => tx.receive_symbol),
           ];
 
-          // Only update fees if they exist in the quote
-          const newGasFees = quote.Ok.txs.map((tx) =>
-            SwapService.fromBigInt(tx.gas_fee, receiveToken.decimals),
-          );
-          const newLpFees = quote.Ok.txs.map((tx) =>
-            SwapService.fromBigInt(tx.lp_fee, receiveToken.decimals),
-          );
+          // Update fees for each step in the path
+          gasFees = quote.Ok.txs.map((tx) => {
+            return {
+              amount: formatBalance(tx.gas_fee.toString(), tx.receive_symbol === "ICP" ? 8 : receiveToken.decimals),
+              token: tx.receive_symbol,
+              decimals: tx.receive_symbol === "ICP" ? 8 : receiveToken.decimals
+            };
+          });
 
-          // Only update if we have valid fees
-          if (newGasFees.length > 0) {
-            gasFees = newGasFees;
-          }
-          if (newLpFees.length > 0) {
-            lpFees = newLpFees;
-          }
+          lpFees = quote.Ok.txs.map((tx) => {
+            return {
+              amount: formatBalance(tx.lp_fee.toString(), tx.receive_symbol === "ICP" ? 8 : receiveToken.decimals),
+              token: tx.receive_symbol,
+              decimals: tx.receive_symbol === "ICP" ? 8 : receiveToken.decimals
+            };
+          });
         }
       } else {
         error = quote.Err;
@@ -205,8 +216,8 @@
           />
           <RouteSection routingPath={quoteData.routingPath} />
           <FeesSection
-            totalGasFee={calculateTotalFee(quoteData.gasFees)}
-            totalLPFee={calculateTotalFee(quoteData.lpFees)}
+            {gasFees}
+            {lpFees}
             {userMaxSlippage}
             {receiveToken}
           />

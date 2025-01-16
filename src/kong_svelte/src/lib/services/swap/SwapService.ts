@@ -367,9 +367,9 @@ export class SwapService {
       }
 
       const swapParams = {
-        pay_token: params.payToken.symbol,
+        pay_token: "IC." + params.payToken.address,
         pay_amount: BigInt(payAmount),
-        receive_token: params.receiveToken.symbol,
+        receive_token: "IC." + params.receiveToken.address,
         receive_amount: [],
         max_slippage: [params.userMaxSlippage],
         receive_address: [],

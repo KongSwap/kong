@@ -2,52 +2,95 @@
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import Panel from "$lib/components/common/Panel.svelte";
+  import { TokenService } from "$lib/services/tokens";
+  import { onMount } from "svelte";
+  import { InfoIcon } from "lucide-svelte";
+  import { tooltip } from "$lib/actions/tooltip";
+  import { kongDB } from "$lib/services/db";
+  import { liveQuery } from "dexie";
 
   export let token: FE.Token;
   export let marketCapRank: number | null;
 
   let previousPrice: number | null = null;
   let priceFlash: 'up' | 'down' | null = null;
+  let priceFlashTimeout: NodeJS.Timeout;
+
+  // Subscribe to live token updates
+  $: liveToken = liveQuery(async () => {
+    return await kongDB.tokens.get(token.canister_id);
+  });
+
+  // Use the live token data with fallback to prop token
+  $: activeToken = $liveToken || token;
+
+  // Track price changes efficiently
+  $: {
+    const currentPrice = Number(activeToken?.metrics?.price || 0);
+    if (previousPrice !== null && currentPrice !== previousPrice) {
+      if (priceFlashTimeout) {
+        clearTimeout(priceFlashTimeout);
+      }
+      priceFlash = currentPrice > previousPrice ? 'up' : 'down';
+      priceFlashTimeout = setTimeout(() => priceFlash = null, 1000);
+    }
+    previousPrice = currentPrice;
+  }
 
   function calculateVolumePercentage(volume: number, marketCap: number): string {
     if (!marketCap) return "0.00%";
     return ((volume / marketCap) * 100).toFixed(2) + "%";
   }
 
-  // Watch for price changes
-  $: {
-    const currentPrice = Number(token?.metrics?.price || 0);
-    if (previousPrice !== null && currentPrice !== previousPrice) {
-      priceFlash = currentPrice > previousPrice ? 'up' : 'down';
-      setTimeout(() => priceFlash = null, 1000);
-    }
-    previousPrice = currentPrice;
-  }
+  onMount(async () => {
+    const pollInterval = setInterval(async () => {
+      try {
+        await TokenService.fetchTokens();
+      } catch (error) {
+        console.error("Error polling token data:", error);
+      }
+    }, 1000 * 15);
+
+    return () => {
+      clearInterval(pollInterval);
+      if (priceFlashTimeout) {
+        clearTimeout(priceFlashTimeout);
+      }
+    };
+  });
+
+  // Use activeToken instead of directly using $liveToken
+  $: formattedPrice = formatUsdValue(activeToken?.metrics?.price || 0);
+  $: formattedPriceChange24h = Number(activeToken?.metrics?.price_change_24h) || 0;
 </script>
 
 <Panel variant="transparent" type="main" className="p-6">
   <div class="flex flex-col gap-8">
     <!-- Price Section -->
     <div>
-      <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2">Current Price</div>
+      <div class="text-sm text-kong-text-primary/50 uppercase tracking-wider mb-2"
+      >
+      <span class="flex gap-x-2 items-center">
+        Current Price       <span use:tooltip={{
+          text: "This is a weighted average price of all pools",
+          direction: "bottom",
+        }}><InfoIcon size={16} /> 
+      </span>
+      </div>
       <div class="flex flex-col gap-2">
         <div 
           class="text-[32px] font-medium text-kong-text-primary"
-          class:flash-green={priceFlash === 'up'}
-          class:flash-red={priceFlash === 'down'}
+          class:flash-green-text={priceFlash === 'up'}
+          class:flash-red-text={priceFlash === 'down'}
         >
-          {formatUsdValue(token?.metrics?.price || 0)}
+          {formattedPrice}
         </div>
-        {#if token?.metrics?.price_change_24h && token.metrics.price_change_24h !== "n/a"}
+        {#if formattedPriceChange24h}
           <div class="text-sm">
             <span
-              class={Number(token.metrics.price_change_24h) > 0
-                ? "text-green-400"
-                : "text-red-400"}
+              class={formattedPriceChange24h > 0 ? "text-green-400" : "text-red-400"}
             >
-              {Number(token.metrics.price_change_24h) > 0 ? "+" : ""}{Number(
-                token.metrics.price_change_24h,
-              ).toFixed(2)}%
+              {formattedPriceChange24h > 0 ? "+" : ""}{formattedPriceChange24h.toFixed(2)}%
             </span>
             <span class="text-kong-text-primary/40 ml-1">24h</span>
           </div>
@@ -115,11 +158,11 @@
 </Panel>
 
 <style>
-  .flash-green {
+  .flash-green-text {
     animation: flashGreen 1s ease-out;
   }
   
-  .flash-red {
+  .flash-red-text {
     animation: flashRed 1s ease-out;
   }
   

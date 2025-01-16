@@ -164,12 +164,36 @@
 
   async function resetDatabase() {
     try {
-      await kongDB.delete();
-      toastStore.success('Database cleared successfully');
-      window.location.reload();
+      if (confirm('Are you sure you want to reset the application? This will clear all data and reload the page.')) {
+        // Disable the button to prevent multiple clicks
+        const button = document.activeElement as HTMLButtonElement;
+        if (button) button.disabled = true;
+        
+        // Show loading toast
+        toastStore.info('Resetting application...');
+        
+        // Try to reset database with timeout
+        await Promise.race([
+          kongDB.resetDatabase(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Reset timeout')), 5000)
+          )
+        ]);
+
+        toastStore.success('Reset successful, reloading...');
+        
+        // Small delay to show the success message
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Force reload the page
+        window.location.reload();
+      }
     } catch (error) {
-      console.error('Error clearing database:', error);
-      toastStore.error('Failed to clear database');
+      console.error('Error resetting database:', error);
+      toastStore.error('Reset failed, forcing reload...');
+      
+      // Force reload as fallback
+      setTimeout(() => window.location.reload(), 1000);
     }
   }
 
@@ -362,8 +386,8 @@
         </div>
 
         <div class="settings-item">
-          <span class="text-sm">Reload Application</span>
-          <button class="btn-destructive" on:click={resetDatabase}>Reload</button>
+          <span class="text-sm">Reset Application</span>
+          <button class="btn-destructive" on:click={resetDatabase}>Reset</button>
         </div>
       </div>
     </div>

@@ -1,6 +1,4 @@
-import { INDEXER_URL } from '$lib/constants/canisterConstants';
 import { fetchChartData } from '$lib/services/indexer/api';
-import type { CandleData } from "$lib/services/indexer/api";
 
 // Configuration for the datafeed
 const configurationData = {
@@ -35,6 +33,7 @@ export class KongDatafeed {
   private toTokenId: number;
   public lastBar: Bar | null = null;
   private currentPrice: number;
+  private onRealtimeCallback: ((bar: Bar) => void) | null = null;
 
   constructor(fromTokenId: number, toTokenId: number, currentPrice: number) {
     this.fromTokenId = fromTokenId;
@@ -158,68 +157,75 @@ export class KongDatafeed {
     onRealtimeCallback: (bar: Bar) => void,
     subscriberUID: string
   ): void {
+    this.onRealtimeCallback = onRealtimeCallback;  // Store callback for price updates
+    
     if (!this.fromTokenId || !this.toTokenId) {
-      return;
+        console.log('Missing token IDs:', { fromTokenId: this.fromTokenId, toTokenId: this.toTokenId });
+        return;
     }
     
     const poll = async () => {
-      if (!this.lastBar) return;
+        try {
+            const now = Math.floor(Date.now() / 1000);
+            // Get data starting from the last known bar time, or 5 minutes ago if no last bar
+            const startTime = this.lastBar 
+                ? Math.floor(this.lastBar.time / 1000)  // Convert ms to seconds
+                : now - 300;
 
-      try {
-        // Get current time in UTC
-        const now = new Date();
-        const endTime = now.toISOString();
-        
-        // Create UTC date from lastBar.time (which is in milliseconds)
-        const lastBarDate = new Date(this.lastBar.time);
-        const startTime = lastBarDate.toISOString();
-        
-        const interval = resolution === '60' ? '1h' : '1d';
+            const data = await fetchChartData(
+                this.fromTokenId,
+                this.toTokenId,
+                startTime,
+                now,
+                resolution
+            );
 
-        const url = `${INDEXER_URL}/api/swaps/ohlc?pay_token_id=${this.fromTokenId}&receive_token_id=${this.toTokenId}&start_time=${startTime}&end_time=${endTime}&interval=${interval}`;
+            if (!data || data.length === 0) return;
 
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+            const bars = data
+                .map(candle => ({
+                    time: candle.candle_start,
+                    open: Number(candle.open_price),
+                    high: Number(candle.high_price),
+                    low: Number(candle.low_price),
+                    close: Number(candle.close_price),
+                    volume: Number(candle.volume)
+                }))
+                .filter((bar): bar is Bar => 
+                    bar !== null && 
+                    !isNaN(bar.open) && 
+                    !isNaN(bar.high) && 
+                    !isNaN(bar.low) && 
+                    !isNaN(bar.close) && 
+                    !isNaN(bar.volume)
+                )
+                .sort((a, b) => a.time - b.time);
+
+            if (bars.length > 0) {
+                const latestBar = bars[bars.length - 1];
+
+                // If we don't have a last bar or this is a new bar
+                if (!this.lastBar || latestBar.time > this.lastBar.time) {
+                    this.lastBar = latestBar;
+                    onRealtimeCallback(latestBar);
+                } 
+                // If this is an update to the current bar
+                else if (latestBar.time === this.lastBar.time && 
+                    (latestBar.close !== this.lastBar.close || 
+                     latestBar.high !== this.lastBar.high || 
+                     latestBar.low !== this.lastBar.low || 
+                     latestBar.volume !== this.lastBar.volume)) {
+                    this.lastBar = latestBar;
+                    onRealtimeCallback(latestBar);
+                }
+            }
+        } catch (error) {
+            console.error('[subscribeBars]: Error polling updates', error);
         }
-
-        const data = await response.json();
-        if (!data || !Array.isArray(data) || data.length === 0) return;
-
-        const bars = data
-          .map(bar => ({
-            time: bar.candle_start,
-            open: Number(bar.open_price),
-            high: Number(bar.high_price),
-            low: Number(bar.low_price),
-            close: Number(bar.close_price),
-            volume: Number(bar.volume)
-          }))
-          .filter((bar): bar is Bar => 
-            bar !== null && 
-            !isNaN(bar.open) && 
-            !isNaN(bar.high) && 
-            !isNaN(bar.low) && 
-            !isNaN(bar.close) && 
-            !isNaN(bar.volume)
-          )
-          .sort((a, b) => a.time - b.time);
-
-        // Add debug logging
-        if (bars.length > 0 && this.lastBar) {
-          const latestBar = bars[bars.length - 1];
-
-          if (latestBar.time > this.lastBar.time) {
-            this.lastBar = latestBar;
-            onRealtimeCallback(this.lastBar);
-          }
-        }
-      } catch (error) {
-        console.error('[subscribeBars]: Error polling updates', error);
-      }
     };
 
-    const interval = setInterval(poll, 10000);
+    console.log('Setting up polling interval');
+    const interval = setInterval(poll, 4000);
     (this as any)[subscriberUID] = interval;
   }
 
@@ -228,6 +234,31 @@ export class KongDatafeed {
     if (interval) {
       clearInterval(interval);
       delete (this as any)[subscriberUID];
+    }
+  }
+
+  public updateCurrentPrice(newPrice: number) {
+    if (newPrice === this.currentPrice) return;
+    
+    this.currentPrice = newPrice;
+    if (this.lastBar && this.onRealtimeCallback) {
+      
+      const updatedBar = {
+        ...this.lastBar,
+        high: Math.max(this.lastBar.high, newPrice),
+        low: Math.min(this.lastBar.low, newPrice),
+        close: newPrice,
+        open: this.lastBar.open,
+        volume: this.lastBar.volume
+      };
+      
+      this.lastBar = updatedBar;
+      this.onRealtimeCallback(updatedBar);
+    } else {
+      console.log('No lastBar or callback available', {
+        hasLastBar: !!this.lastBar,
+        hasCallback: !!this.onRealtimeCallback
+      });
     }
   }
 } 

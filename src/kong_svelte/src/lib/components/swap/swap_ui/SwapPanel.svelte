@@ -1,18 +1,24 @@
 <script lang="ts">
-	import { formatTokenBalance } from '$lib/utils/tokenFormatters';
+  import { formatTokenBalance } from "$lib/utils/tokenFormatters";
   import Panel from "$lib/components/common/Panel.svelte";
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
-  import { tokenStore, loadBalance, liveTokens, storedBalancesStore } from "$lib/services/tokens/tokenStore";
+  import {
+    tokenStore,
+    loadBalance,
+    liveTokens,
+    storedBalancesStore,
+  } from "$lib/services/tokens/tokenStore";
   import { formatToNonZeroDecimal } from "$lib/utils/numberFormatUtils";
   import { toastStore } from "$lib/stores/toastStore";
   import { swapState } from "$lib/services/swap/SwapStateService";
   import TokenImages from "$lib/components/common/TokenImages.svelte";
   import TokenSelectorDropdown from "./TokenSelectorDropdown.svelte";
   import { onMount } from "svelte";
-  
+  import Modal from "$lib/components/common/Modal.svelte";
+
   // Props with proper TypeScript types
-  let { 
+  let {
     title,
     token,
     amount,
@@ -23,7 +29,7 @@
     slippage,
     panelType,
     otherToken,
-    isLoading = false 
+    isLoading = false,
   } = $props<{
     title: string;
     token: FE.Token;
@@ -55,31 +61,32 @@
   let isMobile = $state(false);
   let lastBalanceCheck = $state<Record<string, number>>({});
   const DEBOUNCE_DELAY = 1000; // 1 second between balance checks
+  let showOnramperModal = $state(false);
 
   // Derived state using runes
-  let tokenInfo = $derived($liveTokens.find(
-    (t) => t.canister_id === token?.canister_id,
-  ));
-  
+  let tokenInfo = $derived(
+    $liveTokens.find((t) => t.canister_id === token?.canister_id),
+  );
+
   let decimals = $derived(tokenInfo?.decimals || DEFAULT_DECIMALS);
   let isIcrc1 = $derived(tokenInfo?.icrc1 && !tokenInfo?.icrc2);
 
   // Initialize window-dependent values
   let windowWidth = $state(0);
   let windowHeight = $state(0);
-  let expandDirection = $state('down'); // default value
+  let expandDirection = $state("down"); // default value
 
   // Browser-only initialization
   onMount(() => {
     const checkMobile = () => {
       isMobile = window.innerWidth <= 420;
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
 
     return () => {
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener("resize", checkMobile);
     };
   });
 
@@ -102,34 +109,40 @@
   // Format number with commas for display
   function formatWithCommas(value: string): string {
     if (!value) return "0";
-    const parts = value.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
+    const parts = value.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join(".");
   }
 
   // Function to get max decimals based on screen width
   function getMaxDisplayDecimals(): number {
-    return isMobile ? MAX_DISPLAY_DECIMALS_MOBILE : MAX_DISPLAY_DECIMALS_DESKTOP;
+    return isMobile
+      ? MAX_DISPLAY_DECIMALS_MOBILE
+      : MAX_DISPLAY_DECIMALS_DESKTOP;
   }
 
   // Format display value with proper decimals
   function formatDisplayValue(value: string): string {
     if (!value || value === "0") return "0";
-    
-    const parts = value.split('.');
+
+    const parts = value.split(".");
     const maxDecimals = getMaxDisplayDecimals();
-    
+
     if (parts.length === 2) {
-      if (panelType === "receive" && parts[1].length > maxDecimals && decimals > maxDecimals) {
+      if (
+        panelType === "receive" &&
+        parts[1].length > maxDecimals &&
+        decimals > maxDecimals
+      ) {
         parts[1] = parts[1].slice(0, maxDecimals) + "...";
       } else {
         parts[1] = parts[1].slice(0, maxDecimals);
       }
-      
+
       if (parts[1].length === 0) return parts[0];
-      return parts.join('.');
+      return parts.join(".");
     }
-    
+
     return parts[0];
   }
 
@@ -148,17 +161,15 @@
     const isPending = $tokenStore.pendingBalanceRequests.has(canisterId);
     const now = Date.now();
     const lastCheck = lastBalanceCheck[canisterId] || 0;
-    
-    if (!isPending && 
-               (now - lastCheck) > DEBOUNCE_DELAY) {
-      
+
+    if (!isPending && now - lastCheck > DEBOUNCE_DELAY) {
       // Update last check time
       lastBalanceCheck[canisterId] = now;
-      
+
       // Load balance
       queueMicrotask(() => {
         if (!$tokenStore.pendingBalanceRequests.has(canisterId)) {
-          loadBalance(canisterId, false);
+          loadBalance(canisterId, true);
         }
       });
     }
@@ -193,23 +204,23 @@
   // Event handlers
   function handleInput(event: Event) {
     const input = event.target as HTMLInputElement;
-    let value = input.value.replace(/,/g, '');
+    let value = input.value.replace(/,/g, "");
 
     if (!isValidNumber(value)) {
       input.value = previousValue;
       return;
     }
 
-    if (value.includes('.')) {
-      const [whole, decimal] = value.split('.');
+    if (value.includes(".")) {
+      const [whole, decimal] = value.split(".");
       value = `${whole}.${decimal.slice(0, decimals)}`;
     }
 
-    if (value.length > 1 && value.startsWith('0') && value[1] !== '.') {
-      value = value.replace(/^0+/, '');
+    if (value.length > 1 && value.startsWith("0") && value[1] !== ".") {
+      value = value.replace(/^0+/, "");
     }
 
-    if (!value || value === '.') {
+    if (!value || value === ".") {
       value = "0";
     }
 
@@ -245,12 +256,13 @@
 
         // Calculate fees
         const feesInTokens = tokenInfo.fee_fixed
-          ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, '')) * (isIcrc1 ? 1n : 2n)
+          ? BigInt(tokenInfo.fee_fixed.toString().replace(/_/g, "")) *
+            (isIcrc1 ? 1n : 2n)
           : 0n;
 
         // Subtract fees from balance
         const availableBalance = balance - feesInTokens;
-        
+
         if (availableBalance <= 0n) {
           toastStore.error("Insufficient balance to cover fees");
           return;
@@ -259,7 +271,7 @@
         // Convert to display format
         const maxAmount = formatTokenBalance(
           availableBalance.toString(),
-          token.decimals
+          token.decimals,
         );
 
         // Set the input value
@@ -273,7 +285,6 @@
             detail: { value: maxAmount, panelType },
           }),
         );
-
       } catch (error) {
         console.error("Error in handleMaxClick:", error);
         toastStore.error("Failed to set maximum amount");
@@ -284,31 +295,31 @@
   // Token selector functionality
   function handleTokenSelect(event: MouseEvent) {
     if (disabled) return;
-    
+
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const position = {
       x: rect.right + 8,
       y: rect.top,
-      windowWidth
+      windowWidth,
     };
 
     if (panelType === "pay") {
       const currentState = $swapState.showPayTokenSelector;
-      swapState.update(s => ({
+      swapState.update((s) => ({
         ...s,
         showPayTokenSelector: !currentState,
         showReceiveTokenSelector: false,
         tokenSelectorPosition: position,
-        tokenSelectorOpen: 'pay'
+        tokenSelectorOpen: "pay",
       }));
     } else {
       const currentState = $swapState.showReceiveTokenSelector;
-      swapState.update(s => ({
+      swapState.update((s) => ({
         ...s,
         showReceiveTokenSelector: !currentState,
         showPayTokenSelector: false,
         tokenSelectorPosition: position,
-        tokenSelectorOpen: 'receive'
+        tokenSelectorOpen: "receive",
       }));
     }
 
@@ -325,7 +336,9 @@
   let displayAmount = $derived(formatDisplayValue(amount || "0"));
   let formattedDisplayAmount = $derived(formatWithCommas(displayAmount));
   let parsedAmount = $derived(parseFloat(displayAmount || "0"));
-  let tokenPrice = $derived(tokenInfo ? Number(tokenInfo.metrics.price || 0) : 0);
+  let tokenPrice = $derived(
+    tokenInfo ? Number(tokenInfo.metrics.price || 0) : 0,
+  );
   let tradeUsdValue = $derived(tokenPrice * parsedAmount);
 
   // Use onMount to safely access window properties
@@ -341,30 +354,25 @@
     };
 
     // Add event listener
-    window.addEventListener('resize', updateWindowDimensions);
+    window.addEventListener("resize", updateWindowDimensions);
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', updateWindowDimensions);
+      window.removeEventListener("resize", updateWindowDimensions);
     };
   });
 
   // Use $effect for the direction calculation
   $effect(() => {
-    if (typeof window !== 'undefined') { // Check if we're in browser environment
-      expandDirection = $swapState.tokenSelectorPosition?.y > (windowHeight / 2) 
-        ? 'up' 
-        : 'down';
+    if (typeof window !== "undefined") {
+      // Check if we're in browser environment
+      expandDirection =
+        $swapState.tokenSelectorPosition?.y > windowHeight / 2 ? "up" : "down";
     }
   });
 
-  // Helper function to update display values
-  function updateDisplayValues(balance: bigint) {
-    displayBalance = formatTokenBalance(
-      balance.toString(),
-      tokenInfo?.decimals || DEFAULT_DECIMALS
-    );
-    formattedBalance = calculateAvailableBalance(balance);
+  function toggleOnramperModal() {
+    showOnramperModal = !showOnramperModal;
   }
 </script>
 
@@ -384,12 +392,12 @@
           {title}
         </h2>
         <div class="flex items-center gap-2">
-          {#if panelType === "pay" && process.env.DFX_NETWORK !== 'ic'}
-            <button 
+          {#if panelType === "pay"}
+            <button
               class="onramp-button"
-              on:click={() => {
-                const event = new CustomEvent('onramp');
-                window.dispatchEvent(event);
+              on:click={(e) => {
+                e.preventDefault();
+                window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
               }}
             >
               Buy ICP with Fiat
@@ -455,12 +463,12 @@
                 y: rect.top,
                 height: rect.height,
                 windowHeight: window.innerHeight,
-                windowWidth: window.innerWidth
+                windowWidth: window.innerWidth,
               };
-              swapState.update(s => ({
+              swapState.update((s) => ({
                 ...s,
                 tokenSelectorPosition: position,
-                tokenSelectorOpen: panelType
+                tokenSelectorOpen: panelType,
               }));
               handleTokenSelect(event);
             }}
@@ -470,23 +478,42 @@
                 <TokenImages tokens={[token]} size={32} />
                 <span class="token-symbol hide-on-mobile">{token.symbol}</span>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
-                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="chevron"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clip-rule="evenodd"
+                />
               </svg>
             {:else}
               <span class="select-token-text">Select Token</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="chevron">
-                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="chevron"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clip-rule="evenodd"
+                />
               </svg>
             {/if}
           </button>
           <TokenSelectorDropdown
             show={$swapState.tokenSelectorOpen === panelType}
             onSelect={() => {
-              swapState.update(s => ({ ...s, tokenSelectorOpen: null }));
+              swapState.update((s) => ({ ...s, tokenSelectorOpen: null }));
               onTokenSelect();
             }}
-            onClose={() => swapState.update(s => ({ ...s, tokenSelectorOpen: null }))}
+            onClose={() =>
+              swapState.update((s) => ({ ...s, tokenSelectorOpen: null }))}
             currentToken={token}
             otherPanelToken={otherToken}
             {expandDirection}
@@ -498,14 +525,21 @@
     <footer class="text-kong-text-primary text-[clamp(0.75rem,2vw,0.875rem)]">
       <div class="flex justify-between items-center leading-6">
         <div class="flex items-center gap-2">
-          <span class="text-kong-text-primary font-normal tracking-wide mobile-text">Value</span>
-          <span class="pl-1 text-kong-text-primary font-medium tracking-wide mobile-text">
+          <span
+            class="text-kong-text-primary font-normal tracking-wide mobile-text"
+            >Value</span
+          >
+          <span
+            class="pl-1 text-kong-text-primary font-medium tracking-wide mobile-text"
+          >
             ${formatToNonZeroDecimal(tradeUsdValue)}
           </span>
         </div>
         {#if token}
           <div class="flex items-center gap-2">
-            <span class="text-kong-text-primary font-normal tracking-wide mobile-text">
+            <span
+              class="text-kong-text-primary font-normal tracking-wide mobile-text"
+            >
               Available:
             </span>
             <button
@@ -513,7 +547,11 @@
               class:clickable={title === "You Pay" && !disabled}
               on:click={handleMaxClick}
             >
-              {formatTokenBalance($storedBalancesStore[token.canister_id]?.in_tokens.toString() || "0", token.decimals)}
+              {formatTokenBalance(
+                $storedBalancesStore[token.canister_id]?.in_tokens.toString() ||
+                  "0",
+                token.decimals,
+              )}
               {token.symbol}
             </button>
           </div>
@@ -522,6 +560,23 @@
     </footer>
   </div>
 </Panel>
+
+<Modal
+  isOpen={showOnramperModal}
+  onClose={toggleOnramperModal}
+  title="Buy ICP with Fiat"
+  width="420px"
+  height="630px"
+>
+  <iframe
+    src="https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy"
+    title="Onramper Widget"
+    height="630px"
+    width="420px"
+    allow="accelerometer; autoplay; camera; gyroscope; payment; microphone"
+    class="w-full h-full"
+  />
+</Modal>
 
 <style lang="postcss">
   .clickable:hover {
@@ -631,11 +686,13 @@
   }
 
   @keyframes bounce {
-    0%, 80%, 100% { 
+    0%,
+    80%,
+    100% {
       transform: scale(0);
       opacity: 0.3;
     }
-    40% { 
+    40% {
       transform: scale(1);
       opacity: 1;
     }

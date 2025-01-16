@@ -1,47 +1,14 @@
 <script lang="ts">
   import { liveTokens } from '$lib/services/tokens/tokenStore';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { SwapService } from '$lib/services/swap/SwapService';
   import Swap from '$lib/components/swap/Swap.svelte';
   import SwapPro from '$lib/components/swap/SwapPro.svelte';
   import { page } from '$app/stores';
-  import { loadMoonPay } from '@moonpay/moonpay-js';
   
   let fromToken: FE.Token | null = null;
   let toToken: FE.Token | null = null;
   let currentMode: 'normal' | 'pro' = 'normal';
-  let moonPaySdk: any;
-
-  const showMoonPay = async () => {
-    if (moonPaySdk) {
-      await moonPaySdk.show();
-    }
-  };
-
-  onMount(async () => {
-    const moonPay = await loadMoonPay();
-    moonPaySdk = moonPay({
-      flow: 'buy',
-      environment: 'production',
-      variant: 'overlay',
-      params: {
-        apiKey: process.env.MOONPAY_API_KEY,
-        theme: 'dark',
-        baseCurrencyCode: 'usd',
-        baseCurrencyAmount: '100',
-        defaultCurrencyCode: 'icp_icp'
-      }
-    });
-
-    const handleOnramp = () => {
-      showMoonPay();
-    };
-
-    window.addEventListener('onramp', handleOnramp);
-    return () => {
-      window.removeEventListener('onramp', handleOnramp);
-    };
-  });
 
   $: if ($liveTokens && $liveTokens.length > 0) {
     const fromCanisterId = $page.url.searchParams.get('from');
