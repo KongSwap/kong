@@ -13,6 +13,7 @@ import { appLoader } from "$lib/services/appLoader";
 import { kongDB } from "./db";
 import { TokenService } from "./tokens";
 import { PoolService } from "./pools";
+import { browser } from '$app/environment';
 
 class UpdateWorkerService {
   private stateWorker: Worker | null = null;
@@ -46,10 +47,16 @@ class UpdateWorkerService {
   }
 
   destroy() {
+    if (!browser) return;
+    
     if (this.stateWorker) {
       this.stateWorker.terminate();
       this.stateWorker = null;
       this.stateWorkerApi = null;
+    }
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
     }
   }
 
