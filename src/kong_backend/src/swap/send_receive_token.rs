@@ -29,7 +29,7 @@ pub async fn send_receive_token(
     slippage: f64,
     txs: &[SwapCalc],
     ts: u64,
-) -> Result<SwapReply, String> {
+) -> SwapReply {
     let pay_token_id = pay_token.token_id();
     let receive_token_id = receive_token.token_id();
 
@@ -100,5 +100,5 @@ pub async fn send_receive_token(
     };
     request_map::update_reply(request_id, Reply::Swap(reply.clone()));
 
-    Ok(reply)
+    reply
 }
