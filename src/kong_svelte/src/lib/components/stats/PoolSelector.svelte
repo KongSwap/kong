@@ -1,10 +1,8 @@
 <script lang="ts">
   import { portal } from 'svelte-portal';
-  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import type { Pool } from "$lib/services/pools";
+  import TokenImages from "$lib/components/common/TokenImages.svelte";
   import { formatUsdValue } from "$lib/utils/tokenFormatters";
-    import ButtonV2 from '../common/ButtonV2.svelte';
-    import { goto } from '$app/navigation';
 
   export let selectedPool: Pool | undefined;
   export let token: FE.Token;
@@ -99,7 +97,7 @@
             on:click|stopPropagation
           >
             {#if relevantPools?.length}
-              {#each relevantPools as pool}
+              {#each relevantPools.sort((a, b) => Number(b.tvl) - Number(a.tvl)) as pool}
                 <button
                   type="button"
                   class="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors duration-200 {pool.pool_id === selectedPool?.pool_id ? 'bg-white/10' : ''}"

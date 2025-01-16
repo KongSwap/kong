@@ -8,7 +8,7 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
-  import { ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import { CKUSDC_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
@@ -77,10 +77,31 @@
     const relevantPools = $livePools.filter((p) => {
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
-      const hasTVL = Number(p.tvl) > 0;
-      const hasVolume = Number(p.volume_24h) > 0;
-      return hasToken && hasTVL && hasVolume;
+
+      return hasToken;
     });
+
+    // For CKUSDT, prioritize the CKUSDC/CKUSDT pool if it exists and has TVL
+    if (token.canister_id === CKUSDT_CANISTER_ID) {
+      const ckusdcPool = $livePools.find(p => {
+        const isCorrectPair = (
+          (p.address_0 === CKUSDC_CANISTER_ID && p.address_1 === CKUSDT_CANISTER_ID) ||
+          (p.address_0 === CKUSDT_CANISTER_ID && p.address_1 === CKUSDC_CANISTER_ID)
+        );
+        return isCorrectPair;
+      });
+
+      if (ckusdcPool) {
+        selectedPool = {
+          ...ckusdcPool,
+          pool_id: String(ckusdcPool.pool_id),
+          tvl: String(ckusdcPool.tvl),
+          lp_token_supply: String(ckusdcPool.lp_token_supply),
+        } as unknown as BE.Pool;
+        initialPoolSet = true;
+        return;
+      }
+    }
 
     if (relevantPools.length === 0) {
       // If no pools with volume, fall back to pools with just TVL
@@ -88,8 +109,7 @@
         const hasToken =
           p.address_0 === token.canister_id ||
           p.address_1 === token.canister_id;
-        const hasTVL = Number(p.tvl) > 0;
-        return hasToken && hasTVL;
+        return hasToken;
       });
 
       if (poolsWithTvl.length > 0) {

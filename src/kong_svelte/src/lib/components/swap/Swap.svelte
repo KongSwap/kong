@@ -728,8 +728,6 @@
       payAmount={$swapState.payAmount}
       receiveToken={$swapState.receiveToken}
       receiveAmount={$swapState.receiveAmount}
-      gasFees={$swapState.gasFees}
-      lpFees={$swapState.lpFees}
       {userMaxSlippage}
       routingPath={$swapState.routingPath}
       onConfirm={handleSwap}

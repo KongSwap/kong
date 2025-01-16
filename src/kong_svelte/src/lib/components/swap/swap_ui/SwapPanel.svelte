@@ -371,15 +371,6 @@
     }
   });
 
-  // Helper function to update display values
-  function updateDisplayValues(balance: bigint) {
-    displayBalance = formatTokenBalance(
-      balance.toString(),
-      tokenInfo?.decimals || DEFAULT_DECIMALS,
-    );
-    formattedBalance = calculateAvailableBalance(balance);
-  }
-
   function toggleOnramperModal() {
     showOnramperModal = !showOnramperModal;
   }
@@ -404,15 +395,9 @@
           {#if panelType === "pay"}
             <button
               class="onramp-button"
-              target="_blank"
-              rel="noopener noreferrer"
               on:click={(e) => {
                 e.preventDefault();
-                window.open(
-                  "https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp",
-                  "_blank",
-                  "width=500,height=650",
-                );
+                window.open("https://buy.onramper.com/?apikey=pk_prod_01JHJ6KCSBFD6NEN8Q9PWRBKXZ&mode=buy&defaultCrypto=icp_icp", '_blank', 'width=500,height=650');
               }}
             >
               Buy ICP with Fiat
