@@ -1,8 +1,8 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import { IcrcService } from "$lib/services/icrc/IcrcService";
   import { toastStore } from "$lib/stores/toastStore";
   import { Principal } from "@dfinity/principal";
-  import Modal from "$lib/components/common/Modal.svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
   import BigNumber from "bignumber.js";
   import QrScanner from "$lib/components/common/QrScanner.svelte";
@@ -39,6 +39,8 @@
       : {
           default: BigInt(0),
         };
+
+  const dispatch = createEventDispatcher();
 
   async function loadTokenFee() {
     try {
@@ -294,6 +296,7 @@
         toastStore.success(`Successfully sent ${token.symbol}`);
         recipientAddress = "";
         amount = "";
+        dispatch('close');
         await loadBalances();
       } else if (result?.Err) {
         const errMsg =

@@ -23,6 +23,6 @@
   height="auto"
 >
   <div class="tab-content">
-    <SendTokens {token} />
+    <SendTokens {token} on:close={handleClose} />
   </div>
 </Modal>
