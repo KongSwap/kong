@@ -1,7 +1,7 @@
 <script lang="ts">
   import { liveTokens } from '$lib/services/tokens/tokenStore';
   import { onDestroy } from 'svelte';
-  import { SwapService } from '$lib/services/swap/SwapService';
+  import { SwapMonitor } from "$lib/services/swap/SwapMonitor";
   import Swap from '$lib/components/swap/Swap.svelte';
   import SwapPro from '$lib/components/swap/SwapPro.svelte';
   import { page } from '$app/stores';
@@ -23,7 +23,7 @@
   };
 
   onDestroy(() => {
-    SwapService.cleanup();
+    SwapMonitor.cleanup();
   });
 </script>
 

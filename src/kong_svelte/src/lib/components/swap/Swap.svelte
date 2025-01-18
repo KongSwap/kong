@@ -2,12 +2,10 @@
   import SwapPanel from "./swap_ui/SwapPanel.svelte";
   import TokenSelectorDropdown from "./swap_ui/TokenSelectorDropdown.svelte";
   import SwapConfirmation from "./swap_ui/SwapConfirmation.svelte";
-  import SwapSuccessModal from "./swap_ui/SwapSuccessModal.svelte";
-  import BananaRain from "$lib/components/common/BananaRain.svelte";
   import Portal from "svelte-portal";
   import { Principal } from "@dfinity/principal";
   import { fade } from "svelte/transition";
-  import { onMount, createEventDispatcher } from "svelte";
+  import { onMount } from "svelte";
   import { get } from "svelte/store";
   import { replaceState } from "$app/navigation";
   import { page } from "$app/stores";
@@ -18,7 +16,7 @@
   import {
     getTokenDecimals,
     liveTokens,
-    storedBalancesStore,
+    loadBalances,
   } from "$lib/services/tokens/tokenStore";
   import { settingsStore } from "$lib/services/settings/settingsStore";
   import { toastStore } from "$lib/stores/toastStore";
@@ -72,7 +70,7 @@
   $: {
     if (currentSwapId && $swapStatusStore[currentSwapId]) {
       const status = $swapStatusStore[currentSwapId];
-      if (status.status === "Success" && status.details) {
+      if (status.status === "Swap success" && status.details) {
         showSuccessModal = true;
         successDetails = {
           payAmount: status.details.payAmount,
@@ -83,20 +81,6 @@
         };
       }
     }
-  }
-
-  // Function to handle success modal close
-  function handleSuccessModalClose() {
-    showSuccessModal = false;
-    successDetails = null;
-    // Reset swap state
-    swapState.update((state) => ({
-      ...state,
-      payAmount: "",
-      receiveAmount: "",
-      error: null,
-      isProcessing: false,
-    }));
   }
 
   // Function to calculate optimal dropdown position
@@ -119,20 +103,16 @@
     return { top, left };
   }
 
-  // Event dispatcher
-  const dispatch = createEventDispatcher<{
-    modeChange: { mode: "normal" | "pro" };
-    tokenChange: { fromToken: FE.Token | null; toToken: FE.Token | null };
-  }>();
-
   // Reactive statements
-  $: userMaxSlippage = $settingsStore.max_slippage;
 
   $: insufficientFunds =
     $swapState.payToken &&
     $swapState.payAmount &&
     Number($swapState.payAmount) >
-      Number(getTokenBalance($swapState.payToken.canister_id));
+      Number(loadBalances($auth.account?.owner, {
+        tokens: [$swapState.payToken],
+        forceRefresh: true,
+      }));
 
   $: buttonText = (() => {
     if (!$swapState.payToken || !$swapState.receiveToken)
@@ -142,8 +122,8 @@
     if (isQuoteLoading) return "Fetching Quote...";
     if ($swapState.error) return $swapState.error;
     if (insufficientFunds) return "Insufficient Funds";
-    if ($swapState.swapSlippage > userMaxSlippage)
-      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${userMaxSlippage}%) - Click to Adjust`;
+    if ($swapState.swapSlippage > $settingsStore.max_slippage)
+      return `High Slippage (${$swapState.swapSlippage.toFixed(2)}% > ${$settingsStore.max_slippage}%) - Click to Adjust`;
     if (!$auth?.account?.owner) return "Click to Connect Wallet";
     if (!$swapState.payAmount) return "Enter Amount";
     return "SWAP";
@@ -175,23 +155,8 @@
   // Initialize on mount
   onMount(() => {
     initializeComponent();
-    setupEventListeners();
     resetSwapState();
-
-    return () => {
-      window.removeEventListener("swapSuccess", handleSwapSuccess);
-    };
   });
-
-  // Helper functions
-  function getTokenBalance(tokenId: string): string {
-    if (!tokenId) return "0";
-    const balance = $storedBalancesStore[tokenId]?.in_tokens ?? BigInt(0);
-    const token = $liveTokens.find((t) => t.canister_id === tokenId);
-    return token
-      ? (Number(balance) / Math.pow(10, token.decimals)).toString()
-      : "0";
-  }
 
   // Modify the poolExists function to add more debugging
   function poolExists(
@@ -215,24 +180,6 @@
     );
 
     return exists;
-  }
-
-  function getButtonTooltip(
-    owner: boolean | undefined,
-    slippageTooHigh: boolean,
-    error: string | null,
-  ): string {
-    if (!$swapState.payToken || !$swapState.receiveToken)
-      return "Select tokens to trade";
-    if (!owner) return "Connect to trade";
-    if (insufficientFunds) {
-      const balance = getTokenBalance($swapState.payToken?.canister_id);
-      return `Balance: ${balance} ${$swapState.payToken?.symbol}`;
-    }
-    if (slippageTooHigh)
-      return `Slippage: ${$swapState.swapSlippage}% > ${userMaxSlippage}%`;
-    if (error) return error;
-    return "Execute swap";
   }
 
   async function handleSwapClick(): Promise<void> {
@@ -285,7 +232,7 @@
         payAmount: $swapState.payAmount,
         receiveToken: $swapState.receiveToken,
         receiveAmount: $swapState.receiveAmount,
-        userMaxSlippage,
+        userMaxSlippage: $settingsStore.max_slippage,
         backendPrincipal: Principal.fromText(KONG_BACKEND_CANISTER_ID),
         lpFees: $swapState.lpFees,
       });
@@ -299,6 +246,8 @@
         return false;
       }
 
+      // Reset the state after a successful swap
+      resetSwapState();
       return true;
     } catch (error) {
       console.error("Swap execution failed:", error);
@@ -325,7 +274,7 @@
       return;
     }
 
-    if ($swapState.swapSlippage > userMaxSlippage) {
+    if ($swapState.swapSlippage > $settingsStore.max_slippage) {
       showSettings = true;
       return;
     }
@@ -354,14 +303,6 @@
     } catch (error) {
       console.error("Error initializing component:", error);
     }
-  }
-
-  function setupEventListeners(): void {
-    window.addEventListener("swapSuccess", handleSwapSuccess);
-  }
-
-  function handleSwapSuccess(event: CustomEvent): void {
-    SwapLogicService.handleSwapSuccess(event);
   }
 
   async function handleAmountChange(event: CustomEvent) {
@@ -659,23 +600,18 @@
       <button
         class="swap-button"
         class:error={$swapState.error ||
-          $swapState.swapSlippage > userMaxSlippage ||
+          $swapState.swapSlippage > $settingsStore.max_slippage ||
           insufficientFunds
           }
         class:processing={$swapState.isProcessing || isQuoteLoading}
         class:ready={!$swapState.error &&
-          $swapState.swapSlippage <= userMaxSlippage &&
+          $swapState.swapSlippage <= $settingsStore.max_slippage &&
           !insufficientFunds &&
           !isQuoteLoading
         }
         class:shine-animation={buttonText === "SWAP"}
         on:click={handleButtonAction}
         disabled={$swapState.isProcessing || insufficientFunds || isQuoteLoading}
-        title={getButtonTooltip(
-          $auth?.account?.owner,
-          $swapState.swapSlippage > userMaxSlippage,
-          $swapState.error,
-        )}
       >
         <div class="button-content">
           {#if $swapState.isProcessing || isQuoteLoading}
@@ -728,7 +664,7 @@
       payAmount={$swapState.payAmount}
       receiveToken={$swapState.receiveToken}
       receiveAmount={$swapState.receiveAmount}
-      {userMaxSlippage}
+      userMaxSlippage={$settingsStore.max_slippage}
       routingPath={$swapState.routingPath}
       onConfirm={handleSwap}
       onClose={() => {
@@ -743,16 +679,6 @@
     />
   </Portal>
 {/if}
-
-{#if $swapState.showBananaRain}
-  <BananaRain />
-{/if}
-
-<SwapSuccessModal
-  show={showSuccessModal}
-  {...successDetails}
-  onClose={handleSuccessModalClose}
-/>
 
 {#if showSettings}
   <Modal 
