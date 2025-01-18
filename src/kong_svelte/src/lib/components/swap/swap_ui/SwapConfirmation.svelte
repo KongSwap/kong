@@ -1,7 +1,6 @@
 <script lang="ts">
   import Modal from "$lib/components/common/Modal.svelte";
   import { SwapService } from "$lib/services/swap/SwapService";
-  import { swapState } from "$lib/services/swap/SwapStateService";
   import PayReceiveSection from "./confirmation/PayReceiveSection.svelte";
   import RouteSection from "./confirmation/RouteSection.svelte";
   import FeesSection from "./confirmation/FeesSection.svelte";
@@ -10,7 +9,6 @@
   import { toastStore } from "$lib/stores/toastStore";
   import { createEventDispatcher } from "svelte";
   import { formatBalance } from "$lib/utils/numberFormatUtils";
-    import BigNumber from "bignumber.js";
 
   export let payToken: FE.Token;
   export let payAmount: string;
@@ -80,24 +78,9 @@
     error = "";
 
     try {
-      const result = await onConfirm();
-
-      if (result === true) {
-        swapState.update((state) => ({
-          ...state,
-          showConfirmation: false,
-          isProcessing: false,
-          error: null,
-          showSuccessModal: true,
-        }));
-        onClose?.();
-        return true;
-      } else {
-        console.log("Swap failed or returned non-true value");
-        error = "Swap failed";
-        toastStore.error(error);
-        return false;
-      }
+      onConfirm();
+      onClose?.();
+      return true;
     } catch (e) {
       console.error("Swap confirmation error:", e);
       error = e.message || "An error occurred";
@@ -114,16 +97,6 @@
       clearInterval(quoteUpdateInterval);
     }
   });
-
-  function calculateTotalFee(fees: Fee[]): string {
-    if (!fees || !Array.isArray(fees)) {
-      return "0";
-    }
-
-    return fees.reduce((total, fee) => {
-      return new BigNumber(total).plus(new BigNumber(fee.amount)).toString();
-    }, "0");
-  }
 
   function cleanComponent() {
     isLoading = false;

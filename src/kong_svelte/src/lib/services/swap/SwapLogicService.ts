@@ -1,11 +1,11 @@
-import { get } from 'svelte/store';
-import { swapState } from './SwapStateService';
-import { liveTokens } from '$lib/services/tokens/tokenStore';
-import { toastStore } from '$lib/stores/toastStore';
-import { updateURL } from '$lib/components/swap/utils';
-import type { Principal } from '@dfinity/principal';
-import { SwapService } from './SwapService';
-import { swapStatusStore } from './swapStore';
+import { swapState } from "./SwapStateService";
+import { get } from "svelte/store";
+import { liveTokens } from "$lib/services/tokens/tokenStore";
+import { toastStore } from "$lib/stores/toastStore";
+import { SwapService } from "./SwapService";
+import { swapStatusStore } from "./swapStore";
+import { SwapMonitor } from "./SwapMonitor";
+import type { Principal } from "@dfinity/principal";
 
 export class SwapLogicService {
   static async handleSwapSuccess(event: CustomEvent) {
@@ -27,17 +27,14 @@ export class SwapLogicService {
       return;
     }
 
-    const updatedSuccessDetails = {
-      principalId: event.detail.principalId,
-      payAmount: event.detail.payAmount,
-      payToken,
-      receiveAmount: event.detail.receiveAmount,
-      receiveToken
-    };
-
-    swapState.updateSuccessDetails(updatedSuccessDetails);
-    swapState.setPayAmount('');
-    swapState.setShowSuccessModal(true);
+    // Reset the swap state
+    swapState.update((state) => ({
+      ...state,
+      payAmount: "",
+      receiveAmount: "",
+      error: null,
+      isProcessing: false,
+    }));
   }
 
   static handleSelectToken(type: "pay" | "receive", token: FE.Token) {
@@ -51,11 +48,6 @@ export class SwapLogicService {
       return;
     }
 
-    const SECONDARY_TOKEN_IDS = [
-      'ryjl3-tyaaa-aaaaa-aaaba-cai', // ICP
-      'cngnf-vqaaa-aaaar-qag4q-cai'  // ckUSDT
-    ];
-
     const updates: Partial<typeof state> = {
       manuallySelectedTokens: {
         ...state.manuallySelectedTokens,
@@ -63,23 +55,12 @@ export class SwapLogicService {
       }
     };
 
-    // If selecting a secondary token (ICP/ckUSDT)
-    const isSecondaryToken = SECONDARY_TOKEN_IDS.includes(token.canister_id);
-    const otherToken = type === "pay" ? state.receiveToken : state.payToken;
-    const otherTokenIsSecondary = otherToken && SECONDARY_TOKEN_IDS.includes(otherToken.canister_id);
-
     if (type === "pay") {
       updates.payToken = token;
       updates.showPayTokenSelector = false;
-      if (state.receiveToken) {
-        updateURL({ from: token.canister_id, to: state.receiveToken.canister_id });
-      }
     } else {
       updates.receiveToken = token;
       updates.showReceiveTokenSelector = false;
-      if (state.payToken) {
-        updateURL({ from: state.payToken.canister_id, to: token.canister_id });
-      }
     }
 
     swapState.update(state => ({ ...state, ...updates }));
@@ -94,7 +75,7 @@ export class SwapLogicService {
     backendPrincipal: Principal;
     lpFees: string[];
   }): Promise<boolean> {
-    swapState.setIsProcessing(true);
+    swapState.update(state => ({ ...state, isProcessing: true }));
 
     try {
       // Create the swap in the store first
@@ -120,17 +101,21 @@ export class SwapLogicService {
           isProcessing: true,
           error: null
         });
-        SwapService.monitorTransaction(result, swapId);
+        const toastId = toastStore.info(
+          `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
+          { duration: undefined }
+        );
+        SwapMonitor.monitorTransaction(result, swapId, toastId);
         return true;
       } else {
         toastStore.error('Swap failed');
-        swapState.setIsProcessing(false);
+        swapState.update(state => ({ ...state, isProcessing: false }));
         return false;
       }
     } catch (error) {
       console.error('Swap execution error:', error);
       toastStore.error('Failed to execute swap');
-      swapState.setIsProcessing(false);
+      swapState.update(state => ({ ...state, isProcessing: false }));
       return false;
     }
   }

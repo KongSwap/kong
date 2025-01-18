@@ -188,7 +188,7 @@
           <Menu size={20} color={$themeStore === "dark" ? "white" : "black"} />
         </button>
       {:else}
-        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/")}>
+        <button class="flex items-center hover:opacity-90 transition-opacity" on:click={() => goto("/swap")}>
           <img 
             src="/titles/logo-white-wide.png"
             alt="Kong Logo" 

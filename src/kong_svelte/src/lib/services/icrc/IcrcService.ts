@@ -56,55 +56,6 @@ export class IcrcService {
     throw error;
   }
 
-  private static async retryWithBackoff<T>(
-    operation: () => Promise<T>,
-    maxRetries: number = this.MAX_RETRIES,
-    initialDelay: number = this.INITIAL_DELAY
-  ): Promise<T> {
-    let retries = 0;
-    let lastError: any;
-
-    while (retries <= maxRetries) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error;
-        const errorType = this.classifyError(error);
-        
-        // Don't retry auth errors
-        if (errorType === ErrorType.AUTH) {
-          throw error;
-        }
-
-        if (retries >= maxRetries) {
-          console.error(`Failed after ${retries} retries:`, error);
-          throw error;
-        }
-
-        // Calculate delay based on error type
-        const jitter = Math.random() * 1000;
-        let baseDelay = initialDelay;
-        
-        switch (errorType) {
-          case ErrorType.RATE_LIMIT:
-            baseDelay = 5000;
-            break;
-          case ErrorType.CORS:
-          case ErrorType.NETWORK:
-            baseDelay = 2000;
-            break;
-        }
-
-        const delay = (baseDelay * Math.pow(1.5, retries)) + jitter;
-        console.warn(`Retry ${retries + 1}/${maxRetries} after ${delay}ms due to ${errorType} error`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        retries++;
-      }
-    }
-
-    throw lastError;
-  }
-
   private static async withConcurrencyLimit<T>(
     operations: (() => Promise<T>)[],
     limit: number = this.MAX_CONCURRENT_REQUESTS
@@ -148,25 +99,20 @@ export class IcrcService {
       );
 
       // Get default balance with retry logic
-      const defaultBalance = await this.retryWithBackoff(async () => 
-        actor.icrc1_balance_of({
+      const defaultBalance = await actor.icrc1_balance_of({
           owner: principal,
           subaccount: [],
         })
-      );
-
       // If we don't need separate balances or there's no subaccount, return total
       if (!separateBalances || !subaccount) {
         return defaultBalance;
       }
 
       // Get subaccount balance with retry logic
-      const subaccountBalance = await this.retryWithBackoff(async () =>
-        actor.icrc1_balance_of({
+      const subaccountBalance = await actor.icrc1_balance_of({
           owner: principal,
           subaccount: [subaccount],
         })
-      );
 
       return {
         default: defaultBalance,

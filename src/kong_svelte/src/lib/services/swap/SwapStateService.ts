@@ -215,7 +215,13 @@ function createSwapStore(): SwapStore {
     },
 
     setShowSuccessModal(show: boolean) {
-      update(state => ({ ...state, showSuccessModal: show }));
+      console.log("Setting showSuccessModal to:", show);
+      update(state => {
+        console.log("Previous state showSuccessModal:", state.showSuccessModal);
+        const newState = { ...state, showSuccessModal: show };
+        console.log("New state showSuccessModal:", newState.showSuccessModal);
+        return newState;
+      });
     },
 
     setError(error: string | null) {

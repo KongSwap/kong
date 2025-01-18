@@ -13,13 +13,14 @@ export interface Toast {
 export interface ToastOptions {
     title?: string;
     duration?: number;
+    id?: string;
 }
 
 function createToastStore() {
     const { subscribe, update } = writable<Toast[]>([]);
 
-    const add = (toast: Omit<Toast, 'id' | 'timestamp'>): string => {
-        const id = crypto.randomUUID();
+    const add = (toast: Omit<Toast, 'id' | 'timestamp'> & { id?: string }): string => {
+        const id = toast.id || crypto.randomUUID();
         
         // Create timeout if duration is specified
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -29,12 +30,23 @@ function createToastStore() {
             }, toast.duration);
         }
 
-        update(toasts => [...toasts, {
-            ...toast,
-            id,
-            timestamp: Date.now(),
-            timeoutId // Store the timeout ID
-        }]);
+        update(toasts => {
+            // If toast with this ID exists, update it
+            if (toast.id) {
+                return toasts.map(t => 
+                    t.id === toast.id 
+                        ? { ...t, ...toast, timeoutId }
+                        : t
+                );
+            }
+            // Otherwise add new toast
+            return [...toasts, {
+                ...toast,
+                id,
+                timestamp: Date.now(),
+                timeoutId
+            }];
+        });
         return id;
     };
 
@@ -58,7 +70,8 @@ function createToastStore() {
                 type: 'success', 
                 message, 
                 title: options.title,
-                duration: options.duration || 5000 
+                duration: options.duration || 5000,
+                id: options.id
             });
         },
         error: (message: string, options: ToastOptions = {}): string => {
@@ -66,7 +79,8 @@ function createToastStore() {
                 type: 'error', 
                 message, 
                 title: options.title,
-                duration: options.duration || 10000 // Longer default for errors
+                duration: options.duration || 10000,
+                id: options.id
             });
         },
         warning: (message: string, options: ToastOptions = {}): string => {
@@ -74,7 +88,8 @@ function createToastStore() {
                 type: 'warning', 
                 message, 
                 title: options.title,
-                duration: options.duration || 10000
+                duration: options.duration || 10000,
+                id: options.id
             });
         },
         info: (message: string, options: ToastOptions = {}): string => {
@@ -82,7 +97,8 @@ function createToastStore() {
                 type: 'info', 
                 message, 
                 title: options.title,
-                duration: options.duration || 5000
+                duration: options.duration || 5000,
+                id: options.id
             });
         },
     };

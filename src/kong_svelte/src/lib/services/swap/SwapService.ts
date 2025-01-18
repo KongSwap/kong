@@ -1,8 +1,6 @@
 // src/lib/services/swap/SwapService.ts
 import {
-  getTokenDecimals,
   liveTokens,
-  loadBalances,
 } from "$lib/services/tokens/tokenStore";
 import { toastStore } from "$lib/stores/toastStore";
 import { get } from "svelte/store";
@@ -13,6 +11,7 @@ import { swapStatusStore } from "./swapStore";
 import { auth, canisterIDLs } from "$lib/services/auth";
 import { KONG_BACKEND_CANISTER_ID } from "$lib/constants/canisterConstants";
 import { requireWalletConnection } from "$lib/services/auth";
+import { SwapMonitor } from "./SwapMonitor";
 
 interface SwapExecuteParams {
   swapId: string;
@@ -63,14 +62,6 @@ BigNumber.config({
 });
 
 export class SwapService {
-  private static INITIAL_POLLING_INTERVAL = 500; // 500ms initially
-  private static FAST_POLLING_INTERVAL = 100; // 100ms after 5 seconds
-  private static FAST_POLLING_DELAY = 5000; // 5 seconds before switching to fast polling
-  private static pollingInterval: NodeJS.Timeout | null = null;
-  private static startTime: number;
-  private static readonly POLLING_INTERVAL = 300; // .3 second
-  private static readonly MAX_ATTEMPTS = 200; // 30 seconds
-
   private static isValidNumber(value: string | number): boolean {
     if (typeof value === "number") {
       return !isNaN(value) && isFinite(value);
@@ -321,15 +312,11 @@ export class SwapService {
         );
       }
 
-      const receiveAmount = SwapService.toBigInt(
-        params.receiveAmount,
-        receiveToken.decimals,
-      );
-
       let txId: bigint | false;
       let approvalId: bigint | false;
       const toastId = toastStore.info(
         `Swapping ${params.payAmount} ${params.payToken.symbol} to ${params.receiveAmount} ${params.receiveToken.symbol}...`,
+        { duration: 20000 },
       );
       if (payToken.icrc2) {
         const requiredAllowance = payAmount;
@@ -380,7 +367,7 @@ export class SwapService {
       const result = await SwapService.swap_async(swapParams);
 
       if (result.Ok) {
-        this.monitorTransaction(result?.Ok, swapId);
+        SwapMonitor.monitorTransaction(result?.Ok, swapId, toastId);
       } else {
         console.error("Swap error:", result.Err);
         return false;
@@ -396,193 +383,6 @@ export class SwapService {
       toastStore.error(error instanceof Error ? error.message : "Swap failed");
       return false;
     }
-  }
-
-  public static async monitorTransaction(requestId: bigint, swapId: string) {
-    this.stopPolling();
-    this.startTime = Date.now();
-    let attempts = 0;
-    let lastStatus = ""; // Track the last status
-    let swapStatus = swapStatusStore.getSwap(swapId);
-    toastStore.info(
-      `Confirming swap of ${swapStatus?.payToken.symbol} to ${swapStatus?.receiveToken.symbol}...`,
-      { duration: 10000 },
-    );
-
-    const poll = async () => {
-      if (attempts >= this.MAX_ATTEMPTS) {
-        this.stopPolling();
-        swapStatusStore.updateSwap(swapId, {
-          status: "Timeout",
-          isProcessing: false,
-          error: "Swap timed out",
-        });
-        toastStore.error("Swap timed out");
-        return;
-      }
-
-      try {
-        const status: RequestResponse = await this.requests([requestId]);
-
-        if (status.Ok?.[0]?.reply) {
-          const res: RequestStatus = status.Ok[0];
-
-          // Only show toast for new status updates
-          if (res.statuses && res.statuses.length > 0) {
-            const latestStatus = res.statuses[res.statuses.length - 1];
-            if (latestStatus !== lastStatus) {
-              lastStatus = latestStatus;
-              if (latestStatus.includes("Success")) {
-                toastStore.success(`Swap completed successfully`);
-              } else if (res.statuses.length == 1) {
-                toastStore.info(`${latestStatus}`);
-              } else if (latestStatus.includes("Failed")) {
-                toastStore.error(`${latestStatus}`);
-              }
-            }
-          }
-
-          if (res.statuses.find((s) => s.includes("Failed"))) {
-            this.stopPolling();
-            swapStatusStore.updateSwap(swapId, {
-              status: "Error",
-              isProcessing: false,
-              error: res.statuses.find((s) => s.includes("Failed")),
-            });
-            toastStore.error(res.statuses.find((s) => s.includes("Failed")));
-            return;
-          }
-
-          if ("Swap" in res.reply) {
-            const swapStatus: SwapStatus = res.reply.Swap;
-            swapStatusStore.updateSwap(swapId, {
-              status: swapStatus.status,
-              isProcessing: true,
-              error: null,
-            });
-
-            if (swapStatus.status === "Success") {
-              this.stopPolling();
-              const token0 = get(liveTokens).find(
-                (t) => t.symbol === swapStatus.pay_symbol,
-              );
-              const token1 = get(liveTokens).find(
-                (t) => t.symbol === swapStatus.receive_symbol,
-              );
-
-              const formattedPayAmount = SwapService.fromBigInt(
-                swapStatus.pay_amount,
-                token0?.decimals || 0,
-              );
-              const formattedReceiveAmount = SwapService.fromBigInt(
-                swapStatus.receive_amount,
-                token1?.decimals || 0,
-              );
-
-              swapStatusStore.updateSwap(swapId, {
-                status: "Success",
-                isProcessing: false,
-                shouldRefreshQuote: true,
-                lastQuote: null,
-                details: {
-                  payAmount: formattedPayAmount,
-                  payToken: token0,
-                  receiveAmount: formattedReceiveAmount,
-                  receiveToken: token1,
-                },
-              });
-
-              // Load updated balances immediately and after delays
-              const tokens = get(liveTokens);
-              const payToken = tokens.find(
-                (t) => t.symbol === swapStatus.pay_symbol,
-              );
-              const receiveToken = tokens.find(
-                (t) => t.symbol === swapStatus.receive_symbol,
-              );
-              const walletId = auth?.pnp?.account?.owner?.toString();
-
-              if (!payToken || !receiveToken || !walletId) {
-                console.error(
-                  "Missing token or wallet info for balance update",
-                );
-                return;
-              }
-
-              const updateBalances = async () => {
-                try {
-                  await loadBalances(walletId.toString(), {
-                    tokens: [payToken, receiveToken],
-                    forceRefresh: true,
-                  });
-                } catch (error) {
-                  console.error("Error updating balances:", error);
-                }
-              };
-
-              // Update immediately
-              await updateBalances();
-
-              // Schedule updates with increasing delays
-              const delays = [1000, 2000, 3000, 3000, 3000, 5000];
-              delays.forEach((delay) => {
-                setTimeout(async () => {
-                  await updateBalances();
-                }, delay);
-              });
-
-              return;
-            } else if (swapStatus.status === "Failed") {
-              this.stopPolling();
-              swapStatusStore.updateSwap(swapId, {
-                status: "Failed",
-                isProcessing: false,
-                error: "Swap failed",
-              });
-              toastStore.error("Swap failed");
-              return;
-            }
-          }
-        }
-
-        attempts++;
-
-        // Calculate next polling interval
-        const elapsedTime = Date.now() - this.startTime;
-        const nextInterval =
-          elapsedTime >= this.FAST_POLLING_DELAY
-            ? this.FAST_POLLING_INTERVAL
-            : this.INITIAL_POLLING_INTERVAL;
-
-        // Schedule next poll
-        this.pollingInterval = setTimeout(poll, nextInterval);
-      } catch (error) {
-        console.error("Error monitoring swap:", error);
-        this.stopPolling();
-        swapStatusStore.updateSwap(swapId, {
-          status: "Error",
-          isProcessing: false,
-          error: "Failed to monitor swap status",
-        });
-        toastStore.error("Failed to monitor swap status");
-        return;
-      }
-    };
-
-    // Start polling
-    poll();
-  }
-
-  private static stopPolling() {
-    if (this.pollingInterval) {
-      clearTimeout(this.pollingInterval);
-      this.pollingInterval = null;
-    }
-  }
-
-  // Clean up method to be called when component unmounts
-  public static cleanup() {
-    this.stopPolling();
   }
 
   /**

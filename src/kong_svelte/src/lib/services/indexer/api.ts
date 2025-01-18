@@ -10,7 +10,7 @@ interface TokensParams {
 
 export const fetchTokens = async (params?: TokensParams): Promise<FE.Token[]> => {
   try {
-    const { page = 1, limit = 100, canisterIds } = params || {};
+    const { page = 1, limit = 150, canisterIds } = params || {};
     
     // Build query string for pagination
     const queryString = new URLSearchParams({

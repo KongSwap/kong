@@ -8,14 +8,20 @@
   import Panel from "$lib/components/common/Panel.svelte";
   import TransactionFeed from "$lib/components/stats/TransactionFeed.svelte";
   import { goto } from "$app/navigation";
-  import { CKUSDC_CANISTER_ID, CKUSDT_CANISTER_ID, ICP_CANISTER_ID } from "$lib/constants/canisterConstants";
+  import {
+    CKUSDC_CANISTER_ID,
+    CKUSDT_CANISTER_ID,
+    ICP_CANISTER_ID,
+  } from "$lib/constants/canisterConstants";
   import PoolSelector from "$lib/components/stats/PoolSelector.svelte";
   import TokenStatistics from "$lib/components/stats/TokenStatistics.svelte";
   import ButtonV2 from "$lib/components/common/ButtonV2.svelte";
-  import { Droplets, ArrowLeftRight } from "lucide-svelte";
+  import { Droplets, ArrowLeftRight, Copy } from "lucide-svelte";
   import { kongDB } from "$lib/services/db";
   import SNSProposals from "$lib/components/stats/SNSProposals.svelte";
   import { GOVERNANCE_CANISTER_IDS } from "$lib/services/sns/snsService";
+  import { copyToClipboard } from "$lib/utils/clipboard";
+  import { toastStore } from "$lib/stores/toastStore";
 
   if (!formattedTokens || !livePools) {
     throw new Error("Stores are not initialized");
@@ -78,16 +84,17 @@
       const hasToken =
         p.address_0 === token.canister_id || p.address_1 === token.canister_id;
       const hasTVL = Number(p.tvl) > 0;
-      return hasToken && hasTVL;  // Only filter by TVL initially
+      return hasToken && hasTVL; // Only filter by TVL initially
     });
 
     // For CKUSDT, prioritize the CKUSDC/CKUSDT pool if it exists and has TVL
     if (token.canister_id === CKUSDT_CANISTER_ID) {
-      const ckusdcPool = $livePools.find(p => {
-        const isCorrectPair = (
-          (p.address_0 === CKUSDC_CANISTER_ID && p.address_1 === CKUSDT_CANISTER_ID) ||
-          (p.address_0 === CKUSDT_CANISTER_ID && p.address_1 === CKUSDC_CANISTER_ID)
-        );
+      const ckusdcPool = $livePools.find((p) => {
+        const isCorrectPair =
+          (p.address_0 === CKUSDC_CANISTER_ID &&
+            p.address_1 === CKUSDT_CANISTER_ID) ||
+          (p.address_0 === CKUSDT_CANISTER_ID &&
+            p.address_1 === CKUSDC_CANISTER_ID);
         const hasTVL = Number(p.tvl) > 0;
         return isCorrectPair && hasTVL;
       });
@@ -283,21 +290,8 @@
           </div>
 
           <!-- Mobile tabs row - shown on mobile, hidden on desktop -->
-          <div class="md:hidden flex items-center gap-2 text-[#8890a4]">
-            <button
-              role="tab"
-              id="overview-tab-mobile"
-              aria-controls="overview-panel"
-              aria-selected={activeTab === "overview"}
-              class="px-4 py-2 rounded-lg flex-1 {activeTab === 'overview'
-                ? 'bg-kong-bg-secondary text-kong-text-primary'
-                : 'hover:text-kong-text-primary'}"
-              on:click={() => (activeTab = "overview")}
-            >
-              Overview
-            </button>
-
-            {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
+          {#if token?.canister_id && GOVERNANCE_CANISTER_IDS[token.canister_id]}
+            <div class="md:hidden flex items-center gap-2 text-[#8890a4]">
               <button
                 role="tab"
                 id="governance-tab-mobile"
@@ -310,8 +304,8 @@
               >
                 Governance
               </button>
-            {/if}
-          </div>
+            </div>
+          {/if}
         </div>
       </Panel>
 
@@ -327,6 +321,23 @@
           <div class="flex flex-col lg:flex-row gap-4">
             <!-- Mobile-first layout -->
             <div class="flex flex-col gap-4 w-full lg:hidden">
+              <!-- Pool Selector -->
+              <PoolSelector
+                {selectedPool}
+                {token}
+                formattedTokens={$formattedTokens}
+                {relevantPools}
+                onPoolSelect={(pool) => {
+                  hasManualSelection = true;
+                  selectedPool = {
+                    ...pool,
+                    pool_id: String(pool.pool_id),
+                    tvl: String(pool.tvl),
+                    lp_token_supply: String(pool.lp_token_supply),
+                    volume_24h: String(pool.daily_volume || "0"),
+                  } as BE.Pool;
+                }}
+              />
               <!-- Add Action Buttons for mobile -->
               <div class="flex items-center gap-2 justify-end">
                 <ButtonV2
@@ -357,23 +368,22 @@
                 </ButtonV2>
               </div>
 
-              <!-- Pool Selector -->
-              <PoolSelector
-                {selectedPool}
-                {token}
-                formattedTokens={$formattedTokens}
-                {relevantPools}
-                onPoolSelect={(pool) => {
-                  hasManualSelection = true;
-                  selectedPool = {
-                    ...pool,
-                    pool_id: String(pool.pool_id),
-                    tvl: String(pool.tvl),
-                    lp_token_supply: String(pool.lp_token_supply),
-                    volume_24h: String(pool.daily_volume || "0"),
-                  } as BE.Pool;
-                }}
-              />
+              <div class="flex items-center gap-2">
+                <ButtonV2
+                  variant="outline"
+                  size="md"
+                  className="w-full text-nowrap flex justify-center"
+                  on:click={() => {
+                    copyToClipboard(token?.address);
+                    toastStore.info("Token address copied to clipboard");
+                  }}
+                >
+                  <div class="flex items-center gap-2">
+                    <Copy class="w-4 h-4" />
+                    {token?.address}
+                  </div>
+                </ButtonV2>
+              </div>
 
               <!-- Token Statistics -->
               <TokenStatistics {token} {marketCapRank} />
@@ -477,6 +487,22 @@
 
               <!-- Right Column - Stats -->
               <div class="lg:w-[30%] flex flex-col gap-4">
+                <PoolSelector
+                  {selectedPool}
+                  {token}
+                  formattedTokens={$formattedTokens}
+                  {relevantPools}
+                  onPoolSelect={(pool) => {
+                    hasManualSelection = true;
+                    selectedPool = {
+                      ...pool,
+                      pool_id: String(pool.pool_id),
+                      tvl: String(pool.tvl),
+                      lp_token_supply: String(pool.lp_token_supply),
+                      volume_24h: String(pool.daily_volume || "0"),
+                    } as BE.Pool;
+                  }}
+                />
                 <!-- Action Buttons - Shown on all layouts -->
                 <div class="flex items-center gap-2 justify-end w-full">
                   <ButtonV2
@@ -506,22 +532,22 @@
                     </div>
                   </ButtonV2>
                 </div>
-                <PoolSelector
-                  {selectedPool}
-                  {token}
-                  formattedTokens={$formattedTokens}
-                  {relevantPools}
-                  onPoolSelect={(pool) => {
-                    hasManualSelection = true;
-                    selectedPool = {
-                      ...pool,
-                      pool_id: String(pool.pool_id),
-                      tvl: String(pool.tvl),
-                      lp_token_supply: String(pool.lp_token_supply),
-                      volume_24h: String(pool.daily_volume || "0"),
-                    } as BE.Pool;
-                  }}
-                />
+                <div class="flex items-center gap-2">
+                  <ButtonV2
+                    variant="outline"
+                    size="md"
+                    className="w-full text-nowrap flex justify-center"
+                    on:click={() => {
+                      copyToClipboard(token?.address);
+                      toastStore.info("Token address copied to clipboard");
+                    }}
+                  >
+                    <div class="flex items-center gap-2">
+                      <Copy class="w-4 h-4" />
+                      {token?.address}
+                    </div>
+                  </ButtonV2>
+                </div>
                 <TokenStatistics {token} {marketCapRank} />
               </div>
             </div>
